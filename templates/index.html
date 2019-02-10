@@ -1,0 +1,206 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>ESDL editor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script>
+
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+
+        var socket;
+
+        $(document).ready(function() {
+            // Use a "/test" namespace.
+            // An application can open a connection on multiple namespaces, and
+            // Socket.IO will multiplex all those connections on a single
+            // physical channel. If you don't care about multiple channels, you
+            // can set the namespace to an empty string.
+            namespace = '/esdl';
+
+            // Connect to the Socket.IO server.
+            // The connection URL has the following format:
+            //     http[s]://<domain>:<port>[/<namespace>]
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+            // Event handler for new connections.
+            // The callback function is invoked when a connection with the
+            // server is established.
+            socket.on('connect', function() {
+                socket.emit('my_event', {data: 'I\'m connected!'});
+            });
+
+            // Event handler for server sent data.
+            // The callback function is invoked whenever the server emits data
+            // to the client. The data is then displayed in the "Received"
+            // section of the page.
+            socket.on('my_response', function(msg) {
+                $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
+            });
+
+            socket.on('loadesdl', function(list) {
+
+                var ESDL_items = new Map();
+
+                for (i = 0; i<list.length; i++) {
+                    $('#log').append('<br>' + list[i][0]+ ', ' + list[i][1] + ': ' + list[i][2] + ' - ' + list[i][3]);
+
+                    var ESDLicon = L.icon({
+                        iconUrl: 'images/' + list[i][4] + '.png',
+
+                        iconSize:     [30, 30], // size of the icon
+                        iconAnchor:   [30, 15], // point of the icon which will correspond to marker's location
+                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+                    });
+
+                    var marker = L.marker([list[i][0], list[i][1]], {icon: ESDLicon});
+                    marker.bindPopup(list[i][2]+ ' - '+ list[i][4]);
+                    marker.id = list[i][3];
+
+                    marker.on('dragend', function(e) {
+                        var marker = e.target;
+                        var pos = marker.getLatLng();
+                        console.log(pos);
+                        console.log(marker.id);
+                        socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng});
+                         // console.log(e.oldLatLng.lat);
+                         // console.log(e.latLng.lat + ', ' + e.latLng.lng );
+                    });
+                    drawnItems.addLayer(marker);
+                }
+            });
+
+            socket.on('rcv_esdl', function(esdl_text) {
+                $('#esdltxt') = esdl_text;
+            });
+
+            // Handlers for the different forms in the page.
+            // These accept data from the user and send it to the server in a
+            // variety of ways
+            $('form#emit').submit(function(event) {
+                socket.emit('my_event', {data: $('#emit_data').val()});
+                return false;
+            });
+
+            $('form#esdlform').submit(function(event) {
+                socket.emit('command', {cmd: 'store_esdl'});
+                return false;
+            });
+
+
+            $('form#disconnect').submit(function(event) {
+                socket.emit('disconnect_request');
+                return false;
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>ESDL Web Editor</h1>
+
+    <h2>Map:</h2>
+    <div id="wrapper" style="width: 1800px; border: 1px solid black; overflow: auto;">
+        <div id="mapid" style="float: left; width: 1200px; height: 700px;"></div>
+        <div id="log" style="margin: 0 0 0 1202px; height: 700px;"><h2>Logs:</h2></div>
+    </div>
+
+    <form id="esdlform" method="POST" action='#'>
+        <input type="submit" value="Store ESDL">
+    </form>
+
+    <form id="sel">
+        <select id="asset_select">
+            <option value="PVParc">PVParc</option>
+            <option value="WindTurbine">WindTurbine</option>
+        </select>
+    </form>
+
+    <h2>Management:</h2>
+    <form id="emit" method="POST" action='#'>
+        <input type="text" name="emit_data" id="emit_data" placeholder="Message">
+        <input type="submit" value="Send WS message">
+    </form>
+
+    <form id="disconnect" method="POST" action="#">
+        <input type="submit" value="Disconnect">
+    </form>
+
+<script>
+    var lg = L.layerGroup();
+
+    var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
+            map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 13 }),
+            drawnItems = L.featureGroup().addTo(map);
+
+    L.control.layers({
+        'osm': osm.addTo(map),
+        "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+            attribution: 'google'
+        })
+    }, { 'drawlayer': drawnItems, 'esdl': lg }, { position: 'topleft', collapsed: false }).addTo(map);
+
+    var MyWindTurbineMarker = L.Icon.extend({
+        options: {
+            shadowUrl: null,
+            iconAnchor: new L.Point(12, 12),
+            iconSize: new L.Point(30, 30),
+            iconUrl: 'images/WindTurbine.png'
+        }
+    });
+
+    var MyPVParcMarker = L.Icon.extend({
+        options: {
+            shadowUrl: null,
+            iconAnchor: new L.Point(12, 12),
+            iconSize: new L.Point(30, 30),
+            iconUrl: 'images/PVParc.png'
+        }
+    });
+
+    map.addControl(new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems,
+            poly: {
+                allowIntersection: false
+            }
+        },
+        draw: {
+            polygon: {
+                allowIntersection: false,
+                showArea: true
+            },
+            circle: false
+        }
+    }));
+
+    map.on(L.Draw.Event.CREATED, function (event) {
+        var layer = event.layer;
+        var type = event.layerType;
+
+        if (type === 'marker') {
+            selection = document.getElementById("asset_select").selectedIndex;
+            console.log('selected: ' + selection);
+            console.log('lat: ' + layer.getLatLng().lat);
+
+            if (selection == 0) {
+                layer.setIcon(new MyPVParcMarker);
+                socket.emit('command', {cmd: 'add_asset', asset: 'PVParc', lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+            }
+            if (selection == 1) {
+                layer.setIcon(new MyWindTurbineMarker);
+                socket.emit('command', {cmd: 'add_asset', asset: 'WindTurbine', lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+            }
+        }
+
+        drawnItems.addLayer(layer);
+    });
+
+</script>
+</body>
+</html>

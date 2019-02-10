@@ -1,0 +1,6 @@
+flask
+flask-restplus==0.10.0
+lxml==4.2.4
+requests==2.19.1
+flask-socketio
+
