@@ -10,7 +10,110 @@
 
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
-    <script type="text/javascript" charset="utf-8">
+</head>
+<script type="text/javascript" charset="utf-8">
+
+        var conn_disconn_assets = false;
+        var first_clicked = false;
+        var first_clicked_id;
+
+        function uuidv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function calculate_length(layer) {
+            var previousPoint;
+            var polyline_length = 0;
+
+            // http://leafletjs.com/reference.html#polyline-getlatlngs
+            layer.getLatLngs().forEach(function (latLng) {
+                 // http://leafletjs.com/reference.html#latlng-distanceto
+                if (previousPoint) polyline_length += previousPoint.distanceTo(latLng);
+                previousPoint = latLng;
+            });
+
+            return polyline_length;
+        }
+
+        function set_marker_handlers(marker) {
+            marker.on('dragend', function(e) {
+                var marker = e.target;
+                var pos = marker.getLatLng();
+                console.log(pos);
+                console.log(marker.id);
+                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng});
+                 // console.log(e.oldLatLng.lat);
+                console.log(pos.lat + ', ' + pos.lng );
+            });
+            marker.on('remove', function(e) {
+                // console.log('remove marker');
+                socket.emit('command', {cmd: 'remove_asset', id: marker.id});
+            });
+            marker.on('click', function(e) {
+                console.log('marker clicked');
+                var marker = e.target;
+                var id = marker.id;
+
+                if (conn_disconn_assets) {
+                    if (first_clicked) {
+                        if (first_clicked_id == id) {       // clicked same asset twice
+                            first_clicked = false;
+                            console.log('first clicked cancelled');
+                        } else {                            // connect two assets
+                            console.log('second clicked ' + id);
+                            socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
+                        }
+                    } else {
+                        first_clicked = true;
+                        first_clicked_id = id;
+                        console.log('first clicked ' + first_clicked_id);
+                    }
+                }
+            });
+        }
+
+        function set_line_handlers(line) {
+
+            line.on('remove', function(e) {
+                socket.emit('command', {cmd: 'remove_asset', id: line.id});
+            });
+            line.on('click', function(e) {
+                console.log('line clicked');
+                var line = e.target;
+                var id = line.id;
+
+                if (conn_disconn_assets) {
+                    if (first_clicked) {
+                        if (first_clicked_id == id) {       // clicked same asset twice
+                            first_clicked = false;
+                            console.log('first clicked cancelled');
+                        } else {                            // connect two assets
+                            console.log('second clicked ' + id);
+                            socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
+                        }
+                    } else {
+                        first_clicked = true;
+                        first_clicked_id = id;
+                        console.log('first clicked ' + first_clicked_id);
+                    }
+                }
+            });
+
+        }
+
+        function ConnDisConnAssets() {
+            var button = document.getElementById('conn-disconn-assets');
+            if (conn_disconn_assets) {
+                conn_disconn_assets = false;
+                button.innerHTML = 'Connect assets';
+            } else {
+                conn_disconn_assets = true;
+                button.innerHTML = 'Stop connecting assets';
+            }
+        }
 
         var socket;
 
@@ -31,51 +134,97 @@
             // The callback function is invoked when a connection with the
             // server is established.
             socket.on('connect', function() {
-                socket.emit('my_event', {data: 'I\'m connected!'});
+                socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
 
             // Event handler for server sent data.
             // The callback function is invoked whenever the server emits data
             // to the client. The data is then displayed in the "Received"
             // section of the page.
-            socket.on('my_response', function(msg) {
+            socket.on('log', function(msg) {
                 $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
             });
 
             socket.on('loadesdl', function(list) {
-
-                var ESDL_items = new Map();
+                // 0        1       2       3           4
+                // 'point'  name    id      class_name  lat     lon
+                // 'line'   name    id      class_name  [...]
 
                 for (i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][1] + ': ' + list[i][2] + ' - ' + list[i][3]);
 
                     var ESDLicon = L.icon({
-                        iconUrl: 'images/' + list[i][4] + '.png',
+                        iconUrl: 'images/' + list[i][3] + '.png',
 
                         iconSize:     [30, 30], // size of the icon
-                        iconAnchor:   [30, 15], // point of the icon which will correspond to marker's location
+                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-                    var marker = L.marker([list[i][0], list[i][1]], {icon: ESDLicon});
-                    marker.bindPopup(list[i][2]+ ' - '+ list[i][4]);
-                    marker.id = list[i][3];
+                    if (list[i][0] == 'point') {
+                        var marker = L.marker([list[i][4], list[i][5]], {icon: ESDLicon});
+                        marker.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                        marker.id = list[i][2];
 
-                    marker.on('dragend', function(e) {
-                        var marker = e.target;
-                        var pos = marker.getLatLng();
-                        console.log(pos);
-                        console.log(marker.id);
-                        socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng});
-                         // console.log(e.oldLatLng.lat);
-                         // console.log(e.latLng.lat + ', ' + e.latLng.lng );
-                    });
-                    drawnItems.addLayer(marker);
+                        set_marker_handlers(marker);
+                        drawnItems.addLayer(marker);
+                    }
+                    if (list[i][0] == 'line') {
+                        var coords = list[i][4];
+                        if (list[i][3] == 'ElectricityCable') linecolor = '#ff9090'
+                        if (list[i][3] == 'Pipe') linecolor = 'blue'
+
+                        var line = L.polyline(coords, {color: linecolor, weight: 6, draggable:true});
+                        line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                        line.id = list[i][2];
+
+                        set_line_handlers(line);
+                        drawnItems.addLayer(line);
+                    }
                 }
             });
 
-            socket.on('rcv_esdl', function(esdl_text) {
-                $('#esdltxt') = esdl_text;
+            // werkt nog niet ???
+            socket.on('esdltxt', function(esdl_text) {
+                var div = document.getElementById('esdltxt');
+                div.insertAdjacentHTML('afterbegin', esdl_text);
+            });
+
+            socket.on('area_bld_list', function(areas_buildings) {
+                console.log('area_bld_list');
+                var select = document.getElementById('area_bld_select');
+                for (i=0; i<areas_buildings.length; i++) {
+                    var option = document.createElement("option");
+                    var level = areas_buildings[i][3];
+                    console.log(level);
+                    option.text = '';
+                    if (level > 0) {
+                         for (j=0; j<level; j++) option.text = option.text + '-';
+                    }
+                    option.text = option.text + '- ' + areas_buildings[i][0] + ': ' + areas_buildings[i][2] + ' (' + areas_buildings[i][1] + ')';
+                    option.value = areas_buildings[i][1];
+                    select.add(option, null);
+                }
+            });
+
+            socket.on('conn_list', function(connections) {
+
+                console.log(connections)
+
+                for (i = 0; i<connections.length; i++) {
+
+                    var con = connections[i];
+                    // console.log(con['from-port-coord']);
+                    var coords = [con['from-asset-coord'], con['to-asset-coord']];
+                    //console.log(coords);
+
+                    var line = L.polyline(coords, {color: 'gray', weight: 1, draggable: true});
+                    // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                    // line.id = list[i][2];
+
+                    connection_layer.addLayer(line);
+                    // drawnItems.addLayer(line);
+                }
             });
 
             // Handlers for the different forms in the page.
@@ -98,26 +247,39 @@
             });
         });
     </script>
-</head>
 <body>
     <h1>ESDL Web Editor</h1>
 
-    <h2>Map:</h2>
-    <div id="wrapper" style="width: 1800px; border: 1px solid black; overflow: auto;">
-        <div id="mapid" style="float: left; width: 1200px; height: 700px;"></div>
-        <div id="log" style="margin: 0 0 0 1202px; height: 700px;"><h2>Logs:</h2></div>
+    <div id="wrapper" style="width: 2000px; border: 1px solid black; overflow: auto;">
+        <div id="mapid" style="float: left; width: 1600px; height: 900px;"></div>
+        <div id="ctrl" style="margin: 0 0 0 1610px; height: 900px;">
+            <form id="esdlform" method="POST" action='#'>
+                <input type="submit" value="Store ESDL">
+            </form>
+
+            <button id="conn-disconn-assets" onclick=ConnDisConnAssets()>Connect assets</button>
+
+            <form id="sel1">
+                <select id="asset_select">
+                    <option value="PVParc">PVParc</option>
+                    <option value="WindTurbine">WindTurbine</option>
+                </select>
+            </form>
+            <form id="sel2">
+                <select id="line_select">
+                    <option value="ElectricityCable">ElectricityCable</option>
+                    <option value="Pipe">Pipe</option>
+                </select>
+            </form>
+            <div id="areas">
+                <select id="area_bld_select"></select>
+            </div>
+        </div>
     </div>
 
-    <form id="esdlform" method="POST" action='#'>
-        <input type="submit" value="Store ESDL">
-    </form>
+    <div id="log"><h2>Logs:</h2></div>
 
-    <form id="sel">
-        <select id="asset_select">
-            <option value="PVParc">PVParc</option>
-            <option value="WindTurbine">WindTurbine</option>
-        </select>
-    </form>
+    <div id="esdltxt"></div>
 
     <h2>Management:</h2>
     <form id="emit" method="POST" action='#'>
@@ -130,7 +292,8 @@
     </form>
 
 <script>
-    var lg = L.layerGroup();
+    var esdl_layer = L.layerGroup();
+    var connection_layer = L.layerGroup();
 
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -143,7 +306,7 @@
         "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
             attribution: 'google'
         })
-    }, { 'drawlayer': drawnItems, 'esdl': lg }, { position: 'topleft', collapsed: false }).addTo(map);
+    }, { 'drawlayer': drawnItems, 'esdl': esdl_layer, 'connections': connection_layer }, { position: 'topleft', collapsed: false }).addTo(map);
 
     var MyWindTurbineMarker = L.Icon.extend({
         options: {
@@ -179,22 +342,58 @@
         }
     }));
 
+    // the 'dragend' event of Polyline does not work, this is an alternative solution
+    map.on('draw:edited', function (e) {
+        var layers = e.layers;
+        layers.eachLayer(function (layer) {
+            if (layer instanceof L.Polyline) {
+                polyline_length = calculate_length(layer);
+                // console.log(layer.getLatLngs());
+                socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+            }
+        });
+    });
+
+
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
         var type = event.layerType;
+        layer.id = uuidv4();
+
+        selected_area_bld_index = document.getElementById("area_bld_select").selectedIndex;
+        selected_area_bld_options = document.getElementById("area_bld_select").options;
+        selected_area_bld_id = selected_area_bld_options[selected_area_bld_index].value;
+        console.log('selected area/building id: ' + selected_area_bld_id);
 
         if (type === 'marker') {
             selection = document.getElementById("asset_select").selectedIndex;
-            console.log('selected: ' + selection);
+            console.log('selected asset: ' + selection);
             console.log('lat: ' + layer.getLatLng().lat);
+
+            set_marker_handlers(layer);
 
             if (selection == 0) {
                 layer.setIcon(new MyPVParcMarker);
-                socket.emit('command', {cmd: 'add_asset', asset: 'PVParc', lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'PVParc', asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
             }
             if (selection == 1) {
                 layer.setIcon(new MyWindTurbineMarker);
-                socket.emit('command', {cmd: 'add_asset', asset: 'WindTurbine', lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'WindTurbine', asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+            }
+        }
+        if (type === 'polyline') {
+            selection = document.getElementById("line_select").selectedIndex;
+            console.log('selected line: ' + selection);
+
+            set_line_handlers(layer);
+
+            polyline_length = calculate_length(layer);
+
+            if (selection == 0) {
+                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'ElectricityCable', asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+            }
+            if (selection == 1) {
+                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'Pipe', asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
             }
         }
 
