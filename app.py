@@ -4,6 +4,7 @@ from flask_socketio import SocketIO, emit
 import requests
 import uuid
 import math
+import copy
 from model import esdl_sup as esdl
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -15,6 +16,7 @@ async_mode = None
 xml_namespace = ("xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\nxmlns:esdl='http://www.tno.nl/esdl'\nxsi:schemaLocation='http://www.tno.nl/esdl ../esdl/model/esdl.ecore'\n")
 ESDL_STORE_HOSTNAME = "http://10.30.2.1"
 ESDL_STORE_PORT = "3003"
+store_url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/"
 
 
 def load_ESDL_EnergySystem(id):
@@ -28,8 +30,8 @@ def load_ESDL_EnergySystem(id):
 
 
 # ES_ID = "5df98542-430a-44b0-933c-e1c663a48c70"   # Ameland met coordinaten
-ES_ID = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
-es_edit = load_ESDL_EnergySystem(ES_ID)
+es_id = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
+es_edit = load_ESDL_EnergySystem(es_id)
 
 
 app = Flask(__name__)
@@ -45,6 +47,12 @@ def index():
 @app.route('/images/<path:path>')
 def send_image(path):
     return send_from_directory('images', path)
+
+
+@app.route('/plugins/<path:path>')
+def send_plugin(path):
+    return send_from_directory('plugins', path)
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Functions to find assets in, remove assets from and add assets to areas and buildings
@@ -130,6 +138,7 @@ def _recursively_remove_asset_from_area(area, asset_id):
         _recursively_remove_asset_from_area(sub_area, asset_id)
 
 
+# TODO: update connectedTo's of assets connected to the removed one
 def remove_asset_from_energysystem(es, asset_id):
     # find area with area_id
     instance = es.get_instance()[0]
@@ -433,10 +442,6 @@ def process_command(message):
 
     print (es_edit.get_instance()[0].get_area().get_name())
 
-    if message['cmd'] == 'store_esdl':
-        write_energysystem_to_file('changed_EnergySystem.esdl', es_edit)
-        store_ESDL_EnergySystem(ES_ID)
-
     if message['cmd'] == 'add_asset':
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
@@ -554,6 +559,109 @@ def process_command(message):
         if first == 'line' and second == 'line':
             print('connect lines')
 
+    if message['cmd'] == 'get_asset_info':
+        asset_id = message['id']
+        area = es_edit.get_instance()[0].get_area()
+
+        asset = find_asset(area, asset_id)
+        print('Get info for asset ' + asset.get_id())
+        name = asset.get_name()
+        if name == None:
+            name = ''
+
+        asset_attrs = copy.deepcopy(vars(asset))
+
+        if 'geometry' in asset_attrs:
+            asset_attrs.pop('geometry', None)
+        if 'port' in asset_attrs:
+            asset_attrs.pop('port', None)
+        if 'costInformation' in asset_attrs:
+            asset_attrs.pop('costInformation', None)
+
+
+        attrs_sorted = sorted(asset_attrs.items(), key=lambda kv: kv[0])
+        emit('asset_info', {'id': asset_id, 'name': name, 'attrs': attrs_sorted})
+
+    if message['cmd'] == 'set_asset_param':
+        asset_id = message['id']
+        param_name = message['param_name']
+        param_value = message['param_value']
+
+        area = es_edit.get_instance()[0].get_area()
+
+        asset = find_asset(area, asset_id)
+        print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
+
+        # TODO: Find nice way to set al parameters based on their names
+        # TODO: Take care of int, float, string (and ENUM?)
+        if param_name == 'name':
+            asset.set_name(param_value)
+        if param_name == 'description':
+            asset.set_description(param_value)
+        if param_name == 'power':
+            asset.set_power(float(param_value))
+
+    if message['cmd'] == 'new_esdl':
+        es_edit = esdl.EnergySystem()
+        es_edit.set_id(uuid.uuid4())
+
+        instance = esdl.Instance()
+        instance.set_id(uuid.uuid4())
+        es_edit.set_instance(instance)
+
+        area = esdl.Area()
+        area.set_id(uuid.uuid4())
+        instance.set_area(area)
+
+        asset_list = []
+        area_bld_list = []
+        conn_list = []
+
+        create_mappings(area)
+        process_area(asset_list, area_bld_list, conn_list, area, 0)
+
+        emit('loadesdl', asset_list)
+        emit('area_bld_list', area_bld_list)
+        emit('conn_list', conn_list)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  React on commands from the browser (add, remove, ...)
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on('file_command', namespace='/esdl')
+def process_file_command(message):
+    print ('received: ' + message['cmd'])
+
+    # print (es_edit.get_instance()[0].get_area().get_name())
+    if message['cmd'] == 'get_list_from_store':
+        result = requests.get(store_url)
+        data = result.json()
+        store_list = []
+        for es in data:
+            store_list.append({'id': es['id'], 'title': es['title']})
+
+        emit('store_list', store_list)
+
+    if message['cmd'] == 'load_esdl_from_store':
+        es_id = message['id']
+        es_edit = load_ESDL_EnergySystem(es_id)
+
+        asset_list = []
+        area_bld_list = []
+        conn_list = []
+
+        instance = es_edit.get_instance()
+        area = instance[0].get_area()
+        create_mappings(area)
+        process_area(asset_list, area_bld_list, conn_list, area, 0)
+
+        emit('loadesdl', asset_list)
+        emit('area_bld_list', area_bld_list)
+        emit('conn_list', conn_list)
+
+    if message['cmd'] == 'store_esdl':
+        write_energysystem_to_file('changed_EnergySystem.esdl', es_edit)
+        store_ESDL_EnergySystem(es_id)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -643,8 +751,6 @@ def write_energysystem_to_file(filename, es):
 
 
 def store_ESDL_EnergySystem(id):
-    url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/" + id
-
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
     f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     es_edit.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
@@ -655,7 +761,7 @@ def store_ESDL_EnergySystem(id):
         esdlstr = esdl_file.read()
 
     payload = {'id': id, 'esdl': esdlstr}
-    requests.put(url, data=payload)
+    requests.put(store_url + id, data=payload)
 
 
 if __name__ == '__main__':

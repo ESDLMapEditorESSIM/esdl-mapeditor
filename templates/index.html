@@ -8,14 +8,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script>
 
-    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <link rel="stylesheet" href="./plugins/L.Control.Sidebar.css"/>
+    <script src="./plugins/L.Control.Sidebar.js"></script>
+
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
-</head>
-<script type="text/javascript" charset="utf-8">
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
 
         var conn_disconn_assets = false;
         var first_clicked = false;
         var first_clicked_id;
+        var sidebar;
 
         function uuidv4() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -42,11 +45,9 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
-                console.log(pos);
-                console.log(marker.id);
                 socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng});
-                 // console.log(e.oldLatLng.lat);
-                console.log(pos.lat + ', ' + pos.lng );
+                // console.log(e.oldLatLng.lat);
+                // console.log(pos.lat + ', ' + pos.lng );
             });
             marker.on('remove', function(e) {
                 // console.log('remove marker');
@@ -56,6 +57,8 @@
                 console.log('marker clicked');
                 var marker = e.target;
                 var id = marker.id;
+
+                socket.emit('command', {cmd: 'get_asset_info', id: id});
 
                 if (conn_disconn_assets) {
                     if (first_clicked) {
@@ -101,11 +104,11 @@
                     }
                 }
             });
-
         }
 
         function ConnDisConnAssets() {
             var button = document.getElementById('conn-disconn-assets');
+            first_clicked = false;
             if (conn_disconn_assets) {
                 conn_disconn_assets = false;
                 button.innerHTML = 'Connect assets';
@@ -115,37 +118,43 @@
             }
         }
 
+        function SendCmdLoadESDL() {
+            socket.emit('file_command', {cmd: 'get_list_from_store'});
+        }
+        function LoadESDLButton(obj) {
+            es_id = obj.id;
+            socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
+        }
+
+        function SendCmdStoreESDL() {
+            socket.emit('file_command', {cmd: 'store_esdl'});
+        }
+
+        function change_param(obj) {
+            asset_id = obj.id;
+            asset_param_name = obj.name;
+            asset_param_value = obj.value;
+
+            socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
+        }
+
         var socket;
 
         $(document).ready(function() {
-            // Use a "/test" namespace.
-            // An application can open a connection on multiple namespaces, and
-            // Socket.IO will multiplex all those connections on a single
-            // physical channel. If you don't care about multiple channels, you
-            // can set the namespace to an empty string.
             namespace = '/esdl';
-
-            // Connect to the Socket.IO server.
-            // The connection URL has the following format:
-            //     http[s]://<domain>:<port>[/<namespace>]
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
 
-            // Event handler for new connections.
-            // The callback function is invoked when a connection with the
-            // server is established.
             socket.on('connect', function() {
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
 
-            // Event handler for server sent data.
-            // The callback function is invoked whenever the server emits data
-            // to the client. The data is then displayed in the "Received"
-            // section of the page.
             socket.on('log', function(msg) {
                 $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
             });
 
             socket.on('loadesdl', function(list) {
+                drawnItems.clearLayers();
+
                 // 0        1       2       3           4
                 // 'point'  name    id      class_name  lat     lon
                 // 'line'   name    id      class_name  [...]
@@ -187,16 +196,14 @@
             // werkt nog niet ???
             socket.on('esdltxt', function(esdl_text) {
                 var div = document.getElementById('esdltxt');
-                div.insertAdjacentHTML('afterbegin', esdl_text);
+                div.innerHTML = esdl_text;
             });
 
             socket.on('area_bld_list', function(areas_buildings) {
-                console.log('area_bld_list');
                 var select = document.getElementById('area_bld_select');
                 for (i=0; i<areas_buildings.length; i++) {
                     var option = document.createElement("option");
                     var level = areas_buildings[i][3];
-                    console.log(level);
                     option.text = '';
                     if (level > 0) {
                          for (j=0; j<level; j++) option.text = option.text + '-';
@@ -208,15 +215,10 @@
             });
 
             socket.on('conn_list', function(connections) {
-
-                console.log(connections)
-
+                connection_layer.clearLayers();
                 for (i = 0; i<connections.length; i++) {
-
                     var con = connections[i];
-                    // console.log(con['from-port-coord']);
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
-                    //console.log(coords);
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, draggable: true});
                     // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
@@ -227,86 +229,104 @@
                 }
             });
 
-            // Handlers for the different forms in the page.
-            // These accept data from the user and send it to the server in a
-            // variety of ways
-            $('form#emit').submit(function(event) {
-                socket.emit('my_event', {data: $('#emit_data').val()});
-                return false;
+            socket.on('store_list', function(store_items) {
+                console.log(store_items);
+
+                sidebar_ctr = sidebar.getContainer();
+                sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
+
+                select = '<select>';
+                for (i = 0; i<store_items.length; i++) {
+                    select += '<option value="'+store_items[i]['id']+'">'+store_items[i]['title']+'</option>'
+                }
+                select += '</select>';
+                console.log(select);
+
+                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + select;
+                sidebar_ctr.innerHTML += '<button id="" onclick="sidebar.hide();LoadESDLButton(this);">Load</button>';
+
+                sidebar.show();
             });
 
-            $('form#esdlform').submit(function(event) {
-                socket.emit('command', {cmd: 'store_esdl'});
-                return false;
+            socket.on('asset_info', function(asset_info) {
+                asset_id = asset_info['id'];
+                asset_name = asset_info['name'];
+                asset_attrs = asset_info['attrs'];
+
+                console.log(asset_attrs);
+
+                sidebar_ctr = sidebar.getContainer();
+                sidebar_ctr.innerHTML = '<h1>' + asset_name + '</h1>';
+                table = '<table>';
+
+                for (i=0; i<asset_attrs.length; i++) {
+                    if (asset_attrs[i][1] == null) {
+                        value = '';
+                    } else {
+                        value = asset_attrs[i][1];
+                    }
+                    table = table + '<tr><td width=180>' + asset_attrs[i][0] + '</td>';
+                    table = table + '<td><input type="text" width="60" id="' + asset_id + '" name="' +
+                            asset_attrs[i][0] + '" value="' + value + '" onchange="change_param(this);"></td></tr>';
+                }
+                table = table + '</table>';
+
+                console.log(table);
+
+                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+                sidebar.show();
             });
 
-
-            $('form#disconnect').submit(function(event) {
-                socket.emit('disconnect_request');
-                return false;
-            });
         });
     </script>
+</head>
 <body>
     <h1>ESDL Web Editor</h1>
 
-    <div id="wrapper" style="width: 2000px; border: 1px solid black; overflow: auto;">
-        <div id="mapid" style="float: left; width: 1600px; height: 900px;"></div>
-        <div id="ctrl" style="margin: 0 0 0 1610px; height: 900px;">
-            <form id="esdlform" method="POST" action='#'>
-                <input type="submit" value="Store ESDL">
-            </form>
-
-            <button id="conn-disconn-assets" onclick=ConnDisConnAssets()>Connect assets</button>
-
-            <form id="sel1">
-                <select id="asset_select">
-                    <option value="PVParc">PVParc</option>
-                    <option value="WindTurbine">WindTurbine</option>
-                </select>
-            </form>
-            <form id="sel2">
-                <select id="line_select">
-                    <option value="ElectricityCable">ElectricityCable</option>
-                    <option value="Pipe">Pipe</option>
-                </select>
-            </form>
-            <div id="areas">
-                <select id="area_bld_select"></select>
-            </div>
-        </div>
+    <div id="ctrl" style="height: 30px">
+        <button id="new-esdl" onclick="NewESDL();">New</button>
+        <button id="load-esdl" onclick="SendCmdLoadESDL();">Load from ESDL store</button>
+        <button id="store-esdl" onclick="SendCmdStoreESDL();">Save to ESDL Store</button>
+        <button id="conn-disconn-assets" onclick="ConnDisConnAssets();">Connect assets</button>
+        <select id="asset_select">
+            <option value="PVParc">PVParc</option>
+            <option value="WindTurbine">WindTurbine</option>
+        </select>
+        <select id="line_select">
+            <option value="ElectricityCable">ElectricityCable</option>
+            <option value="Pipe">Pipe</option>
+        </select>
+        <select id="area_bld_select"></select>
     </div>
 
-    <div id="log"><h2>Logs:</h2></div>
+    <div id="mapid" style="float: left; width: 2000px; height: 900px;"></div>
 
-    <div id="esdltxt"></div>
+    <div id="sidebar">
+    </div>
 
-    <h2>Management:</h2>
-    <form id="emit" method="POST" action='#'>
-        <input type="text" name="emit_data" id="emit_data" placeholder="Message">
-        <input type="submit" value="Send WS message">
-    </form>
-
-    <form id="disconnect" method="POST" action="#">
-        <input type="submit" value="Disconnect">
-    </form>
+    <div id="log" style="float: left;"><h2>Logs:</h2></div>
+    <div id="esdltxt" style="float: left;"></div>
 
 <script>
-    var esdl_layer = L.layerGroup();
-    var connection_layer = L.layerGroup();
 
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
             map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 13 }),
-            drawnItems = L.featureGroup().addTo(map);
+            drawnItems = L.featureGroup().addTo(map),
+            esdl_layer = L.layerGroup(),
+            connection_layer = L.layerGroup().addTo(map);
 
-    L.control.layers({
-        'osm': osm.addTo(map),
-        "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
-            attribution: 'google'
-        })
-    }, { 'drawlayer': drawnItems, 'esdl': esdl_layer, 'connections': connection_layer }, { position: 'topleft', collapsed: false }).addTo(map);
+    L.control.layers(
+        {
+            'osm': osm.addTo(map),
+            "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+                attribution: 'google'
+            })
+        },
+        { 'drawlayer': drawnItems, 'esdl': esdl_layer, 'connections': connection_layer },
+        { position: 'topleft', collapsed: false }
+    ).addTo(map);
 
     var MyWindTurbineMarker = L.Icon.extend({
         options: {
@@ -341,6 +361,12 @@
             circle: false
         }
     }));
+
+    sidebar = L.control.sidebar('sidebar', {
+        position: 'right',
+        closeButton: true
+    });
+    map.addControl(sidebar);
 
     // the 'dragend' event of Polyline does not work, this is an alternative solution
     map.on('draw:edited', function (e) {
