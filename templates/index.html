@@ -19,6 +19,7 @@
         var first_clicked = false;
         var first_clicked_id;
         var sidebar;
+        var reset = false;
 
         function uuidv4() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -51,7 +52,7 @@
             });
             marker.on('remove', function(e) {
                 // console.log('remove marker');
-                socket.emit('command', {cmd: 'remove_asset', id: marker.id});
+                if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: marker.id});
             });
             marker.on('click', function(e) {
                 console.log('marker clicked');
@@ -81,7 +82,7 @@
         function set_line_handlers(line) {
 
             line.on('remove', function(e) {
-                socket.emit('command', {cmd: 'remove_asset', id: line.id});
+                if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: line.id});
             });
             line.on('click', function(e) {
                 console.log('line clicked');
@@ -118,15 +119,51 @@
             }
         }
 
-        function SendCmdLoadESDL() {
+        function new_ESDL() {
+            sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
+
+            table = '<table>'
+            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>'
+            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>'
+            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>'
+            table += '<tr><td width=180></td><td></td></tr>'
+            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>'
+
+            sidebar_ctr.innerHTML += table + '<br>';
+            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button>';
+
+            sidebar.show();
+
+        }
+
+        function click_new_ESDL_button(obj) {
+            new_title = document.getElementById('new_title').value;
+            new_description = document.getElementById('new_description').value;
+            new_email = document.getElementById('new_email').value;
+            new_top_area_name = document.getElementById('new_area_name').value;
+
+            socket.emit('file_command', {cmd: 'new_esdl', title: new_title, description: new_description,
+                email: new_email, top_area_name: new_top_area_name});
+        }
+
+
+        function send_cmd_load_ESDL() {
             socket.emit('file_command', {cmd: 'get_list_from_store'});
         }
-        function LoadESDLButton(obj) {
-            es_id = obj.id;
+
+        function click_load_ESDL_button(obj) {
+            select = document.getElementById('load_es_selection');
+            es_id = select.options[select.selectedIndex].value;
+            es_title = select.options[select.selectedIndex].innerHTML;
+
+            title_div = document.getElementById('es_title');
+            title_div.innerHTML = '<h1>' + es_title + '</h1>';
+
             socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
         }
 
-        function SendCmdStoreESDL() {
+        function send_cmd_store_ESDL() {
             socket.emit('file_command', {cmd: 'store_esdl'});
         }
 
@@ -153,7 +190,9 @@
             });
 
             socket.on('loadesdl', function(list) {
+                reset = true;
                 drawnItems.clearLayers();
+                reset = false;
 
                 // 0        1       2       3           4
                 // 'point'  name    id      class_name  lat     lon
@@ -165,7 +204,7 @@
                     var ESDLicon = L.icon({
                         iconUrl: 'images/' + list[i][3] + '.png',
 
-                        iconSize:     [30, 30], // size of the icon
+                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
@@ -201,6 +240,7 @@
 
             socket.on('area_bld_list', function(areas_buildings) {
                 var select = document.getElementById('area_bld_select');
+                select.innerHTML = '';
                 for (i=0; i<areas_buildings.length; i++) {
                     var option = document.createElement("option");
                     var level = areas_buildings[i][3];
@@ -215,7 +255,10 @@
             });
 
             socket.on('conn_list', function(connections) {
+                reset = true;
                 connection_layer.clearLayers();
+                reset = false;
+
                 for (i = 0; i<connections.length; i++) {
                     var con = connections[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
@@ -230,20 +273,18 @@
             });
 
             socket.on('store_list', function(store_items) {
-                console.log(store_items);
-
                 sidebar_ctr = sidebar.getContainer();
-                sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
 
-                select = '<select>';
+                sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
+                select = '<select id="load_es_selection">';
                 for (i = 0; i<store_items.length; i++) {
-                    select += '<option value="'+store_items[i]['id']+'">'+store_items[i]['title']+'</option>'
+                    select += '<option value="'+store_items[i]['id']+'"';
+                    if (i==0) { select += ' selected="true" '; }
+                    select += '>'+store_items[i]['title']+'</option>';
                 }
                 select += '</select>';
-                console.log(select);
-
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + select;
-                sidebar_ctr.innerHTML += '<button id="" onclick="sidebar.hide();LoadESDLButton(this);">Load</button>';
+                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_load_ESDL_button(this);">Load</button>';
 
                 sidebar.show();
             });
@@ -252,13 +293,12 @@
                 asset_id = asset_info['id'];
                 asset_name = asset_info['name'];
                 asset_attrs = asset_info['attrs'];
-
                 console.log(asset_attrs);
 
                 sidebar_ctr = sidebar.getContainer();
+
                 sidebar_ctr.innerHTML = '<h1>' + asset_name + '</h1>';
                 table = '<table>';
-
                 for (i=0; i<asset_attrs.length; i++) {
                     if (asset_attrs[i][1] == null) {
                         value = '';
@@ -270,24 +310,30 @@
                             asset_attrs[i][0] + '" value="' + value + '" onchange="change_param(this);"></td></tr>';
                 }
                 table = table + '</table>';
-
-                console.log(table);
-
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
                 sidebar.show();
+            });
+
+            socket.on('es_title', function(title) {
+                title_div = document.getElementById('es_title');
+                title_div.innerHTML = '<h1>  ' + title + '</h1>';
             });
 
         });
     </script>
 </head>
 <body>
-    <h1>ESDL Web Editor</h1>
+    <div style="position: relative">
+        <div style="float: left"><h1>ESDL Web Editor: </h1></div>
+        <div style="float: left" id="es_title"></div>
+    </div>
 
-    <div id="ctrl" style="height: 30px">
-        <button id="new-esdl" onclick="NewESDL();">New</button>
-        <button id="load-esdl" onclick="SendCmdLoadESDL();">Load from ESDL store</button>
-        <button id="store-esdl" onclick="SendCmdStoreESDL();">Save to ESDL Store</button>
-        <button id="conn-disconn-assets" onclick="ConnDisConnAssets();">Connect assets</button>
+    <div id="ctrl" style="clear: left; position: relative; height: 30px">
+        <button id="new-esdl" onclick="new_ESDL();">New</button>
+        <button id="load-esdl" onclick="send_cmd_load_ESDL();">Load from ESDL store</button>
+        <button id="store-esdl" onclick="send_cmd_store_ESDL();">Save to ESDL Store</button>
+        <button id="conn-disconn-assets" onclick="conn_disconn-assets();">Connect assets</button>
         <select id="asset_select">
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
@@ -312,10 +358,10 @@
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
-            map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 13 }),
+            map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 12 }),
             drawnItems = L.featureGroup().addTo(map),
-            esdl_layer = L.layerGroup(),
-            connection_layer = L.layerGroup().addTo(map);
+            esdl_layer = L.featureGroup(),
+            connection_layer = L.featureGroup().addTo(map);
 
     L.control.layers(
         {

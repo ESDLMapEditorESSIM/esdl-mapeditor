@@ -13,10 +13,34 @@ from model import esdl_sup as esdl
 async_mode = None
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+#  File I/O and ESDL Store API calls
+# ---------------------------------------------------------------------------------------------------------------------
 xml_namespace = ("xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\nxmlns:esdl='http://www.tno.nl/esdl'\nxsi:schemaLocation='http://www.tno.nl/esdl ../esdl/model/esdl.ecore'\n")
 ESDL_STORE_HOSTNAME = "http://10.30.2.1"
 ESDL_STORE_PORT = "3003"
 store_url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/"
+
+
+def write_energysystem_to_file(filename, es):
+    f = open(filename, 'w+', encoding='UTF-8')
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    es.export(f, 0, namespaceprefix_='esdl:', name_='esdl:EnergySystem', namespacedef_=xml_namespace, pretty_print=True)
+    f.close()
+
+
+def create_ESDL_store_item(id, es, title, description, email):
+    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+                   pretty_print=True)
+    f.close()
+
+    with open('/tmp/temp.xmi', 'r') as esdl_file:
+        esdlstr = esdl_file.read()
+
+    payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
+    requests.post(store_url, data=payload)
 
 
 def load_ESDL_EnergySystem(id):
@@ -29,11 +53,23 @@ def load_ESDL_EnergySystem(id):
     return esdl.parseString(esdlstr)
 
 
-# ES_ID = "5df98542-430a-44b0-933c-e1c663a48c70"   # Ameland met coordinaten
-es_id = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
-es_edit = load_ESDL_EnergySystem(es_id)
+def store_ESDL_EnergySystem(id, es):
+    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+                   pretty_print=True)
+    f.close()
+
+    with open('/tmp/temp.xmi', 'r') as esdl_file:
+        esdlstr = esdl_file.read()
+
+    payload = {'id': id, 'esdl': esdlstr}
+    requests.put(store_url + id, data=payload)
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+#  Application definition, configuration and setup of simple file server
+# ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode=async_mode)
@@ -147,19 +183,22 @@ def remove_asset_from_energysystem(es, asset_id):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Initialize
+# ---------------------------------------------------------------------------------------------------------------------
+def initialize():
+    session['port_to_asset_mapping'] = {}
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  Builds up a mapping from ports to assets
 #   - also stores coordinates of assets, to easily visualize connections
 #
 #  TODO:
 #   - update this mapping when adding new assets
 # ---------------------------------------------------------------------------------------------------------------------
-port_to_asset_mapping = {}
-
-
-def create_building_mappings(building):
+def create_building_mappings(building, mapping):
     for basset in building.get_asset():
         if isinstance(basset, esdl.AbstractBuilding):
-            create_building_mappings(basset)
+            create_building_mappings(basset, mapping)
         else:
             geom = basset.get_geometry()
             ports = basset.get_port()
@@ -169,25 +208,25 @@ def create_building_mappings(building):
                     lon = geom.get_lon()
                     coord = (lat, lon)
                     for p in ports:
-                        port_to_asset_mapping[p.get_id()] = {"asset_id": basset.get_id(), "coord": coord}
+                        mapping[p.get_id()] = {"asset_id": basset.get_id(), "coord": coord}
                 if isinstance(geom, esdl.Line):
                     points = geom.get_point()
                     if ports:
                         first = (points[0].get_lat(), points[0].get_lon())
                         last = (points[len(points)-1].get_lat(), points[len(points)-1].get_lon())
-                        port_to_asset_mapping[ports[0].get_id()] = {"asset_id": basset.get_id(), "coord": first}
-                        port_to_asset_mapping[ports[1].get_id()] = {"asset_id": basset.get_id(), "coord": last}
+                        mapping[ports[0].get_id()] = {"asset_id": basset.get_id(), "coord": first}
+                        mapping[ports[1].get_id()] = {"asset_id": basset.get_id(), "coord": last}
 
 
-def create_mappings(area):
+def create_mappings(area, mapping):
     # process subareas
     for ar in area.get_area():
-        create_mappings(ar)
+        create_mappings(ar, mapping)
 
     # process assets in area
     for asset in area.get_asset():
         if isinstance(asset, esdl.AggregatedBuilding):
-            create_building_mappings(asset)
+            create_building_mappings(asset, mapping)
         else:
             geom = asset.get_geometry()
             ports = asset.get_port()
@@ -197,20 +236,20 @@ def create_mappings(area):
                     lon = geom.get_lon()
                     coord = (lat, lon)
                     for p in ports:
-                        port_to_asset_mapping[p.get_id()] = {"asset_id": asset.get_id(), "coord": coord}
+                        mapping[p.get_id()] = {"asset_id": asset.get_id(), "coord": coord}
                 if isinstance(geom, esdl.Line):
                     points = geom.get_point()
                     if ports:
                         first = (points[0].get_lat(), points[0].get_lon())
                         last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
-                        port_to_asset_mapping[ports[0].get_id()] = {"asset_id": asset.get_id(), "coord": first}
-                        port_to_asset_mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last}
+                        mapping[ports[0].get_id()] = {"asset_id": asset.get_id(), "coord": first}
+                        mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Build up initial information about energysystem to send to browser
 # ---------------------------------------------------------------------------------------------------------------------
-def process_building(asset_list, area_bld_list, conn_list, building, level):
+def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
     area_bld_list.append(['Building', building.get_id(), building.get_name(), level])
 
     for basset in building.get_asset():
@@ -230,26 +269,26 @@ def process_building(asset_list, area_bld_list, conn_list, building, level):
             if conn_to:
                 conn_to_list = conn_to.split(' ')
                 for pc in conn_to_list:
-                    pc_asset = port_to_asset_mapping[pc]
+                    pc_asset = port_asset_mapping[pc]
                     pc_asset_coord = pc_asset["coord"]
                     conn_list.append({"from-port-id": p.get_id(), "from-asset-coord": coord,
                                       "to-port-id": pc, "to-asset-coord": pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(asset_list, area_bld_list, basset, level+1)
+            process_building(asset_list, area_bld_list, port_asset_mapping, basset, level+1)
 
 
-def process_area(asset_list, area_bld_list, conn_list, area, level):
+def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area, level):
     area_bld_list.append(['Area', area.get_id(), area.get_name(), level])
 
     # process subareas
     for ar in area.get_area():
-        process_area(asset_list, area_bld_list, conn_list, ar, level+1)
+        process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, ar, level+1)
 
     # process assets in area
     for asset in area.get_asset():
         if isinstance(asset, esdl.AggregatedBuilding):
-            process_building(asset_list, area_bld_list, conn_list, asset, level+1)
+            process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, asset, level+1)
         else:
             geom = asset.get_geometry()
             coord =()
@@ -267,13 +306,13 @@ def process_area(asset_list, area_bld_list, conn_list, area, level):
 
             ports = asset.get_port()
             for p in ports:
-                p_asset = port_to_asset_mapping[p.get_id()]
+                p_asset = port_asset_mapping[p.get_id()]
                 p_asset_coord = p_asset["coord"]        # get proper coordinate if asset is line
                 conn_to = p.get_connectedTo()
                 if conn_to:
                     conn_to_list = conn_to.split(' ')
                     for pc in conn_to_list:
-                        pc_asset = port_to_asset_mapping[pc]
+                        pc_asset = port_asset_mapping[pc]
                         pc_asset_coord = pc_asset["coord"]
                         conn_list.append({"from-port-id": p.get_id(), "from-asset-coord": p_asset_coord,
                                           "to-port-id": pc, "to-asset-coord": pc_asset_coord})
@@ -439,8 +478,8 @@ def connect_conductor_with_conductor(conductor1, conductor2):
 @socketio.on('command', namespace='/esdl')
 def process_command(message):
     print ('received: ' + message['cmd'])
-
-    print (es_edit.get_instance()[0].get_area().get_name())
+    es_edit = session['es_edit']
+    # print (session['es_edit'].get_instance()[0].get_area().get_name())
 
     if message['cmd'] == 'add_asset':
         area_bld_id = message['area_bld_id']
@@ -451,7 +490,7 @@ def process_command(message):
             if assettype == 'PVParc': asset = esdl.PVParc()
 
             outp = esdl.OutPort()
-            outp.set_id(uuid.uuid4())
+            outp.set_id(str(uuid.uuid4()))
             asset.add_port_with_type(outp)
 
             point = esdl.Point()
@@ -464,9 +503,9 @@ def process_command(message):
             if assettype == 'Pipe': asset = esdl.Pipe()
 
             inp = esdl.InPort()
-            inp.set_id(uuid.uuid4())
+            inp.set_id(str(uuid.uuid4()))
             outp = esdl.OutPort()
-            outp.set_id(uuid.uuid4())
+            outp.set_id(str(uuid.uuid4()))
             asset.add_port_with_type(inp)
             asset.add_port_with_type(outp)
 
@@ -601,28 +640,7 @@ def process_command(message):
         if param_name == 'power':
             asset.set_power(float(param_value))
 
-    if message['cmd'] == 'new_esdl':
-        es_edit = esdl.EnergySystem()
-        es_edit.set_id(uuid.uuid4())
-
-        instance = esdl.Instance()
-        instance.set_id(uuid.uuid4())
-        es_edit.set_instance(instance)
-
-        area = esdl.Area()
-        area.set_id(uuid.uuid4())
-        instance.set_area(area)
-
-        asset_list = []
-        area_bld_list = []
-        conn_list = []
-
-        create_mappings(area)
-        process_area(asset_list, area_bld_list, conn_list, area, 0)
-
-        emit('loadesdl', asset_list)
-        emit('area_bld_list', area_bld_list)
-        emit('conn_list', conn_list)
+    session['es_edit'] = es_edit
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -632,7 +650,45 @@ def process_command(message):
 def process_file_command(message):
     print ('received: ' + message['cmd'])
 
-    # print (es_edit.get_instance()[0].get_area().get_name())
+    if message['cmd'] == 'new_esdl':
+        title = message['title']
+        description = message['description']
+        email = message['email']
+        top_area_name = message['top_area_name']
+        if top_area_name == '': top_area_name = 'Test area'
+
+        es_edit = esdl.EnergySystem()
+        es_id = str(uuid.uuid4())
+        es_edit.set_id(es_id)
+
+        instance = esdl.Instance()
+        instance.set_id(str(uuid.uuid4()))
+        es_edit.add_instance(instance)
+
+        area = esdl.Area()
+        area.set_id(str(uuid.uuid4()))
+        area.set_name(top_area_name)
+        instance.set_area(area)
+
+        asset_list = []
+        area_bld_list = []
+        conn_list = []
+
+        mapping = {}
+        create_mappings(area, mapping)
+        session['port_to_asset_mapping'] = mapping
+        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+
+        emit('loadesdl', asset_list)
+        emit('area_bld_list', area_bld_list)
+        emit('conn_list', conn_list)
+
+        create_ESDL_store_item(es_id, es_edit, title, description, email)
+        emit('es_titel', title)
+
+        session['es_edit'] = es_edit
+        session['es_id'] = es_id
+
     if message['cmd'] == 'get_list_from_store':
         result = requests.get(store_url)
         data = result.json()
@@ -644,7 +700,7 @@ def process_file_command(message):
 
     if message['cmd'] == 'load_esdl_from_store':
         es_id = message['id']
-        es_edit = load_ESDL_EnergySystem(es_id)
+        es_edit = load_ESDL_EnergySystem(session['es_id'])
 
         asset_list = []
         area_bld_list = []
@@ -652,16 +708,24 @@ def process_file_command(message):
 
         instance = es_edit.get_instance()
         area = instance[0].get_area()
-        create_mappings(area)
-        process_area(asset_list, area_bld_list, conn_list, area, 0)
+
+        mapping = {}
+        create_mappings(area, mapping)
+        session['port_to_asset_mapping'] = mapping
+        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
         emit('conn_list', conn_list)
 
+        session['es_id'] = es_id
+        session['es_edit'] = es_edit
+
     if message['cmd'] == 'store_esdl':
+        es_edit = session['es_edit']
+        es_id = session['es_id']
         write_energysystem_to_file('changed_EnergySystem.esdl', es_edit)
-        store_ESDL_EnergySystem(es_id)
+        store_ESDL_EnergySystem(es_id, es_edit)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -672,6 +736,7 @@ def update_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']))
     ass_id = message['id']
 
+    es_edit = session['es_edit']
     instance = es_edit.get_instance()
     area = instance[0].get_area()
     asset = find_asset(area, ass_id)
@@ -682,12 +747,14 @@ def update_coordinates(message):
         point.set_lat(message['lat'])
         asset.set_geometry_with_type(point)
 
+    session['es_edit'] = es_edit
 
 @socketio.on('update-line-coord', namespace='/esdl')
 def update_line_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
+    es_edit = session['es_edit']
     instance = es_edit.get_instance()
     area = instance[0].get_area()
     asset = find_asset(area, ass_id)
@@ -710,6 +777,7 @@ def update_line_coordinates(message):
 
         asset.set_geometry_with_type(line)
 
+    session['es_edit'] = es_edit
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Connect from browser
@@ -725,14 +793,23 @@ def on_connect():
     area_bld_list = []
     conn_list = []
 
+    # ES_ID = "5df98542-430a-44b0-933c-e1c663a48c70"   # Ameland met coordinaten
+    es_id = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
+    es_edit = load_ESDL_EnergySystem(es_id)
+
     instance = es_edit.get_instance()
     area = instance[0].get_area()
-    create_mappings(area)
-    process_area(asset_list, area_bld_list, conn_list, area, 0)
+    mapping = {}
+    create_mappings(area, mapping)
+    session['port_to_asset_mapping'] = mapping
+    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
     emit('loadesdl', asset_list)
     emit('area_bld_list', area_bld_list)
     emit('conn_list', conn_list)
+
+    session['es_edit'] = es_edit
+    session['es_id'] = es_id
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -743,26 +820,8 @@ def on_disconnect():
     print('Client disconnected', request.sid)
 
 
-def write_energysystem_to_file(filename, es):
-    f = open(filename, 'w+', encoding='UTF-8')
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    es.export(f, 0, namespaceprefix_='esdl:', name_='esdl:EnergySystem', namespacedef_=xml_namespace, pretty_print=True)
-    f.close()
-
-
-def store_ESDL_EnergySystem(id):
-    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    es_edit.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-                   pretty_print=True)
-    f.close()
-
-    with open('/tmp/temp.xmi', 'r') as esdl_file:
-        esdlstr = esdl_file.read()
-
-    payload = {'id': id, 'esdl': esdlstr}
-    requests.put(store_url + id, data=payload)
-
-
+# ---------------------------------------------------------------------------------------------------------------------
+#  Start application
+# ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     socketio.run(app, debug=True)

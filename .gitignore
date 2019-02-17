@@ -67,3 +67,4 @@ ENV/
 .idea/
 
 *.xmi
+*.esdl
