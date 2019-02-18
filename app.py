@@ -498,6 +498,20 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
+        if assettype == 'ElectricityDemand' or assettype == 'HeatingDemand':
+            if assettype == 'ElectricityDemand': asset = esdl.ElectricityDemand()
+            if assettype == 'HeatingDemand': asset = esdl.HeatingDemand()
+
+            inp = esdl.InPort()
+            inp.set_id(str(uuid.uuid4()))
+            asset.add_port_with_type(inp)
+
+            point = esdl.Point()
+            point.set_lon(message['lng'])
+            point.set_lat(message['lat'])
+            asset.set_geometry_with_type(point)
+
+
         if assettype == 'ElectricityCable' or assettype == 'Pipe':
             if assettype == 'ElectricityCable': asset = esdl.ElectricityCable()
             if assettype == 'Pipe': asset = esdl.Pipe()

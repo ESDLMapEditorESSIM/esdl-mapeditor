@@ -54,6 +54,8 @@
                 // console.log('remove marker');
                 if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: marker.id});
             });
+
+            // TODO: removing a marker also triggers the onclick event!!
             marker.on('click', function(e) {
                 console.log('marker clicked');
                 var marker = e.target;
@@ -335,8 +337,11 @@
         <button id="store-esdl" onclick="send_cmd_store_ESDL();">Save to ESDL Store</button>
         <button id="conn-disconn-assets" onclick="conn_disconn-assets();">Connect assets</button>
         <select id="asset_select">
+            <option value="ElectricityDemand">ElectricityDemand</option>
+            <option value="HeatDemand">HeatDemand</option>
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
+
         </select>
         <select id="line_select">
             <option value="ElectricityCable">ElectricityCable</option>
@@ -374,23 +379,10 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
-    var MyWindTurbineMarker = L.Icon.extend({
-        options: {
-            shadowUrl: null,
-            iconAnchor: new L.Point(12, 12),
-            iconSize: new L.Point(30, 30),
-            iconUrl: 'images/WindTurbine.png'
-        }
-    });
-
-    var MyPVParcMarker = L.Icon.extend({
-        options: {
-            shadowUrl: null,
-            iconAnchor: new L.Point(12, 12),
-            iconSize: new L.Point(30, 30),
-            iconUrl: 'images/PVParc.png'
-        }
-    });
+    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/WindTurbine.png'}});
+    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
+    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
+    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
 
     map.addControl(new L.Control.Draw({
         edit: {
@@ -439,19 +431,19 @@
 
         if (type === 'marker') {
             selection = document.getElementById("asset_select").selectedIndex;
-            console.log('selected asset: ' + selection);
-            console.log('lat: ' + layer.getLatLng().lat);
+            asset_options = document.getElementById("asset_select").options;
+            selected_asset = asset_options[selection].value;
+            console.log('selected option: ' + selection);
+            console.log('selected asset: ' + selected_asset);
 
             set_marker_handlers(layer);
 
-            if (selection == 0) {
-                layer.setIcon(new MyPVParcMarker);
-                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'PVParc', asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
-            }
-            if (selection == 1) {
-                layer.setIcon(new MyWindTurbineMarker);
-                socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'WindTurbine', asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
-            }
+            if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
+            if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
+            if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
+            if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
+
+            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
         }
         if (type === 'polyline') {
             selection = document.getElementById("line_select").selectedIndex;
