@@ -271,8 +271,8 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
                 for pc in conn_to_list:
                     pc_asset = port_asset_mapping[pc]
                     pc_asset_coord = pc_asset["coord"]
-                    conn_list.append({"from-port-id": p.get_id(), "from-asset-coord": coord,
-                                      "to-port-id": pc, "to-asset-coord": pc_asset_coord})
+                    conn_list.append({"from-port-id": p.get_id(), "from-asset-id": basset.get_id(), "from-asset-coord": coord,
+                        "to-port-id": pc, "to-asset-id": pc_asset["asset_id"], "to-asset-coord": pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(asset_list, area_bld_list, port_asset_mapping, basset, level+1)
@@ -310,12 +310,23 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                 p_asset_coord = p_asset["coord"]        # get proper coordinate if asset is line
                 conn_to = p.get_connectedTo()
                 if conn_to:
-                    conn_to_list = conn_to.split(' ')
+                    conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
                     for pc in conn_to_list:
                         pc_asset = port_asset_mapping[pc]
                         pc_asset_coord = pc_asset["coord"]
-                        conn_list.append({"from-port-id": p.get_id(), "from-asset-coord": p_asset_coord,
-                                          "to-port-id": pc, "to-asset-coord": pc_asset_coord})
+
+                        conn_list.append({"from-port-id": p.get_id(), "from-asset-id": p_asset["asset_id"], "from-asset-coord": p_asset_coord,
+                                          "to-port-id": pc, "to-asset-id": pc_asset["asset_id"], "to-asset-coord": pc_asset_coord})
+
+
+def update_asset_connection_locations(ass_id, lat, lon):
+    conn_list = session["conn_list"]
+    for c in conn_list:
+        if c["from-asset-id"] == ass_id:
+            c["from-asset-coord"] = (lat, lon)
+        if c["to-asset-id"] == ass_id:
+            c["to-asset-coord"] = (lat, lon)
+    emit('conn_list', conn_list)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -469,6 +480,7 @@ def connect_asset_with_asset(asset1, asset2):
                 return
 
 def connect_conductor_with_conductor(conductor1, conductor2):
+    # TODO: Implement
     return
 
 
@@ -623,7 +635,9 @@ def process_command(message):
             name = ''
 
         asset_attrs = copy.deepcopy(vars(asset))
+        method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
 
+        # TODO: check which attributes must be filtered (cannot be easily edited)
         if 'geometry' in asset_attrs:
             asset_attrs.pop('geometry', None)
         if 'port' in asset_attrs:
@@ -647,12 +661,10 @@ def process_command(message):
 
         # TODO: Find nice way to set al parameters based on their names
         # TODO: Take care of int, float, string (and ENUM?)
-        if param_name == 'name':
-            asset.set_name(param_value)
-        if param_name == 'description':
-            asset.set_description(param_value)
-        if param_name == 'power':
-            asset.set_power(float(param_value))
+        if param_name in ['name', 'description']:
+            getattr(asset, 'set_' + param_name)(param_value)
+        if param_name in ['power']:
+            getattr(asset, 'set_'+param_name)(float(param_value))
 
     session['es_edit'] = es_edit
 
@@ -692,6 +704,7 @@ def process_file_command(message):
         create_mappings(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+        session["conn_list"] = conn_list
 
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
@@ -727,6 +740,7 @@ def process_file_command(message):
         create_mappings(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+        session["conn_list"] = conn_list
 
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
@@ -761,6 +775,9 @@ def update_coordinates(message):
         point.set_lat(message['lat'])
         asset.set_geometry_with_type(point)
 
+    # TODO: Update connections on moving assets
+    update_asset_connection_locations(ass_id, message['lat'], message['lng'])
+
     session['es_edit'] = es_edit
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -791,6 +808,8 @@ def update_line_coordinates(message):
 
         asset.set_geometry_with_type(line)
 
+    # TODO: Update connections on moving assets
+
     session['es_edit'] = es_edit
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -817,6 +836,7 @@ def on_connect():
     create_mappings(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+    session["conn_list"] = conn_list
 
     emit('loadesdl', asset_list)
     emit('area_bld_list', area_bld_list)
