@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from flask import Flask, render_template, session, request, send_from_directory
+from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
 import requests
 import uuid
@@ -24,14 +24,14 @@ store_url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/"
 
 def write_energysystem_to_file(filename, es):
     f = open(filename, 'w+', encoding='UTF-8')
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     es.export(f, 0, namespaceprefix_='esdl:', name_='esdl:EnergySystem', namespacedef_=xml_namespace, pretty_print=True)
     f.close()
 
 
 def create_ESDL_store_item(id, es, title, description, email):
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
                    pretty_print=True)
     f.close()
@@ -55,7 +55,7 @@ def load_ESDL_EnergySystem(id):
 
 def store_ESDL_EnergySystem(id, es):
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
     es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
                    pretty_print=True)
     f.close()
@@ -65,6 +65,16 @@ def store_ESDL_EnergySystem(id, es):
 
     payload = {'id': id, 'esdl': esdlstr}
     requests.put(store_url + id, data=payload)
+
+
+def send_ESDL_as_file(es, name):
+    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+                   pretty_print=True)
+    f.close()
+
+    # send_file('/tmp/temp.xmi', name)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -80,6 +90,22 @@ def index():
     return render_template('index.html', async_mode=socketio.async_mode)
 
 
+@app.route('/<path:path>')
+def download_esdl(path):
+#    session_info = session
+#    es_edit = session_info['es_edit']
+#    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+#    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+#    es_edit.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+#                   pretty_print=True)
+#    f.seek(0)
+
+#    f = open('/tmp/temp.xmi', 'r')
+#   return send_file(f, attachment_filename="file.esdl",
+#                     as_attachment=True)
+    return
+
+
 @app.route('/images/<path:path>')
 def send_image(path):
     return send_from_directory('images', path)
@@ -88,6 +114,14 @@ def send_image(path):
 @app.route('/plugins/<path:path>')
 def send_plugin(path):
     return send_from_directory('plugins', path)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Functions to find assets in, remove assets from and add assets to areas and buildings
+# ---------------------------------------------------------------------------------------------------------------------
+def send_alert(message):
+    print(message)
+    emit('alert', message)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -319,6 +353,13 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                                           "to-port-id": pc, "to-asset-id": pc_asset["asset_id"], "to-asset-coord": pc_asset_coord})
 
 
+# TODO: Not used now, should we keep the conn_list updated?
+def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_coord, to_port_id, to_asset_id, to_asset_coord):
+    conn_list.append(
+        {"from-port-id": from_port_id, "from-asset-id": from_asset_id, "from-asset-coord": from_asset_coord,
+         "to-port-id": to_port_id, "to-asset-id": to_asset_id, "to-asset-coord": to_asset_coord})
+
+
 def update_asset_connection_locations(ass_id, lat, lon):
     conn_list = session["conn_list"]
     for c in conn_list:
@@ -396,29 +437,34 @@ def connect_asset_with_conductor(asset, conductor):
         first_point = points[0]
         last_point = points[len(points) - 1]
     else:
-        print('UNSUPPORTED - conductor geometry is not a Line')
+        send_alert('UNSUPPORTED - conductor geometry is not a Line')
         return
 
     if not isinstance(asset_geom, esdl.Point):
-        print('UNSUPPORTED - asset geometry is not a Point')
+        send_alert('UNSUPPORTED - asset geometry is not a Point')
         return
 
     if (distance((asset_geom.get_lat(), asset_geom.get_lon()), (first_point.get_lat(), first_point.get_lon())) <
             distance((asset_geom.get_lat(), asset_geom.get_lon()), (last_point.get_lat(), last_point.get_lon()))):
         # connect asset with first_point of conductor
-        print('connect asset with first_point')
+
         cond_port = conductor.get_port()[0]
         for p in asset.get_port():
             if not type(p).__name__ == type(cond_port).__name__:
+                print('connect asset with first_point')
                 connect_ports(p, cond_port)
+                emit('add_new_conn', [[asset_geom.get_lat(),asset_geom.get_lon()],[first_point.get_lat(),first_point.get_lon()]])
                 return
     else:
         # connect asset with last_point of conductor
-        print('connect asset with last_point')
+
         cond_port = conductor.get_port()[1]
         for p in asset.get_port():
             if not type(p).__name__ == type(cond_port).__name__:
+                print('connect asset with last_point')
                 connect_ports(p, cond_port)
+                emit('add_new_conn',
+                     [[asset_geom.get_lat(), asset_geom.get_lon()], [last_point.get_lat(), last_point.get_lon()]])
                 return
 
 
@@ -438,9 +484,11 @@ def connect_asset_with_asset(asset1, asset2):
                     # connect p and ports1[0]
                     print('connect p and ports1[0]')
                     connect_ports(p, ports1[0])
+                    emit('add_new_conn',
+                         [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                print("UNSUPPORTED - No InPort found on asset2")
+                send_alert("UNSUPPORTED - No InPort found on asset2")
                 return
         else:
             # find inport on other asset
@@ -449,9 +497,11 @@ def connect_asset_with_asset(asset1, asset2):
                     # connect p and ports1[0]
                     print('connect p and ports1[0]')
                     connect_ports(p, ports1[0])
+                    emit('add_new_conn',
+                         [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                print("UNSUPPORTED - No OutPort found on asset2")
+                send_alert("UNSUPPORTED - No OutPort found on asset2")
                 return
     elif num_ports2 == 1:
         found = None
@@ -463,9 +513,11 @@ def connect_asset_with_asset(asset1, asset2):
                     # connect p and ports2[0]
                     print('connect p and ports2[0]')
                     connect_ports(p, ports2[0])
+                    emit('add_new_conn',
+                         [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                print("UNSUPPORTED - No InPort found on asset1")
+                send_alert("UNSUPPORTED - No InPort found on asset1")
                 return
         else:
             # find inport on other asset
@@ -474,14 +526,67 @@ def connect_asset_with_asset(asset1, asset2):
                     # connect p and ports2[0]
                     print('connect p and ports2[0]')
                     connect_ports(p, ports2[0])
+                    emit('add_new_conn',
+                         [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                print("UNSUPPORTED - No OutPort found in asset1")
+                send_alert("UNSUPPORTED - No OutPort found in asset1")
                 return
+    else:
+        send_alert("UNSUPPORTED - Cannot determine what ports to connect")
+
 
 def connect_conductor_with_conductor(conductor1, conductor2):
-    # TODO: Implement
-    return
+    ports1 = conductor1.get_port()
+    num_ports1 = len(ports1)
+    ports2 = conductor2.get_port()
+    num_ports2 = len(ports2)
+
+    c1points = conductor1.get_geometry().get_point()
+    c1p0 = c1points[0]
+    c1p1 = c1points[len(c1points) - 1]
+    c2points = conductor2.get_geometry().get_point()
+    c2p0 = c2points[0]
+    c2p1 = c2points[len(c2points) - 1]
+
+    dp = []
+    dp.append(distance((c1p0.get_lat(),c1p0.get_lon()),(c2p0.get_lat(),c2p0.get_lon())))
+    dp.append(distance((c1p0.get_lat(),c1p0.get_lon()),(c2p1.get_lat(),c2p1.get_lon())))
+    dp.append(distance((c1p1.get_lat(),c1p1.get_lon()),(c2p0.get_lat(),c2p0.get_lon())))
+    dp.append(distance((c1p1.get_lat(),c1p1.get_lon()),(c2p1.get_lat(),c2p1.get_lon())))
+
+    smallest = 0
+    for i in range(1,3):
+        if dp[i] < dp[smallest]:
+            smallest = i
+
+    if smallest == 0:
+        conn1 = conductor1.get_port()[0]
+        conn2 = conductor2.get_port()[0]
+        conn_pnt1 = c1p0
+        conn_pnt2 = c2p0
+    elif smallest == 1:
+        conn1 = conductor1.get_port()[0]
+        conn2 = conductor2.get_port()[1]
+        conn_pnt1 = c1p0
+        conn_pnt2 = c2p1
+    elif smallest == 2:
+        conn1 = conductor1.get_port()[1]
+        conn2 = conductor2.get_port()[0]
+        conn_pnt1 = c1p1
+        conn_pnt2 = c2p0
+    elif smallest == 3:
+        conn1 = conductor1.get_port()[1]
+        conn2 = conductor2.get_port()[1]
+        conn_pnt1 = c1p1
+        conn_pnt2 = c2p1
+
+    if not type(conn1).__name__ == type(conn2).__name__:
+        connect_ports(conn1, conn2)
+        emit('add_new_conn',
+             [[conn_pnt1.get_lat(), conn_pnt1.get_lon()], [conn_pnt2.get_lat(), conn_pnt2.get_lon()]])
+    else:
+        send_alert("UNSUPPORTED - Cannot connect two ports of same type")
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -562,7 +667,7 @@ def process_command(message):
         if asset_id:
             remove_asset_from_energysystem(es_edit, asset_id)
         else:
-            print('Asset without an id cannot be removed')
+            send_alert('Asset without an id cannot be removed')
 
     if message['cmd'] == 'get_asset_ports':
         asset_id = message['id']
@@ -622,7 +727,7 @@ def process_command(message):
         if first == 'line' and second == 'point':
             connect_asset_with_conductor(asset2, asset1)
         if first == 'line' and second == 'line':
-            print('connect lines')
+            connect_conductor_with_conductor(asset1, asset2)
 
     if message['cmd'] == 'get_asset_info':
         asset_id = message['id']
@@ -635,7 +740,7 @@ def process_command(message):
             name = ''
 
         asset_attrs = copy.deepcopy(vars(asset))
-        method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
+        # method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
 
         # TODO: check which attributes must be filtered (cannot be easily edited)
         if 'geometry' in asset_attrs:
@@ -686,6 +791,8 @@ def process_file_command(message):
         es_edit = esdl.EnergySystem()
         es_id = str(uuid.uuid4())
         es_edit.set_id(es_id)
+        es_edit.set_name(title)
+        es_edit.set_description(description)
 
         instance = esdl.Instance()
         instance.set_id(str(uuid.uuid4()))
@@ -710,11 +817,15 @@ def process_file_command(message):
         emit('area_bld_list', area_bld_list)
         emit('conn_list', conn_list)
 
-        create_ESDL_store_item(es_id, es_edit, title, description, email)
-        emit('es_titel', title)
+        # create_ESDL_store_item(es_id, es_edit, title, description, email)
+        emit('es_title', title)
 
+        session['es_title'] = title
         session['es_edit'] = es_edit
         session['es_id'] = es_id
+        session['es_descr'] = description
+        session['es_email'] = email
+        session['es_start'] = 'new'
 
     if message['cmd'] == 'get_list_from_store':
         result = requests.get(store_url)
@@ -727,7 +838,10 @@ def process_file_command(message):
 
     if message['cmd'] == 'load_esdl_from_store':
         es_id = message['id']
-        es_edit = load_ESDL_EnergySystem(session['es_id'])
+        es_edit = load_ESDL_EnergySystem(es_id)
+        es_title = es_edit.get_name()       # TODO: check if this is right title, can also be the name in the store
+        if es_title is None:
+            es_title = 'No name'
 
         asset_list = []
         area_bld_list = []
@@ -745,16 +859,68 @@ def process_file_command(message):
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
         emit('conn_list', conn_list)
+        emit('es_title', es_title)
 
         session['es_id'] = es_id
         session['es_edit'] = es_edit
+        session['es_title'] = es_title
+        session['es_start'] = 'load_store'
 
     if message['cmd'] == 'store_esdl':
         es_edit = session['es_edit']
         es_id = session['es_id']
-        write_energysystem_to_file('changed_EnergySystem.esdl', es_edit)
         store_ESDL_EnergySystem(es_id, es_edit)
 
+    if message['cmd'] == 'save_esdl':
+        es_edit = session['es_edit']
+        es_id = session['es_id']
+        write_energysystem_to_file('EnergySystem.esdl', es_edit)
+
+    if message['cmd'] == 'download_esdl':
+        es_edit = session['es_edit']
+        name = session['es_title'].replace(' ', '_')
+
+        send_ESDL_as_file(es_edit, name)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  React on commands from the browser (add, remove, ...)
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on('load_esdl_file', namespace='/esdl')
+def load_esdl_file(message):
+    print ('received load_esdl_file command')
+    es_edit = esdl.parseString(message, True)
+
+    es_title = es_edit.get_name()  # TODO: check if this is right title, can also be the name in the store
+    if es_title is None:
+        es_title = 'No name'
+    es_id = es_edit.get_id()
+    if es_id is None:
+        es_id = str(uuid.uuid4())
+        es_edit.set_id(es_id)
+
+    asset_list = []
+    area_bld_list = []
+    conn_list = []
+
+    instance = es_edit.get_instance()
+    area = instance[0].get_area()
+
+    mapping = {}
+    create_mappings(area, mapping)
+    session['port_to_asset_mapping'] = mapping
+    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+    session["conn_list"] = conn_list
+
+    emit('loadesdl', asset_list)
+    emit('area_bld_list', area_bld_list)
+    emit('conn_list', conn_list)
+    emit('es_title', es_title)
+
+    session['es_id'] = es_id
+    session['es_edit'] = es_edit
+    session['es_title'] = es_title
+    session['es_start'] = 'load_file'
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Update ESDL coordinates on movement of assets in browser
@@ -775,7 +941,7 @@ def update_coordinates(message):
         point.set_lat(message['lat'])
         asset.set_geometry_with_type(point)
 
-    # TODO: Update connections on moving assets
+    # Update locations of connections on moving assets
     update_asset_connection_locations(ass_id, message['lat'], message['lng'])
 
     session['es_edit'] = es_edit
@@ -827,21 +993,35 @@ def on_connect():
     conn_list = []
 
     # ES_ID = "5df98542-430a-44b0-933c-e1c663a48c70"   # Ameland met coordinaten
-    es_id = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
-    es_edit = load_ESDL_EnergySystem(es_id)
+    # es_id = "86179000-de3a-4173-a4d5-9a2dda2fe7c7"  # Ameland met coords en ids
+    # es_edit = load_ESDL_EnergySystem(es_id)
+    # es_title = 'Ameland'
 
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
+    es_title = 'Test EnergySystem'
+    es_id = str(uuid.uuid4())
+    es_edit = esdl.EnergySystem()
+    es_edit.set_id(es_id)
+    instance = esdl.Instance()
+    instance.set_id(str(uuid.uuid4()))
+    es_edit.add_instance(instance)
+    area = esdl.Area()
+    area.set_id(str(uuid.uuid4()))
+    instance.set_area(area)
+
+    # instance = es_edit.get_instance()
+    # area = instance[0].get_area()
     mapping = {}
     create_mappings(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
     session["conn_list"] = conn_list
 
+    emit('es_title', es_title)
     emit('loadesdl', asset_list)
     emit('area_bld_list', area_bld_list)
     emit('conn_list', conn_list)
 
+    session['es_title'] = es_title
     session['es_edit'] = es_edit
     session['es_id'] = es_id
 

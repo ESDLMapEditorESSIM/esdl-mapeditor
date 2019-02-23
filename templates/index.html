@@ -15,7 +15,7 @@
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" charset="utf-8">
 
-        var conn_disconn_assets = false;
+        var connecting_assets = false;
         var first_clicked = false;
         var first_clicked_id;
         var sidebar;
@@ -63,15 +63,16 @@
 
                 socket.emit('command', {cmd: 'get_asset_info', id: id});
 
-                if (conn_disconn_assets) {
+                if (connecting_assets) {
                     if (first_clicked) {
+                        first_clicked = false;
                         if (first_clicked_id == id) {       // clicked same asset twice
-                            first_clicked = false;
                             console.log('first clicked cancelled');
                         } else {                            // connect two assets
-                            console.log('second clicked ' + id);
+                            console.log('second clicked' + id + ', connecting...');
                             socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
                         }
+                        first_clicked_id = 0;
                     } else {
                         first_clicked = true;
                         first_clicked_id = id;
@@ -91,15 +92,17 @@
                 var line = e.target;
                 var id = line.id;
 
-                if (conn_disconn_assets) {
+                if (connecting_assets) {
                     if (first_clicked) {
+                        first_clicked = false;
                         if (first_clicked_id == id) {       // clicked same asset twice
-                            first_clicked = false;
+
                             console.log('first clicked cancelled');
                         } else {                            // connect two assets
-                            console.log('second clicked ' + id);
+                            console.log('second clicked ' + id + ', connecting...');
                             socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
                         }
+                        first_clicked_id = 0;
                     } else {
                         first_clicked = true;
                         first_clicked_id = id;
@@ -109,14 +112,14 @@
             });
         }
 
-        function ConnDisConnAssets() {
+        function conn_disconn_assets() {
             var button = document.getElementById('conn-disconn-assets');
             first_clicked = false;
-            if (conn_disconn_assets) {
-                conn_disconn_assets = false;
+            if (connecting_assets) {
+                connecting_assets = false;
                 button.innerHTML = 'Connect assets';
             } else {
-                conn_disconn_assets = true;
+                connecting_assets = true;
                 button.innerHTML = 'Stop connecting assets';
             }
         }
@@ -132,11 +135,10 @@
             table += '<tr><td width=180></td><td></td></tr>'
             table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>'
 
-            sidebar_ctr.innerHTML += table + '<br>';
-            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button>';
+            sidebar_ctr.innerHTML += table;
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button></p>';
 
             sidebar.show();
-
         }
 
         function click_new_ESDL_button(obj) {
@@ -150,6 +152,22 @@
         }
 
 
+        function open_ESDL(event) {
+            // getting a hold of the file reference
+            var file = event.target.files[0];
+
+            // setting up the reader
+            var reader = new FileReader();
+            reader.readAsText(file); // this is reading as data url
+
+            // here we tell the reader what to do when it's done reading...
+            reader.onload = readerEvent => {
+                var content = readerEvent.target.result; // this is the content!
+                socket.emit('load_esdl_file', content);
+            }
+        }
+
+
         function send_cmd_load_ESDL() {
             socket.emit('file_command', {cmd: 'get_list_from_store'});
         }
@@ -158,6 +176,7 @@
             select = document.getElementById('load_es_selection');
             es_id = select.options[select.selectedIndex].value;
             es_title = select.options[select.selectedIndex].innerHTML;
+            console.log(es_id);
 
             title_div = document.getElementById('es_title');
             title_div.innerHTML = '<h1>' + es_title + '</h1>';
@@ -165,8 +184,16 @@
             socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
         }
 
+        function save_ESDL() {
+            socket.emit('file_command', {cmd: 'save_esdl'});
+        }
+
         function send_cmd_store_ESDL() {
             socket.emit('file_command', {cmd: 'store_esdl'});
+        }
+
+        function send_download_ESDL() {
+            socket.emit('file_command', {cmd: 'download_esdl'});
         }
 
         function change_param(obj) {
@@ -193,7 +220,7 @@
 
             socket.on('loadesdl', function(list) {
                 reset = true;
-                drawnItems.clearLayers();
+                esdl_layer.clearLayers();
                 reset = false;
 
                 // 0        1       2       3           4
@@ -206,18 +233,18 @@
                     var ESDLicon = L.icon({
                         iconUrl: 'images/' + list[i][3] + '.png',
 
-                         iconSize:     [30, 30], // size of the icon
+                        iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4], list[i][5]], {icon: ESDLicon});
-                        marker.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                        marker.title = list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')';
                         marker.id = list[i][2];
 
                         set_marker_handlers(marker);
-                        drawnItems.addLayer(marker);
+                        esdl_layer.addLayer(marker);
                     }
                     if (list[i][0] == 'line') {
                         var coords = list[i][4];
@@ -225,16 +252,23 @@
                         if (list[i][3] == 'Pipe') linecolor = 'blue'
 
                         var line = L.polyline(coords, {color: linecolor, weight: 6, draggable:true});
-                        line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                        // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
                         line.id = list[i][2];
 
                         set_line_handlers(line);
-                        drawnItems.addLayer(line);
+                        esdl_layer.addLayer(line);
                     }
+                }
+
+                if (list.length > 0) {
+                    // TODO: does not work
+                    // var bounds = L.latLngBounds(esdl_layer);
+                    var bounds = esdl_layer.getBounds();
+                    map.fitBounds(bounds, {padding: [50,50]});
                 }
             });
 
-            // werkt nog niet ???
+            // TODO: does not work
             socket.on('esdltxt', function(esdl_text) {
                 var div = document.getElementById('esdltxt');
                 div.innerHTML = esdl_text;
@@ -265,13 +299,20 @@
                     var con = connections[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
-                    var line = L.polyline(coords, {color: 'gray', weight: 1, draggable: true});
+                    var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '10,20', draggable: true});
                     // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
                     // line.id = list[i][2];
 
                     connection_layer.addLayer(line);
-                    // drawnItems.addLayer(line);
+                    // esdl_layer.addLayer(line);
                 }
+            });
+
+            socket.on('add_new_conn', function(connection) {
+                var coords = [connection[0], connection[1]];
+                console.log(coords);
+                var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '10,20', draggable: true});
+                connection_layer.addLayer(line);
             });
 
             socket.on('store_list', function(store_items) {
@@ -322,6 +363,10 @@
                 title_div.innerHTML = '<h1>  ' + title + '</h1>';
             });
 
+            socket.on('alert', function(message) {
+                alert(message);
+            });
+
         });
     </script>
 </head>
@@ -333,12 +378,19 @@
 
     <div id="ctrl" style="clear: left; position: relative; height: 30px">
         <button id="new-esdl" onclick="new_ESDL();">New</button>
+        <button onclick="document.querySelector('.inputFile').click();">Load ESDL File</button>
+        <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
         <button id="load-esdl" onclick="send_cmd_load_ESDL();">Load from ESDL store</button>
+        <button id="save-esdl" onclick="save_ESDL();">Save ESDL to file</button>
         <button id="store-esdl" onclick="send_cmd_store_ESDL();">Save to ESDL Store</button>
-        <button id="conn-disconn-assets" onclick="conn_disconn-assets();">Connect assets</button>
+        <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
+        <a href="file.esdl"><button id="download-esdl">Download ESDL</button></a>
+        <button id="conn-disconn-assets" onclick="conn_disconn_assets();">Connect assets</button>
+
+
         <select id="asset_select">
             <option value="ElectricityDemand">ElectricityDemand</option>
-            <option value="HeatDemand">HeatDemand</option>
+            <option value="HeatingDemand">HeatingDemand</option>
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
 
@@ -366,8 +418,7 @@
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
             map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 12 }),
-            drawnItems = L.featureGroup().addTo(map),
-            esdl_layer = L.featureGroup(),
+            esdl_layer = L.featureGroup().addTo(map),
             connection_layer = L.featureGroup().addTo(map);
 
     L.control.layers(
@@ -377,7 +428,7 @@
                 attribution: 'google'
             })
         },
-        { 'drawlayer': drawnItems, 'esdl': esdl_layer, 'connections': connection_layer },
+        { 'ESDL': esdl_layer, 'connections': connection_layer },
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
@@ -388,7 +439,7 @@
 
     map.addControl(new L.Control.Draw({
         edit: {
-            featureGroup: drawnItems,
+            featureGroup: esdl_layer,
             poly: {
                 allowIntersection: false
             }
@@ -420,7 +471,6 @@
         });
     });
 
-
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
         var type = event.layerType;
@@ -440,6 +490,7 @@
 
             set_marker_handlers(layer);
 
+            // TODO: This can probably be done smarter
             if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
             if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
             if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
@@ -463,7 +514,7 @@
             }
         }
 
-        drawnItems.addLayer(layer);
+        esdl_layer.addLayer(layer);
     });
 
 </script>
