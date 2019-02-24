@@ -190,20 +190,44 @@ def add_asset_to_building(es, asset, building_id):
         return 0
 
 
-def _remove_asset_from_building(building, asset_id):
+def _remove_port_references(area, ports):
+    mapping = session['port_to_asset_mapping']
+    for p_remove in ports:
+        p_id = p_remove.get_id()
+        connected_to = p_remove.get_connectedTo()
+        if connected_to:
+            connected_to_list = connected_to.split(' ')
+            for conns in connected_to_list:
+                # conns now contains the id's of the port this port is referring to
+                ass_info = mapping[conns]
+                asset = find_asset(area, ass_info['asset_id'])
+                asset_ports = asset.get_port()
+                for p_remove_ref in asset_ports:
+                    conn_to = p_remove_ref.get_connectedTo()
+                    conn_to = conn_to.replace(p_id, '')
+                    conn_to = conn_to.replace(' ', '')
+                    conn_to = conn_to.strip()
+                    p_remove_ref.set_connectedTo(conn_to)
+
+
+def _remove_asset_from_building(area, building, asset_id):
     for ass in building.get_asset():
         if ass.get_id() == asset_id:
+            ports = ass.get_port()
+            _remove_port_references(area, ports)
             building.asset.remove(ass)
-            print('Asset with id ' + ass.get_id() + ' removed from building ' + building.get_name() + ' (' + building.get_id() + ')')
+            print('Asset with id ' + asset_id+ ' removed from building with id: ', + building.get_id())
 
 
 def _recursively_remove_asset_from_area(area, asset_id):
     for ass in area.get_asset():
         if ass.get_id() == asset_id:
+            ports = ass.get_port()
+            _remove_port_references(area, ports)
             area.asset.remove(ass)
-            print('Asset with id ' + ass.get_id() + ' removed from area ' + area.get_name() + ' (' + area.get_id()+ ')')
+            print('Asset with id ' + asset_id + ' removed from area with id: ' + area.get_id())
         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
-            _remove_asset_from_building(ass, asset_id)
+            _remove_asset_from_building(area, ass, asset_id)
     for sub_area in area.get_area():
         _recursively_remove_asset_from_area(sub_area, asset_id)
 
@@ -644,7 +668,7 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset.get_id(), "coord": (message['lat'], message['lng'])}
+            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
 
         if assettype == 'ElectricityDemand' or assettype == 'HeatingDemand':
             if assettype == 'ElectricityDemand': asset = esdl.ElectricityDemand()
@@ -660,7 +684,7 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset.get_id(), "coord": (message['lat'], message['lng'])}
+            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
 
         if assettype == 'ElectricityCable' or assettype == 'Pipe':
             if assettype == 'ElectricityCable': asset = esdl.ElectricityCable()
@@ -705,8 +729,8 @@ def process_command(message):
 
             asset.set_geometry_with_type(line)
 
-            mapping[inp_id] = {"asset_id": asset.get_id(), "coord": first, "pos": "first"}
-            mapping[outp_id] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
+            mapping[inp_id] = {"asset_id": asset_id, "coord": first, "pos": "first"}
+            mapping[outp_id] = {"asset_id": asset_id, "coord": last, "pos": "last"}
 
         asset.set_id(asset_id)
 
