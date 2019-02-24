@@ -222,6 +222,7 @@ def remove_asset_from_energysystem(es, asset_id):
 def initialize():
     session['port_to_asset_mapping'] = {}
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Builds up a mapping from ports to assets
 #   - also stores coordinates of assets, to easily visualize connections
@@ -276,8 +277,8 @@ def create_mappings(area, mapping):
                     if ports:
                         first = (points[0].get_lat(), points[0].get_lon())
                         last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
-                        mapping[ports[0].get_id()] = {"asset_id": asset.get_id(), "coord": first}
-                        mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last}
+                        mapping[ports[0].get_id()] = {"asset_id": asset.get_id(), "coord": first, "pos": "first"}
+                        mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -361,13 +362,39 @@ def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_co
 
 
 def update_asset_connection_locations(ass_id, lat, lon):
-    conn_list = session["conn_list"]
+    conn_list = session['conn_list']
     for c in conn_list:
         if c["from-asset-id"] == ass_id:
             c["from-asset-coord"] = (lat, lon)
         if c["to-asset-id"] == ass_id:
             c["to-asset-coord"] = (lat, lon)
     emit('conn_list', conn_list)
+
+
+def update_transport_connection_locations(ass_id, asset, coords):
+    conn_list = session['conn_list']
+    mapping = session['port_to_asset_mapping']
+
+    for c in conn_list:
+        if c["from-asset-id"] == ass_id:
+            port_id = c["from-port-id"]
+            port_ass_map = mapping[port_id]
+            if port_ass_map["pos"] == "first":
+                c["from-asset-coord"] = coords[0]
+            else:
+                c["from-asset-coord"] = coords[len(coords)-1]
+        if c["to-asset-id"] == ass_id:
+            port_id = c["to-port-id"]
+            port_ass_map = mapping[port_id]
+            if port_ass_map["pos"] == "first":
+                c["to-asset-coord"] = coords[0]
+            else:
+                c["to-asset-coord"] = coords[len(coords)-1]
+
+    emit('conn_list', conn_list)
+
+
+# mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -596,6 +623,7 @@ def connect_conductor_with_conductor(conductor1, conductor2):
 def process_command(message):
     print ('received: ' + message['cmd'])
     es_edit = session['es_edit']
+    mapping = session['port_to_asset_mapping']
     # print (session['es_edit'].get_instance()[0].get_area().get_name())
 
     if message['cmd'] == 'add_asset':
@@ -607,7 +635,8 @@ def process_command(message):
             if assettype == 'PVParc': asset = esdl.PVParc()
 
             outp = esdl.OutPort()
-            outp.set_id(str(uuid.uuid4()))
+            port_id = str(uuid.uuid4())
+            outp.set_id(port_id)
             asset.add_port_with_type(outp)
 
             point = esdl.Point()
@@ -615,12 +644,15 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
+            mapping[port_id] = {"asset_id": asset.get_id(), "coord": (message['lat'], message['lng'])}
+
         if assettype == 'ElectricityDemand' or assettype == 'HeatingDemand':
             if assettype == 'ElectricityDemand': asset = esdl.ElectricityDemand()
             if assettype == 'HeatingDemand': asset = esdl.HeatingDemand()
 
             inp = esdl.InPort()
-            inp.set_id(str(uuid.uuid4()))
+            port_id = str(uuid.uuid4())
+            inp.set_id(port_id)
             asset.add_port_with_type(inp)
 
             point = esdl.Point()
@@ -628,15 +660,18 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
+            mapping[port_id] = {"asset_id": asset.get_id(), "coord": (message['lat'], message['lng'])}
 
         if assettype == 'ElectricityCable' or assettype == 'Pipe':
             if assettype == 'ElectricityCable': asset = esdl.ElectricityCable()
             if assettype == 'Pipe': asset = esdl.Pipe()
 
             inp = esdl.InPort()
-            inp.set_id(str(uuid.uuid4()))
+            inp_id = str(uuid.uuid4())
+            inp.set_id(inp_id)
             outp = esdl.OutPort()
-            outp.set_id(str(uuid.uuid4()))
+            outp_id = str(uuid.uuid4())
+            outp.set_id(outp_id)
             asset.add_port_with_type(inp)
             asset.add_port_with_type(outp)
 
@@ -647,15 +682,31 @@ def process_command(message):
             asset.set_length(polyline_length)
 
             line = esdl.Line()
-            for i in range(0, len(polyline_data), 2):
+            i = 0
+            prev_lat = 0
+            prev_lng = 0
+            while i < len(polyline_data):
                 coord = polyline_data[i]
 
-                point = esdl.Point()
-                point.set_lon(coord['lng'])
-                point.set_lat(coord['lat'])
-                line.add_point(point)
+                if i == 0:
+                    first = (coord['lat'], coord['lng'])
+                if i == len(polyline_data)-1:
+                    last = (coord['lat'], coord['lng'])
+
+                # Don't understand why, but sometimes coordinates come in twice
+                if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+                    point = esdl.Point()
+                    point.set_lon(coord['lng'])
+                    point.set_lat(coord['lat'])
+                    line.add_point(point)
+                    prev_lat = coord['lat']
+                    prev_lng = coord['lng']
+                i += 1
 
             asset.set_geometry_with_type(line)
+
+            mapping[inp_id] = {"asset_id": asset.get_id(), "coord": first, "pos": "first"}
+            mapping[outp_id] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
 
         asset.set_id(asset_id)
 
@@ -811,7 +862,7 @@ def process_file_command(message):
         create_mappings(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-        session["conn_list"] = conn_list
+        session['conn_list'] = conn_list
 
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
@@ -854,7 +905,7 @@ def process_file_command(message):
         create_mappings(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-        session["conn_list"] = conn_list
+        session['conn_list'] = conn_list
 
         emit('loadesdl', asset_list)
         emit('area_bld_list', area_bld_list)
@@ -910,7 +961,7 @@ def load_esdl_file(message):
     create_mappings(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-    session["conn_list"] = conn_list
+    session['conn_list'] = conn_list
 
     emit('loadesdl', asset_list)
     emit('area_bld_list', area_bld_list)
@@ -974,7 +1025,7 @@ def update_line_coordinates(message):
 
         asset.set_geometry_with_type(line)
 
-    # TODO: Update connections on moving assets
+        update_transport_connection_locations(ass_id, asset, polyline_data)
 
     session['es_edit'] = es_edit
 
@@ -1014,7 +1065,7 @@ def on_connect():
     create_mappings(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-    session["conn_list"] = conn_list
+    session['conn_list'] = conn_list
 
     emit('es_title', es_title)
     emit('loadesdl', asset_list)
