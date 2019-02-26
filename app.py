@@ -232,7 +232,6 @@ def _recursively_remove_asset_from_area(area, asset_id):
         _recursively_remove_asset_from_area(sub_area, asset_id)
 
 
-# TODO: update connectedTo's of assets connected to the removed one
 def remove_asset_from_energysystem(es, asset_id):
     # find area with area_id
     instance = es.get_instance()[0]
@@ -249,10 +248,6 @@ def initialize():
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Builds up a mapping from ports to assets
-#   - also stores coordinates of assets, to easily visualize connections
-#
-#  TODO:
-#   - update this mapping when adding new assets
 # ---------------------------------------------------------------------------------------------------------------------
 def create_building_mappings(building, mapping):
     for basset in building.get_asset():
@@ -588,11 +583,6 @@ def connect_asset_with_asset(asset1, asset2):
 
 
 def connect_conductor_with_conductor(conductor1, conductor2):
-    ports1 = conductor1.get_port()
-    num_ports1 = len(ports1)
-    ports2 = conductor2.get_port()
-    num_ports2 = len(ports2)
-
     c1points = conductor1.get_geometry().get_point()
     c1p0 = c1points[0]
     c1p1 = c1points[len(c1points) - 1]
@@ -845,6 +835,46 @@ def process_command(message):
             getattr(asset, 'set_' + param_name)(param_value)
         if param_name in ['power']:
             getattr(asset, 'set_'+param_name)(float(param_value))
+
+    if message['cmd'] == 'set_area_bld_polygon':
+        area_bld_id = message['area_bld_id']
+        polygon_data = message['polygon']
+
+        polygon = esdl.Polygon()
+        exterior = esdl.SubPolygon()
+        polygon.set_exterior(exterior)
+
+        i = 0
+        prev_lat = 0
+        prev_lng = 0
+        while i < len(polygon_data[0]):
+            coord = polygon_data[0][i]
+
+            if i == 0:
+                first = (coord['lat'], coord['lng'])
+            if i == len(polygon_data) - 1:
+                last = (coord['lat'], coord['lng'])
+
+            # Don't understand why, but sometimes coordinates come in twice
+            if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+                point = esdl.Point()
+                point.set_lon(coord['lng'])
+                point.set_lat(coord['lat'])
+                exterior.add_point(point)
+                prev_lat = coord['lat']
+                prev_lng = coord['lng']
+            i += 1
+
+        area = es_edit.get_instance()[0].get_area()
+        area_selected = find_area(area, area_bld_id)
+        if area_selected:
+            area_selected.set_contour(polygon)
+        else:
+            bld_selected = find_asset(area, area_bld_id)
+            if bld_selected:
+                bld_selected.set_geometry_with_type(polygon)
+            else:
+                send_alert('SERIOUS ERROR: set_area_bld_polygon - connot find area or building')
 
     session['es_edit'] = es_edit
 
