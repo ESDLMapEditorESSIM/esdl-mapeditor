@@ -88,9 +88,10 @@
                 if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: line.id});
             });
             line.on('click', function(e) {
-                console.log('line clicked');
+                
                 var line = e.target;
                 var id = line.id;
+				console.log('line clicked: ' + line.title);
 
                 if (connecting_assets) {
                     if (first_clicked) {
@@ -238,9 +239,11 @@
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
+					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][4], list[i][5]], {icon: ESDLicon});
-                        marker.title = list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')';
+						
+                        var marker = L.marker([list[i][4], list[i][5]], {icon: ESDLicon, title: title});
+                        marker.title = title;
                         marker.id = list[i][2];
 
                         set_marker_handlers(marker);
@@ -254,6 +257,7 @@
                         var line = L.polyline(coords, {color: linecolor, weight: 6, draggable:true});
                         // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
                         line.id = list[i][2];
+						line.title = title;
 
                         set_line_handlers(line);
                         esdl_layer.addLayer(line);
