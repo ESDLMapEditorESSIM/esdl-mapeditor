@@ -19,7 +19,7 @@
         var first_clicked = false;
         var first_clicked_id;
         var sidebar;
-        var reset = false;
+        var clear_layer = false;
 
         function uuidv4() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -52,7 +52,7 @@
             });
             marker.on('remove', function(e) {
                 // console.log('remove marker');
-                if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: marker.id});
+                if (clear_layer == false) socket.emit('command', {cmd: 'remove_asset', id: marker.id});
             });
 
             // TODO: removing a marker also triggers the onclick event!!
@@ -60,8 +60,6 @@
                 console.log('marker clicked');
                 var marker = e.target;
                 var id = marker.id;
-
-                socket.emit('command', {cmd: 'get_asset_info', id: id});
 
                 if (connecting_assets) {
                     if (first_clicked) {
@@ -78,6 +76,8 @@
                         first_clicked_id = id;
                         console.log('first clicked ' + first_clicked_id);
                     }
+                } else {
+                    socket.emit('command', {cmd: 'get_asset_info', id: id});
                 }
             });
         }
@@ -85,7 +85,7 @@
         function set_line_handlers(line) {
 
             line.on('remove', function(e) {
-                if (reset == false) socket.emit('command', {cmd: 'remove_asset', id: line.id});
+                if (clear_layer == false) socket.emit('command', {cmd: 'remove_asset', id: line.id});
             });
             line.on('click', function(e) {
                 
@@ -220,9 +220,9 @@
             });
 
             socket.on('loadesdl', function(list) {
-                reset = true;
+                clear_layer = true;
                 esdl_layer.clearLayers();
-                reset = false;
+                clear_layer = false;
 
                 // 0        1       2       3           4
                 // 'point'  name    id      class_name  lat     lon
@@ -265,10 +265,8 @@
                 }
 
                 if (list.length > 0) {
-                    // TODO: does not work
-                    // var bounds = L.latLngBounds(esdl_layer);
                     var bounds = esdl_layer.getBounds();
-                    map.fitBounds(bounds, {padding: [50,50]});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: true});
                 }
             });
 
@@ -295,9 +293,9 @@
             });
 
             socket.on('conn_list', function(connections) {
-                reset = true;
+                clear_layer = true;
                 connection_layer.clearLayers();
-                reset = false;
+                clear_layer = false;
 
                 for (i = 0; i<connections.length; i++) {
                     var con = connections[i];
@@ -416,13 +414,13 @@
 
 <script>
 
-
-    // TODO: properly determine boundingbox and zoom level?
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 18, attribution: osmAttrib }),
-            map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 12 }),
+            // map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 12 }),  // Ameland centered
+            map = new L.Map('mapid', { center: new L.LatLng(52.1, 5.8), zoom: 8 }),
             esdl_layer = L.featureGroup().addTo(map),
+            area_layer = L.featureGroup().addTo(map),
             connection_layer = L.featureGroup().addTo(map);
 
     L.control.layers(
@@ -432,7 +430,7 @@
                 attribution: 'google'
             })
         },
-        { 'ESDL': esdl_layer, 'connections': connection_layer },
+        { 'ESDL': esdl_layer, 'Area boundaries': area_layer, 'connections': connection_layer },
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
@@ -453,7 +451,10 @@
                 allowIntersection: false,
                 showArea: true
             },
-            circle: false
+            circle: false,
+            marker: {
+                icon: new WindTurbineMarker()
+            }
         }
     }));
 
@@ -501,6 +502,8 @@
             if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
 
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+
+            esdl_layer.addLayer(layer);
         }
         if (type === 'polyline') {
             selection = document.getElementById("line_select").selectedIndex;
@@ -516,9 +519,14 @@
             if (selection == 1) {
                 socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: 'Pipe', asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
             }
+            esdl_layer.addLayer(layer);
+        }
+        if (type === 'polygon') {
+            socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
+            area_layer.addLayer(layer);
         }
 
-        esdl_layer.addLayer(layer);
+
     });
 
 </script>
