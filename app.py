@@ -630,6 +630,20 @@ def connect_conductor_with_conductor(conductor1, conductor2):
         send_alert("UNSUPPORTED - Cannot connect two ports of same type")
 
 
+def get_asset_attributes(asset):
+    asset_attrs = copy.deepcopy(vars(asset))
+    # method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
+
+    # TODO: check which attributes must be filtered (cannot be easily edited)
+    if 'geometry' in asset_attrs:
+        asset_attrs.pop('geometry', None)
+    if 'port' in asset_attrs:
+        asset_attrs.pop('port', None)
+    if 'costInformation' in asset_attrs:
+        asset_attrs.pop('costInformation', None)
+
+    attrs_sorted = sorted(asset_attrs.items(), key=lambda kv: kv[0])
+    return attrs_sorted
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
@@ -826,24 +840,22 @@ def process_command(message):
 
         asset = find_asset(area, asset_id)
         print('Get info for asset ' + asset.get_id())
+        attrs_sorted = get_asset_attributes(asset)
         name = asset.get_name()
-        if name == None:
-            name = ''
-
-        asset_attrs = copy.deepcopy(vars(asset))
-        # method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
-
-        # TODO: check which attributes must be filtered (cannot be easily edited)
-        if 'geometry' in asset_attrs:
-            asset_attrs.pop('geometry', None)
-        if 'port' in asset_attrs:
-            asset_attrs.pop('port', None)
-        if 'costInformation' in asset_attrs:
-            asset_attrs.pop('costInformation', None)
-
-
-        attrs_sorted = sorted(asset_attrs.items(), key=lambda kv: kv[0])
+        if name is None: name = ''
         emit('asset_info', {'id': asset_id, 'name': name, 'attrs': attrs_sorted})
+
+    if message['cmd'] == 'get_conductor_info':
+        asset_id = message['id']
+        latlng = message['latlng']
+        area = es_edit.get_instance()[0].get_area()
+        asset = find_asset(area, asset_id)
+        print('Get info for asset ' + asset.get_id())
+        attrs_sorted = get_asset_attributes(asset)
+        name = asset.get_name()
+        if name is None: name = ''
+        emit('conductor_info', {'id': asset_id, 'name': name, 'latlng': latlng, 'attrs': attrs_sorted})
+
 
     if message['cmd'] == 'set_asset_param':
         asset_id = message['id']
@@ -1021,7 +1033,8 @@ def process_file_command(message):
 def load_esdl_file(message):
     print ('received load_esdl_file command')
     if message.startswith('<?xml'):
-        message = message.split('\n', 1)[1] # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
+        # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
+        message = message.split('\n', 1)[1]
     es_edit = esdl.parseString(message, True)
 
     es_title = es_edit.get_name()  # TODO: check if this is right title, can also be the name in the store

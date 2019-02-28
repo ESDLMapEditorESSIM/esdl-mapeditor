@@ -109,7 +109,10 @@
                         first_clicked_id = id;
                         console.log('first clicked ' + first_clicked_id);
                     }
-                }
+                } else {
+					// show popup after getting conductor info					
+					socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
+				}
             });
         }
 
@@ -359,6 +362,27 @@
 
                 sidebar.show();
             });
+			
+			socket.on('conductor_info', function(asset_info) {
+				console.log('Conductor info: ')
+				console.log(asset_info);
+				asset_id = asset_info['id'];
+                asset_name = asset_info['name'];
+				latlng = asset_info['latlng']; // location of popup send in messagage
+                asset_attrs = asset_info['attrs'];
+				
+				length = 0;
+				for (i=0; i<asset_attrs.length; i++) {
+					if (asset_attrs[i][0]=='length') {
+						length=asset_attrs[i][1];
+					}
+				}
+				
+				var popup = L.popup().setLatLng(latlng)
+						.setContent('<p><b>'+asset_name+'</b><br>Length: '+length+'m<br>id: '+asset_id+'</p>')
+						.openOn(map);
+				
+			});
 
             socket.on('es_title', function(title) {
                 title_div = document.getElementById('es_title');
@@ -426,9 +450,9 @@
 
     L.control.layers(
         {
-            'osm': osm.addTo(map),
-            "google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
-                attribution: 'google'
+            'OpenStreetMap': osm.addTo(map),
+            "Google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+                attribution: 'Google'
             })
         },
         { 'ESDL': esdl_layer, 'Area boundaries': area_layer, 'connections': connection_layer },
@@ -479,6 +503,22 @@
         });
     });
 
+	// add ability to split polylines (not working)
+	map.on('draw:editvertex', function (e) {
+        var layers = e.layers;
+        layers.eachLayer(function (layer) {
+            if (layer instanceof L.Polyline) {
+                //polyline_length = calculate_length(layer);
+                // console.log(layer.getLatLngs());
+                //socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+				console.log('Edit vertex');
+				console.log(e);
+            }
+        });
+		console.log(e);
+		console.log(e.layers);
+    });
+	
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
         var type = event.layerType;
