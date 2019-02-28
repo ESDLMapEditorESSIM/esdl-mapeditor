@@ -644,9 +644,10 @@ def process_command(message):
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
         assettype = message['asset']
-        if assettype == 'WindTurbine' or assettype == 'PVParc':
+        if assettype == 'WindTurbine' or assettype == 'PVParc' or assettype == 'GeothermalSource':
             if assettype == 'WindTurbine': asset = esdl.WindTurbine()
             if assettype == 'PVParc': asset = esdl.PVParc()
+            if assettype == 'GeothermalSource': asset = esdl.GeothermalSource()
 
             outp = esdl.OutPort()
             port_id = str(uuid.uuid4())
@@ -668,6 +669,25 @@ def process_command(message):
             port_id = str(uuid.uuid4())
             inp.set_id(port_id)
             asset.add_port_with_type(inp)
+
+            point = esdl.Point()
+            point.set_lon(message['lng'])
+            point.set_lat(message['lat'])
+            asset.set_geometry_with_type(point)
+
+            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+
+        if assettype == 'Joint':
+            asset = esdl.Joint()
+
+            inp = esdl.InPort()
+            port_id = str(uuid.uuid4())
+            inp.set_id(port_id)
+            asset.add_port_with_type(inp)
+            outp = esdl.OutPort()
+            port_id = str(uuid.uuid4())
+            outp.set_id(port_id)
+            asset.add_port_with_type(outp)
 
             point = esdl.Point()
             point.set_lon(message['lng'])
@@ -764,6 +784,9 @@ def process_command(message):
                     first_point1 = points[0]
                     last_point1 = points[len(points)-1]
                     first = 'line'
+                if isinstance(geom1, esdl.Point): # in case of a Joint
+                    point1=geom1
+                    first='point'
             else:
                 if isinstance(geom1, esdl.Point):
                     point1 = geom1
@@ -775,6 +798,9 @@ def process_command(message):
                     first_point2 = points[0]
                     last_point2 = points[len(points)-1]
                     second = 'line'
+                if isinstance(geom2, esdl.Point): # in case of a Joint
+                    point2=geom2
+                    second='point'
             else:
                 if isinstance(geom2, esdl.Point):
                     point2 = geom2
@@ -994,6 +1020,8 @@ def process_file_command(message):
 @socketio.on('load_esdl_file', namespace='/esdl')
 def load_esdl_file(message):
     print ('received load_esdl_file command')
+    if message.startswith('<?xml'):
+        message = message.split('\n', 1)[1] # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
     es_edit = esdl.parseString(message, True)
 
     es_title = es_edit.get_name()  # TODO: check if this is right title, can also be the name in the store

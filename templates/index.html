@@ -395,7 +395,8 @@
             <option value="HeatingDemand">HeatingDemand</option>
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
-
+			<option value="GeothermalSource">GeothermalSource</option>
+			<option value="Joint">Joint</option>
         </select>
         <select id="line_select">
             <option value="ElectricityCable">ElectricityCable</option>
@@ -438,12 +439,14 @@
     var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
     var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
+	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Joint.png'}});
+	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GeothermalSource.png'}});
 
     map.addControl(new L.Control.Draw({
         edit: {
             featureGroup: esdl_layer,
             poly: {
-                allowIntersection: false
+                allowIntersection: true
             }
         },
         draw: {
@@ -500,6 +503,8 @@
             if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
             if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
             if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
+			if (selected_asset == 'Joint') layer.setIcon(new JointMarker);
+			if (selected_asset == 'GeothermalSource') layer.setIcon(new GeothermalSourceMarker);
 
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
 
