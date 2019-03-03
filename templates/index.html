@@ -204,6 +204,18 @@
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
         }
 
+        function select_other_asset(obj) {
+            selected_index = obj.selectedIndex;
+            selected_asset = obj.options[selected_index].value;
+            var marker_class_name = window[selected_asset + "Marker"];
+
+            drawControl.setDrawingOptions({
+                marker: {
+                    icon: new marker_class_name()
+                }
+            });
+        }
+
         var socket;
 
         $(document).ready(function() {
@@ -302,7 +314,6 @@
                     // line.id = list[i][2];
 
                     connection_layer.addLayer(line);
-                    // esdl_layer.addLayer(line);
                 }
             });
 
@@ -385,18 +396,18 @@
         <a href="file.esdl"><button id="download-esdl">Download ESDL</button></a>
         <button id="conn-disconn-assets" onclick="conn_disconn_assets();">Connect assets</button>
 
-
-        <select id="asset_select">
+        <select id="asset_select" onchange="select_other_asset(this);">
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="HeatingDemand">HeatingDemand</option>
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
-
         </select>
+
         <select id="line_select">
             <option value="ElectricityCable">ElectricityCable</option>
             <option value="Pipe">Pipe</option>
         </select>
+
         <select id="area_bld_select"></select>
     </div>
 
@@ -435,7 +446,7 @@
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
     var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
 
-    map.addControl(new L.Control.Draw({
+    var drawControl = new L.Control.Draw({
         edit: {
             featureGroup: esdl_layer,
             poly: {
@@ -449,10 +460,11 @@
             },
             circle: false,
             marker: {
-                icon: new WindTurbineMarker()
+                icon: new ElectricityDemandMarker()
             }
         }
-    }));
+    })
+    map.addControl(drawControl);
 
     sidebar = L.control.sidebar('sidebar', {
         position: 'right',
