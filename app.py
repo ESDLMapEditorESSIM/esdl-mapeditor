@@ -5,6 +5,7 @@ import requests
 import uuid
 import math
 import copy
+import json
 from model import esdl_sup as esdl
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -16,10 +17,10 @@ async_mode = None
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-xml_namespace = ("xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\nxmlns:esdl='http://www.tno.nl/esdl'\nxsi:schemaLocation='http://www.tno.nl/esdl ../esdl/model/esdl.ecore'\n")
-ESDL_STORE_HOSTNAME = "http://10.30.2.1"
-ESDL_STORE_PORT = "3003"
-store_url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/"
+xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
+GEIS_CLOUD_IP = '10.30.2.1'
+ESDL_STORE_PORT = '3003'
+store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 
 
 def write_energysystem_to_file(filename, es):
@@ -44,7 +45,7 @@ def create_ESDL_store_item(id, es, title, description, email):
 
 
 def load_ESDL_EnergySystem(id):
-    url = ESDL_STORE_HOSTNAME + ':' + ESDL_STORE_PORT + "/store/esdl/" + id + "?format=xml"
+    url = store_url + 'esdl/' + id + '?format=xml'
     r = requests.get(url)
     esdlstr = r.text
     # emit('esdltxt', esdlstr)
@@ -78,6 +79,65 @@ def send_ESDL_as_file(es, name):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  GEIS Boundary service access
+# ---------------------------------------------------------------------------------------------------------------------
+BOUNDARY_SERVICE_PORT = '4000'
+boundary_service_mapping = {
+    'ZIPCODE': 'zipcodes',
+    'NEIGHBOURHOOD': 'neighbourhoods',
+    'DISTRICT': 'districts',
+    'MUNICIPALITY': 'municipalities',
+    'ENERGYREGION': 'energyregions',
+    'PROVINCE': 'provinces',
+    'COUNTRY': 'countries'
+}
+
+
+def get_boundary_from_service(type, id):
+    """
+    :param type: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
+    :param id:
+    :return:
+    """
+
+    url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(type)] + '/' + id
+    r = requests.get(url)
+    reply = json.loads(r.text)
+
+    print(reply)
+    geom = reply['geom']
+
+    return geom
+
+
+def _parse_esdl_subpolygon(subpol):
+    ar = []
+    points = subpol.get_point()
+    for point in points:
+        lat = point.get_lat()
+        lon = point.get_lon()
+        ar.append([lon, lat])
+    return ar
+
+
+def create_boundary_from_contour(contour):
+    exterior = contour.get_exterior()
+    interiors = contour.get_interior()
+
+    ar = []
+    ar.append(_parse_esdl_subpolygon(exterior))
+    for interior in interiors:
+        ar.append(_parse_esdl_subpolygon(interior))
+
+    geom = {
+        'type': 'Polygon',
+        'coordinates': ar
+    }
+    print(geom)
+
+    return geom
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
@@ -101,7 +161,7 @@ def download_esdl(path):
 #    f.seek(0)
 
 #    f = open('/tmp/temp.xmi', 'r')
-#   return send_file(f, attachment_filename="file.esdl",
+#   return send_file(f, attachment_filename='file.esdl',
 #                     as_attachment=True)
     return
 
@@ -114,6 +174,11 @@ def send_image(path):
 @app.route('/plugins/<path:path>')
 def send_plugin(path):
     return send_from_directory('plugins', path)
+
+# FOR TESTING
+@app.route('/html/<path:path>')
+def send_html(path):
+    return send_from_directory('html', path)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -262,14 +327,14 @@ def create_building_mappings(building, mapping):
                     lon = geom.get_lon()
                     coord = (lat, lon)
                     for p in ports:
-                        mapping[p.get_id()] = {"asset_id": basset.get_id(), "coord": coord}
+                        mapping[p.get_id()] = {'asset_id': basset.get_id(), 'coord': coord}
                 if isinstance(geom, esdl.Line):
                     points = geom.get_point()
                     if ports:
                         first = (points[0].get_lat(), points[0].get_lon())
                         last = (points[len(points)-1].get_lat(), points[len(points)-1].get_lon())
-                        mapping[ports[0].get_id()] = {"asset_id": basset.get_id(), "coord": first}
-                        mapping[ports[1].get_id()] = {"asset_id": basset.get_id(), "coord": last}
+                        mapping[ports[0].get_id()] = {'asset_id': basset.get_id(), 'coord': first}
+                        mapping[ports[1].get_id()] = {'asset_id': basset.get_id(), 'coord': last}
 
 
 def create_mappings(area, mapping):
@@ -282,22 +347,31 @@ def create_mappings(area, mapping):
         if isinstance(asset, esdl.AggregatedBuilding):
             create_building_mappings(asset, mapping)
         else:
-            geom = asset.get_geometry()
-            ports = asset.get_port()
-            if geom:
-                if isinstance(geom, esdl.Point):
-                    lat = geom.get_lat()
-                    lon = geom.get_lon()
-                    coord = (lat, lon)
-                    for p in ports:
-                        mapping[p.get_id()] = {"asset_id": asset.get_id(), "coord": coord}
-                if isinstance(geom, esdl.Line):
-                    points = geom.get_point()
-                    if ports:
-                        first = (points[0].get_lat(), points[0].get_lon())
-                        last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
-                        mapping[ports[0].get_id()] = {"asset_id": asset.get_id(), "coord": first, "pos": "first"}
-                        mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
+            # asset can be of type Potential too ???
+            if isinstance(asset, esdl.EnergyAsset):
+                geom = asset.get_geometry()
+                ports = asset.get_port()
+                if geom:
+                    if isinstance(geom, esdl.Point):
+                        lat = geom.get_lat()
+                        lon = geom.get_lon()
+                        coord = (lat, lon)
+                        for p in ports:
+                            p_id = p.get_id()
+                            # hack for ESDL files generated by geis_dsl project:
+                            #   if ESDL file contains ports without id's, create new id's
+                            # Hmmm, doesn't work because assets have no geometry
+                            if p_id is None:
+                                p_id = uuid.uuid4()
+                                p.set_id(p_id)
+                            mapping[p_id] = {'asset_id': asset.get_id(), 'coord': coord}
+                    if isinstance(geom, esdl.Line):
+                        points = geom.get_point()
+                        if ports:
+                            first = (points[0].get_lat(), points[0].get_lon())
+                            last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
+                            mapping[ports[0].get_id()] = {'asset_id': asset.get_id(), 'coord': first, 'pos': 'first'}
+                            mapping[ports[1].get_id()] = {'asset_id': asset.get_id(), 'coord': last, 'pos': 'last'}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -324,9 +398,9 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
                 conn_to_list = conn_to.split(' ')
                 for pc in conn_to_list:
                     pc_asset = port_asset_mapping[pc]
-                    pc_asset_coord = pc_asset["coord"]
-                    conn_list.append({"from-port-id": p.get_id(), "from-asset-id": basset.get_id(), "from-asset-coord": coord,
-                        "to-port-id": pc, "to-asset-id": pc_asset["asset_id"], "to-asset-coord": pc_asset_coord})
+                    pc_asset_coord = pc_asset['coord']
+                    conn_list.append({'from-port-id': p.get_id(), 'from-asset-id': basset.get_id(), 'from-asset-coord': coord,
+                        'to-port-id': pc, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(asset_list, area_bld_list, port_asset_mapping, basset, level+1)
@@ -343,7 +417,7 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
     for asset in area.get_asset():
         if isinstance(asset, esdl.AggregatedBuilding):
             process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, asset, level+1)
-        else:
+        if isinstance(asset, esdl.EnergyAsset):
             geom = asset.get_geometry()
             coord =()
             if geom:
@@ -361,32 +435,32 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
             ports = asset.get_port()
             for p in ports:
                 p_asset = port_asset_mapping[p.get_id()]
-                p_asset_coord = p_asset["coord"]        # get proper coordinate if asset is line
+                p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to = p.get_connectedTo()
                 if conn_to:
                     conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
                     for pc in conn_to_list:
                         pc_asset = port_asset_mapping[pc]
-                        pc_asset_coord = pc_asset["coord"]
+                        pc_asset_coord = pc_asset['coord']
 
-                        conn_list.append({"from-port-id": p.get_id(), "from-asset-id": p_asset["asset_id"], "from-asset-coord": p_asset_coord,
-                                          "to-port-id": pc, "to-asset-id": pc_asset["asset_id"], "to-asset-coord": pc_asset_coord})
+                        conn_list.append({'from-port-id': p.get_id(), 'from-asset-id': p_asset['asset_id'], 'from-asset-coord': p_asset_coord,
+                                          'to-port-id': pc, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
 
 # TODO: Not used now, should we keep the conn_list updated?
 def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_coord, to_port_id, to_asset_id, to_asset_coord):
     conn_list.append(
-        {"from-port-id": from_port_id, "from-asset-id": from_asset_id, "from-asset-coord": from_asset_coord,
-         "to-port-id": to_port_id, "to-asset-id": to_asset_id, "to-asset-coord": to_asset_coord})
+        {'from-port-id': from_port_id, 'from-asset-id': from_asset_id, 'from-asset-coord': from_asset_coord,
+         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
 
 
 def update_asset_connection_locations(ass_id, lat, lon):
     conn_list = session['conn_list']
     for c in conn_list:
-        if c["from-asset-id"] == ass_id:
-            c["from-asset-coord"] = (lat, lon)
-        if c["to-asset-id"] == ass_id:
-            c["to-asset-coord"] = (lat, lon)
+        if c['from-asset-id'] == ass_id:
+            c['from-asset-coord'] = (lat, lon)
+        if c['to-asset-id'] == ass_id:
+            c['to-asset-coord'] = (lat, lon)
     emit('conn_list', conn_list)
 
 
@@ -395,25 +469,25 @@ def update_transport_connection_locations(ass_id, asset, coords):
     mapping = session['port_to_asset_mapping']
 
     for c in conn_list:
-        if c["from-asset-id"] == ass_id:
-            port_id = c["from-port-id"]
+        if c['from-asset-id'] == ass_id:
+            port_id = c['from-port-id']
             port_ass_map = mapping[port_id]
-            if port_ass_map["pos"] == "first":
-                c["from-asset-coord"] = coords[0]
+            if port_ass_map['pos'] == 'first':
+                c['from-asset-coord'] = coords[0]
             else:
-                c["from-asset-coord"] = coords[len(coords)-1]
-        if c["to-asset-id"] == ass_id:
-            port_id = c["to-port-id"]
+                c['from-asset-coord'] = coords[len(coords)-1]
+        if c['to-asset-id'] == ass_id:
+            port_id = c['to-port-id']
             port_ass_map = mapping[port_id]
-            if port_ass_map["pos"] == "first":
-                c["to-asset-coord"] = coords[0]
+            if port_ass_map['pos'] == 'first':
+                c['to-asset-coord'] = coords[0]
             else:
-                c["to-asset-coord"] = coords[len(coords)-1]
+                c['to-asset-coord'] = coords[len(coords)-1]
 
     emit('conn_list', conn_list)
 
 
-# mapping[ports[1].get_id()] = {"asset_id": asset.get_id(), "coord": last, "pos": "last"}
+# mapping[ports[1].get_id()] = {'asset_id': asset.get_id(), 'coord': last, 'pos': 'last'}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -534,7 +608,7 @@ def connect_asset_with_asset(asset1, asset2):
                          [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                send_alert("UNSUPPORTED - No InPort found on asset2")
+                send_alert('UNSUPPORTED - No InPort found on asset2')
                 return
         else:
             # find inport on other asset
@@ -547,7 +621,7 @@ def connect_asset_with_asset(asset1, asset2):
                          [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                send_alert("UNSUPPORTED - No OutPort found on asset2")
+                send_alert('UNSUPPORTED - No OutPort found on asset2')
                 return
     elif num_ports2 == 1:
         found = None
@@ -563,7 +637,7 @@ def connect_asset_with_asset(asset1, asset2):
                          [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                send_alert("UNSUPPORTED - No InPort found on asset1")
+                send_alert('UNSUPPORTED - No InPort found on asset1')
                 return
         else:
             # find inport on other asset
@@ -576,10 +650,10 @@ def connect_asset_with_asset(asset1, asset2):
                          [[asset1.get_lat(), asset1.get_lon()], [asset2.get_lat(), asset2.get_lon()]])
                     found = 1
             if not found:
-                send_alert("UNSUPPORTED - No OutPort found in asset1")
+                send_alert('UNSUPPORTED - No OutPort found in asset1')
                 return
     else:
-        send_alert("UNSUPPORTED - Cannot determine what ports to connect")
+        send_alert('UNSUPPORTED - Cannot determine what ports to connect')
 
 
 def connect_conductor_with_conductor(conductor1, conductor2):
@@ -627,7 +701,7 @@ def connect_conductor_with_conductor(conductor1, conductor2):
         emit('add_new_conn',
              [[conn_pnt1.get_lat(), conn_pnt1.get_lon()], [conn_pnt2.get_lat(), conn_pnt2.get_lon()]])
     else:
-        send_alert("UNSUPPORTED - Cannot connect two ports of same type")
+        send_alert('UNSUPPORTED - Cannot connect two ports of same type')
 
 
 def get_asset_attributes(asset):
@@ -673,7 +747,7 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[port_id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
 
         if assettype == 'ElectricityDemand' or assettype == 'HeatingDemand':
             if assettype == 'ElectricityDemand': asset = esdl.ElectricityDemand()
@@ -689,7 +763,7 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[port_id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
 
         if assettype == 'Joint':
             asset = esdl.Joint()
@@ -753,8 +827,8 @@ def process_command(message):
 
             asset.set_geometry_with_type(line)
 
-            mapping[inp_id] = {"asset_id": asset_id, "coord": first, "pos": "first"}
-            mapping[outp_id] = {"asset_id": asset_id, "coord": last, "pos": "last"}
+            mapping[inp_id] = {'asset_id': asset_id, 'coord': first, 'pos': 'first'}
+            mapping[outp_id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
 
         asset.set_id(asset_id)
 
@@ -855,7 +929,6 @@ def process_command(message):
         name = asset.get_name()
         if name is None: name = ''
         emit('conductor_info', {'id': asset_id, 'name': name, 'latlng': latlng, 'attrs': attrs_sorted})
-
 
     if message['cmd'] == 'set_asset_param':
         asset_id = message['id']
@@ -1051,6 +1124,15 @@ def load_esdl_file(message):
 
     instance = es_edit.get_instance()
     area = instance[0].get_area()
+    area_id = area.get_id()
+    area_scope = area.get_scope()
+    if len(area_id) < 20 and area_scope:
+        boundary = get_boundary_from_service(area_scope, area_id)
+        emit('area_boundary', {'crs': 'RD', 'boundary': boundary})
+    area_contour = area.get_contour()
+    if area_contour:
+        boundary = create_boundary_from_contour(area_contour)
+        emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
     mapping = {}
     create_mappings(area, mapping)

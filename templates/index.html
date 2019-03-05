@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="./plugins/L.Control.Sidebar.css"/>
     <script src="./plugins/L.Control.Sidebar.js"></script>
 
+    <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
+    <script src="./plugins/proj4.js"></script>
+    <script src="./plugins/proj4leaflet.js"></script>
+
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
     <script type="text/javascript" charset="utf-8">
@@ -208,6 +212,18 @@
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
         }
 
+        function select_other_asset(obj) {
+            selected_index = obj.selectedIndex;
+            selected_asset = obj.options[selected_index].value;
+            var marker_class_name = window[selected_asset + "Marker"];
+
+            drawControl.setDrawingOptions({
+                marker: {
+                    icon: new marker_class_name()
+                }
+            });
+        }
+
         var socket;
 
         $(document).ready(function() {
@@ -309,7 +325,6 @@
                     // line.id = list[i][2];
 
                     connection_layer.addLayer(line);
-                    // esdl_layer.addLayer(line);
                 }
             });
 
@@ -393,6 +408,57 @@
                 alert(message);
             });
 
+            socket.on('area_boundary', function(area_boundary) {
+                geometry = area_boundary['boundary']
+                console.log(geometry);
+
+                // assume coordinates are in CRS RD; true for GEIS boundary service
+                if (geometry['type'] == 'MultiPolygon') {
+                    var RD = new L.Proj.CRS( 'EPSG:28992','+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +units=m +towgs84=565.2369,50.0087,465.658,-0.406857330322398,0.350732676542563,-1.8703473836068,4.0812 +no_defs', {
+                        resolutions: [3440.640, 1720.320, 860.160, 430.080, 215.040, 107.520, 53.760, 26.880, 13.440, 6.720, 3.360, 1.680, 0.840, 0.420, 0.210],
+                        bounds: L.bounds([-285401.92, 22598.08], [595401.9199999999, 903401.9199999999]),
+                        origin: [-285401.92, 22598.08]
+                    });
+
+                    var mp = geometry['coordinates'];
+                    console.log(mp.length);
+                    for (i=0; i<mp.length; i++) {
+                        polygon = mp[i];
+
+                        var areaBoundary = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Polygon",
+                                coordinates: polygon
+                            },
+                            crs: {
+                                type: "name",
+                                properties: {
+                                    name: "EPSG:28992"
+                                }
+                            }
+                        };
+                        L.Proj.geoJson(areaBoundary).addTo(map);
+                    }
+                }
+
+                // assume coordinates are in CRS WGS84 (Lat/Lon); default for ESDL
+                if (geometry['type'] == 'Polygon') {
+                    var polygon = geometry['coordinates'];
+                    console.log(polygon);
+                    var areaBoundary = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Polygon",
+                            coordinates: polygon
+                        }
+                    };
+                    console.log(areaBoundary);
+                    L.geoJson(areaBoundary).addTo(map);
+                }
+
+            });
+
         });
     </script>
 </head>
@@ -413,8 +479,7 @@
         <a href="file.esdl"><button id="download-esdl">Download ESDL</button></a>
         <button id="conn-disconn-assets" onclick="conn_disconn_assets();">Connect assets</button>
 
-
-        <select id="asset_select">
+        <select id="asset_select" onchange="select_other_asset(this);">
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="HeatingDemand">HeatingDemand</option>
             <option value="PVParc">PVParc</option>
@@ -422,10 +487,12 @@
 			<option value="GeothermalSource">GeothermalSource</option>
 			<option value="Joint">Joint</option>
         </select>
+
         <select id="line_select">
             <option value="ElectricityCable">ElectricityCable</option>
             <option value="Pipe">Pipe</option>
         </select>
+
         <select id="area_bld_select"></select>
     </div>
 
@@ -466,7 +533,7 @@
 	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Joint.png'}});
 	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GeothermalSource.png'}});
 
-    map.addControl(new L.Control.Draw({
+    var drawControl = new L.Control.Draw({
         edit: {
             featureGroup: esdl_layer,
             poly: {
@@ -480,10 +547,11 @@
             },
             circle: false,
             marker: {
-                icon: new WindTurbineMarker()
+                icon: new ElectricityDemandMarker()
             }
         }
-    }));
+    })
+    map.addControl(drawControl);
 
     sidebar = L.control.sidebar('sidebar', {
         position: 'right',
