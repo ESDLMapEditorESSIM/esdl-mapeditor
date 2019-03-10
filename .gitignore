@@ -68,3 +68,5 @@ ENV/
 
 *.xmi
 *.esdl
+download/
+html/

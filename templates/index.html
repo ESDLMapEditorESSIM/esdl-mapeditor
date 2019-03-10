@@ -2,11 +2,16 @@
 <html>
 <head>
     <title>ESDL editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+    <!--link rel="stylesheet" href="./plugins/leaflet.css" crossorigin=""/-->
+    <!--script src="./plugins/leaflet.js" crossorigin=""></script-->
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script>
+    <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
+    <!--script src="./plugins/leaflet.draw.js"></script-->
 
     <link rel="stylesheet" href="./plugins/L.Control.Sidebar.css"/>
     <script src="./plugins/L.Control.Sidebar.js"></script>
@@ -15,8 +20,15 @@
     <script src="./plugins/proj4.js"></script>
     <script src="./plugins/proj4leaflet.js"></script>
 
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
-    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+    <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
+    <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
+
     <script type="text/javascript" charset="utf-8">
 
         var connecting_assets = false;
@@ -300,6 +312,7 @@
                 select.innerHTML = '';
                 for (i=0; i<areas_buildings.length; i++) {
                     var option = document.createElement("option");
+                    if (i==0) { option.classList.add("ui-state-active"); }
                     var level = areas_buildings[i][3];
                     option.text = '';
                     if (level > 0) {
@@ -309,6 +322,7 @@
                     option.value = areas_buildings[i][1];
                     select.add(option, null);
                 }
+                $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
             });
 
             socket.on('conn_list', function(connections) {
@@ -401,7 +415,8 @@
 
             socket.on('es_title', function(title) {
                 title_div = document.getElementById('es_title');
-                title_div.innerHTML = '<h1>  ' + title + '</h1>';
+                // title_div.innerHTML = '<h1>' + title + '</h1>';
+                title_div.innerHTML = title;
             });
 
             socket.on('alert', function(message) {
@@ -410,7 +425,9 @@
 
             socket.on('area_boundary', function(area_boundary) {
                 geometry = area_boundary['boundary']
-                console.log(geometry);
+                // console.log(area_boundary);
+                color = area_boundary['color']
+                // console.log(color)
 
                 // assume coordinates are in CRS RD; true for GEIS boundary service
                 if (geometry['type'] == 'MultiPolygon') {
@@ -421,7 +438,7 @@
                     });
 
                     var mp = geometry['coordinates'];
-                    console.log(mp.length);
+                    // console.log(mp.length);
                     for (i=0; i<mp.length; i++) {
                         polygon = mp[i];
 
@@ -445,7 +462,7 @@
                 // assume coordinates are in CRS WGS84 (Lat/Lon); default for ESDL
                 if (geometry['type'] == 'Polygon') {
                     var polygon = geometry['coordinates'];
-                    console.log(polygon);
+                    // console.log(polygon);
                     var areaBoundary = {
                         type: "Feature",
                         geometry: {
@@ -453,33 +470,60 @@
                             coordinates: polygon
                         }
                     };
-                    console.log(areaBoundary);
-                    L.geoJson(areaBoundary).addTo(map);
+                    // console.log(areaBoundary);
+                    L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(map);
                 }
 
             });
 
+            socket.on('and_now_press_download_file', function() {
+                $("#download-esdl").click();
+            });
+
         });
     </script>
+
+
+    <script>
+        $(function() {
+            $("#asset_menu").selectmenu({ width:200 });
+            $("#line_select").selectmenu({ width:200 });
+            $("#area_bld_select").selectmenu({ width:500 });
+            $("#building_color").selectmenu({ width:150 });
+        });
+    </script>
+    <style>
+        .ui-widget { font-family: Trebuchet MS, Tahoma, Verdana, Arial, sans-serif; font-size: 11px; }
+        .header, .footer {
+          background-color: grey;
+          color: white;
+          padding: 4px;
+        }
+        body {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+
 </head>
 <body>
-    <div style="position: relative">
-        <div style="float: left"><h1>ESDL Web Editor: </h1></div>
-        <div style="float: left" id="es_title"></div>
+    <div class="header" style="height: 25px">
+        <div style="float: left; padding:2px;">ESDL Web Editor:</div>
+        <div style="float: left; padding:2px;" id="es_title"></div>
     </div>
 
-    <div id="ctrl" style="clear: left; position: relative; height: 30px">
-        <button id="new-esdl" onclick="new_ESDL();">New</button>
-        <button onclick="document.querySelector('.inputFile').click();">Load ESDL File</button>
+    <div id="ctrl" style="clear: left; position: relative; height: 28px; padding:3px;">
+        <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
+        <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
         <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
-        <button id="load-esdl" onclick="send_cmd_load_ESDL();">Load from ESDL store</button>
-        <button id="save-esdl" onclick="save_ESDL();">Save ESDL to file</button>
-        <button id="store-esdl" onclick="send_cmd_store_ESDL();">Save to ESDL Store</button>
+        <button id="save-esdl" onclick="save_ESDL();" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
         <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
-        <a href="file.esdl"><button id="download-esdl">Download ESDL</button></a>
-        <button id="conn-disconn-assets" onclick="conn_disconn_assets();">Connect assets</button>
+        <a href="EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
+        <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
+        <button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button>
+        <button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button>
 
-        <select id="asset_select" onchange="select_other_asset(this);">
+        <select id="asset_menu" style='position:relative;z-index:100' onchange="select_other_asset(this);">
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="HeatingDemand">HeatingDemand</option>
             <option value="PVParc">PVParc</option>
@@ -494,9 +538,14 @@
         </select>
 
         <select id="area_bld_select"></select>
+
+        <select id="building_color">
+            <option value="buildingyear">Building year</option>
+            <option value="floor area">Floor area</option>
+        </select>
     </div>
 
-    <div id="mapid" style="float: left; width: 2000px; height: 900px;"></div>
+    <div id="mapid" style="float: left; width: 100%; height: 680px; position:relative; z-index:10"></div>
 
     <div id="sidebar">
     </div>

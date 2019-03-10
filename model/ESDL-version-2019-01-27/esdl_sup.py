@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Generated Wed Mar  6 11:06:40 2019 by generateDS.py version 2.30.1.
+# Generated Sun Jan 27 12:24:47 2019 by generateDS.py version 2.30.1.
 # Python 3.7.0 (v3.7.0:1bf9cc5093, Jun 27 2018, 04:59:51) [MSC v.1914 64 bit (AMD64)]
 #
 # Command line options:
@@ -20,7 +20,7 @@
 #   C:\Users\matthijssenef\AppData\Local\Programs\Python\Python37\Scripts\generateDS-2-30-1-Edwin.py --subclass-suffix "" --no-namespace-defs -o "esdl_sup.py" -s "esdl_sub.py" --root-element="EnergySystem" --export="write etree" esdlXML.xsd
 #
 # Current working directory (os.getcwd()):
-#   ESDL 2019-03-06
+#   model_20190126
 #
 
 import sys
@@ -794,10 +794,9 @@ class BuildingTypeEnum(object):
     EDUCATION='EDUCATION'
     SPORTS='SPORTS'
     SHOPPING='SHOPPING'
-    HOTEL='HOTEL'
     GREENHOUSE='GREENHOUSE'
-    UTILITY='UTILITY'
     OTHER='OTHER'
+    UTILITY='UTILITY'
 
 
 class CHPTypeEnum(object):
@@ -4822,14 +4821,12 @@ class PercentileDistribution(GenericDistribution):
 class CostInformation(GeneratedsSuper):
     subclass = None
     superclass = None
-    def __init__(self, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, **kwargs_):
+    def __init__(self, investmentCosts=None, installationCosts=None, O_and_MCosts=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         self.investmentCosts = investmentCosts
         self.installationCosts = installationCosts
-        self.fixedOperationalAndMaintenanceCosts = fixedOperationalAndMaintenanceCosts
-        self.marginalCosts = marginalCosts
-        self.variableOperationalAndMaintenanceCosts = variableOperationalAndMaintenanceCosts
+        self.O_and_MCosts = O_and_MCosts
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -4849,25 +4846,15 @@ class CostInformation(GeneratedsSuper):
         return self.installationCosts
     def set_installationCosts(self, installationCosts):
         self.installationCosts = installationCosts
-    def get_fixedOperationalAndMaintenanceCosts(self):
-        return self.fixedOperationalAndMaintenanceCosts
-    def set_fixedOperationalAndMaintenanceCosts(self, fixedOperationalAndMaintenanceCosts):
-        self.fixedOperationalAndMaintenanceCosts = fixedOperationalAndMaintenanceCosts
-    def get_marginalCosts(self):
-        return self.marginalCosts
-    def set_marginalCosts(self, marginalCosts):
-        self.marginalCosts = marginalCosts
-    def get_variableOperationalAndMaintenanceCosts(self):
-        return self.variableOperationalAndMaintenanceCosts
-    def set_variableOperationalAndMaintenanceCosts(self, variableOperationalAndMaintenanceCosts):
-        self.variableOperationalAndMaintenanceCosts = variableOperationalAndMaintenanceCosts
+    def get_O_and_MCosts(self):
+        return self.O_and_MCosts
+    def set_O_and_MCosts(self, O_and_MCosts):
+        self.O_and_MCosts = O_and_MCosts
     def hasContent_(self):
         if (
             self.investmentCosts is not None or
             self.installationCosts is not None or
-            self.fixedOperationalAndMaintenanceCosts is not None or
-            self.marginalCosts is not None or
-            self.variableOperationalAndMaintenanceCosts is not None
+            self.O_and_MCosts is not None
         ):
             return True
         else:
@@ -4904,12 +4891,8 @@ class CostInformation(GeneratedsSuper):
             self.investmentCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
         if self.installationCosts is not None:
             self.installationCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.fixedOperationalAndMaintenanceCosts is not None:
-            self.fixedOperationalAndMaintenanceCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.marginalCosts is not None:
-            self.marginalCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.variableOperationalAndMaintenanceCosts is not None:
-            self.variableOperationalAndMaintenanceCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
+        if self.O_and_MCosts is not None:
+            self.O_and_MCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='CostInformation', mapping_=None):
         if parent_element is None:
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
@@ -4921,15 +4904,9 @@ class CostInformation(GeneratedsSuper):
         if self.installationCosts is not None:
             installationCosts_ = self.installationCosts
             installationCosts_.to_etree(element, name_='installationCosts', mapping_=mapping_)
-        if self.fixedOperationalAndMaintenanceCosts is not None:
-            fixedOperationalAndMaintenanceCosts_ = self.fixedOperationalAndMaintenanceCosts
-            fixedOperationalAndMaintenanceCosts_.to_etree(element, name_='fixedOperationalAndMaintenanceCosts', mapping_=mapping_)
-        if self.marginalCosts is not None:
-            marginalCosts_ = self.marginalCosts
-            marginalCosts_.to_etree(element, name_='marginalCosts', mapping_=mapping_)
-        if self.variableOperationalAndMaintenanceCosts is not None:
-            variableOperationalAndMaintenanceCosts_ = self.variableOperationalAndMaintenanceCosts
-            variableOperationalAndMaintenanceCosts_.to_etree(element, name_='variableOperationalAndMaintenanceCosts', mapping_=mapping_)
+        if self.O_and_MCosts is not None:
+            O_and_MCosts_ = self.O_and_MCosts
+            O_and_MCosts_.to_etree(element, name_='O_and_MCosts', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -4981,7 +4958,7 @@ class CostInformation(GeneratedsSuper):
                     'Class not implemented for <installationCosts> element')
             self.installationCosts = obj_
             obj_.original_tagname_ = 'installationCosts'
-        elif nodeName_ == 'fixedOperationalAndMaintenanceCosts':
+        elif nodeName_ == 'O_and_MCosts':
             type_name_ = child_.attrib.get(
                 '{http://www.w3.org/2001/XMLSchema-instance}type')
             if type_name_ is None:
@@ -4997,47 +4974,9 @@ class CostInformation(GeneratedsSuper):
                 obj_.build(child_)
             else:
                 raise NotImplementedError(
-                    'Class not implemented for <fixedOperationalAndMaintenanceCosts> element')
-            self.fixedOperationalAndMaintenanceCosts = obj_
-            obj_.original_tagname_ = 'fixedOperationalAndMaintenanceCosts'
-        elif nodeName_ == 'marginalCosts':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <marginalCosts> element')
-            self.marginalCosts = obj_
-            obj_.original_tagname_ = 'marginalCosts'
-        elif nodeName_ == 'variableOperationalAndMaintenanceCosts':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <variableOperationalAndMaintenanceCosts> element')
-            self.variableOperationalAndMaintenanceCosts = obj_
-            obj_.original_tagname_ = 'variableOperationalAndMaintenanceCosts'
+                    'Class not implemented for <O_and_MCosts> element')
+            self.O_and_MCosts = obj_
+            obj_.original_tagname_ = 'O_and_MCosts'
 # end class CostInformation
 
 
@@ -7105,53 +7044,38 @@ class Range(StaticProfile):
 # end class Range
 
 
-class SolarPotential(Potential):
+class SolarFieldPotential(Potential):
     subclass = None
     superclass = Potential
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, value=0.0, SolarPotentialType=None, fullLoadHours=None, area=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, value=0.0, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(SolarPotential, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, geometryReference, aggregated, aggregationCount, geometry, quantityAndUnit,  **kwargs_)
+        super(SolarFieldPotential, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, geometryReference, aggregated, aggregationCount, geometry, quantityAndUnit,  **kwargs_)
         self.value = _cast(float, value)
-        self.SolarPotentialType = _cast(None, SolarPotentialType)
-        self.fullLoadHours = _cast(int, fullLoadHours)
-        self.area = _cast(float, area)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, SolarPotential)
+                CurrentSubclassModule_, SolarFieldPotential)
             if subclass is not None:
                 return subclass(*args_, **kwargs_)
-        if SolarPotential.subclass:
-            return SolarPotential.subclass(*args_, **kwargs_)
+        if SolarFieldPotential.subclass:
+            return SolarFieldPotential.subclass(*args_, **kwargs_)
         else:
-            return SolarPotential(*args_, **kwargs_)
+            return SolarFieldPotential(*args_, **kwargs_)
     factory = staticmethod(factory)
     def get_value(self):
         return self.value
     def set_value(self, value):
         self.value = value
-    def get_SolarPotentialType(self):
-        return self.SolarPotentialType
-    def set_SolarPotentialType(self, SolarPotentialType):
-        self.SolarPotentialType = SolarPotentialType
-    def get_fullLoadHours(self):
-        return self.fullLoadHours
-    def set_fullLoadHours(self, fullLoadHours):
-        self.fullLoadHours = fullLoadHours
-    def get_area(self):
-        return self.area
-    def set_area(self, area):
-        self.area = area
     def hasContent_(self):
         if (
-            super(SolarPotential, self).hasContent_()
+            super(SolarFieldPotential, self).hasContent_()
         ):
             return True
         else:
             return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='SolarPotential', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('SolarPotential')
+    def export(self, outfile, level, namespaceprefix_='esdl:', name_='SolarFieldPotential', namespacedef_='', pretty_print=True):
+        imported_ns_def_ = GenerateDSNamespaceDefs_.get('SolarFieldPotential')
         if imported_ns_def_ is not None:
             namespacedef_ = imported_ns_def_
         if pretty_print:
@@ -7163,40 +7087,25 @@ class SolarPotential(Potential):
         showIndent(outfile, level, pretty_print)
         outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
         already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SolarPotential')
+        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SolarFieldPotential')
         if self.hasContent_():
             outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='SolarPotential', pretty_print=pretty_print)
+            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='SolarFieldPotential', pretty_print=pretty_print)
             showIndent(outfile, level, pretty_print)
             outfile.write('</%s>%s' % (name_, eol_))
         else:
             outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='SolarPotential'):
-        super(SolarPotential, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SolarPotential')
+    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='SolarFieldPotential'):
+        super(SolarFieldPotential, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SolarFieldPotential')
         if self.value != 0.0 and 'value' not in already_processed:
             already_processed.add('value')
             outfile.write(' value="%s"' % self.gds_format_double(self.value, input_name='value'))
-        if self.SolarPotentialType is not None and 'SolarPotentialType' not in already_processed:
-            already_processed.add('SolarPotentialType')
-            outfile.write(' SolarPotentialType=%s' % (quote_attrib(self.SolarPotentialType), ))
-        if self.fullLoadHours is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            outfile.write(' fullLoadHours="%s"' % self.gds_format_integer(self.fullLoadHours, input_name='fullLoadHours'))
-        if self.area is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            outfile.write(' area="%s"' % self.gds_format_double(self.area, input_name='area'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='SolarPotential', fromsubclass_=False, pretty_print=True):
-        super(SolarPotential, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='SolarPotential', mapping_=None):
-        element = super(SolarPotential, self).to_etree(parent_element, name_, mapping_)
+    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='SolarFieldPotential', fromsubclass_=False, pretty_print=True):
+        super(SolarFieldPotential, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
+    def to_etree(self, parent_element=None, name_='SolarFieldPotential', mapping_=None):
+        element = super(SolarFieldPotential, self).to_etree(parent_element, name_, mapping_)
         if self.value is not None:
             element.set('value', self.gds_format_double(self.value))
-        if self.SolarPotentialType is not None:
-            element.set('SolarPotentialType', self.SolarPotentialType)
-        if self.fullLoadHours is not None:
-            element.set('fullLoadHours', self.gds_format_integer(self.fullLoadHours))
-        if self.area is not None:
-            element.set('area', self.gds_format_double(self.area))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -7215,29 +7124,11 @@ class SolarPotential(Potential):
                 self.value = float(value)
             except ValueError as exp:
                 raise ValueError('Bad float/double attribute (value): %s' % exp)
-        value = find_attr_value_('SolarPotentialType', node)
-        if value is not None and 'SolarPotentialType' not in already_processed:
-            already_processed.add('SolarPotentialType')
-            self.SolarPotentialType = value
-        value = find_attr_value_('fullLoadHours', node)
-        if value is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            try:
-                self.fullLoadHours = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('area', node)
-        if value is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            try:
-                self.area = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (area): %s' % exp)
-        super(SolarPotential, self).buildAttributes(node, attrs, already_processed)
+        super(SolarFieldPotential, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(SolarPotential, self).buildChildren(child_, node, nodeName_, True)
+        super(SolarFieldPotential, self).buildChildren(child_, node, nodeName_, True)
         pass
-# end class SolarPotential
+# end class SolarFieldPotential
 
 
 class Duration(GeneratedsSuper):
@@ -11246,12 +11137,10 @@ class WKB(Geometry):
 class SearchAreaWind(Potential):
     subclass = None
     superclass = Potential
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, fullLoadHours=None, area=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(SearchAreaWind, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, geometryReference, aggregated, aggregationCount, geometry, quantityAndUnit,  **kwargs_)
-        self.fullLoadHours = _cast(int, fullLoadHours)
-        self.area = _cast(float, area)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -11263,14 +11152,6 @@ class SearchAreaWind(Potential):
         else:
             return SearchAreaWind(*args_, **kwargs_)
     factory = staticmethod(factory)
-    def get_fullLoadHours(self):
-        return self.fullLoadHours
-    def set_fullLoadHours(self, fullLoadHours):
-        self.fullLoadHours = fullLoadHours
-    def get_area(self):
-        return self.area
-    def set_area(self, area):
-        self.area = area
     def hasContent_(self):
         if (
             super(SearchAreaWind, self).hasContent_()
@@ -11301,20 +11182,10 @@ class SearchAreaWind(Potential):
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='SearchAreaWind'):
         super(SearchAreaWind, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SearchAreaWind')
-        if self.fullLoadHours is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            outfile.write(' fullLoadHours="%s"' % self.gds_format_integer(self.fullLoadHours, input_name='fullLoadHours'))
-        if self.area is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            outfile.write(' area="%s"' % self.gds_format_double(self.area, input_name='area'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='SearchAreaWind', fromsubclass_=False, pretty_print=True):
         super(SearchAreaWind, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='SearchAreaWind', mapping_=None):
         element = super(SearchAreaWind, self).to_etree(parent_element, name_, mapping_)
-        if self.fullLoadHours is not None:
-            element.set('fullLoadHours', self.gds_format_integer(self.fullLoadHours))
-        if self.area is not None:
-            element.set('area', self.gds_format_double(self.area))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -11326,20 +11197,6 @@ class SearchAreaWind(Potential):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('fullLoadHours', node)
-        if value is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            try:
-                self.fullLoadHours = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('area', node)
-        if value is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            try:
-                self.area = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (area): %s' % exp)
         super(SearchAreaWind, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(SearchAreaWind, self).buildChildren(child_, node, nodeName_, True)
@@ -11350,12 +11207,10 @@ class SearchAreaWind(Potential):
 class SearchAreaSolar(Potential):
     subclass = None
     superclass = Potential
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, fullLoadHours=None, area=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(SearchAreaSolar, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, geometryReference, aggregated, aggregationCount, geometry, quantityAndUnit,  **kwargs_)
-        self.fullLoadHours = _cast(int, fullLoadHours)
-        self.area = _cast(float, area)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -11367,14 +11222,6 @@ class SearchAreaSolar(Potential):
         else:
             return SearchAreaSolar(*args_, **kwargs_)
     factory = staticmethod(factory)
-    def get_fullLoadHours(self):
-        return self.fullLoadHours
-    def set_fullLoadHours(self, fullLoadHours):
-        self.fullLoadHours = fullLoadHours
-    def get_area(self):
-        return self.area
-    def set_area(self, area):
-        self.area = area
     def hasContent_(self):
         if (
             super(SearchAreaSolar, self).hasContent_()
@@ -11405,20 +11252,10 @@ class SearchAreaSolar(Potential):
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='SearchAreaSolar'):
         super(SearchAreaSolar, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='SearchAreaSolar')
-        if self.fullLoadHours is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            outfile.write(' fullLoadHours="%s"' % self.gds_format_integer(self.fullLoadHours, input_name='fullLoadHours'))
-        if self.area is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            outfile.write(' area="%s"' % self.gds_format_double(self.area, input_name='area'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='SearchAreaSolar', fromsubclass_=False, pretty_print=True):
         super(SearchAreaSolar, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='SearchAreaSolar', mapping_=None):
         element = super(SearchAreaSolar, self).to_etree(parent_element, name_, mapping_)
-        if self.fullLoadHours is not None:
-            element.set('fullLoadHours', self.gds_format_integer(self.fullLoadHours))
-        if self.area is not None:
-            element.set('area', self.gds_format_double(self.area))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -11430,20 +11267,6 @@ class SearchAreaSolar(Potential):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('fullLoadHours', node)
-        if value is not None and 'fullLoadHours' not in already_processed:
-            already_processed.add('fullLoadHours')
-            try:
-                self.fullLoadHours = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('area', node)
-        if value is not None and 'area' not in already_processed:
-            already_processed.add('area')
-            try:
-                self.area = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (area): %s' % exp)
         super(SearchAreaSolar, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(SearchAreaSolar, self).buildChildren(child_, node, nodeName_, True)
@@ -12823,7 +12646,7 @@ class GeothermalPotential(AbstractGTPotential):
 class Asset(Item):
     subclass = None
     superclass = Item
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(Asset, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, extensiontype_,  **kwargs_)
@@ -12834,12 +12657,10 @@ class Asset(Item):
         self.technicalLifetime = _cast(float, technicalLifetime)
         self.aggregated = _cast(bool, aggregated)
         self.aggregationCount = _cast(int, aggregationCount)
-        self.installationDuration = _cast(float, installationDuration)
         self.area = _cast(None, area)
         self.containingBuilding = _cast(None, containingBuilding)
         self.geometry = geometry
         self.costInformation = costInformation
-        self.KPIs = KPIs
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -12864,10 +12685,6 @@ class Asset(Item):
         return self.costInformation
     def set_costInformation(self, costInformation):
         self.costInformation = costInformation
-    def get_KPIs(self):
-        return self.KPIs
-    def set_KPIs(self, KPIs):
-        self.KPIs = KPIs
     def get_surfaceArea(self):
         return self.surfaceArea
     def set_surfaceArea(self, surfaceArea):
@@ -12896,10 +12713,6 @@ class Asset(Item):
         return self.aggregationCount
     def set_aggregationCount(self, aggregationCount):
         self.aggregationCount = aggregationCount
-    def get_installationDuration(self):
-        return self.installationDuration
-    def set_installationDuration(self, installationDuration):
-        self.installationDuration = installationDuration
     def get_area(self):
         return self.area
     def set_area(self, area):
@@ -12914,7 +12727,6 @@ class Asset(Item):
         if (
             self.geometry is not None or
             self.costInformation is not None or
-            self.KPIs is not None or
             super(Asset, self).hasContent_()
         ):
             return True
@@ -12964,9 +12776,6 @@ class Asset(Item):
         if self.aggregationCount != 1 and 'aggregationCount' not in already_processed:
             already_processed.add('aggregationCount')
             outfile.write(' aggregationCount="%s"' % self.gds_format_integer(self.aggregationCount, input_name='aggregationCount'))
-        if self.installationDuration is not None and 'installationDuration' not in already_processed:
-            already_processed.add('installationDuration')
-            outfile.write(' installationDuration="%s"' % self.gds_format_double(self.installationDuration, input_name='installationDuration'))
         if self.area is not None and 'area' not in already_processed:
             already_processed.add('area')
             outfile.write(' area=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.area), input_name='area')), ))
@@ -12990,8 +12799,6 @@ class Asset(Item):
             self.geometry.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
         if self.costInformation is not None:
             self.costInformation.export(outfile, level, namespaceprefix_, name_='costInformation', pretty_print=pretty_print)
-        if self.KPIs is not None:
-            self.KPIs.export(outfile, level, namespaceprefix_, name_='KPIs', pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='Asset', mapping_=None):
         element = super(Asset, self).to_etree(parent_element, name_, mapping_)
         if self.extensiontype_ is not None:
@@ -13010,8 +12817,6 @@ class Asset(Item):
             element.set('aggregated', self.gds_format_boolean(self.aggregated))
         if self.aggregationCount is not None:
             element.set('aggregationCount', self.gds_format_integer(self.aggregationCount))
-        if self.installationDuration is not None:
-            element.set('installationDuration', self.gds_format_double(self.installationDuration))
         if self.area is not None:
             element.set('area', self.gds_format_string(self.area))
         if self.containingBuilding is not None:
@@ -13022,9 +12827,6 @@ class Asset(Item):
         if self.costInformation is not None:
             costInformation_ = self.costInformation
             costInformation_.to_etree(element, name_='costInformation', mapping_=mapping_)
-        if self.KPIs is not None:
-            KPIs_ = self.KPIs
-            KPIs_.to_etree(element, name_='KPIs', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -13078,13 +12880,6 @@ class Asset(Item):
                 self.aggregationCount = int(value)
             except ValueError as exp:
                 raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('installationDuration', node)
-        if value is not None and 'installationDuration' not in already_processed:
-            already_processed.add('installationDuration')
-            try:
-                self.installationDuration = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (installationDuration): %s' % exp)
         value = find_attr_value_('area', node)
         if value is not None and 'area' not in already_processed:
             already_processed.add('area')
@@ -13123,11 +12918,6 @@ class Asset(Item):
             obj_.build(child_)
             self.costInformation = obj_
             obj_.original_tagname_ = 'costInformation'
-        elif nodeName_ == 'KPIs':
-            obj_ = KPIs.factory(parent_object_=self)
-            obj_.build(child_)
-            self.KPIs = obj_
-            obj_.original_tagname_ = 'KPIs'
         super(Asset, self).buildChildren(child_, node, nodeName_, True)
 # end class Asset
 
@@ -13135,10 +12925,10 @@ class Asset(Item):
 class EnergyAsset(Asset):
     subclass = None
     superclass = Asset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(EnergyAsset, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, extensiontype_,  **kwargs_)
+        super(EnergyAsset, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, extensiontype_,  **kwargs_)
         self.controlStrategy = _cast(None, controlStrategy)
         if port is None:
             self.port = []
@@ -13280,10 +13070,10 @@ class EnergyAsset(Asset):
 class Glass(Asset):
     subclass = None
     superclass = Asset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, uWindow=None, glasType='UNDEFINED', **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, uWindow=None, glasType='UNDEFINED', **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Glass, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs,  **kwargs_)
+        super(Glass, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation,  **kwargs_)
         self.uWindow = _cast(float, uWindow)
         self.glasType = _cast(None, glasType)
     def factory(*args_, **kwargs_):
@@ -13781,12 +13571,11 @@ class ElectricityCommodity(Commodity):
 class HeatCommodity(Commodity):
     subclass = None
     superclass = Commodity
-    def __init__(self, name=None, id=None, cost=None, dataSource=None, supplyTemperature=0.0, returnTemperature=None, **kwargs_):
+    def __init__(self, name=None, id=None, cost=None, dataSource=None, temperature=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(HeatCommodity, self).__init__(name, id, cost, dataSource,  **kwargs_)
-        self.supplyTemperature = _cast(float, supplyTemperature)
-        self.returnTemperature = _cast(float, returnTemperature)
+        self.temperature = _cast(float, temperature)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -13798,14 +13587,10 @@ class HeatCommodity(Commodity):
         else:
             return HeatCommodity(*args_, **kwargs_)
     factory = staticmethod(factory)
-    def get_supplyTemperature(self):
-        return self.supplyTemperature
-    def set_supplyTemperature(self, supplyTemperature):
-        self.supplyTemperature = supplyTemperature
-    def get_returnTemperature(self):
-        return self.returnTemperature
-    def set_returnTemperature(self, returnTemperature):
-        self.returnTemperature = returnTemperature
+    def get_temperature(self):
+        return self.temperature
+    def set_temperature(self, temperature):
+        self.temperature = temperature
     def hasContent_(self):
         if (
             super(HeatCommodity, self).hasContent_()
@@ -13836,20 +13621,15 @@ class HeatCommodity(Commodity):
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='HeatCommodity'):
         super(HeatCommodity, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='HeatCommodity')
-        if self.supplyTemperature != 0.0 and 'supplyTemperature' not in already_processed:
-            already_processed.add('supplyTemperature')
-            outfile.write(' supplyTemperature="%s"' % self.gds_format_double(self.supplyTemperature, input_name='supplyTemperature'))
-        if self.returnTemperature is not None and 'returnTemperature' not in already_processed:
-            already_processed.add('returnTemperature')
-            outfile.write(' returnTemperature="%s"' % self.gds_format_double(self.returnTemperature, input_name='returnTemperature'))
+        if self.temperature is not None and 'temperature' not in already_processed:
+            already_processed.add('temperature')
+            outfile.write(' temperature="%s"' % self.gds_format_double(self.temperature, input_name='temperature'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='HeatCommodity', fromsubclass_=False, pretty_print=True):
         super(HeatCommodity, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='HeatCommodity', mapping_=None):
         element = super(HeatCommodity, self).to_etree(parent_element, name_, mapping_)
-        if self.supplyTemperature is not None:
-            element.set('supplyTemperature', self.gds_format_double(self.supplyTemperature))
-        if self.returnTemperature is not None:
-            element.set('returnTemperature', self.gds_format_double(self.returnTemperature))
+        if self.temperature is not None:
+            element.set('temperature', self.gds_format_double(self.temperature))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -13861,20 +13641,13 @@ class HeatCommodity(Commodity):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('supplyTemperature', node)
-        if value is not None and 'supplyTemperature' not in already_processed:
-            already_processed.add('supplyTemperature')
+        value = find_attr_value_('temperature', node)
+        if value is not None and 'temperature' not in already_processed:
+            already_processed.add('temperature')
             try:
-                self.supplyTemperature = float(value)
+                self.temperature = float(value)
             except ValueError as exp:
-                raise ValueError('Bad float/double attribute (supplyTemperature): %s' % exp)
-        value = find_attr_value_('returnTemperature', node)
-        if value is not None and 'returnTemperature' not in already_processed:
-            already_processed.add('returnTemperature')
-            try:
-                self.returnTemperature = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (returnTemperature): %s' % exp)
+                raise ValueError('Bad float/double attribute (temperature): %s' % exp)
         super(HeatCommodity, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(HeatCommodity, self).buildChildren(child_, node, nodeName_, True)
@@ -14042,10 +13815,10 @@ class AggregatorService(EnergyService):
 class AbstractBuilding(Asset):
     subclass = None
     superclass = Asset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, energyLabel=None, energyIndex=None, asset=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AbstractBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, extensiontype_,  **kwargs_)
+        super(AbstractBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, extensiontype_,  **kwargs_)
         self.energyLabel = _cast(None, energyLabel)
         self.energyIndex = _cast(float, energyIndex)
         if asset is None:
@@ -14274,10 +14047,10 @@ class DemandResponseService(EnergyService):
 class Insulation(Asset):
     subclass = None
     superclass = Asset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, thermalInsulation=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, thermalInsulation=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Insulation, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs,  **kwargs_)
+        super(Insulation, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation,  **kwargs_)
         self.thermalInsulation = _cast(float, thermalInsulation)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -14361,10 +14134,10 @@ class Insulation(Asset):
 class Building(AbstractBuilding):
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingYear=None, residentialBuildingType=None, floorArea=None, numberOfFloors=None, slantedRoofArea=None, flatRoofArea=None, roofType=None, wallArea=None, windowArea=None, perimeter=None, height=None, rcFloor=None, rcWall=None, rcRoof=None, uWindow=None, orientation=None, glasType=None, ventilationType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, energyLabel=None, energyIndex=None, asset=None, buildingYear=None, residentialBuildingType=None, floorArea=None, numberOfFloors=None, slantedRoofArea=None, flatRoofArea=None, roofType=None, wallArea=None, windowArea=None, perimeter=None, height=None, rcFloor=None, rcWall=None, rcRoof=None, uWindow=None, orientation=None, glasType=None, ventilationType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Building, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
+        super(Building, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, energyLabel, energyIndex, asset,  **kwargs_)
         self.buildingYear = _cast(int, buildingYear)
         self.residentialBuildingType = _cast(None, residentialBuildingType)
         self.floorArea = _cast(float, floorArea)
@@ -14725,15 +14498,14 @@ class Building(AbstractBuilding):
 class BuildingUnit(AbstractBuilding):
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, type_=None, housingType=None, numberOfInhabitants=None, inhabitantsType=None, floorArea=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, energyLabel=None, energyIndex=None, asset=None, type_=None, housingType=None, numberOfInhabitants=None, inhabitantsType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(BuildingUnit, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
+        super(BuildingUnit, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, energyLabel, energyIndex, asset,  **kwargs_)
         self.type_ = _cast(None, type_)
         self.housingType = _cast(None, housingType)
         self.numberOfInhabitants = _cast(int, numberOfInhabitants)
         self.inhabitantsType = _cast(None, inhabitantsType)
-        self.floorArea = _cast(float, floorArea)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -14761,10 +14533,6 @@ class BuildingUnit(AbstractBuilding):
         return self.inhabitantsType
     def set_inhabitantsType(self, inhabitantsType):
         self.inhabitantsType = inhabitantsType
-    def get_floorArea(self):
-        return self.floorArea
-    def set_floorArea(self, floorArea):
-        self.floorArea = floorArea
     def hasContent_(self):
         if (
             super(BuildingUnit, self).hasContent_()
@@ -14807,9 +14575,6 @@ class BuildingUnit(AbstractBuilding):
         if self.inhabitantsType is not None and 'inhabitantsType' not in already_processed:
             already_processed.add('inhabitantsType')
             outfile.write(' inhabitantsType=%s' % (quote_attrib(self.inhabitantsType), ))
-        if self.floorArea is not None and 'floorArea' not in already_processed:
-            already_processed.add('floorArea')
-            outfile.write(' floorArea="%s"' % self.gds_format_double(self.floorArea, input_name='floorArea'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUnit', fromsubclass_=False, pretty_print=True):
         super(BuildingUnit, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='BuildingUnit', mapping_=None):
@@ -14822,8 +14587,6 @@ class BuildingUnit(AbstractBuilding):
             element.set('numberOfInhabitants', self.gds_format_integer(self.numberOfInhabitants))
         if self.inhabitantsType is not None:
             element.set('inhabitantsType', self.inhabitantsType)
-        if self.floorArea is not None:
-            element.set('floorArea', self.gds_format_double(self.floorArea))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -14854,13 +14617,6 @@ class BuildingUnit(AbstractBuilding):
         if value is not None and 'inhabitantsType' not in already_processed:
             already_processed.add('inhabitantsType')
             self.inhabitantsType = value
-        value = find_attr_value_('floorArea', node)
-        if value is not None and 'floorArea' not in already_processed:
-            already_processed.add('floorArea')
-            try:
-                self.floorArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (floorArea): %s' % exp)
         super(BuildingUnit, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(BuildingUnit, self).buildChildren(child_, node, nodeName_, True)
@@ -14872,10 +14628,10 @@ class Transport(EnergyAsset):
     """Allows to specify transmission losses as a percentage"""
     subclass = None
     superclass = EnergyAsset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Transport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, extensiontype_,  **kwargs_)
+        super(Transport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, extensiontype_,  **kwargs_)
         self.capacity = _cast(float, capacity)
         self.efficiency = _cast(float, efficiency)
         self.extensiontype_ = extensiontype_
@@ -14993,10 +14749,10 @@ class Conversion(EnergyAsset):
     """Conversion Capability"""
     subclass = None
     superclass = EnergyAsset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Conversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, extensiontype_,  **kwargs_)
+        super(Conversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, extensiontype_,  **kwargs_)
         self.efficiency = _cast(float, efficiency)
         self.operationalHours = _cast(int, operationalHours)
         self.fullLoadHours = _cast(int, fullLoadHours)
@@ -15161,10 +14917,10 @@ class Conversion(EnergyAsset):
 class Storage(EnergyAsset):
     subclass = None
     superclass = EnergyAsset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Storage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, extensiontype_,  **kwargs_)
+        super(Storage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, extensiontype_,  **kwargs_)
         self.capacity = _cast(float, capacity)
         self.chargeEfficiency = _cast(float, chargeEfficiency)
         self.dischargeEfficiency = _cast(float, dischargeEfficiency)
@@ -15401,10 +15157,10 @@ class Storage(EnergyAsset):
 class Consumer(EnergyAsset):
     subclass = None
     superclass = EnergyAsset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Consumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, extensiontype_,  **kwargs_)
+        super(Consumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, extensiontype_,  **kwargs_)
         self.consType = _cast(None, consType)
         self.power = _cast(float, power)
         self.extensiontype_ = extensiontype_
@@ -15518,10 +15274,10 @@ class Consumer(EnergyAsset):
 class Producer(EnergyAsset):
     subclass = None
     superclass = EnergyAsset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Producer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, extensiontype_,  **kwargs_)
+        super(Producer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, extensiontype_,  **kwargs_)
         self.prodType = _cast(None, prodType)
         self.operationalHours = _cast(int, operationalHours)
         self.fullLoadHours = _cast(int, fullLoadHours)
@@ -15666,233 +15422,13 @@ class Producer(EnergyAsset):
 # end class Producer
 
 
-class CurtailmentStrategy(ControlStrategy):
-    subclass = None
-    superclass = ControlStrategy
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, energyAsset=None, maxPower=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(CurtailmentStrategy, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, energyAsset,  **kwargs_)
-        self.maxPower = _cast(float, maxPower)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, CurtailmentStrategy)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if CurtailmentStrategy.subclass:
-            return CurtailmentStrategy.subclass(*args_, **kwargs_)
-        else:
-            return CurtailmentStrategy(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_maxPower(self):
-        return self.maxPower
-    def set_maxPower(self, maxPower):
-        self.maxPower = maxPower
-    def hasContent_(self):
-        if (
-            super(CurtailmentStrategy, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='CurtailmentStrategy', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('CurtailmentStrategy')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='CurtailmentStrategy')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='CurtailmentStrategy', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='CurtailmentStrategy'):
-        super(CurtailmentStrategy, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='CurtailmentStrategy')
-        if self.maxPower is not None and 'maxPower' not in already_processed:
-            already_processed.add('maxPower')
-            outfile.write(' maxPower="%s"' % self.gds_format_double(self.maxPower, input_name='maxPower'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='CurtailmentStrategy', fromsubclass_=False, pretty_print=True):
-        super(CurtailmentStrategy, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='CurtailmentStrategy', mapping_=None):
-        element = super(CurtailmentStrategy, self).to_etree(parent_element, name_, mapping_)
-        if self.maxPower is not None:
-            element.set('maxPower', self.gds_format_double(self.maxPower))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('maxPower', node)
-        if value is not None and 'maxPower' not in already_processed:
-            already_processed.add('maxPower')
-            try:
-                self.maxPower = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (maxPower): %s' % exp)
-        super(CurtailmentStrategy, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(CurtailmentStrategy, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class CurtailmentStrategy
-
-
-class StorageStrategy(ControlStrategy):
-    subclass = None
-    superclass = ControlStrategy
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, energyAsset=None, marginalChargeCosts=None, marginalDischargeCosts=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(StorageStrategy, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, energyAsset,  **kwargs_)
-        self.marginalChargeCosts = marginalChargeCosts
-        self.marginalDischargeCosts = marginalDischargeCosts
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, StorageStrategy)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if StorageStrategy.subclass:
-            return StorageStrategy.subclass(*args_, **kwargs_)
-        else:
-            return StorageStrategy(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_marginalChargeCosts(self):
-        return self.marginalChargeCosts
-    def set_marginalChargeCosts(self, marginalChargeCosts):
-        self.marginalChargeCosts = marginalChargeCosts
-    def get_marginalDischargeCosts(self):
-        return self.marginalDischargeCosts
-    def set_marginalDischargeCosts(self, marginalDischargeCosts):
-        self.marginalDischargeCosts = marginalDischargeCosts
-    def hasContent_(self):
-        if (
-            self.marginalChargeCosts is not None or
-            self.marginalDischargeCosts is not None or
-            super(StorageStrategy, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='StorageStrategy', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('StorageStrategy')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='StorageStrategy')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='StorageStrategy', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='StorageStrategy'):
-        super(StorageStrategy, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='StorageStrategy')
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='StorageStrategy', fromsubclass_=False, pretty_print=True):
-        super(StorageStrategy, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.marginalChargeCosts is not None:
-            self.marginalChargeCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.marginalDischargeCosts is not None:
-            self.marginalDischargeCosts.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='StorageStrategy', mapping_=None):
-        element = super(StorageStrategy, self).to_etree(parent_element, name_, mapping_)
-        if self.marginalChargeCosts is not None:
-            marginalChargeCosts_ = self.marginalChargeCosts
-            marginalChargeCosts_.to_etree(element, name_='marginalChargeCosts', mapping_=mapping_)
-        if self.marginalDischargeCosts is not None:
-            marginalDischargeCosts_ = self.marginalDischargeCosts
-            marginalDischargeCosts_.to_etree(element, name_='marginalDischargeCosts', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        super(StorageStrategy, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'marginalChargeCosts':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <marginalChargeCosts> element')
-            self.marginalChargeCosts = obj_
-            obj_.original_tagname_ = 'marginalChargeCosts'
-        elif nodeName_ == 'marginalDischargeCosts':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <marginalDischargeCosts> element')
-            self.marginalDischargeCosts = obj_
-            obj_.original_tagname_ = 'marginalDischargeCosts'
-        super(StorageStrategy, self).buildChildren(child_, node, nodeName_, True)
-# end class StorageStrategy
-
-
 class BiomassHeater(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(BiomassHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(BiomassHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -15959,10 +15495,10 @@ class BiomassHeater(Conversion):
 class RoomHeater(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(RoomHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(RoomHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.type_ = _cast(None, type_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16043,10 +15579,10 @@ class RoomHeater(Conversion):
 class AbstractConnection(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AbstractConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
+        super(AbstractConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16129,10 +15665,10 @@ class AbstractConnection(Transport):
 class AbstractTransformer(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AbstractTransformer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
+        super(AbstractTransformer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16215,10 +15751,10 @@ class AbstractTransformer(Transport):
 class AbstractSwitch(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AbstractSwitch, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
+        super(AbstractSwitch, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16301,10 +15837,10 @@ class AbstractSwitch(Transport):
 class AbstractConductor(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AbstractConductor, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
+        super(AbstractConductor, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency, extensiontype_,  **kwargs_)
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16387,10 +15923,10 @@ class AbstractConductor(Transport):
 class EnergyNetwork(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(EnergyNetwork, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(EnergyNetwork, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -16457,10 +15993,10 @@ class EnergyNetwork(Transport):
 class WaterToPower(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(WaterToPower, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(WaterToPower, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.type_ = _cast(None, type_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16541,10 +16077,10 @@ class WaterToPower(Producer):
 class CircuitBraker(AbstractSwitch):
     subclass = None
     superclass = AbstractSwitch
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(CircuitBraker, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(CircuitBraker, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -16800,12 +16336,11 @@ class DrivenBySupply(ControlStrategy):
 class GasConversion(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, type_=None, outputPressure=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GasConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(GasConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.type_ = _cast(None, type_)
-        self.outputPressure = _cast(float, outputPressure)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -16821,10 +16356,6 @@ class GasConversion(Conversion):
         return self.type_
     def set_type(self, type_):
         self.type_ = type_
-    def get_outputPressure(self):
-        return self.outputPressure
-    def set_outputPressure(self, outputPressure):
-        self.outputPressure = outputPressure
     def hasContent_(self):
         if (
             super(GasConversion, self).hasContent_()
@@ -16858,17 +16389,12 @@ class GasConversion(Conversion):
         if self.type_ is not None and 'type_' not in already_processed:
             already_processed.add('type_')
             outfile.write(' type=%s' % (quote_attrib(self.type_), ))
-        if self.outputPressure is not None and 'outputPressure' not in already_processed:
-            already_processed.add('outputPressure')
-            outfile.write(' outputPressure="%s"' % self.gds_format_double(self.outputPressure, input_name='outputPressure'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='GasConversion', fromsubclass_=False, pretty_print=True):
         super(GasConversion, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='GasConversion', mapping_=None):
         element = super(GasConversion, self).to_etree(parent_element, name_, mapping_)
         if self.type_ is not None:
             element.set('type', self.type_)
-        if self.outputPressure is not None:
-            element.set('outputPressure', self.gds_format_double(self.outputPressure))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -16884,13 +16410,6 @@ class GasConversion(Conversion):
         if value is not None and 'type' not in already_processed:
             already_processed.add('type')
             self.type_ = value
-        value = find_attr_value_('outputPressure', node)
-        if value is not None and 'outputPressure' not in already_processed:
-            already_processed.add('outputPressure')
-            try:
-                self.outputPressure = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (outputPressure): %s' % exp)
         super(GasConversion, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(GasConversion, self).buildChildren(child_, node, nodeName_, True)
@@ -16985,10 +16504,10 @@ class DrivenByDemand(ControlStrategy):
 class GasStorage(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, minStoragePressure=None, maxStoragePressure=0.0, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, minStoragePressure=None, maxStoragePressure=0.0, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GasStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(GasStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
         self.minStoragePressure = _cast(float, minStoragePressure)
         self.maxStoragePressure = _cast(float, maxStoragePressure)
     def factory(*args_, **kwargs_):
@@ -17089,10 +16608,10 @@ class GasStorage(Storage):
 class MobilityDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, fuelType=None, distance=None, efficiency=None, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, fuelType=None, distance=None, efficiency=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(MobilityDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(MobilityDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
         self.fuelType = _cast(None, fuelType)
         self.distance = _cast(int, distance)
         self.efficiency = _cast(float, efficiency)
@@ -17249,10 +16768,10 @@ class MobilityDemand(Consumer):
 class FermentationPlant(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(FermentationPlant, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(FermentationPlant, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17319,10 +16838,10 @@ class FermentationPlant(Conversion):
 class ResidualHeatSource(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(ResidualHeatSource, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(ResidualHeatSource, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.type_ = _cast(None, type_)
         self.residualHeatSourcePotential = _cast(None, residualHeatSourcePotential)
     def factory(*args_, **kwargs_):
@@ -17417,10 +16936,10 @@ class ResidualHeatSource(Producer):
 class SolarCollector(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(SolarCollector, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(SolarCollector, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.type_ = _cast(None, type_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -17501,10 +17020,10 @@ class SolarCollector(Producer):
 class EnergyDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(EnergyDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(EnergyDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17571,10 +17090,10 @@ class EnergyDemand(Consumer):
 class Airco(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Airco, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(Airco, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17641,10 +17160,10 @@ class Airco(Conversion):
 class CoolingDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, deviceType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, deviceType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(CoolingDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(CoolingDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
         self.deviceType = _cast(None, deviceType)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -17725,10 +17244,10 @@ class CoolingDemand(Consumer):
 class Valve(AbstractSwitch):
     subclass = None
     superclass = AbstractSwitch
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Valve, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(Valve, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17795,10 +17314,10 @@ class Valve(AbstractSwitch):
 class Pump(AbstractTransformer):
     subclass = None
     superclass = AbstractTransformer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Pump, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(Pump, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17865,10 +17384,10 @@ class Pump(AbstractTransformer):
 class XToPower(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(XToPower, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(XToPower, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -17935,10 +17454,10 @@ class XToPower(Conversion):
 class CCS(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(CCS, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(CCS, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18005,10 +17524,10 @@ class CCS(Storage):
 class PowerToX(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(PowerToX, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(PowerToX, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18075,10 +17594,10 @@ class PowerToX(Conversion):
 class Losses(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Losses, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(Losses, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18145,12 +17664,11 @@ class Losses(Consumer):
 class AggregatedBuilding(AbstractBuilding):
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, numberOfBuildings=None, residentialBuildingType='UNDEFINED', aggregationOf=None, energyLabelDistribution=None, buildingYearDistribution=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, energyLabel=None, energyIndex=None, asset=None, numberOfBuildings=None, aggregationOf=None, energyLabelDistribution=None, buildingYearDistribution=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
+        super(AggregatedBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, energyLabel, energyIndex, asset,  **kwargs_)
         self.numberOfBuildings = _cast(int, numberOfBuildings)
-        self.residentialBuildingType = _cast(None, residentialBuildingType)
         self.aggregationOf = _cast(None, aggregationOf)
         self.energyLabelDistribution = energyLabelDistribution
         self.buildingYearDistribution = buildingYearDistribution
@@ -18177,10 +17695,6 @@ class AggregatedBuilding(AbstractBuilding):
         return self.numberOfBuildings
     def set_numberOfBuildings(self, numberOfBuildings):
         self.numberOfBuildings = numberOfBuildings
-    def get_residentialBuildingType(self):
-        return self.residentialBuildingType
-    def set_residentialBuildingType(self, residentialBuildingType):
-        self.residentialBuildingType = residentialBuildingType
     def get_aggregationOf(self):
         return self.aggregationOf
     def set_aggregationOf(self, aggregationOf):
@@ -18220,9 +17734,6 @@ class AggregatedBuilding(AbstractBuilding):
         if self.numberOfBuildings is not None and 'numberOfBuildings' not in already_processed:
             already_processed.add('numberOfBuildings')
             outfile.write(' numberOfBuildings="%s"' % self.gds_format_integer(self.numberOfBuildings, input_name='numberOfBuildings'))
-        if self.residentialBuildingType != "UNDEFINED" and 'residentialBuildingType' not in already_processed:
-            already_processed.add('residentialBuildingType')
-            outfile.write(' residentialBuildingType=%s' % (quote_attrib(self.residentialBuildingType), ))
         if self.aggregationOf is not None and 'aggregationOf' not in already_processed:
             already_processed.add('aggregationOf')
             outfile.write(' aggregationOf=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.aggregationOf), input_name='aggregationOf')), ))
@@ -18240,8 +17751,6 @@ class AggregatedBuilding(AbstractBuilding):
         element = super(AggregatedBuilding, self).to_etree(parent_element, name_, mapping_)
         if self.numberOfBuildings is not None:
             element.set('numberOfBuildings', self.gds_format_integer(self.numberOfBuildings))
-        if self.residentialBuildingType is not None:
-            element.set('residentialBuildingType', self.residentialBuildingType)
         if self.aggregationOf is not None:
             element.set('aggregationOf', self.gds_format_string(self.aggregationOf))
         if self.energyLabelDistribution is not None:
@@ -18268,10 +17777,6 @@ class AggregatedBuilding(AbstractBuilding):
                 self.numberOfBuildings = int(value)
             except ValueError as exp:
                 raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('residentialBuildingType', node)
-        if value is not None and 'residentialBuildingType' not in already_processed:
-            already_processed.add('residentialBuildingType')
-            self.residentialBuildingType = value
         value = find_attr_value_('aggregationOf', node)
         if value is not None and 'aggregationOf' not in already_processed:
             already_processed.add('aggregationOf')
@@ -18295,10 +17800,10 @@ class AggregatedBuilding(AbstractBuilding):
 class EVChargingStation(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(EVChargingStation, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(EVChargingStation, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18365,10 +17870,10 @@ class EVChargingStation(Consumer):
 class PowerPlant(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, fuel=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, energyCarrier=None, mustRun=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, fuel=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, energyCarrier=None, mustRun=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(PowerPlant, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(PowerPlant, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.fuel = _cast(None, fuel)
         self.maxLoad = _cast(int, maxLoad)
         self.minLoad = _cast(int, minLoad)
@@ -18564,10 +18069,10 @@ class PowerPlant(Conversion):
 class GConnection(AbstractConnection):
     subclass = None
     superclass = AbstractConnection
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(GConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18634,10 +18139,10 @@ class GConnection(AbstractConnection):
 class HConnection(AbstractConnection):
     subclass = None
     superclass = AbstractConnection
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(HConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(HConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -18704,10 +18209,10 @@ class HConnection(AbstractConnection):
 class EConnection(AbstractConnection):
     subclass = None
     superclass = AbstractConnection
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, EANCode=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, EANCode=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(EConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(EConnection, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.EANCode = _cast(None, EANCode)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -18788,10 +18293,10 @@ class EConnection(AbstractConnection):
 class HeatExchange(AbstractTransformer):
     subclass = None
     superclass = AbstractTransformer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, LossDeltaT=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, LossDeltaT=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(HeatExchange, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(HeatExchange, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.LossDeltaT = _cast(float, LossDeltaT)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -18875,10 +18380,10 @@ class HeatExchange(AbstractTransformer):
 class Transformer(AbstractTransformer):
     subclass = None
     superclass = AbstractTransformer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, voltagePrimary=None, voltageSecundary=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, voltagePrimary=None, voltageSecundary=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Transformer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(Transformer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.voltagePrimary = _cast(float, voltagePrimary)
         self.voltageSecundary = _cast(float, voltageSecundary)
     def factory(*args_, **kwargs_):
@@ -18979,10 +18484,10 @@ class Transformer(AbstractTransformer):
 class GasDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GasDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(GasDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -19049,10 +18554,10 @@ class GasDemand(Consumer):
 class ElectricityDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(ElectricityDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(ElectricityDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -19119,10 +18624,10 @@ class ElectricityDemand(Consumer):
 class HeatingDemand(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, type_=None, deviceType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, type_=None, deviceType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(HeatingDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(HeatingDemand, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
         self.type_ = _cast(None, type_)
         self.deviceType = _cast(None, deviceType)
     def factory(*args_, **kwargs_):
@@ -19217,10 +18722,10 @@ class HeatingDemand(Consumer):
 class HeatPump(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, source=None, stages=1, COP=None, additionalHeatingSourceType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, source=None, stages=1, COP=None, additionalHeatingSourceType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(HeatPump, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(HeatPump, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.source = _cast(None, source)
         self.stages = _cast(int, stages)
         self.COP = _cast(float, COP)
@@ -19349,10 +18854,10 @@ class HeatPump(Conversion):
 class CoGeneration(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(CoGeneration, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, extensiontype_,  **kwargs_)
+        super(CoGeneration, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, extensiontype_,  **kwargs_)
         self.heatEfficiency = _cast(float, heatEfficiency)
         self.electricalEfficiency = _cast(float, electricalEfficiency)
         self.HERatio = _cast(float, HERatio)
@@ -19528,10 +19033,10 @@ class CoGeneration(Conversion):
 class GeothermalSource(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, wellDepth=None, geothermalSourceType=None, COP=None, aquiferTemperature=None, flowRate=None, pumpPower=None, geothermalPotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, wellDepth=None, geothermalSourceType=None, COP=None, aquiferTemperature=None, flowRate=None, pumpPower=None, geothermalPotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GeothermalSource, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(GeothermalSource, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.wellDepth = _cast(float, wellDepth)
         self.geothermalSourceType = _cast(None, geothermalSourceType)
         self.COP = _cast(float, COP)
@@ -19711,10 +19216,10 @@ class GeothermalSource(Producer):
 class Pipe(AbstractConductor):
     subclass = None
     superclass = AbstractConductor
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, diameter=None, length=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, diameter=None, length=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Pipe, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(Pipe, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.diameter = _cast(float, diameter)
         self.length = _cast(float, length)
     def factory(*args_, **kwargs_):
@@ -19815,10 +19320,10 @@ class Pipe(AbstractConductor):
 class SinkConsumer(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(SinkConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(SinkConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -19885,10 +19390,10 @@ class SinkConsumer(Consumer):
 class SourceProducer(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(SourceProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(SourceProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20163,10 +19668,10 @@ class HeatNetwork(EnergyNetwork):
 class GasHeater(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, minimumBurnRate=0.0, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, minimumBurnRate=0.0, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GasHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(GasHeater, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.minimumBurnRate = _cast(float, minimumBurnRate)
         self.type_ = _cast(None, type_)
     def factory(*args_, **kwargs_):
@@ -20264,10 +19769,10 @@ class GasHeater(Conversion):
 class HeatStorage(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, minStorageTemperature=None, maxStorageTemperature=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, minStorageTemperature=None, maxStorageTemperature=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(HeatStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(HeatStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
         self.minStorageTemperature = _cast(float, minStorageTemperature)
         self.maxStorageTemperature = _cast(float, maxStorageTemperature)
     def factory(*args_, **kwargs_):
@@ -20368,10 +19873,10 @@ class HeatStorage(Storage):
 class AggregatedStorage(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, aggregationOf=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, aggregationOf=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(AggregatedStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
         self.aggregationOf = _cast(None, aggregationOf)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -20452,10 +19957,10 @@ class AggregatedStorage(Storage):
 class AggregatedConversion(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, aggregationOf=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, aggregationOf=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(AggregatedConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
         self.aggregationOf = _cast(None, aggregationOf)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -20536,10 +20041,10 @@ class AggregatedConversion(Conversion):
 class AggregatedTransport(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, aggregationOf=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, aggregationOf=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedTransport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(AggregatedTransport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.aggregationOf = _cast(None, aggregationOf)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -20620,10 +20125,10 @@ class AggregatedTransport(Transport):
 class GenericConversion(Conversion):
     subclass = None
     superclass = Conversion
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GenericConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
+        super(GenericConversion, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20690,10 +20195,10 @@ class GenericConversion(Conversion):
 class GenericTransport(Transport):
     subclass = None
     superclass = Transport
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GenericTransport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(GenericTransport, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20760,10 +20265,10 @@ class GenericTransport(Transport):
 class GenericStorage(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GenericStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(GenericStorage, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20830,10 +20335,10 @@ class GenericStorage(Storage):
 class GenericProducer(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GenericProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(GenericProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20900,10 +20405,10 @@ class GenericProducer(Producer):
 class GenericConsumer(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(GenericConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(GenericConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20970,10 +20475,10 @@ class GenericConsumer(Consumer):
 class AggregatedProducer(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, aggregationOf=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, aggregationOf=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(AggregatedProducer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.aggregationOf = _cast(None, aggregationOf)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -21054,10 +20559,10 @@ class AggregatedProducer(Producer):
 class AggregatedConsumer(Consumer):
     subclass = None
     superclass = Consumer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, aggregationOf=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, aggregationOf=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, consType, power,  **kwargs_)
+        super(AggregatedConsumer, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, consType, power,  **kwargs_)
         self.aggregationOf = _cast(None, aggregationOf)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -21138,10 +20643,10 @@ class AggregatedConsumer(Consumer):
 class ElectricityCable(AbstractConductor):
     subclass = None
     superclass = AbstractConductor
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, length=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, length=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(ElectricityCable, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(ElectricityCable, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
         self.length = _cast(float, length)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -21312,10 +20817,10 @@ class ElectricityNetwork(EnergyNetwork):
 class Battery(Storage):
     subclass = None
     superclass = Storage
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, maxChargeDischargeCycles=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, maxChargeDischargeCycles=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Battery, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
+        super(Battery, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, chargeEfficiency, dischargeEfficiency, selfDischargeRate, fillLevel, maxChargeRate, maxDischargeRate, profile,  **kwargs_)
         self.maxChargeDischargeCycles = _cast(int, maxChargeDischargeCycles)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -21399,10 +20904,10 @@ class Battery(Storage):
 class PVPanel(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, panelEfficiency=None, inverterEfficiency=None, angle=None, orientation=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, panelEfficiency=None, inverterEfficiency=None, angle=None, orientation=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(PVPanel, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(PVPanel, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.panelEfficiency = _cast(float, panelEfficiency)
         self.inverterEfficiency = _cast(float, inverterEfficiency)
         self.angle = _cast(int, angle)
@@ -21537,10 +21042,10 @@ class PVPanel(Producer):
 class WindTurbine(Producer):
     subclass = None
     superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, rotorDiameter=None, height=None, type_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, rotorDiameter=None, height=None, type_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(WindTurbine, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
+        super(WindTurbine, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
         self.rotorDiameter = _cast(float, rotorDiameter)
         self.height = _cast(float, height)
         self.type_ = _cast(None, type_)
@@ -21657,10 +21162,10 @@ class Joint(AbstractConductor):
     these conductors have opposite Ports."""
     subclass = None
     superclass = AbstractConductor
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Joint, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, capacity, efficiency,  **kwargs_)
+        super(Joint, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, capacity, efficiency,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -21996,11 +21501,10 @@ class PVInstallation(PVPanel):
 class Electrolyzer(PowerToX):
     subclass = None
     superclass = PowerToX
-    def __init__(self, outputPressure=None, **kwargs_):
+    def __init__(self, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(Electrolyzer, self).__init__( **kwargs_)
-        self.outputPressure = _cast(float, outputPressure)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -22012,10 +21516,6 @@ class Electrolyzer(PowerToX):
         else:
             return Electrolyzer(*args_, **kwargs_)
     factory = staticmethod(factory)
-    def get_outputPressure(self):
-        return self.outputPressure
-    def set_outputPressure(self, outputPressure):
-        self.outputPressure = outputPressure
     def hasContent_(self):
         if (
             super(Electrolyzer, self).hasContent_()
@@ -22045,16 +21545,11 @@ class Electrolyzer(PowerToX):
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='Electrolyzer'):
         super(Electrolyzer, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='Electrolyzer')
-        if self.outputPressure is not None and 'outputPressure' not in already_processed:
-            already_processed.add('outputPressure')
-            outfile.write(' outputPressure="%s"' % self.gds_format_double(self.outputPressure, input_name='outputPressure'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='Electrolyzer', fromsubclass_=False, pretty_print=True):
         super(Electrolyzer, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
         pass
     def to_etree(self, parent_element=None, name_='Electrolyzer', mapping_=None):
         element = super(Electrolyzer, self).to_etree(parent_element, name_, mapping_)
-        if self.outputPressure is not None:
-            element.set('outputPressure', self.gds_format_double(self.outputPressure))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -22066,13 +21561,6 @@ class Electrolyzer(PowerToX):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('outputPressure', node)
-        if value is not None and 'outputPressure' not in already_processed:
-            already_processed.add('outputPressure')
-            try:
-                self.outputPressure = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (outputPressure): %s' % exp)
         super(Electrolyzer, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(Electrolyzer, self).buildChildren(child_, node, nodeName_, True)
@@ -22083,10 +21571,10 @@ class Electrolyzer(PowerToX):
 class CHP(CoGeneration):
     subclass = None
     superclass = CoGeneration
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, CHPType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, CHPType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(CHP, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, heatEfficiency, electricalEfficiency, HERatio, fuelType, leadCommodity, energyCarrier,  **kwargs_)
+        super(CHP, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, heatEfficiency, electricalEfficiency, HERatio, fuelType, leadCommodity, energyCarrier,  **kwargs_)
         self.CHPType = _cast(None, CHPType)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -22341,10 +21829,10 @@ class WindParc(WindTurbine):
 class FuelCell(CoGeneration):
     subclass = None
     superclass = CoGeneration
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, area=None, containingBuilding=None, geometry=None, costInformation=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(FuelCell, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, heatEfficiency, electricalEfficiency, HERatio, fuelType, leadCommodity, energyCarrier,  **kwargs_)
+        super(FuelCell, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, area, containingBuilding, geometry, costInformation, controlStrategy, port, efficiency, operationalHours, fullLoadHours, power, residualHeatSourcePotential, heatEfficiency, electricalEfficiency, HERatio, fuelType, leadCommodity, energyCarrier,  **kwargs_)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -22431,7 +21919,6 @@ GDSClassesMapping = {
     'CircuitBraker': CircuitBraker,
     'CoolingDemand': CoolingDemand,
     'CostInformation': CostInformation,
-    'CurtailmentStrategy': CurtailmentStrategy,
     'DataSource': DataSource,
     'DataSourceReference': DataSourceReference,
     'DataSources': DataSources,
@@ -22542,9 +22029,8 @@ GDSClassesMapping = {
     'SinkConsumer': SinkConsumer,
     'SocialProperties': SocialProperties,
     'SolarCollector': SolarCollector,
-    'SolarPotential': SolarPotential,
+    'SolarFieldPotential': SolarFieldPotential,
     'SourceProducer': SourceProducer,
-    'StorageStrategy': StorageStrategy,
     'StringLabelDistribution': StringLabelDistribution,
     'StringParameter': StringParameter,
     'StringPerc': StringPerc,
@@ -22731,7 +22217,6 @@ __all__ = [
     "Conversion",
     "CoolingDemand",
     "CostInformation",
-    "CurtailmentStrategy",
     "DataSource",
     "DataSourceReference",
     "DataSources",
@@ -22856,11 +22341,10 @@ __all__ = [
     "SinkConsumer",
     "SocialProperties",
     "SolarCollector",
-    "SolarPotential",
+    "SolarFieldPotential",
     "SourceProducer",
     "StaticProfile",
     "Storage",
-    "StorageStrategy",
     "StringLabelDistribution",
     "StringParameter",
     "StringPerc",

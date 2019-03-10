@@ -13,6 +13,24 @@ from model import esdl_sup as esdl
 # the best option based on installed packages.
 async_mode = None
 
+BUILDING_COLORS_BUILDINGYEAR = [
+    {'from':    0, 'to': 1900, 'color': '#800000'},     # dark red
+    {'from': 1900, 'to': 1940, 'color': '#ff0000'},     # red
+    {'from': 1940, 'to': 1970, 'color': '#ff8080'},     # light red
+    {'from': 1970, 'to': 1990, 'color': '#ff8000'},     # orange
+    {'from': 1990, 'to': 2010, 'color': '#00ff00'},     # light green
+    {'from': 2010, 'to': 2999, 'color': '#008000'}      # dark green
+]
+
+BUILDING_COLORS_AREA = [
+    {'from':    0, 'to':    50, 'color': '#c0c0ff'},    # light blue / purple
+    {'from':   50, 'to':   100, 'color': '#8080ff'},    #
+    {'from':  100, 'to':   150, 'color': '#4040ff'},    #
+    {'from':  150, 'to':   200, 'color': '#0000ff'},    # blue
+    {'from':  200, 'to':   500, 'color': '#0000c0'},    #
+    {'from':  500, 'to':  1000, 'color': '#000080'},    #
+    {'from': 1000, 'to': 99999, 'color': '#000040'}     # dark blue
+]
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
@@ -100,15 +118,17 @@ def get_boundary_from_service(type, id):
     :return:
     """
 
-    url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(type)] + '/' + id
-    r = requests.get(url)
-    reply = json.loads(r.text)
+    try:
+        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(type)] + '/' + id
+        r = requests.get(url)
+        reply = json.loads(r.text)
 
-    print(reply)
-    geom = reply['geom']
+        print(reply)
+        geom = reply['geom']
 
-    return geom
-
+        return geom
+    except:
+        return None
 
 def _parse_esdl_subpolygon(subpol):
     ar = []
@@ -133,9 +153,65 @@ def create_boundary_from_contour(contour):
         'type': 'Polygon',
         'coordinates': ar
     }
-    print(geom)
+    # print(geom)
 
     return geom
+
+
+def _determine_color(asset):
+    building_color = '#808080'
+
+    if isinstance(asset, esdl.Building):
+        building_year = asset.get_buildingYear()
+        if building_year:
+            building_color = None
+            i = 0
+            while not building_color:
+                if BUILDING_COLORS_BUILDINGYEAR[i]['from'] <= building_year < BUILDING_COLORS_BUILDINGYEAR[i]['to']:
+                    building_color = BUILDING_COLORS_BUILDINGYEAR[i]['color']
+                i += 1
+
+    return building_color
+
+
+"""
+        floorarea = asset.get_floorArea()
+        if floorarea:
+            building_color = None
+            i = 0
+            while not floorarea:
+                if BUILDING_COLORS_AREA[i]['from'] <= floorarea < BUILDING_COLORS_AREA[i]['to']:
+                    building_color = BUILDING_COLORS_AREA[i]['color']
+                i += 1
+"""
+
+
+def _find_more_area_boundaries(this_area):
+
+    area_contour = this_area.get_contour()
+    if area_contour:
+        boundary = create_boundary_from_contour(area_contour)
+        emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+
+    assets = this_area.get_asset()
+    for asset in assets:
+        if isinstance(asset, esdl.AbstractBuilding):
+            asset_geometry = asset.get_geometry()
+            if asset_geometry:
+                if isinstance(asset_geometry, esdl.Polygon):
+                    building_color =_determine_color(asset)
+                    boundary = create_boundary_from_contour(asset_geometry)
+
+                    emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary, 'color': building_color})
+
+    areas = this_area.get_area()
+    for area in areas:
+        _find_more_area_boundaries(area)
+
+
+def find_more_boundaries_in_ESDL(top_area):
+    _find_more_area_boundaries(top_area)
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
@@ -150,8 +226,8 @@ def index():
     return render_template('index.html', async_mode=socketio.async_mode)
 
 
-@app.route('/<path:path>')
-def download_esdl(path):
+# @app.route('/<path:path>')
+# def download_esdl(path):
 #    session_info = session
 #    es_edit = session_info['es_edit']
 #    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
@@ -163,8 +239,10 @@ def download_esdl(path):
 #    f = open('/tmp/temp.xmi', 'r')
 #   return send_file(f, attachment_filename='file.esdl',
 #                     as_attachment=True)
-    return
 
+@app.route('/<path:path>')
+def download_esdl(path):
+    return send_from_directory('', path)
 
 @app.route('/images/<path:path>')
 def send_image(path):
@@ -174,6 +252,7 @@ def send_image(path):
 @app.route('/plugins/<path:path>')
 def send_plugin(path):
     return send_from_directory('plugins', path)
+
 
 # FOR TESTING
 @app.route('/html/<path:path>')
@@ -314,10 +393,10 @@ def initialize():
 # ---------------------------------------------------------------------------------------------------------------------
 #  Builds up a mapping from ports to assets
 # ---------------------------------------------------------------------------------------------------------------------
-def create_building_mappings(building, mapping):
+def create_building_port_to_asset_mapping(building, mapping):
     for basset in building.get_asset():
         if isinstance(basset, esdl.AbstractBuilding):
-            create_building_mappings(basset, mapping)
+            create_building_port_to_asset_mapping(basset, mapping)
         else:
             geom = basset.get_geometry()
             ports = basset.get_port()
@@ -337,15 +416,15 @@ def create_building_mappings(building, mapping):
                         mapping[ports[1].get_id()] = {'asset_id': basset.get_id(), 'coord': last}
 
 
-def create_mappings(area, mapping):
+def create_port_to_asset_mapping(area, mapping):
     # process subareas
     for ar in area.get_area():
-        create_mappings(ar, mapping)
+        create_port_to_asset_mapping(ar, mapping)
 
     # process assets in area
     for asset in area.get_asset():
         if isinstance(asset, esdl.AggregatedBuilding):
-            create_building_mappings(asset, mapping)
+            create_building_port_to_asset_mapping(asset, mapping)
         else:
             # asset can be of type Potential too ???
             if isinstance(asset, esdl.EnergyAsset):
@@ -1024,7 +1103,7 @@ def process_file_command(message):
         conn_list = []
 
         mapping = {}
-        create_mappings(area, mapping)
+        create_port_to_asset_mapping(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
         session['conn_list'] = conn_list
@@ -1067,7 +1146,7 @@ def process_file_command(message):
         area = instance[0].get_area()
 
         mapping = {}
-        create_mappings(area, mapping)
+        create_port_to_asset_mapping(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
         session['conn_list'] = conn_list
@@ -1091,6 +1170,7 @@ def process_file_command(message):
         es_edit = session['es_edit']
         es_id = session['es_id']
         write_energysystem_to_file('EnergySystem.esdl', es_edit)
+        emit('and_now_press_download_file')
 
     if message['cmd'] == 'download_esdl':
         es_edit = session['es_edit']
@@ -1128,14 +1208,17 @@ def load_esdl_file(message):
     area_scope = area.get_scope()
     if len(area_id) < 20 and area_scope:
         boundary = get_boundary_from_service(area_scope, area_id)
-        emit('area_boundary', {'crs': 'RD', 'boundary': boundary})
+        if boundary:
+            emit('area_boundary', {'crs': 'RD', 'boundary': boundary})
     area_contour = area.get_contour()
     if area_contour:
         boundary = create_boundary_from_contour(area_contour)
         emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
+    find_more_boundaries_in_ESDL(area)
+
     mapping = {}
-    create_mappings(area, mapping)
+    create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
     session['conn_list'] = conn_list
@@ -1239,7 +1322,7 @@ def on_connect():
     # instance = es_edit.get_instance()
     # area = instance[0].get_area()
     mapping = {}
-    create_mappings(area, mapping)
+    create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
     session['conn_list'] = conn_list
