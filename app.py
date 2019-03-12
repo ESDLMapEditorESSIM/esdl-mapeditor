@@ -6,6 +6,7 @@ import uuid
 import math
 import copy
 import json
+import importlib
 from model import esdl_sup as esdl
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -831,6 +832,7 @@ def get_asset_attributes(asset):
 @socketio.on('command', namespace='/esdl')
 def process_command(message):
     print ('received: ' + message['cmd'])
+    print (message)
     es_edit = session['es_edit']
     mapping = session['port_to_asset_mapping']
     # print (session['es_edit'].get_instance()[0].get_area().get_name())
@@ -839,10 +841,14 @@ def process_command(message):
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
         assettype = message['asset']
-        if assettype == 'WindTurbine' or assettype == 'PVParc' or assettype == 'GeothermalSource':
-            if assettype == 'WindTurbine': asset = esdl.WindTurbine()
-            if assettype == 'PVParc': asset = esdl.PVParc()
-            if assettype == 'GeothermalSource': asset = esdl.GeothermalSource()
+
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a point location and an OutPort
+        # -------------------------------------------------------------------------------------------------------------
+        if assettype in ['WindTurbine', 'PVParc', 'GeothermalSource' 'GenericProducer']:
+            module = importlib.import_module('model.esdl_sup')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
             outp = esdl.OutPort()
             port_id = str(uuid.uuid4())
@@ -856,9 +862,13 @@ def process_command(message):
 
             mapping[port_id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
 
-        if assettype == 'ElectricityDemand' or assettype == 'HeatingDemand':
-            if assettype == 'ElectricityDemand': asset = esdl.ElectricityDemand()
-            if assettype == 'HeatingDemand': asset = esdl.HeatingDemand()
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a point location and an InPort
+        # -------------------------------------------------------------------------------------------------------------
+        if assettype in ['ElectricityDemand', 'HeatingDemand', 'GenericConsumer']:
+            module = importlib.import_module('model.esdl_sup')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
             inp = esdl.InPort()
             port_id = str(uuid.uuid4())
@@ -872,8 +882,13 @@ def process_command(message):
 
             mapping[port_id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
 
-        if assettype == 'Joint':
-            asset = esdl.Joint()
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a point location and an InPort and an OutPort
+        # -------------------------------------------------------------------------------------------------------------
+        if assettype in ['Joint', 'ElectricityNetwork', 'GasHeater', 'GasNetwork', 'HeatNetwork', 'HeatPump', 'PowerPlant']:
+            module = importlib.import_module('model.esdl_sup')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
             inp = esdl.InPort()
             port_id = str(uuid.uuid4())
@@ -890,10 +905,41 @@ def process_command(message):
             asset.set_geometry_with_type(point)
 
             mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a point location and an InPort and two OutPorts
+        # -------------------------------------------------------------------------------------------------------------
+        if assettype in ['FuelCell']:
+            module = importlib.import_module('model.esdl_sup')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
-        if assettype == 'ElectricityCable' or assettype == 'Pipe':
-            if assettype == 'ElectricityCable': asset = esdl.ElectricityCable()
-            if assettype == 'Pipe': asset = esdl.Pipe()
+            inp = esdl.InPort()
+            port_id = str(uuid.uuid4())
+            inp.set_id(port_id)
+            asset.add_port_with_type(inp)
+            outp = esdl.OutPort()
+            port_id = str(uuid.uuid4())
+            outp.set_id(port_id)
+            asset.add_port_with_type(outp)
+            outp = esdl.OutPort()
+            port_id = str(uuid.uuid4())
+            outp.set_id(port_id)
+            asset.add_port_with_type(outp)
+
+            point = esdl.Point()
+            point.set_lon(message['lng'])
+            point.set_lat(message['lat'])
+            asset.set_geometry_with_type(point)
+
+            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a polyline geometry and an InPort and an OutPort
+        # -------------------------------------------------------------------------------------------------------------
+        if assettype in ['ElectricityCable', 'Pipe']:
+            module = importlib.import_module('model.esdl_sup')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
             inp = esdl.InPort()
             inp_id = str(uuid.uuid4())
@@ -1339,13 +1385,15 @@ def get_boundary_info(info):
         geom = boundary["geom"]
         print('boundary["geom"]: ')
         print(boundary["geom"])
-        print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+        try:
+            print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
 
-        # boundary = create_boundary_from_contour(area_contour)
-        # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+            # boundary = create_boundary_from_contour(area_contour)
+            # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
-        emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
-
+            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+        except:
+            print('exception - ')
     print('ready')
 
 

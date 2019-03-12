@@ -251,18 +251,6 @@
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
         }
 
-        function select_other_asset(obj) {
-            selected_index = obj.selectedIndex;
-            selected_asset = obj.options[selected_index].value;
-            var marker_class_name = window[selected_asset + "Marker"];
-
-            drawControl.setDrawingOptions({
-                marker: {
-                    icon: new marker_class_name()
-                }
-            });
-        }
-
         var socket;
 
         $(document).ready(function() {
@@ -510,19 +498,23 @@
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
                 if (info_type == 'MP-WGS84') {
-                    var polygon = geometry['coordinates'][0];
-                    // console.log(polygon);
+                    var mp = geometry['coordinates'];
+                    // console.log(mp);
 
-                    var areaBoundary = {
-                        type: "Feature",
-                        geometry: {
-                            type: "Polygon",
-                            coordinates: polygon
-                        }
-                    };
-                    // console.log(areaBoundary);
-                    // L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(map);
-                    L.geoJson(areaBoundary).addTo(map);
+                    for (i=0; i<mp.length; i++) {
+                        polygon = mp[i];
+
+                        var areaBoundary = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Polygon",
+                                coordinates: polygon
+                            }
+                        };
+                        // console.log(areaBoundary);
+                        // L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(map);
+                        L.geoJson(areaBoundary).addTo(map);
+                    }
                 }
 
             });
@@ -540,8 +532,25 @@
             $("#line_select").selectmenu({ width:200 });
             $("#area_bld_select").selectmenu({ width:500 });
             $("#building_color").selectmenu({ width:150 });
+
+            $('#asset_menu').on('selectmenuchange', function (e) {
+                var selected_asset = $(e.target).val();
+                console.log(selected_asset);
+                var marker_class_name = window[selected_asset + "Marker"];
+
+                // console.log(selected_index);
+                // console.log(selected_asset);
+                // console.log(marker_class_name);
+
+                drawControl.setDrawingOptions({
+                    marker: {
+                        icon: new marker_class_name()
+                    }
+                });
+            });
         });
     </script>
+
     <style>
         .ui-widget { font-family: Trebuchet MS, Tahoma, Verdana, Arial, sans-serif; font-size: 11px; }
         .header, .footer {
@@ -574,13 +583,24 @@
         <button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button>
         <button id="boundary-info" onclick="boundary_info_window();" title="Boundary" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-image"></span>Boundary</button>
 
-        <select id="asset_menu" style='position:relative;z-index:100' onchange="select_other_asset(this);">
+        <select id="asset_menu" style='position:relative;z-index:100'>
             <option value="ElectricityDemand">ElectricityDemand</option>
+            <option value="ElectricityNetwork">ElectricityNetwork</option>
+            <option value="FuelCell">FuelCell</option>
+            <option value="GasHeater">GasHeater</option>
+            <option value="GasNetwork">GasNetwork</option>
+            <option value="GenericConsumer">GenericConsumer</option>
+            <option value="GenericConversion">GenericConversion</option>
+            <option value="GenericProducer">GenericProducer</option>
+            <option value="GeothermalSource">GeothermalSource</option>
             <option value="HeatingDemand">HeatingDemand</option>
+            <option value="HeatNetwork">HeatNetwork</option>
+            <option value="HeatPump">HeatPump</option>
+            <option value="Joint">Joint</option>
+            <option value="PowerPlant">PowerPlant</option>
             <option value="PVParc">PVParc</option>
             <option value="WindTurbine">WindTurbine</option>
-			<option value="GeothermalSource">GeothermalSource</option>
-			<option value="Joint">Joint</option>
+            <!-- option value="ResidualHeatSourcePotential">ResidualHeatSourcePotential</option-->
         </select>
 
         <select id="line_select">
@@ -604,6 +624,9 @@
     <div id="log" style="float: left;"><h2>Logs:</h2></div>
     <div id="esdltxt" style="float: left;"></div>
 
+</body>
+</html>
+
 <script>
 
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -626,12 +649,23 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
-    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/WindTurbine.png'}});
-    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
-    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
-	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Joint.png'}});
+    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityNetwork.png'}});
+	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/FuelCell.png'}});
+	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GasHeater.png'}});
+	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GasNetwork.png'}});
+    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GenericConsumer.png'}});
+    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GenericConversion.png'}});
+    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GenericProducer.png'}});
 	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(50, 50), iconUrl: 'images/GeothermalSource.png'}});
+    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
+    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatNetwork.png'}});
+    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatPump.png'}});
+	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Joint.png'}});
+    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PowerPlant.png'}});
+    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
+    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ResidualHeatSourcePotential.png'}});
+    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
         edit: {
@@ -642,7 +676,7 @@
         },
         draw: {
             polygon: {
-                allowIntersection: false,
+                allowIntersection: true,
                 showArea: true
             },
             circle: false,
@@ -698,8 +732,8 @@
         console.log('selected area/building id: ' + selected_area_bld_id);
 
         if (type === 'marker') {
-            selection = document.getElementById("asset_select").selectedIndex;
-            asset_options = document.getElementById("asset_select").options;
+            selection = document.getElementById("asset_menu").selectedIndex;
+            asset_options = document.getElementById("asset_menu").options;
             selected_asset = asset_options[selection].value;
             console.log('selected option: ' + selection);
             console.log('selected asset: ' + selected_asset);
@@ -707,12 +741,23 @@
             set_marker_handlers(layer);
 
             // TODO: This can probably be done smarter
+            if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
+            if (selected_asset == 'ElectricityNetwork') layer.setIcon(new ElectricityNetworkMarker);
+            if (selected_asset == 'FuelCell') layer.setIcon(new FuelCellMarker);
+            if (selected_asset == 'GasHeater') layer.setIcon(new GasHeaterMarker);
+            if (selected_asset == 'GasNetwork') layer.setIcon(new GasNetworkMarker);
+            if (selected_asset == 'GenericConsumer') layer.setIcon(new GenericConsumerMarker);
+            if (selected_asset == 'GenericConversion') layer.setIcon(new GenericConversionMarker);
+            if (selected_asset == 'GenericProducer') layer.setIcon(new GenericProducerMarker);
+			if (selected_asset == 'GeothermalSource') layer.setIcon(new GeothermalSourceMarker);
+            if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
+            if (selected_asset == 'HeatNetwork') layer.setIcon(new HeatNetworkMarker);
+            if (selected_asset == 'HeatPump') layer.setIcon(new HeatPumpMarker);
+			if (selected_asset == 'Joint') layer.setIcon(new JointMarker);
+            if (selected_asset == 'PowerPlant') layer.setIcon(new PowerPlantMarker);
             if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
             if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
-            if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
-            if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
-			if (selected_asset == 'Joint') layer.setIcon(new JointMarker);
-			if (selected_asset == 'GeothermalSource') layer.setIcon(new GeothermalSourceMarker);
+            if (selected_asset == 'ResidualHeatSourcePotential') layer.setIcon(new ResidualHeatSourcePotentialMarker);
 
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
 
@@ -736,12 +781,10 @@
         }
         if (type === 'polygon') {
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
-            area_layer.addLayer(layer);
+            area_layer.addLayer(layer, true);
         }
 
 
     });
 
 </script>
-</body>
-</html>
