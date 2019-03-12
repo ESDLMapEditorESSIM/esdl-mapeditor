@@ -114,8 +114,8 @@ boundary_service_mapping = {
 def get_boundary_from_service(type, id):
     """
     :param type: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
-    :param id:
-    :return:
+    :param id: the identifier of the 'scope'
+    :return: the geomertry of the indicated 'scope'
     """
 
     try:
@@ -126,9 +126,37 @@ def get_boundary_from_service(type, id):
         print(reply)
         geom = reply['geom']
 
+        # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
+        # 594477.125], [253641.50000000006, 594417.8126220703]]]]}, 'code': 'BU00030000', 'name': 'Appingedam-Centrum',
+        # 'tCode': 'GM0003', 'tName': 'Appingedam'}
+
         return geom
     except:
         return None
+
+
+def get_subboundaries_from_service(type, subtype, id):
+    """
+    :param type: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
+    :param id: the identifier of the 'scope'
+    :return: the geomertry of the indicated 'scope'
+    """
+
+    try:
+        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(subtype)]\
+              + '/' + type + '/' + id
+        r = requests.get(url)
+        reply = json.loads(r.text)
+        print(reply)
+
+        # ARRAY OF:
+        # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
+        # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
+
+        return reply
+    except:
+        return None
+
 
 def _parse_esdl_subpolygon(subpol):
     ar = []
@@ -191,7 +219,7 @@ def _find_more_area_boundaries(this_area):
     area_contour = this_area.get_contour()
     if area_contour:
         boundary = create_boundary_from_contour(area_contour)
-        emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+        emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary})
 
     assets = this_area.get_asset()
     for asset in assets:
@@ -202,7 +230,7 @@ def _find_more_area_boundaries(this_area):
                     building_color =_determine_color(asset)
                     boundary = create_boundary_from_contour(asset_geometry)
 
-                    emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary, 'color': building_color})
+                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color})
 
     areas = this_area.get_area()
     for area in areas:
@@ -1209,11 +1237,11 @@ def load_esdl_file(message):
     if len(area_id) < 20 and area_scope:
         boundary = get_boundary_from_service(area_scope, area_id)
         if boundary:
-            emit('area_boundary', {'crs': 'RD', 'boundary': boundary})
+            emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
     area_contour = area.get_contour()
     if area_contour:
         boundary = create_boundary_from_contour(area_contour)
-        emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+        emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'WGS84', 'boundary': boundary})
 
     find_more_boundaries_in_ESDL(area)
 
@@ -1288,6 +1316,38 @@ def update_line_coordinates(message):
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
     session['es_edit'] = es_edit
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Get boundary information
+#
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on('get_boundary_info', namespace='/esdl')
+def get_boundary_info(info):
+    print(info)
+    identifier = info["identifier"]
+    scope = info["scope"]
+    subscope = info["subscope"]
+
+    boundaries = get_subboundaries_from_service(scope, subscope, identifier)
+    # boundaries is an ARRAY of:
+    # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
+    # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
+
+    for boundary in boundaries:
+        # print(boundary)
+
+        geom = boundary["geom"]
+        print('boundary["geom"]: ')
+        print(boundary["geom"])
+        print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+
+        # boundary = create_boundary_from_contour(area_contour)
+        # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+
+        emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+
+    print('ready')
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Connect from browser
