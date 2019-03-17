@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 #
-# Generated Wed Mar 13 17:06:06 2019 by generateDS.py version 2.30.1.
+# Generated Wed Mar  6 11:06:40 2019 by generateDS.py version 2.30.1.
 # Python 3.7.0 (v3.7.0:1bf9cc5093, Jun 27 2018, 04:59:51) [MSC v.1914 64 bit (AMD64)]
 #
 # Command line options:
 #   ('--subclass-suffix', '')
 #   ('--no-namespace-defs', '')
 #   ('-o', 'esdl_sup.py')
+#   ('-s', 'esdl_sub.py')
 #   ('--root-element', 'EnergySystem')
 #   ('--export', 'write etree')
 #
@@ -16,10 +17,10 @@
 #   esdlXML.xsd
 #
 # Command line:
-#   C:\Users\matthijssenef\AppData\Local\Programs\Python\Python37\Scripts\generateDS-2-30-1-Edwin.py --subclass-suffix "" --no-namespace-defs -o "esdl_sup.py" --root-element="EnergySystem" --export="write etree" esdlXML.xsd
+#   C:\Users\matthijssenef\AppData\Local\Programs\Python\Python37\Scripts\generateDS-2-30-1-Edwin.py --subclass-suffix "" --no-namespace-defs -o "esdl_sup.py" -s "esdl_sub.py" --root-element="EnergySystem" --export="write etree" esdlXML.xsd
 #
 # Current working directory (os.getcwd()):
-#   model
+#   ESDL 2019-03-06
 #
 
 import sys
@@ -1491,7 +1492,7 @@ class EnergySystem(GeneratedsSuper):
 class Area(GeneratedsSuper):
     subclass = None
     superclass = None
-    def __init__(self, id=None, name=None, scope='UNDEFINED', type_=None, geometryReference=None, buildingDensity=None, containingArea=None, isOwnedBy=None, socialProperties=None, economicProperties=None, asset=None, area=None, mobilityProperties=None, KPIs=None, potential=None, geometry=None, **kwargs_):
+    def __init__(self, id=None, name=None, scope='UNDEFINED', type_=None, geometryReference=None, buildingDensity=None, containingArea=None, isOwnedBy=None, location=None, contour=None, socialProperties=None, economicProperties=None, asset=None, area=None, mobilityProperties=None, KPIs=None, potential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         self.id = _cast(None, id)
@@ -1502,6 +1503,8 @@ class Area(GeneratedsSuper):
         self.buildingDensity = _cast(float, buildingDensity)
         self.containingArea = _cast(None, containingArea)
         self.isOwnedBy = _cast(None, isOwnedBy)
+        self.location = location
+        self.contour = contour
         self.socialProperties = socialProperties
         self.economicProperties = economicProperties
         if asset is None:
@@ -1518,7 +1521,6 @@ class Area(GeneratedsSuper):
             self.potential = []
         else:
             self.potential = potential
-        self.geometry = geometry
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -1530,6 +1532,14 @@ class Area(GeneratedsSuper):
         else:
             return Area(*args_, **kwargs_)
     factory = staticmethod(factory)
+    def get_location(self):
+        return self.location
+    def set_location(self, location):
+        self.location = location
+    def get_contour(self):
+        return self.contour
+    def set_contour(self, contour):
+        self.contour = contour
     def get_socialProperties(self):
         return self.socialProperties
     def set_socialProperties(self, socialProperties):
@@ -1586,12 +1596,6 @@ class Area(GeneratedsSuper):
         self.potential.insert(index, value)
     def replace_potential_at(self, index, value):
         self.potential[index] = value
-    def get_geometry(self):
-        return self.geometry
-    def set_geometry(self, geometry):
-        self.geometry = geometry
-        geometry.original_tagname_ = 'geometry'
-        geometry.extensiontype_ = geometry.__class__.__name__
     def get_id(self):
         return self.id
     def set_id(self, id):
@@ -1626,14 +1630,15 @@ class Area(GeneratedsSuper):
         self.isOwnedBy = isOwnedBy
     def hasContent_(self):
         if (
+            self.location is not None or
+            self.contour is not None or
             self.socialProperties is not None or
             self.economicProperties is not None or
             self.asset or
             self.area or
             self.mobilityProperties is not None or
             self.KPIs is not None or
-            self.potential or
-            self.geometry is not None
+            self.potential
         ):
             return True
         else:
@@ -1689,6 +1694,10 @@ class Area(GeneratedsSuper):
             eol_ = '\n'
         else:
             eol_ = ''
+        if self.location is not None:
+            self.location.export(outfile, level, namespaceprefix_, name_='location', pretty_print=pretty_print)
+        if self.contour is not None:
+            self.contour.export(outfile, level, namespaceprefix_, name_='contour', pretty_print=pretty_print)
         if self.socialProperties is not None:
             self.socialProperties.export(outfile, level, namespaceprefix_, name_='socialProperties', pretty_print=pretty_print)
         if self.economicProperties is not None:
@@ -1703,8 +1712,6 @@ class Area(GeneratedsSuper):
             self.KPIs.export(outfile, level, namespaceprefix_, name_='KPIs', pretty_print=pretty_print)
         for potential_ in self.potential:
             potential_.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.geometry is not None:
-            self.geometry.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='Area', mapping_=None):
         if parent_element is None:
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
@@ -1726,6 +1733,12 @@ class Area(GeneratedsSuper):
             element.set('containingArea', self.gds_format_string(self.containingArea))
         if self.isOwnedBy is not None:
             element.set('isOwnedBy', self.gds_format_string(self.isOwnedBy))
+        if self.location is not None:
+            location_ = self.location
+            location_.to_etree(element, name_='location', mapping_=mapping_)
+        if self.contour is not None:
+            contour_ = self.contour
+            contour_.to_etree(element, name_='contour', mapping_=mapping_)
         if self.socialProperties is not None:
             socialProperties_ = self.socialProperties
             socialProperties_.to_etree(element, name_='socialProperties', mapping_=mapping_)
@@ -1744,9 +1757,6 @@ class Area(GeneratedsSuper):
             KPIs_.to_etree(element, name_='KPIs', mapping_=mapping_)
         for potential_ in self.potential:
             potential_.to_etree(element, name_='potential', mapping_=mapping_)
-        if self.geometry is not None:
-            geometry_ = self.geometry
-            geometry_.to_etree(element, name_='geometry', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -1794,7 +1804,17 @@ class Area(GeneratedsSuper):
             already_processed.add('isOwnedBy')
             self.isOwnedBy = value
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'socialProperties':
+        if nodeName_ == 'location':
+            obj_ = Point.factory(parent_object_=self)
+            obj_.build(child_)
+            self.location = obj_
+            obj_.original_tagname_ = 'location'
+        elif nodeName_ == 'contour':
+            obj_ = Polygon.factory(parent_object_=self)
+            obj_.build(child_)
+            self.contour = obj_
+            obj_.original_tagname_ = 'contour'
+        elif nodeName_ == 'socialProperties':
             obj_ = SocialProperties.factory(parent_object_=self)
             obj_.build(child_)
             self.socialProperties = obj_
@@ -1857,25 +1877,6 @@ class Area(GeneratedsSuper):
                     'Class not implemented for <potential> element')
             self.potential.append(obj_)
             obj_.original_tagname_ = 'potential'
-        elif nodeName_ == 'geometry':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <geometry> element')
-            self.geometry = obj_
-            obj_.original_tagname_ = 'geometry'
 # end class Area
 
 
@@ -8913,10 +8914,9 @@ class DataSourceReference(AbstractDataSource):
 class KPIs(GeneratedsSuper):
     subclass = None
     superclass = None
-    def __init__(self, id=None, description=None, kpi=None, **kwargs_):
+    def __init__(self, description=None, kpi=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        self.id = _cast(None, id)
         self.description = _cast(None, description)
         if kpi is None:
             self.kpi = []
@@ -8945,10 +8945,6 @@ class KPIs(GeneratedsSuper):
         self.kpi.insert(index, value)
     def replace_kpi_at(self, index, value):
         self.kpi[index] = value
-    def get_id(self):
-        return self.id
-    def set_id(self, id):
-        self.id = id
     def get_description(self):
         return self.description
     def set_description(self, description):
@@ -8982,9 +8978,6 @@ class KPIs(GeneratedsSuper):
         else:
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='KPIs'):
-        if self.id is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            outfile.write(' id=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.id), input_name='id')), ))
         if self.description is not None and 'description' not in already_processed:
             already_processed.add('description')
             outfile.write(' description=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.description), input_name='description')), ))
@@ -9000,8 +8993,6 @@ class KPIs(GeneratedsSuper):
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
         else:
             element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.id is not None:
-            element.set('id', self.gds_format_string(self.id))
         if self.description is not None:
             element.set('description', self.gds_format_string(self.description))
         for kpi_ in self.kpi:
@@ -9017,10 +9008,6 @@ class KPIs(GeneratedsSuper):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('id', node)
-        if value is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            self.id = value
         value = find_attr_value_('description', node)
         if value is not None and 'description' not in already_processed:
             already_processed.add('description')
@@ -9037,10 +9024,9 @@ class KPIs(GeneratedsSuper):
 class KPI(GeneratedsSuper):
     subclass = None
     superclass = None
-    def __init__(self, id=None, name=None, value=None, quantityAndUnit=None, **kwargs_):
+    def __init__(self, name=None, value=None, quantityAndUnit=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        self.id = _cast(None, id)
         self.name = _cast(None, name)
         self.value = _cast(float, value)
         self.quantityAndUnit = quantityAndUnit
@@ -9059,10 +9045,6 @@ class KPI(GeneratedsSuper):
         return self.quantityAndUnit
     def set_quantityAndUnit(self, quantityAndUnit):
         self.quantityAndUnit = quantityAndUnit
-    def get_id(self):
-        return self.id
-    def set_id(self, id):
-        self.id = id
     def get_name(self):
         return self.name
     def set_name(self, name):
@@ -9100,9 +9082,6 @@ class KPI(GeneratedsSuper):
         else:
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='KPI'):
-        if self.id is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            outfile.write(' id=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.id), input_name='id')), ))
         if self.name is not None and 'name' not in already_processed:
             already_processed.add('name')
             outfile.write(' name=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.name), input_name='name')), ))
@@ -9121,8 +9100,6 @@ class KPI(GeneratedsSuper):
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
         else:
             element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.id is not None:
-            element.set('id', self.gds_format_string(self.id))
         if self.name is not None:
             element.set('name', self.gds_format_string(self.name))
         if self.value is not None:
@@ -9141,10 +9118,6 @@ class KPI(GeneratedsSuper):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('id', node)
-        if value is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            self.id = value
         value = find_attr_value_('name', node)
         if value is not None and 'name' not in already_processed:
             already_processed.add('name')
