@@ -1598,7 +1598,7 @@ def process_command(message):
                         profile_info = generate_profile_info(profile)
                         emit('port_profile_info', profile_info)
                     else:
-                        send_alert('SERIOUS ERROR: cannot find profile where it should')
+                        emit('port_profile_info', {'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'})
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']

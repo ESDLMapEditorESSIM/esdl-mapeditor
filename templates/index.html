@@ -93,7 +93,6 @@
         }
 
         function set_marker_handlers(marker) {
-            console.log(marker.ports);
             if (marker.ports) {
 
                 if (marker.ports.length > 0) {
@@ -389,8 +388,6 @@
                 // 'line'   name    id      class_name  [...]   [ports]
 
                 list = options['list'];
-                console.log('list:');
-                console.log(list);
 
                 for (i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][1] + ': ' + list[i][2] + ' - ' + list[i][3]);
@@ -589,8 +586,6 @@
 
                 sidebar.show();
             });
-
-
 
             socket.on('es_title', function(title) {
                 title_div = document.getElementById('es_title');
