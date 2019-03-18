@@ -111,7 +111,7 @@
                         marker.options.contextmenuItems.push({
                             id: marker.ports[p].id,
                             icon: 'icons/Graph.png',
-                            text: 'Add profile to ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
+                            text: 'Set profile of ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
                             callback: addProfileToPort
                         });
                     }
@@ -339,30 +339,6 @@
                 profile_type: profile_type, profile_class: profile_class_id});
         }
 
-        function add_profile_to_port_window(port_id) {
-            sidebar_ctr = sidebar.getContainer();
-
-            sidebar_ctr.innerHTML = '<h1>Add profile to port</h1>';
-            table = '<table>';
-            table += '<tr><td width=180>Profile class</td>';
-            table += '<td><select id="profile_class"><option value="SingleValue">Single Value</option>';
-            for (p=0; p<profile_array.length; p++) {
-                table += '<option value="'+profile_array[p]["profile_uiname"]+'">'+profile_array[p]["profile_uiname"]+'</option>';
-            }
-            table += '</select></td></tr>';
-            table += '<tr><td width=180>Multiplier or value</td>';
-            table += '<td><input type="text" width="60" id="profile_multiplier" value="1"></td></tr>';
-            table += '<tr><td width=180>Profile Type</td>';
-            table += '<td><input type="text" width="60" id="profile_type" value="ENERGY_IN_TJ">';
-            table += '<input type="hidden" id="profile_port_id" value="'+port_id+'"></td></tr>';
-            table += '</table>'
-
-            sidebar_ctr.innerHTML += table;
-            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
-
-            sidebar.show();
-        }
-
         function change_param(obj) {
             asset_id = obj.id;
             asset_param_name = obj.name;
@@ -413,6 +389,8 @@
                 // 'line'   name    id      class_name  [...]   [ports]
 
                 list = options['list'];
+                console.log('list:');
+                console.log(list);
 
                 for (i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][1] + ': ' + list[i][2] + ' - ' + list[i][3]);
@@ -573,6 +551,46 @@
 						.openOn(map);
 				
 			});
+
+            socket.on('port_profile_info', function(profile_info) {
+                profile_class = profile_info['class'];
+                profile_type = profile_info['type'];
+                if (profile_class == 'SingleValue') {
+                    profile_value_or_multiplier = profile_info['value'];
+                    profile_name = 'SingleValue';
+                } else {
+                    profile_value_or_multiplier = profile_info['multiplier'];
+                    profile_name = profile_info['name'];
+                }
+
+                sidebar_ctr = sidebar.getContainer();
+
+                sidebar_ctr.innerHTML = '<h1>Set profile of port:</h1>';
+                table = '<table>';
+                table += '<tr><td width=180>Profile class</td>';
+                table += '<td><select id="profile_class"><option value="SingleValue"';
+                if (profile_name == 'SingleValue') { table += ' selected'; }
+                table += '>Single Value</option>';
+                for (p=0; p<profile_array.length; p++) {
+                    table += '<option value="'+profile_array[p]["profile_uiname"]+'"';
+                    if (profile_name == profile_array[p]["profile_uiname"]) { table += ' selected'; }
+                    table += '>'+profile_array[p]["profile_uiname"]+'</option>';
+                }
+                table += '</select></td></tr>';
+                table += '<tr><td width=180>Multiplier or value</td>';
+                table += '<td><input type="text" width="60" id="profile_multiplier" value="'+profile_value_or_multiplier+'"></td></tr>';
+                table += '<tr><td width=180>Profile Type</td>';
+                table += '<td><input type="text" width="60" id="profile_type" value="'+profile_type+'">';
+                table += '<input type="hidden" id="profile_port_id" value="'+port_id+'"></td></tr>';
+                table += '</table>'
+
+                sidebar_ctr.innerHTML += table;
+                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
+
+                sidebar.show();
+            });
+
+
 
             socket.on('es_title', function(title) {
                 title_div = document.getElementById('es_title');
@@ -914,11 +932,12 @@
         // this event is fired for all contextmenu clicks
         // TODO: how to filter add profile in a better way???
         menu_item_text = e.el.innerText;
+        console.log(e);
 
-        if (menu_item_text.substring(0, 11) == 'Add profile') {
+        if (menu_item_text.substring(0, 11) == 'Set profile') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
             console.log(port_id);
-            add_profile_to_port_window(port_id);
+            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
     });
 

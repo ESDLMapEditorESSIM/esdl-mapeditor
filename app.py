@@ -646,6 +646,24 @@ def create_port_to_asset_mapping(area, mapping):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Build up initial information about energysystem to send to browser
 # ---------------------------------------------------------------------------------------------------------------------
+def generate_profile_info(profile):
+    profile_class = type(profile).__name__
+    profile_type = profile.get_profileType()
+    if profile_class == 'SingleValue':
+        value = profile.get_value()
+        profile_info = {'class': 'SingleValue', 'value': value, 'type': profile_type}
+    if profile_class == 'InfluxDBProfile':
+        multiplier = profile.get_multiplier()
+        measurement = profile.get_measurement()
+        profile_name = 'UNKNOWN'
+        for p in esdl_config.esdl_config['influxdb_profile_data']:
+            if p['measurement'] == measurement:
+                profile_name = p['profile_uiname']
+        profile_info = {'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'name': profile_name}
+
+    return profile_info
+
+
 def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
     area_bld_list.append(['Building', building.get_id(), building.get_name(), level])
 
@@ -699,7 +717,11 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                 p_asset = port_asset_mapping[p.get_id()]
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to = p.get_connectedTo()
-                port_list.append({'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': conn_to})
+                profile = p.get_profile()
+                profile_info = {}
+                if profile:
+                    profile_info = generate_profile_info(profile)
+                port_list.append({'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info})
                 if conn_to:
                     conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
                     for pc in conn_to_list:
@@ -1562,6 +1584,22 @@ def process_command(message):
 
         split_conductor(conductor, location_to_split, mode, container)
 
+    if message['cmd'] == 'get_port_profile_info':
+        port_id = message['port_id']
+
+        asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+        if asset_id:
+            asset = find_asset(es_edit.get_instance()[0].get_area(), asset_id)
+            ports = asset.get_port()
+            for p in ports:
+                if p.get_id() == port_id:
+                    profile = p.get_profile()
+                    if profile:
+                        profile_info = generate_profile_info(profile)
+                        emit('port_profile_info', profile_info)
+                    else:
+                        send_alert('SERIOUS ERROR: cannot find profile where it should')
+
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
         multiplier_or_value = message['multiplier']
@@ -1866,9 +1904,6 @@ def get_boundary_info(info):
             # boundary = get_boundary_from_service(area_scope, area_id)
             # if boundary:
             #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
-
-
-
 
     boundaries = get_subboundaries_from_service(scope, subscope, identifier)
     # result (boundaries) is an ARRAY of:
