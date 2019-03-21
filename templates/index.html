@@ -42,6 +42,7 @@
         var deleting_objects = false;   // to indicate if objects are being deleted (to prevent on click)
         var editing_objects = false;    // to indicate if objects are being edited (to prevent on click)
         var profile_array;
+        var carrier_list;
 
         function uuidv4() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -144,13 +145,28 @@
                             if (first_clicked_id == id) {       // clicked same asset twice
                                 console.log('first clicked cancelled');
                             } else {                            // connect two assets
+                                document.getElementById('conn_asset_id2').innerHTML = id;
+                                document.getElementById('conn_asset_name2').innerHTML = marker.name;
+                                document.getElementById('conn_asset_type2').innerHTML = marker.type;
+                                document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + id + ' are now connected.';
+                                document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+
                                 console.log('second clicked' + id + ', connecting...');
                                 socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
+
+                                // TODO: timer to clear sidebar?
                             }
                             first_clicked_id = 0;
                         } else {
                             first_clicked = true;
                             first_clicked_id = id;
+
+                            document.getElementById('conn_asset_id1').innerHTML = id;
+                            document.getElementById('conn_asset_name1').innerHTML = marker.name;
+                            document.getElementById('conn_asset_type1').innerHTML = marker.type;
+                            document.getElementById('conn_asset_result').innerHTML = '';
+                            document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+
                             console.log('first clicked ' + first_clicked_id);
                         }
                     } else {
@@ -210,13 +226,41 @@
             });
         }
 
+
+        function conn_assets_window() {
+            sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = '<h1>Connect assets</h1>';
+
+            par = '<p id="conn_asset_result"></p>';
+            par += '<p><h2 style="color:blue;" id="conn_asset_action">Click first asset!</h2></p>';
+            sidebar_ctr.innerHTML += par;
+
+            table = '<table>';
+            table += '<tr><td width=180><b>First asset:</b></td><td>&nbsp;</td></tr>';
+            table += '<tr><td width=180>Id:</td><td id="conn_asset_id1">&nbsp;</td></tr>';
+            table += '<tr><td width=180>Name:</td><td id="conn_asset_name1">&nbsp;</td></tr>';
+            table += '<tr><td width=180>Type:</td><td id="conn_asset_type1">&nbsp</td></tr>';
+            table += '<tr><td>&nbsp;</td><td>&nbsp;</td></tr>';
+            table += '<tr><td width=180><b>Second asset:</b></td><td>&nbsp;</td></tr>';
+            table += '<tr><td width=180>Id:</td><td id="conn_asset_id2">&nbsp;</td></tr>';
+            table += '<tr><td width=180>Name:</td><td id="conn_asset_name2">&nbsp;</td></tr>';
+            table += '<tr><td width=180>Type:</td><td id="conn_asset_type2">&nbsp</td></tr>';
+            table += '</table>';
+
+            sidebar_ctr.innerHTML += table;
+
+            sidebar.show();
+        }
+
         function conn_disconn_assets() {
             var button = document.getElementById('conn-disconn-assets');
             first_clicked = false;
             if (connecting_assets) {
                 connecting_assets = false;
                 button.innerHTML = 'Connect assets';
+                sidebar.hide();
             } else {
+                conn_assets_window();
                 connecting_assets = true;
                 button.innerHTML = 'Stop connecting assets';
             }
@@ -226,12 +270,13 @@
             sidebar_ctr = sidebar.getContainer();
             sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
 
-            table = '<table>'
-            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>'
-            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>'
-            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>'
-            table += '<tr><td width=180></td><td></td></tr>'
-            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>'
+            table = '<table>';
+            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>';
+            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
+            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
+            table += '<tr><td width=180></td><td></td></tr>';
+            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
+            table += '</table>';
 
             sidebar_ctr.innerHTML += table;
             sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button></p>';
@@ -407,6 +452,8 @@
 
                         marker.title = title;
                         marker.id = list[i][2];
+                        marker.name = list[i][1];
+                        marker.type = list[i][3];
                         marker.ports = list[i][6];
 
                         set_marker_handlers(marker);
@@ -554,10 +601,13 @@
                 profile_type = profile_info['type'];
                 if (profile_class == 'SingleValue') {
                     profile_value_or_multiplier = profile_info['value'];
-                    profile_name = 'SingleValue';
-                } else {
+                    profile_uiname = 'SingleValue';
+                } else if (profile_class == 'InfluxDBProfile') {
                     profile_value_or_multiplier = profile_info['multiplier'];
-                    profile_name = profile_info['name'];
+                    profile_uiname = profile_info['uiname'];
+                } else if (profile_class == 'DateTimeProfile') {
+                    profile_value_or_multiplier = 0;
+                    profile_uiname = 'DateTimeProfile';
                 }
 
                 sidebar_ctr = sidebar.getContainer();
@@ -566,11 +616,14 @@
                 table = '<table>';
                 table += '<tr><td width=180>Profile class</td>';
                 table += '<td><select id="profile_class"><option value="SingleValue"';
-                if (profile_name == 'SingleValue') { table += ' selected'; }
+                if (profile_uiname == 'SingleValue') { table += ' selected'; }
                 table += '>Single Value</option>';
+                table += '<option value="DateTimeProfile"';
+                if (profile_uiname == 'DateTimeProfile') { table += ' selected'; }
+                table += '>DateTime Profile</option>';
                 for (p=0; p<profile_array.length; p++) {
                     table += '<option value="'+profile_array[p]["profile_uiname"]+'"';
-                    if (profile_name == profile_array[p]["profile_uiname"]) { table += ' selected'; }
+                    if (profile_uiname == profile_array[p]["profile_uiname"]) { table += ' selected'; }
                     table += '>'+profile_array[p]["profile_uiname"]+'</option>';
                 }
                 table += '</select></td></tr>';
@@ -636,9 +689,9 @@
 
                 // assume coordinates are in CRS WGS84 (Lat/Lon); default for ESDL
                 if (info_type == 'P-WGS84') {
-                    console.log('received P-WGS84')
+                    // console.log('received P-WGS84')
                     var polygon = geometry['coordinates'];
-                    console.log(polygon);
+                    // console.log(polygon);
                     var areaBoundary = {
                         type: "Feature",
                         geometry: {
@@ -647,15 +700,14 @@
                         }
                     };
                     console.log(areaBoundary);
-                    // L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(map);
                     L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(area_layer);
                 }
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
                 if (info_type == 'MP-WGS84') {
+                    // console.log('received MP-WGS84')
                     var mp = geometry['coordinates'];
-                    console.log('received MP-WGS84')
-                    console.log(mp);
+                    // console.log(mp);
 
                     for (i=0; i<mp.length; i++) {
                         polygon = mp[i];
@@ -668,9 +720,7 @@
                             }
                         };
                         console.log(areaBoundary);
-                        // L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(map);
-                        // L.geoJson(areaBoundary).addTo(map);
-                        L.geoJson(areaBoundary).addTo(area_layer);
+                        L.geoJson(areaBoundary, {color: color, weight: 1}).addTo(area_layer);
                     }
                 }
 
@@ -694,6 +744,11 @@
                     select.add(option, null);
                 }
                 $("#profile_menu").selectmenu("refresh");    // to update the selectmenu based on the selected value
+            });
+
+            socket.on('carrier_list', function(carr_list) {
+                carrier_list = carr_list;
+                console.log(carr_list);
             });
 
             socket.on('and_now_press_download_file', function() {
@@ -776,8 +831,10 @@
         <button id="boundary-info" onclick="boundary_info_window();" title="Boundary" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
 
         <select id="asset_menu" style='position:relative;z-index:100'>
+            <option value="Battery">Battery</option>
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="ElectricityNetwork">ElectricityNetwork</option>
+            <option value="Electrolyzer">Electrolyzer</option>
             <option value="FuelCell">FuelCell</option>
             <option value="GasHeater">GasHeater</option>
             <option value="GasNetwork">GasNetwork</option>
@@ -792,6 +849,7 @@
             <option value="PowerPlant">PowerPlant</option>
             <option value="PVParc">PVParc</option>
             <option value="Transformer">Transformer</option>
+            <option value="UTES">UTES</option>
             <option value="WindTurbine">WindTurbine</option>
             <!-- option value="ResidualHeatSourcePotential">ResidualHeatSourcePotential</option-->
         </select>
@@ -848,8 +906,10 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
+    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Battery.png'}});
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
     var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityNetwork.png'}});
+    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Electrolyzer.png'}});
 	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/FuelCell.png'}});
 	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GasHeater.png'}});
 	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GasNetwork.png'}});
@@ -865,6 +925,7 @@
     var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
     var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ResidualHeatSourcePotential.png'}});
     var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Transformer.png'}});
+    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/UTES.png'}});
     var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
@@ -881,7 +942,7 @@
             },
             circle: false,
             marker: {
-                icon: new ElectricityDemandMarker()
+                icon: new BatteryMarker()
             }
         }
     })
@@ -927,11 +988,11 @@
         // this event is fired for all contextmenu clicks
         // TODO: how to filter add profile in a better way???
         menu_item_text = e.el.innerText;
-        console.log(e);
+        // console.log(e);
 
         if (menu_item_text.substring(0, 11) == 'Set profile') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-            console.log(port_id);
+            // console.log(port_id);
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
     });
@@ -953,11 +1014,13 @@
             console.log('selected option: ' + selection);
             console.log('selected asset: ' + selected_asset);
 
-            // set_marker_handlers(layer);
+            // set_marker_handlers(layer);  // is now called after server interaction, see below
 
-            // TODO: This can probably be done smarter
+            // TODO: This can probably be done smarter --> TODO: this is not necessary anymore?
+            if (selected_asset == 'Battery') layer.setIcon(new BatteryMarker);
             if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
             if (selected_asset == 'ElectricityNetwork') layer.setIcon(new ElectricityNetworkMarker);
+            if (selected_asset == 'Electrolyzer') layer.setIcon(new ElectrolyzerMarker);
             if (selected_asset == 'FuelCell') layer.setIcon(new FuelCellMarker);
             if (selected_asset == 'GasHeater') layer.setIcon(new GasHeaterMarker);
             if (selected_asset == 'GasNetwork') layer.setIcon(new GasNetworkMarker);
@@ -972,6 +1035,7 @@
             if (selected_asset == 'PowerPlant') layer.setIcon(new PowerPlantMarker);
             if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
             if (selected_asset == 'Transformer') layer.setIcon(new TransformerMarker);
+            if (selected_asset == 'UTES') layer.setIcon(new UTESMarker);
             if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
             if (selected_asset == 'ResidualHeatSourcePotential') layer.setIcon(new ResidualHeatSourcePotentialMarker);
 

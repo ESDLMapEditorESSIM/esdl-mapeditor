@@ -7,8 +7,12 @@ import math
 import copy
 import json
 import importlib
+import numpy as np
+from scipy.spatial import Delaunay
+
 from model import esdl_sup as esdl
 import esdl_config
+
 
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -165,10 +169,13 @@ def get_subboundaries_from_service(scope, subscope, id):
 def _parse_esdl_subpolygon(subpol):
     ar = []
     points = subpol.get_point()
+    firstlat = points[0].get_lat()
+    firstlon = points[0].get_lon()
     for point in points:
         lat = point.get_lat()
         lon = point.get_lon()
         ar.append([lon, lat])
+    ar.append([firstlon, firstlat])     # close the polygon: TODO: check if necessary??
     return ar
 
 
@@ -201,7 +208,7 @@ def create_boundary_from_geometry(geometry):
             ar.append(_parse_esdl_subpolygon(interior))
 
         geom = {
-            'type': 'Polygon',
+            'type': 'Polygon',     # TODO: was POLYGON
             'coordinates': ar
         }
         # print(geom)
@@ -574,6 +581,37 @@ def remove_asset_from_energysystem(es, asset_id):
     _recursively_remove_asset_from_area(area, asset_id)
 
 
+def get_carrier_list(es):
+    esi = es.get_energySystemInformation()
+    ec = esi.get_carriers().get_carrier()
+
+    carrier_list = []
+    for carrier in ec:
+        carrier_info = {
+            'type': type(carrier).__name__,
+            'id': carrier.get_id(),
+            'name': carrier.get_name(),
+        }
+        if isinstance(carrier, esdl.Commodity):
+            if isinstance(carrier, esdl.ElectricityCommodity):
+                carrier_info['voltage'] = carrier.get_voltage()
+            if isinstance(carrier, esdl.GasCommodity):
+                carrier_info['pressure'] = carrier.get_pressure()
+            if isinstance(carrier, esdl.HeatCommodity):
+                carrier_info['supplyTemperature'] = carrier.get_supplyTemperature()
+                carrier_info['returnTemperature'] = carrier.get_returnTemperature()
+
+        if isinstance(carrier, esdl.EnergyCarrier):
+            carrier_info['energyContent'] = carrier.get_energyContent()
+            carrier_info['emission'] = carrier.get_emission()
+            carrier_info['energyCarrierType'] = carrier.get_energyCarrierType()
+            carrier_info['stateOfMatter'] = carrier.get_stateOfMatter()
+
+        carrier_list.append(carrier_info)
+
+    return carrier_list
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialize
 # ---------------------------------------------------------------------------------------------------------------------
@@ -605,6 +643,9 @@ def create_building_port_to_asset_mapping(building, mapping):
                         last = (points[len(points)-1].get_lat(), points[len(points)-1].get_lon())
                         mapping[ports[0].get_id()] = {'asset_id': basset.get_id(), 'coord': first}
                         mapping[ports[1].get_id()] = {'asset_id': basset.get_id(), 'coord': last}
+            else:
+                for p in ports:
+                    mapping[p.get_id()] = {'asset_id': basset.get_id(), 'coord': ()}
 
 
 def create_port_to_asset_mapping(area, mapping):
@@ -641,14 +682,124 @@ def create_port_to_asset_mapping(area, mapping):
                             last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
                             mapping[ports[0].get_id()] = {'asset_id': asset.get_id(), 'coord': first, 'pos': 'first'}
                             mapping[ports[1].get_id()] = {'asset_id': asset.get_id(), 'coord': last, 'pos': 'last'}
+                else:
+                    for p in ports:
+                        mapping[p.get_id()] = {'asset_id': asset.get_id(), 'coord': ()}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Build up initial information about energysystem to send to browser
 # ---------------------------------------------------------------------------------------------------------------------
+def generate_point_in_area(boundary):
+    return
+
+
+def update_building_asset_geometries(building, boundary):
+    for basset in building.get_asset():
+        if isinstance(basset, esdl.EnergyAsset):
+            geom = basset.get_geometry()
+            if not geom:
+                geom = esdl.Point()
+                geom.set_lon(5)
+                geom.set_lat(52)
+                basset.set_geometry(geom)
+
+
+def update_area_asset_geometries(area, boundary):
+    # process subareas
+    for ar in area.get_area():
+        update_area_asset_geometries(ar, boundary)
+
+    # process assets in area
+    for asset in area.get_asset():
+        if isinstance(asset, esdl.AggregatedBuilding):
+            update_building_asset_geometries(asset, boundary)
+        if isinstance(asset, esdl.EnergyAsset):
+            geom = asset.get_geometry()
+            if not geom:
+                geom = esdl.Point()
+                geom.set_lon(5)
+                geom.set_lat(52)
+                asset.set_geometry(geom)
+
+
+def count_building_assets_and_potentials(building):
+    num = len(building.get_asset())
+
+    for basset in building.get_asset():
+        if isinstance(basset, esdl.AbstractBuilding):
+            num += count_building_assets_and_potentials(basset)
+
+    return num
+
+
+def count_assets_and_potentials(area):
+    num = len(area.get_asset())
+    num += len(area.get_potential())
+
+    for ar_asset in area.get_asset():
+        if isinstance(ar_asset, esdl.AbstractBuilding):
+            num += count_building_assets_and_potentials(ar_asset)
+
+    for ar in area.get_area():
+        num += count_assets_and_potentials(ar)
+
+    return num
+
+
+def calculate_triangle_center(triangle):
+    sumx = triangle[0][0] + triangle[1][0] + triangle[2][0]
+    sumy = triangle[0][1] + triangle[1][1] + triangle[2][1]
+
+    center_coord = [sumx / 3, sumy / 3]
+    return center_coord
+
+
+def update_asset_geometries(area, boundary):
+    coords = boundary['coordinates']
+    type = boundary['type']
+
+    num_assets = count_assets_and_potentials(area)
+
+    if type == 'Polygon':
+        exterior_polygon_coords = coords[0]
+    elif type == 'MultiPolygon':
+        # search for largest polygon in multipolygon
+        maxlen = 0
+        maxpolygon = []
+        for polygon in coords:
+            exterior = polygon[0]
+            if len(exterior) > maxlen:
+                maxlen = len(exterior)
+                maxpolygon = exterior
+        exterior_polygon_coords = maxpolygon[0]
+
+    print(exterior_polygon_coords)
+
+    points = np.array(exterior_polygon_coords)
+    tri = Delaunay(points)
+    triangles = points[tri.simplices]
+
+    num_triangles = len(triangles)
+
+    if num_assets <= num_triangles:
+        triangle_step = num_triangles / num_assets + 2      # TODO: check 2?
+        asset_coords = []
+        for i in range(1, num_assets):      # TODO: check number
+            asset_coords.append(calculate_triangle_center(triangles[round(triangle_step + triangle_step * i)]))
+
+        # TODO: iterate over all assets and assign coordinates
+        print(asset_coords)
+
+    else:
+        send_alert('ERROR: Number of assets larger than number of triangles')
+
+
 def generate_profile_info(profile):
     profile_class = type(profile).__name__
+    print(profile_class)
     profile_type = profile.get_profileType()
+    profile_name = profile.get_name()
     if profile_class == 'SingleValue':
         value = profile.get_value()
         profile_info = {'class': 'SingleValue', 'value': value, 'type': profile_type}
@@ -659,7 +810,9 @@ def generate_profile_info(profile):
         for p in esdl_config.esdl_config['influxdb_profile_data']:
             if p['measurement'] == measurement:
                 profile_name = p['profile_uiname']
-        profile_info = {'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'name': profile_name}
+        profile_info = {'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name}
+    if profile_class == 'DateTimeProfile':
+        profile_info = {'class': 'DateTimeProfile', 'type': profile_type}
 
     return profile_info
 
@@ -1288,7 +1441,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['ElectricityDemand', 'GenericConsumer', 'HeatingDemand']:
+        if assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'UTES']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
@@ -1308,7 +1461,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['ElectricityNetwork', 'GasHeater', 'GasNetwork', 'GenericConversion', 'HeatNetwork',
+        if assettype in ['ElectricityNetwork', 'Electrolyzer', 'GasHeater', 'GasNetwork', 'GenericConversion', 'HeatNetwork',
                          'HeatPump', 'Joint', 'Transformer', 'PowerPlant']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
@@ -1617,7 +1770,7 @@ def process_command(message):
             esdl_profile = esdl_profile_class()
             esdl_profile.set_value(float(multiplier_or_value))
             esdl_profile.set_profileType(profile_type)
-        else:
+        elif profile_class == 'InfluxDBProfile':
             profiles = esdl_config.esdl_config['influxdb_profile_data']
             for p in profiles:
                 if p['profile_uiname'] == profile_class:
@@ -1633,6 +1786,10 @@ def process_command(message):
                     esdl_profile.set_port(int(esdl_config.esdl_config['profile_database']['port']))
                     esdl_profile.set_database(esdl_config.esdl_config['profile_database']['database'])
                     esdl_profile.set_filters(esdl_config.esdl_config['profile_database']['filters'])
+        elif profile_class == 'DateTimeProfile':
+            esdl_profile_class = getattr(module, 'DateTimeProfile')
+            esdl_profile = esdl_profile_class()
+            # TODO: Determine how to deal with DateTimeProfiles in the UI
 
         esdl_profile.set_id(str(uuid.uuid4()))
 
@@ -1679,6 +1836,7 @@ def process_file_command(message):
         asset_list = []
         area_bld_list = []
         conn_list = []
+        carrier_list = []
 
         mapping = {}
         create_port_to_asset_mapping(area, mapping)
@@ -1690,6 +1848,7 @@ def process_file_command(message):
         emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
         emit('area_bld_list', area_bld_list)
         emit('add_connections', conn_list)
+        emit('carrier_list', carrier_list)
 
         # create_ESDL_store_item(es_id, es_edit, title, description, email)
         emit('es_title', title)
@@ -1720,6 +1879,7 @@ def process_file_command(message):
         asset_list = []
         area_bld_list = []
         conn_list = []
+        carrier_list = []
 
         instance = es_edit.get_instance()
         area = instance[0].get_area()
@@ -1735,6 +1895,7 @@ def process_file_command(message):
         emit('area_bld_list', area_bld_list)
         emit('add_connections', conn_list)
         emit('es_title', es_title)
+        emit('carrier_list', carrier_list)
 
         session['es_id'] = es_id
         session['es_edit'] = es_edit
@@ -1781,17 +1942,24 @@ def load_esdl_file(message):
     asset_list = []
     area_bld_list = []
     conn_list = []
+    carrier_list = get_carrier_list(es_edit)
 
     instance = es_edit.get_instance()
     area = instance[0].get_area()
     area_id = area.get_id()
     area_scope = area.get_scope()
 
+    emit('clear_ui')
+
     area_geometry = area.get_geometry()
     if area_geometry:
         boundary = create_boundary_from_geometry(area_geometry)
-        emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary})
+        emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary})
+
+        # check to see if ESDL file contains asset locations; if not generate locations
+        update_asset_geometries(area, boundary)
     else:
+        # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
         if len(area_id) < 20 and area_scope:
             boundary = get_boundary_from_service(area_scope, area_id)
             if boundary:
@@ -1805,16 +1973,17 @@ def load_esdl_file(message):
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
     session['conn_list'] = conn_list
 
-    emit('clear_ui')
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
     emit('es_title', es_title)
+    emit('carrier_list', carrier_list)
 
     session['es_id'] = es_id
     session['es_edit'] = es_edit
     session['es_title'] = es_title
     session['es_start'] = 'load_file'
+    session['carrier_list'] = carrier_list
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Update ESDL coordinates on movement of assets in browser
@@ -1937,6 +2106,10 @@ def get_boundary_info(info):
             # boundary = create_boundary_from_contour(area_contour)
             # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
+            print("bericht over de socket")
+            print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom})
+            print("boundary die werkt:")
+            print(geom)
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom})
 
     print('ready')
@@ -1975,6 +2148,8 @@ def initialize_app():
     area_bld_list = []
     conn_list = []
     mapping = {}
+    carrier_list = []
+
     create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
@@ -1985,6 +2160,7 @@ def initialize_app():
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
+    emit('carrier_list', carrier_list)
 
     session['es_title'] = es_title
     session['es_edit'] = es_edit
