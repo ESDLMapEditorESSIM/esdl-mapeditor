@@ -14,7 +14,6 @@ from model import esdl_sup as esdl
 import esdl_config
 
 
-
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
 # the best option based on installed packages.
@@ -231,7 +230,7 @@ def create_boundary_from_geometry(geometry):
             'type': 'MultiPolygon',
             'coordinates': mp
         }
-        print(geom)
+        # print(geom)
 
     return geom
 
@@ -427,6 +426,7 @@ def send_html(path):
 # ---------------------------------------------------------------------------------------------------------------------
 def parse_esdl_config():
     esdlc = esdl_config.esdl_config
+    print('Configuration found:')
     print(esdlc)
 
 
@@ -582,41 +582,97 @@ def remove_asset_from_energysystem(es, asset_id):
 
 
 def get_carrier_list(es):
-    esi = es.get_energySystemInformation()
-    ec = esi.get_carriers().get_carrier()
-
     carrier_list = []
-    for carrier in ec:
-        carrier_info = {
-            'type': type(carrier).__name__,
-            'id': carrier.get_id(),
-            'name': carrier.get_name(),
-        }
-        if isinstance(carrier, esdl.Commodity):
-            if isinstance(carrier, esdl.ElectricityCommodity):
-                carrier_info['voltage'] = carrier.get_voltage()
-            if isinstance(carrier, esdl.GasCommodity):
-                carrier_info['pressure'] = carrier.get_pressure()
-            if isinstance(carrier, esdl.HeatCommodity):
-                carrier_info['supplyTemperature'] = carrier.get_supplyTemperature()
-                carrier_info['returnTemperature'] = carrier.get_returnTemperature()
+    esi = es.get_energySystemInformation()
+    if esi:
+        ec = esi.get_carriers().get_carrier()
 
-        if isinstance(carrier, esdl.EnergyCarrier):
-            carrier_info['energyContent'] = carrier.get_energyContent()
-            carrier_info['emission'] = carrier.get_emission()
-            carrier_info['energyCarrierType'] = carrier.get_energyCarrierType()
-            carrier_info['stateOfMatter'] = carrier.get_stateOfMatter()
+        if ec:
+            for carrier in ec:
+                carrier_info = {
+                    'type': type(carrier).__name__,
+                    'id': carrier.get_id(),
+                    'name': carrier.get_name(),
+                }
+                if isinstance(carrier, esdl.Commodity):
+                    if isinstance(carrier, esdl.ElectricityCommodity):
+                        carrier_info['voltage'] = carrier.get_voltage()
+                    if isinstance(carrier, esdl.GasCommodity):
+                        carrier_info['pressure'] = carrier.get_pressure()
+                    if isinstance(carrier, esdl.HeatCommodity):
+                        carrier_info['supplyTemperature'] = carrier.get_supplyTemperature()
+                        carrier_info['returnTemperature'] = carrier.get_returnTemperature()
 
-        carrier_list.append(carrier_info)
+                if isinstance(carrier, esdl.EnergyCarrier):
+                    carrier_info['energyContent'] = carrier.get_energyContent()
+                    carrier_info['emission'] = carrier.get_emission()
+                    carrier_info['energyCarrierType'] = carrier.get_energyCarrierType()
+                    carrier_info['stateOfMatter'] = carrier.get_stateOfMatter()
+
+                # carrier_list.append({carrier.get_id(): carrier_info})
+                carrier_list.append(carrier_info)
 
     return carrier_list
 
 
+def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
+    mapping = session['port_to_asset_mapping']
+    asset_dict = session['asset_dict']
+
+    asset = asset_dict[asset_id]
+    processed_assets.append(asset_id)
+    for p in asset.get_port():
+        p.set_carrier(carrier_id)
+        conn_to = p.get_connectedTo()
+        if conn_to:
+            conn_to_list = conn_to.split(' ')
+            for conn_port_id in conn_to_list:
+                conn_asset_id = mapping[conn_port_id]['asset_id']
+                conn_asset = asset_dict[conn_asset_id]
+                if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange)\
+                        and not isinstance(conn_asset, esdl.Transformer):
+                    if not conn_asset_id in processed_assets:
+                        _set_carrier_for_connected_transport_assets(conn_asset_id, carrier_id, processed_assets)
+                else:
+                    for conn_asset_port in conn_asset.get_port():
+                        if conn_asset_port.get_id() == conn_port_id:
+                            conn_asset_port.set_carrier(carrier_id)
+
+
+def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
+    processed_assets = []       # List of asset_id's that are processed
+    _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
+    # print(processed_assets)
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialize
+#  TODO: find out what should be here :-)
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize():
     session['port_to_asset_mapping'] = {}
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Builds up a dictionary from asset_id to asset
+# ---------------------------------------------------------------------------------------------------------------------
+def _create_building_asset_dict(asset_dict, building):
+    for basset in building.get_asset():
+        asset_dict[basset.get_id()] = basset
+
+
+def _create_area_asset_dict(asset_dict, area):
+    for ar in area.get_area():
+        _create_area_asset_dict(asset_dict, ar)
+    for asset in area.get_asset():
+        asset_dict[asset.get_id()] = asset
+
+
+def create_asset_dict(area):
+    asset_dict = {}
+    _create_area_asset_dict(asset_dict, area)
+
+    return asset_dict
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -792,7 +848,7 @@ def update_asset_geometries(area, boundary):
         print(asset_coords)
 
     else:
-        send_alert('ERROR: Number of assets larger than number of triangles')
+        print('ERROR: Number of assets larger than number of triangles')
 
 
 def generate_profile_info(profile):
@@ -1216,6 +1272,7 @@ def distance_point_to_line(p, p1, p2):
 def split_conductor(conductor, location, mode, conductor_container):
     mapping = session['port_to_asset_mapping']
     conn_list = session['conn_list']
+    asset_dict = session['asset_dict']
 
     geometry = conductor.get_geometry()
     conductor_type = type(conductor).__name__
@@ -1312,6 +1369,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         assets.remove(conductor)
         conductor_container.add_asset_with_type(new_cond1)
         conductor_container.add_asset_with_type(new_cond2)
+        asset_dict[new_cond1_id] = new_cond1
+        asset_dict[new_cond2_id] = new_cond2
 
         # update port asset mappings for conductors
         mapping[port1.get_id()] = {'asset_id': new_cond1_id, 'coord': (begin_point.get_lat(), begin_point.get_lon()), 'pos': 'first'}
@@ -1379,6 +1438,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint.add_port_with_type(outp)
             joint.set_geometry_with_type(middle_point)          # TODO: check if multiple use works
             conductor_container.add_asset_with_type(joint)
+            asset_dict[joint_id] = joint
 
             # Change port asset mappings
             mapping[joint_inp_id] = {'asset_id': joint_id, 'coord': (middle_point.get_lat(), middle_point.get_lon())}
@@ -1398,6 +1458,7 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         session['port_to_asset_mapping'] = mapping
         session['conn_list'] = conn_list
+        session['asset_dict'] = asset_dict
     else:
         send_alert('UNSUPPORTED: Conductor is not of type esdl.Line!')
 
@@ -1411,6 +1472,7 @@ def process_command(message):
     print (message)
     es_edit = session['es_edit']
     mapping = session['port_to_asset_mapping']
+    asset_dict = session['asset_dict']
     # print (session['es_edit'].get_instance()[0].get_area().get_name())
 
     if message['cmd'] == 'add_asset':
@@ -1528,8 +1590,8 @@ def process_command(message):
             asset.add_port_with_type(outp)
 
             polyline_data = message['polyline']
-            print(polyline_data)
-            print(type(polyline_data))
+            # print(polyline_data)
+            # print(type(polyline_data))
             polyline_length = float(message['length'])
             asset.set_length(polyline_length)
 
@@ -1575,7 +1637,9 @@ def process_command(message):
             asset_to_be_added_list.append(['point', asset.get_name(), asset.get_id(), type(asset).__name__, message['lat'], message['lng'], port_list])
             emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
 
-    if message['cmd'] == 'remove_asset':
+        asset_dict[asset_id] = asset
+
+    if message['cmd'] == 'remove_asset':        # TODO: remove form asset_dict
         asset_id = message['id']
         if asset_id:
             remove_asset_from_energysystem(es_edit, asset_id)
@@ -1759,9 +1823,9 @@ def process_command(message):
         profile_class = message['profile_class']
         profile_type = message['profile_type']
 
-        print(port_id)
-        print(multiplier_or_value)
-        print(profile_class)
+        # print(port_id)
+        # print(multiplier_or_value)
+        # print(profile_class)
 
         module = importlib.import_module('model.esdl_sup')
 
@@ -1801,7 +1865,21 @@ def process_command(message):
                 if p.get_id() == port_id:
                     p.set_profile(esdl_profile)
 
+    if message['cmd'] == 'set_carrier':
+        asset_id = message['asset_id']
+        carrier_id = message['carrier_id']
+        area = es_edit.get_instance()[0].get_area()
+
+        if asset_id:
+            asset = find_asset(area, asset_id)
+            num_ports = len(asset.get_port())
+            if isinstance(asset, esdl.Transport) or num_ports == 1:
+                set_carrier_for_connected_transport_assets(asset_id, carrier_id)
+            else:
+                send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
+
     session['es_edit'] = es_edit
+    session['asset_dict'] = asset_dict
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1837,12 +1915,12 @@ def process_file_command(message):
         area_bld_list = []
         conn_list = []
         carrier_list = []
-
+        asset_dict = {}
         mapping = {}
+
         create_port_to_asset_mapping(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-        session['conn_list'] = conn_list
 
         emit('clear_ui')
         emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
@@ -1859,6 +1937,9 @@ def process_file_command(message):
         session['es_descr'] = description
         session['es_email'] = email
         session['es_start'] = 'new'
+        session['conn_list'] = conn_list
+        session['carrier_list'] = carrier_list
+        session['asset_dict'] = asset_dict
 
     if message['cmd'] == 'get_list_from_store':
         result = requests.get(store_url)
@@ -1880,15 +1961,15 @@ def process_file_command(message):
         area_bld_list = []
         conn_list = []
         carrier_list = []
+        mapping = {}
 
         instance = es_edit.get_instance()
         area = instance[0].get_area()
+        asset_dict = create_asset_dict(area)
 
-        mapping = {}
         create_port_to_asset_mapping(area, mapping)
         session['port_to_asset_mapping'] = mapping
         process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-        session['conn_list'] = conn_list
 
         emit('clear_ui')
         emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
@@ -1901,6 +1982,9 @@ def process_file_command(message):
         session['es_edit'] = es_edit
         session['es_title'] = es_title
         session['es_start'] = 'load_store'
+        session['conn_list'] = conn_list
+        session['carrier_list'] = carrier_list
+        session['asset_dict'] = asset_dict
 
     if message['cmd'] == 'store_esdl':
         es_edit = session['es_edit']
@@ -1942,12 +2026,14 @@ def load_esdl_file(message):
     asset_list = []
     area_bld_list = []
     conn_list = []
+    mapping = {}
     carrier_list = get_carrier_list(es_edit)
 
     instance = es_edit.get_instance()
     area = instance[0].get_area()
     area_id = area.get_id()
     area_scope = area.get_scope()
+    asset_dict = create_asset_dict(area)
 
     emit('clear_ui')
 
@@ -1967,11 +2053,9 @@ def load_esdl_file(message):
 
     find_more_boundaries_in_ESDL(area)
 
-    mapping = {}
     create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-    session['conn_list'] = conn_list
 
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
@@ -1983,7 +2067,9 @@ def load_esdl_file(message):
     session['es_edit'] = es_edit
     session['es_title'] = es_title
     session['es_start'] = 'load_file'
+    session['conn_list'] = conn_list
     session['carrier_list'] = carrier_list
+    session['asset_dict'] = asset_dict
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Update ESDL coordinates on movement of assets in browser
@@ -2047,6 +2133,7 @@ def update_line_coordinates(message):
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('get_boundary_info', namespace='/esdl')
 def get_boundary_info(info):
+    print('get_boundary_info:')
     print(info)
     identifier = info["identifier"]
     scope = info["scope"]
@@ -2106,13 +2193,9 @@ def get_boundary_info(info):
             # boundary = create_boundary_from_contour(area_contour)
             # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
-            print("bericht over de socket")
-            print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom})
-            print("boundary die werkt:")
-            print(geom)
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom})
 
-    print('ready')
+    print('Ready prcessing boundary information')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2122,7 +2205,7 @@ def get_boundary_info(info):
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
     emit('log', {'data': 'Connected', 'count': 0})
-    print('Connected')
+    print('Client connected: ', request.sid)
 
     # Seems not to work: refresh in browser creates new session?
     if 'es_edit' in session:
@@ -2149,11 +2232,11 @@ def initialize_app():
     conn_list = []
     mapping = {}
     carrier_list = []
+    asset_dict = {}
 
     create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-    session['conn_list'] = conn_list
 
     emit('clear_ui')
     emit('es_title', es_title)
@@ -2165,14 +2248,17 @@ def initialize_app():
     session['es_title'] = es_title
     session['es_edit'] = es_edit
     session['es_id'] = es_id
-
+    session['conn_list'] = conn_list
+    session['carrier_list'] = carrier_list
+    session['asset_dict'] = asset_dict
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
     emit('log', {'data': 'Connected', 'count': 0})
-    emit('profile-info', esdl_config.esdl_config['influxdb_profile_data'])
+    emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
+    # emit('carrier_list', [{'NaturalGas': {'type': 'EnergyCarrier', 'id': 'NaturalGas', 'name': 'NaturalGas', 'energyContent': 38370000.0, 'emission': 1.788225, 'energyCarrierType': 'FOSSIL', 'stateOfMatter': 'GASEOUS'}}, {'Hydrogen': {'type': 'EnergyCarrier', 'id': 'Hydrogen', 'name': 'Hydrogen', 'energyContent': 120000000.0, 'emission': 0.0, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'GASEOUS'}}, {'HEATCOMM': {'type': 'HeatCommodity', 'id': 'HEATCOMM', 'name': 'HeatCommodity', 'supplyTemperature': 0.0, 'returnTemperature': None}}, {'ELECCOMM': {'type': 'ElectricityCommodity', 'id': 'ELECCOMM', 'name': 'ElectricityCommodity', 'voltage': None}}, {'Biomass': {'type': 'EnergyCarrier', 'id': 'Biomass', 'name': 'Biomass', 'energyContent': 15100000.0, 'emission': 1.65496, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'SOLID'}}])
+
     initialize_app()
-    print('Connected')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2180,7 +2266,7 @@ def on_connect():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
 def on_disconnect():
-    print('Client disconnected', request.sid)
+    print('Client disconnected: ', request.sid)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
