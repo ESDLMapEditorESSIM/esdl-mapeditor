@@ -7,8 +7,10 @@ import math
 import copy
 import json
 import importlib
+
 import numpy as np
 from scipy.spatial import Delaunay
+from shapely.geometry import Polygon, MultiPolygon, Point
 
 from model import esdl_sup as esdl
 import esdl_config
@@ -750,32 +752,34 @@ def generate_point_in_area(boundary):
     return
 
 
-def update_building_asset_geometries(building, boundary):
+def update_building_asset_geometries(building, avail_locations):
     for basset in building.get_asset():
         if isinstance(basset, esdl.EnergyAsset):
             geom = basset.get_geometry()
             if not geom:
+                location = avail_locations.pop(0)
                 geom = esdl.Point()
-                geom.set_lon(5)
-                geom.set_lat(52)
+                geom.set_lon(location[1])
+                geom.set_lat(location[0])
                 basset.set_geometry(geom)
 
 
-def update_area_asset_geometries(area, boundary):
+def update_area_asset_geometries(area, avail_locations):
     # process subareas
     for ar in area.get_area():
-        update_area_asset_geometries(ar, boundary)
+        update_area_asset_geometries(ar, avail_locations)
 
     # process assets in area
     for asset in area.get_asset():
         if isinstance(asset, esdl.AggregatedBuilding):
-            update_building_asset_geometries(asset, boundary)
+            update_building_asset_geometries(asset, avail_locations)
         if isinstance(asset, esdl.EnergyAsset):
             geom = asset.get_geometry()
             if not geom:
+                location = avail_locations.pop(0)
                 geom = esdl.Point()
-                geom.set_lon(5)
-                geom.set_lat(52)
+                geom.set_lon(location[1])
+                geom.set_lat(location[0])
                 asset.set_geometry(geom)
 
 
@@ -849,6 +853,57 @@ def update_asset_geometries(area, boundary):
 
     else:
         print('ERROR: Number of assets larger than number of triangles')
+
+
+def update_asset_geometries2(area, boundary):
+    coords = boundary['coordinates']
+    type = boundary['type']
+
+    num_assets = count_assets_and_potentials(area)
+
+    if type == 'Polygon':
+        exterior_polygon_coords = coords[0]
+    elif type == 'MultiPolygon':
+        # search for largest polygon in multipolygon
+        for polygon in coords:
+            exterior_polygon_coords = polygon[0]
+            # TODO: what's next? :-)
+
+    polygon = Polygon(exterior_polygon_coords)
+    print(polygon.area)
+    bbox_coords = polygon.bounds
+    bl_x = bbox_coords[0]
+    bl_y = bbox_coords[1]
+    tr_x = bbox_coords[2]
+    tr_y = bbox_coords[3]
+    bbox_polygon = Polygon([[bl_x,bl_y],[tr_x, bl_y],[tr_x, tr_y],[bl_x, tr_y]])
+    print(bbox_polygon.area)
+    area_perc = polygon.area / bbox_polygon.area
+
+    width = tr_x - bl_x
+    height = tr_y - bl_y
+
+    req_num_points_in_area = num_assets * 1.5       # safety margin
+    num_points_in_bbox = req_num_points_in_area / area_perc
+
+    # width/dx * height/dy = num_points_in_bbox
+    # 1 / dx * dy = num_points_in_bbox / (width * height)
+    # dx * dy = area / num_points_in_bbox
+    dxy = math.sqrt(bbox_polygon.area / num_points_in_bbox)
+
+    available_locations = []
+
+    xcntr = 1
+    while (bl_x + xcntr * dxy < tr_x):
+        ycntr = 1
+        while (bl_y + ycntr * dxy < tr_y):
+            point = Point(bl_x + xcntr * dxy, bl_y + ycntr * dxy)
+            if point.within(polygon):
+                available_locations.append([bl_y + ycntr * dxy, bl_x + xcntr * dxy])
+            ycntr += 1
+        xcntr += 1
+
+    update_area_asset_geometries(area, available_locations)
 
 
 def generate_profile_info(profile):
@@ -2043,7 +2098,7 @@ def load_esdl_file(message):
         emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary})
 
         # check to see if ESDL file contains asset locations; if not generate locations
-        update_asset_geometries(area, boundary)
+        update_asset_geometries2(area, boundary)
     else:
         # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
         if len(area_id) < 20 and area_scope:

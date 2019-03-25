@@ -444,6 +444,13 @@
                 clear_layer = false;
             });
 
+            socket.on('add_marker', function(point_coords) {
+                console.log(point_coords);
+
+                var marker = L.Marker(point_coords);
+                esdl_layer.addLayer(marker); // marker.addTo(map);
+            });
+
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
                 // 0        1       2       3           4       5       6
@@ -918,6 +925,8 @@
             esdl_layer = L.featureGroup().addTo(map),
             area_layer = L.featureGroup().addTo(map),
             connection_layer = L.featureGroup().addTo(map);
+
+    connection_layer.bringToFront();
 
     L.control.layers(
         {
