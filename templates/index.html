@@ -1093,7 +1093,7 @@
             }
             esdl_layer.addLayer(layer);
         }
-        if (type === 'polygon') {
+        if (type === 'polygon' || type === 'rectangle') {
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
             area_layer.addLayer(layer, true);
         }

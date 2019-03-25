@@ -1826,7 +1826,7 @@ def process_command(message):
                 last = (coord['lat'], coord['lng'])
 
             # Don't understand why, but sometimes coordinates come in twice
-            if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+            if prev_lat != coord['lat'] or prev_lng != coord['lng']:
                 point = esdl.Point()
                 point.set_lon(coord['lng'])
                 point.set_lat(coord['lat'])
