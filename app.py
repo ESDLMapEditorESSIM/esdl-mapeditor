@@ -40,6 +40,10 @@ BUILDING_COLORS_AREA = [
     {'from': 1000, 'to': 99999, 'color': '#000040'}     # dark blue
 ]
 
+
+AREA_LINECOLOR = 'blue'
+AREA_FILLCOLOR = 'red'
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
@@ -332,10 +336,10 @@ def _find_more_area_boundaries(this_area):
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):
             boundary = create_boundary_from_geometry(area_geometry)
-            emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary})
+            emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary = create_boundary_from_geometry(area_geometry)
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary})
+            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     assets = this_area.get_asset()
     for asset in assets:
@@ -536,6 +540,7 @@ def add_asset_to_building(es, asset, building_id):
 
 def _remove_port_references(area, ports):
     mapping = session['port_to_asset_mapping']
+    asset_dict = session['asset_dict']
     for p_remove in ports:
         p_id = p_remove.get_id()
         connected_to = p_remove.get_connectedTo()
@@ -544,12 +549,14 @@ def _remove_port_references(area, ports):
             for conns in connected_to_list:
                 # conns now contains the id's of the port this port is referring to
                 ass_info = mapping[conns]
-                asset = find_asset(area, ass_info['asset_id'])
+                # asset = find_asset(area, ass_info['asset_id'])    # find_asset doesn't look for asset in top level area
+                asset = asset_dict[ass_info['asset_id']]
                 asset_ports = asset.get_port()
                 for p_remove_ref in asset_ports:
                     conn_to = p_remove_ref.get_connectedTo()
                     conn_tos = conn_to.split(' ')
-                    conn_tos.remove(p_id)
+                    if p_id in conn_tos:
+                        conn_tos.remove(p_id)
                     conn_to = ' '.join(conn_tos)
                     p_remove_ref.set_connectedTo(conn_to)
 
@@ -668,6 +675,8 @@ def _create_area_asset_dict(asset_dict, area):
         _create_area_asset_dict(asset_dict, ar)
     for asset in area.get_asset():
         asset_dict[asset.get_id()] = asset
+        if isinstance(asset, esdl.AbstractBuilding):
+            _create_building_asset_dict(asset_dict, asset)
 
 
 def create_asset_dict(area):
@@ -2095,7 +2104,7 @@ def load_esdl_file(message):
     area_geometry = area.get_geometry()
     if area_geometry:
         boundary = create_boundary_from_geometry(area_geometry)
-        emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary})
+        emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
         # check to see if ESDL file contains asset locations; if not generate locations
         update_asset_geometries2(area, boundary)
@@ -2104,7 +2113,7 @@ def load_esdl_file(message):
         if len(area_id) < 20 and area_scope:
             boundary = get_boundary_from_service(area_scope, area_id)
             if boundary:
-                emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
+                emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     find_more_boundaries_in_ESDL(area)
 
@@ -2248,7 +2257,7 @@ def get_boundary_info(info):
             # boundary = create_boundary_from_contour(area_contour)
             # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom})
+            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     print('Ready prcessing boundary information')
 
