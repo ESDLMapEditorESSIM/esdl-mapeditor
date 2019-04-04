@@ -9,8 +9,8 @@ import json
 import importlib
 
 import numpy as np
-from scipy.spatial import Delaunay
-from shapely.geometry import Polygon, MultiPolygon, Point
+# from scipy.spatial import Delaunay
+# from shapely.geometry import Polygon, MultiPolygon, Point
 
 from model import esdl_sup as esdl
 import esdl_config
@@ -825,94 +825,97 @@ def calculate_triangle_center(triangle):
 
 
 def update_asset_geometries(area, boundary):
-    coords = boundary['coordinates']
-    type = boundary['type']
-
-    num_assets = count_assets_and_potentials(area)
-
-    if type == 'Polygon':
-        exterior_polygon_coords = coords[0]
-    elif type == 'MultiPolygon':
-        # search for largest polygon in multipolygon
-        maxlen = 0
-        maxpolygon = []
-        for polygon in coords:
-            exterior = polygon[0]
-            if len(exterior) > maxlen:
-                maxlen = len(exterior)
-                maxpolygon = exterior
-        exterior_polygon_coords = maxpolygon[0]
-
-    print(exterior_polygon_coords)
-
-    points = np.array(exterior_polygon_coords)
-    tri = Delaunay(points)
-    triangles = points[tri.simplices]
-
-    num_triangles = len(triangles)
-
-    if num_assets <= num_triangles:
-        triangle_step = num_triangles / num_assets + 2      # TODO: check 2?
-        asset_coords = []
-        for i in range(1, num_assets):      # TODO: check number
-            asset_coords.append(calculate_triangle_center(triangles[round(triangle_step + triangle_step * i)]))
-
-        # TODO: iterate over all assets and assign coordinates
-        print(asset_coords)
-
-    else:
-        print('ERROR: Number of assets larger than number of triangles')
+    # coords = boundary['coordinates']
+    # type = boundary['type']
+    #
+    # num_assets = count_assets_and_potentials(area)
+    #
+    # if type == 'Polygon':
+    #     exterior_polygon_coords = coords[0]
+    # elif type == 'MultiPolygon':
+    #     # search for largest polygon in multipolygon
+    #     maxlen = 0
+    #     maxpolygon = []
+    #     for polygon in coords:
+    #         exterior = polygon[0]
+    #         if len(exterior) > maxlen:
+    #             maxlen = len(exterior)
+    #             maxpolygon = exterior
+    #     exterior_polygon_coords = maxpolygon[0]
+    #
+    # print(exterior_polygon_coords)
+    #
+    # points = np.array(exterior_polygon_coords)
+    # tri = Delaunay(points)
+    # triangles = points[tri.simplices]
+    #
+    # num_triangles = len(triangles)
+    #
+    # if num_assets <= num_triangles:
+    #     triangle_step = num_triangles / num_assets + 2      # TODO: check 2?
+    #     asset_coords = []
+    #     for i in range(1, num_assets):      # TODO: check number
+    #         asset_coords.append(calculate_triangle_center(triangles[round(triangle_step + triangle_step * i)]))
+    #
+    #     # TODO: iterate over all assets and assign coordinates
+    #     print(asset_coords)
+    #
+    # else:
+    #     print('ERROR: Number of assets larger than number of triangles')
+    #
+    pass
 
 
 def update_asset_geometries2(area, boundary):
-    coords = boundary['coordinates']
-    type = boundary['type']
-
-    num_assets = count_assets_and_potentials(area)
-
-    if type == 'Polygon':
-        exterior_polygon_coords = coords[0]
-    elif type == 'MultiPolygon':
-        # search for largest polygon in multipolygon
-        for polygon in coords:
-            exterior_polygon_coords = polygon[0]
-            # TODO: what's next? :-)
-
-    polygon = Polygon(exterior_polygon_coords)
-    print(polygon.area)
-    bbox_coords = polygon.bounds
-    bl_x = bbox_coords[0]
-    bl_y = bbox_coords[1]
-    tr_x = bbox_coords[2]
-    tr_y = bbox_coords[3]
-    bbox_polygon = Polygon([[bl_x,bl_y],[tr_x, bl_y],[tr_x, tr_y],[bl_x, tr_y]])
-    print(bbox_polygon.area)
-    area_perc = polygon.area / bbox_polygon.area
-
-    width = tr_x - bl_x
-    height = tr_y - bl_y
-
-    req_num_points_in_area = num_assets * 1.5       # safety margin
-    num_points_in_bbox = req_num_points_in_area / area_perc
-
-    # width/dx * height/dy = num_points_in_bbox
-    # 1 / dx * dy = num_points_in_bbox / (width * height)
-    # dx * dy = area / num_points_in_bbox
-    dxy = math.sqrt(bbox_polygon.area / num_points_in_bbox)
-
-    available_locations = []
-
-    xcntr = 1
-    while (bl_x + xcntr * dxy < tr_x):
-        ycntr = 1
-        while (bl_y + ycntr * dxy < tr_y):
-            point = Point(bl_x + xcntr * dxy, bl_y + ycntr * dxy)
-            if point.within(polygon):
-                available_locations.append([bl_y + ycntr * dxy, bl_x + xcntr * dxy])
-            ycntr += 1
-        xcntr += 1
-
-    update_area_asset_geometries(area, available_locations)
+    # coords = boundary['coordinates']
+    # type = boundary['type']
+    #
+    # num_assets = count_assets_and_potentials(area)
+    #
+    # if type == 'Polygon':
+    #     exterior_polygon_coords = coords[0]
+    # elif type == 'MultiPolygon':
+    #     # search for largest polygon in multipolygon
+    #     for polygon in coords:
+    #         exterior_polygon_coords = polygon[0]
+    #         # TODO: what's next? :-)
+    #
+    # polygon = Polygon(exterior_polygon_coords)
+    # print(polygon.area)
+    # bbox_coords = polygon.bounds
+    # bl_x = bbox_coords[0]
+    # bl_y = bbox_coords[1]
+    # tr_x = bbox_coords[2]
+    # tr_y = bbox_coords[3]
+    # bbox_polygon = Polygon([[bl_x,bl_y],[tr_x, bl_y],[tr_x, tr_y],[bl_x, tr_y]])
+    # print(bbox_polygon.area)
+    # area_perc = polygon.area / bbox_polygon.area
+    #
+    # width = tr_x - bl_x
+    # height = tr_y - bl_y
+    #
+    # req_num_points_in_area = num_assets * 1.5       # safety margin
+    # num_points_in_bbox = req_num_points_in_area / area_perc
+    #
+    # # width/dx * height/dy = num_points_in_bbox
+    # # 1 / dx * dy = num_points_in_bbox / (width * height)
+    # # dx * dy = area / num_points_in_bbox
+    # dxy = math.sqrt(bbox_polygon.area / num_points_in_bbox)
+    #
+    # available_locations = []
+    #
+    # xcntr = 1
+    # while (bl_x + xcntr * dxy < tr_x):
+    #     ycntr = 1
+    #     while (bl_y + ycntr * dxy < tr_y):
+    #         point = Point(bl_x + xcntr * dxy, bl_y + ycntr * dxy)
+    #         if point.within(polygon):
+    #             available_locations.append([bl_y + ycntr * dxy, bl_x + xcntr * dxy])
+    #         ycntr += 1
+    #     xcntr += 1
+    #
+    # update_area_asset_geometries(area, available_locations)
+    pass
 
 
 def generate_profile_info(profile):
