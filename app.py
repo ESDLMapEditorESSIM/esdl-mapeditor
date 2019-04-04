@@ -1,3 +1,6 @@
+import gevent.monkey
+gevent.monkey.patch_all()
+
 #!/usr/bin/env python
 from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
@@ -2341,4 +2344,5 @@ def on_disconnect():
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parse_esdl_config()
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=False, host='0.0.0.0')
+
