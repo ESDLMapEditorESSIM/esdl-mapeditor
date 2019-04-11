@@ -139,54 +139,59 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
-                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng});
+                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng, asspot: marker.asspot});
                 // console.log(e.oldLatLng.lat);
                 // console.log(pos.lat + ', ' + pos.lng );
             });
 
             marker.on('remove', function(e) {
                 // console.log('remove marker');
-                if (clear_layer == false) socket.emit('command', {cmd: 'remove_asset', id: marker.id});
+                if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
             });
 
             marker.on('click', function(e) {
+                var marker = e.target;
                 if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
                     // console.log('marker clicked');
                     var marker = e.target;
                     var id = marker.id;
 
                     if (connecting_assets) {
-                        if (first_clicked) {
-                            first_clicked = false;
-                            if (first_clicked_id == id) {       // clicked same asset twice
-                                console.log('first clicked cancelled');
-                            } else {                            // connect two assets
-                                document.getElementById('conn_asset_id2').innerHTML = id;
-                                document.getElementById('conn_asset_name2').innerHTML = marker.name;
-                                document.getElementById('conn_asset_type2').innerHTML = marker.type;
-                                document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + id + ' are now connected.';
-                                document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+                        if (marker.asspot == 'asset') {
+                            if (first_clicked) {
+                                first_clicked = false;
+                                if (first_clicked_id == id) {       // clicked same asset twice
+                                    console.log('first clicked cancelled');
+                                } else {                            // connect two assets
+                                    document.getElementById('conn_asset_id2').innerHTML = id;
+                                    document.getElementById('conn_asset_name2').innerHTML = marker.name;
+                                    document.getElementById('conn_asset_type2').innerHTML = marker.type;
+                                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + id + ' are now connected.';
+                                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
 
-                                console.log('second clicked' + id + ', connecting...');
-                                socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
+                                    console.log('second clicked' + id + ', connecting...');
+                                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
 
-                                // TODO: timer to clear sidebar?
+                                    // TODO: timer to clear sidebar?
+                                }
+                                first_clicked_id = 0;
+                            } else {
+                                first_clicked = true;
+                                first_clicked_id = id;
+
+                                document.getElementById('conn_asset_id1').innerHTML = id;
+                                document.getElementById('conn_asset_name1').innerHTML = marker.name;
+                                document.getElementById('conn_asset_type1').innerHTML = marker.type;
+                                document.getElementById('conn_asset_result').innerHTML = '';
+                                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+
+                                console.log('first clicked ' + first_clicked_id);
                             }
-                            first_clicked_id = 0;
                         } else {
-                            first_clicked = true;
-                            first_clicked_id = id;
-
-                            document.getElementById('conn_asset_id1').innerHTML = id;
-                            document.getElementById('conn_asset_name1').innerHTML = marker.name;
-                            document.getElementById('conn_asset_type1').innerHTML = marker.type;
-                            document.getElementById('conn_asset_result').innerHTML = '';
-                            document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
-
-                            console.log('first clicked ' + first_clicked_id);
+                            console.log('Cannot connect to potential');
                         }
                     } else {
-                        socket.emit('command', {cmd: 'get_asset_info', id: id});
+                        socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
                     }
                 }
             });
@@ -211,7 +216,7 @@
             });
 
             line.on('remove', function(e) {
-                if (clear_layer == false) socket.emit('command', {cmd: 'remove_asset', id: line.id});
+                if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
             });
 
             line.on('click', function(e) {
@@ -467,49 +472,53 @@
 
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0        1       2       3           4       5       6
-                // 'point'  name    id      class_name  lat     lon     [ports]
-                // 'line'   name    id      class_name  [...]   [ports]
+                // 0        1          2       3           4       5       6       7
+                // 'point'  asset      name    id      class_name  lat     lon     [ports]
+                // 'line'   asset      name    id      class_name  [...]   [ports]
+                // 'point'  potential  name    id      class_name  lat     lon
 
                 list = options['list'];
 
                 for (i = 0; i<list.length; i++) {
-                    $('#log').append('<br>' + list[i][0]+ ', ' + list[i][1] + ': ' + list[i][2] + ' - ' + list[i][3]);
+                    $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
 
                     var ESDLicon = L.icon({
-                        iconUrl: 'images/' + list[i][3] + '.png',
+                        iconUrl: 'images/' + list[i][4] + '.png',
 
                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
+					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
                     if (list[i][0] == 'point') {
 						
-                        var marker = L.marker([list[i][4], list[i][5]], {icon: ESDLicon, title: title});
+                        var marker = L.marker([list[i][5], list[i][6]], {icon: ESDLicon, title: title});
 
                         marker.title = title;
-                        marker.id = list[i][2];
-                        marker.name = list[i][1];
-                        marker.type = list[i][3];
-                        marker.ports = list[i][6];
+                        marker.id = list[i][3];
+                        marker.name = list[i][2];
+                        marker.type = list[i][4];
+                        marker.asspot = list[i][1];
+                        if (marker.asspot == 'asset') {
+                            marker.ports = list[i][7];
+                        }
 
                         set_marker_handlers(marker);
                         esdl_layer.addLayer(marker);
                     }
                     if (list[i][0] == 'line') {
-                        var coords = list[i][4];
-                        if (list[i][3] == 'ElectricityCable') linecolor = '#ff9090'
-                        if (list[i][3] == 'Pipe') linecolor = 'blue'
+                        var coords = list[i][5];
+                        if (list[i][4] == 'ElectricityCable') linecolor = '#ff9090'
+                        if (list[i][4] == 'Pipe') linecolor = 'blue'
 
                         var line = L.polyline(coords, {color: linecolor, weight: 4, draggable:true});
 
-                        // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
+                        // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
-                        line.id = list[i][2];
-                        line.ports = list[i][5];
-                        line.type = list[i][3];
+                        line.id = list[i][3];
+                        line.ports = list[i][6];
+                        line.type = list[i][4];
                         line.name = "";
 
                         set_line_handlers(line);
