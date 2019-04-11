@@ -1,5 +1,5 @@
-#import gevent.monkey
-#gevent.monkey.patch_all()
+import gevent.monkey
+gevent.monkey.patch_all()
 
 #!/usr/bin/env python
 from flask import Flask, render_template, session, request, send_from_directory, send_file
