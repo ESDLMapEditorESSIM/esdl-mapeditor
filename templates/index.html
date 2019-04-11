@@ -224,16 +224,30 @@
                         if (first_clicked) {
                             first_clicked = false;
                             if (first_clicked_id == id) {       // clicked same asset twice
-
                                 console.log('first clicked cancelled');
                             } else {                            // connect two assets
-                                console.log('second clicked ' + id + ', connecting...');
+                                document.getElementById('conn_asset_id2').innerHTML = id;
+                                document.getElementById('conn_asset_name2').innerHTML = line.name;
+                                document.getElementById('conn_asset_type2').innerHTML = line.type;
+                                document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + id + ' are now connected.';
+                                document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+
+                                console.log('second clicked' + id + ', connecting...');
                                 socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: id});
+
+                                // TODO: timer to clear sidebar?
                             }
                             first_clicked_id = 0;
                         } else {
                             first_clicked = true;
                             first_clicked_id = id;
+
+                            document.getElementById('conn_asset_id1').innerHTML = id;
+                            document.getElementById('conn_asset_name1').innerHTML = line.name;
+                            document.getElementById('conn_asset_type1').innerHTML = line.type;
+                            document.getElementById('conn_asset_result').innerHTML = '';
+                            document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+
                             console.log('first clicked ' + first_clicked_id);
                         }
                     } else {
@@ -495,6 +509,8 @@
 						line.title = title;
                         line.id = list[i][2];
                         line.ports = list[i][5];
+                        line.type = list[i][3];
+                        line.name = "";
 
                         set_line_handlers(line);
                         esdl_layer.addLayer(line);
