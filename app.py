@@ -1,7 +1,8 @@
-import gevent.monkey
-gevent.monkey.patch_all()
-
 #!/usr/bin/env python
+
+#import gevent.monkey
+#gevent.monkey.patch_all()
+
 from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
 import requests
@@ -24,6 +25,7 @@ import esdl_config
 # the best option based on installed packages.
 async_mode = None
 
+color_method = 'buildingyear'
 BUILDING_COLORS_BUILDINGYEAR = [
     {'from':    0, 'to': 1900, 'color': '#800000'},     # dark red
     {'from': 1900, 'to': 1940, 'color': '#ff0000'},     # red
@@ -43,6 +45,21 @@ BUILDING_COLORS_AREA = [
     {'from': 1000, 'to': 99999, 'color': '#000040'}     # dark blue
 ]
 
+BUILDING_COLORS_TYPE = {
+    "RESIDENTIAL": '#800000', # dark red
+    "GATHERING":   '#ffff00', # yellow
+    "PRISON":      '#c0c0ff', # light blue / purple
+    "HEALTHCARE":  '#ff0000', # light red
+    "INDUSTRY":    '#000000', # black
+    "OFFICE":      '#0000ff', # blue
+    "EDUCATION":   '#ff00ff', # purple
+    "SPORTS":      '#ff8000', # orange
+    "SHOPPING":    '#00ff00', # light green
+    "HOTEL":       '#00ffff', # cyan
+    "GREENHOUSE":  '#008000', # dark green
+    "UTILITY":     '#330000', # brown
+    "OTHER":       '#888888'  # gray
+}
 
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
@@ -306,36 +323,44 @@ def create_geometry_from_geom(geom):
     return None
 
 
-def _determine_color(asset):
+def _determine_color(asset, color_method):
     building_color = '#808080'
 
     if isinstance(asset, esdl.Building):
-        building_year = asset.get_buildingYear()
-        if building_year:
-            building_color = None
-            i = 0
-            while not building_color:
-                if BUILDING_COLORS_BUILDINGYEAR[i]['from'] <= building_year < BUILDING_COLORS_BUILDINGYEAR[i]['to']:
-                    building_color = BUILDING_COLORS_BUILDINGYEAR[i]['color']
-                i += 1
+        if color_method == 'buildingyear':
+            building_year = asset.get_buildingYear()
+            if building_year:
+                building_color = None
+                i = 0
+                while not building_color:
+                    if BUILDING_COLORS_BUILDINGYEAR[i]['from'] <= building_year < BUILDING_COLORS_BUILDINGYEAR[i]['to']:
+                        building_color = BUILDING_COLORS_BUILDINGYEAR[i]['color']
+                    i += 1
+        elif color_method == 'floor area':
+            floorarea = asset.get_floorArea()
+            if floorarea:
+                building_color = None
+                i = 0
+                while not floorarea:
+                    if BUILDING_COLORS_AREA[i]['from'] <= floorarea < BUILDING_COLORS_AREA[i]['to']:
+                        building_color = BUILDING_COLORS_AREA[i]['color']
+                    i += 1
+        elif color_method == 'type':
+            bassets = asset.get_asset()
+            for basset in bassets:
+                if isinstance(basset, esdl.BuildingUnit):
+                    type = basset.get_type()
+                    if type:
+                        building_color = BUILDING_COLORS_TYPE[type]
 
     return building_color
 
 
-"""
-        floorarea = asset.get_floorArea()
-        if floorarea:
-            building_color = None
-            i = 0
-            while not floorarea:
-                if BUILDING_COLORS_AREA[i]['from'] <= floorarea < BUILDING_COLORS_AREA[i]['to']:
-                    building_color = BUILDING_COLORS_AREA[i]['color']
-                i += 1
-"""
-
-
 def _find_more_area_boundaries(this_area):
+    area_id = this_area.get_id()
+    area_scope = this_area.get_scope()
     area_geometry = this_area.get_geometry()
+
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):
             boundary = create_boundary_from_geometry(area_geometry)
@@ -344,13 +369,25 @@ def _find_more_area_boundaries(this_area):
             boundary = create_boundary_from_geometry(area_geometry)
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
+        # check to see if ESDL file contains asset locations; if not generate locations
+        # TODO: following call does nothing now
+        # TODO: Check if this can be called recursively
+        update_asset_geometries2(this_area, boundary)
+    else:
+        # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
+        if area_id and area_scope:
+            if len(area_id) < 20:
+                boundary = get_boundary_from_service(area_scope, area_id)
+                if boundary:
+                    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
     assets = this_area.get_asset()
     for asset in assets:
         if isinstance(asset, esdl.AbstractBuilding):
             asset_geometry = asset.get_geometry()
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
-                    building_color = _determine_color(asset)
+                    building_color = _determine_color(asset, session["color_method"])
                     boundary = create_boundary_from_contour(asset_geometry)
 
                     emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color})
@@ -360,7 +397,8 @@ def _find_more_area_boundaries(this_area):
         _find_more_area_boundaries(area)
 
 
-def find_more_boundaries_in_ESDL(top_area):
+# TODO: This seems not to be required. No seperate treatment for top level area?
+def find_boundaries_in_ESDL(top_area):
     _find_more_area_boundaries(top_area)
 
 
@@ -608,6 +646,15 @@ def remove_object_from_energysystem(es, object_id):
     instance = es.get_instance()[0]
     area = instance.get_area()
     _recursively_remove_object_from_area(area, object_id)
+
+
+def get_asset_capability_type(asset):
+    if isinstance(asset, esdl.Producer): return 'producer'
+    if isinstance(asset, esdl.Consumer): return 'consumer'
+    if isinstance(asset, esdl.Storage): return 'storage'
+    if isinstance(asset, esdl.Transport): return 'transport'
+    if isinstance(asset, esdl.Conversion): return 'conversion'
+    return 'none'
 
 
 def get_carrier_list(es):
@@ -980,7 +1027,8 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
                 lon = geom.get_lon()
                 coord = (lat, lon)
 
-                asset_list.append(['point', 'asset', basset.get_name(), basset.get_id(), type(basset).__name__, lat, lon, port_list])
+                capability_type = get_asset_capability_type(basset)
+                asset_list.append(['point', 'asset', basset.get_name(), basset.get_id(), type(basset).__name__, lat, lon, port_list, capability_type])
 
         ports = basset.get_port()
         for p in ports:
@@ -1035,7 +1083,8 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                     lat = geom.get_lat()
                     lon = geom.get_lon()
 
-                    asset_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, lat, lon, port_list])
+                    capability_type = get_asset_capability_type(asset)
+                    asset_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, lat, lon, port_list, capability_type])
                 if isinstance(geom, esdl.Line):
                     coords = []
                     for point in geom.get_point():
@@ -1051,7 +1100,7 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
 
                 asset_list.append(
                     ['point', 'potential', potential.get_name(), potential.get_id(), type(potential).__name__, lat, lon])
-            # if isinstance(geom, esdl.):
+            # if isinstance(geom, esdl.Polygon):
             #     coords = []
             #     for point in geom.get_point():
             #         coords.append([point.get_lat(), point.get_lon()])
@@ -1432,8 +1481,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         segm_ctr = 0
         for point in points:
             if segm_ctr == min_dist_segm:
-                line1.add_point(middle_point)
-                line2.add_point(middle_point)
+                line1.add_point(copy.deepcopy(middle_point))
+                line2.add_point(copy.deepcopy(middle_point))
             if segm_ctr < min_dist_segm:
                 line1.add_point(point)
             else:
@@ -1558,7 +1607,7 @@ def split_conductor(conductor, location, mode, conductor_container):
 
             joint.add_port_with_type(inp)
             joint.add_port_with_type(outp)
-            joint.set_geometry_with_type(middle_point)          # TODO: check if multiple use works
+            joint.set_geometry_with_type(middle_point)
             conductor_container.add_asset_with_type(joint)
             asset_dict[joint_id] = joint
 
@@ -1566,7 +1615,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             mapping[joint_inp_id] = {'asset_id': joint_id, 'coord': (middle_point.get_lat(), middle_point.get_lon())}
             mapping[joint_outp_id] = {'asset_id': joint_id, 'coord': (middle_point.get_lat(), middle_point.get_lon())}
 
-            esdl_assets_to_be_added.append(['point', 'asset', joint.get_name(), joint_id, type(joint).__name__, middle_point.get_lat(), middle_point.get_lon()])
+            esdl_assets_to_be_added.append(['point', 'asset', joint.get_name(), joint_id, type(joint).__name__, middle_point.get_lat(), middle_point.get_lon(), 'transport'])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.get_lat(), middle_point.get_lon()),
                           'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
@@ -1669,7 +1718,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and two OutPorts
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['FuelCell']:
+        if assettype in ['CHP', 'FuelCell']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
@@ -1749,6 +1798,7 @@ def process_command(message):
         if not add_asset_to_area(es_edit, asset, area_bld_id):
             add_asset_to_building(es_edit, asset, area_bld_id)
 
+        # TODO: check / solve cable as Point issue?
         if assettype not in ['ElectricityCable', 'Pipe']:
             port_list = []
             asset_to_be_added_list = []
@@ -1756,7 +1806,8 @@ def process_command(message):
             for p in ports:
                 port_list.append(
                     {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
-            asset_to_be_added_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, message['lat'], message['lng'], port_list])
+            capability_type = get_asset_capability_type(asset)
+            asset_to_be_added_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, message['lat'], message['lng'], port_list, capability_type])
             emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
 
         asset_dict[asset_id] = asset
@@ -1960,12 +2011,18 @@ def process_command(message):
 
         module = importlib.import_module('model.esdl_sup')
 
+        # TODO: Am I nuts? Why use getattr here?
         if profile_class == 'SingleValue':
             esdl_profile_class = getattr(module, 'SingleValue')
             esdl_profile = esdl_profile_class()
             esdl_profile.set_value(float(multiplier_or_value))
             esdl_profile.set_profileType(profile_type)
-        elif profile_class == 'InfluxDBProfile':
+        elif profile_class == 'DateTimeProfile':
+            esdl_profile_class = getattr(module, 'DateTimeProfile')
+            esdl_profile = esdl_profile_class()
+            # TODO: Determine how to deal with DateTimeProfiles in the UI
+        else:
+            # Assume all other options are InfluxDBProfiles
             profiles = esdl_config.esdl_config['influxdb_profile_data']
             for p in profiles:
                 if p['profile_uiname'] == profile_class:
@@ -1981,10 +2038,7 @@ def process_command(message):
                     esdl_profile.set_port(int(esdl_config.esdl_config['profile_database']['port']))
                     esdl_profile.set_database(esdl_config.esdl_config['profile_database']['database'])
                     esdl_profile.set_filters(esdl_config.esdl_config['profile_database']['filters'])
-        elif profile_class == 'DateTimeProfile':
-            esdl_profile_class = getattr(module, 'DateTimeProfile')
-            esdl_profile = esdl_profile_class()
-            # TODO: Determine how to deal with DateTimeProfiles in the UI
+
 
         esdl_profile.set_id(str(uuid.uuid4()))
 
@@ -2008,6 +2062,10 @@ def process_command(message):
                 set_carrier_for_connected_transport_assets(asset_id, carrier_id)
             else:
                 send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
+
+    if message['cmd'] == 'set_building_color_method':
+        session["color_method"] = message['method']
+        print(session["color_method"])
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
@@ -2167,22 +2225,7 @@ def load_esdl_file(message):
     asset_dict = create_asset_dict(area)
 
     emit('clear_ui')
-
-    area_geometry = area.get_geometry()
-    if area_geometry:
-        boundary = create_boundary_from_geometry(area_geometry)
-        emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
-
-        # check to see if ESDL file contains asset locations; if not generate locations
-        update_asset_geometries2(area, boundary)
-    else:
-        # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
-        if len(area_id) < 20 and area_scope:
-            boundary = get_boundary_from_service(area_scope, area_id)
-            if boundary:
-                emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
-
-    find_more_boundaries_in_ESDL(area)
+    find_boundaries_in_ESDL(area)
 
     create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
@@ -2224,7 +2267,7 @@ def update_coordinates(message):
             asset.set_geometry_with_type(point)
 
         # Update locations of connections on moving assets
-        update_asset_connection_locations(ass_id, message['lat'], message['lng'])
+        update_asset_connection_locations(obj_id, message['lat'], message['lng'])
     else:
         potential = find_potential(area, obj_id)
         if potential:
@@ -2347,7 +2390,7 @@ def initialize_app():
     emit('log', {'data': 'Connected', 'count': 0})
     print('Client connected: ', request.sid)
 
-    # Seems not to work: refresh in browser creates new session?
+    # TODO: Seems not to work: refresh in browser creates new session?
     if 'es_edit' in session:
         print ('Energysystem in memory - reloading client data')
         es_edit = session['es_edit']
@@ -2391,6 +2434,7 @@ def initialize_app():
     session['conn_list'] = conn_list
     session['carrier_list'] = carrier_list
     session['asset_dict'] = asset_dict
+    session['color_method'] = 'buildingyear'
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():

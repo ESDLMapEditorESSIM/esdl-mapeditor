@@ -447,6 +447,18 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
 
+            var divicon = L.divIcon({
+                className: 'circle producer',
+                html: '<center><img class="circle-img" width="23" height="23" src="images/CHP.png"></img></center>',
+
+                iconSize:     [30, 30], // size of the icon
+                iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+                popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+            });
+
+			var marker = L.marker([52, 5.8], {icon: divicon, title: 'test'});
+            marker.addTo(map);
+
             socket.on('connect', function() {
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
@@ -472,8 +484,8 @@
 
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0        1          2       3           4       5       6       7
-                // 'point'  asset      name    id      class_name  lat     lon     [ports]
+                // 0        1          2       3           4       5       6       7        8
+                // 'point'  asset      name    id      class_name  lat     lon     [ports]  capability
                 // 'line'   asset      name    id      class_name  [...]   [ports]
                 // 'point'  potential  name    id      class_name  lat     lon
 
@@ -481,6 +493,22 @@
 
                 for (i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
+
+                    if (list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') {
+                        capability = list[i][8];
+                        classname = 'circle ' + capability;
+                    } else {
+                        classname = '';
+                    }
+
+                    var divicon = L.divIcon({
+                        className: classname,
+                        html: '<center><img class="circle-img" width="23" height="23" src="images/' + list[i][4] + '.png"></img></center>',
+
+                        iconSize:     [30, 30], // size of the icon
+                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+                    });
 
                     var ESDLicon = L.icon({
                         iconUrl: 'images/' + list[i][4] + '.png',
@@ -492,8 +520,7 @@
 
 					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
                     if (list[i][0] == 'point') {
-						
-                        var marker = L.marker([list[i][5], list[i][6]], {icon: ESDLicon, title: title});
+                        var marker = L.marker([list[i][5], list[i][6]], {icon: divicon, title: title});
 
                         marker.title = title;
                         marker.id = list[i][3];
@@ -846,6 +873,11 @@
                     }
                 });
             });
+
+            $("#building_color").on('selectmenuchange', function (e) {
+                var selected_method = $(e.target).val();
+                socket.emit('command', {cmd: 'set_building_color_method', method: selected_method});
+            });
         });
     </script>
 
@@ -871,6 +903,35 @@
             height: 25;
         }
 
+        .circle {
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+        }
+        .circle-img {
+            vertical-align: middle;
+        }
+        .producer {
+            background: #93a800;
+            border: 3px solid #6b7a00;
+        }
+        .consumer {
+            background: #649ec9;
+            border: 3px solid #477393;
+        }
+        .conversion {
+            background: #b574ba;
+            border: 3px solid #7030a0;
+        }
+        .storage {
+            background: #cb1325;
+            border: 3px solid #950b18;
+        }
+        .transport {
+            background: #ffcb00;
+            border: 3px solid #bc9500;
+        }
     </style>
 
 </head>
@@ -895,6 +956,7 @@
 
         <select id="asset_menu" style='position:relative;z-index:100'>
             <option value="Battery">Battery</option>
+            <option value="CHP">Combined Heat and Power</option>
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="ElectricityNetwork">ElectricityNetwork</option>
             <option value="Electrolyzer">Electrolyzer</option>
@@ -928,6 +990,7 @@
         <select id="building_color">
             <option value="buildingyear">Building year</option>
             <option value="floor area">Floor area</option>
+            <option value="type">Building type</option>
         </select>
     </div>
 
@@ -967,6 +1030,7 @@
     ).addTo(map);
 
     var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Battery.png'}});
+	var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/CHP.png'}});
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
     var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityNetwork.png'}});
     var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Electrolyzer.png'}});
@@ -1078,6 +1142,7 @@
 
             // TODO: This can probably be done smarter --> TODO: this is not necessary anymore?
             if (selected_asset == 'Battery') layer.setIcon(new BatteryMarker);
+            if (selected_asset == 'CHP') layer.setIcon(new CHPMarker);
             if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
             if (selected_asset == 'ElectricityNetwork') layer.setIcon(new ElectricityNetworkMarker);
             if (selected_asset == 'Electrolyzer') layer.setIcon(new ElectrolyzerMarker);
@@ -1125,5 +1190,6 @@
             area_layer.addLayer(layer, true);
         }
     });
+
 
 </script>
