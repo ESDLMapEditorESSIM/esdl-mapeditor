@@ -447,18 +447,6 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
 
-            var divicon = L.divIcon({
-                className: 'circle producer',
-                html: '<center><img class="circle-img" width="23" height="23" src="images/CHP.png"></img></center>',
-
-                iconSize:     [30, 30], // size of the icon
-                iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
-                popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
-            });
-
-			var marker = L.marker([52, 5.8], {icon: divicon, title: 'test'});
-            marker.addTo(map);
-
             socket.on('connect', function() {
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
