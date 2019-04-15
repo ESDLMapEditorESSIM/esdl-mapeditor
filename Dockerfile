@@ -18,6 +18,6 @@ COPY . /usr/src/app
 
 ENV PYTHONPATH=.:/usr/src/app
 
-EXPOSE 5000
+EXPOSE 2500
 
 CMD cd /usr/src/app && python app.py

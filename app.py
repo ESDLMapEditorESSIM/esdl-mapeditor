@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-#import gevent.monkey
-#gevent.monkey.patch_all()
+import gevent.monkey
+gevent.monkey.patch_all()
 
 from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
@@ -384,13 +384,16 @@ def _find_more_area_boundaries(this_area):
     assets = this_area.get_asset()
     for asset in assets:
         if isinstance(asset, esdl.AbstractBuilding):
+            name = asset.get_name()
+            if not name:
+                name = ''
             asset_geometry = asset.get_geometry()
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
                     building_color = _determine_color(asset, session["color_method"])
                     boundary = create_boundary_from_contour(asset_geometry)
 
-                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color})
+                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color, 'name': name})
 
     areas = this_area.get_area()
     for area in areas:
@@ -2438,6 +2441,7 @@ def initialize_app():
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
+    print("Connected!")
     emit('log', {'data': 'Connected', 'count': 0})
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     # emit('carrier_list', [{'NaturalGas': {'type': 'EnergyCarrier', 'id': 'NaturalGas', 'name': 'NaturalGas', 'energyContent': 38370000.0, 'emission': 1.788225, 'energyCarrierType': 'FOSSIL', 'stateOfMatter': 'GASEOUS'}}, {'Hydrogen': {'type': 'EnergyCarrier', 'id': 'Hydrogen', 'name': 'Hydrogen', 'energyContent': 120000000.0, 'emission': 0.0, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'GASEOUS'}}, {'HEATCOMM': {'type': 'HeatCommodity', 'id': 'HEATCOMM', 'name': 'HeatCommodity', 'supplyTemperature': 0.0, 'returnTemperature': None}}, {'ELECCOMM': {'type': 'ElectricityCommodity', 'id': 'ELECCOMM', 'name': 'ElectricityCommodity', 'voltage': None}}, {'Biomass': {'type': 'EnergyCarrier', 'id': 'Biomass', 'name': 'Biomass', 'energyContent': 15100000.0, 'emission': 1.65496, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'SOLID'}}])
@@ -2458,5 +2462,6 @@ def on_disconnect():
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parse_esdl_config()
-    socketio.run(app, debug=False, host='0.0.0.0')
+    print("starting App")
+    socketio.run(app, debug=False, host='0.0.0.0', port=2500)
 

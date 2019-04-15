@@ -720,6 +720,7 @@
                 color = area_boundary['color']
                 fillcolor = area_boundary['fillcolor']
                 info_type = area_boundary['info-type']
+                name = area_boundary['name']
                 // console.log(color)
 
                 if (info_type == 'MP-RD') {
@@ -766,7 +767,10 @@
                         }
                     };
                     // console.log(areaBoundary);
-                    L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(area_layer);
+                    L.geoJson(areaBoundary, {
+                        color: color, fillcolor: fillcolor, weight: 1, name: name
+                    }).bindPopup(function (layer) {
+                        return 'name:'+layer.options.name}).addTo(area_layer);
                 }
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
