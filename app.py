@@ -428,6 +428,7 @@ def add_header(r):
 
 @app.route('/')
 def index():
+    console.log('in def index()')
     return render_template('index.html', async_mode=socketio.async_mode)
 
 
@@ -447,27 +448,32 @@ def index():
 
 @app.route('/<path:path>')
 def download_esdl(path):
+    console.log('in def download_esdl()'+ path)
     return send_from_directory('', path)
 
 
 @app.route('/images/<path:path>')
 def send_image(path):
+    console.log('in def send_image()'+ path)
     return send_from_directory('images', path)
 
 
 @app.route('/plugins/<path:path>')
 def send_plugin(path):
+    console.log('in def send_plugin()'+ path)
     return send_from_directory('plugins', path)
 
 
 @app.route('/icons/<path:path>')
 def send_icon(path):
+    console.log('in def send_icon()'+ path)
     return send_from_directory('icons', path)
 
 
 # FOR TESTING
 @app.route('/html/<path:path>')
 def send_html(path):
+    console.log('in def send_html()'+ path)
     return send_from_directory('html', path)
 
 
