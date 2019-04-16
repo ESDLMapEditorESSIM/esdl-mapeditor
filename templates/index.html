@@ -445,7 +445,8 @@
 
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+            // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/webeditor/socket.io"});
 
             socket.on('connect', function() {
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
