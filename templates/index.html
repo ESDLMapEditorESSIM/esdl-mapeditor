@@ -445,9 +445,14 @@
 
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+            // console.log(location.protocol + '//' + document.domain + ':' + location.port + '/webeditor' + namespace);
+            // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/webeditor' + namespace, {path: "/webeditor/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/webeditor/socket.io"});
+            // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/socket.io"});
+            // WERKT NIET - geen poort: socket = io.connect(namespace, {path: "/webeditor/socket.io"});
 
             socket.on('connect', function() {
+                console.log('connected');
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
 

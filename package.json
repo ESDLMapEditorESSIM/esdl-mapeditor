@@ -9,7 +9,7 @@
     "docker:tag": "docker tag esdl-webeditor 127.0.0.1:5000/esdl-webeditor",
     "docker:publish": "docker push 127.0.0.1:5000/esdl-webeditor",
     "docker:remove": "docker service rm esdl-webeditor",
-    "docker:deploy": "docker service create --name esdl-webeditor -p 2500:2500 127.0.0.1:5000/esdl-webeditor",
+    "docker:deploy": "docker service create --name esdl-webeditor -p 8111:8111 127.0.0.1:5000/esdl-webeditor",
     "docker": "npm run docker:build && npm run docker:tag && npm run docker:publish && npm run docker:remove && npm run docker:deploy",
     "docker1": "npm run docker:build && npm run docker:tag && npm run docker:publish && npm run docker:deploy"
   }
