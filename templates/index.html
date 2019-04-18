@@ -13,12 +13,12 @@
     <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
     <!--script src="./plugins/leaflet.draw.js"></script-->
 
-    <link rel="stylesheet" href="./plugins/L.Control.Sidebar.css"/>
-    <script src="./plugins/L.Control.Sidebar.js"></script>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css"/>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
-    <script src="./plugins/proj4.js"></script>
-    <script src="./plugins/proj4leaflet.js"></script>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4leaflet.js"></script>
 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
 
@@ -29,8 +29,8 @@
     <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
 
-    <link href="./plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
-    <script src="./plugins/leaflet.contextmenu.js" type="text/javascript"></script>
+    <link href=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.js" type="text/javascript"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -113,7 +113,7 @@
                         contextmenu: true,
                         contextmenuWidth: 140,
                         contextmenuItems: [
-                            { text: 'Connect', icon: 'icons/Connect.png', disabled: true, callback: connectAsset },
+                            { text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectAsset },
                             { separator: true, index: 1}
                         ]
                     });
@@ -122,14 +122,14 @@
                         // id is not coming through??  TODO: Check, now parsing the text :-(
                         marker.options.contextmenuItems.push({
                             id: marker.ports[p].id,
-                            icon: 'icons/Graph.png',
+                            icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set profile of ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
                             callback: addProfileToPort
                         });
                     }
 
                     marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({ text: 'Set carrier', icon: 'icons/Connect.png', callback: setCarrier });
+                    marker.options.contextmenuItems.push({ text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
 
                     marker.options.contextmenuItems.push('-');
                     marker.options.contextmenuItems.push({text: 'Cancel'});
@@ -203,13 +203,13 @@
                 contextmenu: true,
                 contextmenuWidth: 140,
                 contextmenuItems: [
-                    { text: 'Split', icon: 'icons/SplitLine.png', callback: splitConductorCallback },
-                    { text: 'Split and connect', icon: 'icons/SplitLine.png', callback: splitConductorConnectCallback },
-                    { text: 'Split and add joint', icon: 'icons/SplitLine.png', callback: splitConductorAddJointCallback },
+                    { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorCallback },
+                    { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorConnectCallback },
+                    { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback },
                     '-',
-                    { text: 'Connect', icon: 'icons/Connect.png', disabled: true, callback: connectConductor },
+                    { text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
                     '-',
-                    { text: 'Set carrier', icon: 'icons/Connect.png', callback: setCarrier },
+                    { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier },
                     '-',
                     { text: 'Cancel' }
                 ]
@@ -447,7 +447,9 @@
             namespace = '/esdl';
             // console.log(location.protocol + '//' + document.domain + ':' + location.port + '/webeditor' + namespace);
             // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + '/webeditor' + namespace, {path: "/webeditor/socket.io"});
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/webeditor/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "{{dir_settings.socket_prefix}}/socket.io"});
+            // DE VOLGENDE WERKT MET PROXY ALS IN APP.PY OOK PATH OP /socket.io INGESTELD WORDT
+            // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/webeditor/socket.io"});
             // socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "/socket.io"});
             // WERKT NIET - geen poort: socket = io.connect(namespace, {path: "/webeditor/socket.io"});
 
@@ -496,7 +498,7 @@
 
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<center><img class="circle-img" width="23" height="23" src="images/' + list[i][4] + '.png"></img></center>',
+                        html: '<center><img class="circle-img" width="23" height="23" src="{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png"></img></center>',
 
                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
@@ -504,7 +506,7 @@
                     });
 
                     var ESDLicon = L.icon({
-                        iconUrl: 'images/' + list[i][4] + '.png',
+                        iconUrl: '{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png',
 
                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
@@ -890,12 +892,12 @@
             margin: 0;
         }
         .ui-button .ui-icon.graph {
-            background-image: url(icons/Graph.png);
+            background-image: url({{dir_settings.resource_prefix}}icons/Graph.png);
             width: 16;
             height: 16;
         }
         .ui-button .ui-icon.geometry{
-            background-image: url(icons/AreaGeometry.png);
+            background-image: url({{dir_settings.resource_prefix}}icons/AreaGeometry.png);
             width: 25;
             height: 25;
         }
@@ -1011,6 +1013,7 @@
             map = new L.Map('mapid', { center: new L.LatLng(52.1, 5.8), zoom: 8 }),
             esdl_layer = L.featureGroup().addTo(map),
             area_layer = L.featureGroup().addTo(map),
+            bld_layer = L.featureGroup().addTo(map),
             connection_layer = L.featureGroup().addTo(map);
 
     connection_layer.bringToFront();
@@ -1026,28 +1029,28 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
-    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Battery.png'}});
-	var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/CHP.png'}});
-    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityDemand.png'}});
-    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ElectricityNetwork.png'}});
-    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Electrolyzer.png'}});
-	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/FuelCell.png'}});
-	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GasHeater.png'}});
-	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GasNetwork.png'}});
-    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GenericConsumer.png'}});
-    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GenericConversion.png'}});
-    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GenericProducer.png'}});
-	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/GeothermalSource.png'}});
-    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatingDemand.png'}});
-    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatNetwork.png'}});
-    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/HeatPump.png'}});
-	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Joint.png'}});
-    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PowerPlant.png'}});
-    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/PVParc.png'}});
-    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/ResidualHeatSourcePotential.png'}});
-    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/Transformer.png'}});
-    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/UTES.png'}});
-    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: 'images/WindTurbine.png'}});
+    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
+	var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
+    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
+    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
+    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
+	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
+	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
+	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
+    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
+    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConversion.png'}});
+    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericProducer.png'}});
+	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GeothermalSource.png'}});
+    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatingDemand.png'}});
+    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
+    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
+	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
+    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
+    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
+    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
+    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});
+    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/UTES.png'}});
+    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
         edit: {
