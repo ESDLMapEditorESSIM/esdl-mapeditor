@@ -410,7 +410,8 @@ def find_boundaries_in_ESDL(top_area):
 # ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, async_mode=async_mode)
+socketio = SocketIO(app, async_mode=async_mode, path='/socket.io')
+# socketio = SocketIO(app, async_mode=async_mode)
 
 
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING
@@ -428,7 +429,15 @@ def add_header(r):
 
 @app.route('/')
 def index():
-    return render_template('index.html', async_mode=socketio.async_mode)
+    print('in index()')
+
+    dir_settings = {
+        'plugin_prefix': '/webeditor',
+        'resource_prefix': 'webeditor/',
+        'socket_prefix': '/webeditor'
+    }
+
+    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=dir_settings)
 
 
 # @app.route('/<path:path>')
@@ -446,28 +455,38 @@ def index():
 #                     as_attachment=True)
 
 @app.route('/<path:path>')
-def download_esdl(path):
-    return send_from_directory('', path)
+def serve_static(path):
+    print('in serve_static(): '+ path)
+    return send_from_directory('static', path)
+
+# @app.route('/<path:path>')
+# def download_esdl(path):
+#     print('in download_esdl(): '+ path)
+#     return send_from_directory('', path)
 
 
-@app.route('/images/<path:path>')
-def send_image(path):
-    return send_from_directory('images', path)
+# @app.route('/images/<path:path>')
+# def send_image(path):
+#     print('in send_image(): '+ path)
+#     return send_from_directory('images', path)
 
 
-@app.route('/plugins/<path:path>')
-def send_plugin(path):
-    return send_from_directory('plugins', path)
+# @app.route('/plugins/<path:path>')
+# def send_plugin(path):
+#     print('in send_plugin(): '+ path)
+#     return send_from_directory('plugins', path)
 
 
-@app.route('/icons/<path:path>')
-def send_icon(path):
-    return send_from_directory('icons', path)
+# @app.route('/icons/<path:path>')
+# def send_icon(path):
+#     print('in send_icon():'+ path)
+#    return send_from_directory('icons', path)
 
 
 # FOR TESTING
 @app.route('/html/<path:path>')
 def send_html(path):
+    print('in send_html(): '+ path)
     return send_from_directory('html', path)
 
 
@@ -2441,7 +2460,7 @@ def initialize_app():
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
-    print("Connected!")
+    print("Websocket connection established")
     emit('log', {'data': 'Connected', 'count': 0})
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     # emit('carrier_list', [{'NaturalGas': {'type': 'EnergyCarrier', 'id': 'NaturalGas', 'name': 'NaturalGas', 'energyContent': 38370000.0, 'emission': 1.788225, 'energyCarrierType': 'FOSSIL', 'stateOfMatter': 'GASEOUS'}}, {'Hydrogen': {'type': 'EnergyCarrier', 'id': 'Hydrogen', 'name': 'Hydrogen', 'energyContent': 120000000.0, 'emission': 0.0, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'GASEOUS'}}, {'HEATCOMM': {'type': 'HeatCommodity', 'id': 'HEATCOMM', 'name': 'HeatCommodity', 'supplyTemperature': 0.0, 'returnTemperature': None}}, {'ELECCOMM': {'type': 'ElectricityCommodity', 'id': 'ELECCOMM', 'name': 'ElectricityCommodity', 'voltage': None}}, {'Biomass': {'type': 'EnergyCarrier', 'id': 'Biomass', 'name': 'Biomass', 'energyContent': 15100000.0, 'emission': 1.65496, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'SOLID'}}])
@@ -2463,5 +2482,5 @@ def on_disconnect():
 if __name__ == '__main__':
     parse_esdl_config()
     print("starting App")
-    socketio.run(app, debug=False, host='0.0.0.0', port=2500)
+    socketio.run(app, debug=False, host='0.0.0.0', port=8111)
 
