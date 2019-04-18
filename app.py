@@ -437,8 +437,14 @@ def index():
         'socket_prefix': '/webeditor'
     }
 
-    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=dir_settings)
+    # dir_settings = {
+    #    'plugin_prefix': '',
+    #    'resource_prefix': '',
+    #    'socket_prefix': ''
+    # }
 
+
+    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=dir_settings)
 
 # @app.route('/<path:path>')
 # def download_esdl(path):
