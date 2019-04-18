@@ -432,9 +432,9 @@ def index():
     print('in index()')
 
     dir_settings = {
-        'plugin_prefix': '',
-        'resource_prefix': '',
-        'socket_prefix': 'webeditor/'
+        'plugin_prefix': '/webeditor',
+        'resource_prefix': 'webeditor/',
+        'socket_prefix': '/webeditor'
     }
 
     return render_template('index.html', async_mode=socketio.async_mode, dir_settings=dir_settings)
@@ -455,27 +455,32 @@ def index():
 #                     as_attachment=True)
 
 @app.route('/<path:path>')
-def download_esdl(path):
-    print('in download_esdl(): '+ path)
-    return send_from_directory('', path)
+def serve_static(path):
+    print('in serve_static(): '+ path)
+    return send_from_directory('static', path)
+
+# @app.route('/<path:path>')
+# def download_esdl(path):
+#     print('in download_esdl(): '+ path)
+#     return send_from_directory('', path)
 
 
-@app.route('/images/<path:path>')
-def send_image(path):
-    print('in send_image(): '+ path)
-    return send_from_directory('images', path)
+# @app.route('/images/<path:path>')
+# def send_image(path):
+#     print('in send_image(): '+ path)
+#     return send_from_directory('images', path)
 
 
-@app.route('/plugins/<path:path>')
-def send_plugin(path):
-    print('in send_plugin(): '+ path)
-    return send_from_directory('plugins', path)
+# @app.route('/plugins/<path:path>')
+# def send_plugin(path):
+#     print('in send_plugin(): '+ path)
+#     return send_from_directory('plugins', path)
 
 
-@app.route('/icons/<path:path>')
-def send_icon(path):
-    print('in send_icon():'+ path)
-    return send_from_directory('icons', path)
+# @app.route('/icons/<path:path>')
+# def send_icon(path):
+#     print('in send_icon():'+ path)
+#    return send_from_directory('icons', path)
 
 
 # FOR TESTING
