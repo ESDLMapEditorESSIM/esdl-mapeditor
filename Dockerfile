@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /usr/src/app
 
 ENV PYTHONPATH=.:/usr/src/app
+ENV GEIS 1
 
 EXPOSE 8111
 

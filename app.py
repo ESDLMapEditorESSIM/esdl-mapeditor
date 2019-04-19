@@ -18,6 +18,7 @@ import importlib
 
 from model import esdl_sup as esdl
 import esdl_config
+import settings
 
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -431,20 +432,7 @@ def add_header(r):
 def index():
     print('in index()')
 
-    dir_settings = {
-        'plugin_prefix': '/webeditor',
-        'resource_prefix': 'webeditor/',
-        'socket_prefix': '/webeditor'
-    }
-
-    # dir_settings = {
-    #    'plugin_prefix': '',
-    #    'resource_prefix': '',
-    #    'socket_prefix': ''
-    # }
-
-
-    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=dir_settings)
+    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
 
 # @app.route('/<path:path>')
 # def download_esdl(path):
@@ -2488,5 +2476,5 @@ def on_disconnect():
 if __name__ == '__main__':
     parse_esdl_config()
     print("starting App")
-    socketio.run(app, debug=False, host='0.0.0.0', port=8111)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT)
 
