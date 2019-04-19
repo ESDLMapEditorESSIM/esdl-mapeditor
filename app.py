@@ -394,7 +394,7 @@ def _find_more_area_boundaries(this_area):
                     building_color = _determine_color(asset, session["color_method"])
                     boundary = create_boundary_from_contour(asset_geometry)
 
-                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color, 'name': name})
+                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color, 'name': name, 'boundary_type': 'building'})
 
     areas = this_area.get_area()
     for area in areas:

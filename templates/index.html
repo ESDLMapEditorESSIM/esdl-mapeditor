@@ -468,6 +468,7 @@
                 clear_layer = true;
                 esdl_layer.clearLayers();
                 area_layer.clearLayers();
+                bld_layer.clearLayers();
                 connection_layer.clearLayers();
                 clear_layer = false;
             });
@@ -730,6 +731,7 @@
                 fillcolor = area_boundary['fillcolor']
                 info_type = area_boundary['info-type']
                 name = area_boundary['name']
+                boundary_type = area_boundary['boundary_type']
                 // console.log(color)
 
                 if (info_type == 'MP-RD') {
@@ -776,10 +778,17 @@
                         }
                     };
                     // console.log(areaBoundary);
-                    L.geoJson(areaBoundary, {
-                        color: color, fillcolor: fillcolor, weight: 1, name: name
-                    }).bindPopup(function (layer) {
-                        return 'name:'+layer.options.name}).addTo(area_layer);
+                    if (boundary_type == 'building') {
+                        L.geoJson(areaBoundary, {
+                            color: color, fillcolor: fillcolor, weight: 1, name: name
+                        }).bindPopup(function (layer) {
+                            return 'name:'+layer.options.name}).addTo(bld_layer);
+                    } else {
+                        L.geoJson(areaBoundary, {
+                            color: color, fillcolor: fillcolor, weight: 1, name: name
+                        }).bindPopup(function (layer) {
+                            return 'name:'+layer.options.name}).addTo(area_layer);
+                    }
                 }
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
@@ -1027,7 +1036,7 @@
                 attribution: 'Google'
             })
         },
-        { 'ESDL': esdl_layer, 'Area boundaries': area_layer, 'connections': connection_layer },
+        { 'Assets': esdl_layer, 'Area boundaries': area_layer, 'Building boundaries': bld_layer, 'Connections': connection_layer },
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
