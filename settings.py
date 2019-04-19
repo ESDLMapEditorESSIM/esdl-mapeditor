@@ -16,12 +16,14 @@ if os.environ.get('GEIS'):
     dir_settings = {
         'plugin_prefix': '/webeditor',
         'resource_prefix': 'webeditor/',
-        'socket_prefix': '/webeditor'
+        'socket_prefix': '/webeditor',
+        'download_prefix': '/webeditor'
     }
 else:
     # Local settings
     dir_settings = {
-       'plugin_prefix': '',
-       'resource_prefix': '',
-       'socket_prefix': ''
+        'plugin_prefix': '',
+        'resource_prefix': '',
+        'socket_prefix': '',
+        'download_prefix': ''
     }

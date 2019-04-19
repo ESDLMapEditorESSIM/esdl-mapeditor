@@ -949,7 +949,7 @@
         <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
         <button id="save-esdl" onclick="save_ESDL();" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
         <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
-        <a href="EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
+        <a href=".{{dir_settings.download_prefix}}/EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
         <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
         <button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button>
