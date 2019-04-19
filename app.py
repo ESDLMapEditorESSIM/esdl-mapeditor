@@ -2199,7 +2199,8 @@ def process_file_command(message):
     if message['cmd'] == 'save_esdl':
         es_edit = session['es_edit']
         es_id = session['es_id']
-        write_energysystem_to_file('EnergySystem.esdl', es_edit)
+        write_energysystem_to_file('static/EnergySystem.esdl', es_edit)
+        # TODO: do we need to flush??
         emit('and_now_press_download_file')
 
     if message['cmd'] == 'download_esdl':
