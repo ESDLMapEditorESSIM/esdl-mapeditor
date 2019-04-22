@@ -608,34 +608,34 @@ def add_asset_to_building(es, asset, building_id):
         return 0
 
 
-def _remove_port_references(area, ports):
+def _remove_port_references(port):
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
-    for p_remove in ports:
-        p_id = p_remove.get_id()
-        connected_to = p_remove.get_connectedTo()
-        if connected_to:
-            connected_to_list = connected_to.split(' ')
-            for conns in connected_to_list:
-                # conns now contains the id's of the port this port is referring to
-                ass_info = mapping[conns]
-                # asset = find_asset(area, ass_info['asset_id'])    # find_asset doesn't look for asset in top level area
-                asset = asset_dict[ass_info['asset_id']]
-                asset_ports = asset.get_port()
-                for p_remove_ref in asset_ports:
-                    conn_to = p_remove_ref.get_connectedTo()
-                    conn_tos = conn_to.split(' ')
-                    if p_id in conn_tos:
-                        conn_tos.remove(p_id)
-                    conn_to = ' '.join(conn_tos)
-                    p_remove_ref.set_connectedTo(conn_to)
+
+    p_id = port.get_id()
+    connected_to = port.get_connectedTo()
+    if connected_to:
+        connected_to_list = connected_to.split(' ')
+        for conns in connected_to_list:
+            # conns now contains the id's of the port this port is referring to
+            ass_info = mapping[conns]
+            # asset = find_asset(area, ass_info['asset_id'])    # find_asset doesn't look for asset in top level area
+            asset = asset_dict[ass_info['asset_id']]
+            asset_ports = asset.get_port()
+            for p_remove_ref in asset_ports:
+                conn_to = p_remove_ref.get_connectedTo()
+                conn_tos = conn_to.split(' ')
+                if p_id in conn_tos:
+                    conn_tos.remove(p_id)
+                conn_to = ' '.join(conn_tos)
+                p_remove_ref.set_connectedTo(conn_to)
 
 
-def _remove_object_from_building(area, building, object_id):
+def _remove_object_from_building(building, object_id):
     for ass in building.get_asset():
         if ass.get_id() == object_id:
-            ports = ass.get_port()
-            _remove_port_references(area, ports)
+            for p in ass.get_port():
+                _remove_port_references(p)
             building.asset.remove(ass)
             print('Asset with id ' + object_id+ ' removed from building with id: ', + building.get_id())
 
@@ -643,12 +643,12 @@ def _remove_object_from_building(area, building, object_id):
 def _recursively_remove_object_from_area(area, object_id):
     for ass in area.get_asset():
         if ass.get_id() == object_id:
-            ports = ass.get_port()
-            _remove_port_references(area, ports)
+            for p in ass.get_port():
+                _remove_port_references(p)
             area.asset.remove(ass)
             print('Asset with id ' + object_id + ' removed from area with id: ' + area.get_id())
         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
-            _remove_object_from_building(area, ass, object_id)
+            _remove_object_from_building(ass, object_id)
     for pot in area.get_potential():
         if pot.get_id() == object_id:
             area.potential.remove(pot)
@@ -1213,6 +1213,37 @@ def distance(origin, destination):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Get connections information for an asset
+# ---------------------------------------------------------------------------------------------------------------------
+def get_connected_to_info(asset):
+    mapping = session['port_to_asset_mapping']
+    asset_dict = session['asset_dict']
+
+    result = []
+
+    ports = asset.get_port()
+    for p in ports:
+        pname = p.get_name()
+        pid = p.get_id()
+        ptype = type(p).__name__
+
+        ct_list = []
+        conn_to = p.get_connectedTo()
+        if conn_to:
+            conn_to_list = conn_to.split(' ')
+            for conn_port_id in conn_to_list:
+                conn_asset_id = mapping[conn_port_id]['asset_id']
+                conn_asset = asset_dict[conn_asset_id]
+                ct_list.append({'pid': conn_port_id, 'aid': conn_asset.get_id(), 'atype': type(conn_asset).__name__, 'aname': conn_asset.get_name()})
+
+        result.append({'pid': pid, 'ptype': ptype, 'pname': pname, 'ct_list': ct_list})
+
+    print(result)
+
+    return result
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  Create connections between assets
 # ---------------------------------------------------------------------------------------------------------------------
 def connect_ports(port1, port2):
@@ -1399,15 +1430,35 @@ def get_asset_attributes(asset):
     asset_attrs = copy.deepcopy(vars(asset))
     # method_list = [func for func in dir(asset) if callable(getattr(asset, func)) and func.startswith("set_")]
 
-    # TODO: check which attributes must be filtered (cannot be easily edited)
-    if 'geometry' in asset_attrs:
-        asset_attrs.pop('geometry', None)
-    if 'port' in asset_attrs:
-        asset_attrs.pop('port', None)
+    # TODO: check which attributes must be filtered (bacause they cannot be easily edited)
+    if 'area' in asset_attrs:
+        asset_attrs.pop('area', None)
+    if 'containingBuilding' in asset_attrs:
+        asset_attrs.pop('containingBuilding', None)
+    if 'controlStrategy' in asset_attrs:
+        asset_attrs.pop('controlStrategy', None)
     if 'costInformation' in asset_attrs:
         asset_attrs.pop('costInformation', None)
     if 'dataSource' in asset_attrs:
         asset_attrs.pop('dataSource', None)
+    if 'extensiontype_' in asset_attrs:
+        asset_attrs.pop('extensiontype_', None)
+    if 'geometry' in asset_attrs:
+        asset_attrs.pop('geometry', None)
+    if 'isOwnedBy' in asset_attrs:
+        asset_attrs.pop('isOwnedBy', None)
+    if 'KPIs' in asset_attrs:
+        asset_attrs.pop('KPIs', None)
+    if 'original_tagname_' in asset_attrs:
+        asset_attrs.pop('original_tagname_', None)
+    if 'parent_object_' in asset_attrs:
+        asset_attrs.pop('parent_object_', None)
+    if 'port' in asset_attrs:
+        asset_attrs.pop('port', None)
+    if 'profile' in asset_attrs:
+        asset_attrs.pop('profile', None)
+    if 'sector' in asset_attrs:
+        asset_attrs.pop('sector', None)
 
     attrs_sorted = sorted(asset_attrs.items(), key=lambda kv: kv[0])
     return attrs_sorted
@@ -1912,14 +1963,16 @@ def process_command(message):
             print('Get info for asset ' + asset.get_id())
             attrs_sorted = get_asset_attributes(asset)
             name = asset.get_name()
+            connected_to_info = get_connected_to_info(asset)
         else:
             pot = find_potential(area, object_id)
             print('Get info for potential ' + pot.get_id())
             attrs_sorted = get_potential_attributes(pot)
             name = pot.get_name()
+            connected_to_info = []
 
         if name is None: name = ''
-        emit('asset_info', {'id': object_id, 'name': name, 'attrs': attrs_sorted})
+        emit('asset_info', {'id': object_id, 'name': name, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info})
 
     if message['cmd'] == 'get_conductor_info':
         asset_id = message['id']
@@ -2065,6 +2118,44 @@ def process_command(message):
             for p in ports:
                 if p.get_id() == port_id:
                     p.set_profile(esdl_profile)
+
+    if message['cmd'] == 'add_port':
+        direction = message['direction']
+        asset_id = message['asset_id']
+        pname = message['pname']
+
+        asset = asset_dict[asset_id]
+        if direction == 'in':
+            port = esdl.InPort()
+        else:
+            port = esdl.OutPort()
+        pid = str(uuid.uuid4())
+        port.set_id(pid)
+        port.set_name(pname)
+
+        geom = asset.get_geometry()
+        if isinstance(geom, esdl.Point):
+            lat = geom.get_lat()
+            lon = geom.get_lon()
+            coord = (lat, lon)
+            mapping[pid] = {'asset_id': asset.get_id(), 'coord': coord}
+            asset.add_port_with_type(port)
+        else:
+            send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
+
+    if message['cmd'] == 'remove_port':
+        pid = message['port_id']
+
+        asset_id = mapping[pid]['asset_id']
+        asset = asset_dict[asset_id]
+
+        remove_idx = None
+        ports = asset.get_port()
+
+        for p in ports:
+            if p.get_id() == pid:
+                _remove_port_references(p)
+                ports.remove(p)
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']
