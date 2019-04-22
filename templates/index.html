@@ -251,7 +251,6 @@
             });
         }
 
-
         function conn_assets_window() {
             sidebar_ctr = sidebar.getContainer();
             sidebar_ctr.innerHTML = '<h1>Connect assets</h1>';
@@ -354,16 +353,115 @@
                 initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
         }
 
+        function add_carrier() {
+            carr_type_index = document.getElementById('add_carrier_type').selectedIndex;
+            carr_type_options = document.getElementById('add_carrier_type').options;
+            carr_type = carr_type_options[carr_type_index].value;
+
+            carr_name = document.getElementById('add_carrier_name').value;
+            if (carr_type == 'en_carr') {
+                carr_emission = document.getElementById('add_carrier_emission').value;
+                carr_encont = document.getElementById('add_carrier_encont').value;
+
+                carr_encunit_index = document.getElementById('add_carrier_encunit').selectedIndex;
+                carr_encunit_options = document.getElementById('add_carrier_encunit').options;
+                carr_encunit = carr_encunit_options[carr_encunit_index].value;
+
+                socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission,
+                    encont: carr_encont, encunit: carr_encunit});
+            }
+            if (carr_type == 'el_comm') {
+                carr_voltage = document.getElementById('add_carrier_voltage').value;
+                socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
+            }
+            if (carr_type == 'g_comm') {
+                carr_pressure = document.getElementById('add_carrier_pressure').value;
+                socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
+            }
+            if (carr_type == 'h_comm') {
+                carr_suptemp = document.getElementById('add_carrier_suptemp').value;
+                carr_rettemp = document.getElementById('add_carrier_rettemp').value;
+                socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp,
+                    rettemp: carr_rettemp});
+            }
+            if (carr_type == 'en_comm') {
+                socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
+            }
+        }
+
+        function select_other_carrier() {
+            carr_type_index = document.getElementById('add_carrier_type').selectedIndex;
+            carr_type_options = document.getElementById('add_carrier_type').options;
+            carr_type = carr_type_options[carr_type_index].value;
+
+            document.getElementById('voltage_row').style.display = 'none';
+            document.getElementById('pressure_row').style.display = 'none';
+            document.getElementById('suptemp_row').style.display = 'none';
+            document.getElementById('rettemp_row').style.display = 'none';
+            document.getElementById('emission_row').style.display = 'none';
+            document.getElementById('encont_row').style.display = 'none';
+
+            if (carr_type == 'en_carr') {
+                document.getElementById('emission_row').style.display = '';
+                document.getElementById('encont_row').style.display = '';
+            }
+            if (carr_type == 'el_comm') {
+                document.getElementById('voltage_row').style.display = '';
+            }
+            if (carr_type == 'g_comm') {
+                document.getElementById('pressure_row').style.display = '';
+            }
+            if (carr_type == 'h_comm') {
+                document.getElementById('suptemp_row').style.display = '';
+                document.getElementById('rettemp_row').style.display = '';
+            }
+            if (carr_type == 'en_comm') {
+            }
+        }
+
         function energy_carrier_info() {
             sidebar_ctr = sidebar.getContainer();
 
             sidebar_ctr.innerHTML = '<h1>Energy Carriers and Commodities:</h1>';
 
             table = '<table>';
-            table = table + '</table>';
+            for (i=0; i<carrier_list.length; i++) {
+                // type, id, name
+                table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +
+                    '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
+                    carrier_list[i]['type'] + '</td></tr>';
+            }
+            table += '</table>';
             sidebar_ctr.innerHTML += table;
 
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();">TODO</button></p>';
+            sidebar_ctr.innerHTML += '<h2>Add carrier:</h2>';
+            table = '<table>';
+            table += '<tr><td width=180>Carrier type</td><td><select id="add_carrier_type" onchange="select_other_carrier();">';
+            table += '<option value="en_carr">Energy carrier</option>';
+            table += '<option value="el_comm">Electricity commodity</option>';
+            table += '<option value="g_comm">Gas commodity</option>';
+            table += '<option value="h_comm">Heat commodity</option>';
+            table += '<option value="en_comm">Energy commodity</option>';
+            table += '</select></td>';
+
+            table += '<tr><td>Name</td><td><input type="text" width="60" id="add_carrier_name"></td></tr>';
+            table += '<tr id="voltage_row" style="display:none"><td>Voltage</td><td><input type="text" width="20" id="add_carrier_voltage"></td></tr>';
+            table += '<tr id="pressure_row" style="display:none"><td>Pressure</td><td><input type="text" width="20" id="add_carrier_pressure"></td></tr>';
+            table += '<tr id="suptemp_row" style="display:none"><td>Supply temperature</td><td><input type="text" width="20" id="add_carrier_suptemp"></td></tr>';
+            table += '<tr id="rettemp_row" style="display:none"><td>Return temperature</td><td><input type="text" width="20" id="add_carrier_rettemp"></td></tr>';
+            table += '<tr id="emission_row"><td>Emission [kg/GJ]</td><td><input type="text" width="20" id="add_carrier_emission"></td></tr>';
+            table += '<tr id="encont_row"><td>Energy content</td><td><input type="text" width="20" id="add_carrier_encont">'; // </td></tr>';
+            // table += '<tr id="ecunit_row"><td>Energy content unit</td><td>';
+            table += '<select id="add_carrier_encunit">';
+            table += '<option value="MJpkg">MJ/kg</option>';
+            table += '<option value="MJpNm3">MJ/Nm3</option>';
+            table += '<option value="MJpMJ">MJ/MJ</option>';
+            table += '</select></td></tr>';
+
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_carrier();">Add carrier</button>';
 
             sidebar.show();
         }

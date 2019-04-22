@@ -2170,6 +2170,70 @@ def process_command(message):
             else:
                 send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
 
+    if message['cmd'] == 'add_carrier':
+        # en_carr: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
+        # el_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
+        # g_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
+        # h_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp});
+        # en_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
+        carr_type = message['type']
+        carr_name = message['name']
+        carr_id = str(uuid.uuid4())
+
+        if carr_type == 'en_carr':
+            carr_emission = message['emission']
+            carr_encont = message['encont']
+            carr_encunit = message['encunit']   # MJpkg MJpNm3 MJpMJ
+            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name, emission = float(carr_emission), energyContent = float(carr_encont))
+
+            if carr_encunit == 'MJpkg':
+                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
+                                                      permultiplier = 'KILO', perunit = 'GRAM')
+            elif carr_encunit == 'MJpNm3':
+                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
+                                                      perunit = 'CUBIC_METRE')
+            elif carr_encunit == 'MJpMJ':
+                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
+                                                      permultiplier = 'MEGA', perunit = 'JOULE')
+
+            emission_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'EMISSION', multiplier = 'KILO', unit = 'GRAM',
+                                                  permultiplier = 'GIGA', perunit = 'JOULE')
+
+            carrier.set_energyContentUnit(encont_qandu)
+            carrier.set_emissionUnit(emission_qandu)
+
+        if carr_type == 'el_comm':
+            carr_voltage = message['voltage']
+            carrier = esdl.ElectricityCommodity(id = carr_id, name = carr_name, voltage = float(carr_voltage))
+        if carr_type == 'g_comm':
+            carr_pressure = message['pressure']
+            carrier = esdl.GasCommodity(id = carr_id, name = carr_name, pressure = float(carr_pressure))
+        if carr_type == 'h_comm':
+            carr_suptemp = message['suptemp']
+            carr_rettemp = message['rettemp']
+            carrier = esdl.HeatCommodity(id = carr_id, name = carr_name, supplyTemperature = float(carr_suptemp), returnTemperature = float(carr_rettemp))
+        if carr_type == 'en_comm':
+            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name)
+
+        esi = es_edit.get_energySystemInformation()
+        if not esi:
+            esi_id = str(uuid.uuid4())
+            esi = esdl.EnergySystemInformation()
+            esi.set_id(esi_id)
+            es_edit.set_energySystemInformation(esi)
+
+        ecs = esi.get_carriers()
+        if not ecs:
+            ecs_id = str(uuid.uuid4())
+            ecs = esdl.Carriers()
+            ecs.set_id(ecs_id)
+            esi.set_carriers(ecs)
+
+        ecs.add_carrier_with_type(carrier)
+
+        carrier_list = get_carrier_list(es_edit)
+        emit('carrier_list', carrier_list)
+
     if message['cmd'] == 'set_building_color_method':
         session["color_method"] = message['method']
         print(session["color_method"])

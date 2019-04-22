@@ -12159,10 +12159,14 @@ class EnergyCarrier(Carrier):
         return self.energyContentUnit
     def set_energyContentUnit(self, energyContentUnit):
         self.energyContentUnit = energyContentUnit
+        energyContentUnit.original_tagname_ = 'energyContentUnit'
+        energyContentUnit.extensiontype_ = energyContentUnit.__class__.__name__
     def get_emissionUnit(self):
         return self.emissionUnit
     def set_emissionUnit(self, emissionUnit):
         self.emissionUnit = emissionUnit
+        emissionUnit.original_tagname_ = 'emissionUnit'
+        emissionUnit.extensiontype_ = emissionUnit.__class__.__name__
     def get_energyContent(self):
         return self.energyContent
     def set_energyContent(self, energyContent):
