@@ -1729,6 +1729,7 @@ def process_command(message):
             outp = esdl.OutPort()
             port_id = str(str(uuid.uuid4()))
             outp.set_id(port_id)
+            outp.set_name('Out')
             asset.add_port_with_type(outp)
 
             point = esdl.Point()
@@ -1749,6 +1750,7 @@ def process_command(message):
             inp = esdl.InPort()
             port_id = str(str(uuid.uuid4()))
             inp.set_id(port_id)
+            inp.set_name('In')
             asset.add_port_with_type(inp)
 
             point = esdl.Point()
@@ -1768,12 +1770,14 @@ def process_command(message):
             asset = class_()
 
             inp = esdl.InPort()
-            port_id = str(uuid.uuid4())
-            inp.set_id(port_id)
+            in_port_id = str(uuid.uuid4())
+            inp.set_id(in_port_id)
+            inp.set_name('In')
             asset.add_port_with_type(inp)
             outp = esdl.OutPort()
-            port_id = str(uuid.uuid4())
-            outp.set_id(port_id)
+            out_port_id = str(uuid.uuid4())
+            outp.set_id(out_port_id)
+            outp.set_name('Out')
             asset.add_port_with_type(outp)
 
             point = esdl.Point()
@@ -1781,7 +1785,8 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[in_port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[out_port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and two OutPorts
         # -------------------------------------------------------------------------------------------------------------
@@ -1791,16 +1796,19 @@ def process_command(message):
             asset = class_()
 
             inp = esdl.InPort()
-            port_id = str(uuid.uuid4())
-            inp.set_id(port_id)
+            in_port_id = str(uuid.uuid4())
+            inp.set_id(in_port_id)
+            inp.set_name('In')
             asset.add_port_with_type(inp)
             outp = esdl.OutPort()
-            port_id = str(uuid.uuid4())
-            outp.set_id(port_id)
+            out_eport_id = str(uuid.uuid4())
+            outp.set_id(out_eport_id)
+            outp.set_name('E Out')
             asset.add_port_with_type(outp)
             outp = esdl.OutPort()
-            port_id = str(uuid.uuid4())
-            outp.set_id(port_id)
+            out_hport_id = str(uuid.uuid4())
+            outp.set_id(out_hport_id)
+            outp.set_name('H Out')
             asset.add_port_with_type(outp)
 
             point = esdl.Point()
@@ -1808,7 +1816,9 @@ def process_command(message):
             point.set_lat(message['lat'])
             asset.set_geometry_with_type(point)
 
-            mapping[port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[in_port_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[out_eport_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            mapping[out_hport_id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
 
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a polyline geometry and an InPort and an OutPort
@@ -1821,9 +1831,11 @@ def process_command(message):
             inp = esdl.InPort()
             inp_id = str(uuid.uuid4())
             inp.set_id(inp_id)
+            inp.set_name('In')
             outp = esdl.OutPort()
             outp_id = str(uuid.uuid4())
             outp.set_id(outp_id)
+            outp.set_name('Out')
             asset.add_port_with_type(inp)
             asset.add_port_with_type(outp)
 
@@ -1952,6 +1964,36 @@ def process_command(message):
             connect_asset_with_conductor(asset2, asset1)
         if first == 'line' and second == 'line':
             connect_conductor_with_conductor(asset1, asset2)
+
+    if message['cmd'] == 'connect_ports':
+        port1_id = message['port1id']
+        port2_id = message['port2id']
+
+        asset1_id = mapping[port1_id]['asset_id']
+        asset2_id = mapping[port2_id]['asset_id']
+        asset1_port_location = mapping[port1_id]['coord']
+        asset2_port_location = mapping[port2_id]['coord']
+
+        asset1 = asset_dict[asset1_id]
+        asset2 = asset_dict[asset2_id]
+
+        port1 = None
+        port2 = None
+        for p in asset1.get_port():
+            if p.get_id() == port1_id:
+                port1 = p
+
+        for p in asset2.get_port():
+            if p.get_id() == port2_id:
+                port2 = p
+
+        if port1 and port2:
+            connect_ports(port1, port2)
+
+            emit('add_new_conn',
+                 [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
+        else:
+            send_alert('Serious error connecting ports')
 
     if message['cmd'] == 'get_object_info':
         object_id = message['id']
@@ -2184,7 +2226,11 @@ def process_command(message):
             carr_emission = message['emission']
             carr_encont = message['encont']
             carr_encunit = message['encunit']   # MJpkg MJpNm3 MJpMJ
-            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name, emission = float(carr_emission), energyContent = float(carr_encont))
+            carr_sofm = message['sofm']
+            carr_rentype = message['rentype']
+
+            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name, emission = float(carr_emission),
+                        energyContent = float(carr_encont), energyCarrierType = carr_rentype, stateOfMatter = carr_sofm)
 
             if carr_encunit == 'MJpkg':
                 encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
