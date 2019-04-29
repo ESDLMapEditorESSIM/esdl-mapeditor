@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+import os
 
-import gevent.monkey
-gevent.monkey.patch_all()
+if os.environ.get('GEIS'):
+    import gevent.monkey
+    gevent.monkey.patch_all()
 
 from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
@@ -2284,6 +2286,14 @@ def process_command(message):
         session["color_method"] = message['method']
         print(session["color_method"])
 
+        instance = es_edit.get_instance()
+        if instance:
+            top_area = instance[0].get_area()
+            if top_area:
+                emit('clear_ui', {'layer': 'buildings'})
+                emit('clear_ui', {'layer': 'areas'})
+                find_boundaries_in_ESDL(top_area)
+
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
 
@@ -2555,8 +2565,9 @@ def get_boundary_info(info):
         if add_boundary_to_ESDL:
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
             boundary = get_boundary_from_service(str.upper(scope), identifier)
-            geometry = create_geometry_from_geom(boundary)
-            area.set_geometry(geometry)
+            if boundary:
+                geometry = create_geometry_from_geom(boundary)
+                area.set_geometry(geometry)
 
             # boundary = get_boundary_from_service(area_scope, area_id)
             # if boundary:

@@ -596,12 +596,20 @@
                 $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
             });
 
-            socket.on('clear_ui', function() {
+            socket.on('clear_ui', function(msg) {
                 clear_layer = true;
-                esdl_layer.clearLayers();
-                area_layer.clearLayers();
-                bld_layer.clearLayers();
-                connection_layer.clearLayers();
+                if (msg == null || msg['layer'] == 'assets') {
+                    esdl_layer.clearLayers();
+                }
+                if (msg == null || msg['layer'] == 'areas') {
+                    area_layer.clearLayers();
+                }
+                if (msg == null || msg['layer'] == 'buildings') {
+                    bld_layer.clearLayers();
+                }
+                if (msg == null || msg['layer'] == 'connections') {
+                    connection_layer.clearLayers();
+                }
                 clear_layer = false;
             });
 
