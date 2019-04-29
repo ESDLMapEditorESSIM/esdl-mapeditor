@@ -11,7 +11,7 @@ WORKDIR /usr/src/app
 # RUN pip install Shapely-1.6.4.post1-cp37-cp37m-win_amd64.whl
 # RUN apt-get install python-shapely
 
-COPY requirements.txt /usr/src/app/
+COPY requirements-GEIS.txt /usr/src/app/
 RUN pip install --no-cache-dir -r requirements-GEIS.txt
 
 COPY . /usr/src/app
