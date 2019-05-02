@@ -424,10 +424,6 @@ Session(app)
 # socketio = SocketIO(app, async_mode=async_mode)
 
 
-#@app.before_request
-#def make_session_permanent():
-#    session.permanent = True
-
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING
 @app.after_request
 def add_header(r):
@@ -1231,7 +1227,7 @@ def distance(origin, destination):
 def get_connected_to_info(asset):
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
-
+    print(asset_dict)
     result = []
 
     ports = asset.get_port()
@@ -1731,6 +1727,7 @@ def process_command(message):
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
         assettype = message['asset']
+        asset_name = message['asset_name']
 
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an OutPort
@@ -1887,6 +1884,7 @@ def process_command(message):
             mapping[outp_id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
 
         asset.set_id(asset_id)
+        asset.set_name(asset_name)
 
         if not add_asset_to_area(es_edit, asset, area_bld_id):
             add_asset_to_building(es_edit, asset, area_bld_id)
@@ -2035,11 +2033,12 @@ def process_command(message):
         latlng = message['latlng']
         area = es_edit.get_instance()[0].get_area()
         asset = find_asset(area, asset_id)
+        connected_to_info = get_connected_to_info(asset)
         print('Get info for conductor ' + asset.get_id())
         attrs_sorted = get_asset_attributes(asset)
         name = asset.get_name()
         if name is None: name = ''
-        emit('conductor_info', {'id': asset_id, 'name': name, 'latlng': latlng, 'attrs': attrs_sorted})
+        emit('asset_info', {'id': asset_id, 'name': name, 'latlng': latlng, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info})
 
     if message['cmd'] == 'set_asset_param':
         asset_id = message['id']
@@ -2628,18 +2627,17 @@ def get_boundary_info(info):
 #   - send info to browser
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
-    print(session)
     session.permanent = True
     emit('log', {'data': 'Connected', 'count': 0})
     print('Client connected: ', request.sid)
 
-    # TODO: Seems not to work: refresh in browser creates new session?
     if 'es_edit' in session:
         print ('Energysystem in memory - reloading client data')
         es_edit = session['es_edit']
         es_title = session['es_title']
         es_id = session['es_id']
         area = es_edit.instance[0].area
+        print('Asset dict: {}'.format(session['asset_dict']))
     else:
         print ('No energysystem in memory - generating empty energysystem')
         es_title = 'Untitled EnergySystem'
@@ -2652,13 +2650,14 @@ def initialize_app():
         area = esdl.Area(name='Unnamed Area')
         area.set_id(str(uuid.uuid4()))
         instance.set_area(area)
+        asset_dict = {}
+        session['asset_dict'] = asset_dict
 
     asset_list = []
     area_bld_list = []
     conn_list = []
     mapping = {}
     carrier_list = []
-    asset_dict = {}
 
     create_port_to_asset_mapping(area, mapping)
     session['port_to_asset_mapping'] = mapping
@@ -2676,10 +2675,8 @@ def initialize_app():
     session['es_id'] = es_id
     session['conn_list'] = conn_list
     session['carrier_list'] = carrier_list
-    session['asset_dict'] = asset_dict
     session['color_method'] = 'buildingyear'
     session.modified = True
-    print(session)
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
