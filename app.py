@@ -439,8 +439,7 @@ def add_header(r):
 
 @app.route('/')
 def index():
-    print('in index()')
-
+    # print('in index()')
     return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
 
 # @app.route('/<path:path>')
@@ -459,7 +458,7 @@ def index():
 
 @app.route('/<path:path>')
 def serve_static(path):
-    print('in serve_static(): '+ path)
+    # print('in serve_static(): '+ path)
     return send_from_directory('static', path)
 
 # @app.route('/<path:path>')
@@ -1014,7 +1013,6 @@ def update_asset_geometries2(area, boundary):
 
 def generate_profile_info(profile):
     profile_class = type(profile).__name__
-    print(profile_class)
     profile_type = profile.get_profileType()
     profile_name = profile.get_name()
     if profile_class == 'SingleValue':
@@ -2628,7 +2626,6 @@ def get_boundary_info(info):
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
     session.permanent = True
-    emit('log', {'data': 'Connected', 'count': 0})
     print('Client connected: ', request.sid)
 
     if 'es_edit' in session:
@@ -2681,9 +2678,7 @@ def initialize_app():
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
     print("Websocket connection established")
-    emit('log', {'data': 'Connected', 'count': 0})
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
-    # emit('carrier_list', [{'NaturalGas': {'type': 'EnergyCarrier', 'id': 'NaturalGas', 'name': 'NaturalGas', 'energyContent': 38370000.0, 'emission': 1.788225, 'energyCarrierType': 'FOSSIL', 'stateOfMatter': 'GASEOUS'}}, {'Hydrogen': {'type': 'EnergyCarrier', 'id': 'Hydrogen', 'name': 'Hydrogen', 'energyContent': 120000000.0, 'emission': 0.0, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'GASEOUS'}}, {'HEATCOMM': {'type': 'HeatCommodity', 'id': 'HEATCOMM', 'name': 'HeatCommodity', 'supplyTemperature': 0.0, 'returnTemperature': None}}, {'ELECCOMM': {'type': 'ElectricityCommodity', 'id': 'ELECCOMM', 'name': 'ElectricityCommodity', 'voltage': None}}, {'Biomass': {'type': 'EnergyCarrier', 'id': 'Biomass', 'name': 'Biomass', 'energyContent': 15100000.0, 'emission': 1.65496, 'energyCarrierType': 'RENEWABLE', 'stateOfMatter': 'SOLID'}}])
 
     initialize_app()
 
