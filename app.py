@@ -7,6 +7,7 @@ if os.environ.get('GEIS'):
 
 from flask import Flask, render_template, session, request, send_from_directory, send_file
 from flask_socketio import SocketIO, emit
+from flask_session import Session
 import requests
 import uuid
 import math
@@ -412,10 +413,20 @@ def find_boundaries_in_ESDL(top_area):
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, async_mode=async_mode, path='/socket.io')
+app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
+app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
+socketio = SocketIO(app, async_mode=async_mode, manage_session=False, path='/socket.io')
+# fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
+Session(app)
 # socketio = SocketIO(app, async_mode=async_mode)
 
+
+#@app.before_request
+#def make_session_permanent():
+#    session.permanent = True
 
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING
 @app.after_request
@@ -1713,6 +1724,7 @@ def process_command(message):
     es_edit = session['es_edit']
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
+    session.modified = True
     # print (session['es_edit'].get_instance()[0].get_area().get_name())
 
     if message['cmd'] == 'add_asset':
@@ -2616,6 +2628,8 @@ def get_boundary_info(info):
 #   - send info to browser
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
+    print(session)
+    session.permanent = True
     emit('log', {'data': 'Connected', 'count': 0})
     print('Client connected: ', request.sid)
 
@@ -2628,14 +2642,14 @@ def initialize_app():
         area = es_edit.instance[0].area
     else:
         print ('No energysystem in memory - generating empty energysystem')
-        es_title = 'Test EnergySystem'
+        es_title = 'Untitled EnergySystem'
         es_id = str(uuid.uuid4())
         es_edit = esdl.EnergySystem()
         es_edit.set_id(es_id)
-        instance = esdl.Instance()
+        instance = esdl.Instance(name='Untitled instance')
         instance.set_id(str(uuid.uuid4()))
         es_edit.add_instance(instance)
-        area = esdl.Area()
+        area = esdl.Area(name='Unnamed Area')
         area.set_id(str(uuid.uuid4()))
         instance.set_area(area)
 
@@ -2664,6 +2678,8 @@ def initialize_app():
     session['carrier_list'] = carrier_list
     session['asset_dict'] = asset_dict
     session['color_method'] = 'buildingyear'
+    session.modified = True
+    print(session)
 
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
@@ -2680,7 +2696,7 @@ def on_connect():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
 def on_disconnect():
-    print('Client disconnected: ', request.sid)
+    print('Client disconnected: {}'.format(request.sid))
 
 
 # ---------------------------------------------------------------------------------------------------------------------

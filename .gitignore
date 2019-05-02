@@ -71,3 +71,4 @@ ENV/
 download/
 projects/
 html/
+flask_session/
