@@ -761,9 +761,6 @@
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '10,20', draggable: true});
-                    // line.bindPopup(list[i][3]+': '+list[i][1]+ '('+ list[i][2] + ')');
-                    // line.id = list[i][2];
-
                     connection_layer.addLayer(line);
                 }
             });

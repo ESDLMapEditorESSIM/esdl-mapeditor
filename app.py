@@ -1257,6 +1257,8 @@ def connect_ports(port1, port2):
     port1conn = port1.get_connectedTo()
     port2conn = port2.get_connectedTo()
 
+
+
     if port1conn:
         port1.set_connectedTo(port1conn + ' ' + port2.get_id())
     else:
@@ -1268,6 +1270,8 @@ def connect_ports(port1, port2):
 
 
 def connect_asset_with_conductor(asset, conductor):
+    conn_list = session["conn_list"]
+
     asset_geom = asset.get_geometry()
     cond_geom = conductor.get_geometry()
 
@@ -1293,7 +1297,12 @@ def connect_asset_with_conductor(asset, conductor):
                 print('connect asset with first_point')
                 connect_ports(p, cond_port)
                 emit('add_new_conn', [[asset_geom.get_lat(),asset_geom.get_lon()],[first_point.get_lat(),first_point.get_lon()]])
-                return
+                conn_list.append(
+                    {'from-port-id': p.get_id(), 'from-asset-id': asset.get_id(),
+                     'from-asset-coord': [asset_geom.get_lat(),asset_geom.get_lon()],
+                     'to-port-id': cond_port.get_id(), 'to-asset-id': conductor.get_id(),
+                     'to-asset-coord': [first_point.get_lat(),first_point.get_lon()]})
+
     else:
         # connect asset with last_point of conductor
 
@@ -1304,10 +1313,18 @@ def connect_asset_with_conductor(asset, conductor):
                 connect_ports(p, cond_port)
                 emit('add_new_conn',
                      [[asset_geom.get_lat(), asset_geom.get_lon()], [last_point.get_lat(), last_point.get_lon()]])
-                return
+                conn_list.append(
+                    {'from-port-id': p.get_id(), 'from-asset-id': asset.get_id(),
+                     'from-asset-coord': [asset_geom.get_lat(), asset_geom.get_lon()],
+                     'to-port-id': cond_port.get_id(), 'to-asset-id': conductor.get_id(),
+                     'to-asset-coord': [last_point.get_lat(), last_point.get_lon()]})
+
+    session["conn_list"] = conn_list
 
 
 def connect_asset_with_asset(asset1, asset2):
+    conn_list = session["conn_list"]
+
     ports1 = asset1.get_port()
     num_ports1 = len(ports1)
     asset1_geom = asset1.get_geometry()
@@ -1322,13 +1339,14 @@ def connect_asset_with_asset(asset1, asset2):
     if num_ports1 == 1:
         found = None
         if isinstance(ports1[0], esdl.OutPort):
-            # find inport on other asset
-
+            # find InPort on other asset
             for p in ports2:
                 if isinstance(p, esdl.InPort):
                     # connect p and ports1[0]
                     print('connect p and ports1[0]')
                     connect_ports(p, ports1[0])
+                    p1 = ports1[0]
+                    p2 = p
                     emit('add_new_conn',
                          [[asset1_geom.get_lat(), asset1_geom.get_lon()],
                           [asset2_geom.get_lat(), asset2_geom.get_lon()]])
@@ -1337,12 +1355,14 @@ def connect_asset_with_asset(asset1, asset2):
                 send_alert('UNSUPPORTED - No InPort found on asset2')
                 return
         else:
-            # find inport on other asset
+            # find OutPort on other asset
             for p in ports2:
                 if isinstance(p, esdl.OutPort):
                     # connect p and ports1[0]
                     print('connect p and ports1[0]')
                     connect_ports(p, ports1[0])
+                    p1 = ports1[0]
+                    p2 = p
                     emit('add_new_conn',
                          [[asset1_geom.get_lat(), asset1_geom.get_lon()],
                           [asset2_geom.get_lat(), asset2_geom.get_lon()]])
@@ -1353,13 +1373,14 @@ def connect_asset_with_asset(asset1, asset2):
     elif num_ports2 == 1:
         found = None
         if isinstance(ports2[0], esdl.OutPort):
-            # find inport on other asset
-
+            # find InPort on other asset
             for p in ports1:
                 if isinstance(p, esdl.InPort):
                     # connect p and ports2[0]
                     print('connect p and ports2[0]')
                     connect_ports(p, ports2[0])
+                    p1 = p
+                    p2 = ports2[0]
                     emit('add_new_conn',
                          [[asset1_geom.get_lat(), asset1_geom.get_lon()],
                           [asset2_geom.get_lat(), asset2_geom.get_lon()]])
@@ -1368,12 +1389,14 @@ def connect_asset_with_asset(asset1, asset2):
                 send_alert('UNSUPPORTED - No InPort found on asset1')
                 return
         else:
-            # find inport on other asset
+            # find OutPort on other asset
             for p in ports1:
                 if isinstance(p, esdl.OutPort):
                     # connect p and ports2[0]
                     print('connect p and ports2[0]')
                     connect_ports(p, ports2[0])
+                    p1 = p
+                    p2 = ports2[0]
                     emit('add_new_conn',
                          [[asset1_geom.get_lat(), asset1_geom.get_lon()],
                           [asset2_geom.get_lat(), asset2_geom.get_lon()]])
@@ -1383,9 +1406,21 @@ def connect_asset_with_asset(asset1, asset2):
                 return
     else:
         send_alert('UNSUPPORTED - Cannot determine what ports to connect')
+        return
+
+    if found:
+        conn_list.append(
+            {'from-port-id': p1.get_id(), 'from-asset-id': asset1.get_id(),
+             'from-asset-coord': [asset1_geom.get_lat(), asset1_geom.get_lon()],
+             'to-port-id': p2.get_id(), 'to-asset-id': asset2.get_id(),
+             'to-asset-coord': [asset2_geom.get_lat(), asset2_geom.get_lon()]})
+
+    session["conn_list"] = conn_list
 
 
 def connect_conductor_with_conductor(conductor1, conductor2):
+    conn_list = session["conn_list"]
+
     c1points = conductor1.get_geometry().get_point()
     c1p0 = c1points[0]
     c1p1 = c1points[len(c1points) - 1]
@@ -1429,6 +1464,13 @@ def connect_conductor_with_conductor(conductor1, conductor2):
         connect_ports(conn1, conn2)
         emit('add_new_conn',
              [[conn_pnt1.get_lat(), conn_pnt1.get_lon()], [conn_pnt2.get_lat(), conn_pnt2.get_lon()]])
+        conn_list.append(
+            {'from-port-id': conn1.get_id(), 'from-asset-id': conductor1.get_id(),
+             'from-asset-coord': [conn_pnt1.get_lat(), conn_pnt1.get_lon()],
+             'to-port-id': conn2.get_id(), 'to-asset-id': conductor2.get_id(),
+             'to-asset-coord': [conn_pnt2.get_lat(), conn_pnt2.get_lon()]})
+
+        session["conn_list"] = conn_list
     else:
         send_alert('UNSUPPORTED - Cannot connect two ports of same type')
 
@@ -2002,6 +2044,14 @@ def process_command(message):
 
             emit('add_new_conn',
                  [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
+
+            conn_list = session["conn_list"]
+            conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
+                              'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
+                              'to-port-id': port2_id, 'to-asset-id': asset2_id,
+                              'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
+            session["conn_list"] = conn_list
+
         else:
             send_alert('Serious error connecting ports')
 
