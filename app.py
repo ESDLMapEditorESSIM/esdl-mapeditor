@@ -421,6 +421,18 @@ def _find_more_area_boundaries(this_area):
                     boundary = create_boundary_from_contour(asset_geometry)
 
                     emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color, 'name': name, 'boundary_type': 'building'})
+        else: # No AbstractBuilding
+            asset_geometry = asset.get_geometry()
+            if asset_geometry:
+                if isinstance(asset_geometry, esdl.WKT):
+                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.get_value(), 'color': 'grey', 'boundary_type': 'asset'})
+
+    potentials = this_area.get_potential()
+    for potential in potentials:
+        potential_geometry = potential.get_geometry()
+        if potential_geometry:
+            if isinstance(potential_geometry, esdl.WKT):
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.get_value(), 'color': 'grey', 'boundary_type': 'potential'})
 
     areas = this_area.get_area()
     for area in areas:
