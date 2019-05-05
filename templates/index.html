@@ -531,7 +531,7 @@
             // here we tell the reader what to do when it's done reading...
             reader.onload = readerEvent => {
                 var content = readerEvent.target.result; // this is the content!
-                socket.emit('load_esdl_file', content);
+                socket.emit('file_command', {cmd: 'load_esdl_from_file', file_content: content});
             }
         }
 
@@ -1081,14 +1081,10 @@
             $("#profile_menu").selectmenu({ width:150 });
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
 
+            // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
                 var selected_asset = $(e.target).val();
-                // console.log(selected_asset);
                 var marker_class_name = window[selected_asset + "Marker"];
-
-                // console.log(selected_index);
-                // console.log(selected_asset);
-                // console.log(marker_class_name);
 
                 drawControl.setDrawingOptions({
                     marker: {
@@ -1216,9 +1212,9 @@
         <select id="carrier_select"></select>
 
         <select id="building_color">
-            <option value="buildingyear">Building year</option>
+            <option value="building type">Building type</option>
+            <option value="building year">Building year</option>
             <option value="floor area">Floor area</option>
-            <option value="type">Building type</option>
         </select>
     </div>
 
@@ -1233,9 +1229,6 @@
     -->
 </body>
 </html>
-
-
-
 
 <script>
 

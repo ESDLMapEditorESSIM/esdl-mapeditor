@@ -31,19 +31,19 @@ There is a websocket connection between the python application and webbrowser fo
 
 ## Session variables
 
-| Variable name         | Meaning
-| --------------------- | ---------------- |
-| asset_dict            |
-| carrier_list          |
-| color_method          |
-| conn_list             |
-| es_descr              |
-| es_edit               |
-| es_email              |
-| es_id                 |
-| es_title              |
-| es_start              |
-| port_to_asset_mapping |
+| Variable name         | Type | Meaning
+| --------------------- | -----|-------- |
+| asset_dict            | Dictionary | Gives the asset using the asset id as a key
+| carrier_list          | Array of objects | List of all carriers in the energy system
+| color_method          | String | Method to color the building polygons. Can be "buildingyear", "floor area" or "type"
+| conn_list             | Array of objects | List of all connections between assets (port id, asset id, location)
+| es_descr              | String | The description of the energy system (Meta information for ESDL store)
+| es_edit               | String | The energy system that is currently being editted
+| es_email              | String | The email of the editor of the energy system (Meta information for ESDL store)
+| es_id                 | String | The id of the energy system (Meta information for ESDL store)
+| es_title              | String | The title of the energy system (Meta information for ESDL store)
+| es_start              | String | currently not used. Can be "new", "load_file" or "load_store"
+| port_to_asset_mapping | Dictionary | Gives the asset id and coordinate using the port id as a key
 
 ## Python functions
 

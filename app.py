@@ -85,27 +85,47 @@ def write_energysystem_to_file(filename, es):
 
 
 def create_ESDL_store_item(id, es, title, description, email):
-    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-                   pretty_print=True)
-    f.close()
+    try:
+        f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+        # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+                       pretty_print=True)
+        f.close()
 
-    with open('/tmp/temp.xmi', 'r') as esdl_file:
-        esdlstr = esdl_file.read()
+        with open('/tmp/temp.xmi', 'r') as esdl_file:
+            esdlstr = esdl_file.read()
+    except:
+        send_alert('Error accessing temporary file system')
+        return
 
-    payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
-    requests.post(store_url, data=payload)
+    try:
+        payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
+        requests.post(store_url, data=payload)
+    except:
+        send_alert('Error accessing ESDL store')
 
 
 def load_ESDL_EnergySystem(id):
     url = store_url + 'esdl/' + id + '?format=xml'
-    r = requests.get(url)
-    esdlstr = r.text
-    # emit('esdltxt', esdlstr)
-    esdlstr = esdlstr.encode()
 
-    return esdl.parseString(esdlstr)
+    try:
+        r = requests.get(url)
+    except:
+        send_alert('Error accessing ESDL store')
+        return None
+
+    esdlstr = r.text
+    if esdlstr.startswith('<?xml'):
+        # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
+        esdlstr = esdlstr.split('\n', 1)[1]
+
+    esdlstr = esdlstr.encode()
+    try:
+        es_load = esdl.parseString(esdlstr)
+        return es_load
+    except:
+        send_alert('Error interpreting ESDL file from store')
+        return None
 
 
 def store_ESDL_EnergySystem(id, es):
@@ -119,7 +139,10 @@ def store_ESDL_EnergySystem(id, es):
         esdlstr = esdl_file.read()
 
     payload = {'id': id, 'esdl': esdlstr}
-    requests.put(store_url + id, data=payload)
+    try:
+        requests.put(store_url + id, data=payload)
+    except:
+        send_alert('Error saving ESDL file to store')
 
 
 def send_ESDL_as_file(es, name):
@@ -331,7 +354,7 @@ def _determine_color(asset, color_method):
     building_color = '#808080'
 
     if isinstance(asset, esdl.Building):
-        if color_method == 'buildingyear':
+        if color_method == 'building year':
             building_year = asset.get_buildingYear()
             if building_year:
                 building_color = None
@@ -349,7 +372,7 @@ def _determine_color(asset, color_method):
                     if BUILDING_COLORS_AREA[i]['from'] <= floorarea < BUILDING_COLORS_AREA[i]['to']:
                         building_color = BUILDING_COLORS_AREA[i]['color']
                     i += 1
-        elif color_method == 'type':
+        elif color_method == 'building type':
             bassets = asset.get_asset()
             for basset in bassets:
                 if isinstance(basset, esdl.BuildingUnit):
@@ -1751,6 +1774,145 @@ def split_conductor(conductor, location, mode, conductor_container):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Update ESDL coordinates on movement of assets in browser
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on('update-coord', namespace='/esdl')
+def update_coordinates(message):
+    print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
+
+    es_edit = session['es_edit']
+    instance = es_edit.get_instance()
+    area = instance[0].get_area()
+    obj_id = message['id']
+
+    if message['asspot'] == 'asset':
+        asset = find_asset(area, obj_id)
+
+        if asset:
+            point = esdl.Point()
+            point.set_lon(message['lng'])
+            point.set_lat(message['lat'])
+            asset.set_geometry_with_type(point)
+
+        # Update locations of connections on moving assets
+        update_asset_connection_locations(obj_id, message['lat'], message['lng'])
+    else:
+        potential = find_potential(area, obj_id)
+        if potential:
+            point = esdl.Point()
+            point.set_lon(message['lng'])
+            point.set_lat(message['lat'])
+            potential.set_geometry_with_type(point)
+
+    session['es_edit'] = es_edit
+
+
+@socketio.on('update-line-coord', namespace='/esdl')
+def update_line_coordinates(message):
+    print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
+    ass_id = message['id']
+
+    es_edit = session['es_edit']
+    instance = es_edit.get_instance()
+    area = instance[0].get_area()
+    asset = find_asset(area, ass_id)
+
+    if asset:
+        polyline_data = message['polyline']
+        # print(polyline_data)
+        # print(type(polyline_data))
+        polyline_length = float(message['length'])
+        asset.set_length(polyline_length)
+
+        line = esdl.Line()
+        for i in range(0, len(polyline_data)):
+            coord = polyline_data[i]
+
+            point = esdl.Point()
+            point.set_lon(coord['lng'])
+            point.set_lat(coord['lat'])
+            line.add_point(point)
+
+        asset.set_geometry_with_type(line)
+
+        update_transport_connection_locations(ass_id, asset, polyline_data)
+
+    session['es_edit'] = es_edit
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Get boundary information
+#
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on('get_boundary_info', namespace='/esdl')
+def get_boundary_info(info):
+    print('get_boundary_info:')
+    print(info)
+    identifier = info["identifier"]
+    scope = info["scope"]
+    subscope = info["subscope"]
+    initialize_ES = info["initialize_ES"]
+    add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
+
+    # TODO: Check if valid scopes were given
+
+    es_edit = session['es_edit']
+    instance = es_edit.get_instance()
+    area = instance[0].get_area()
+
+    if initialize_ES:
+        # change ID, name and scope of ES
+        area.set_id(identifier)
+        area.set_scope(str.upper(scope))
+        if add_boundary_to_ESDL:
+            # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
+            boundary = get_boundary_from_service(str.upper(scope), identifier)
+            if boundary:
+                geometry = create_geometry_from_geom(boundary)
+                area.set_geometry(geometry)
+
+            # boundary = get_boundary_from_service(area_scope, area_id)
+            # if boundary:
+            #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
+
+    boundaries = get_subboundaries_from_service(scope, subscope, identifier)
+    # result (boundaries) is an ARRAY of:
+    # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
+    # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
+
+    for boundary in boundaries:
+        geom = None
+        try:
+            geom = json.loads(boundary["geom"])
+        except:
+            print('exception: probably unable to parse JSON from GEIS boundary service')
+
+        if geom:
+            # print('boundary["geom"]: ')
+            # print(boundary["geom"])
+            # print(boundary)
+
+            if initialize_ES:
+                sub_area = esdl.Area()
+                sub_area.set_id(boundary["code"])
+                sub_area.set_scope(str.upper(subscope))
+
+                if add_boundary_to_ESDL:
+                    geometry = create_geometry_from_geom(geom)
+                    sub_area.set_geometry(geometry)
+
+                area.add_area(sub_area)
+
+            # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+            # boundary = create_boundary_from_contour(area_contour)
+            # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+
+            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
+    print('Ready prcessing boundary information')
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('command', namespace='/esdl')
@@ -2358,6 +2520,65 @@ def process_command(message):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Initialization after new or load energy system
+# ---------------------------------------------------------------------------------------------------------------------
+def create_empty_energy_system(es_title, es_description, inst_title, area_title):
+    es = esdl.EnergySystem()
+    es_id = str(uuid.uuid4())
+    es.set_id(es_id)
+    es.set_name(es_title)
+    es.set_description(es_description)
+
+    instance = esdl.Instance()
+    instance.set_id(str(uuid.uuid4()))
+    instance.set_name(inst_title)
+    es.add_instance(instance)
+
+    area = esdl.Area()
+    area.set_id(str(uuid.uuid4()))
+    area.set_name(area_title)
+    instance.set_area(area)
+
+    return es
+
+
+def process_energy_system(es):
+    asset_list = []
+    area_bld_list = []
+    conn_list = []
+    mapping = {}
+
+    area = es.get_instance()[0].get_area()
+
+    asset_dict = create_asset_dict(area)
+    carrier_list = get_carrier_list(es)
+
+    create_port_to_asset_mapping(area, mapping)
+    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+
+    emit('clear_ui')
+    find_boundaries_in_ESDL(area)
+
+    emit('es_title', es.get_name())
+    emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
+    emit('area_bld_list', area_bld_list)
+    emit('add_connections', conn_list)
+    emit('carrier_list', carrier_list)
+
+    session['es_title'] = es.get_name()
+    session['es_edit'] = es
+    session['es_id'] = es.get_id()
+    session['es_descr'] = es.get_description()
+    # session['es_start'] = 'new'
+
+    session['port_to_asset_mapping'] = mapping
+    session['conn_list'] = conn_list
+    session['carrier_list'] = carrier_list
+    session['asset_dict'] = asset_dict
+    session['color_method'] = 'building type'
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('file_command', namespace='/esdl')
@@ -2369,55 +2590,33 @@ def process_file_command(message):
         description = message['description']
         email = message['email']
         top_area_name = message['top_area_name']
-        if top_area_name == '': top_area_name = 'Test area'
+        if top_area_name == '': top_area_name = 'Untitled area'
 
-        es_edit = esdl.EnergySystem()
-        es_id = str(uuid.uuid4())
-        es_edit.set_id(es_id)
-        es_edit.set_name(title)
-        es_edit.set_description(description)
+        es_edit = create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
+        process_energy_system(es_edit)
 
-        instance = esdl.Instance()
-        instance.set_id(str(uuid.uuid4()))
-        es_edit.add_instance(instance)
-
-        area = esdl.Area()
-        area.set_id(str(uuid.uuid4()))
-        area.set_name(top_area_name)
-        instance.set_area(area)
-
-        asset_list = []
-        area_bld_list = []
-        conn_list = []
-        carrier_list = []
-        asset_dict = {}
-        mapping = {}
-
-        create_port_to_asset_mapping(area, mapping)
-        session['port_to_asset_mapping'] = mapping
-        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-        emit('clear_ui')
-        emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-        emit('area_bld_list', area_bld_list)
-        emit('add_connections', conn_list)
-        emit('carrier_list', carrier_list)
-
-        # create_ESDL_store_item(es_id, es_edit, title, description, email)
-        emit('es_title', title)
-
-        session['es_title'] = title
-        session['es_edit'] = es_edit
-        session['es_id'] = es_id
-        session['es_descr'] = description
         session['es_email'] = email
-        session['es_start'] = 'new'
-        session['conn_list'] = conn_list
-        session['carrier_list'] = carrier_list
-        session['asset_dict'] = asset_dict
+
+    if message['cmd'] == 'load_esdl_from_file':
+        file_content = message['file_content']
+        if file_content.startswith('<?xml'):
+            # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
+            file_content = file_content.split('\n', 1)[1]
+        try:
+            es_load = esdl.parseString(file_content)
+            es_edit = es_load
+        except:
+            send_alert('Error interpreting ESDL from file')
+
+        process_energy_system(es_edit)
 
     if message['cmd'] == 'get_list_from_store':
-        result = requests.get(store_url)
+        try:
+            result = requests.get(store_url)
+        except:
+            send_alert('Error accessing ESDL store')
+            return
+
         data = result.json()
         store_list = []
         for es in data:
@@ -2427,246 +2626,34 @@ def process_file_command(message):
 
     if message['cmd'] == 'load_esdl_from_store':
         es_id = message['id']
-        es_edit = load_ESDL_EnergySystem(es_id)
-        es_title = es_edit.get_name()       # TODO: check if this is right title, can also be the name in the store
-        if es_title is None:
-            es_title = 'No name'
 
-        asset_list = []
-        area_bld_list = []
-        conn_list = []
-        carrier_list = []
-        mapping = {}
+        es_load = load_ESDL_EnergySystem(es_id)
+        if es_load:
+            es_edit = es_load
 
-        instance = es_edit.get_instance()
-        area = instance[0].get_area()
-        asset_dict = create_asset_dict(area)
-
-        create_port_to_asset_mapping(area, mapping)
-        session['port_to_asset_mapping'] = mapping
-        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-        emit('clear_ui')
-        emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-        emit('area_bld_list', area_bld_list)
-        emit('add_connections', conn_list)
-        emit('es_title', es_title)
-        emit('carrier_list', carrier_list)
-
-        session['es_id'] = es_id
-        session['es_edit'] = es_edit
-        session['es_title'] = es_title
-        session['es_start'] = 'load_store'
-        session['conn_list'] = conn_list
-        session['carrier_list'] = carrier_list
-        session['asset_dict'] = asset_dict
+        process_energy_system(es_edit)
 
     if message['cmd'] == 'store_esdl':
         es_edit = session['es_edit']
         es_id = session['es_id']
+
         store_ESDL_EnergySystem(es_id, es_edit)
 
     if message['cmd'] == 'save_esdl':
         es_edit = session['es_edit']
         es_id = session['es_id']
-        write_energysystem_to_file('./static/EnergySystem.esdl', es_edit)
-        # TODO: do we need to flush??
-        emit('and_now_press_download_file')
+        try:
+            write_energysystem_to_file('./static/EnergySystem.esdl', es_edit)
+            # TODO: do we need to flush??
+            emit('and_now_press_download_file')
+        except:
+            send_alert('Error accessing filesystem')
 
     if message['cmd'] == 'download_esdl':
         es_edit = session['es_edit']
         name = session['es_title'].replace(' ', '_')
 
         send_ESDL_as_file(es_edit, name)
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-#  Load ESDL file
-# ---------------------------------------------------------------------------------------------------------------------
-@socketio.on('load_esdl_file', namespace='/esdl')
-def load_esdl_file(message):
-    print ('received load_esdl_file command')
-    if message.startswith('<?xml'):
-        # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
-        message = message.split('\n', 1)[1]
-    es_edit = esdl.parseString(message, True)
-
-    es_title = es_edit.get_name()  # TODO: check if this is right title, can also be the name in the store
-    if es_title is None:
-        es_title = 'No name'
-    es_id = es_edit.get_id()
-    if es_id is None:
-        es_id = str(uuid.uuid4())
-        es_edit.set_id(es_id)
-
-    asset_list = []
-    area_bld_list = []
-    conn_list = []
-    mapping = {}
-    carrier_list = get_carrier_list(es_edit)
-
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
-    area_id = area.get_id()
-    area_scope = area.get_scope()
-    asset_dict = create_asset_dict(area)
-
-    emit('clear_ui')
-    find_boundaries_in_ESDL(area)
-
-    create_port_to_asset_mapping(area, mapping)
-    session['port_to_asset_mapping'] = mapping
-    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-    emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-    emit('area_bld_list', area_bld_list)
-    emit('add_connections', conn_list)
-    emit('es_title', es_title)
-    emit('carrier_list', carrier_list)
-
-    session['es_id'] = es_id
-    session['es_edit'] = es_edit
-    session['es_title'] = es_title
-    session['es_start'] = 'load_file'
-    session['conn_list'] = conn_list
-    session['carrier_list'] = carrier_list
-    session['asset_dict'] = asset_dict
-
-# ---------------------------------------------------------------------------------------------------------------------
-#  Update ESDL coordinates on movement of assets in browser
-# ---------------------------------------------------------------------------------------------------------------------
-@socketio.on('update-coord', namespace='/esdl')
-def update_coordinates(message):
-    print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
-
-    es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
-    obj_id = message['id']
-
-    if message['asspot'] == 'asset':
-        asset = find_asset(area, obj_id)
-
-        if asset:
-            point = esdl.Point()
-            point.set_lon(message['lng'])
-            point.set_lat(message['lat'])
-            asset.set_geometry_with_type(point)
-
-        # Update locations of connections on moving assets
-        update_asset_connection_locations(obj_id, message['lat'], message['lng'])
-    else:
-        potential = find_potential(area, obj_id)
-        if potential:
-            point = esdl.Point()
-            point.set_lon(message['lng'])
-            point.set_lat(message['lat'])
-            potential.set_geometry_with_type(point)
-
-    session['es_edit'] = es_edit
-
-@socketio.on('update-line-coord', namespace='/esdl')
-def update_line_coordinates(message):
-    print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
-    ass_id = message['id']
-
-    es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
-    asset = find_asset(area, ass_id)
-
-    if asset:
-        polyline_data = message['polyline']
-        # print(polyline_data)
-        # print(type(polyline_data))
-        polyline_length = float(message['length'])
-        asset.set_length(polyline_length)
-
-        line = esdl.Line()
-        for i in range(0, len(polyline_data)):
-            coord = polyline_data[i]
-
-            point = esdl.Point()
-            point.set_lon(coord['lng'])
-            point.set_lat(coord['lat'])
-            line.add_point(point)
-
-        asset.set_geometry_with_type(line)
-
-        update_transport_connection_locations(ass_id, asset, polyline_data)
-
-    session['es_edit'] = es_edit
-
-# ---------------------------------------------------------------------------------------------------------------------
-#  Get boundary information
-#
-# ---------------------------------------------------------------------------------------------------------------------
-@socketio.on('get_boundary_info', namespace='/esdl')
-def get_boundary_info(info):
-    print('get_boundary_info:')
-    print(info)
-    identifier = info["identifier"]
-    scope = info["scope"]
-    subscope = info["subscope"]
-    initialize_ES = info["initialize_ES"]
-    add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
-
-    # TODO: Check if valid scopes were given
-
-    es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
-
-    if initialize_ES:
-        # change ID, name and scope of ES
-        area.set_id(identifier)
-        area.set_scope(str.upper(scope))
-        if add_boundary_to_ESDL:
-            # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
-            boundary = get_boundary_from_service(str.upper(scope), identifier)
-            if boundary:
-                geometry = create_geometry_from_geom(boundary)
-                area.set_geometry(geometry)
-
-            # boundary = get_boundary_from_service(area_scope, area_id)
-            # if boundary:
-            #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
-
-    boundaries = get_subboundaries_from_service(scope, subscope, identifier)
-    # result (boundaries) is an ARRAY of:
-    # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
-    # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
-
-    for boundary in boundaries:
-        geom = None
-        try:
-            geom = json.loads(boundary["geom"])
-        except:
-            print('exception: probably unable to parse JSON from GEIS boundary service')
-
-        if geom:
-            # print('boundary["geom"]: ')
-            # print(boundary["geom"])
-            # print(boundary)
-
-            if initialize_ES:
-                sub_area = esdl.Area()
-                sub_area.set_id(boundary["code"])
-                sub_area.set_scope(str.upper(subscope))
-
-                if add_boundary_to_ESDL:
-                    geometry = create_geometry_from_geom(geom)
-                    sub_area.set_geometry(geometry)
-
-                area.add_area(sub_area)
-
-            # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
-            # boundary = create_boundary_from_contour(area_contour)
-            # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
-
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
-
-    print('Ready prcessing boundary information')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2681,48 +2668,11 @@ def initialize_app():
     if 'es_edit' in session:
         print ('Energysystem in memory - reloading client data')
         es_edit = session['es_edit']
-        es_title = session['es_title']
-        es_id = session['es_id']
-        area = es_edit.instance[0].area
-        print('Asset dict: {}'.format(session['asset_dict']))
     else:
         print ('No energysystem in memory - generating empty energysystem')
-        es_title = 'Untitled EnergySystem'
-        es_id = str(uuid.uuid4())
-        es_edit = esdl.EnergySystem()
-        es_edit.set_id(es_id)
-        instance = esdl.Instance(name='Untitled instance')
-        instance.set_id(str(uuid.uuid4()))
-        es_edit.add_instance(instance)
-        area = esdl.Area(name='Unnamed Area')
-        area.set_id(str(uuid.uuid4()))
-        instance.set_area(area)
-        asset_dict = {}
-        session['asset_dict'] = asset_dict
+        es_edit = create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
-    asset_list = []
-    area_bld_list = []
-    conn_list = []
-    mapping = {}
-    carrier_list = []
-
-    create_port_to_asset_mapping(area, mapping)
-    session['port_to_asset_mapping'] = mapping
-    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-    emit('clear_ui')
-    emit('es_title', es_title)
-    emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-    emit('area_bld_list', area_bld_list)
-    emit('add_connections', conn_list)
-    emit('carrier_list', carrier_list)
-
-    session['es_title'] = es_title
-    session['es_edit'] = es_edit
-    session['es_id'] = es_id
-    session['conn_list'] = conn_list
-    session['carrier_list'] = carrier_list
-    session['color_method'] = 'buildingyear'
+    process_energy_system(es_edit)
     session.modified = True
 
 @socketio.on('connect', namespace='/esdl')
