@@ -1032,7 +1032,9 @@
 
                 if (info_type == 'WKT') {
                     layer = omnivore.wkt.parse(geometry);
-                    layer.setStyle({color: color, weight: 2});
+                    layer.setStyle({color: color, weight: 2, name: name});
+                    layer.bindPopup(function (layer) {
+                            return 'name:'+layer.options.name});
                     layer.addTo(area_layer);
                 }
             });
@@ -1040,11 +1042,14 @@
             socket.on('pot_boundary', function(pot_boundary) {
                 geometry = pot_boundary['boundary'];
                 info_type = pot_boundary['info-type'];
+                name = pot_boundary['name'];
+                color = pot_boundary['color'];
 
-                console.log(geometry);
                 if (info_type == 'WKT') {
                     layer = omnivore.wkt.parse(geometry);
-                    layer.setStyle({color: color, weight: 2});
+                    layer.setStyle({color: color, weight: 2, name: name});
+                    layer.bindPopup(function (layer) {
+                            return 'name:'+layer.options.name});
                     layer.addTo(pot_layer);
                 }
             });

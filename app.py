@@ -420,19 +420,24 @@ def _find_more_area_boundaries(this_area):
                     building_color = _determine_color(asset, session["color_method"])
                     boundary = create_boundary_from_contour(asset_geometry)
 
-                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': building_color, 'name': name, 'boundary_type': 'building'})
+                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
+                                           'color': building_color, 'name': name, 'boundary_type': 'building'})
         else: # No AbstractBuilding
             asset_geometry = asset.get_geometry()
+            name = asset.get_name()
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.WKT):
-                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.get_value(), 'color': 'grey', 'boundary_type': 'asset'})
+                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.get_value(),
+                                               'color': 'grey', 'name': name, 'boundary_type': 'asset'})
 
     potentials = this_area.get_potential()
     for potential in potentials:
         potential_geometry = potential.get_geometry()
+        potential_name = potential.get_name()
         if potential_geometry:
             if isinstance(potential_geometry, esdl.WKT):
-                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.get_value(), 'color': 'grey', 'boundary_type': 'potential'})
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.get_value(), 'color': 'grey',
+                                      'name': potential_name, 'boundary_type': 'potential'})
 
     areas = this_area.get_area()
     for area in areas:
