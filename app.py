@@ -2109,16 +2109,36 @@ def process_command(message):
             add_asset_to_building(es_edit, asset, area_bld_id)
 
         # TODO: check / solve cable as Point issue?
+        # if assettype not in ['ElectricityCable', 'Pipe']:
+        port_list = []
+        asset_to_be_added_list = []
+        ports = asset.get_port()
+        for p in ports:
+            port_list.append(
+                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+
         if assettype not in ['ElectricityCable', 'Pipe']:
-            port_list = []
-            asset_to_be_added_list = []
-            ports = asset.get_port()
-            for p in ports:
-                port_list.append(
-                    {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
             capability_type = get_asset_capability_type(asset)
             asset_to_be_added_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, message['lat'], message['lng'], port_list, capability_type])
-            emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
+        else:
+            coords = []
+            i = 0
+            prev_lat = 0
+            prev_lng = 0
+            while i < len(polyline_data):
+                coord = polyline_data[i]
+
+                # Don't understand why, but sometimes coordinates come in twice
+                if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+                    coords.append([coord['lat'] ,coord['lng']])
+
+                    prev_lat = coord['lat']
+                    prev_lng = coord['lng']
+                i += 1
+
+            asset_to_be_added_list.append(['line', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, coords, port_list])
+
+        emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
 
         asset_dict[asset_id] = asset
 

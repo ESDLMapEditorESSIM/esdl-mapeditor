@@ -232,18 +232,32 @@
                 id: line.id,
                 contextmenu: true,
                 contextmenuWidth: 140,
-                contextmenuItems: [
-                    { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorCallback },
-                    { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorConnectCallback },
-                    { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback },
-                    '-',
-                    { text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
-                    '-',
-                    { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier },
-                    '-',
-                    { text: 'Cancel' }
-                ]
+                contextmenuItems: []
             });
+            line.options.contextmenuItems.push(
+                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorCallback });
+            line.options.contextmenuItems.push(
+                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorConnectCallback });
+            line.options.contextmenuItems.push(
+                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback });
+            line.options.contextmenuItems.push('-');
+
+            //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
+            for (p=0; p<line.ports.length; p++) {
+                // id is not coming through??  TODO: Check, now parsing the text :-(
+                line.options.contextmenuItems.push({
+                    id: line.ports[p].id,
+                    icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
+                    text: 'Connect ' + line.ports[p].type + ' (' + line.ports[p].id + '): ' + line.ports[p].name,
+                    callback: connectAsset
+                });
+            }
+
+            line.options.contextmenuItems.push('-');
+            line.options.contextmenuItems.push(
+                { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
+            line.options.contextmenuItems.push('-');
+            line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
                 if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
@@ -276,6 +290,7 @@
                     weight: 4
                 });
             });
+
             line.on('mouseout', function(e) {
                 var layer = e.target;
                 layer.setStyle({
@@ -1443,8 +1458,10 @@
             layer.title = layer.name;
             polyline_length = calculate_length(layer);
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-            set_line_handlers(layer);
-            esdl_layer.addLayer(layer);
+
+            // Let server send info including ports, so line.contextmenu can be populated
+            // set_line_handlers(layer);
+            // esdl_layer.addLayer(layer);
         }
         if (type === 'polygon' || type === 'rectangle') {
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
