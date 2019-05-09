@@ -105,8 +105,8 @@
             clear_layer = false;
         }
 
-        addProfileToPort = function(e, id) {
-            console.log("addProfileToPort(id=" + id + ")");
+        addProfileToPort = function(e, markerId, portId) {
+            console.log("addProfileToPort(markerId=" + markerId + ", portId=" + portId + ")");
             console.log("addProfileToPort(e.relatedTarget.id=" + e.relatedTarget.id + ")");
             console.log(e); // .relatedTarget);
         }
@@ -167,13 +167,16 @@
                         contextmenuItems: []
                     });
 
+                    markerId = marker.id;
+
                     for (p=0; p<marker.ports.length; p++) {
                         // id is not coming through??  TODO: Check, now parsing the text :-(
+                        var portId = marker.ports[p].id
                         marker.options.contextmenuItems.push({
                             id: marker.ports[p].id,
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                             text: 'Connect ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
-                            callback: connectAsset
+                            callback: function(e) { connectAsset(e, markerId, portId) }
                         });
                     }
                     marker.options.contextmenuItems.push('-');
@@ -185,7 +188,7 @@
                             id: marker.ports[p].id,
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set profile of ' + marker.ports[p].type + ' (' + portId + '): ' + marker.ports[p].name,
-                            callback: function(e) { addProfileToPort(e, portId) }
+                            callback: function(e) { addProfileToPort(e, markerId, portId) }
                         });
                     }
 
@@ -245,14 +248,16 @@
                 { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback });
             line.options.contextmenuItems.push('-');
 
+            assetId = line.id;
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
             for (p=0; p<line.ports.length; p++) {
                 // id is not coming through??  TODO: Check, now parsing the text :-(
+                portId = line.ports[p].id;
                 line.options.contextmenuItems.push({
                     id: line.ports[p].id,
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + line.ports[p].id + '): ' + line.ports[p].name,
-                    callback: connectAsset
+                    callback: function(e) { connectAsset(e, assetId, portId); }
                 });
             }
 
@@ -616,7 +621,9 @@
             // alert (e.latlng);
         }
 
-        function connectAsset(e) {
+        function connectAsset(e, assetId, portId) {
+            console.log("connectAsset(assetId=" + assetId + ", portId=" + portId + ")");
+            console.log(e.relatedTarget)
             // alert (e.latlng);
         }
 
