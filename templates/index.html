@@ -105,7 +105,9 @@
             clear_layer = false;
         }
 
-        addProfileToPort = function(e) {
+        addProfileToPort = function(e, id) {
+            console.log("addProfileToPort(id=" + id + ")");
+            console.log("addProfileToPort(e.relatedTarget.id=" + e.relatedTarget.id + ")");
             console.log(e); // .relatedTarget);
         }
 
@@ -178,11 +180,12 @@
 
                     for (p=0; p<marker.ports.length; p++) {
                         // id is not coming through??  TODO: Check, now parsing the text :-(
+                        var portId = marker.ports[p].id
                         marker.options.contextmenuItems.push({
                             id: marker.ports[p].id,
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
-                            text: 'Set profile of ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
-                            callback: addProfileToPort
+                            text: 'Set profile of ' + marker.ports[p].type + ' (' + portId + '): ' + marker.ports[p].name,
+                            callback: function(e) { addProfileToPort(e, portId) }
                         });
                     }
 
