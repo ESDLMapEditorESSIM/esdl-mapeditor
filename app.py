@@ -1944,9 +1944,22 @@ def get_control_strategies(es):
     return strategies
 
 
-def add_control_strategy_for_asset(asset_id, control_strategy, port_id):
+def get_control_strategy_for_asset(asset_id):
     es = session['es_edit']
     asset_dict = session['asset_dict']
+
+    strategies = get_control_strategies(es)
+
+    for strategy in strategies:
+        cs_aid = strategy.get_energyAsset()
+        if cs_aid == asset_id:
+            return strategy
+
+    return None
+
+
+def add_control_strategy_for_asset(asset_id, cs):
+    es = session['es_edit']
 
     services = es.get_services()
     if not services:
@@ -1958,6 +1971,12 @@ def add_control_strategy_for_asset(asset_id, control_strategy, port_id):
         if isinstance(service, esdl.ControlStrategy):
             if service.get_energyAsset() == asset_id:
                 services_list.remove(service)
+
+    services_list.append(cs)
+
+
+def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
+    asset_dict = session['asset_dict']
 
     module = importlib.import_module('model.esdl_sup')
     class_ = getattr(module, control_strategy)
@@ -1971,11 +1990,42 @@ def add_control_strategy_for_asset(asset_id, control_strategy, port_id):
     cs.set_id(str(uuid.uuid4()))
     cs.set_name(control_strategy + ' for ' + asset_name)
     cs.set_energyAsset(asset_id)
+
     if control_strategy == 'DrivenByDemand':
         cs.set_outPort(port_id)
     if control_strategy == 'DrivenBySupply':
         cs.set_inPort(port_id)
-    services_list.append(cs)
+
+    add_control_strategy_for_asset(asset_id, cs)
+
+
+def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
+    asset_dict = session['asset_dict']
+
+    send_alert("StorageStrategy not implemented yet")
+
+    # cs = esdl.StorageStrategy()
+    #
+    # asset = asset_dict[asset_id]
+    # asset_name = asset.get_name()
+    # if not asset_name:
+    #     asset_name = 'unknown'
+    #
+    # cs.set_id(str(uuid.uuid4()))
+    # cs.set_name(control_strategy + ' for ' + asset_name)
+    # cs.set_energyAsset(asset_id)
+    #
+    # mcc_sv = esdl.SingleValue()
+    # mcc_sv.set_id(str(uuid.uuid4()))
+    # mcc_sv.set_name('marginalChargeCosts for ' + asset_name)
+    # cs.set_marginalChargeCosts(mcc_sv)
+    #
+    # mdc_sv = esdl.SingleValue()
+    # mdc_sv.set_id(str(uuid.uuid4()))
+    # mdc_sv.set_name('marginalChargeCosts for ' + asset_name)
+    # cs.set_marginalDischargeCosts(mdc_sv)
+    #
+    # add_control_strategy_for_asset(asset_id, cs)
 
 
 def remove_control_strategy_for_asset(asset_id):
@@ -2015,7 +2065,7 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
     ci.set_marginalCosts(mc)
 
 
-def get_marginal_costs_for_asset(asset_id, marginal_costs):
+def get_marginal_costs_for_asset(asset_id):
     asset_dict = session['asset_dict']
     asset = asset_dict[asset_id]
 
@@ -2655,13 +2705,20 @@ def process_command(message):
         # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
         strategy = message['strategy']
         asset_id = message['asset_id']
-        try:
-            # In case of StorageStrategy there is no port_id
-            port_id = message['port_id']
-        except:
-            port_id = None
 
-        add_control_strategy_for_asset(asset_id, strategy, port_id)
+        if strategy == 'StorageStrategy':
+            mcc = message['marg_ch_costs']
+            mdc = message['marg_disch_costs']
+            add_storage_control_strategy(asset_id, strategy, mcc, mdc)
+        else:
+            port_id = message['port_id']
+            add_drivenby_control_strategy_for_asset(asset_id, strategy, port_id)
+
+    if message['cmd'] == 'set_marginal_costs_get_info':
+        asset_id = message['asset_id']
+
+        mc = get_marginal_costs_for_asset(asset_id)
+        emit('marginal_costs', {'asset_id': asset_id, 'mc': mc})
 
     if message['cmd'] == 'set_marg_costs':
         asset_id = message['asset_id']

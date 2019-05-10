@@ -4845,25 +4845,31 @@ class CostInformation(GeneratedsSuper):
     def set_investmentCosts(self, investmentCosts):
         self.investmentCosts = investmentCosts
         investmentCosts.original_tagname_ = 'investmentCosts'
-        investmentCosts.extensiontype_ = value.__class__.__name__
+        investmentCosts.extensiontype_ = investmentCosts.__class__.__name__
     def get_installationCosts(self):
         return self.installationCosts
     def set_installationCosts(self, installationCosts):
         self.installationCosts = installationCosts
         installationCosts.original_tagname_ = 'installationCosts'
-        installationCosts.extensiontype_ = value.__class__.__name__
+        installationCosts.extensiontype_ = installationCosts.__class__.__name__
     def get_fixedOperationalAndMaintenanceCosts(self):
         return self.fixedOperationalAndMaintenanceCosts
     def set_fixedOperationalAndMaintenanceCosts(self, fixedOperationalAndMaintenanceCosts):
         self.fixedOperationalAndMaintenanceCosts = fixedOperationalAndMaintenanceCosts
+        fixedOperationalAndMaintenanceCosts.original_tagname_ = 'fixedOperationalAndMaintenanceCosts'
+        fixedOperationalAndMaintenanceCosts.extensiontype_ = fixedOperationalAndMaintenanceCosts.__class__.__name__
     def get_marginalCosts(self):
         return self.marginalCosts
     def set_marginalCosts(self, marginalCosts):
         self.marginalCosts = marginalCosts
+        marginalCosts.original_tagname_ = 'marginalCosts'
+        marginalCosts.extensiontype_ = marginalCosts.__class__.__name__
     def get_variableOperationalAndMaintenanceCosts(self):
         return self.variableOperationalAndMaintenanceCosts
     def set_variableOperationalAndMaintenanceCosts(self, variableOperationalAndMaintenanceCosts):
         self.variableOperationalAndMaintenanceCosts = variableOperationalAndMaintenanceCosts
+        variableOperationalAndMaintenanceCosts.original_tagname_ = 'variableOperationalAndMaintenanceCosts'
+        variableOperationalAndMaintenanceCosts.extensiontype_ = variableOperationalAndMaintenanceCosts.__class__.__name__
     def hasContent_(self):
         if (
             self.investmentCosts is not None or

@@ -186,6 +186,9 @@
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                             text: 'Connect ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
                             callback: function(e) {
+                                // console.log(port_id);
+                                // console.log(e);
+                                // console.log(this);
                                 // connectAsset(port_id);
                             }
                         });
@@ -245,7 +248,10 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set marginal costs for [' + asset_id + ']',
-                            callback: function(e) { marginal_costs_window(asset_id); }
+                            callback: function(e) {
+                                socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
+                                //marginal_costs_window(asset_id);
+                            }
                         });
                     }
 
@@ -310,6 +316,7 @@
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
                     callback: function (e) {
+                        // console.log(e);
                         // var p_id = ''+port_id;
                         // console.log('Callback call: '+ p_id);
                         // connectAsset(p_id);
@@ -607,18 +614,41 @@
             socket.emit('command', {cmd: 'set_marg_costs', asset_id: asset_id, marg_costs: mc});
         }
 
-        function marginal_costs_window(asset_id) {
+        function marginal_costs_window(asset_id, mc) {
             sidebar_ctr = sidebar.getContainer();
 
             sidebar_ctr.innerHTML = '<h1>Set marginal costs:</h1>';
 
             table = '<table>';
             table = table + '<tr><td width=180>Marginal costs</td>';
-            table = table + '<td><input type="text" width="60" id="marg_costs"></td></tr>';
+            table = table + '<td><input type="text" width="60" id="marg_costs" value="' + mc + '"></td></tr>';
             table += '</table>';
             sidebar_ctr.innerHTML += table;
 
             sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_marginal_costs(\''+ asset_id + '\');">Set costs</button></p>';
+            sidebar.show();
+        }
+
+        function set_storage_strategy(asset_id) {
+            mcc = document.getElementById('marg_ch_costs').value;
+            mdc = document.getElementById('marg_disch_costs').value;
+            socket.emit('command', {cmd: 'set_storage_strategy', asset_id: asset_id, marg_ch_costs: mcc, marg_disch_costs: mdc});
+        }
+
+        function storage_strategy_window(asset_id, mcc, mdc) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Storage Strategy:</h1>';
+
+            table = '<table>';
+            table = table + '<tr><td width=180>Marginal charge costs</td>';
+            table = table + '<td><input type="text" width="60" id="marg_ch_costs" value="' + mcc + '"></td></tr>';
+            table = table + '<tr><td width=180>Marginal discharge costs</td>';
+            table = table + '<td><input type="text" width="60" id="marg_disch_costs" value="' + mdc + '"></td></tr>';
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
             sidebar.show();
         }
 
@@ -1189,6 +1219,13 @@
                 control_strategy_config = csc
             });
 
+            socket.on('marginal_costs', function(params) {
+                var mc = params['mc'];
+                var asset_id = params['asset_id'];
+
+                marginal_costs_window(asset_id, mc)
+            });
+
             socket.on('carrier_list', function(carr_list) {
                 carrier_list = carr_list;
                 // console.log(carr_list);
@@ -1480,7 +1517,7 @@
         // this event is fired for all contextmenu clicks
         // TODO: how to filter add profile in a better way???
         menu_item_text = e.el.innerText;
-        // console.log(e);
+        console.log(e);
 
         if (menu_item_text.substring(0, 11) == 'Set profile') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
