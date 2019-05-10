@@ -36,5 +36,31 @@ esdl_config = {
         }
     ],
     "energy_carriers": [
+    ],
+    "control_strategies": [
+        {
+            "name": "DrivenByDemand",
+            "applies_to": "Conversion",
+            "connect_to": "OutPort"
+        },
+        {
+            "name": "DrivenBySupply",
+            "applies_to": "Conversion",
+            "connect_to": "InPort"
+        },
+        {
+            "name": "StorageStrategy",
+            "applies_to": "Storage",
+            "parameters": [
+                {
+                    "name": "marginalChargeCosts",
+                    "type": "SingleValue"
+                },
+                {
+                    "name": "marginalDischargeCosts",
+                    "type": "SingleValue"
+                }
+            ]
+        },
     ]
 }

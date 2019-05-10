@@ -713,11 +713,11 @@ def remove_object_from_energysystem(es, object_id):
 
 
 def get_asset_capability_type(asset):
-    if isinstance(asset, esdl.Producer): return 'producer'
-    if isinstance(asset, esdl.Consumer): return 'consumer'
-    if isinstance(asset, esdl.Storage): return 'storage'
-    if isinstance(asset, esdl.Transport): return 'transport'
-    if isinstance(asset, esdl.Conversion): return 'conversion'
+    if isinstance(asset, esdl.Producer): return 'Producer'
+    if isinstance(asset, esdl.Consumer): return 'Consumer'
+    if isinstance(asset, esdl.Storage): return 'Storage'
+    if isinstance(asset, esdl.Transport): return 'Transport'
+    if isinstance(asset, esdl.Conversion): return 'Conversion'
     return 'none'
 
 
@@ -1189,6 +1189,7 @@ def update_asset_connection_locations(ass_id, lat, lon):
     emit('add_connections', conn_list)
 
     session['conn_list'] = conn_list
+
 
 def update_transport_connection_locations(ass_id, asset, coords):
     conn_list = session['conn_list']
@@ -1930,6 +1931,104 @@ def get_boundary_info(info):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Control Strategies
+# ---------------------------------------------------------------------------------------------------------------------
+def get_control_strategies(es):
+    strategies = []
+    services = es.get_services()
+    if services:
+        services_list = services.get_service()
+        for service in services_list:
+            if isinstance(service, esdl.ControlStrategy):
+                strategies.append(service)
+    return strategies
+
+
+def add_control_strategy_for_asset(asset_id, control_strategy, port_id):
+    es = session['es_edit']
+    asset_dict = session['asset_dict']
+
+    services = es.get_services()
+    if not services:
+        services = esdl.Services()
+        es.set_services(services)
+
+    services_list = services.get_service()
+    for service in services_list:
+        if isinstance(service, esdl.ControlStrategy):
+            if service.get_energyAsset() == asset_id:
+                services_list.remove(service)
+
+    module = importlib.import_module('model.esdl_sup')
+    class_ = getattr(module, control_strategy)
+    cs = class_()
+
+    asset = asset_dict[asset_id]
+    asset_name = asset.get_name()
+    if not asset_name:
+        asset_name = 'unknown'
+
+    cs.set_id(str(uuid.uuid4()))
+    cs.set_name(control_strategy + ' for ' + asset_name)
+    cs.set_energyAsset(asset_id)
+    if control_strategy == 'DrivenByDemand':
+        cs.set_outPort(port_id)
+    if control_strategy == 'DrivenBySupply':
+        cs.set_inPort(port_id)
+    services_list.append(cs)
+
+
+def remove_control_strategy_for_asset(asset_id):
+    es = session['es_edit']
+
+    services_collection = es.get_services()
+    if services_collection:
+        services = services_collection.get_service()
+        for service in services:
+            if isinstance(service, esdl.ControlStrategy):
+                if service.get_energyAsset() == asset_id:
+                    services.remove(service)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Marginal Costs
+# ---------------------------------------------------------------------------------------------------------------------
+def set_marginal_costs_for_asset(asset_id, marginal_costs):
+    asset_dict = session['asset_dict']
+    asset = asset_dict[asset_id]
+    asset_name = asset.get_name()
+    if not asset_name:
+        asset_name = asset.get_id()
+
+    ci = asset.get_costInformation()
+    if not ci:
+        ci = esdl.CostInformation()
+        asset.set_costInformation(ci)
+
+    mc = ci.get_marginalCosts()
+    if not mc:
+        mc = esdl.SingleValue()
+        mc.set_id(str(uuid.uuid4()))
+        mc.set_name(asset_name+'-MarginalCosts')
+
+    mc.set_value(marginal_costs)
+    ci.set_marginalCosts(mc)
+
+
+def get_marginal_costs_for_asset(asset_id, marginal_costs):
+    asset_dict = session['asset_dict']
+    asset = asset_dict[asset_id]
+
+    ci = asset.get_costInformation()
+    if ci:
+        mc = ci.get_marginalCosts()
+        if mc:
+            return mc.get_value()
+
+    return None
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('command', namespace='/esdl')
@@ -2108,7 +2207,7 @@ def process_command(message):
         if not add_asset_to_area(es_edit, asset, area_bld_id):
             add_asset_to_building(es_edit, asset, area_bld_id)
 
-        # TODO: check / solve cable as Point issue?
+        # TODO: check / solve cable as Point issue?cmd
         # if assettype not in ['ElectricityCable', 'Pipe']:
         port_list = []
         asset_to_be_added_list = []
@@ -2552,6 +2651,24 @@ def process_command(message):
                 emit('clear_ui', {'layer': 'areas'})
                 find_boundaries_in_ESDL(top_area)
 
+    if message['cmd'] == 'set_control_strategy':
+        # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
+        strategy = message['strategy']
+        asset_id = message['asset_id']
+        try:
+            # In case of StorageStrategy there is no port_id
+            port_id = message['port_id']
+        except:
+            port_id = None
+
+        add_control_strategy_for_asset(asset_id, strategy, port_id)
+
+    if message['cmd'] == 'set_marg_costs':
+        asset_id = message['asset_id']
+        mc = float(message['marg_costs'])
+
+        set_marginal_costs_for_asset(asset_id, mc)
+
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
 
@@ -2684,7 +2801,7 @@ def process_file_command(message):
             # TODO: do we need to flush??
             emit('and_now_press_download_file')
         except:
-            send_alert('Error accessing filesystem')
+            send_alert('Error saving ESDL file to filesystem')
 
     if message['cmd'] == 'download_esdl':
         es_edit = session['es_edit']
@@ -2712,10 +2829,12 @@ def initialize_app():
     process_energy_system(es_edit)
     session.modified = True
 
+
 @socketio.on('connect', namespace='/esdl')
 def on_connect():
     print("Websocket connection established")
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
+    emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
 
     initialize_app()
 

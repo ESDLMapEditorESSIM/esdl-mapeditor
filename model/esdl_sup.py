@@ -4844,10 +4844,14 @@ class CostInformation(GeneratedsSuper):
         return self.investmentCosts
     def set_investmentCosts(self, investmentCosts):
         self.investmentCosts = investmentCosts
+        investmentCosts.original_tagname_ = 'investmentCosts'
+        investmentCosts.extensiontype_ = value.__class__.__name__
     def get_installationCosts(self):
         return self.installationCosts
     def set_installationCosts(self, installationCosts):
         self.installationCosts = installationCosts
+        installationCosts.original_tagname_ = 'installationCosts'
+        installationCosts.extensiontype_ = value.__class__.__name__
     def get_fixedOperationalAndMaintenanceCosts(self):
         return self.fixedOperationalAndMaintenanceCosts
     def set_fixedOperationalAndMaintenanceCosts(self, fixedOperationalAndMaintenanceCosts):

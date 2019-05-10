@@ -42,6 +42,7 @@
 
         var profile_array;
         var carrier_list;
+        var control_strategy_config;
 
         var connecting_assets = false;
         var first_clicked = false;
@@ -105,8 +106,9 @@
             clear_layer = false;
         }
 
-        addProfileToPort = function(e) {
-            console.log(e); // .relatedTarget);
+        setPortProfile = function(port_id) {
+            // console.log(port_id);
+            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
 
         setCarrier = function(e) {
@@ -155,7 +157,20 @@
             }
         }
 
+        function set_driven_by_demand(asset_id, port_id) {
+            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenByDemand', 'asset_id': asset_id, 'port_id': port_id});
+        }
+
+        function set_driven_by_supply(asset_id, port_id) {
+            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenBySupply', 'asset_id': asset_id, 'port_id': port_id});
+        }
+
+        function set_storage_strategy(asset_id) {
+            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'StorageStrategy', 'asset_id': asset_id});
+        }
+
         function set_marker_handlers(marker) {
+            var asset_id = marker.id
             if (marker.ports) {
 
                 if (marker.ports.length > 0) {
@@ -166,28 +181,73 @@
                     });
 
                     for (p=0; p<marker.ports.length; p++) {
-                        // id is not coming through??  TODO: Check, now parsing the text :-(
+                        var port_id = ''+marker.ports[p].id;
                         marker.options.contextmenuItems.push({
-                            id: marker.ports[p].id,
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
-                            text: 'Connect ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
-                            callback: connectAsset
+                            text: 'Connect ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
+                            callback: function(e) {
+                                // connectAsset(port_id);
+                            }
                         });
                     }
                     marker.options.contextmenuItems.push('-');
 
                     for (p=0; p<marker.ports.length; p++) {
-                        // id is not coming through??  TODO: Check, now parsing the text :-(
+                        var port_id = marker.ports[p].id;
                         marker.options.contextmenuItems.push({
-                            id: marker.ports[p].id,
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
-                            text: 'Set profile of ' + marker.ports[p].type + ' (' + marker.ports[p].id + '): ' + marker.ports[p].name,
-                            callback: addProfileToPort
+                            text: 'Set profile of ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
+                            callback: function(e) {
+                                // setPortProfile(port_id);
+                            }
                         });
                     }
 
                     marker.options.contextmenuItems.push('-');
                     marker.options.contextmenuItems.push({ text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
+
+                    if (marker.capability == 'Conversion') {
+                        marker.options.contextmenuItems.push('-');
+                        for (p=0; p<marker.ports.length; p++) {
+                            var port_id = marker.ports[p].id
+
+                            if (marker.ports[p].type == 'OutPort') {
+                                menu_item_txt = 'Set DrivenByDemand for [' + asset_id + ']: ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name;
+                                callback_function = function(e) {
+                                    // set_driven_by_demand(asset_id, port_id);
+                                }
+                            } else {
+                                menu_item_txt = 'Set DrivenBySupply for [' + asset_id + ']: ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name;
+                                callback_function = function(e) {
+                                    // set_driven_by_supply(asset_id, port_id);
+                                }
+                            }
+
+                            marker.options.contextmenuItems.push({
+                                icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
+                                text: menu_item_txt,
+                                callback: callback_function
+                            });
+                        }
+                    }
+
+                    if (marker.capability == 'Storage') {
+                        marker.options.contextmenuItems.push('-');
+                        marker.options.contextmenuItems.push({
+                            icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
+                            text: 'Set StorageStrategy for [' + marker.id + ']',
+                            callback: function(e) { set_storage_strategy(asset_id); }
+                        });
+                    }
+
+                    if (marker.capability == 'Consumer' || marker.capability == 'Producer') {
+                        marker.options.contextmenuItems.push('-');
+                        marker.options.contextmenuItems.push({
+                            icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
+                            text: 'Set marginal costs for [' + asset_id + ']',
+                            callback: function(e) { marginal_costs_window(asset_id); }
+                        });
+                    }
 
                     marker.options.contextmenuItems.push('-');
                     marker.options.contextmenuItems.push({text: 'Cancel'});
@@ -229,7 +289,6 @@
 
         function set_line_handlers(line) {
             line.bindContextMenu({
-                id: line.id,
                 contextmenu: true,
                 contextmenuWidth: 140,
                 contextmenuItems: []
@@ -243,13 +302,18 @@
             line.options.contextmenuItems.push('-');
 
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
+            console.log('Build menu:');
             for (p=0; p<line.ports.length; p++) {
-                // id is not coming through??  TODO: Check, now parsing the text :-(
+                var port_id = ''+line.ports[p].id;
+                console.log(port_id);
                 line.options.contextmenuItems.push({
-                    id: line.ports[p].id,
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
-                    text: 'Connect ' + line.ports[p].type + ' (' + line.ports[p].id + '): ' + line.ports[p].name,
-                    callback: connectAsset
+                    text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
+                    callback: function (e) {
+                        // var p_id = ''+port_id;
+                        // console.log('Callback call: '+ p_id);
+                        // connectAsset(p_id);
+                    }
                 });
             }
 
@@ -537,6 +601,27 @@
             sidebar.show();
         }
 
+        function set_marginal_costs(asset_id) {
+            mc = document.getElementById('marg_costs').value;
+            console.log(mc);
+            socket.emit('command', {cmd: 'set_marg_costs', asset_id: asset_id, marg_costs: mc});
+        }
+
+        function marginal_costs_window(asset_id) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Set marginal costs:</h1>';
+
+            table = '<table>';
+            table = table + '<tr><td width=180>Marginal costs</td>';
+            table = table + '<td><input type="text" width="60" id="marg_costs"></td></tr>';
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_marginal_costs(\''+ asset_id + '\');">Set costs</button></p>';
+            sidebar.show();
+        }
+
         function open_ESDL(event) {
             // getting a hold of the file reference
             var file = event.target.files[0];
@@ -613,8 +698,17 @@
             // alert (e.latlng);
         }
 
-        function connectAsset(e) {
-            // alert (e.latlng);
+        function connectAsset(port_id) {
+            console.log('connectAsset:');
+            console.log(port_id);
+
+            console.log(connect_ports);
+            if (connect_ports != null) {
+                socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
+                connect_ports = null;
+            } else {
+                connect_ports = port_id;
+            }
         }
 
         function connectConductor(e) {
@@ -714,6 +808,7 @@
                         marker.asspot = list[i][1];
                         if (marker.asspot == 'asset') {
                             marker.ports = list[i][7];
+                            marker.capability = list[i][8];
                         }
 
                         set_marker_handlers(marker);
@@ -1090,6 +1185,10 @@
                 <!--$("#profile_menu").selectmenu("refresh");    // to update the selectmenu based on the selected value-->
             });
 
+            socket.on('control_strategy_config', function(csc) {
+                control_strategy_config = csc
+            });
+
             socket.on('carrier_list', function(carr_list) {
                 carrier_list = carr_list;
                 // console.log(carr_list);
@@ -1177,23 +1276,23 @@
         .circle-img {
             vertical-align: middle;
         }
-        .producer {
+        .Producer {
             background: #93a800;
             border: 3px solid #6b7a00;
         }
-        .consumer {
+        .Consumer {
             background: #649ec9;
             border: 3px solid #477393;
         }
-        .conversion {
+        .Conversion {
             background: #b574ba;
             border: 3px solid #7030a0;
         }
-        .storage {
+        .Storage {
             background: #cb1325;
             border: 3px solid #950b18;
         }
-        .transport {
+        .Transport {
             background: #ffcb00;
             border: 3px solid #bc9500;
         }
@@ -1381,7 +1480,7 @@
         // this event is fired for all contextmenu clicks
         // TODO: how to filter add profile in a better way???
         menu_item_text = e.el.innerText;
-        console.log(e);
+        // console.log(e);
 
         if (menu_item_text.substring(0, 11) == 'Set profile') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
@@ -1391,12 +1490,25 @@
 
         if (menu_item_text.substring(0, 8) ==  'Connect ') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-            console.log(port_id);
+            // console.log('In contextmenu select eventhandler:');
+            // console.log(port_id);
             if (connect_ports != null) {
                 socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
                 connect_ports = null;
             } else {
                 connect_ports = port_id;
+            }
+        }
+
+        if (menu_item_text.substring(0, 10) ==  'Set Driven') {
+            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
+            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
+
+            if (menu_item_text.substring(4, 14) ==  'DrivenByDemand') {
+                set_driven_by_demand(asset_id, port_id);
+            }
+            if (menu_item_text.substring(4, 14) ==  'DrivenBySupply') {
+                set_driven_by_supply(asset_id, port_id);
             }
         }
     });
