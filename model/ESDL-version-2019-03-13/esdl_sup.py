@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #
-# Generated Sun May 12 12:06:21 2019 by generateDS.py version 2.30.1.
+# Generated Wed Mar 13 17:06:06 2019 by generateDS.py version 2.30.1.
 # Python 3.7.0 (v3.7.0:1bf9cc5093, Jun 27 2018, 04:59:51) [MSC v.1914 64 bit (AMD64)]
 #
 # Command line options:
@@ -899,7 +899,7 @@ class GeothermalSourceTypeEnum(object):
     ELECTRICITY='ELECTRICITY'
 
 
-class GlassTypeEnum(object):
+class GlasTypeEnum(object):
     UNDEFINED='UNDEFINED'
     ENKEL_GLAS='ENKEL_GLAS'
     DUBBEL_GLAS='DUBBEL_GLAS'
@@ -938,7 +938,7 @@ class InhabitantsTypeEnum(object):
     ALLEENSTAAND='ALLEENSTAAND'
     TWEEVERDIENERS='TWEEVERDIENERS'
     GEZIN_MET_KINDEREN='GEZIN_MET_KINDEREN'
-    SENIOREN='SENIOREN'
+    BEJAARD_ECHTPAAR='BEJAARD_ECHTPAAR'
 
 
 class InterpolationMethodEnum(object):
@@ -1067,7 +1067,6 @@ class ResidentialBuildingTypeEnum(object):
     HOEKWONING='HOEKWONING'
     GALERIJCOMPLEX='GALERIJCOMPLEX'
     APPARTEMENTENCOMPLEX='APPARTEMENTENCOMPLEX'
-    APPARTEMENT='APPARTEMENT'
 
 
 class ResidualHeatSourceTypeEnum(object):
@@ -1234,14 +1233,7 @@ class WindTurbineTypeEnum(object):
 
 
 class EnergySystem(GeneratedsSuper):
-    """This is the main class to describe an EnergySystem in ESDL. Each
-    energy system description should start with this class. More
-    information about ESDL and the Energy System can be found in the
-    gitbook at https://energytransition.gitbook.io/esdl/Name of the
-    energy systemA description of the energy systemGeographical
-    scope of the energy system as a text. In the area itself you can
-    define the scope in more detailA unique identifier for this
-    energy system"""
+    """This is the entry class to describe an EnergySystem in ESDL"""
     subclass = None
     superclass = None
     def __init__(self, name=None, description=None, geographicalScope=None, id=None, sector=None, measures=None, instance=None, energySystemInformation=None, parties=None, services=None, **kwargs_):
@@ -1497,17 +1489,6 @@ class EnergySystem(GeneratedsSuper):
 
 
 class Area(GeneratedsSuper):
-    """The Area class represents a physical geographic area or a more
-    abstract logical area. In both cases it is the 'asset
-    container', in a sense that all assets within the area are
-    contained by the Area instance.Unique id of this areaName for
-    this areaThe scope that this area describes, such as Country,
-    Province, Energy Region, etc.Type of area (e.g. road, terrain,
-    water, etc.)(experimental) Defines a URI to reference the
-    geometric shape of this area(experimental) Defines the number of
-    buildings per m2Refers to the area that contains this area, if
-    not the top-level areaRefers to the party owning the area
-    (usually a government)"""
     subclass = None
     superclass = None
     def __init__(self, id=None, name=None, scope='UNDEFINED', type_=None, geometryReference=None, buildingDensity=None, containingArea=None, isOwnedBy=None, socialProperties=None, economicProperties=None, asset=None, area=None, mobilityProperties=None, KPIs=None, potential=None, geometry=None, **kwargs_):
@@ -1899,14 +1880,6 @@ class Area(GeneratedsSuper):
 
 
 class Port(GeneratedsSuper):
-    """Ports allow connections between EnergyAssets. Ports can be connected
-    to one or more other ports. There are two types of ports: InPort
-    and OutPort, which defines the primary direction of positive
-    energy flow. InPorts can only be connected to OutPorts and vice
-    versa.Unique identifier for this portMaximum power in
-    Wattsimultaneous power in Watt (under discussion)Name of the
-    portRefers to the parent asset this port belongs toDefines the
-    carrier of this port"""
     subclass = None
     superclass = None
     def __init__(self, id=None, maxPower=None, simultaneousPower=None, name=None, energyasset=None, carrier=None, profile=None, extensiontype_=None, **kwargs_):
@@ -2115,8 +2088,6 @@ class Port(GeneratedsSuper):
 
 
 class InPort(Port):
-    """Represents a port with a positive energy direction into the asset,
-    e.g. for a Consumer. See Port for more details"""
     subclass = None
     superclass = Port
     def __init__(self, id=None, maxPower=None, simultaneousPower=None, name=None, energyasset=None, carrier=None, profile=None, connectedTo=None, **kwargs_):
@@ -2201,8 +2172,6 @@ class InPort(Port):
 
 
 class OutPort(Port):
-    """Represents a port with a positive energy direction out of the asset,
-    e.g. for a Producer. See Port for more details"""
     subclass = None
     superclass = Port
     def __init__(self, id=None, maxPower=None, simultaneousPower=None, name=None, energyasset=None, carrier=None, profile=None, connectedTo=None, **kwargs_):
@@ -2287,8 +2256,6 @@ class OutPort(Port):
 
 
 class EconomicProperties(GeneratedsSuper):
-    """(experimental) Can be used to define the economic properties of an
-    areain euro"""
     subclass = None
     superclass = None
     def __init__(self, averageIncome=None, averageWOZvalue=None, percentageOwnerOccupiedProperties=None, percentageHousingAssociation=None, percentagePrivateRental=None, **kwargs_):
@@ -2442,8 +2409,6 @@ class EconomicProperties(GeneratedsSuper):
 
 
 class SocialProperties(GeneratedsSuper):
-    """(experimental) Can be used to define the social properties of an
-    area"""
     subclass = None
     superclass = None
     def __init__(self, socialCohesion=None, populationDensity=None, numberOfInhabitants=None, **kwargs_):
@@ -2563,15 +2528,8 @@ class SocialProperties(GeneratedsSuper):
 
 
 class Item(GeneratedsSuper):
-    """Class describing an abstract thing in an energy system. It is the
-    parent of many other classes in ESDL, such as Assets, Services
-    and Potentials. Parties can own ItemsUnique identifier for this
-    objectName describing this objectShort name for this object,
-    e.g. used in legends of graphs in presentationsHuman readable
-    description of this objectID of item in the original data
-    source. Can be used to make links to the original dataRefers to
-    the owner of this objectRefers to the sector this object is used
-    in"""
+    """ID of item in the original data source. Can be used to make links to
+    the original data"""
     subclass = None
     superclass = None
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, extensiontype_=None, **kwargs_):
@@ -2786,7 +2744,6 @@ class Item(GeneratedsSuper):
 
 
 class Measures(GeneratedsSuper):
-    """Collection of measures that can be applied to an energy system"""
     subclass = None
     superclass = None
     def __init__(self, asset=None, measuresCollection=None, **kwargs_):
@@ -2927,19 +2884,6 @@ class Measures(GeneratedsSuper):
 
 
 class Instance(GeneratedsSuper):
-    """Instances are used to represent different representations of the
-    same EnergySystem. Most of the times only one Instance will be
-    used. The primary use case for having more than one Instance is
-    when you have different aggregations of the same EnergySystem in
-    the same model (e.g. the same region on house level and
-    aggregated on neighbourhood level). Another option would be to
-    create different instances for different years (to describe the
-    progress of the energy transition).Unique identifier for this
-    instanceName of the instanceHuman readable description of this
-    instance(experimental) Scope of the instance, e.g. Country or
-    Municipality(experimental) defines how the data in this instance
-    is aggregated, e.g. by commodity, total energy, per capability,
-    etc."""
     subclass = None
     superclass = None
     def __init__(self, id=None, name=None, description=None, detailLevel='UNDEFINED', aggrType=None, area=None, date=None, **kwargs_):
@@ -3126,8 +3070,6 @@ class Instance(GeneratedsSuper):
 
 
 class Service(Item):
-    """Abstract class to represent logical entities in the energy system,
-    e.g. demand response services, energy markets, etc."""
     subclass = None
     superclass = Item
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, extensiontype_=None, **kwargs_):
@@ -3214,9 +3156,6 @@ class Service(Item):
 
 
 class Potential(Item):
-    """Abstract class that represents energy potentials in an area, like
-    wind potential, geothermal potential, residual heat source
-    potential, etc."""
     subclass = None
     superclass = Item
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, extensiontype_=None, **kwargs_):
@@ -3416,7 +3355,6 @@ class Potential(Item):
 
 
 class WindPotential(Potential):
-    """Represents wind potential"""
     subclass = None
     superclass = Potential
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, value=None, height=None, **kwargs_):
@@ -3521,8 +3459,6 @@ class WindPotential(Potential):
 
 
 class Carriers(GeneratedsSuper):
-    """Collection of carriers as part of the Energy System Information.
-    Both energy carriers and commodities."""
     subclass = None
     superclass = None
     def __init__(self, id=None, carrier=None, dataSource=None, **kwargs_):
@@ -3679,12 +3615,9 @@ class Carriers(GeneratedsSuper):
 
 
 class EnergySystemInformation(GeneratedsSuper):
-    """Describes reusable information of the energy system, that other
-    classes can refer to in this energy system, such as carriers,
-    profiles, data sources, quantity and units."""
     subclass = None
     superclass = None
-    def __init__(self, id=None, carriers=None, profiles=None, dataSources=None, mobilityFuelInformation=None, quantityAndUnits=None, sectors=None, buildingUsageInformation=None, **kwargs_):
+    def __init__(self, id=None, carriers=None, profiles=None, dataSources=None, mobilityFuelInformation=None, quantityAndUnits=None, sectors=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         self.id = _cast(None, id)
@@ -3694,7 +3627,6 @@ class EnergySystemInformation(GeneratedsSuper):
         self.mobilityFuelInformation = mobilityFuelInformation
         self.quantityAndUnits = quantityAndUnits
         self.sectors = sectors
-        self.buildingUsageInformation = buildingUsageInformation
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -3730,10 +3662,6 @@ class EnergySystemInformation(GeneratedsSuper):
         return self.sectors
     def set_sectors(self, sectors):
         self.sectors = sectors
-    def get_buildingUsageInformation(self):
-        return self.buildingUsageInformation
-    def set_buildingUsageInformation(self, buildingUsageInformation):
-        self.buildingUsageInformation = buildingUsageInformation
     def get_id(self):
         return self.id
     def set_id(self, id):
@@ -3745,8 +3673,7 @@ class EnergySystemInformation(GeneratedsSuper):
             self.dataSources is not None or
             self.mobilityFuelInformation is not None or
             self.quantityAndUnits is not None or
-            self.sectors is not None or
-            self.buildingUsageInformation is not None
+            self.sectors is not None
         ):
             return True
         else:
@@ -3793,8 +3720,6 @@ class EnergySystemInformation(GeneratedsSuper):
             self.quantityAndUnits.export(outfile, level, namespaceprefix_, name_='quantityAndUnits', pretty_print=pretty_print)
         if self.sectors is not None:
             self.sectors.export(outfile, level, namespaceprefix_, name_='sectors', pretty_print=pretty_print)
-        if self.buildingUsageInformation is not None:
-            self.buildingUsageInformation.export(outfile, level, namespaceprefix_, name_='buildingUsageInformation', pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='EnergySystemInformation', mapping_=None):
         if parent_element is None:
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
@@ -3820,9 +3745,6 @@ class EnergySystemInformation(GeneratedsSuper):
         if self.sectors is not None:
             sectors_ = self.sectors
             sectors_.to_etree(element, name_='sectors', mapping_=mapping_)
-        if self.buildingUsageInformation is not None:
-            buildingUsageInformation_ = self.buildingUsageInformation
-            buildingUsageInformation_.to_etree(element, name_='buildingUsageInformation', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -3869,11 +3791,6 @@ class EnergySystemInformation(GeneratedsSuper):
             obj_.build(child_)
             self.sectors = obj_
             obj_.original_tagname_ = 'sectors'
-        elif nodeName_ == 'buildingUsageInformation':
-            obj_ = BuildingUsageInformation.factory(parent_object_=self)
-            obj_.build(child_)
-            self.buildingUsageInformation = obj_
-            obj_.original_tagname_ = 'buildingUsageInformation'
 # end class EnergySystemInformation
 
 
@@ -4603,7 +4520,6 @@ class SingleValue(StaticProfile):
 
 
 class GenericDistribution(GeneratedsSuper):
-    """Abstract class to represent different types of distributions"""
     subclass = None
     superclass = None
     def __init__(self, name=None, extensiontype_=None, **kwargs_):
@@ -4702,7 +4618,6 @@ class GenericDistribution(GeneratedsSuper):
 
 
 class Percentile(GeneratedsSuper):
-    """Defines the percentile of a percentile distribution"""
     subclass = None
     superclass = None
     def __init__(self, percentile=None, value=None, **kwargs_):
@@ -4805,7 +4720,6 @@ class Percentile(GeneratedsSuper):
 
 
 class PercentileDistribution(GenericDistribution):
-    """Defines a distribution in terms of percentiles"""
     subclass = None
     superclass = GenericDistribution
     def __init__(self, name=None, percentile=None, **kwargs_):
@@ -4905,8 +4819,6 @@ class PercentileDistribution(GenericDistribution):
 
 
 class CostInformation(GeneratedsSuper):
-    """Describes the costs to acquire, install and maintain a certain
-    asset."""
     subclass = None
     superclass = None
     def __init__(self, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, **kwargs_):
@@ -5139,7 +5051,6 @@ class CostInformation(GeneratedsSuper):
 
 
 class LabelDistribution(GenericDistribution):
-    """Abstract class to define a distribution with labels"""
     subclass = None
     superclass = GenericDistribution
     def __init__(self, name=None, extensiontype_=None, **kwargs_):
@@ -5226,7 +5137,6 @@ class LabelDistribution(GenericDistribution):
 
 
 class StringLabelDistribution(LabelDistribution):
-    """Defines a distribution in terms of self-defined labels"""
     subclass = None
     superclass = LabelDistribution
     def __init__(self, name=None, stringPerc=None, **kwargs_):
@@ -5326,7 +5236,6 @@ class StringLabelDistribution(LabelDistribution):
 
 
 class EnergyLabelDistribution(LabelDistribution):
-    """Defines a distribution in terms of energy labels"""
     subclass = None
     superclass = LabelDistribution
     def __init__(self, name=None, labelPerc=None, **kwargs_):
@@ -5426,7 +5335,6 @@ class EnergyLabelDistribution(LabelDistribution):
 
 
 class StringPerc(GeneratedsSuper):
-    """Defines a label and a percentage, used in StringLabelDistribution"""
     subclass = None
     superclass = None
     def __init__(self, label=None, percentage=None, **kwargs_):
@@ -5526,8 +5434,6 @@ class StringPerc(GeneratedsSuper):
 
 
 class EnergyLabelPerc(GeneratedsSuper):
-    """Defines an energy label and a percentage, used in
-    EnergyLabelDistribution"""
     subclass = None
     superclass = None
     def __init__(self, energyLabel=None, percentage=None, **kwargs_):
@@ -5627,7 +5533,6 @@ class EnergyLabelPerc(GeneratedsSuper):
 
 
 class FromToDistribution(LabelDistribution):
-    """Defines a distribution in terms of 'from' and 'to'"""
     subclass = None
     superclass = LabelDistribution
     def __init__(self, name=None, fromToPerc=None, **kwargs_):
@@ -5655,10 +5560,8 @@ class FromToDistribution(LabelDistribution):
         self.fromToPerc = fromToPerc
     def add_fromToPerc(self, value):
         self.fromToPerc.append(value)
-    def add_fromToPerc_with_type(self, value):
+    def add_fromToPerc(self, value):
         self.fromToPerc.append(value)
-        value.original_tagname_ = 'fromToPerc'
-        value.extensiontype_ = value.__class__.__name__
     def insert_fromToPerc_at(self, index, value):
         self.fromToPerc.insert(index, value)
     def replace_fromToPerc_at(self, index, value):
@@ -5701,7 +5604,7 @@ class FromToDistribution(LabelDistribution):
         else:
             eol_ = ''
         for fromToPerc_ in self.fromToPerc:
-            fromToPerc_.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
+            fromToPerc_.export(outfile, level, namespaceprefix_, name_='fromToPerc', pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='FromToDistribution', mapping_=None):
         element = super(FromToDistribution, self).to_etree(parent_element, name_, mapping_)
         for fromToPerc_ in self.fromToPerc:
@@ -5720,22 +5623,8 @@ class FromToDistribution(LabelDistribution):
         super(FromToDistribution, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         if nodeName_ == 'fromToPerc':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <fromToPerc> element')
+            obj_ = FromToPerc.factory(parent_object_=self)
+            obj_.build(child_)
             self.fromToPerc.append(obj_)
             obj_.original_tagname_ = 'fromToPerc'
         super(FromToDistribution, self).buildChildren(child_, node, nodeName_, True)
@@ -5743,15 +5632,14 @@ class FromToDistribution(LabelDistribution):
 
 
 class FromToPerc(GeneratedsSuper):
-    """Defines a range and a percentage, used in the FromToDistribution
-    class"""
     subclass = None
     superclass = None
-    def __init__(self, percentage=None, extensiontype_=None, **kwargs_):
+    def __init__(self, from_=None, to=None, percentage=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
+        self.from_ = _cast(float, from_)
+        self.to = _cast(float, to)
         self.percentage = _cast(float, percentage)
-        self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -5763,12 +5651,18 @@ class FromToPerc(GeneratedsSuper):
         else:
             return FromToPerc(*args_, **kwargs_)
     factory = staticmethod(factory)
+    def get_from(self):
+        return self.from_
+    def set_from(self, from_):
+        self.from_ = from_
+    def get_to(self):
+        return self.to
+    def set_to(self, to):
+        self.to = to
     def get_percentage(self):
         return self.percentage
     def set_percentage(self, percentage):
         self.percentage = percentage
-    def get_extensiontype_(self): return self.extensiontype_
-    def set_extensiontype_(self, extensiontype_): self.extensiontype_ = extensiontype_
     def hasContent_(self):
         if (
 
@@ -5797,16 +5691,15 @@ class FromToPerc(GeneratedsSuper):
         else:
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='FromToPerc'):
+        if self.from_ is not None and 'from_' not in already_processed:
+            already_processed.add('from_')
+            outfile.write(' from="%s"' % self.gds_format_double(self.from_, input_name='from'))
+        if self.to is not None and 'to' not in already_processed:
+            already_processed.add('to')
+            outfile.write(' to="%s"' % self.gds_format_double(self.to, input_name='to'))
         if self.percentage is not None and 'percentage' not in already_processed:
             already_processed.add('percentage')
             outfile.write(' percentage="%s"' % self.gds_format_double(self.percentage, input_name='percentage'))
-        if self.extensiontype_ is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            outfile.write(' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
-            if namespaceprefix_ not in self.extensiontype_:
-                outfile.write(' xsi:type="%s%s"' % (namespaceprefix_, self.extensiontype_))
-            else:
-                outfile.write(' xsi:type="%s"' % self.extensiontype_)
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='FromToPerc', fromsubclass_=False, pretty_print=True):
         pass
     def to_etree(self, parent_element=None, name_='FromToPerc', mapping_=None):
@@ -5814,8 +5707,10 @@ class FromToPerc(GeneratedsSuper):
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
         else:
             element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.extensiontype_ is not None:
-            element.set('{http://www.w3.org/2001/XMLSchema-instance}type', self.extensiontype_)
+        if self.from_ is not None:
+            element.set('from', self.gds_format_double(self.from_))
+        if self.to is not None:
+            element.set('to', self.gds_format_double(self.to))
         if self.percentage is not None:
             element.set('percentage', self.gds_format_double(self.percentage))
         if mapping_ is not None:
@@ -5829,6 +5724,20 @@ class FromToPerc(GeneratedsSuper):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
+        value = find_attr_value_('from', node)
+        if value is not None and 'from' not in already_processed:
+            already_processed.add('from')
+            try:
+                self.from_ = float(value)
+            except ValueError as exp:
+                raise ValueError('Bad float/double attribute (from): %s' % exp)
+        value = find_attr_value_('to', node)
+        if value is not None and 'to' not in already_processed:
+            already_processed.add('to')
+            try:
+                self.to = float(value)
+            except ValueError as exp:
+                raise ValueError('Bad float/double attribute (to): %s' % exp)
         value = find_attr_value_('percentage', node)
         if value is not None and 'percentage' not in already_processed:
             already_processed.add('percentage')
@@ -5836,17 +5745,12 @@ class FromToPerc(GeneratedsSuper):
                 self.percentage = float(value)
             except ValueError as exp:
                 raise ValueError('Bad float/double attribute (percentage): %s' % exp)
-        value = find_attr_value_('xsi:type', node)
-        if value is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            self.extensiontype_ = value
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         pass
 # end class FromToPerc
 
 
 class PItemStat(GeneratedsSuper):
-    """(experimental) Used to define statistical information"""
     subclass = None
     superclass = None
     def __init__(self, value=None, sigma=None, **kwargs_):
@@ -5949,7 +5853,6 @@ class PItemStat(GeneratedsSuper):
 
 
 class AbstractVariance(GeneratedsSuper):
-    """(experimental) Used to define statistical information"""
     subclass = None
     superclass = None
     def __init__(self, extensiontype_=None, **kwargs_):
@@ -6035,7 +5938,6 @@ class AbstractVariance(GeneratedsSuper):
 
 
 class SymetricVariance(AbstractVariance):
-    """(experimental) Used to define statistical information"""
     subclass = None
     superclass = AbstractVariance
     def __init__(self, sigma=None, **kwargs_):
@@ -6123,7 +6025,6 @@ class SymetricVariance(AbstractVariance):
 
 
 class AssymetricVariance(AbstractVariance):
-    """(experimental) Used to define statistical information"""
     subclass = None
     superclass = AbstractVariance
     def __init__(self, sigmaMin=None, sigmaPlus=None, **kwargs_):
@@ -6228,7 +6129,6 @@ class AssymetricVariance(AbstractVariance):
 
 
 class DoubleAssymetricVariance(AbstractVariance):
-    """(experimental) Used to define statistical information"""
     subclass = None
     superclass = AbstractVariance
     def __init__(self, plus34perc=None, plus48perc=None, min34perc=None, min48perc=None, **kwargs_):
@@ -6367,7 +6267,6 @@ class DoubleAssymetricVariance(AbstractVariance):
 
 
 class Party(GeneratedsSuper):
-    """Defines a stakeholder in the energy system, to represent ownership"""
     subclass = None
     superclass = None
     def __init__(self, id=None, name=None, shortName=None, owns=None, ownsArea=None, sector=None, **kwargs_):
@@ -6853,16 +6752,11 @@ class InfluxDBProfile(DatabaseProfile):
 
 
 class Geometry(GeneratedsSuper):
-    """Abstract class to define the shape/location of an asset or area.
-    Parent class of e.g. Point, Line and PolygonThe Coordinate
-    Reference System, e.g. WGS-84 (GPS / lattitude, longitude), RD
-    (EPSG:28992)"""
     subclass = None
     superclass = None
-    def __init__(self, CRS=None, extensiontype_=None, **kwargs_):
+    def __init__(self, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        self.CRS = _cast(None, CRS)
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -6875,10 +6769,6 @@ class Geometry(GeneratedsSuper):
         else:
             return Geometry(*args_, **kwargs_)
     factory = staticmethod(factory)
-    def get_CRS(self):
-        return self.CRS
-    def set_CRS(self, CRS):
-        self.CRS = CRS
     def get_extensiontype_(self): return self.extensiontype_
     def set_extensiontype_(self, extensiontype_): self.extensiontype_ = extensiontype_
     def hasContent_(self):
@@ -6909,9 +6799,6 @@ class Geometry(GeneratedsSuper):
         else:
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='Geometry'):
-        if self.CRS is not None and 'CRS' not in already_processed:
-            already_processed.add('CRS')
-            outfile.write(' CRS=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.CRS), input_name='CRS')), ))
         if self.extensiontype_ is not None and 'xsi:type' not in already_processed:
             already_processed.add('xsi:type')
             outfile.write(' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
@@ -6919,6 +6806,7 @@ class Geometry(GeneratedsSuper):
                 outfile.write(' xsi:type="%s%s"' % (namespaceprefix_, self.extensiontype_))
             else:
                 outfile.write(' xsi:type="%s"' % self.extensiontype_)
+        pass
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='Geometry', fromsubclass_=False, pretty_print=True):
         pass
     def to_etree(self, parent_element=None, name_='Geometry', mapping_=None):
@@ -6928,8 +6816,6 @@ class Geometry(GeneratedsSuper):
             element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
         if self.extensiontype_ is not None:
             element.set('{http://www.w3.org/2001/XMLSchema-instance}type', self.extensiontype_)
-        if self.CRS is not None:
-            element.set('CRS', self.gds_format_string(self.CRS))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -6941,10 +6827,6 @@ class Geometry(GeneratedsSuper):
             self.buildChildren(child, node, nodeName_)
         return self
     def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('CRS', node)
-        if value is not None and 'CRS' not in already_processed:
-            already_processed.add('CRS')
-            self.CRS = value
         value = find_attr_value_('xsi:type', node)
         if value is not None and 'xsi:type' not in already_processed:
             already_processed.add('xsi:type')
@@ -6955,8 +6837,6 @@ class Geometry(GeneratedsSuper):
 
 
 class Carrier(GeneratedsSuper):
-    """Abstract class to define the carrier of energy, e.g. a energy
-    carrier or a commodity (such as electricity)"""
     subclass = None
     superclass = None
     def __init__(self, name=None, id=None, cost=None, dataSource=None, extensiontype_=None, **kwargs_):
@@ -7131,7 +7011,6 @@ class Carrier(GeneratedsSuper):
 
 
 class Range(StaticProfile):
-    """Defines a range between two values"""
     subclass = None
     superclass = StaticProfile
     def __init__(self, name=None, profileType='UNDEFINED', id=None, interpolationMethod='UNDEFINED', dataSource=None, profileQuantityAndUnit=None, minValue=None, maxValue=None, **kwargs_):
@@ -7236,7 +7115,6 @@ class Range(StaticProfile):
 
 
 class SolarPotential(Potential):
-    """Defines the potential for solar energy"""
     subclass = None
     superclass = Potential
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, value=0.0, SolarPotentialType=None, fullLoadHours=None, area=None, **kwargs_):
@@ -7372,7 +7250,6 @@ class SolarPotential(Potential):
 
 
 class Duration(GeneratedsSuper):
-    """Defines the duration of a profile query"""
     subclass = None
     superclass = None
     def __init__(self, value=None, durationUnit='SECOND', **kwargs_):
@@ -7472,9 +7349,6 @@ class Duration(GeneratedsSuper):
 
 
 class ProfileReference(StaticProfile):
-    """Used to refer to profiles defined in the Energy System Information
-    sectionAllows to multiply the referred profile by a certain
-    factor (e.g. when using normalized profiles)"""
     subclass = None
     superclass = StaticProfile
     def __init__(self, name=None, profileType='UNDEFINED', id=None, interpolationMethod='UNDEFINED', dataSource=None, profileQuantityAndUnit=None, multiplier=1, reference=None, **kwargs_):
@@ -7576,8 +7450,6 @@ class ProfileReference(StaticProfile):
 
 
 class Profiles(GeneratedsSuper):
-    """Container for profiles in the Energy System Information where other
-    profiles can refer to"""
     subclass = None
     superclass = None
     def __init__(self, profile=None, **kwargs_):
@@ -8131,10 +8003,10 @@ class SubPolygon(GeneratedsSuper):
 class MultiPolygon(Geometry):
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, polygon=None, **kwargs_):
+    def __init__(self, polygon=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(MultiPolygon, self).__init__(CRS,  **kwargs_)
+        super(MultiPolygon, self).__init__( **kwargs_)
         if polygon is None:
             self.polygon = []
         else:
@@ -9077,10 +8949,8 @@ class KPIs(GeneratedsSuper):
         self.kpi = kpi
     def add_kpi(self, value):
         self.kpi.append(value)
-    def add_kpi_with_type(self, value):
+    def add_kpi(self, value):
         self.kpi.append(value)
-        value.original_tagname_ = 'kpi'
-        value.extensiontype_ = value.__class__.__name__
     def insert_kpi_at(self, index, value):
         self.kpi.insert(index, value)
     def replace_kpi_at(self, index, value):
@@ -9134,7 +9004,7 @@ class KPIs(GeneratedsSuper):
         else:
             eol_ = ''
         for kpi_ in self.kpi:
-            kpi_.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
+            kpi_.export(outfile, level, namespaceprefix_, name_='kpi', pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='KPIs', mapping_=None):
         if parent_element is None:
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
@@ -9167,22 +9037,8 @@ class KPIs(GeneratedsSuper):
             self.description = value
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         if nodeName_ == 'kpi':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <kpi> element')
+            obj_ = KPI.factory(parent_object_=self)
+            obj_.build(child_)
             self.kpi.append(obj_)
             obj_.original_tagname_ = 'kpi'
 # end class KPIs
@@ -9191,13 +9047,13 @@ class KPIs(GeneratedsSuper):
 class KPI(GeneratedsSuper):
     subclass = None
     superclass = None
-    def __init__(self, id=None, name=None, quantityAndUnit=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, value=None, quantityAndUnit=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         self.id = _cast(None, id)
         self.name = _cast(None, name)
+        self.value = _cast(float, value)
         self.quantityAndUnit = quantityAndUnit
-        self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -9221,8 +9077,10 @@ class KPI(GeneratedsSuper):
         return self.name
     def set_name(self, name):
         self.name = name
-    def get_extensiontype_(self): return self.extensiontype_
-    def set_extensiontype_(self, extensiontype_): self.extensiontype_ = extensiontype_
+    def get_value(self):
+        return self.value
+    def set_value(self, value):
+        self.value = value
     def hasContent_(self):
         if (
             self.quantityAndUnit is not None
@@ -9258,13 +9116,9 @@ class KPI(GeneratedsSuper):
         if self.name is not None and 'name' not in already_processed:
             already_processed.add('name')
             outfile.write(' name=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.name), input_name='name')), ))
-        if self.extensiontype_ is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            outfile.write(' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
-            if namespaceprefix_ not in self.extensiontype_:
-                outfile.write(' xsi:type="%s%s"' % (namespaceprefix_, self.extensiontype_))
-            else:
-                outfile.write(' xsi:type="%s"' % self.extensiontype_)
+        if self.value is not None and 'value' not in already_processed:
+            already_processed.add('value')
+            outfile.write(' value="%s"' % self.gds_format_double(self.value, input_name='value'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='KPI', fromsubclass_=False, pretty_print=True):
         if pretty_print:
             eol_ = '\n'
@@ -9277,12 +9131,12 @@ class KPI(GeneratedsSuper):
             element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
         else:
             element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.extensiontype_ is not None:
-            element.set('{http://www.w3.org/2001/XMLSchema-instance}type', self.extensiontype_)
         if self.id is not None:
             element.set('id', self.gds_format_string(self.id))
         if self.name is not None:
             element.set('name', self.gds_format_string(self.name))
+        if self.value is not None:
+            element.set('value', self.gds_format_double(self.value))
         if self.quantityAndUnit is not None:
             quantityAndUnit_ = self.quantityAndUnit
             quantityAndUnit_.to_etree(element, name_='quantityAndUnit', mapping_=mapping_)
@@ -9305,10 +9159,13 @@ class KPI(GeneratedsSuper):
         if value is not None and 'name' not in already_processed:
             already_processed.add('name')
             self.name = value
-        value = find_attr_value_('xsi:type', node)
-        if value is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            self.extensiontype_ = value
+        value = find_attr_value_('value', node)
+        if value is not None and 'value' not in already_processed:
+            already_processed.add('value')
+            try:
+                self.value = float(value)
+            except ValueError as exp:
+                raise ValueError('Bad float/double attribute (value): %s' % exp)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         if nodeName_ == 'quantityAndUnit':
             type_name_ = child_.attrib.get(
@@ -10587,10 +10444,10 @@ class Sector(GeneratedsSuper):
 class MultiLine(Geometry):
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, line=None, **kwargs_):
+    def __init__(self, line=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(MultiLine, self).__init__(CRS,  **kwargs_)
+        super(MultiLine, self).__init__( **kwargs_)
         if line is None:
             self.line = []
         else:
@@ -11256,10 +11113,10 @@ class WKT(Geometry):
     """Well-Known Text (see https://en.wikipedia.org/wiki/Well-known_text)"""
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, value=None, **kwargs_):
+    def __init__(self, value=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(WKT, self).__init__(CRS,  **kwargs_)
+        super(WKT, self).__init__( **kwargs_)
         self.value = _cast(None, value)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -11342,10 +11199,10 @@ class WKB(Geometry):
     known_text#Well-known_binary)Base64 encoded WKB value"""
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, value=None, **kwargs_):
+    def __init__(self, value=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(WKB, self).__init__(CRS,  **kwargs_)
+        super(WKB, self).__init__( **kwargs_)
         self.value = _cast(None, value)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -11629,1935 +11486,6 @@ class SearchAreaSolar(Potential):
         super(SearchAreaSolar, self).buildChildren(child_, node, nodeName_, True)
         pass
 # end class SearchAreaSolar
-
-
-class WeekSchedule(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, mon=None, tue=None, wed=None, thu=None, fri=None, sat=None, sun=None, weekdays=None, weekenddays=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.mon = mon
-        self.tue = tue
-        self.wed = wed
-        self.thu = thu
-        self.fri = fri
-        self.sat = sat
-        self.sun = sun
-        self.weekdays = weekdays
-        self.weekenddays = weekenddays
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, WeekSchedule)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if WeekSchedule.subclass:
-            return WeekSchedule.subclass(*args_, **kwargs_)
-        else:
-            return WeekSchedule(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_mon(self):
-        return self.mon
-    def set_mon(self, mon):
-        self.mon = mon
-    def get_tue(self):
-        return self.tue
-    def set_tue(self, tue):
-        self.tue = tue
-    def get_wed(self):
-        return self.wed
-    def set_wed(self, wed):
-        self.wed = wed
-    def get_thu(self):
-        return self.thu
-    def set_thu(self, thu):
-        self.thu = thu
-    def get_fri(self):
-        return self.fri
-    def set_fri(self, fri):
-        self.fri = fri
-    def get_sat(self):
-        return self.sat
-    def set_sat(self, sat):
-        self.sat = sat
-    def get_sun(self):
-        return self.sun
-    def set_sun(self, sun):
-        self.sun = sun
-    def get_weekdays(self):
-        return self.weekdays
-    def set_weekdays(self, weekdays):
-        self.weekdays = weekdays
-    def get_weekenddays(self):
-        return self.weekenddays
-    def set_weekenddays(self, weekenddays):
-        self.weekenddays = weekenddays
-    def hasContent_(self):
-        if (
-            self.mon is not None or
-            self.tue is not None or
-            self.wed is not None or
-            self.thu is not None or
-            self.fri is not None or
-            self.sat is not None or
-            self.sun is not None or
-            self.weekdays is not None or
-            self.weekenddays is not None
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='WeekSchedule', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('WeekSchedule')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='WeekSchedule')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='WeekSchedule', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='WeekSchedule'):
-        pass
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='WeekSchedule', fromsubclass_=False, pretty_print=True):
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.mon is not None:
-            self.mon.export(outfile, level, namespaceprefix_, name_='mon', pretty_print=pretty_print)
-        if self.tue is not None:
-            self.tue.export(outfile, level, namespaceprefix_, name_='tue', pretty_print=pretty_print)
-        if self.wed is not None:
-            self.wed.export(outfile, level, namespaceprefix_, name_='wed', pretty_print=pretty_print)
-        if self.thu is not None:
-            self.thu.export(outfile, level, namespaceprefix_, name_='thu', pretty_print=pretty_print)
-        if self.fri is not None:
-            self.fri.export(outfile, level, namespaceprefix_, name_='fri', pretty_print=pretty_print)
-        if self.sat is not None:
-            self.sat.export(outfile, level, namespaceprefix_, name_='sat', pretty_print=pretty_print)
-        if self.sun is not None:
-            self.sun.export(outfile, level, namespaceprefix_, name_='sun', pretty_print=pretty_print)
-        if self.weekdays is not None:
-            self.weekdays.export(outfile, level, namespaceprefix_, name_='weekdays', pretty_print=pretty_print)
-        if self.weekenddays is not None:
-            self.weekenddays.export(outfile, level, namespaceprefix_, name_='weekenddays', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='WeekSchedule', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.mon is not None:
-            mon_ = self.mon
-            mon_.to_etree(element, name_='mon', mapping_=mapping_)
-        if self.tue is not None:
-            tue_ = self.tue
-            tue_.to_etree(element, name_='tue', mapping_=mapping_)
-        if self.wed is not None:
-            wed_ = self.wed
-            wed_.to_etree(element, name_='wed', mapping_=mapping_)
-        if self.thu is not None:
-            thu_ = self.thu
-            thu_.to_etree(element, name_='thu', mapping_=mapping_)
-        if self.fri is not None:
-            fri_ = self.fri
-            fri_.to_etree(element, name_='fri', mapping_=mapping_)
-        if self.sat is not None:
-            sat_ = self.sat
-            sat_.to_etree(element, name_='sat', mapping_=mapping_)
-        if self.sun is not None:
-            sun_ = self.sun
-            sun_.to_etree(element, name_='sun', mapping_=mapping_)
-        if self.weekdays is not None:
-            weekdays_ = self.weekdays
-            weekdays_.to_etree(element, name_='weekdays', mapping_=mapping_)
-        if self.weekenddays is not None:
-            weekenddays_ = self.weekenddays
-            weekenddays_.to_etree(element, name_='weekenddays', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        pass
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'mon':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.mon = obj_
-            obj_.original_tagname_ = 'mon'
-        elif nodeName_ == 'tue':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.tue = obj_
-            obj_.original_tagname_ = 'tue'
-        elif nodeName_ == 'wed':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.wed = obj_
-            obj_.original_tagname_ = 'wed'
-        elif nodeName_ == 'thu':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.thu = obj_
-            obj_.original_tagname_ = 'thu'
-        elif nodeName_ == 'fri':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.fri = obj_
-            obj_.original_tagname_ = 'fri'
-        elif nodeName_ == 'sat':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.sat = obj_
-            obj_.original_tagname_ = 'sat'
-        elif nodeName_ == 'sun':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.sun = obj_
-            obj_.original_tagname_ = 'sun'
-        elif nodeName_ == 'weekdays':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.weekdays = obj_
-            obj_.original_tagname_ = 'weekdays'
-        elif nodeName_ == 'weekenddays':
-            obj_ = DaySchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.weekenddays = obj_
-            obj_.original_tagname_ = 'weekenddays'
-# end class WeekSchedule
-
-
-class DaySchedule(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, event=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        if event is None:
-            self.event = []
-        else:
-            self.event = event
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, DaySchedule)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if DaySchedule.subclass:
-            return DaySchedule.subclass(*args_, **kwargs_)
-        else:
-            return DaySchedule(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_event(self):
-        return self.event
-    def set_event(self, event):
-        self.event = event
-    def add_event(self, value):
-        self.event.append(value)
-    def add_event(self, value):
-        self.event.append(value)
-    def insert_event_at(self, index, value):
-        self.event.insert(index, value)
-    def replace_event_at(self, index, value):
-        self.event[index] = value
-    def hasContent_(self):
-        if (
-            self.event
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='DaySchedule', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('DaySchedule')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='DaySchedule')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='DaySchedule', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='DaySchedule'):
-        pass
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='DaySchedule', fromsubclass_=False, pretty_print=True):
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        for event_ in self.event:
-            event_.export(outfile, level, namespaceprefix_, name_='event', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='DaySchedule', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        for event_ in self.event:
-            event_.to_etree(element, name_='event', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        pass
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'event':
-            obj_ = Event.factory(parent_object_=self)
-            obj_.build(child_)
-            self.event.append(obj_)
-            obj_.original_tagname_ = 'event'
-# end class DaySchedule
-
-
-class Event(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, id=None, time=None, description=None, value=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.id = _cast(None, id)
-        self.time = _cast(None, time)
-        self.description = _cast(None, description)
-        self.value = _cast(float, value)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, Event)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if Event.subclass:
-            return Event.subclass(*args_, **kwargs_)
-        else:
-            return Event(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_id(self):
-        return self.id
-    def set_id(self, id):
-        self.id = id
-    def get_time(self):
-        return self.time
-    def set_time(self, time):
-        self.time = time
-    def get_description(self):
-        return self.description
-    def set_description(self, description):
-        self.description = description
-    def get_value(self):
-        return self.value
-    def set_value(self, value):
-        self.value = value
-    def hasContent_(self):
-        if (
-
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='Event', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('Event')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='Event')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='Event', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='Event'):
-        if self.id is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            outfile.write(' id=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.id), input_name='id')), ))
-        if self.time is not None and 'time' not in already_processed:
-            already_processed.add('time')
-            outfile.write(' time=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.time), input_name='time')), ))
-        if self.description is not None and 'description' not in already_processed:
-            already_processed.add('description')
-            outfile.write(' description=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.description), input_name='description')), ))
-        if self.value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            outfile.write(' value="%s"' % self.gds_format_double(self.value, input_name='value'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='Event', fromsubclass_=False, pretty_print=True):
-        pass
-    def to_etree(self, parent_element=None, name_='Event', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.id is not None:
-            element.set('id', self.gds_format_string(self.id))
-        if self.time is not None:
-            element.set('time', self.gds_format_string(self.time))
-        if self.description is not None:
-            element.set('description', self.gds_format_string(self.description))
-        if self.value is not None:
-            element.set('value', self.gds_format_double(self.value))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('id', node)
-        if value is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            self.id = value
-        value = find_attr_value_('time', node)
-        if value is not None and 'time' not in already_processed:
-            already_processed.add('time')
-            self.time = value
-        value = find_attr_value_('description', node)
-        if value is not None and 'description' not in already_processed:
-            already_processed.add('description')
-            self.description = value
-        value = find_attr_value_('value', node)
-        if value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            try:
-                self.value = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (value): %s' % exp)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        pass
-# end class Event
-
-
-class AbstractBuildingUsage(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, extensiontype_=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.extensiontype_ = extensiontype_
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, AbstractBuildingUsage)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if AbstractBuildingUsage.subclass:
-            return AbstractBuildingUsage.subclass(*args_, **kwargs_)
-        else:
-            return AbstractBuildingUsage(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_extensiontype_(self): return self.extensiontype_
-    def set_extensiontype_(self, extensiontype_): self.extensiontype_ = extensiontype_
-    def hasContent_(self):
-        if (
-
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='AbstractBuildingUsage', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('AbstractBuildingUsage')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='AbstractBuildingUsage')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='AbstractBuildingUsage', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='AbstractBuildingUsage'):
-        if self.extensiontype_ is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            outfile.write(' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"')
-            if namespaceprefix_ not in self.extensiontype_:
-                outfile.write(' xsi:type="%s%s"' % (namespaceprefix_, self.extensiontype_))
-            else:
-                outfile.write(' xsi:type="%s"' % self.extensiontype_)
-        pass
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='AbstractBuildingUsage', fromsubclass_=False, pretty_print=True):
-        pass
-    def to_etree(self, parent_element=None, name_='AbstractBuildingUsage', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.extensiontype_ is not None:
-            element.set('{http://www.w3.org/2001/XMLSchema-instance}type', self.extensiontype_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('xsi:type', node)
-        if value is not None and 'xsi:type' not in already_processed:
-            already_processed.add('xsi:type')
-            self.extensiontype_ = value
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        pass
-# end class AbstractBuildingUsage
-
-
-class BuildingUsageReference(AbstractBuildingUsage):
-    subclass = None
-    superclass = AbstractBuildingUsage
-    def __init__(self, reference=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(BuildingUsageReference, self).__init__( **kwargs_)
-        self.reference = _cast(None, reference)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, BuildingUsageReference)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if BuildingUsageReference.subclass:
-            return BuildingUsageReference.subclass(*args_, **kwargs_)
-        else:
-            return BuildingUsageReference(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_reference(self):
-        return self.reference
-    def set_reference(self, reference):
-        self.reference = reference
-    def hasContent_(self):
-        if (
-            super(BuildingUsageReference, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsageReference', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('BuildingUsageReference')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingUsageReference')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='BuildingUsageReference', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='BuildingUsageReference'):
-        super(BuildingUsageReference, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingUsageReference')
-        if self.reference is not None and 'reference' not in already_processed:
-            already_processed.add('reference')
-            outfile.write(' reference=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.reference), input_name='reference')), ))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsageReference', fromsubclass_=False, pretty_print=True):
-        super(BuildingUsageReference, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        pass
-    def to_etree(self, parent_element=None, name_='BuildingUsageReference', mapping_=None):
-        element = super(BuildingUsageReference, self).to_etree(parent_element, name_, mapping_)
-        if self.reference is not None:
-            element.set('reference', self.gds_format_string(self.reference))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('reference', node)
-        if value is not None and 'reference' not in already_processed:
-            already_processed.add('reference')
-            self.reference = value
-        super(BuildingUsageReference, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(BuildingUsageReference, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class BuildingUsageReference
-
-
-class BuildingUsageInformation(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, id=None, buildingUsage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.id = _cast(None, id)
-        if buildingUsage is None:
-            self.buildingUsage = []
-        else:
-            self.buildingUsage = buildingUsage
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, BuildingUsageInformation)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if BuildingUsageInformation.subclass:
-            return BuildingUsageInformation.subclass(*args_, **kwargs_)
-        else:
-            return BuildingUsageInformation(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_buildingUsage(self):
-        return self.buildingUsage
-    def set_buildingUsage(self, buildingUsage):
-        self.buildingUsage = buildingUsage
-    def add_buildingUsage(self, value):
-        self.buildingUsage.append(value)
-    def add_buildingUsage(self, value):
-        self.buildingUsage.append(value)
-    def insert_buildingUsage_at(self, index, value):
-        self.buildingUsage.insert(index, value)
-    def replace_buildingUsage_at(self, index, value):
-        self.buildingUsage[index] = value
-    def get_id(self):
-        return self.id
-    def set_id(self, id):
-        self.id = id
-    def hasContent_(self):
-        if (
-            self.buildingUsage
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsageInformation', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('BuildingUsageInformation')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingUsageInformation')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='BuildingUsageInformation', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='BuildingUsageInformation'):
-        if self.id is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            outfile.write(' id=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.id), input_name='id')), ))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsageInformation', fromsubclass_=False, pretty_print=True):
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        for buildingUsage_ in self.buildingUsage:
-            buildingUsage_.export(outfile, level, namespaceprefix_, name_='buildingUsage', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='BuildingUsageInformation', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.id is not None:
-            element.set('id', self.gds_format_string(self.id))
-        for buildingUsage_ in self.buildingUsage:
-            buildingUsage_.to_etree(element, name_='buildingUsage', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('id', node)
-        if value is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            self.id = value
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'buildingUsage':
-            obj_ = BuildingUsage.factory(parent_object_=self)
-            obj_.build(child_)
-            self.buildingUsage.append(obj_)
-            obj_.original_tagname_ = 'buildingUsage'
-# end class BuildingUsageInformation
-
-
-class BuildingTypeDistribution(LabelDistribution):
-    subclass = None
-    superclass = LabelDistribution
-    def __init__(self, name=None, buildingTypePercentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(BuildingTypeDistribution, self).__init__(name,  **kwargs_)
-        if buildingTypePercentage is None:
-            self.buildingTypePercentage = []
-        else:
-            self.buildingTypePercentage = buildingTypePercentage
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, BuildingTypeDistribution)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if BuildingTypeDistribution.subclass:
-            return BuildingTypeDistribution.subclass(*args_, **kwargs_)
-        else:
-            return BuildingTypeDistribution(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_buildingTypePercentage(self):
-        return self.buildingTypePercentage
-    def set_buildingTypePercentage(self, buildingTypePercentage):
-        self.buildingTypePercentage = buildingTypePercentage
-    def add_buildingTypePercentage(self, value):
-        self.buildingTypePercentage.append(value)
-    def add_buildingTypePercentage(self, value):
-        self.buildingTypePercentage.append(value)
-    def insert_buildingTypePercentage_at(self, index, value):
-        self.buildingTypePercentage.insert(index, value)
-    def replace_buildingTypePercentage_at(self, index, value):
-        self.buildingTypePercentage[index] = value
-    def hasContent_(self):
-        if (
-            self.buildingTypePercentage or
-            super(BuildingTypeDistribution, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingTypeDistribution', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('BuildingTypeDistribution')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingTypeDistribution')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='BuildingTypeDistribution', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='BuildingTypeDistribution'):
-        super(BuildingTypeDistribution, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingTypeDistribution')
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingTypeDistribution', fromsubclass_=False, pretty_print=True):
-        super(BuildingTypeDistribution, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        for buildingTypePercentage_ in self.buildingTypePercentage:
-            buildingTypePercentage_.export(outfile, level, namespaceprefix_, name_='buildingTypePercentage', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='BuildingTypeDistribution', mapping_=None):
-        element = super(BuildingTypeDistribution, self).to_etree(parent_element, name_, mapping_)
-        for buildingTypePercentage_ in self.buildingTypePercentage:
-            buildingTypePercentage_.to_etree(element, name_='buildingTypePercentage', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        super(BuildingTypeDistribution, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'buildingTypePercentage':
-            obj_ = BuildingTypePercentage.factory(parent_object_=self)
-            obj_.build(child_)
-            self.buildingTypePercentage.append(obj_)
-            obj_.original_tagname_ = 'buildingTypePercentage'
-        super(BuildingTypeDistribution, self).buildChildren(child_, node, nodeName_, True)
-# end class BuildingTypeDistribution
-
-
-class BuildingTypePercentage(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, buildingType=None, percentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.buildingType = _cast(None, buildingType)
-        self.percentage = _cast(float, percentage)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, BuildingTypePercentage)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if BuildingTypePercentage.subclass:
-            return BuildingTypePercentage.subclass(*args_, **kwargs_)
-        else:
-            return BuildingTypePercentage(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_buildingType(self):
-        return self.buildingType
-    def set_buildingType(self, buildingType):
-        self.buildingType = buildingType
-    def get_percentage(self):
-        return self.percentage
-    def set_percentage(self, percentage):
-        self.percentage = percentage
-    def hasContent_(self):
-        if (
-
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingTypePercentage', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('BuildingTypePercentage')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingTypePercentage')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='BuildingTypePercentage', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='BuildingTypePercentage'):
-        if self.buildingType is not None and 'buildingType' not in already_processed:
-            already_processed.add('buildingType')
-            outfile.write(' buildingType=%s' % (quote_attrib(self.buildingType), ))
-        if self.percentage is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            outfile.write(' percentage="%s"' % self.gds_format_double(self.percentage, input_name='percentage'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingTypePercentage', fromsubclass_=False, pretty_print=True):
-        pass
-    def to_etree(self, parent_element=None, name_='BuildingTypePercentage', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.buildingType is not None:
-            element.set('buildingType', self.buildingType)
-        if self.percentage is not None:
-            element.set('percentage', self.gds_format_double(self.percentage))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('buildingType', node)
-        if value is not None and 'buildingType' not in already_processed:
-            already_processed.add('buildingType')
-            self.buildingType = value
-        value = find_attr_value_('percentage', node)
-        if value is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            try:
-                self.percentage = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (percentage): %s' % exp)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        pass
-# end class BuildingTypePercentage
-
-
-class ResidentialBuildingTypeDistribution(LabelDistribution):
-    subclass = None
-    superclass = LabelDistribution
-    def __init__(self, name=None, residentialBuildingTypePercentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(ResidentialBuildingTypeDistribution, self).__init__(name,  **kwargs_)
-        if residentialBuildingTypePercentage is None:
-            self.residentialBuildingTypePercentage = []
-        else:
-            self.residentialBuildingTypePercentage = residentialBuildingTypePercentage
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, ResidentialBuildingTypeDistribution)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if ResidentialBuildingTypeDistribution.subclass:
-            return ResidentialBuildingTypeDistribution.subclass(*args_, **kwargs_)
-        else:
-            return ResidentialBuildingTypeDistribution(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_residentialBuildingTypePercentage(self):
-        return self.residentialBuildingTypePercentage
-    def set_residentialBuildingTypePercentage(self, residentialBuildingTypePercentage):
-        self.residentialBuildingTypePercentage = residentialBuildingTypePercentage
-    def add_residentialBuildingTypePercentage(self, value):
-        self.residentialBuildingTypePercentage.append(value)
-    def add_residentialBuildingTypePercentage(self, value):
-        self.residentialBuildingTypePercentage.append(value)
-    def insert_residentialBuildingTypePercentage_at(self, index, value):
-        self.residentialBuildingTypePercentage.insert(index, value)
-    def replace_residentialBuildingTypePercentage_at(self, index, value):
-        self.residentialBuildingTypePercentage[index] = value
-    def hasContent_(self):
-        if (
-            self.residentialBuildingTypePercentage or
-            super(ResidentialBuildingTypeDistribution, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='ResidentialBuildingTypeDistribution', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('ResidentialBuildingTypeDistribution')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='ResidentialBuildingTypeDistribution')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='ResidentialBuildingTypeDistribution', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='ResidentialBuildingTypeDistribution'):
-        super(ResidentialBuildingTypeDistribution, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='ResidentialBuildingTypeDistribution')
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='ResidentialBuildingTypeDistribution', fromsubclass_=False, pretty_print=True):
-        super(ResidentialBuildingTypeDistribution, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        for residentialBuildingTypePercentage_ in self.residentialBuildingTypePercentage:
-            residentialBuildingTypePercentage_.export(outfile, level, namespaceprefix_, name_='residentialBuildingTypePercentage', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='ResidentialBuildingTypeDistribution', mapping_=None):
-        element = super(ResidentialBuildingTypeDistribution, self).to_etree(parent_element, name_, mapping_)
-        for residentialBuildingTypePercentage_ in self.residentialBuildingTypePercentage:
-            residentialBuildingTypePercentage_.to_etree(element, name_='residentialBuildingTypePercentage', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        super(ResidentialBuildingTypeDistribution, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'residentialBuildingTypePercentage':
-            obj_ = ResidentialBuildingTypePercentage.factory(parent_object_=self)
-            obj_.build(child_)
-            self.residentialBuildingTypePercentage.append(obj_)
-            obj_.original_tagname_ = 'residentialBuildingTypePercentage'
-        super(ResidentialBuildingTypeDistribution, self).buildChildren(child_, node, nodeName_, True)
-# end class ResidentialBuildingTypeDistribution
-
-
-class ResidentialBuildingTypePercentage(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, residentialBuildingType=None, percentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.residentialBuildingType = _cast(None, residentialBuildingType)
-        self.percentage = _cast(float, percentage)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, ResidentialBuildingTypePercentage)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if ResidentialBuildingTypePercentage.subclass:
-            return ResidentialBuildingTypePercentage.subclass(*args_, **kwargs_)
-        else:
-            return ResidentialBuildingTypePercentage(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_residentialBuildingType(self):
-        return self.residentialBuildingType
-    def set_residentialBuildingType(self, residentialBuildingType):
-        self.residentialBuildingType = residentialBuildingType
-    def get_percentage(self):
-        return self.percentage
-    def set_percentage(self, percentage):
-        self.percentage = percentage
-    def hasContent_(self):
-        if (
-
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='ResidentialBuildingTypePercentage', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('ResidentialBuildingTypePercentage')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='ResidentialBuildingTypePercentage')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='ResidentialBuildingTypePercentage', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='ResidentialBuildingTypePercentage'):
-        if self.residentialBuildingType is not None and 'residentialBuildingType' not in already_processed:
-            already_processed.add('residentialBuildingType')
-            outfile.write(' residentialBuildingType=%s' % (quote_attrib(self.residentialBuildingType), ))
-        if self.percentage is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            outfile.write(' percentage="%s"' % self.gds_format_double(self.percentage, input_name='percentage'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='ResidentialBuildingTypePercentage', fromsubclass_=False, pretty_print=True):
-        pass
-    def to_etree(self, parent_element=None, name_='ResidentialBuildingTypePercentage', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.residentialBuildingType is not None:
-            element.set('residentialBuildingType', self.residentialBuildingType)
-        if self.percentage is not None:
-            element.set('percentage', self.gds_format_double(self.percentage))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('residentialBuildingType', node)
-        if value is not None and 'residentialBuildingType' not in already_processed:
-            already_processed.add('residentialBuildingType')
-            self.residentialBuildingType = value
-        value = find_attr_value_('percentage', node)
-        if value is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            try:
-                self.percentage = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (percentage): %s' % exp)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        pass
-# end class ResidentialBuildingTypePercentage
-
-
-class HousingTypeDistribution(LabelDistribution):
-    subclass = None
-    superclass = LabelDistribution
-    def __init__(self, name=None, housingTypePercentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(HousingTypeDistribution, self).__init__(name,  **kwargs_)
-        if housingTypePercentage is None:
-            self.housingTypePercentage = []
-        else:
-            self.housingTypePercentage = housingTypePercentage
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, HousingTypeDistribution)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if HousingTypeDistribution.subclass:
-            return HousingTypeDistribution.subclass(*args_, **kwargs_)
-        else:
-            return HousingTypeDistribution(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_housingTypePercentage(self):
-        return self.housingTypePercentage
-    def set_housingTypePercentage(self, housingTypePercentage):
-        self.housingTypePercentage = housingTypePercentage
-    def add_housingTypePercentage(self, value):
-        self.housingTypePercentage.append(value)
-    def add_housingTypePercentage(self, value):
-        self.housingTypePercentage.append(value)
-    def insert_housingTypePercentage_at(self, index, value):
-        self.housingTypePercentage.insert(index, value)
-    def replace_housingTypePercentage_at(self, index, value):
-        self.housingTypePercentage[index] = value
-    def hasContent_(self):
-        if (
-            self.housingTypePercentage or
-            super(HousingTypeDistribution, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='HousingTypeDistribution', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('HousingTypeDistribution')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='HousingTypeDistribution')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='HousingTypeDistribution', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='HousingTypeDistribution'):
-        super(HousingTypeDistribution, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='HousingTypeDistribution')
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='HousingTypeDistribution', fromsubclass_=False, pretty_print=True):
-        super(HousingTypeDistribution, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        for housingTypePercentage_ in self.housingTypePercentage:
-            housingTypePercentage_.export(outfile, level, namespaceprefix_, name_='housingTypePercentage', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='HousingTypeDistribution', mapping_=None):
-        element = super(HousingTypeDistribution, self).to_etree(parent_element, name_, mapping_)
-        for housingTypePercentage_ in self.housingTypePercentage:
-            housingTypePercentage_.to_etree(element, name_='housingTypePercentage', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        super(HousingTypeDistribution, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'housingTypePercentage':
-            obj_ = HousingTypePercentage.factory(parent_object_=self)
-            obj_.build(child_)
-            self.housingTypePercentage.append(obj_)
-            obj_.original_tagname_ = 'housingTypePercentage'
-        super(HousingTypeDistribution, self).buildChildren(child_, node, nodeName_, True)
-# end class HousingTypeDistribution
-
-
-class HousingTypePercentage(GeneratedsSuper):
-    subclass = None
-    superclass = None
-    def __init__(self, housingType=None, percentage=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        self.housingType = _cast(None, housingType)
-        self.percentage = _cast(float, percentage)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, HousingTypePercentage)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if HousingTypePercentage.subclass:
-            return HousingTypePercentage.subclass(*args_, **kwargs_)
-        else:
-            return HousingTypePercentage(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_housingType(self):
-        return self.housingType
-    def set_housingType(self, housingType):
-        self.housingType = housingType
-    def get_percentage(self):
-        return self.percentage
-    def set_percentage(self, percentage):
-        self.percentage = percentage
-    def hasContent_(self):
-        if (
-
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='HousingTypePercentage', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('HousingTypePercentage')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='HousingTypePercentage')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='HousingTypePercentage', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='HousingTypePercentage'):
-        if self.housingType is not None and 'housingType' not in already_processed:
-            already_processed.add('housingType')
-            outfile.write(' housingType=%s' % (quote_attrib(self.housingType), ))
-        if self.percentage is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            outfile.write(' percentage="%s"' % self.gds_format_double(self.percentage, input_name='percentage'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='HousingTypePercentage', fromsubclass_=False, pretty_print=True):
-        pass
-    def to_etree(self, parent_element=None, name_='HousingTypePercentage', mapping_=None):
-        if parent_element is None:
-            element = etree_.Element('{http://www.tno.nl/esdl}' + name_)
-        else:
-            element = etree_.SubElement(parent_element, '{http://www.tno.nl/esdl}' + name_)
-        if self.housingType is not None:
-            element.set('housingType', self.housingType)
-        if self.percentage is not None:
-            element.set('percentage', self.gds_format_double(self.percentage))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('housingType', node)
-        if value is not None and 'housingType' not in already_processed:
-            already_processed.add('housingType')
-            self.housingType = value
-        value = find_attr_value_('percentage', node)
-        if value is not None and 'percentage' not in already_processed:
-            already_processed.add('percentage')
-            try:
-                self.percentage = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (percentage): %s' % exp)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        pass
-# end class HousingTypePercentage
-
-
-class DoubleKPI(KPI):
-    subclass = None
-    superclass = KPI
-    def __init__(self, id=None, name=None, quantityAndUnit=None, value=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(DoubleKPI, self).__init__(id, name, quantityAndUnit,  **kwargs_)
-        self.value = _cast(float, value)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, DoubleKPI)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if DoubleKPI.subclass:
-            return DoubleKPI.subclass(*args_, **kwargs_)
-        else:
-            return DoubleKPI(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_value(self):
-        return self.value
-    def set_value(self, value):
-        self.value = value
-    def hasContent_(self):
-        if (
-            super(DoubleKPI, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='DoubleKPI', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('DoubleKPI')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='DoubleKPI')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='DoubleKPI', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='DoubleKPI'):
-        super(DoubleKPI, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='DoubleKPI')
-        if self.value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            outfile.write(' value="%s"' % self.gds_format_double(self.value, input_name='value'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='DoubleKPI', fromsubclass_=False, pretty_print=True):
-        super(DoubleKPI, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='DoubleKPI', mapping_=None):
-        element = super(DoubleKPI, self).to_etree(parent_element, name_, mapping_)
-        if self.value is not None:
-            element.set('value', self.gds_format_double(self.value))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('value', node)
-        if value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            try:
-                self.value = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (value): %s' % exp)
-        super(DoubleKPI, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(DoubleKPI, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class DoubleKPI
-
-
-class StringKPI(KPI):
-    subclass = None
-    superclass = KPI
-    def __init__(self, id=None, name=None, quantityAndUnit=None, value=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(StringKPI, self).__init__(id, name, quantityAndUnit,  **kwargs_)
-        self.value = _cast(None, value)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, StringKPI)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if StringKPI.subclass:
-            return StringKPI.subclass(*args_, **kwargs_)
-        else:
-            return StringKPI(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_value(self):
-        return self.value
-    def set_value(self, value):
-        self.value = value
-    def hasContent_(self):
-        if (
-            super(StringKPI, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='StringKPI', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('StringKPI')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='StringKPI')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='StringKPI', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='StringKPI'):
-        super(StringKPI, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='StringKPI')
-        if self.value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            outfile.write(' value=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.value), input_name='value')), ))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='StringKPI', fromsubclass_=False, pretty_print=True):
-        super(StringKPI, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='StringKPI', mapping_=None):
-        element = super(StringKPI, self).to_etree(parent_element, name_, mapping_)
-        if self.value is not None:
-            element.set('value', self.gds_format_string(self.value))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('value', node)
-        if value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            self.value = value
-        super(StringKPI, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(StringKPI, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class StringKPI
-
-
-class IntKPI(KPI):
-    subclass = None
-    superclass = KPI
-    def __init__(self, id=None, name=None, quantityAndUnit=None, value=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(IntKPI, self).__init__(id, name, quantityAndUnit,  **kwargs_)
-        self.value = _cast(int, value)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, IntKPI)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if IntKPI.subclass:
-            return IntKPI.subclass(*args_, **kwargs_)
-        else:
-            return IntKPI(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_value(self):
-        return self.value
-    def set_value(self, value):
-        self.value = value
-    def hasContent_(self):
-        if (
-            super(IntKPI, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='IntKPI', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('IntKPI')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='IntKPI')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='IntKPI', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='IntKPI'):
-        super(IntKPI, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='IntKPI')
-        if self.value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            outfile.write(' value="%s"' % self.gds_format_integer(self.value, input_name='value'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='IntKPI', fromsubclass_=False, pretty_print=True):
-        super(IntKPI, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='IntKPI', mapping_=None):
-        element = super(IntKPI, self).to_etree(parent_element, name_, mapping_)
-        if self.value is not None:
-            element.set('value', self.gds_format_integer(self.value))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('value', node)
-        if value is not None and 'value' not in already_processed:
-            already_processed.add('value')
-            try:
-                self.value = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        super(IntKPI, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(IntKPI, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class IntKPI
-
-
-class FromToIntPerc(FromToPerc):
-    subclass = None
-    superclass = FromToPerc
-    def __init__(self, percentage=None, from_=None, to=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(FromToIntPerc, self).__init__(percentage,  **kwargs_)
-        self.from_ = _cast(int, from_)
-        self.to = _cast(int, to)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, FromToIntPerc)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if FromToIntPerc.subclass:
-            return FromToIntPerc.subclass(*args_, **kwargs_)
-        else:
-            return FromToIntPerc(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_from(self):
-        return self.from_
-    def set_from(self, from_):
-        self.from_ = from_
-    def get_to(self):
-        return self.to
-    def set_to(self, to):
-        self.to = to
-    def hasContent_(self):
-        if (
-            super(FromToIntPerc, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='FromToIntPerc', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('FromToIntPerc')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='FromToIntPerc')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='FromToIntPerc', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='FromToIntPerc'):
-        super(FromToIntPerc, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='FromToIntPerc')
-        if self.from_ is not None and 'from_' not in already_processed:
-            already_processed.add('from_')
-            outfile.write(' from="%s"' % self.gds_format_integer(self.from_, input_name='from'))
-        if self.to is not None and 'to' not in already_processed:
-            already_processed.add('to')
-            outfile.write(' to="%s"' % self.gds_format_integer(self.to, input_name='to'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='FromToIntPerc', fromsubclass_=False, pretty_print=True):
-        super(FromToIntPerc, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        pass
-    def to_etree(self, parent_element=None, name_='FromToIntPerc', mapping_=None):
-        element = super(FromToIntPerc, self).to_etree(parent_element, name_, mapping_)
-        if self.from_ is not None:
-            element.set('from', self.gds_format_integer(self.from_))
-        if self.to is not None:
-            element.set('to', self.gds_format_integer(self.to))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('from', node)
-        if value is not None and 'from' not in already_processed:
-            already_processed.add('from')
-            try:
-                self.from_ = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('to', node)
-        if value is not None and 'to' not in already_processed:
-            already_processed.add('to')
-            try:
-                self.to = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        super(FromToIntPerc, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(FromToIntPerc, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class FromToIntPerc
-
-
-class FromToDoublePerc(FromToPerc):
-    subclass = None
-    superclass = FromToPerc
-    def __init__(self, percentage=None, from_=None, to=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(FromToDoublePerc, self).__init__(percentage,  **kwargs_)
-        self.from_ = _cast(float, from_)
-        self.to = _cast(float, to)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, FromToDoublePerc)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if FromToDoublePerc.subclass:
-            return FromToDoublePerc.subclass(*args_, **kwargs_)
-        else:
-            return FromToDoublePerc(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_from(self):
-        return self.from_
-    def set_from(self, from_):
-        self.from_ = from_
-    def get_to(self):
-        return self.to
-    def set_to(self, to):
-        self.to = to
-    def hasContent_(self):
-        if (
-            super(FromToDoublePerc, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='FromToDoublePerc', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('FromToDoublePerc')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='FromToDoublePerc')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='FromToDoublePerc', pretty_print=pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='FromToDoublePerc'):
-        super(FromToDoublePerc, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='FromToDoublePerc')
-        if self.from_ is not None and 'from_' not in already_processed:
-            already_processed.add('from_')
-            outfile.write(' from="%s"' % self.gds_format_double(self.from_, input_name='from'))
-        if self.to is not None and 'to' not in already_processed:
-            already_processed.add('to')
-            outfile.write(' to="%s"' % self.gds_format_double(self.to, input_name='to'))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='FromToDoublePerc', fromsubclass_=False, pretty_print=True):
-        super(FromToDoublePerc, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        pass
-    def to_etree(self, parent_element=None, name_='FromToDoublePerc', mapping_=None):
-        element = super(FromToDoublePerc, self).to_etree(parent_element, name_, mapping_)
-        if self.from_ is not None:
-            element.set('from', self.gds_format_double(self.from_))
-        if self.to is not None:
-            element.set('to', self.gds_format_double(self.to))
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('from', node)
-        if value is not None and 'from' not in already_processed:
-            already_processed.add('from')
-            try:
-                self.from_ = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (from): %s' % exp)
-        value = find_attr_value_('to', node)
-        if value is not None and 'to' not in already_processed:
-            already_processed.add('to')
-            try:
-                self.to = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (to): %s' % exp)
-        super(FromToDoublePerc, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(FromToDoublePerc, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class FromToDoublePerc
-
-
-class BuildingUsage(AbstractBuildingUsage):
-    subclass = None
-    superclass = AbstractBuildingUsage
-    def __init__(self, id=None, name=None, coolingSetpoints=None, heatingSetpoints=None, openingHours=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(BuildingUsage, self).__init__( **kwargs_)
-        self.id = _cast(None, id)
-        self.name = _cast(None, name)
-        self.coolingSetpoints = coolingSetpoints
-        self.heatingSetpoints = heatingSetpoints
-        self.openingHours = openingHours
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, BuildingUsage)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if BuildingUsage.subclass:
-            return BuildingUsage.subclass(*args_, **kwargs_)
-        else:
-            return BuildingUsage(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def get_coolingSetpoints(self):
-        return self.coolingSetpoints
-    def set_coolingSetpoints(self, coolingSetpoints):
-        self.coolingSetpoints = coolingSetpoints
-    def get_heatingSetpoints(self):
-        return self.heatingSetpoints
-    def set_heatingSetpoints(self, heatingSetpoints):
-        self.heatingSetpoints = heatingSetpoints
-    def get_openingHours(self):
-        return self.openingHours
-    def set_openingHours(self, openingHours):
-        self.openingHours = openingHours
-    def get_id(self):
-        return self.id
-    def set_id(self, id):
-        self.id = id
-    def get_name(self):
-        return self.name
-    def set_name(self, name):
-        self.name = name
-    def hasContent_(self):
-        if (
-            self.coolingSetpoints is not None or
-            self.heatingSetpoints is not None or
-            self.openingHours is not None or
-            super(BuildingUsage, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsage', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('BuildingUsage')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingUsage')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='BuildingUsage', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='BuildingUsage'):
-        super(BuildingUsage, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='BuildingUsage')
-        if self.id is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            outfile.write(' id=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.id), input_name='id')), ))
-        if self.name is not None and 'name' not in already_processed:
-            already_processed.add('name')
-            outfile.write(' name=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.name), input_name='name')), ))
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUsage', fromsubclass_=False, pretty_print=True):
-        super(BuildingUsage, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.coolingSetpoints is not None:
-            self.coolingSetpoints.export(outfile, level, namespaceprefix_, name_='coolingSetpoints', pretty_print=pretty_print)
-        if self.heatingSetpoints is not None:
-            self.heatingSetpoints.export(outfile, level, namespaceprefix_, name_='heatingSetpoints', pretty_print=pretty_print)
-        if self.openingHours is not None:
-            self.openingHours.export(outfile, level, namespaceprefix_, name_='openingHours', pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='BuildingUsage', mapping_=None):
-        element = super(BuildingUsage, self).to_etree(parent_element, name_, mapping_)
-        if self.id is not None:
-            element.set('id', self.gds_format_string(self.id))
-        if self.name is not None:
-            element.set('name', self.gds_format_string(self.name))
-        if self.coolingSetpoints is not None:
-            coolingSetpoints_ = self.coolingSetpoints
-            coolingSetpoints_.to_etree(element, name_='coolingSetpoints', mapping_=mapping_)
-        if self.heatingSetpoints is not None:
-            heatingSetpoints_ = self.heatingSetpoints
-            heatingSetpoints_.to_etree(element, name_='heatingSetpoints', mapping_=mapping_)
-        if self.openingHours is not None:
-            openingHours_ = self.openingHours
-            openingHours_.to_etree(element, name_='openingHours', mapping_=mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        value = find_attr_value_('id', node)
-        if value is not None and 'id' not in already_processed:
-            already_processed.add('id')
-            self.id = value
-        value = find_attr_value_('name', node)
-        if value is not None and 'name' not in already_processed:
-            already_processed.add('name')
-            self.name = value
-        super(BuildingUsage, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        if nodeName_ == 'coolingSetpoints':
-            obj_ = WeekSchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.coolingSetpoints = obj_
-            obj_.original_tagname_ = 'coolingSetpoints'
-        elif nodeName_ == 'heatingSetpoints':
-            obj_ = WeekSchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.heatingSetpoints = obj_
-            obj_.original_tagname_ = 'heatingSetpoints'
-        elif nodeName_ == 'openingHours':
-            obj_ = WeekSchedule.factory(parent_object_=self)
-            obj_.build(child_)
-            self.openingHours = obj_
-            obj_.original_tagname_ = 'openingHours'
-        super(BuildingUsage, self).buildChildren(child_, node, nodeName_, True)
-# end class BuildingUsage
 
 
 class GeothermalEnergyPotential(AbstractGTPotential):
@@ -14029,7 +11957,6 @@ class DataSource(AbstractDataSource):
 
 
 class Commodity(Carrier):
-    """Abstract class for commodities"""
     subclass = None
     superclass = Carrier
     def __init__(self, name=None, id=None, cost=None, dataSource=None, extensiontype_=None, **kwargs_):
@@ -14116,14 +12043,12 @@ class Commodity(Carrier):
 
 
 class Line(Geometry):
-    """Describes a line geometry based on a list of points, which can be
-    used to define the shape of pipes and cables"""
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, point=None, **kwargs_):
+    def __init__(self, point=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Line, self).__init__(CRS,  **kwargs_)
+        super(Line, self).__init__( **kwargs_)
         if point is None:
             self.point = []
         else:
@@ -14217,8 +12142,6 @@ class Line(Geometry):
 
 
 class EnergyCarrier(Carrier):
-    """Defines a carrier of energy with its emission and energy content
-    properties"""
     subclass = None
     superclass = Carrier
     def __init__(self, name=None, id=None, cost=None, dataSource=None, energyContent=0.0, emission=0.0, energyCarrierType=None, stateOfMatter=None, energyContentUnit=None, emissionUnit=None, **kwargs_):
@@ -14418,8 +12341,6 @@ class EnergyCarrier(Carrier):
 
 
 class EnergyService(Service):
-    """Abstract class to represent logical entities in the energy system,
-    e.g. demand response services, energy markets, etc."""
     subclass = None
     superclass = Service
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, extensiontype_=None, **kwargs_):
@@ -14506,9 +12427,6 @@ class EnergyService(Service):
 
 
 class LegalArea(Potential):
-    """Used to define an area in which its purpose is defined by legal
-    authorities, such as restricted areas. E.g. in areas where water
-    is extracted, it is not allowed to plan new UTES."""
     subclass = None
     superclass = Potential
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, purpose=None, **kwargs_):
@@ -14593,14 +12511,12 @@ class LegalArea(Potential):
 
 
 class Polygon(Geometry):
-    """Describes a polygon geometry, which can be used for defining the
-    shape of an area or building"""
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, exterior=None, interior=None, **kwargs_):
+    def __init__(self, exterior=None, interior=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Polygon, self).__init__(CRS,  **kwargs_)
+        super(Polygon, self).__init__( **kwargs_)
         self.exterior = exterior
         if interior is None:
             self.interior = []
@@ -14710,17 +12626,14 @@ class Polygon(Geometry):
 
 
 class Point(Geometry):
-    """Describes a point geometry, which can be used for giving assets a
-    location on a map"""
     subclass = None
     superclass = Geometry
-    def __init__(self, CRS=None, lat=None, lon=None, elevation=None, **kwargs_):
+    def __init__(self, lat=None, lon=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Point, self).__init__(CRS,  **kwargs_)
+        super(Point, self).__init__( **kwargs_)
         self.lat = _cast(float, lat)
         self.lon = _cast(float, lon)
-        self.elevation = _cast(float, elevation)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -14740,10 +12653,6 @@ class Point(Geometry):
         return self.lon
     def set_lon(self, lon):
         self.lon = lon
-    def get_elevation(self):
-        return self.elevation
-    def set_elevation(self, elevation):
-        self.elevation = elevation
     def hasContent_(self):
         if (
             super(Point, self).hasContent_()
@@ -14779,9 +12688,6 @@ class Point(Geometry):
         if self.lon is not None and 'lon' not in already_processed:
             already_processed.add('lon')
             outfile.write(' lon="%s"' % self.gds_format_double(self.lon, input_name='lon'))
-        if self.elevation is not None and 'elevation' not in already_processed:
-            already_processed.add('elevation')
-            outfile.write(' elevation="%s"' % self.gds_format_double(self.elevation, input_name='elevation'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='Point', fromsubclass_=False, pretty_print=True):
         super(Point, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
         pass
@@ -14791,8 +12697,6 @@ class Point(Geometry):
             element.set('lat', self.gds_format_double(self.lat))
         if self.lon is not None:
             element.set('lon', self.gds_format_double(self.lon))
-        if self.elevation is not None:
-            element.set('elevation', self.gds_format_double(self.elevation))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -14818,13 +12722,6 @@ class Point(Geometry):
                 self.lon = float(value)
             except ValueError as exp:
                 raise ValueError('Bad float/double attribute (lon): %s' % exp)
-        value = find_attr_value_('elevation', node)
-        if value is not None and 'elevation' not in already_processed:
-            already_processed.add('elevation')
-            try:
-                self.elevation = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (elevation): %s' % exp)
         super(Point, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(Point, self).buildChildren(child_, node, nodeName_, True)
@@ -14833,9 +12730,6 @@ class Point(Geometry):
 
 
 class GeothermalPotential(AbstractGTPotential):
-    """Defines the geothermal potential in a specific area. This type
-    focusses on temperature and depth of the well. See
-    GeothermalEnergyPotental for class focussing on Energy"""
     subclass = None
     superclass = AbstractGTPotential
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, geometryReference=None, aggregated=False, aggregationCount=1, geometry=None, quantityAndUnit=None, geothermalSource=None, temperature=None, depth=None, potential=None, powerPerDoublet='UNKNOWN', **kwargs_):
@@ -14968,17 +12862,6 @@ class GeothermalPotential(AbstractGTPotential):
 
 
 class Asset(Item):
-    """Assets are all physical thing in the EnergySystem. Assets can have a
-    location, a geometry, commissioning and decommissioning dates,
-    cost information (investment, installation and operation and
-    maintenance costs).The surface that is occupied by this asset in
-    m2If this date is in the future it is a planned asset in this
-    energy systemIf this date is in the past, it is an asset that
-    has been decommissionedin yearsDefines if this Asset is
-    aggregated of other assets of the same typeNumber of assets that
-    are aggregatedthe time required to install the asset (e.g. for
-    calculating the effects on employment or the time it takes to
-    construct and install the asset) in days"""
     subclass = None
     superclass = Item
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, extensiontype_=None, **kwargs_):
@@ -15291,9 +13174,6 @@ class Asset(Item):
 
 
 class EnergyAsset(Asset):
-    """An abstract class that describes a connectable Asset using ports.
-    EnergyAssets main subclasses contain the 5 capability type:
-    Producer, Consumer, Storage, Conversion and Transport"""
     subclass = None
     superclass = Asset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, extensiontype_=None, **kwargs_):
@@ -15853,7 +13733,6 @@ class EnergyCommodity(Commodity):
 
 
 class ElectricityCommodity(Commodity):
-    """Defines a electricity commodity"""
     subclass = None
     superclass = Commodity
     def __init__(self, name=None, id=None, cost=None, dataSource=None, voltage=None, **kwargs_):
@@ -15941,7 +13820,6 @@ class ElectricityCommodity(Commodity):
 
 
 class HeatCommodity(Commodity):
-    """Defines a heat commodity"""
     subclass = None
     superclass = Commodity
     def __init__(self, name=None, id=None, cost=None, dataSource=None, supplyTemperature=0.0, returnTemperature=None, **kwargs_):
@@ -16046,10 +13924,6 @@ class HeatCommodity(Commodity):
 
 
 class GasCommodity(Commodity):
-    """Defines a gas commodity. This class can be used as an abstract way
-    of modelling gas commodity and can be used in conjunction with
-    electricity commodity and heat commodity. If more detailed
-    modelling is necessary, use energy carriers."""
     subclass = None
     superclass = Commodity
     def __init__(self, name=None, id=None, cost=None, dataSource=None, pressure=None, **kwargs_):
@@ -16137,8 +14011,6 @@ class GasCommodity(Commodity):
 
 
 class AggregatorService(EnergyService):
-    """Indicates a aggregator service exploiting flexibility in the energy
-    system"""
     subclass = None
     superclass = EnergyService
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, **kwargs_):
@@ -16209,11 +14081,9 @@ class AggregatorService(EnergyService):
 
 
 class AbstractBuilding(Asset):
-    """Describes the shared properties of building, building unit and
-    aggregated building"""
     subclass = None
     superclass = Asset
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingUsage=None, extensiontype_=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, extensiontype_=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(AbstractBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, extensiontype_,  **kwargs_)
@@ -16223,7 +14093,6 @@ class AbstractBuilding(Asset):
             self.asset = []
         else:
             self.asset = asset
-        self.buildingUsage = buildingUsage
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16250,10 +14119,6 @@ class AbstractBuilding(Asset):
         self.asset.insert(index, value)
     def replace_asset_at(self, index, value):
         self.asset[index] = value
-    def get_buildingUsage(self):
-        return self.buildingUsage
-    def set_buildingUsage(self, buildingUsage):
-        self.buildingUsage = buildingUsage
     def get_energyLabel(self):
         return self.energyLabel
     def set_energyLabel(self, energyLabel):
@@ -16267,7 +14132,6 @@ class AbstractBuilding(Asset):
     def hasContent_(self):
         if (
             self.asset or
-            self.buildingUsage is not None or
             super(AbstractBuilding, self).hasContent_()
         ):
             return True
@@ -16317,8 +14181,6 @@ class AbstractBuilding(Asset):
             eol_ = ''
         for asset_ in self.asset:
             asset_.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
-        if self.buildingUsage is not None:
-            self.buildingUsage.export(outfile, level, namespaceprefix_, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='AbstractBuilding', mapping_=None):
         element = super(AbstractBuilding, self).to_etree(parent_element, name_, mapping_)
         if self.extensiontype_ is not None:
@@ -16329,9 +14191,6 @@ class AbstractBuilding(Asset):
             element.set('energyIndex', self.gds_format_double(self.energyIndex))
         for asset_ in self.asset:
             asset_.to_etree(element, name_='asset', mapping_=mapping_)
-        if self.buildingUsage is not None:
-            buildingUsage_ = self.buildingUsage
-            buildingUsage_.to_etree(element, name_='buildingUsage', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -16379,31 +14238,11 @@ class AbstractBuilding(Asset):
                     'Class not implemented for <asset> element')
             self.asset.append(obj_)
             obj_.original_tagname_ = 'asset'
-        elif nodeName_ == 'buildingUsage':
-            type_name_ = child_.attrib.get(
-                '{http://www.w3.org/2001/XMLSchema-instance}type')
-            if type_name_ is None:
-                type_name_ = child_.attrib.get('type')
-            if type_name_ is not None:
-                type_names_ = type_name_.split(':')
-                if len(type_names_) == 1:
-                    type_name_ = type_names_[0]
-                else:
-                    type_name_ = type_names_[1]
-                class_ = globals()[type_name_]
-                obj_ = class_.factory()
-                obj_.build(child_)
-            else:
-                raise NotImplementedError(
-                    'Class not implemented for <buildingUsage> element')
-            self.buildingUsage = obj_
-            obj_.original_tagname_ = 'buildingUsage'
         super(AbstractBuilding, self).buildChildren(child_, node, nodeName_, True)
 # end class AbstractBuilding
 
 
 class DemandResponseService(EnergyService):
-    """Indicates a service supporting demand response in the energy system"""
     subclass = None
     superclass = EnergyService
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, **kwargs_):
@@ -16474,9 +14313,6 @@ class DemandResponseService(EnergyService):
 
 
 class Insulation(Asset):
-    """Describes insulation that can be added to a building. The relation
-    with the heat consumption is not defined and requires manual
-    modelling"""
     subclass = None
     superclass = Asset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, thermalInsulation=None, **kwargs_):
@@ -16564,19 +14400,12 @@ class Insulation(Asset):
 
 
 class Building(AbstractBuilding):
-    """Represents a physical buildingDescribes the building types as
-    defined by RVO in the Netherlands, in dutch for now, e.g.
-    Vrijstaande woning, Rijwoning, Flatwoning, Hoekwoningin m2in
-    m2in m2Flat roof, slanted roof, or combinationin m2in m2in min
-    min m2K/Win m2K/Win m2K/Win W/m2K(experimental, no usage yet) in
-    degreese.g. HR++ glassType of ventilation used in building, e.g.
-    mechanical ventilation"""
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingUsage=None, buildingYear=None, residentialBuildingType=None, floorArea=None, numberOfFloors=None, slantedRoofArea=None, flatRoofArea=None, roofType=None, wallArea=None, windowArea=None, perimeter=None, height=None, rcFloor=None, rcWall=None, rcRoof=None, uWindow=None, orientation=None, glassType=None, ventilationType=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingYear=None, residentialBuildingType=None, floorArea=None, numberOfFloors=None, slantedRoofArea=None, flatRoofArea=None, roofType=None, wallArea=None, windowArea=None, perimeter=None, height=None, rcFloor=None, rcWall=None, rcRoof=None, uWindow=None, orientation=None, glasType=None, ventilationType=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(Building, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset, buildingUsage,  **kwargs_)
+        super(Building, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
         self.buildingYear = _cast(int, buildingYear)
         self.residentialBuildingType = _cast(None, residentialBuildingType)
         self.floorArea = _cast(float, floorArea)
@@ -16593,7 +14422,7 @@ class Building(AbstractBuilding):
         self.rcRoof = _cast(float, rcRoof)
         self.uWindow = _cast(float, uWindow)
         self.orientation = _cast(int, orientation)
-        self.glassType = _cast(None, glassType)
+        self.glasType = _cast(None, glasType)
         self.ventilationType = _cast(None, ventilationType)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
@@ -16670,10 +14499,10 @@ class Building(AbstractBuilding):
         return self.orientation
     def set_orientation(self, orientation):
         self.orientation = orientation
-    def get_glassType(self):
-        return self.glassType
-    def set_glassType(self, glassType):
-        self.glassType = glassType
+    def get_glasType(self):
+        return self.glasType
+    def set_glasType(self, glasType):
+        self.glasType = glasType
     def get_ventilationType(self):
         return self.ventilationType
     def set_ventilationType(self, ventilationType):
@@ -16756,9 +14585,9 @@ class Building(AbstractBuilding):
         if self.orientation is not None and 'orientation' not in already_processed:
             already_processed.add('orientation')
             outfile.write(' orientation="%s"' % self.gds_format_integer(self.orientation, input_name='orientation'))
-        if self.glassType is not None and 'glassType' not in already_processed:
-            already_processed.add('glassType')
-            outfile.write(' glassType=%s' % (quote_attrib(self.glassType), ))
+        if self.glasType is not None and 'glasType' not in already_processed:
+            already_processed.add('glasType')
+            outfile.write(' glasType=%s' % (quote_attrib(self.glasType), ))
         if self.ventilationType is not None and 'ventilationType' not in already_processed:
             already_processed.add('ventilationType')
             outfile.write(' ventilationType=%s' % (quote_attrib(self.ventilationType), ))
@@ -16798,8 +14627,8 @@ class Building(AbstractBuilding):
             element.set('uWindow', self.gds_format_double(self.uWindow))
         if self.orientation is not None:
             element.set('orientation', self.gds_format_integer(self.orientation))
-        if self.glassType is not None:
-            element.set('glassType', self.glassType)
+        if self.glasType is not None:
+            element.set('glasType', self.glasType)
         if self.ventilationType is not None:
             element.set('ventilationType', self.ventilationType)
         if mapping_ is not None:
@@ -16919,10 +14748,10 @@ class Building(AbstractBuilding):
                 self.orientation = int(value)
             except ValueError as exp:
                 raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('glassType', node)
-        if value is not None and 'glassType' not in already_processed:
-            already_processed.add('glassType')
-            self.glassType = value
+        value = find_attr_value_('glasType', node)
+        if value is not None and 'glasType' not in already_processed:
+            already_processed.add('glasType')
+            self.glasType = value
         value = find_attr_value_('ventilationType', node)
         if value is not None and 'ventilationType' not in already_processed:
             already_processed.add('ventilationType')
@@ -16935,32 +14764,17 @@ class Building(AbstractBuilding):
 
 
 class BuildingUnit(AbstractBuilding):
-    """Describes a physical part of a building. In dutch 'verblijfsobject'
-    in the BAG national building and address registry. This can be
-    used e.g. to model appartments in appartment complexesin m2"""
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingUsage=None, type_=None, housingType=None, numberOfInhabitants=None, inhabitantsType=None, floorArea=None, numberOfFloors=None, slantedRoofArea=None, flatRoofArea=None, roofType=None, wallArea=None, windowArea=None, rcFloor=None, rcWall=None, rfRoof=None, uWindow=None, glassType='UNDEFINED', ventilationType='UNDEFINED', **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, type_=None, housingType=None, numberOfInhabitants=None, inhabitantsType=None, floorArea=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(BuildingUnit, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset, buildingUsage,  **kwargs_)
+        super(BuildingUnit, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
         self.type_ = _cast(None, type_)
         self.housingType = _cast(None, housingType)
         self.numberOfInhabitants = _cast(int, numberOfInhabitants)
         self.inhabitantsType = _cast(None, inhabitantsType)
         self.floorArea = _cast(float, floorArea)
-        self.numberOfFloors = _cast(int, numberOfFloors)
-        self.slantedRoofArea = _cast(float, slantedRoofArea)
-        self.flatRoofArea = _cast(float, flatRoofArea)
-        self.roofType = _cast(None, roofType)
-        self.wallArea = _cast(float, wallArea)
-        self.windowArea = _cast(float, windowArea)
-        self.rcFloor = _cast(float, rcFloor)
-        self.rcWall = _cast(float, rcWall)
-        self.rfRoof = _cast(float, rfRoof)
-        self.uWindow = _cast(float, uWindow)
-        self.glassType = _cast(None, glassType)
-        self.ventilationType = _cast(None, ventilationType)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -16992,54 +14806,6 @@ class BuildingUnit(AbstractBuilding):
         return self.floorArea
     def set_floorArea(self, floorArea):
         self.floorArea = floorArea
-    def get_numberOfFloors(self):
-        return self.numberOfFloors
-    def set_numberOfFloors(self, numberOfFloors):
-        self.numberOfFloors = numberOfFloors
-    def get_slantedRoofArea(self):
-        return self.slantedRoofArea
-    def set_slantedRoofArea(self, slantedRoofArea):
-        self.slantedRoofArea = slantedRoofArea
-    def get_flatRoofArea(self):
-        return self.flatRoofArea
-    def set_flatRoofArea(self, flatRoofArea):
-        self.flatRoofArea = flatRoofArea
-    def get_roofType(self):
-        return self.roofType
-    def set_roofType(self, roofType):
-        self.roofType = roofType
-    def get_wallArea(self):
-        return self.wallArea
-    def set_wallArea(self, wallArea):
-        self.wallArea = wallArea
-    def get_windowArea(self):
-        return self.windowArea
-    def set_windowArea(self, windowArea):
-        self.windowArea = windowArea
-    def get_rcFloor(self):
-        return self.rcFloor
-    def set_rcFloor(self, rcFloor):
-        self.rcFloor = rcFloor
-    def get_rcWall(self):
-        return self.rcWall
-    def set_rcWall(self, rcWall):
-        self.rcWall = rcWall
-    def get_rfRoof(self):
-        return self.rfRoof
-    def set_rfRoof(self, rfRoof):
-        self.rfRoof = rfRoof
-    def get_uWindow(self):
-        return self.uWindow
-    def set_uWindow(self, uWindow):
-        self.uWindow = uWindow
-    def get_glassType(self):
-        return self.glassType
-    def set_glassType(self, glassType):
-        self.glassType = glassType
-    def get_ventilationType(self):
-        return self.ventilationType
-    def set_ventilationType(self, ventilationType):
-        self.ventilationType = ventilationType
     def hasContent_(self):
         if (
             super(BuildingUnit, self).hasContent_()
@@ -17085,42 +14851,6 @@ class BuildingUnit(AbstractBuilding):
         if self.floorArea is not None and 'floorArea' not in already_processed:
             already_processed.add('floorArea')
             outfile.write(' floorArea="%s"' % self.gds_format_double(self.floorArea, input_name='floorArea'))
-        if self.numberOfFloors is not None and 'numberOfFloors' not in already_processed:
-            already_processed.add('numberOfFloors')
-            outfile.write(' numberOfFloors="%s"' % self.gds_format_integer(self.numberOfFloors, input_name='numberOfFloors'))
-        if self.slantedRoofArea is not None and 'slantedRoofArea' not in already_processed:
-            already_processed.add('slantedRoofArea')
-            outfile.write(' slantedRoofArea="%s"' % self.gds_format_double(self.slantedRoofArea, input_name='slantedRoofArea'))
-        if self.flatRoofArea is not None and 'flatRoofArea' not in already_processed:
-            already_processed.add('flatRoofArea')
-            outfile.write(' flatRoofArea="%s"' % self.gds_format_double(self.flatRoofArea, input_name='flatRoofArea'))
-        if self.roofType is not None and 'roofType' not in already_processed:
-            already_processed.add('roofType')
-            outfile.write(' roofType=%s' % (quote_attrib(self.roofType), ))
-        if self.wallArea is not None and 'wallArea' not in already_processed:
-            already_processed.add('wallArea')
-            outfile.write(' wallArea="%s"' % self.gds_format_double(self.wallArea, input_name='wallArea'))
-        if self.windowArea is not None and 'windowArea' not in already_processed:
-            already_processed.add('windowArea')
-            outfile.write(' windowArea="%s"' % self.gds_format_double(self.windowArea, input_name='windowArea'))
-        if self.rcFloor is not None and 'rcFloor' not in already_processed:
-            already_processed.add('rcFloor')
-            outfile.write(' rcFloor="%s"' % self.gds_format_double(self.rcFloor, input_name='rcFloor'))
-        if self.rcWall is not None and 'rcWall' not in already_processed:
-            already_processed.add('rcWall')
-            outfile.write(' rcWall="%s"' % self.gds_format_double(self.rcWall, input_name='rcWall'))
-        if self.rfRoof is not None and 'rfRoof' not in already_processed:
-            already_processed.add('rfRoof')
-            outfile.write(' rfRoof="%s"' % self.gds_format_double(self.rfRoof, input_name='rfRoof'))
-        if self.uWindow is not None and 'uWindow' not in already_processed:
-            already_processed.add('uWindow')
-            outfile.write(' uWindow="%s"' % self.gds_format_double(self.uWindow, input_name='uWindow'))
-        if self.glassType != "UNDEFINED" and 'glassType' not in already_processed:
-            already_processed.add('glassType')
-            outfile.write(' glassType=%s' % (quote_attrib(self.glassType), ))
-        if self.ventilationType != "UNDEFINED" and 'ventilationType' not in already_processed:
-            already_processed.add('ventilationType')
-            outfile.write(' ventilationType=%s' % (quote_attrib(self.ventilationType), ))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='BuildingUnit', fromsubclass_=False, pretty_print=True):
         super(BuildingUnit, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='BuildingUnit', mapping_=None):
@@ -17135,30 +14865,6 @@ class BuildingUnit(AbstractBuilding):
             element.set('inhabitantsType', self.inhabitantsType)
         if self.floorArea is not None:
             element.set('floorArea', self.gds_format_double(self.floorArea))
-        if self.numberOfFloors is not None:
-            element.set('numberOfFloors', self.gds_format_integer(self.numberOfFloors))
-        if self.slantedRoofArea is not None:
-            element.set('slantedRoofArea', self.gds_format_double(self.slantedRoofArea))
-        if self.flatRoofArea is not None:
-            element.set('flatRoofArea', self.gds_format_double(self.flatRoofArea))
-        if self.roofType is not None:
-            element.set('roofType', self.roofType)
-        if self.wallArea is not None:
-            element.set('wallArea', self.gds_format_double(self.wallArea))
-        if self.windowArea is not None:
-            element.set('windowArea', self.gds_format_double(self.windowArea))
-        if self.rcFloor is not None:
-            element.set('rcFloor', self.gds_format_double(self.rcFloor))
-        if self.rcWall is not None:
-            element.set('rcWall', self.gds_format_double(self.rcWall))
-        if self.rfRoof is not None:
-            element.set('rfRoof', self.gds_format_double(self.rfRoof))
-        if self.uWindow is not None:
-            element.set('uWindow', self.gds_format_double(self.uWindow))
-        if self.glassType is not None:
-            element.set('glassType', self.glassType)
-        if self.ventilationType is not None:
-            element.set('ventilationType', self.ventilationType)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -17196,81 +14902,6 @@ class BuildingUnit(AbstractBuilding):
                 self.floorArea = float(value)
             except ValueError as exp:
                 raise ValueError('Bad float/double attribute (floorArea): %s' % exp)
-        value = find_attr_value_('numberOfFloors', node)
-        if value is not None and 'numberOfFloors' not in already_processed:
-            already_processed.add('numberOfFloors')
-            try:
-                self.numberOfFloors = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('slantedRoofArea', node)
-        if value is not None and 'slantedRoofArea' not in already_processed:
-            already_processed.add('slantedRoofArea')
-            try:
-                self.slantedRoofArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (slantedRoofArea): %s' % exp)
-        value = find_attr_value_('flatRoofArea', node)
-        if value is not None and 'flatRoofArea' not in already_processed:
-            already_processed.add('flatRoofArea')
-            try:
-                self.flatRoofArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (flatRoofArea): %s' % exp)
-        value = find_attr_value_('roofType', node)
-        if value is not None and 'roofType' not in already_processed:
-            already_processed.add('roofType')
-            self.roofType = value
-        value = find_attr_value_('wallArea', node)
-        if value is not None and 'wallArea' not in already_processed:
-            already_processed.add('wallArea')
-            try:
-                self.wallArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (wallArea): %s' % exp)
-        value = find_attr_value_('windowArea', node)
-        if value is not None and 'windowArea' not in already_processed:
-            already_processed.add('windowArea')
-            try:
-                self.windowArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (windowArea): %s' % exp)
-        value = find_attr_value_('rcFloor', node)
-        if value is not None and 'rcFloor' not in already_processed:
-            already_processed.add('rcFloor')
-            try:
-                self.rcFloor = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (rcFloor): %s' % exp)
-        value = find_attr_value_('rcWall', node)
-        if value is not None and 'rcWall' not in already_processed:
-            already_processed.add('rcWall')
-            try:
-                self.rcWall = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (rcWall): %s' % exp)
-        value = find_attr_value_('rfRoof', node)
-        if value is not None and 'rfRoof' not in already_processed:
-            already_processed.add('rfRoof')
-            try:
-                self.rfRoof = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (rfRoof): %s' % exp)
-        value = find_attr_value_('uWindow', node)
-        if value is not None and 'uWindow' not in already_processed:
-            already_processed.add('uWindow')
-            try:
-                self.uWindow = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (uWindow): %s' % exp)
-        value = find_attr_value_('glassType', node)
-        if value is not None and 'glassType' not in already_processed:
-            already_processed.add('glassType')
-            self.glassType = value
-        value = find_attr_value_('ventilationType', node)
-        if value is not None and 'ventilationType' not in already_processed:
-            already_processed.add('ventilationType')
-            self.ventilationType = value
         super(BuildingUnit, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(BuildingUnit, self).buildChildren(child_, node, nodeName_, True)
@@ -17279,9 +14910,7 @@ class BuildingUnit(AbstractBuilding):
 
 
 class Transport(EnergyAsset):
-    """An abstract class that describes EnergyAssets that can transport
-    energy. It is one of the 5 capabilities in ESDLAllows to specify
-    transmission losses as a percentage"""
+    """Allows to specify transmission losses as a percentage"""
     subclass = None
     superclass = EnergyAsset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, extensiontype_=None, **kwargs_):
@@ -17402,9 +15031,7 @@ class Transport(EnergyAsset):
 
 
 class Conversion(EnergyAsset):
-    """An abstract class that describes EnergyAssets that can convert one
-    energy carrier into another. It is one of the 5 capabilities in
-    ESDL"""
+    """Conversion Capability"""
     subclass = None
     superclass = EnergyAsset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, extensiontype_=None, **kwargs_):
@@ -17573,8 +15200,6 @@ class Conversion(EnergyAsset):
 
 
 class Storage(EnergyAsset):
-    """An abstract class that describes EnergyAssets that can store energy.
-    It is one of the 5 capabilities in ESDL"""
     subclass = None
     superclass = EnergyAsset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, extensiontype_=None, **kwargs_):
@@ -17815,8 +15440,6 @@ class Storage(EnergyAsset):
 
 
 class Consumer(EnergyAsset):
-    """An abstract class that describes EnergyAssets that can consume
-    energy. It is one of the 5 capabilities in ESDL"""
     subclass = None
     superclass = EnergyAsset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, extensiontype_=None, **kwargs_):
@@ -17934,15 +15557,6 @@ class Consumer(EnergyAsset):
 
 
 class Producer(EnergyAsset):
-    """An abstract class that describes EnergyAssets that can produce
-    energy. It is one of the 5 capabilities in ESDLDefines the
-    amount of time it is operational in hours during the year (e.g.
-    the producer is not in maintenance and not actively turned
-    off)An annual number of full-load hours is the time it will take
-    a given Producer to yield its annual production if it is able to
-    produce with its installed capacity all of the time. The
-    capacity is defined by the 'Power' attributeMaximum power /
-    capacity in Watt"""
     subclass = None
     superclass = EnergyAsset
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, extensiontype_=None, **kwargs_):
@@ -18093,76 +15707,6 @@ class Producer(EnergyAsset):
 # end class Producer
 
 
-class PVTInstallation(Producer):
-    subclass = None
-    superclass = Producer
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
-        self.original_tagname_ = None
-        self.parent_object_ = kwargs_.get('parent_object_')
-        super(PVTInstallation, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, controlStrategy, port, prodType, operationalHours, fullLoadHours, power,  **kwargs_)
-    def factory(*args_, **kwargs_):
-        if CurrentSubclassModule_ is not None:
-            subclass = getSubclassFromModule_(
-                CurrentSubclassModule_, PVTInstallation)
-            if subclass is not None:
-                return subclass(*args_, **kwargs_)
-        if PVTInstallation.subclass:
-            return PVTInstallation.subclass(*args_, **kwargs_)
-        else:
-            return PVTInstallation(*args_, **kwargs_)
-    factory = staticmethod(factory)
-    def hasContent_(self):
-        if (
-            super(PVTInstallation, self).hasContent_()
-        ):
-            return True
-        else:
-            return False
-    def export(self, outfile, level, namespaceprefix_='esdl:', name_='PVTInstallation', namespacedef_='', pretty_print=True):
-        imported_ns_def_ = GenerateDSNamespaceDefs_.get('PVTInstallation')
-        if imported_ns_def_ is not None:
-            namespacedef_ = imported_ns_def_
-        if pretty_print:
-            eol_ = '\n'
-        else:
-            eol_ = ''
-        if self.original_tagname_ is not None:
-            name_ = self.original_tagname_
-        showIndent(outfile, level, pretty_print)
-        outfile.write('<%s%s' % (name_, namespacedef_ and ' ' + namespacedef_ or '', ))
-        already_processed = set()
-        self.exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='PVTInstallation')
-        if self.hasContent_():
-            outfile.write('>%s' % (eol_, ))
-            self.exportChildren(outfile, level + 1, namespaceprefix_='esdl:', name_='PVTInstallation', pretty_print=pretty_print)
-            showIndent(outfile, level, pretty_print)
-            outfile.write('</%s>%s' % (name_, eol_))
-        else:
-            outfile.write('/>%s' % (eol_, ))
-    def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='PVTInstallation'):
-        super(PVTInstallation, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='PVTInstallation')
-    def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='PVTInstallation', fromsubclass_=False, pretty_print=True):
-        super(PVTInstallation, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
-    def to_etree(self, parent_element=None, name_='PVTInstallation', mapping_=None):
-        element = super(PVTInstallation, self).to_etree(parent_element, name_, mapping_)
-        if mapping_ is not None:
-            mapping_[id(self)] = element
-        return element
-    def build(self, node):
-        already_processed = set()
-        self.buildAttributes(node, node.attrib, already_processed)
-        for child in node:
-            nodeName_ = Tag_pattern_.match(child.tag).groups()[-1]
-            self.buildChildren(child, node, nodeName_)
-        return self
-    def buildAttributes(self, node, attrs, already_processed):
-        super(PVTInstallation, self).buildAttributes(node, attrs, already_processed)
-    def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
-        super(PVTInstallation, self).buildChildren(child_, node, nodeName_, True)
-        pass
-# end class PVTInstallation
-
-
 class CurtailmentStrategy(ControlStrategy):
     subclass = None
     superclass = ControlStrategy
@@ -18274,14 +15818,10 @@ class StorageStrategy(ControlStrategy):
         return self.marginalChargeCosts
     def set_marginalChargeCosts(self, marginalChargeCosts):
         self.marginalChargeCosts = marginalChargeCosts
-        marginalChargeCosts.original_tagname_ = 'marginalChargeCosts'
-        marginalChargeCosts.extensiontype_ = marginalChargeCosts.__class__.__name__
     def get_marginalDischargeCosts(self):
         return self.marginalDischargeCosts
     def set_marginalDischargeCosts(self, marginalDischargeCosts):
         self.marginalDischargeCosts = marginalDischargeCosts
-        marginalDischargeCosts.original_tagname_ = 'marginalDischargeCosts'
-        marginalDischargeCosts.extensiontype_ = marginalDischargeCosts.__class__.__name__
     def hasContent_(self):
         if (
             self.marginalChargeCosts is not None or
@@ -20070,7 +17610,6 @@ class EnergyDemand(Consumer):
 
 
 class Airco(Conversion):
-    """Represents an air conditioning unit"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
@@ -20141,7 +17680,6 @@ class Airco(Conversion):
 
 
 class CoolingDemand(Consumer):
-    """Describes the cooling demand of e.g. a building"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, deviceType=None, **kwargs_):
@@ -20226,7 +17764,6 @@ class CoolingDemand(Consumer):
 
 
 class Valve(AbstractSwitch):
-    """Defines a valve, e.g. in a water, gas or heat network"""
     subclass = None
     superclass = AbstractSwitch
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
@@ -20297,7 +17834,6 @@ class Valve(AbstractSwitch):
 
 
 class Pump(AbstractTransformer):
-    """Defines a pump, e.g. in a water or heat network"""
     subclass = None
     superclass = AbstractTransformer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
@@ -20368,8 +17904,6 @@ class Pump(AbstractTransformer):
 
 
 class XToPower(Conversion):
-    """Represents the ability to convert some other form of energy to
-    electricity"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
@@ -20440,7 +17974,6 @@ class XToPower(Conversion):
 
 
 class CCS(Storage):
-    """Represents Carbon Capture and Storage"""
     subclass = None
     superclass = Storage
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
@@ -20511,8 +18044,6 @@ class CCS(Storage):
 
 
 class PowerToX(Conversion):
-    """Represents the ability to convert electricity to some other form of
-    energy"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
@@ -20583,7 +18114,6 @@ class PowerToX(Conversion):
 
 
 class Losses(Consumer):
-    """Used to define losses explicitly (as a Consumer capability)"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -20654,23 +18184,17 @@ class Losses(Consumer):
 
 
 class AggregatedBuilding(AbstractBuilding):
-    """Represents more than one building aggregated into one entity. It
-    supports different types of aggregation, such as building type,
-    energy label etc."""
     subclass = None
     superclass = AbstractBuilding
-    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, buildingUsage=None, numberOfBuildings=None, floorArea=None, aggregationOf=None, energyLabelDistribution=None, buildingYearDistribution=None, buildingTypeDistribution=None, residentialBuildingTypeDistribution=None, housingTypeDistribution=None, **kwargs_):
+    def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, energyLabel=None, energyIndex=None, asset=None, numberOfBuildings=None, residentialBuildingType='UNDEFINED', aggregationOf=None, energyLabelDistribution=None, buildingYearDistribution=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
-        super(AggregatedBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset, buildingUsage,  **kwargs_)
+        super(AggregatedBuilding, self).__init__(id, name, shortName, description, originalIdInSource, isOwnedBy, sector, dataSource, surfaceArea, commissioningDate, decommissioningDate, owner, technicalLifetime, aggregated, aggregationCount, installationDuration, area, containingBuilding, geometry, costInformation, KPIs, energyLabel, energyIndex, asset,  **kwargs_)
         self.numberOfBuildings = _cast(int, numberOfBuildings)
-        self.floorArea = _cast(float, floorArea)
+        self.residentialBuildingType = _cast(None, residentialBuildingType)
         self.aggregationOf = _cast(None, aggregationOf)
         self.energyLabelDistribution = energyLabelDistribution
         self.buildingYearDistribution = buildingYearDistribution
-        self.buildingTypeDistribution = buildingTypeDistribution
-        self.residentialBuildingTypeDistribution = residentialBuildingTypeDistribution
-        self.housingTypeDistribution = housingTypeDistribution
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -20690,26 +18214,14 @@ class AggregatedBuilding(AbstractBuilding):
         return self.buildingYearDistribution
     def set_buildingYearDistribution(self, buildingYearDistribution):
         self.buildingYearDistribution = buildingYearDistribution
-    def get_buildingTypeDistribution(self):
-        return self.buildingTypeDistribution
-    def set_buildingTypeDistribution(self, buildingTypeDistribution):
-        self.buildingTypeDistribution = buildingTypeDistribution
-    def get_residentialBuildingTypeDistribution(self):
-        return self.residentialBuildingTypeDistribution
-    def set_residentialBuildingTypeDistribution(self, residentialBuildingTypeDistribution):
-        self.residentialBuildingTypeDistribution = residentialBuildingTypeDistribution
-    def get_housingTypeDistribution(self):
-        return self.housingTypeDistribution
-    def set_housingTypeDistribution(self, housingTypeDistribution):
-        self.housingTypeDistribution = housingTypeDistribution
     def get_numberOfBuildings(self):
         return self.numberOfBuildings
     def set_numberOfBuildings(self, numberOfBuildings):
         self.numberOfBuildings = numberOfBuildings
-    def get_floorArea(self):
-        return self.floorArea
-    def set_floorArea(self, floorArea):
-        self.floorArea = floorArea
+    def get_residentialBuildingType(self):
+        return self.residentialBuildingType
+    def set_residentialBuildingType(self, residentialBuildingType):
+        self.residentialBuildingType = residentialBuildingType
     def get_aggregationOf(self):
         return self.aggregationOf
     def set_aggregationOf(self, aggregationOf):
@@ -20718,9 +18230,6 @@ class AggregatedBuilding(AbstractBuilding):
         if (
             self.energyLabelDistribution is not None or
             self.buildingYearDistribution is not None or
-            self.buildingTypeDistribution is not None or
-            self.residentialBuildingTypeDistribution is not None or
-            self.housingTypeDistribution is not None or
             super(AggregatedBuilding, self).hasContent_()
         ):
             return True
@@ -20752,9 +18261,9 @@ class AggregatedBuilding(AbstractBuilding):
         if self.numberOfBuildings is not None and 'numberOfBuildings' not in already_processed:
             already_processed.add('numberOfBuildings')
             outfile.write(' numberOfBuildings="%s"' % self.gds_format_integer(self.numberOfBuildings, input_name='numberOfBuildings'))
-        if self.floorArea is not None and 'floorArea' not in already_processed:
-            already_processed.add('floorArea')
-            outfile.write(' floorArea="%s"' % self.gds_format_double(self.floorArea, input_name='floorArea'))
+        if self.residentialBuildingType != "UNDEFINED" and 'residentialBuildingType' not in already_processed:
+            already_processed.add('residentialBuildingType')
+            outfile.write(' residentialBuildingType=%s' % (quote_attrib(self.residentialBuildingType), ))
         if self.aggregationOf is not None and 'aggregationOf' not in already_processed:
             already_processed.add('aggregationOf')
             outfile.write(' aggregationOf=%s' % (self.gds_encode(self.gds_format_string(quote_attrib(self.aggregationOf), input_name='aggregationOf')), ))
@@ -20768,18 +18277,12 @@ class AggregatedBuilding(AbstractBuilding):
             self.energyLabelDistribution.export(outfile, level, namespaceprefix_, name_='energyLabelDistribution', pretty_print=pretty_print)
         if self.buildingYearDistribution is not None:
             self.buildingYearDistribution.export(outfile, level, namespaceprefix_, name_='buildingYearDistribution', pretty_print=pretty_print)
-        if self.buildingTypeDistribution is not None:
-            self.buildingTypeDistribution.export(outfile, level, namespaceprefix_, name_='buildingTypeDistribution', pretty_print=pretty_print)
-        if self.residentialBuildingTypeDistribution is not None:
-            self.residentialBuildingTypeDistribution.export(outfile, level, namespaceprefix_, name_='residentialBuildingTypeDistribution', pretty_print=pretty_print)
-        if self.housingTypeDistribution is not None:
-            self.housingTypeDistribution.export(outfile, level, namespaceprefix_, name_='housingTypeDistribution', pretty_print=pretty_print)
     def to_etree(self, parent_element=None, name_='AggregatedBuilding', mapping_=None):
         element = super(AggregatedBuilding, self).to_etree(parent_element, name_, mapping_)
         if self.numberOfBuildings is not None:
             element.set('numberOfBuildings', self.gds_format_integer(self.numberOfBuildings))
-        if self.floorArea is not None:
-            element.set('floorArea', self.gds_format_double(self.floorArea))
+        if self.residentialBuildingType is not None:
+            element.set('residentialBuildingType', self.residentialBuildingType)
         if self.aggregationOf is not None:
             element.set('aggregationOf', self.gds_format_string(self.aggregationOf))
         if self.energyLabelDistribution is not None:
@@ -20788,15 +18291,6 @@ class AggregatedBuilding(AbstractBuilding):
         if self.buildingYearDistribution is not None:
             buildingYearDistribution_ = self.buildingYearDistribution
             buildingYearDistribution_.to_etree(element, name_='buildingYearDistribution', mapping_=mapping_)
-        if self.buildingTypeDistribution is not None:
-            buildingTypeDistribution_ = self.buildingTypeDistribution
-            buildingTypeDistribution_.to_etree(element, name_='buildingTypeDistribution', mapping_=mapping_)
-        if self.residentialBuildingTypeDistribution is not None:
-            residentialBuildingTypeDistribution_ = self.residentialBuildingTypeDistribution
-            residentialBuildingTypeDistribution_.to_etree(element, name_='residentialBuildingTypeDistribution', mapping_=mapping_)
-        if self.housingTypeDistribution is not None:
-            housingTypeDistribution_ = self.housingTypeDistribution
-            housingTypeDistribution_.to_etree(element, name_='housingTypeDistribution', mapping_=mapping_)
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -20815,13 +18309,10 @@ class AggregatedBuilding(AbstractBuilding):
                 self.numberOfBuildings = int(value)
             except ValueError as exp:
                 raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('floorArea', node)
-        if value is not None and 'floorArea' not in already_processed:
-            already_processed.add('floorArea')
-            try:
-                self.floorArea = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (floorArea): %s' % exp)
+        value = find_attr_value_('residentialBuildingType', node)
+        if value is not None and 'residentialBuildingType' not in already_processed:
+            already_processed.add('residentialBuildingType')
+            self.residentialBuildingType = value
         value = find_attr_value_('aggregationOf', node)
         if value is not None and 'aggregationOf' not in already_processed:
             already_processed.add('aggregationOf')
@@ -20838,29 +18329,11 @@ class AggregatedBuilding(AbstractBuilding):
             obj_.build(child_)
             self.buildingYearDistribution = obj_
             obj_.original_tagname_ = 'buildingYearDistribution'
-        elif nodeName_ == 'buildingTypeDistribution':
-            obj_ = BuildingTypeDistribution.factory(parent_object_=self)
-            obj_.build(child_)
-            self.buildingTypeDistribution = obj_
-            obj_.original_tagname_ = 'buildingTypeDistribution'
-        elif nodeName_ == 'residentialBuildingTypeDistribution':
-            obj_ = ResidentialBuildingTypeDistribution.factory(parent_object_=self)
-            obj_.build(child_)
-            self.residentialBuildingTypeDistribution = obj_
-            obj_.original_tagname_ = 'residentialBuildingTypeDistribution'
-        elif nodeName_ == 'housingTypeDistribution':
-            obj_ = HousingTypeDistribution.factory(parent_object_=self)
-            obj_.build(child_)
-            self.housingTypeDistribution = obj_
-            obj_.original_tagname_ = 'housingTypeDistribution'
         super(AggregatedBuilding, self).buildChildren(child_, node, nodeName_, True)
 # end class AggregatedBuilding
 
 
 class EVChargingStation(Consumer):
-    """Represents a charging station for electrical vehicles. Both single
-    private-owned car chargers and public charging spaces can be
-    modelled by this class"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -20931,8 +18404,6 @@ class EVChargingStation(Consumer):
 
 
 class PowerPlant(Conversion):
-    """Defines an electricity generating plantReference to the source of
-    the plant"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, fuel=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, energyCarrier=None, mustRun=None, **kwargs_):
@@ -21132,9 +18603,6 @@ class PowerPlant(Conversion):
 
 
 class GConnection(AbstractConnection):
-    """Gas connection of a building. Defines the demarcation between the
-    inhouse network and the gas grid (location where the (smart)
-    meter is located)"""
     subclass = None
     superclass = AbstractConnection
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
@@ -21205,9 +18673,6 @@ class GConnection(AbstractConnection):
 
 
 class HConnection(AbstractConnection):
-    """Heat connection of a building. Defines the demarcation between the
-    inhouse network and the heat grid (location where the (smart)
-    meter is located)"""
     subclass = None
     superclass = AbstractConnection
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
@@ -21278,9 +18743,6 @@ class HConnection(AbstractConnection):
 
 
 class EConnection(AbstractConnection):
-    """Electricity connection of a building. Defines the demarcation
-    between the inhouse network and the electricity grid (location
-    where the (smart) meter is located)"""
     subclass = None
     superclass = AbstractConnection
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, EANCode=None, **kwargs_):
@@ -21365,7 +18827,6 @@ class EConnection(AbstractConnection):
 
 
 class HeatExchange(AbstractTransformer):
-    """Exchange heat between two circuits"""
     subclass = None
     superclass = AbstractTransformer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, LossDeltaT=None, **kwargs_):
@@ -21453,7 +18914,6 @@ class HeatExchange(AbstractTransformer):
 
 
 class Transformer(AbstractTransformer):
-    """Electrical transformer between different voltage levels"""
     subclass = None
     superclass = AbstractTransformer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, voltagePrimary=None, voltageSecundary=None, **kwargs_):
@@ -21558,9 +19018,6 @@ class Transformer(AbstractTransformer):
 
 
 class GasDemand(Consumer):
-    """Describes the gas demand of e.g. a household, area, etc. This can be
-    used for all types of gasses (e.g. CO2, Natural Gas, Hydrogen,
-    etc.)"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -21631,7 +19088,6 @@ class GasDemand(Consumer):
 
 
 class ElectricityDemand(Consumer):
-    """Describes the electricity demand of e.g. a household, area, etc."""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -21702,7 +19158,6 @@ class ElectricityDemand(Consumer):
 
 
 class HeatingDemand(Consumer):
-    """Describes the heating demand of e.g. a household, area, etc."""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, type_=None, deviceType=None, **kwargs_):
@@ -21801,9 +19256,6 @@ class HeatingDemand(Consumer):
 
 
 class HeatPump(Conversion):
-    """Describes a Heat PumpType of the source, e.g. Air, subsurface,
-    aquifernumber of heat pump stagesCoefficient of performance of
-    this Heat Pump(legacy/experimental) In case of hybrid usage"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, source=None, stages=1, COP=None, additionalHeatingSourceType=None, **kwargs_):
@@ -21936,10 +19388,6 @@ class HeatPump(Conversion):
 
 
 class CoGeneration(Conversion):
-    """Abstract asset describing a co-generation plant that produces heat
-    and electricityRatio between heat and electricity in its
-    output(legacy/experimental) fuel type of this
-    plant(legacy/experimental) input energy carrier of this plant"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, extensiontype_=None, **kwargs_):
@@ -22119,11 +19567,6 @@ class CoGeneration(Conversion):
 
 
 class GeothermalSource(Producer):
-    """Geothermal source including the installation that connects the
-    source to the networkin mtype of production of this source, e.g.
-    Heat or ElectricityCoefficient of Performance of this sourcein
-    degrees Celciusin kg/sin Wattreferences the potential this
-    source is part of"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, wellDepth=None, geothermalSourceType=None, COP=None, aquiferTemperature=None, flowRate=None, pumpPower=None, geothermalPotential=None, **kwargs_):
@@ -22307,10 +19750,6 @@ class GeothermalSource(Producer):
 
 
 class Pipe(AbstractConductor):
-    """Represents a pipe to transport gasses or fluids. When defining the
-    geometry of a pipe by means of a line, the first point of the
-    line refers to the first port and the last point of the line
-    refers to the second port.in min m"""
     subclass = None
     superclass = AbstractConductor
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, diameter=None, length=None, **kwargs_):
@@ -22415,9 +19854,6 @@ class Pipe(AbstractConductor):
 
 
 class SinkConsumer(Consumer):
-    """Represents a generic sink that consumes a certain commodity. Used to
-    model the rest of the energy system that is out of the current
-    scope"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -22488,9 +19924,6 @@ class SinkConsumer(Consumer):
 
 
 class SourceProducer(Producer):
-    """Represents a generic source that produces a certain commodity. Used
-    to model the rest of the energy system that is out of the
-    current scope"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
@@ -22561,8 +19994,6 @@ class SourceProducer(Producer):
 
 
 class GasNetwork(EnergyNetwork):
-    """Describes an complete gas network, without detailing the complete
-    topology. It is a Transport capability"""
     subclass = None
     superclass = EnergyNetwork
     def __init__(self, pressure=None, **kwargs_):
@@ -22650,8 +20081,6 @@ class GasNetwork(EnergyNetwork):
 
 
 class HeatNetwork(EnergyNetwork):
-    """Describes an complete heat network, without detailing the complete
-    topology. It is a Transport capability"""
     subclass = None
     superclass = EnergyNetwork
     def __init__(self, temperature=None, temperatureMin=None, temperatureMax=None, **kwargs_):
@@ -22773,7 +20202,6 @@ class HeatNetwork(EnergyNetwork):
 
 
 class GasHeater(Conversion):
-    """Converts gas to heat, e.g. a gas boiler or gas heater"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, minimumBurnRate=0.0, type_=None, **kwargs_):
@@ -22875,7 +20303,6 @@ class GasHeater(Conversion):
 
 
 class HeatStorage(Storage):
-    """Generic heat storage asset with min and max temperatures"""
     subclass = None
     superclass = Storage
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, minStorageTemperature=None, maxStorageTemperature=None, **kwargs_):
@@ -22980,11 +20407,6 @@ class HeatStorage(Storage):
 
 
 class AggregatedStorage(Storage):
-    """Represents an aggregation of multiple storage assets as one
-    aggregated storage asset. It allows you to reference the storage
-    asset it is aggregated of by using the aggregationOf reference.
-    Can be used to aggregate a heterogeneous collection of storage
-    assets (e.g. of different types)"""
     subclass = None
     superclass = Storage
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, aggregationOf=None, **kwargs_):
@@ -23069,11 +20491,6 @@ class AggregatedStorage(Storage):
 
 
 class AggregatedConversion(Conversion):
-    """Represents an aggregation of multiple conversion assets as one
-    aggregated conversion asset. It allows you to reference the
-    conversion asset it is aggregated of by using the aggregationOf
-    reference. Can be used to aggregate a heterogeneous collection
-    of conversion assets (e.g. of different types)"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, aggregationOf=None, **kwargs_):
@@ -23158,11 +20575,6 @@ class AggregatedConversion(Conversion):
 
 
 class AggregatedTransport(Transport):
-    """Represents an aggregation of multiple transport assets as one
-    aggregated transport asset. It allows you to reference the
-    transport asset it is aggregated of by using the aggregationOf
-    reference. Can be used to aggregate a heterogeneous collection
-    of transport assets (e.g. of different types)"""
     subclass = None
     superclass = Transport
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, aggregationOf=None, **kwargs_):
@@ -23247,8 +20659,6 @@ class AggregatedTransport(Transport):
 
 
 class GenericConversion(Conversion):
-    """Generic conversion class that can be used in cases that the actual
-    asset type is not important or not supported yet in ESDL"""
     subclass = None
     superclass = Conversion
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, **kwargs_):
@@ -23319,8 +20729,6 @@ class GenericConversion(Conversion):
 
 
 class GenericTransport(Transport):
-    """Generic transport class that can be used in cases that the actual
-    asset type is not important or not supported yet in ESDL"""
     subclass = None
     superclass = Transport
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, **kwargs_):
@@ -23391,8 +20799,6 @@ class GenericTransport(Transport):
 
 
 class GenericStorage(Storage):
-    """Generic storage class that can be used in cases that the actual
-    asset type is not important or not supported yet in ESDL"""
     subclass = None
     superclass = Storage
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, **kwargs_):
@@ -23463,8 +20869,6 @@ class GenericStorage(Storage):
 
 
 class GenericProducer(Producer):
-    """Generic producer class that can be used in cases that the actual
-    asset type is not important or not supported yet in ESDL"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, **kwargs_):
@@ -23535,8 +20939,6 @@ class GenericProducer(Producer):
 
 
 class GenericConsumer(Consumer):
-    """Generic consumer class that can be used in cases that the actual
-    asset type is not important or not supported yet in ESDL"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, **kwargs_):
@@ -23607,11 +21009,6 @@ class GenericConsumer(Consumer):
 
 
 class AggregatedProducer(Producer):
-    """Represents an aggregation of multiple producers as one aggregated
-    producer. It allows you to reference the producers it is
-    aggregated of by using the aggregationOf reference. Can be used
-    to aggregate a heterogeneous collection of producers (e.g. of
-    different types)"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, aggregationOf=None, **kwargs_):
@@ -23696,11 +21093,6 @@ class AggregatedProducer(Producer):
 
 
 class AggregatedConsumer(Consumer):
-    """Represents an aggregation of multiple consumers as one aggregated
-    consumer. It allows you to reference the consumers it is
-    aggregated of by using the aggregationOf reference. Can be used
-    to aggregate a heterogeneous collection of consumers (e.g. of
-    different types)"""
     subclass = None
     superclass = Consumer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, consType='PRIMARY', power=None, aggregationOf=None, **kwargs_):
@@ -23785,10 +21177,6 @@ class AggregatedConsumer(Consumer):
 
 
 class ElectricityCable(AbstractConductor):
-    """Describes a representation of an electricity cable. When defining
-    the geometry of a cable by means of a line, the first point of
-    the line refers to the first port and the last point of the line
-    refers to the second port.Length of the cable in meters"""
     subclass = None
     superclass = AbstractConductor
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, efficiency=None, length=None, **kwargs_):
@@ -23876,8 +21264,6 @@ class ElectricityCable(AbstractConductor):
 
 
 class ElectricityNetwork(EnergyNetwork):
-    """Describes an complete Electricty network, without detailing the
-    complete topology. It is a Transport capability"""
     subclass = None
     superclass = EnergyNetwork
     def __init__(self, voltage=None, **kwargs_):
@@ -23965,7 +21351,6 @@ class ElectricityNetwork(EnergyNetwork):
 
 
 class Battery(Storage):
-    """A battery can store electrical energy. This is a Storage capability"""
     subclass = None
     superclass = Storage
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, capacity=None, chargeEfficiency=0.0, dischargeEfficiency=0.0, selfDischargeRate=0.0, fillLevel=None, maxChargeRate=0.0, maxDischargeRate=0.0, profile=None, maxChargeDischargeCycles=None, **kwargs_):
@@ -24053,8 +21438,6 @@ class Battery(Storage):
 
 
 class PVPanel(Producer):
-    """Describes an individual PV panel. See PVInstallation for multiple PV
-    panels. This is a Producer capability"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, panelEfficiency=None, inverterEfficiency=None, angle=None, orientation=None, **kwargs_):
@@ -24193,8 +21576,6 @@ class PVPanel(Producer):
 
 
 class WindTurbine(Producer):
-    """Describes an individual wind turbine. A wind turbine is a producer
-    capability"""
     subclass = None
     superclass = Producer
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, prodType='RENEWABLE', operationalHours=None, fullLoadHours=None, power=None, rotorDiameter=None, height=None, type_=None, **kwargs_):
@@ -24457,7 +21838,7 @@ class WaterBuffer(HeatStorage):
 class UTES(HeatStorage):
     subclass = None
     superclass = HeatStorage
-    def __init__(self, type_='UNDEFINED', UTESPotential=None, **kwargs_):
+    def __init__(self, type_=None, UTESPotential=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(UTES, self).__init__( **kwargs_)
@@ -24511,7 +21892,7 @@ class UTES(HeatStorage):
             outfile.write('/>%s' % (eol_, ))
     def exportAttributes(self, outfile, level, already_processed, namespaceprefix_='esdl:', name_='UTES'):
         super(UTES, self).exportAttributes(outfile, level, already_processed, namespaceprefix_, name_='UTES')
-        if self.type_ != "UNDEFINED" and 'type_' not in already_processed:
+        if self.type_ is not None and 'type_' not in already_processed:
             already_processed.add('type_')
             outfile.write(' type=%s' % (quote_attrib(self.type_), ))
         if self.UTESPotential is not None and 'UTESPotential' not in already_processed:
@@ -24656,15 +22037,11 @@ class PVInstallation(PVPanel):
 class Electrolyzer(PowerToX):
     subclass = None
     superclass = PowerToX
-    def __init__(self, outputPressure=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, **kwargs_):
+    def __init__(self, outputPressure=None, **kwargs_):
         self.original_tagname_ = None
         self.parent_object_ = kwargs_.get('parent_object_')
         super(Electrolyzer, self).__init__( **kwargs_)
         self.outputPressure = _cast(float, outputPressure)
-        self.maxLoad = _cast(int, maxLoad)
-        self.minLoad = _cast(int, minLoad)
-        self.effMaxLoad = _cast(float, effMaxLoad)
-        self.effMinLoad = _cast(float, effMinLoad)
     def factory(*args_, **kwargs_):
         if CurrentSubclassModule_ is not None:
             subclass = getSubclassFromModule_(
@@ -24680,22 +22057,6 @@ class Electrolyzer(PowerToX):
         return self.outputPressure
     def set_outputPressure(self, outputPressure):
         self.outputPressure = outputPressure
-    def get_maxLoad(self):
-        return self.maxLoad
-    def set_maxLoad(self, maxLoad):
-        self.maxLoad = maxLoad
-    def get_minLoad(self):
-        return self.minLoad
-    def set_minLoad(self, minLoad):
-        self.minLoad = minLoad
-    def get_effMaxLoad(self):
-        return self.effMaxLoad
-    def set_effMaxLoad(self, effMaxLoad):
-        self.effMaxLoad = effMaxLoad
-    def get_effMinLoad(self):
-        return self.effMinLoad
-    def set_effMinLoad(self, effMinLoad):
-        self.effMinLoad = effMinLoad
     def hasContent_(self):
         if (
             super(Electrolyzer, self).hasContent_()
@@ -24728,18 +22089,6 @@ class Electrolyzer(PowerToX):
         if self.outputPressure is not None and 'outputPressure' not in already_processed:
             already_processed.add('outputPressure')
             outfile.write(' outputPressure="%s"' % self.gds_format_double(self.outputPressure, input_name='outputPressure'))
-        if self.maxLoad is not None and 'maxLoad' not in already_processed:
-            already_processed.add('maxLoad')
-            outfile.write(' maxLoad="%s"' % self.gds_format_integer(self.maxLoad, input_name='maxLoad'))
-        if self.minLoad is not None and 'minLoad' not in already_processed:
-            already_processed.add('minLoad')
-            outfile.write(' minLoad="%s"' % self.gds_format_integer(self.minLoad, input_name='minLoad'))
-        if self.effMaxLoad is not None and 'effMaxLoad' not in already_processed:
-            already_processed.add('effMaxLoad')
-            outfile.write(' effMaxLoad="%s"' % self.gds_format_double(self.effMaxLoad, input_name='effMaxLoad'))
-        if self.effMinLoad is not None and 'effMinLoad' not in already_processed:
-            already_processed.add('effMinLoad')
-            outfile.write(' effMinLoad="%s"' % self.gds_format_double(self.effMinLoad, input_name='effMinLoad'))
     def exportChildren(self, outfile, level, namespaceprefix_='esdl:', name_='Electrolyzer', fromsubclass_=False, pretty_print=True):
         super(Electrolyzer, self).exportChildren(outfile, level, namespaceprefix_, name_, True, pretty_print=pretty_print)
         pass
@@ -24747,14 +22096,6 @@ class Electrolyzer(PowerToX):
         element = super(Electrolyzer, self).to_etree(parent_element, name_, mapping_)
         if self.outputPressure is not None:
             element.set('outputPressure', self.gds_format_double(self.outputPressure))
-        if self.maxLoad is not None:
-            element.set('maxLoad', self.gds_format_integer(self.maxLoad))
-        if self.minLoad is not None:
-            element.set('minLoad', self.gds_format_integer(self.minLoad))
-        if self.effMaxLoad is not None:
-            element.set('effMaxLoad', self.gds_format_double(self.effMaxLoad))
-        if self.effMinLoad is not None:
-            element.set('effMinLoad', self.gds_format_double(self.effMinLoad))
         if mapping_ is not None:
             mapping_[id(self)] = element
         return element
@@ -24773,34 +22114,6 @@ class Electrolyzer(PowerToX):
                 self.outputPressure = float(value)
             except ValueError as exp:
                 raise ValueError('Bad float/double attribute (outputPressure): %s' % exp)
-        value = find_attr_value_('maxLoad', node)
-        if value is not None and 'maxLoad' not in already_processed:
-            already_processed.add('maxLoad')
-            try:
-                self.maxLoad = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('minLoad', node)
-        if value is not None and 'minLoad' not in already_processed:
-            already_processed.add('minLoad')
-            try:
-                self.minLoad = int(value)
-            except ValueError as exp:
-                raise_parse_error(node, 'Bad integer attribute: %s' % exp)
-        value = find_attr_value_('effMaxLoad', node)
-        if value is not None and 'effMaxLoad' not in already_processed:
-            already_processed.add('effMaxLoad')
-            try:
-                self.effMaxLoad = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (effMaxLoad): %s' % exp)
-        value = find_attr_value_('effMinLoad', node)
-        if value is not None and 'effMinLoad' not in already_processed:
-            already_processed.add('effMinLoad')
-            try:
-                self.effMinLoad = float(value)
-            except ValueError as exp:
-                raise ValueError('Bad float/double attribute (effMinLoad): %s' % exp)
         super(Electrolyzer, self).buildAttributes(node, attrs, already_processed)
     def buildChildren(self, child_, node, nodeName_, fromsubclass_=False):
         super(Electrolyzer, self).buildChildren(child_, node, nodeName_, True)
@@ -24809,7 +22122,6 @@ class Electrolyzer(PowerToX):
 
 
 class CHP(CoGeneration):
-    """Describes a Combined Heat and Power installation"""
     subclass = None
     superclass = CoGeneration
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, CHPType=None, **kwargs_):
@@ -24894,7 +22206,6 @@ class CHP(CoGeneration):
 
 
 class PVParc(PVPanel):
-    """Defines a PV parc of multiple panels"""
     subclass = None
     superclass = PVPanel
     def __init__(self, numberOfPanels=None, **kwargs_):
@@ -24982,7 +22293,6 @@ class PVParc(PVPanel):
 
 
 class WindParc(WindTurbine):
-    """Defines a wind parc of multiple turbines"""
     subclass = None
     superclass = WindTurbine
     def __init__(self, numberOfTurbines=None, **kwargs_):
@@ -25070,7 +22380,6 @@ class WindParc(WindTurbine):
 
 
 class FuelCell(CoGeneration):
-    """Defines a Fuel Cell"""
     subclass = None
     superclass = CoGeneration
     def __init__(self, id=None, name=None, shortName=None, description=None, originalIdInSource=None, isOwnedBy=None, sector=None, dataSource=None, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, technicalLifetime=None, aggregated=None, aggregationCount=1, installationDuration=None, area=None, containingBuilding=None, geometry=None, costInformation=None, KPIs=None, controlStrategy=None, port=None, efficiency=None, operationalHours=None, fullLoadHours=None, power=None, residualHeatSourcePotential=None, heatEfficiency=0.0, electricalEfficiency=0.0, HERatio=None, fuelType=None, leadCommodity=None, energyCarrier=None, **kwargs_):
@@ -25156,12 +22465,7 @@ GDSClassesMapping = {
     'BiomassPotential': BiomassPotential,
     'BooleanParameter': BooleanParameter,
     'Building': Building,
-    'BuildingTypeDistribution': BuildingTypeDistribution,
-    'BuildingTypePercentage': BuildingTypePercentage,
     'BuildingUnit': BuildingUnit,
-    'BuildingUsage': BuildingUsage,
-    'BuildingUsageInformation': BuildingUsageInformation,
-    'BuildingUsageReference': BuildingUsageReference,
     'CCS': CCS,
     'CHP': CHP,
     'Carriers': Carriers,
@@ -25173,10 +22477,8 @@ GDSClassesMapping = {
     'DataSourceReference': DataSourceReference,
     'DataSources': DataSources,
     'DateTimeProfile': DateTimeProfile,
-    'DaySchedule': DaySchedule,
     'DemandResponseService': DemandResponseService,
     'DoubleAssymetricVariance': DoubleAssymetricVariance,
-    'DoubleKPI': DoubleKPI,
     'DoubleParameter': DoubleParameter,
     'DrivenByDemand': DrivenByDemand,
     'DrivenByProfile': DrivenByProfile,
@@ -25199,11 +22501,9 @@ GDSClassesMapping = {
     'EnergyNetwork': EnergyNetwork,
     'EnergySystem': EnergySystem,
     'EnergySystemInformation': EnergySystemInformation,
-    'Event': Event,
     'FermentationPlant': FermentationPlant,
     'FromToDistribution': FromToDistribution,
-    'FromToDoublePerc': FromToDoublePerc,
-    'FromToIntPerc': FromToIntPerc,
+    'FromToPerc': FromToPerc,
     'FuelCell': FuelCell,
     'GConnection': GConnection,
     'GasCommodity': GasCommodity,
@@ -25228,17 +22528,15 @@ GDSClassesMapping = {
     'HeatPump': HeatPump,
     'HeatStorage': HeatStorage,
     'HeatingDemand': HeatingDemand,
-    'HousingTypeDistribution': HousingTypeDistribution,
-    'HousingTypePercentage': HousingTypePercentage,
     'InPort': InPort,
     'InfluxDBProfile': InfluxDBProfile,
     'Instance': Instance,
     'InstanceDate': InstanceDate,
     'InstancePeriod': InstancePeriod,
     'Insulation': Insulation,
-    'IntKPI': IntKPI,
     'IntegerParameter': IntegerParameter,
     'Joint': Joint,
+    'KPI': KPI,
     'KPIs': KPIs,
     'LegalArea': LegalArea,
     'Line': Line,
@@ -25256,7 +22554,6 @@ GDSClassesMapping = {
     'PVInstallation': PVInstallation,
     'PVPanel': PVPanel,
     'PVParc': PVParc,
-    'PVTInstallation': PVTInstallation,
     'Parties': Parties,
     'Party': Party,
     'Percentile': Percentile,
@@ -25274,8 +22571,6 @@ GDSClassesMapping = {
     'QuantityAndUnitType': QuantityAndUnitType,
     'QuantityAndUnits': QuantityAndUnits,
     'Range': Range,
-    'ResidentialBuildingTypeDistribution': ResidentialBuildingTypeDistribution,
-    'ResidentialBuildingTypePercentage': ResidentialBuildingTypePercentage,
     'ResidualHeatSource': ResidualHeatSource,
     'ResidualHeatSourcePotential': ResidualHeatSourcePotential,
     'RoomHeater': RoomHeater,
@@ -25291,7 +22586,6 @@ GDSClassesMapping = {
     'SolarPotential': SolarPotential,
     'SourceProducer': SourceProducer,
     'StorageStrategy': StorageStrategy,
-    'StringKPI': StringKPI,
     'StringLabelDistribution': StringLabelDistribution,
     'StringParameter': StringParameter,
     'StringPerc': StringPerc,
@@ -25308,7 +22602,6 @@ GDSClassesMapping = {
     'WKT': WKT,
     'WaterBuffer': WaterBuffer,
     'WaterToPower': WaterToPower,
-    'WeekSchedule': WeekSchedule,
     'WindParc': WindParc,
     'WindPotential': WindPotential,
     'WindTurbine': WindTurbine,
@@ -25441,7 +22734,6 @@ if __name__ == '__main__':
 
 __all__ = [
     "AbstractBuilding",
-    "AbstractBuildingUsage",
     "AbstractConductor",
     "AbstractConnection",
     "AbstractDataSource",
@@ -25467,12 +22759,7 @@ __all__ = [
     "BiomassPotential",
     "BooleanParameter",
     "Building",
-    "BuildingTypeDistribution",
-    "BuildingTypePercentage",
     "BuildingUnit",
-    "BuildingUsage",
-    "BuildingUsageInformation",
-    "BuildingUsageReference",
     "CCS",
     "CHP",
     "Carrier",
@@ -25491,10 +22778,8 @@ __all__ = [
     "DataSources",
     "DatabaseProfile",
     "DateTimeProfile",
-    "DaySchedule",
     "DemandResponseService",
     "DoubleAssymetricVariance",
-    "DoubleKPI",
     "DoubleParameter",
     "DrivenByDemand",
     "DrivenByProfile",
@@ -25519,12 +22804,9 @@ __all__ = [
     "EnergyService",
     "EnergySystem",
     "EnergySystemInformation",
-    "Event",
     "ExternalProfile",
     "FermentationPlant",
     "FromToDistribution",
-    "FromToDoublePerc",
-    "FromToIntPerc",
     "FromToPerc",
     "FuelCell",
     "GConnection",
@@ -25553,15 +22835,12 @@ __all__ = [
     "HeatPump",
     "HeatStorage",
     "HeatingDemand",
-    "HousingTypeDistribution",
-    "HousingTypePercentage",
     "InPort",
     "InfluxDBProfile",
     "Instance",
     "InstanceDate",
     "InstancePeriod",
     "Insulation",
-    "IntKPI",
     "IntegerParameter",
     "Item",
     "Joint",
@@ -25584,7 +22863,6 @@ __all__ = [
     "PVInstallation",
     "PVPanel",
     "PVParc",
-    "PVTInstallation",
     "Parameters",
     "Parties",
     "Party",
@@ -25606,8 +22884,6 @@ __all__ = [
     "QuantityAndUnitType",
     "QuantityAndUnits",
     "Range",
-    "ResidentialBuildingTypeDistribution",
-    "ResidentialBuildingTypePercentage",
     "ResidualHeatSource",
     "ResidualHeatSourcePotential",
     "RoomHeater",
@@ -25626,7 +22902,6 @@ __all__ = [
     "StaticProfile",
     "Storage",
     "StorageStrategy",
-    "StringKPI",
     "StringLabelDistribution",
     "StringParameter",
     "StringPerc",
@@ -25644,7 +22919,6 @@ __all__ = [
     "WKT",
     "WaterBuffer",
     "WaterToPower",
-    "WeekSchedule",
     "WindParc",
     "WindPotential",
     "WindTurbine",

@@ -165,9 +165,9 @@
             socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenBySupply', 'asset_id': asset_id, 'port_id': port_id});
         }
 
-        function set_storage_strategy(asset_id) {
-            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'StorageStrategy', 'asset_id': asset_id});
-        }
+        // function set_storage_strategy(asset_id) {
+        //     socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'StorageStrategy', 'asset_id': asset_id});
+        // }
 
         function set_marker_handlers(marker) {
             var asset_id = marker.id
@@ -239,7 +239,9 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set StorageStrategy for [' + marker.id + ']',
-                            callback: function(e) { set_storage_strategy(asset_id); }
+                            callback: function(e) {
+                                // set_storage_strategy(asset_id);
+                            }
                         });
                     }
 
@@ -632,7 +634,7 @@
         function set_storage_strategy(asset_id) {
             mcc = document.getElementById('marg_ch_costs').value;
             mdc = document.getElementById('marg_disch_costs').value;
-            socket.emit('command', {cmd: 'set_storage_strategy', asset_id: asset_id, marg_ch_costs: mcc, marg_disch_costs: mdc});
+            socket.emit('command', {cmd: 'set_control_strategy', asset_id: asset_id, strategy: 'StorageStrategy', marg_ch_costs: mcc, marg_disch_costs: mdc});
         }
 
         function storage_strategy_window(asset_id, mcc, mdc) {
@@ -1219,6 +1221,14 @@
                 control_strategy_config = csc
             });
 
+            socket.on('storage_strategy_window', function(params) {
+                var asset_id = params['asset_id'];
+                var mcc = params['mcc'];
+                var mdc = params['mdc'];
+
+                storage_strategy_window(asset_id, mcc, mdc)
+            });
+
             socket.on('marginal_costs', function(params) {
                 var mc = params['mc'];
                 var asset_id = params['asset_id'];
@@ -1547,6 +1557,11 @@
             if (menu_item_text.substring(4, 14) ==  'DrivenBySupply') {
                 set_driven_by_supply(asset_id, port_id);
             }
+        }
+
+        if (menu_item_text.substring(0, 11) ==  'Set Storage') {
+            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
+            socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
         }
     });
 

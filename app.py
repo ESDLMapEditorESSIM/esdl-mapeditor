@@ -1972,7 +1972,7 @@ def add_control_strategy_for_asset(asset_id, cs):
             if service.get_energyAsset() == asset_id:
                 services_list.remove(service)
 
-    services_list.append(cs)
+    services.add_service_with_type(cs)
 
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
@@ -2002,30 +2002,57 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
 def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     asset_dict = session['asset_dict']
 
-    send_alert("StorageStrategy not implemented yet")
+    cs = esdl.StorageStrategy()
 
-    # cs = esdl.StorageStrategy()
-    #
-    # asset = asset_dict[asset_id]
-    # asset_name = asset.get_name()
-    # if not asset_name:
-    #     asset_name = 'unknown'
-    #
-    # cs.set_id(str(uuid.uuid4()))
-    # cs.set_name(control_strategy + ' for ' + asset_name)
-    # cs.set_energyAsset(asset_id)
-    #
-    # mcc_sv = esdl.SingleValue()
-    # mcc_sv.set_id(str(uuid.uuid4()))
-    # mcc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    # cs.set_marginalChargeCosts(mcc_sv)
-    #
-    # mdc_sv = esdl.SingleValue()
-    # mdc_sv.set_id(str(uuid.uuid4()))
-    # mdc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    # cs.set_marginalDischargeCosts(mdc_sv)
-    #
-    # add_control_strategy_for_asset(asset_id, cs)
+    asset = asset_dict[asset_id]
+    asset_name = asset.get_name()
+    if not asset_name:
+        asset_name = 'unknown'
+
+    cs.set_id(str(uuid.uuid4()))
+    cs.set_name('StorageStrategy for ' + asset_name)
+    cs.set_energyAsset(asset_id)
+
+    mcc_sv = esdl.SingleValue()
+    mcc_sv.set_id(str(uuid.uuid4()))
+    mcc_sv.set_name('marginalChargeCosts for ' + asset_name)
+    mcc_sv.set_value(float(mcc))
+    cs.set_marginalChargeCosts(mcc_sv)
+
+    mdc_sv = esdl.SingleValue()
+    mdc_sv.set_id(str(uuid.uuid4()))
+    mdc_sv.set_name('marginalChargeCosts for ' + asset_name)
+    mdc_sv.set_value(float(mdc))
+    cs.set_marginalDischargeCosts(mdc_sv)
+
+    add_control_strategy_for_asset(asset_id, cs)
+
+
+def get_storage_marginal_costs(asset_id):
+    asset_dict = session['asset_dict']
+    asset = asset_dict[asset_id]
+
+    es = session['es_edit']
+
+    services = es.get_services()
+    if services:
+        services_list = services.get_service()
+        for service in services_list:
+            if isinstance(service, esdl.StorageStrategy):
+                if service.get_energyAsset() == asset_id:
+                    mcc_sv = service.get_marginalChargeCosts()
+                    mdc_sv = service.get_marginalDischargeCosts()
+                    if mcc_sv:
+                        mcc = mcc_sv.get_value()
+                    else:
+                        mcc = 0
+                    if mdc_sv:
+                        mdc = mdc_sv.get_value()
+                    else:
+                        mdc = 0
+                    return mcc, mdc
+
+    return 0, 0
 
 
 def remove_control_strategy_for_asset(asset_id):
@@ -2701,6 +2728,12 @@ def process_command(message):
                 emit('clear_ui', {'layer': 'areas'})
                 find_boundaries_in_ESDL(top_area)
 
+    if message['cmd'] == 'get_storage_strategy_info':
+        asset_id = message['asset_id']
+
+        mcc, mdc = get_storage_marginal_costs(asset_id)
+        emit('storage_strategy_window', {'asset_id': asset_id, 'mcc': mcc, 'mdc': mdc})
+
     if message['cmd'] == 'set_control_strategy':
         # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
         strategy = message['strategy']
@@ -2709,7 +2742,7 @@ def process_command(message):
         if strategy == 'StorageStrategy':
             mcc = message['marg_ch_costs']
             mdc = message['marg_disch_costs']
-            add_storage_control_strategy(asset_id, strategy, mcc, mdc)
+            add_storage_control_strategy_for_asset(asset_id, mcc, mdc)
         else:
             port_id = message['port_id']
             add_drivenby_control_strategy_for_asset(asset_id, strategy, port_id)
