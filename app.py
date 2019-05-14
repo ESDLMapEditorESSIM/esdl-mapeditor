@@ -2759,6 +2759,18 @@ def process_command(message):
 
         set_marginal_costs_for_asset(asset_id, mc)
 
+    if message['cmd'] == 'run_ESSIM_simulation':
+        print('ESSIM simulation command received')
+        emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
+        # Create the HTTP POST to start the simulation
+
+        # while simulation not finished (every second?)
+            # ask for progress (HTTP req)
+            # update UI
+
+        # HTTP get for end results
+        # present link to end results
+
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
 

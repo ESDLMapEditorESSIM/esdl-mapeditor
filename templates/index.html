@@ -751,6 +751,25 @@
             socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
         }
 
+        function run_ESSIM_simulation() {
+            socket.emit('command', {cmd: 'run_ESSIM_simulation'});
+        }
+
+        function show_simulation_progress_window() {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>ESSIM Simulation</h1>';
+
+            table = '<table>';
+            table = table + '<tr><td width=180>Progress</td>';
+            table = table + '<td id="progress_percentage">0%</td></tr>';
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();">Cancel simulation</button></p>';
+            sidebar.show();
+        }
+
         var socket;
 
         $(document).ready(function() {
@@ -1255,6 +1274,10 @@
             socket.on('and_now_press_download_file', function() {
                 $("#download-esdl").click();
             });
+
+            socket.on('show_simulation_progress_window', function() {
+                show_simulation_progress_window();
+            });
         });
     </script>
 
@@ -1404,6 +1427,8 @@
             <option value="building year">Building year</option>
             <option value="floor area">Floor area</option>
         </select>
+
+        <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Simulate</button>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
