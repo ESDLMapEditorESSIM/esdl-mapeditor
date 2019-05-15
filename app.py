@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-from time import sleep
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -2688,7 +2687,6 @@ def process_command(message):
                 print(' - removed {}'.format(conn))
         session['conn_list'] = new_list  # set new connection list
         emit('clear_connections')  # update gui
-        sleep(0.1)
         emit('add_connections', new_list)
 
     if message['cmd'] == 'set_carrier':
