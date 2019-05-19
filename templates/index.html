@@ -106,8 +106,8 @@
             clear_layer = false;
         }
 
-        setPortProfile = function(port_id) {
-            // console.log(port_id);
+        setPortProfile = function(e, marker_id, port_id) {
+            console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
 
@@ -170,7 +170,7 @@
         // }
 
         function set_marker_handlers(marker) {
-            var asset_id = marker.id
+            let asset_id = marker.id
             if (marker.ports) {
 
                 if (marker.ports.length > 0) {
@@ -180,29 +180,22 @@
                         contextmenuItems: []
                     });
 
-                    for (p=0; p<marker.ports.length; p++) {
-                        var port_id = ''+marker.ports[p].id;
+                    for (let p=0; p<marker.ports.length; p++) {
+                        let port_id = ''+marker.ports[p].id;
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                             text: 'Connect ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) {
-                                // console.log(port_id);
-                                // console.log(e);
-                                // console.log(this);
-                                // connectAsset(port_id);
-                            }
+                            callback: function(e) { connectAsset(e, asset_id, port_id); }
                         });
                     }
                     marker.options.contextmenuItems.push('-');
 
-                    for (p=0; p<marker.ports.length; p++) {
-                        var port_id = marker.ports[p].id;
+                    for (let p=0; p<marker.ports.length; p++) {
+                        let port_id = marker.ports[p].id;
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set profile of ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) {
-                                // setPortProfile(port_id);
-                            }
+                            callback: function(e) { setPortProfile(e, marker_id, port_id); }
                         });
                     }
 
@@ -311,18 +304,14 @@
 
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
             console.log('Build menu:');
-            for (p=0; p<line.ports.length; p++) {
-                var port_id = ''+line.ports[p].id;
+            let line_id = line.id;
+            for (let p=0; p<line.ports.length; p++) {
+                let port_id = ''+line.ports[p].id;
                 console.log(port_id);
                 line.options.contextmenuItems.push({
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) {
-                        // console.log(e);
-                        // var p_id = ''+port_id;
-                        // console.log('Callback call: '+ p_id);
-                        // connectAsset(p_id);
-                    }
+                    callback: function (e) { connectAsset(e, line_id, port_id); }
                 });
             }
 
@@ -722,6 +711,10 @@
             socket.emit('command', {cmd: 'remove_port', port_id: pid});
         }
 
+        function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
+            socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
+        }
+
         function change_param(obj) {
             asset_id = obj.id;
             asset_param_name = obj.name;
@@ -734,11 +727,9 @@
             // alert (e.latlng);
         }
 
-        function connectAsset(port_id) {
-            console.log('connectAsset:');
-            console.log(port_id);
-
-            console.log(connect_ports);
+        function connectAsset(e, feature_id, port_id) {
+            console.log('connectAsset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
+            //console.log(e);
             if (connect_ports != null) {
                 socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
                 connect_ports = null;
@@ -930,7 +921,7 @@
                     var con = connections[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
-                    var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '10,20', draggable: true});
+                    var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
                     connection_layer.addLayer(line);
                 }
             });
@@ -938,7 +929,7 @@
             socket.on('add_new_conn', function(connection) {
                 var coords = [connection[0], connection[1]];
                 // console.log(coords);
-                var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '10,20', draggable: true});
+                var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
                 connection_layer.addLayer(line);
             });
 
@@ -1022,9 +1013,17 @@
                         if (aname == '') {
                             aname = 'No name';
                         }
-                        table += '<tr><td>&nbsp;</td><td title=id: "' + connected_to_info[i]['ct_list'][j]['aid'] + '">'
+                        table += '<tr>';
+                        // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
+                        let from_asset_id = asset_id;
+                        let from_port_id = connected_to_info[i]['pid'];
+                        let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
+                        let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
+                        table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
+                        table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
                             + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
-                            + aname + '</td></tr>';
+                            + aname + '</td>';
+                        table += '</tr>';
                     }
                 }
                 table += '</table>';
@@ -1571,23 +1570,23 @@
         menu_item_text = e.el.innerText;
         console.log(e);
 
-        if (menu_item_text.substring(0, 11) == 'Set profile') {
-            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-            // console.log(port_id);
-            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
-        }
+//        if (menu_item_text.substring(0, 11) == 'Set profile') {
+//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
+//            // console.log(port_id);
+//            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
+//        }
 
-        if (menu_item_text.substring(0, 8) ==  'Connect ') {
-            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-            // console.log('In contextmenu select eventhandler:');
-            // console.log(port_id);
-            if (connect_ports != null) {
-                socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
-                connect_ports = null;
-            } else {
-                connect_ports = port_id;
-            }
-        }
+//        if (menu_item_text.substring(0, 8) ==  'Connect ') {
+//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
+//            // console.log('In contextmenu select eventhandler:');
+//            // console.log(port_id);
+//            if (connect_ports != null) {
+//                socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
+//                connect_ports = null;
+//            } else {
+//                connect_ports = port_id;
+//            }
+//        }
 
         if (menu_item_text.substring(0, 10) ==  'Set Driven') {
             port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));

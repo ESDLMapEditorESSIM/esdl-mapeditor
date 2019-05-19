@@ -1297,7 +1297,7 @@ def update_asset_connection_locations(ass_id, lat, lon):
 def update_transport_connection_locations(ass_id, asset, coords):
     conn_list = session['conn_list']
     mapping = session['port_to_asset_mapping']
-
+    print('Updating locations')
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             port_id = c['from-port-id']
@@ -2520,18 +2520,21 @@ def process_command(message):
                 port2 = p
 
         if port1 and port2:
-            connect_ports(port1, port2)
+            # add type check on ports
+            if type(port1).__name__ == type(port2).__name__:
+                send_alert('Cannot connect ports of the same type. One should be an InPort and one should be an OutPort')
+            else:
+                connect_ports(port1, port2)
 
-            emit('add_new_conn',
-                 [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
+                emit('add_new_conn',
+                     [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
 
-            conn_list = session["conn_list"]
-            conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
-                              'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
-                              'to-port-id': port2_id, 'to-asset-id': asset2_id,
-                              'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
-            session["conn_list"] = conn_list
-
+                conn_list = session["conn_list"]
+                conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
+                                  'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
+                                  'to-port-id': port2_id, 'to-asset-id': asset2_id,
+                                  'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
+                session["conn_list"] = conn_list
         else:
             send_alert('Serious error connecting ports')
 
@@ -2739,6 +2742,57 @@ def process_command(message):
             if p.get_id() == pid:
                 _remove_port_references(p)
                 ports.remove(p)
+
+    if message['cmd'] == 'remove_connection':
+        from_asset_id = message['from_asset_id']
+        from_asset = asset_dict[from_asset_id]
+        from_port_id = message['from_port_id']
+        to_asset_id = message['to_asset_id']
+        to_asset = asset_dict[to_asset_id]
+        to_port_id = message['to_port_id']
+        print('Removing connection {}#{} -> {}#{}'.format(from_asset.get_name(), from_port_id, to_asset.get_name(), to_port_id))
+        # remove reference at both sides (this is quite ugly in generateDS-based ESDL...)
+        for p in from_asset.get_port():
+            if p.get_id() == from_port_id:
+                connected_to = p.get_connectedTo()
+                if connected_to:
+                    connected_to_list = connected_to.split(' ')
+                    new_connected_to_list = []
+                    for conn_id in connected_to_list:
+                        if conn_id != to_port_id:
+                            # add non-affected connection to new list
+                            new_connected_to_list.append(conn_id)
+                    p.set_connectedTo(' '.join(new_connected_to_list))
+
+        for p in to_asset.get_port():
+            if p.get_id() == to_port_id:
+                connected_to = p.get_connectedTo()
+                if connected_to:
+                    connected_to_list = connected_to.split(' ')
+                    new_connected_to_list = []
+                    for conn_id in connected_to_list:
+                        if conn_id != from_port_id:
+                            # add non-affected connection to new list
+                            new_connected_to_list.append(conn_id)
+                    p.set_connectedTo(' '.join(new_connected_to_list))
+
+        # refresh connections in gui
+        conn_list = session['conn_list']
+        new_list = []
+        print(conn_list)
+        for conn in conn_list:
+            if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
+                    conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
+                    (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or \
+                    conn['to-port-id'] != from_port_id or conn['to-asset-id'] != from_asset_id):
+                # Remove both directions from -> to and to -> from as we don't know how they are stored in the list
+                # does not matter, as a connection is unique
+                new_list.append(conn)  # add connections that we are not interested in
+            else:
+                print(' - removed {}'.format(conn))
+        session['conn_list'] = new_list  # set new connection list
+        emit('clear_connections')  # update gui
+        emit('add_connections', new_list)
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']
