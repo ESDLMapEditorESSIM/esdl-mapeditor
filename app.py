@@ -9,11 +9,14 @@ from flask import Flask, render_template, session, request, send_from_directory,
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import requests
+import urllib.parse
+from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import math
 import copy
 import json
 import importlib
+import datetime
 
 # import numpy as np
 # from scipy.spatial import Delaunay
@@ -218,6 +221,106 @@ def get_subboundaries_from_service(scope, subscope, id):
         return None
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+#  ESSIM interfacing
+# ---------------------------------------------------------------------------------------------------------------------
+def start_ESSIM():
+    es = session['es_edit']
+    es_id = session['es_id']
+    es_simid = es_id + '-' + str(datetime.datetime.now())
+    # session['es_simid'] = es_simid
+
+    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
+    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
+              pretty_print=True)
+    f.close()
+
+    with open('/tmp/temp.xmi', 'r') as esdl_file:
+        esdlstr = esdl_file.read()
+
+    ESSIM_config = esdl_config.esdl_config['ESSIM']
+
+    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
+    print('ESSIM url: ', url)
+
+    payload = {
+        'user': ESSIM_config['user'],
+        'scenarioID': es_simid,
+        'simulationDescription': '',
+        'startDate': '2015-01-01T00:00:00+0100',
+        'endDate': '2016-01-01T00:00:00+0100',
+        'influxURL': ESSIM_config['influxURL'],
+        'grafanaURL': ESSIM_config['grafanaURL'],
+        'esdlContents': urllib.parse.quote(esdlstr)
+    }
+
+    headers = {
+        'Content-Type': "application/json",
+        'Accept': "application/json",
+        'User-Agent': "ESDL Mapeditor/0.1",
+        'Cache-Control': "no-cache",
+        'Host': ESSIM_config['ESSIM_host'],
+        'accept-encoding': "gzip, deflate",
+        'Connection': "keep-alive",
+        'cache-control': "no-cache"
+    }
+
+    try:
+        r = requests.post(url, data=payload, headers=headers)
+        if r.status_code == 201:
+            result = r.text
+            print(result)
+            id = result['id']
+            session['es_simid'] = id
+            # emit('', {})
+        else:
+            send_alert('Error starting ESSIM simulation')
+            # emit('', {})
+    except:
+        send_alert('Error accessing ESSIM API')
+
+
+def call_ESSIM_get_progress(sched):
+    es_simid = session['es_simid']
+
+    ESSIM_config = esdl_config.esdl_config['ESSIM']
+    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
+
+    try:
+        r = requests.get(url + '/status')
+        if r.status_code == 200:
+            result = r.text
+            print(result)
+            emit('update_simulation_progress', {'percentage': result, 'url': ''})
+            if float(result) >= 1:
+                r = requests.get(url)
+                if r.status_code == 200:
+                    result = r.text
+                    print(result)
+                    dashboardURL = result['dashboardURL']
+                    emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
+                else:
+                    send_alert('Error in getting the ESSIM dashboard URL')
+                sched.shutdown()
+                print('scheduler stopped')
+        else:
+            send_alert('Error in getting the ESSIM progress status')
+    except:
+        send_alert('Error accessing ESSIM API')
+
+
+def check_ESSIM_progress():
+    sched = BackgroundScheduler()
+
+    # seconds can be replaced with minutes, hours, or days
+    sched.add_job(call_ESSIM_get_progress(sched), 'interval', seconds=2)
+    sched.start()
+    print('Trying to start scheduler')
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Boundary information processing
+# ---------------------------------------------------------------------------------------------------------------------
 def _parse_esdl_subpolygon(subpol):
     ar = []
     points = subpol.get_point()
@@ -2112,10 +2215,12 @@ def get_marginal_costs_for_asset(asset_id):
 def process_command(message):
     print ('received: ' + message['cmd'])
     print (message)
-    es_edit = session['es_edit']
+    print (session)
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
-    session.modified = True
+    es_edit = session['es_edit']
+    # test to see if this should be moved down:
+    #  session.modified = True
     # print (session['es_edit'].get_instance()[0].get_area().get_name())
 
     if message['cmd'] == 'add_asset':
@@ -2763,16 +2868,12 @@ def process_command(message):
         print('ESSIM simulation command received')
         emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
         # Create the HTTP POST to start the simulation
-
-        # while simulation not finished (every second?)
-            # ask for progress (HTTP req)
-            # update UI
-
-        # HTTP get for end results
-        # present link to end results
+        start_ESSIM()
+        check_ESSIM_progress()
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
+    session.modified = True
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2832,6 +2933,7 @@ def process_energy_system(es):
     session['carrier_list'] = carrier_list
     session['asset_dict'] = asset_dict
     session['color_method'] = 'building type'
+    session.modified = True
 
 
 # ---------------------------------------------------------------------------------------------------------------------

@@ -62,5 +62,12 @@ esdl_config = {
                 }
             ]
         },
-    ]
+    ],
+    "ESSIM": {
+        "ESSIM_host": "http://10.30.2.1:8112",
+        "ESSIM_path": "/essim/simulation",
+        "influxURL": "http://dido.cloud.iplab.tno.nl:8086",
+        "grafanaURL": "http://dido.cloud.iplab.tno.nl:3000",
+        "user": "essim"
+    }
 }

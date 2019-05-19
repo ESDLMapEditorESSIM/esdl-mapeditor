@@ -617,6 +617,10 @@
         }
 
         function marginal_costs_window(asset_id, mc) {
+            console.log(typeof(mc));
+            console.log(mc);
+            if (mc == null) { mc = ''; }
+
             sidebar_ctr = sidebar.getContainer();
 
             sidebar_ctr.innerHTML = '<h1>Set marginal costs:</h1>';
@@ -1278,6 +1282,19 @@
             socket.on('show_simulation_progress_window', function() {
                 show_simulation_progress_window();
             });
+
+            socket.on('update_simulation_progress', function(status) {
+                perc_complete = parseFloat(status['percentage'])*100;
+                console.log(perc_complete);
+
+                if (perc_complete != 100) {
+                    progress = document.getElementById('progress_percentage');
+                    progress.innerHTML = perc_complete + '%';
+                } else {
+                    dashboardURL = status['dashboardURL'];
+                    console.log(dashboardURL);
+                }
+            });
         });
     </script>
 
@@ -1428,7 +1445,7 @@
             <option value="floor area">Floor area</option>
         </select>
 
-        <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Simulate</button>
+        <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
