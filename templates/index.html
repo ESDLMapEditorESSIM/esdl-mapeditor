@@ -750,6 +750,10 @@
             socket.emit('command', {cmd: 'run_ESSIM_simulation'});
         }
 
+        function cancel_ESSIM_simulation() {
+            socket.emit('command', {cmd: 'cancel_ESSIM_simulation'});
+        }
+
         function show_simulation_progress_window() {
             sidebar_ctr = sidebar.getContainer();
 
@@ -761,7 +765,9 @@
             table += '</table>';
             sidebar_ctr.innerHTML += table;
 
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();">Cancel simulation</button></p>';
+            sidebar_ctr.innerHTML += '<p id="dashboard_url"></p>';
+
+            sidebar_ctr.innerHTML += '<p><button onclick="cancel_ESSIM_simulation(); sidebar.hide();">Cancel simulation</button></p>';
             sidebar.show();
         }
 
@@ -1283,14 +1289,16 @@
             });
 
             socket.on('update_simulation_progress', function(status) {
-                perc_complete = parseFloat(status['percentage'])*100;
-                console.log(perc_complete);
+                perc_complete = Math.round(parseFloat(status['percentage'])*100);
 
+                progress = document.getElementById('progress_percentage');
                 if (perc_complete != 100) {
-                    progress = document.getElementById('progress_percentage');
                     progress.innerHTML = perc_complete + '%';
                 } else {
+                    progress.innerHTML = 'Finished';
                     dashboardURL = status['dashboardURL'];
+                    dbURL_location = document.getElementById('dashboard_url');
+                    dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '">dashboard</a>';
                     console.log(dashboardURL);
                 }
             });
