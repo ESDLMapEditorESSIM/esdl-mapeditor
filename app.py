@@ -11,7 +11,7 @@ from flask_session import Session
 import requests
 import urllib.parse
 import time
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import math
 import copy
