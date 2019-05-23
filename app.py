@@ -278,10 +278,14 @@ def start_ESSIM():
         else:
             send_alert('Error starting ESSIM simulation')
             # emit('', {})
+            return 0
     except Exception as e:
         print('Exception: ')
         print(e)
         send_alert('Error accessing ESSIM API at starting')
+        return 0
+
+    return 1
 
 
 def check_ESSIM_progress():
@@ -2973,8 +2977,8 @@ def process_command(message):
         print('ESSIM simulation command received')
         emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
         # Create the HTTP POST to start the simulation
-        start_ESSIM()
-        check_ESSIM_progress()
+        if start_ESSIM():
+            check_ESSIM_progress()
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
