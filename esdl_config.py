@@ -1,6 +1,6 @@
 esdl_config = {
     "profile_database": {
-        "host": "http://app-iot03.hex.tno.nl",
+        "host": "http://10.30.2.1",
         "port": "8086",
         "database": "energy_profiles",
         "filters": ""

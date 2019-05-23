@@ -258,17 +258,18 @@ def start_ESSIM():
     headers = {
         'Content-Type': "application/json",
         'Accept': "application/json",
-        'User-Agent': "ESDL Mapeditor/0.1",
-        'Cache-Control': "no-cache",
+        'User-Agent': "ESDL Mapeditor/0.1"
+        # 'Cache-Control': "no-cache",
         # 'Host': ESSIM_config['ESSIM_host'],
-        'accept-encoding': "gzip, deflate",
+        # 'accept-encoding': "gzip, deflate",
         # 'Connection': "keep-alive",
-        'cache-control': "no-cache"
+        # 'cache-control': "no-cache"
     }
 
     try:
-        r = requests.post(url, data=payload, headers=headers)
+        r = requests.post(url, json=payload, headers=headers)
         print(r)
+        print(r.content)
         if r.status_code == 201:
             result = json.loads(r.text)
             print(result)
