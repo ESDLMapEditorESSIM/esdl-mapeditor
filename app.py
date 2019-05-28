@@ -233,7 +233,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 def start_ESSIM():
     es = session['es_edit']
     es_id = session['es_id']
-    es_simid = es_id + '-' + str(datetime.datetime.now())
+    es_simid = es_id
     # session['es_simid'] = es_simid
 
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
