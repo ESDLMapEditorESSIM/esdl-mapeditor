@@ -754,7 +754,7 @@
 
         function poll_simulation_progress() {
             $.ajax({
-                url: '/simulation_progress',
+		url: '{{dir_settings.resource_prefix}}simulation_progress',
                 success: function(data){
                     // console.log(data);
 
