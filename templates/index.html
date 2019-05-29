@@ -197,7 +197,7 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set profile of ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) { setPortProfile(e, marker_id, port_id); }
+                            callback: function(e) { setPortProfile(e, asset_id, port_id); }
                         });
                     }
 
@@ -305,11 +305,9 @@
             line.options.contextmenuItems.push('-');
 
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
-            console.log('Build menu:');
             let line_id = line.id;
             for (let p=0; p<line.ports.length; p++) {
                 let port_id = ''+line.ports[p].id;
-                console.log(port_id);
                 line.options.contextmenuItems.push({
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
@@ -771,6 +769,36 @@
             socket.emit('command', {cmd: 'cancel_ESSIM_simulation'});
         }
 
+        function poll_simulation_progress() {
+            $.ajax({
+		url: '{{dir_settings.resource_prefix}}simulation_progress',
+                success: function(data){
+                    // console.log(data);
+
+                    if (data["percentage"] == "1") {
+                        dashboardURL = data["url"];
+                        // console.log(dashboardURL);
+                        progress = document.getElementById('progress_percentage');
+                        progress.innerHTML = 'Simulation finsihed';
+                        dbURL_location = document.getElementById('dashboard_url');
+                        dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '" target="#">dashboard</a>';
+
+                        button_show = document.getElementById('button_close_simulation_dialog');
+                        button_show.style.display = "block";
+                        button_hide = document.getElementById('button_cancel_simulation');
+                        button_hide.style.display = "none";
+
+                    } else {
+                        percentage = Math.round(parseFloat(data["percentage"]) * 100);
+                        progress = document.getElementById('progress_percentage');
+                        progress.innerHTML =  percentage + '%';
+                        setTimeout(poll_simulation_progress, 1000);
+                    }
+                },
+                dataType: "json"
+            });
+        }
+
         function show_simulation_progress_window() {
             sidebar_ctr = sidebar.getContainer();
 
@@ -784,8 +812,11 @@
 
             sidebar_ctr.innerHTML += '<p id="dashboard_url"></p>';
 
-            sidebar_ctr.innerHTML += '<p><button onclick="cancel_ESSIM_simulation(); sidebar.hide();">Cancel simulation</button></p>';
+            sidebar_ctr.innerHTML += '<p id="button_cancel_simulation"><button onclick="cancel_ESSIM_simulation(); sidebar.hide();">Cancel simulation</button></p>';
+            sidebar_ctr.innerHTML += '<p id="button_close_simulation_dialog" hidden><button onclick="sidebar.hide();">Close</button></p>';
+
             sidebar.show();
+            setTimeout(poll_simulation_progress, 1000)
         }
 
         var socket;
@@ -1076,7 +1107,10 @@
 				
 			});
 
-            socket.on('port_profile_info', function(profile_info) {
+            socket.on('port_profile_info', function(port_profile_info) {
+                profile_info = port_profile_info['profile_info'];
+                port_id = port_profile_info['port_id'];
+
                 profile_class = profile_info['class'];
                 profile_type = profile_info['type'];
                 if (profile_class == 'SingleValue') {
@@ -1303,21 +1337,6 @@
 
             socket.on('show_simulation_progress_window', function() {
                 show_simulation_progress_window();
-            });
-
-            socket.on('update_simulation_progress', function(status) {
-                perc_complete = Math.round(parseFloat(status['percentage'])*100);
-
-                progress = document.getElementById('progress_percentage');
-                if (perc_complete != 100) {
-                    progress.innerHTML = perc_complete + '%';
-                } else {
-                    progress.innerHTML = 'Finished';
-                    dashboardURL = status['dashboardURL'];
-                    dbURL_location = document.getElementById('dashboard_url');
-                    dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '">dashboard</a>';
-                    console.log(dashboardURL);
-                }
             });
         });
     </script>

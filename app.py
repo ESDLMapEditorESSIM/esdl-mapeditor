@@ -5,11 +5,11 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-from flask import Flask, render_template, session, request, send_from_directory, jsonify
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import requests
-import urllib.parse
+import urllib
 import time
 #from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
@@ -26,6 +26,11 @@ import datetime
 from model import esdl_sup as esdl
 import esdl_config
 import settings
+
+# for scheduling tasks to check ESSIM progress
+# from redis import Redis
+# import rq
+# from essim import check_progress
 
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
@@ -228,7 +233,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 def start_ESSIM():
     es = session['es_edit']
     es_id = session['es_id']
-    es_simid = es_id + '-' + str(datetime.datetime.now())
+    es_simid = es_id
     # session['es_simid'] = es_simid
 
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
@@ -242,7 +247,7 @@ def start_ESSIM():
     ESSIM_config = esdl_config.esdl_config['ESSIM']
 
     url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
-    print('ESSIM url: ', url)
+    # print('ESSIM url: ', url)
 
     payload = {
         'user': ESSIM_config['user'],
@@ -258,115 +263,35 @@ def start_ESSIM():
     headers = {
         'Content-Type': "application/json",
         'Accept': "application/json",
-        'User-Agent': "ESDL Mapeditor/0.1",
-        'Cache-Control': "no-cache",
+        'User-Agent': "ESDL Mapeditor/0.1"
+        # 'Cache-Control': "no-cache",
         # 'Host': ESSIM_config['ESSIM_host'],
-        'accept-encoding': "gzip, deflate",
+        # 'accept-encoding': "gzip, deflate",
         # 'Connection': "keep-alive",
-        'cache-control': "no-cache"
+        # 'cache-control': "no-cache"
     }
 
     try:
-        r = requests.post(url, data=payload, headers=headers)
-        print(r)
+        r = requests.post(url, json=payload, headers=headers)
+        #print(r)
+        #print(r.content)
         if r.status_code == 201:
             result = json.loads(r.text)
-            print(result)
+            #print(result)
             id = result['id']
             session['es_simid'] = id
             # emit('', {})
         else:
             send_alert('Error starting ESSIM simulation')
             # emit('', {})
+            return 0
     except Exception as e:
         print('Exception: ')
         print(e)
         send_alert('Error accessing ESSIM API at starting')
+        return 0
 
-
-def check_ESSIM_progress():
-    es_simid = session['es_simid']
-    ESSIM_config = esdl_config.esdl_config['ESSIM']
-    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
-
-    while True:
-        time.sleep(2)
-
-        try:
-            r = requests.get(url + '/status')
-            if r.status_code == 200:
-                result = r.text
-                print(result)
-                emit('update_simulation_progress', {'percentage': result, 'url': ''})
-                if float(result) >= 1:
-                    r = requests.get(url)
-                    if r.status_code == 200:
-                        result = json.loads(r.text)
-                        print(result)
-                        dashboardURL = result['dashboardURL']
-                        print(dashboardURL)
-                        emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-                        return
-                    else:
-                        send_alert('Error in getting the ESSIM dashboard URL')
-                        return
-            else:
-                print('code: ', r.status_code)
-                send_alert('Error in getting the ESSIM progress status')
-                return
-        except Exception as e:
-            print('Exception: ')
-            print(e)
-            send_alert('Error accessing ESSIM API')
-            return
-
-
-# def check_ESSIM_progress():
-#     print('In check_ESSIM_progress')
-#     sched = BackgroundScheduler()
-#
-#     def call_ESSIM_get_progress():
-#         #if not 'es_simid' in session:
-#         #    print('es_simid not in session')
-#         #    return
-#
-#         print('in call_ESSIM_get_progress')
-#         #es_simid = session['es_simid']
-#         es_simid = '12132'
-#
-#         ESSIM_config = esdl_config.esdl_config['ESSIM']
-#         url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
-#
-#         try:
-#             r = requests.get(url + '/status')
-#             if r.status_code == 200:
-#                 result = r.text
-#                 print(result)
-#                 #emit('update_simulation_progress', {'percentage': result, 'url': ''})
-#                 if float(result) >= 1:
-#                     r = requests.get(url)
-#                     if r.status_code == 200:
-#                         result = json.loads(r.text)
-#                         print(result)
-#                         dashboardURL = result['dashboardURL']
-#                         print(dashboardURL)
-#                         #emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-#                     else:
-#                         send_alert('Error in getting the ESSIM dashboard URL')
-#                     sched.shutdown()
-#                     print('scheduler stopped')
-#             else:
-#                 print('code: ', r.status_code)
-#                 send_alert('Error in getting the ESSIM progress status')
-#         except Exception as e:
-#             print('Exception: ')
-#             print(e)
-#             send_alert('Error accessing ESSIM API')
-#
-#     # seconds can be replaced with minutes, hours, or days
-#     sched.add_job(call_ESSIM_get_progress, 'interval', seconds=2)
-#     sched.start()
-#     print('Trying to start scheduler')
+    return 1
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -636,54 +561,48 @@ def index():
     # print('in index()')
     return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
 
-# @app.route('/<path:path>')
-# def download_esdl(path):
-#    session_info = session
-#    es_edit = session_info['es_edit']
-#    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-#    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-#    es_edit.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-#                   pretty_print=True)
-#    f.seek(0)
-
-#    f = open('/tmp/temp.xmi', 'r')
-#   return send_file(f, attachment_filename='file.esdl',
-#                     as_attachment=True)
 
 @app.route('/<path:path>')
 def serve_static(path):
     # print('in serve_static(): '+ path)
     return send_from_directory('static', path)
 
-# @app.route('/<path:path>')
-# def download_esdl(path):
-#     print('in download_esdl(): '+ path)
-#     return send_from_directory('', path)
 
+@app.route('/simulation_progress')
+def get_simulation_progress():
+    es_simid = session['es_simid']
+    ESSIM_config = esdl_config.esdl_config['ESSIM']
+    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
 
-# @app.route('/images/<path:path>')
-# def send_image(path):
-#     print('in send_image(): '+ path)
-#     return send_from_directory('images', path)
-
-
-# @app.route('/plugins/<path:path>')
-# def send_plugin(path):
-#     print('in send_plugin(): '+ path)
-#     return send_from_directory('plugins', path)
-
-
-# @app.route('/icons/<path:path>')
-# def send_icon(path):
-#     print('in send_icon():'+ path)
-#    return send_from_directory('icons', path)
-
-
-# FOR TESTING
-@app.route('/html/<path:path>')
-def send_html(path):
-    print('in send_html(): '+ path)
-    return send_from_directory('html', path)
+    try:
+        r = requests.get(url + '/status')
+        if r.status_code == 200:
+            result = r.text
+            print(result)
+            # emit('update_simulation_progress', {'percentage': result, 'url': ''})
+            if float(result) >= 1:
+                r = requests.get(url)
+                if r.status_code == 200:
+                    result = json.loads(r.text)
+                    # print(result)
+                    dashboardURL = result['dashboardURL']
+                    print(dashboardURL)
+                    # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
+                    return (jsonify({'percentage': '1', 'url': dashboardURL})), 200
+                else:
+                    send_alert('Error in getting the ESSIM dashboard URL')
+                    abort(500, 'Error in getting the ESSIM dashboard URL')
+            else:
+                return (jsonify({'percentage': result, 'url': ''})), 200
+        else:
+            print('code: ', r.status_code)
+            send_alert('Error in getting the ESSIM progress status')
+            abort(500, 'Error in getting the ESSIM progress status')
+    except Exception as e:
+        print('Exception: ')
+        print(e)
+        send_alert('Error accessing ESSIM API')
+        abort(500, 'Error accessing ESSIM API')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2701,9 +2620,9 @@ def process_command(message):
                     profile = p.get_profile()
                     if profile:
                         profile_info = generate_profile_info(profile)
-                        emit('port_profile_info', profile_info)
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info})
                     else:
-                        emit('port_profile_info', {'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'})
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': {'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'}})
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
@@ -2971,10 +2890,11 @@ def process_command(message):
 
     if message['cmd'] == 'run_ESSIM_simulation':
         print('ESSIM simulation command received')
-        emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
         # Create the HTTP POST to start the simulation
         start_ESSIM()
-        check_ESSIM_progress()
+        emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
+        # start_checking_ESSIM_progress()
+        # check_ESSIM_progress()
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
