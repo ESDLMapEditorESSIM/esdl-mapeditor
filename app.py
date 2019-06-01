@@ -1134,9 +1134,10 @@ def generate_profile_info(profile):
     if profile_class == 'InfluxDBProfile':
         multiplier = profile.get_multiplier()
         measurement = profile.get_measurement()
+        field = profile.get_field()
         profile_name = 'UNKNOWN'
         for p in esdl_config.esdl_config['influxdb_profile_data']:
-            if p['measurement'] == measurement:
+            if p['measurement'] == measurement and p['field'] == field:
                 profile_name = p['profile_uiname']
         profile_info = {'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name}
     if profile_class == 'DateTimeProfile':

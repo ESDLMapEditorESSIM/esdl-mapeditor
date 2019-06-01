@@ -36,6 +36,9 @@
 
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
+    <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -802,6 +805,59 @@
             setTimeout(poll_simulation_progress, 1000)
         }
 
+        function load_shapefile() {
+        	var files = document.getElementById('shapefile').files;
+            if (files.length == 0) {
+                console.log('filelength is zero');
+                return; //do nothing if no file given yet
+            }
+
+            var file = files[0];
+
+            if (file.name.slice(-3) != 'zip') {             // Only accept .zip. All others, return.
+                document.getElementById('warning').innerHTML = 'Select .zip file';
+                return;
+            } else {
+                document.getElementById('warning').innerHTML = ''; //clear warning message.
+                handleZipFile(file);
+            }
+        };
+
+        //More info: https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+        function handleZipFile(file){
+            console.log('handle zip file');
+            var reader = new FileReader();
+            reader.onload = function() {
+                if (reader.readyState != 2 || reader.error){
+                    console.log("error");
+                    return;
+                } else {
+                    console.log("no error");
+                    convertShapefileToLayer(reader.result);
+                }
+            }
+            reader.readAsArrayBuffer(file);
+        }
+
+        function convertShapefileToLayer(buffer) {
+            shp(buffer).then(function(geojson) {	            //More info: https://github.com/calvinmetcalf/shapefile-js
+                console.log('shapefile addto map');
+                var layer = L.shapefile(geojson).addTo(map);       //More info: https://github.com/calvinmetcalf/leaflet.shapefile
+                console.log(layer);
+            });
+        }
+
+        function show_add_shapefile() {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Add shapefile</h1>';
+            sidebar_ctr.innerHTML += '<p><label for="input">Select a zipped shapefile:</label><input type="file" id="shapefile"></p>';
+            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();load_shapefile();">Load shapefile</button></p>';
+            sidebar_ctr.innerHTML += '<span id="warning"></span>';
+
+            sidebar.show();
+        }
+
         var socket;
 
         $(document).ready(function() {
@@ -1472,6 +1528,7 @@
         </select>
 
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
+        <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
@@ -1500,6 +1557,22 @@
             connection_layer = L.featureGroup().addTo(map);
 
     connection_layer.bringToFront();
+
+    // var geo = L.geoJson({features:[]},{onEachFeature:function popUp(f,l){
+    // 		var out = [];
+    // 		if (f.properties){
+    //    		for(var key in f.properties){
+    //        	out.push(key+": "+f.properties[key]);
+    //        }
+    //        l.bindPopup(out.join("<br />"));
+    //    }
+    // }}).addTo(map);
+
+	// shp('http://localhost:8111/prov.zip').then(function(data){
+	//    geo.addData(data);
+	// }, function(a){
+	//    console.log(a)
+	// });
 
     L.control.layers(
         {

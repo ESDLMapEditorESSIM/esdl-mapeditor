@@ -7,31 +7,73 @@ esdl_config = {
     },
     "influxdb_profile_data": [
         {
-            "profile_uiname": "Relative solar profile",
+            "profile_uiname": "Solar",
             "multiplier": 1,
-            "measurement": "sun-perc-2015-15min",
-            "field": "percentage",
+            "measurement": "solar_relative_2011-2016",
+            "field": "value",
             "profileType": "ENERGY_IN_TJ"
         },
         {
-            "profile_uiname": "Relative electricity demand",
+            "profile_uiname": "Electricity households (E1A)",
             "multiplier": 1,
-            "measurement": "Edemand-perc-2015-15min",
-            "field": "percentage",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E1A",
             "profileType": "ENERGY_IN_TJ"
         },
         {
-            "profile_uiname": "Relative heating demand",
+            "profile_uiname": "Electricity shops, office, education (E3A)",
             "multiplier": 1,
-            "measurement": "EHP-perc-2015-15min",
-            "field": "percentage",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E3A",
             "profileType": "ENERGY_IN_TJ"
         },
         {
-            "profile_uiname": "Relative constant profile",
+            "profile_uiname": "Electricity prison (E3B)",
             "multiplier": 1,
-            "measurement": "const-perc-2015-15min",
-            "field": "percentage",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E3B",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Electricity hotel, hospital (E3C)",
+            "multiplier": 1,
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E3C",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Electricity greenhouses (E3D)",
+            "multiplier": 1,
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E3D",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Heating households (G1A)",
+            "multiplier": 1,
+            "measurement": "nedu_aardgas_2015-2018",
+            "field": "G1A",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Heating ... (G2A)",
+            "multiplier": 1,
+            "measurement": "nedu_aardgas_2015-2018",
+            "field": "G2A",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Heating ... (G2C)",
+            "multiplier": 1,
+            "measurement": "nedu_aardgas_2015-2018",
+            "field": "G2C",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Constant",
+            "multiplier": 1,
+            "measurement": "constant",
+            "field": "value",
             "profileType": "ENERGY_IN_TJ"
         }
     ],
