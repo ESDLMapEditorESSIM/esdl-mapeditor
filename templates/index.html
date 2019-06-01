@@ -355,12 +355,13 @@
                     weight: 4
                 });
                 let lineType = layer.type;
+                let lineColorHoover = colors[lineType + '_hoover']
                 let arrowHead = L.polylineDecorator(layer, {
                             patterns: [
                                 {
                                     offset: '1%',
                                     repeat: '49%',
-                                    symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: colors[lineType], fillOpacity: 1, weight: 1}})
+                                    symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
                                 }
                             ]
                         }).addTo(map);
