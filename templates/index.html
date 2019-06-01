@@ -15,6 +15,8 @@
     <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
     <!--script src="./plugins/leaflet.draw.js"></script-->
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.1.0/leaflet.polylineDecorator.min.js"></script>
+
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css"/>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
@@ -352,6 +354,17 @@
                     opacity: 1,
                     weight: 4
                 });
+                let lineType = layer.type;
+                let arrowHead = L.polylineDecorator(layer, {
+                            patterns: [
+                                {
+                                    offset: '1%',
+                                    repeat: '49%',
+                                    symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: colors[lineType], fillOpacity: 1, weight: 1}})
+                                }
+                            ]
+                        }).addTo(map);
+                line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
             });
 
             line.on('mouseout', function(e) {
@@ -361,6 +374,10 @@
                     opacity: 1,
                     weight: 3
                 });
+                if (layer.mouseOverArrowHead !== undefined) {
+                    map.removeLayer(layer.mouseOverArrowHead)
+                    delete layer.mouseOverArrowHead;
+                }
             });
         }
 
@@ -1724,7 +1741,7 @@
             // console.log('selected asset: ' + selected_asset);
 
             // set_marker_handlers(layer);  // is now called after server interaction, see below
-            layer.name = selected_asset + '_' + layer.id
+            layer.name = selected_asset + '_' + layer.id.substring(0,4);
 
             // TODO: This can probably be done smarter --> TODO: this is not necessary anymore?
             if (selected_asset == 'Battery') layer.setIcon(new BatteryMarker);
