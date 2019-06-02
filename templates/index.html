@@ -775,7 +775,7 @@
 
         function poll_simulation_progress() {
             $.ajax({
-		url: '{{dir_settings.resource_prefix}}simulation_progress',
+		        url: '{{dir_settings.resource_prefix}}simulation_progress',
                 success: function(data){
                     // console.log(data);
 
@@ -1509,10 +1509,12 @@
         <select id="asset_menu" style='position:relative;z-index:100'>
             <option value="Battery">Battery</option>
             <option value="CHP">Combined Heat and Power</option>
+            <option value="EConnection">EConnection</option>
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="ElectricityNetwork">ElectricityNetwork</option>
             <option value="Electrolyzer">Electrolyzer</option>
             <option value="FuelCell">FuelCell</option>
+            <option value="GConnection">GConnection</option>
             <option value="GasHeater">GasHeater</option>
             <option value="GasNetwork">GasNetwork</option>
             <option value="GenericConsumer">GenericConsumer</option>
@@ -1524,6 +1526,7 @@
             <option value="HeatPump">HeatPump</option>
             <option value="Joint">Joint</option>
             <option value="PowerPlant">PowerPlant</option>
+            <option value="PVInstallation">PVInstallation</option>
             <option value="PVParc">PVParc</option>
             <option value="Transformer">Transformer</option>
             <option value="UTES">UTES</option>
@@ -1605,10 +1608,12 @@
 
     var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
 	var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
+    var EConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/EConnection.png'}});
     var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
     var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
     var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
 	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
+	var GConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GConnection.png'}});
 	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
 	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
     var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
@@ -1620,6 +1625,7 @@
     var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
 	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
     var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
+    var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
     var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
     var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
     var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});

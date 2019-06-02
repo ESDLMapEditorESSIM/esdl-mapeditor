@@ -570,39 +570,43 @@ def serve_static(path):
 
 @app.route('/simulation_progress')
 def get_simulation_progress():
-    es_simid = session['es_simid']
-    ESSIM_config = esdl_config.esdl_config['ESSIM']
-    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
+    if 'es_simid' in session:
+        es_simid = session['es_simid']
+        ESSIM_config = esdl_config.esdl_config['ESSIM']
+        url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
 
-    try:
-        r = requests.get(url + '/status')
-        if r.status_code == 200:
-            result = r.text
-            print(result)
-            # emit('update_simulation_progress', {'percentage': result, 'url': ''})
-            if float(result) >= 1:
-                r = requests.get(url)
-                if r.status_code == 200:
-                    result = json.loads(r.text)
-                    # print(result)
-                    dashboardURL = result['dashboardURL']
-                    print(dashboardURL)
-                    # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-                    return (jsonify({'percentage': '1', 'url': dashboardURL})), 200
+        try:
+            r = requests.get(url + '/status')
+            if r.status_code == 200:
+                result = r.text
+                print(result)
+                # emit('update_simulation_progress', {'percentage': result, 'url': ''})
+                if float(result) >= 1:
+                    r = requests.get(url)
+                    if r.status_code == 200:
+                        del session['es_simid']         # simulation ready
+                        result = json.loads(r.text)
+                        # print(result)
+                        dashboardURL = result['dashboardURL']
+                        print(dashboardURL)
+                        # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
+                        return (jsonify({'percentage': '1', 'url': dashboardURL})), 200
+                    else:
+                        send_alert('Error in getting the ESSIM dashboard URL')
+                        abort(500, 'Error in getting the ESSIM dashboard URL')
                 else:
-                    send_alert('Error in getting the ESSIM dashboard URL')
-                    abort(500, 'Error in getting the ESSIM dashboard URL')
+                    return (jsonify({'percentage': result, 'url': ''})), 200
             else:
-                return (jsonify({'percentage': result, 'url': ''})), 200
-        else:
-            print('code: ', r.status_code)
-            send_alert('Error in getting the ESSIM progress status')
-            abort(500, 'Error in getting the ESSIM progress status')
-    except Exception as e:
-        print('Exception: ')
-        print(e)
-        send_alert('Error accessing ESSIM API')
-        abort(500, 'Error accessing ESSIM API')
+                print('code: ', r.status_code)
+                send_alert('Error in getting the ESSIM progress status')
+                abort(500, 'Error in getting the ESSIM progress status')
+        except Exception as e:
+            print('Exception: ')
+            print(e)
+            send_alert('Error accessing ESSIM API')
+            abort(500, 'Error accessing ESSIM API')
+    else:
+        abort(500, 'Simulation not running')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2090,13 +2094,13 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     mcc_sv = esdl.SingleValue()
     mcc_sv.set_id(str(uuid.uuid4()))
     mcc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    mcc_sv.set_value(float(mcc))
+    mcc_sv.set_value(str2float(mcc))
     cs.set_marginalChargeCosts(mcc_sv)
 
     mdc_sv = esdl.SingleValue()
     mdc_sv.set_id(str(uuid.uuid4()))
     mdc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    mdc_sv.set_value(float(mdc))
+    mdc_sv.set_value(str2float(mdc))
     cs.set_marginalDischargeCosts(mdc_sv)
 
     add_control_strategy_for_asset(asset_id, cs)
@@ -2179,6 +2183,14 @@ def get_marginal_costs_for_asset(asset_id):
     return None
 
 
+def str2float(string):
+    try:
+        f = float(string)
+        return f
+    except:
+        return None
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2203,7 +2215,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['GenericProducer', 'GeothermalSource', 'PVParc', 'WindTurbine']:
+        if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'PVParc', 'WindTurbine']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
@@ -2245,8 +2257,8 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['ElectricityNetwork', 'Electrolyzer', 'GasHeater', 'GasNetwork', 'GenericConversion', 'HeatNetwork',
-                         'HeatPump', 'Joint', 'Transformer', 'PowerPlant']:
+        if assettype in ['EConnection', 'ElectricityNetwork', 'Electrolyzer', 'GConnection', 'GasHeater',
+                         'GasNetwork', 'GenericConversion', 'HeatNetwork', 'HeatPump', 'Joint', 'Transformer', 'PowerPlant']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
@@ -2557,7 +2569,7 @@ def process_command(message):
         if param_name in ['name', 'description']:
             getattr(asset, 'set_' + param_name)(param_value)
         if param_name in ['power']:
-            getattr(asset, 'set_'+param_name)(float(param_value))
+            getattr(asset, 'set_'+param_name)(str2float(param_value))
 
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']
@@ -2641,7 +2653,7 @@ def process_command(message):
         if profile_class == 'SingleValue':
             esdl_profile_class = getattr(module, 'SingleValue')
             esdl_profile = esdl_profile_class()
-            esdl_profile.set_value(float(multiplier_or_value))
+            esdl_profile.set_value(str2float(multiplier_or_value))
             esdl_profile.set_profileType(profile_type)
         elif profile_class == 'DateTimeProfile':
             esdl_profile_class = getattr(module, 'DateTimeProfile')
@@ -2654,7 +2666,7 @@ def process_command(message):
                 if p['profile_uiname'] == profile_class:
                     esdl_profile_class = getattr(module, 'InfluxDBProfile')
                     esdl_profile = esdl_profile_class()
-                    esdl_profile.set_multiplier(float(multiplier_or_value))
+                    esdl_profile.set_multiplier(str2float(multiplier_or_value))
                     esdl_profile.set_profileType(profile_type)
 
                     esdl_profile.set_measurement(p['measurement'])
@@ -2795,8 +2807,8 @@ def process_command(message):
             carr_sofm = message['sofm']
             carr_rentype = message['rentype']
 
-            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name, emission = float(carr_emission),
-                        energyContent = float(carr_encont), energyCarrierType = carr_rentype, stateOfMatter = carr_sofm)
+            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name, emission = str2float(carr_emission),
+                        energyContent = str2float(carr_encont), energyCarrierType = carr_rentype, stateOfMatter = carr_sofm)
 
             if carr_encunit == 'MJpkg':
                 encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
@@ -2816,14 +2828,14 @@ def process_command(message):
 
         if carr_type == 'el_comm':
             carr_voltage = message['voltage']
-            carrier = esdl.ElectricityCommodity(id = carr_id, name = carr_name, voltage = float(carr_voltage))
+            carrier = esdl.ElectricityCommodity(id = carr_id, name = carr_name, voltage = str2float(carr_voltage))
         if carr_type == 'g_comm':
             carr_pressure = message['pressure']
-            carrier = esdl.GasCommodity(id = carr_id, name = carr_name, pressure = float(carr_pressure))
+            carrier = esdl.GasCommodity(id = carr_id, name = carr_name, pressure = str2float(carr_pressure))
         if carr_type == 'h_comm':
             carr_suptemp = message['suptemp']
             carr_rettemp = message['rettemp']
-            carrier = esdl.HeatCommodity(id = carr_id, name = carr_name, supplyTemperature = float(carr_suptemp), returnTemperature = float(carr_rettemp))
+            carrier = esdl.HeatCommodity(id = carr_id, name = carr_name, supplyTemperature = str2float(carr_suptemp), returnTemperature = str2float(carr_rettemp))
         if carr_type == 'en_comm':
             carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name)
 
@@ -2885,7 +2897,7 @@ def process_command(message):
 
     if message['cmd'] == 'set_marg_costs':
         asset_id = message['asset_id']
-        mc = float(message['marg_costs'])
+        mc = str2float(message['marg_costs'])
 
         set_marginal_costs_for_asset(asset_id, mc)
 
