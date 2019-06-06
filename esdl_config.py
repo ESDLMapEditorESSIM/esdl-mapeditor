@@ -109,7 +109,7 @@ esdl_config = {
         "ESSIM_host": "http://10.30.2.1:8112",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://10.30.2.1:8086",
-        "grafanaURL": "http://10.30.2.1:3000",
+        "grafanaURL": "http://geis.hesi.energy:3000",
         "user": "essim"
     }
 }
