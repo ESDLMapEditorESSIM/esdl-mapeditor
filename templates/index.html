@@ -66,6 +66,9 @@
         colors['Pipe'] = 'blue'
         colors['Pipe_hoover'] = '#9999ff'
 
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
         function uuidv4() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -73,6 +76,9 @@
             });
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
         function calculate_length(layer) {
             var previousPoint;
             var polyline_length = 0;
@@ -87,6 +93,9 @@
             return polyline_length;
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Splitting conductors (cables or pipes)
+        // ------------------------------------------------------------------------------------------------------------
         splitConductorCallback = function(e) {
             splitConductor(e.relatedTarget.options.id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
@@ -111,69 +120,9 @@
             clear_layer = false;
         }
 
-        setPortProfile = function(e, marker_id, port_id) {
-            console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
-            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
-        }
-
-        setCarrier = function(e) {
-            asset_id = e.relatedTarget.id;
-            // console.log(asset_id);
-
-            carrier_index = document.getElementById("carrier_select").selectedIndex;
-            carrier_options = document.getElementById("carrier_select").options;
-            carrier_id = carrier_options[carrier_index].value;
-
-            // console.log(carrier_id);
-            socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, carrier_id: carrier_id});
-        }
-
-        function connectAssets(object) {
-            console.log('this object is either a line or a marker: ');
-            console.log(object);
-            if (first_clicked) {
-                first_clicked = false;
-                if (first_clicked_id == object.id) {       // clicked same asset twice
-                    console.log('first clicked cancelled');
-                } else {                            // connect two assets
-                    document.getElementById('conn_asset_id2').innerHTML = object.id;
-                    document.getElementById('conn_asset_name2').innerHTML = object.name;
-                    document.getElementById('conn_asset_type2').innerHTML = object.type;
-                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
-                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
-
-                    console.log('second clicked' + object.id + ', connecting...');
-                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
-
-                    // TODO: timer to clear sidebar?
-                }
-                first_clicked_id = 0;
-            } else {
-                first_clicked = true;
-                first_clicked_id = object.id;
-
-                document.getElementById('conn_asset_id1').innerHTML = object.id;
-                document.getElementById('conn_asset_name1').innerHTML = object.name;
-                document.getElementById('conn_asset_type1').innerHTML = object.type;
-                document.getElementById('conn_asset_result').innerHTML = '';
-                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
-
-                console.log('first clicked ' + first_clicked_id);
-            }
-        }
-
-        function set_driven_by_demand(asset_id, port_id) {
-            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenByDemand', 'asset_id': asset_id, 'port_id': port_id});
-        }
-
-        function set_driven_by_supply(asset_id, port_id) {
-            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenBySupply', 'asset_id': asset_id, 'port_id': port_id});
-        }
-
-        // function set_storage_strategy(asset_id) {
-        //     socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'StorageStrategy', 'asset_id': asset_id});
-        // }
-
+        // ------------------------------------------------------------------------------------------------------------
+        //  Handlers for clicking on an asset or potential
+        // ------------------------------------------------------------------------------------------------------------
         function set_marker_handlers(marker) {
             let asset_id = marker.id
             if (marker.ports) {
@@ -293,6 +242,9 @@
             });
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Handlers for clicking on a pipe or cable
+        // ------------------------------------------------------------------------------------------------------------
         function set_line_handlers(line) {
             line.bindContextMenu({
                 contextmenu: true,
@@ -382,6 +334,43 @@
             });
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Connecting assets (This way of connecting is not used now and button currently disabled)
+        // ------------------------------------------------------------------------------------------------------------
+        function connectAssets(object) {
+            console.log('this object is either a line or a marker: ');
+            console.log(object);
+            if (first_clicked) {
+                first_clicked = false;
+                if (first_clicked_id == object.id) {       // clicked same asset twice
+                    console.log('first clicked cancelled');
+                } else {                            // connect two assets
+                    document.getElementById('conn_asset_id2').innerHTML = object.id;
+                    document.getElementById('conn_asset_name2').innerHTML = object.name;
+                    document.getElementById('conn_asset_type2').innerHTML = object.type;
+                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
+                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+
+                    console.log('second clicked' + object.id + ', connecting...');
+                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
+
+                    // TODO: timer to clear sidebar?
+                }
+                first_clicked_id = 0;
+            } else {
+                first_clicked = true;
+                first_clicked_id = object.id;
+
+                document.getElementById('conn_asset_id1').innerHTML = object.id;
+                document.getElementById('conn_asset_name1').innerHTML = object.name;
+                document.getElementById('conn_asset_type1').innerHTML = object.type;
+                document.getElementById('conn_asset_result').innerHTML = '';
+                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+
+                console.log('first clicked ' + first_clicked_id);
+            }
+        }
+
         function conn_assets_window() {
             sidebar_ctr = sidebar.getContainer();
             sidebar_ctr.innerHTML = '<h1>Connect assets</h1>';
@@ -421,34 +410,9 @@
             }
         }
 
-        function new_ESDL() {
-            sidebar_ctr = sidebar.getContainer();
-            sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
-
-            table = '<table>';
-            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>';
-            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
-            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
-            table += '<tr><td width=180></td><td></td></tr>';
-            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
-            table += '</table>';
-
-            sidebar_ctr.innerHTML += table;
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button></p>';
-
-            sidebar.show();
-        }
-
-        function click_new_ESDL_button(obj) {
-            new_title = document.getElementById('new_title').value;
-            new_description = document.getElementById('new_description').value;
-            new_email = document.getElementById('new_email').value;
-            new_top_area_name = document.getElementById('new_area_name').value;
-
-            socket.emit('file_command', {cmd: 'new_esdl', title: new_title, description: new_description,
-                email: new_email, top_area_name: new_top_area_name});
-        }
-
+        // ------------------------------------------------------------------------------------------------------------
+        //  Boundary information from GEIS boundary service
+        // ------------------------------------------------------------------------------------------------------------
         function boundary_info_window() {
             sidebar_ctr = sidebar.getContainer();
 
@@ -456,15 +420,35 @@
 
             table = '<table>';
             table = table + '<tr><td width=180>Scope</td>';
-            table = table + '<td><input type="text" width="60" id="scope" value="district"></td></tr>';
+            <!-- table = table + '<td><input type="text" width="60" id="scope" value="district"></td></tr>'; -->
+
+            table = table + '<td><select id="scope">';
+            table = table + '<option value="country">country</option>';
+            table = table + '<option value="province">province</option>';
+            table = table + '<option value="region">region</option>';
+            table = table + '<option value="municipality" selected>municipality</option>';
+            table = table + '<option value="district">district</option>';
+            table = table + '<option value="neighbourhood">neighbourhood</option>';
+            table = table + '</select></td></tr>';
+
             table = table + '<tr><td width=180>Subscope</td>';
-            table = table + '<td><input type="text" width="60" id="subscope" value="neighbourhood"></td></tr>';
+            <!-- table = table + '<td><input type="text" width="60" id="subscope" value="neighbourhood"></td></tr>'; -->
+
+            table = table + '<td><select id="subscope">';
+            table = table + '<option value="country">country</option>';
+            table = table + '<option value="province">province</option>';
+            table = table + '<option value="region">region</option>';
+            table = table + '<option value="municipality">municipality</option>';
+            table = table + '<option value="district">district</option>';
+            table = table + '<option value="neighbourhood" selected>neighbourhood</option>';
+            table = table + '</select></td></tr>';
+
             table = table + '<tr><td width=180>Identifier</td>';
-            table = table + '<td><input type="text" width="60" id="identifier" value="WK001405"></td></tr>';
+            table = table + '<td><input type="text" width="60" id="identifier" value="GM0060"></td></tr>';
             table = table + '<tr><td width=180>Initialize energysystem</td>';
-            table = table + '<td><input type="checkbox" id="initialize_ES"></td></tr>';
+            table = table + '<td><input type="checkbox" id="initialize_ES" checked></td></tr>';
             table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
-            table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL"></td></tr>';
+            table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL" checked></td></tr>';
             table = table + '</table>';
             sidebar_ctr.innerHTML += table;
 
@@ -482,6 +466,21 @@
 
             socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope: subscope,
                 initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //  Carriers and commodities
+        // ------------------------------------------------------------------------------------------------------------
+        setCarrier = function(e) {
+            asset_id = e.relatedTarget.id;
+            // console.log(asset_id);
+
+            carrier_index = document.getElementById("carrier_select").selectedIndex;
+            carrier_options = document.getElementById("carrier_select").options;
+            carrier_id = carrier_options[carrier_index].value;
+
+            // console.log(carrier_id);
+            socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, carrier_id: carrier_id});
         }
 
         function add_carrier() {
@@ -618,6 +617,9 @@
             sidebar.show();
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Marginal costs (used by ESSIM)
+        // ------------------------------------------------------------------------------------------------------------
         function set_marginal_costs(asset_id) {
             mc = document.getElementById('marg_costs').value;
             console.log(mc);
@@ -643,6 +645,17 @@
             sidebar.show();
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Storage strategies (used by ESSIM)
+        // ------------------------------------------------------------------------------------------------------------
+        function set_driven_by_demand(asset_id, port_id) {
+            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenByDemand', 'asset_id': asset_id, 'port_id': port_id});
+        }
+
+        function set_driven_by_supply(asset_id, port_id) {
+            socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': 'DrivenBySupply', 'asset_id': asset_id, 'port_id': port_id});
+        }
+
         function set_storage_strategy(asset_id) {
             mcc = document.getElementById('marg_ch_costs').value;
             mdc = document.getElementById('marg_disch_costs').value;
@@ -664,6 +677,37 @@
 
             sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
             sidebar.show();
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //  Functions for starting a new ESDL file, loading and saving an ESDL file
+        // ------------------------------------------------------------------------------------------------------------
+        function new_ESDL() {
+            sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
+
+            table = '<table>';
+            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>';
+            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
+            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
+            table += '<tr><td width=180></td><td></td></tr>';
+            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
+            table += '</table>';
+
+            sidebar_ctr.innerHTML += table;
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button></p>';
+
+            sidebar.show();
+        }
+
+        function click_new_ESDL_button(obj) {
+            new_title = document.getElementById('new_title').value;
+            new_description = document.getElementById('new_description').value;
+            new_email = document.getElementById('new_email').value;
+            new_top_area_name = document.getElementById('new_area_name').value;
+
+            socket.emit('file_command', {cmd: 'new_esdl', title: new_title, description: new_description,
+                email: new_email, top_area_name: new_top_area_name});
         }
 
         function open_ESDL(event) {
@@ -707,6 +751,14 @@
 
         function send_download_ESDL() {
             socket.emit('file_command', {cmd: 'download_esdl'});
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
+        setPortProfile = function(e, marker_id, port_id) {
+            console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
+            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
 
         function add_profile_to_port() {
@@ -765,6 +817,33 @@
             socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
+        function validate_for_ESSIM() {
+            socket.emit('command', {cmd: 'validate_for_ESSIM'});
+        }
+
+        function show_validate_for_ESSIM_window(results) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>ESSIM Validation results:</h1>';
+
+            table = '<table>';
+            for (i=0; i<results.length; i++) {
+                table += '<tr><td>' + results[i] + '</td></tr>'
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<p id="button_close_validation_dialog"><button onclick="sidebar.hide();">Close</button></p>';
+
+            sidebar.show();
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
         function run_ESSIM_simulation() {
             socket.emit('command', {cmd: 'run_ESSIM_simulation'});
         }
@@ -823,6 +902,9 @@
             setTimeout(poll_simulation_progress, 1000)
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Shapefile functions - Not working at the moment
+        // ------------------------------------------------------------------------------------------------------------
         function load_shapefile() {
         	var files = document.getElementById('shapefile').files;
             if (files.length == 0) {
@@ -878,6 +960,9 @@
 
         var socket;
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Document is ready loading --> all functionality to react on incoming socket messages
+        // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "{{dir_settings.socket_prefix}}/socket.io"});
@@ -1289,9 +1374,9 @@
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
                 if (info_type == 'MP-WGS84') {
-                    // console.log('received MP-WGS84')
+                    console.log('received MP-WGS84')
                     var mp = geometry['coordinates'];
-                    // console.log(mp);
+                    console.log(mp);
 
                     for (i=0; i<mp.length; i++) {
                         polygon = mp[i];
@@ -1303,7 +1388,7 @@
                                 coordinates: polygon
                             }
                         };
-                        // console.log(areaBoundary);
+                        console.log(areaBoundary);
                         L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(area_layer);
                     }
                 }
@@ -1394,6 +1479,10 @@
 
             socket.on('show_simulation_progress_window', function() {
                 show_simulation_progress_window();
+            });
+
+            socket.on('results_validation_for_ESSIM', function(results) {
+                show_validate_for_ESSIM_window(results);
             });
         });
     </script>
@@ -1503,7 +1592,8 @@
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
         <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
-        <button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button>
+        <!-- Connect assets now works via context menu -->
+        <!-- button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button-->
         <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
 
         <select id="asset_menu" style='position:relative;z-index:100'>
@@ -1548,6 +1638,7 @@
             <option value="floor area">Floor area</option>
         </select>
 
+        <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
     </div>

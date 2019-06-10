@@ -18,6 +18,10 @@ import copy
 import json
 import importlib
 import datetime
+import random
+from RDWGSConverter import RDWGSConverter
+
+from essim_validation import validate_ESSIM
 
 # import numpy as np
 # from scipy.spatial import Delaunay
@@ -224,7 +228,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 
         return reply
     except:
-        return None
+        return {}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -282,7 +286,9 @@ def start_ESSIM():
             session['es_simid'] = id
             # emit('', {})
         else:
-            send_alert('Error starting ESSIM simulation')
+            send_alert('Error starting ESSIM simulation - post request returned '+ str(r.status_code))
+            print(r)
+            print(r.content)
             # emit('', {})
             return 0
     except Exception as e:
@@ -467,12 +473,18 @@ def _find_more_area_boundaries(this_area):
     area_scope = this_area.get_scope()
     area_geometry = this_area.get_geometry()
 
+    print('Finding area boundaries for', area_scope, area_id)
+    boundary = None
+
     if area_geometry:
+        print('Geometry specified in the ESDL')
         if isinstance(area_geometry, esdl.Polygon):
             boundary = create_boundary_from_geometry(area_geometry)
+            print('emiting Polygon WGS84')
             emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary = create_boundary_from_geometry(area_geometry)
+            print('emiting MultiPolygon WGS84')
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
         # check to see if ESDL file contains asset locations; if not generate locations
@@ -483,9 +495,13 @@ def _find_more_area_boundaries(this_area):
         # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
         if area_id and area_scope:
             if len(area_id) < 20:
+                print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
                 if boundary:
                     emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
+    if boundary:
+        update_asset_geometries3(this_area, boundary)
 
     assets = this_area.get_asset()
     for asset in assets:
@@ -1126,6 +1142,73 @@ def update_asset_geometries2(area, boundary):
     #
     # update_area_asset_geometries(area, available_locations)
     pass
+
+
+def calc_center(coords):
+    min_x = float('inf')
+    min_y = float('inf')
+    max_x = 0
+    max_y = 0
+
+    for c in coords:
+        if c[0] < min_x: min_x = c[0]
+        if c[1] < min_y: min_y = c[1]
+        if c[0] > max_x: max_x = c[0]
+        if c[1] > max_y: max_y = c[1]
+
+    return [(min_x + max_x) / 2, (min_y + max_y) / 2]
+
+
+def update_asset_geometries3(area, boundary):
+    coords = boundary['coordinates']
+    type = boundary['type']
+    print(coords)
+    print(type)
+
+    if type == 'Polygon':
+        outer_polygon = coords[0]       # Take exterior polygon
+    elif type == 'MultiPolygon':
+        outer_polygon = coords[0][0]    # Assume first polygon is most relevant and then take exterior polygon
+    else:
+        send_alert('Non supported polygon')
+
+    center = calc_center(outer_polygon)
+    print(center)
+
+    for asset in area.get_asset():
+        if isinstance(asset, esdl.AbstractBuilding):
+            for asset2 in asset.get_asset():
+                geom = asset2.get_geometry()
+
+                if not geom:
+                    geom = esdl.Point()
+                    x = center[0] + (-0.5 + random.random()) * 1000
+                    y = center[1] + (-0.5 + random.random()) * 1000
+                    if x > 180 or y > 180:  # Assume RD
+                        rdwgs = RDWGSConverter()
+                        wgs = rdwgs.fromRdToWgs([x, y])
+                        geom.set_lat(wgs[0])
+                        geom.set_lon(wgs[1])
+                    else:
+                        geom.set_lat(y)  # TODO: check order of lattitude and longitude
+                        geom.set_lon(x)
+                    asset2.set_geometry_with_type(geom)
+        else:
+            geom = asset.get_geometry()
+
+            if not geom:
+                geom = esdl.Point()
+                x = center[0]+(-0.5+random.random())*1000
+                y = center[1]+(-0.5+random.random())*1000
+                if x > 180 or y > 180:  # Assume RD
+                    rdwgs = RDWGSConverter()
+                    wgs = rdwgs.fromRdToWgs([x, y])
+                    geom.set_lat(wgs[0])
+                    geom.set_lon(wgs[1])
+                else:
+                    geom.set_lat(y)     # TODO: check order of lattitude and longitude
+                    geom.set_lon(x)
+                asset.set_geometry_with_type(geom)
 
 
 def generate_profile_info(profile):
@@ -1976,6 +2059,9 @@ def get_boundary_info(info):
     # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
     # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
 
+    if not boundaries:
+        send_alert('Error processing boundary information or no boundary information returned')
+
     for boundary in boundaries:
         geom = None
         try:
@@ -2005,7 +2091,9 @@ def get_boundary_info(info):
 
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
-    print('Ready prcessing boundary information')
+    print('Ready processing boundary information')
+
+    session['es_edit'] = es_edit
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2566,9 +2654,9 @@ def process_command(message):
 
         # TODO: Find nice way to set al parameters based on their names
         # TODO: Take care of int, float, string (and ENUM?)
-        if param_name in ['name', 'description']:
+        if param_name in ['name', 'description', 'prodType']:
             getattr(asset, 'set_' + param_name)(param_value)
-        if param_name in ['power']:
+        if param_name in ['power', 'efficiency']:
             getattr(asset, 'set_'+param_name)(str2float(param_value))
 
     if message['cmd'] == 'set_area_bld_polygon':
@@ -2904,10 +2992,15 @@ def process_command(message):
     if message['cmd'] == 'run_ESSIM_simulation':
         print('ESSIM simulation command received')
         # Create the HTTP POST to start the simulation
-        start_ESSIM()
-        emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
+        if start_ESSIM():
+            emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
         # start_checking_ESSIM_progress()
         # check_ESSIM_progress()
+
+    if message['cmd'] == 'validate_for_ESSIM':
+        print('validation for ESSIM command received')
+        res = validate_ESSIM(es_edit)
+        emit('results_validation_for_ESSIM', res)
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
@@ -2944,15 +3037,14 @@ def process_energy_system(es):
     mapping = {}
 
     area = es.get_instance()[0].get_area()
+    emit('clear_ui')
+    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
 
     asset_dict = create_asset_dict(area)
     carrier_list = get_carrier_list(es)
 
     create_port_to_asset_mapping(area, mapping)
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-    emit('clear_ui')
-    find_boundaries_in_ESDL(area)
 
     emit('es_title', es.get_name())
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
