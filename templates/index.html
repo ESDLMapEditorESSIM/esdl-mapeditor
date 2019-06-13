@@ -39,8 +39,6 @@
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
-    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
-    <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -48,6 +46,8 @@
         var profile_array;
         var carrier_list;
         var control_strategy_config;
+        var wms_layer_list;
+        var leaflet_layers = {};
 
         var connecting_assets = false;
         var first_clicked = false;
@@ -958,6 +958,78 @@
             sidebar.show();
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  WMS Layer functionality
+        // ------------------------------------------------------------------------------------------------------------
+        function add_layer() {
+            layer_descr = document.getElementById('layer_descr').value;
+            layer_url = document.getElementById('layer_url').value;
+            layer_name = document.getElementById('layer_name').value;
+            layer_id = uuidv4();
+
+            socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, visible: true});
+            wms_layer_list[layer_id] = { description: layer_descr, url: layer_url, layer_name: layer_name }
+
+            wms_layer_list[layer_id].layer_ref = L.tileLayer.wms(layer_url, {
+                layers: layer_name,
+                format:'image/png',
+                transparent: true
+            });
+            wms_layer_list[layer_id].layer_ref.addTo(map);
+            wms_layer_list[layer_id].layer_ref.bringToFront();
+            wms_layer_list[id].visible = true;
+        }
+
+        function remove_layer(id) {
+            socket.emit('command', {cmd: 'remove_layer', id: id});
+            console.log('remove layer: '+id);
+            map.removeLayer(wms_layer_list[id].layer_ref);
+            delete wms_layer_list[id];
+        }
+
+        function click_layer(id) {
+            checkbox = document.getElementById('cb_'+id);
+            if (checkbox.checked) {
+                console.log('add layer to map: '+id);
+                wms_layer_list[id].layer_ref.addTo(map);
+                wms_layer_list[id].layer_ref.bringToFront();
+                wms_layer_list[id].visible = true;
+            } else {
+                console.log('remove layer from map: '+id);
+                map.removeLayer(wms_layer_list[id].layer_ref);
+                wms_layer_list[id].visible = false;
+            }
+        }
+
+        function show_layers() {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Layers</h1>';
+            table = '<table>';
+            for (var key in wms_layer_list) {
+                let value = wms_layer_list[key];
+
+                table += '<tr><td><input type="checkbox" id="cb_'+ key +'" name="' +value.description+ '" onclick="click_layer(\''+key+'\');"';
+                if (value.visible) { table += ' checked'; }
+                table +='>';
+                table += '<label for="'+value.id+'">'+value.description+'</label></td>';
+                table += '<td><button onclick="remove_layer(\'' + key + '\');">Del</button></td></tr>';
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<h2>Add layers:</h2>';
+            table = '<table>';
+            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="layer_descr"></td></tr>';
+            table += '<tr><td width=180>URL</td><td><input type="text" width="60" id="layer_url"></td></tr>';
+            table += '<tr><td width=180>Layer name</td><td><input type="text" width="60" id="layer_name"></td></tr>';
+            table += '<tr><td><button onclick="add_layer();">Add layer</button></td><td>&nbsp;</td>';
+            table += '</table>';
+            sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+            sidebar.show();
+        }
+
         var socket;
 
         // ------------------------------------------------------------------------------------------------------------
@@ -965,7 +1037,7 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {path: "{{dir_settings.socket_prefix}}/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':5000, 'connect timeout': 5000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
             socket.on('connect', function() {
                 console.log('connected');
@@ -1227,7 +1299,7 @@
 
                 sidebar.show();
             });
-			
+
 			socket.on('conductor_info', function(asset_info) {
 				// console.log('Conductor info: ')
 				// console.log(asset_info);
@@ -1235,18 +1307,18 @@
                 asset_name = asset_info['name'];
 				latlng = asset_info['latlng']; // location of popup send in messagage
                 asset_attrs = asset_info['attrs'];
-				
+
 				length = 0;
 				for (i=0; i<asset_attrs.length; i++) {
 					if (asset_attrs[i][0]=='length') {
 						length=asset_attrs[i][1];
 					}
 				}
-				
+
 				var popup = L.popup().setLatLng(latlng)
 						.setContent('<p><b>'+asset_name+'</b><br>Length: '+length+'m<br>id: '+asset_id+'</p>')
 						.openOn(map);
-				
+
 			});
 
             socket.on('port_profile_info', function(port_profile_info) {
@@ -1473,6 +1545,25 @@
                 $("#carrier_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
             });
 
+            socket.on('wms_layer_list', function(wms_layer_lst) {
+                wms_layer_list = wms_layer_lst;
+                console.log(wms_layer_list);
+
+                for (var key in wms_layer_list) {
+                    var layer_info = wms_layer_list[key];
+
+                    layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+                        layers: layer_info.layer_name,
+                        format:'image/png',
+                        transparent: true
+                    });
+                    if (layer_info.visible) {
+                        layer_info.layer_ref.addTo(map);
+                        layer_info.layer_ref.bringToFront();
+                    }
+                }
+            });
+
             socket.on('and_now_press_download_file', function() {
                 $("#download-esdl").click();
             });
@@ -1486,6 +1577,8 @@
             });
         });
     </script>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
 
 
     <script>
@@ -1497,6 +1590,7 @@
             $("#building_color").selectmenu({ width:150 });
             $("#profile_menu").selectmenu({ width:150 });
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
+            $('#layer-info').button({text: false, icons: {primary: "layers"}});
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
@@ -1539,6 +1633,11 @@
         }
         .ui-button .ui-icon.geometry{
             background-image: url({{dir_settings.resource_prefix}}icons/AreaGeometry.png);
+            width: 25;
+            height: 25;
+        }
+        .ui-button .ui-icon.layers{
+            background-image: url({{dir_settings.resource_prefix}}icons/Layers.png);
             width: 25;
             height: 25;
         }
@@ -1641,6 +1740,7 @@
         <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
+        <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
@@ -1670,6 +1770,25 @@
 
     connection_layer.bringToFront();
 
+//    var wms_layer = L.tileLayer.wms("http://geodata.nationaalgeoregister.nl/ahn2/wms?", {
+//        layers: 'ahn2_5m',
+//        format:'image/png',
+//        transparent: true
+//    });
+//
+//    wms_layer.addTo(map);
+//    wms_layer.bringToFront();
+//
+//   var wms_layer2 = L.tileLayer.wms("https://geodata.nationaalgeoregister.nl/restwarmte/wms?", {
+//        layers: 'liggingindustrieco2',
+//        format:'image/png',
+//        transparent: true
+//    });
+//
+//    wms_layer2.addTo(map);
+//    wms_layer2.bringToFront();
+
+
     // var geo = L.geoJson({features:[]},{onEachFeature:function popUp(f,l){
     // 		var out = [];
     // 		if (f.properties){
@@ -1694,6 +1813,7 @@
             })
         },
         { 'Assets': esdl_layer, 'Area boundaries': area_layer, 'Building boundaries': bld_layer, 'Potential boundaries': pot_layer, 'Connections': connection_layer },
+        //, 'wms': wms_layer, 'wms2': wms_layer2 },
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 

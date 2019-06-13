@@ -22,6 +22,7 @@ import random
 from RDWGSConverter import RDWGSConverter
 
 from essim_validation import validate_ESSIM
+from wms_layers import WMSLayers
 
 # import numpy as np
 # from scipy.spatial import Delaunay
@@ -31,16 +32,12 @@ from model import esdl_sup as esdl
 import esdl_config
 import settings
 
-# for scheduling tasks to check ESSIM progress
-# from redis import Redis
-# import rq
-# from essim import check_progress
-
-
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
 # the best option based on installed packages.
 async_mode = None
+
+wms_layers = WMSLayers()
 
 color_method = 'buildingyear'
 BUILDING_COLORS_BUILDINGYEAR = [
@@ -286,7 +283,7 @@ def start_ESSIM():
             session['es_simid'] = id
             # emit('', {})
         else:
-            send_alert('Error starting ESSIM simulation - post request returned '+ str(r.status_code))
+            send_alert('Error starting ESSIM simulation - response '+ str(r.status_code) + ' with reason: ' + str(r.reason))
             print(r)
             print(r.content)
             # emit('', {})
@@ -2989,6 +2986,9 @@ def process_command(message):
 
         set_marginal_costs_for_asset(asset_id, mc)
 
+    if message['cmd'] == 'layer':
+        pass
+
     if message['cmd'] == 'run_ESSIM_simulation':
         print('ESSIM simulation command received')
         # Create the HTTP POST to start the simulation
@@ -3001,6 +3001,27 @@ def process_command(message):
         print('validation for ESSIM command received')
         res = validate_ESSIM(es_edit)
         emit('results_validation_for_ESSIM', res)
+
+    if message['cmd'] == 'add_layer':
+        id = message['id']
+        descr = message['descr']
+        url = message['url']
+        name = message['name']
+        visible = message['visible']
+
+        layer = {
+            "description": descr,
+            "url": url,
+            "layer_name": name,
+            "layer_ref": None,
+            "visible": visible
+        }
+
+        wms_layers.add_wms_layer(id, layer)
+
+    if message['cmd'] == 'remove_layer':
+        id = message['id']
+        wms_layers.remove_wms_layer(id)
 
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
@@ -3094,10 +3115,10 @@ def process_file_command(message):
             # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
             file_content = file_content.split('\n', 1)[1]
         try:
-            es_load = esdl.parseString(file_content)
+            es_load = esdl.parseString(file_content, silence=True)
             es_edit = es_load
-        except:
-            send_alert('Error interpreting ESDL from file')
+        except Exception as e:
+            send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
         process_energy_system(es_edit)
         # start_ESSIM()
@@ -3174,6 +3195,7 @@ def on_connect():
     print("Websocket connection established")
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
+    emit('wms_layer_list', wms_layers.get_layers())
 
     initialize_app()
 
