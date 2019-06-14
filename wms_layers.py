@@ -12,6 +12,20 @@ default_wms_layers = {
         "layer_name": "liggingindustrieco2",
         "layer_ref": None,
         "visible": True
+    },
+    "LianderHS": {
+        "description": "Liander hoogspanningskabels",
+        "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
+        "layer_name": "hoogspanningskabels",
+        "layer_ref": None,
+        "visible": True
+    },
+    "LianderMS": {
+        "description": "Liander middenspanningskabels",
+        "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
+        "layer_name": "middenspanningskabels",
+        "layer_ref": None,
+        "visible": True
     }
 }
 

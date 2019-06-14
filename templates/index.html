@@ -24,7 +24,8 @@
     <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4leaflet.js"></script>
 
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>
+    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script-->
 
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
@@ -159,17 +160,17 @@
                     if (marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
                         for (p=0; p<marker.ports.length; p++) {
-                            var port_id = marker.ports[p].id
+                            let port_id = marker.ports[p].id
 
                             if (marker.ports[p].type == 'OutPort') {
                                 menu_item_txt = 'Set DrivenByDemand for [' + asset_id + ']: ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name;
                                 callback_function = function(e) {
-                                    // set_driven_by_demand(asset_id, port_id);
+                                    set_driven_by_demand(asset_id, port_id);
                                 }
                             } else {
                                 menu_item_txt = 'Set DrivenBySupply for [' + asset_id + ']: ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name;
                                 callback_function = function(e) {
-                                    // set_driven_by_supply(asset_id, port_id);
+                                    set_driven_by_supply(asset_id, port_id);
                                 }
                             }
 
@@ -1856,8 +1857,12 @@
                 showArea: true
             },
             circle: false,
+            polyline: {
+                repeatMode: true
+            },
             marker: {
-                icon: new BatteryMarker()
+                icon: new BatteryMarker(),
+                repeatMode: true
             }
         }
     })
@@ -1923,17 +1928,17 @@
 //            }
 //        }
 
-        if (menu_item_text.substring(0, 10) ==  'Set Driven') {
-            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
-
-            if (menu_item_text.substring(4, 14) ==  'DrivenByDemand') {
-                set_driven_by_demand(asset_id, port_id);
-            }
-            if (menu_item_text.substring(4, 14) ==  'DrivenBySupply') {
-                set_driven_by_supply(asset_id, port_id);
-            }
-        }
+//        if (menu_item_text.substring(0, 10) ==  'Set Driven') {
+//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
+//            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
+//
+//            if (menu_item_text.substring(4, 14) ==  'DrivenByDemand') {
+//                set_driven_by_demand(asset_id, port_id);
+//            }
+//            if (menu_item_text.substring(4, 14) ==  'DrivenBySupply') {
+//                set_driven_by_supply(asset_id, port_id);
+//            }
+//        }
 
         if (menu_item_text.substring(0, 11) ==  'Set Storage') {
             asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));

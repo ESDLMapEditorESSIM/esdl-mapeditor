@@ -281,6 +281,7 @@ def start_ESSIM():
             #print(result)
             id = result['id']
             session['es_simid'] = id
+            print(id)
             # emit('', {})
         else:
             send_alert('Error starting ESSIM simulation - response '+ str(r.status_code) + ' with reason: ' + str(r.reason))
