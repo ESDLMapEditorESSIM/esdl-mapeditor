@@ -2274,7 +2274,7 @@ def str2float(string):
         f = float(string)
         return f
     except:
-        return None
+        return 0.0
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2322,7 +2322,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'UTES']:
+        if assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
@@ -3161,8 +3161,8 @@ def process_file_command(message):
             write_energysystem_to_file('./static/EnergySystem.esdl', es_edit)
             # TODO: do we need to flush??
             emit('and_now_press_download_file')
-        except:
-            send_alert('Error saving ESDL file to filesystem')
+        except Exception as e:
+            send_alert('Error saving ESDL file to filesystem - exception: '+str(e))
 
     if message['cmd'] == 'download_esdl':
         es_edit = session['es_edit']

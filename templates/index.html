@@ -24,8 +24,8 @@
     <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/proj4leaflet.js"></script>
 
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>
-    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script-->
+    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
 
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
@@ -1715,6 +1715,7 @@
             <option value="HeatNetwork">HeatNetwork</option>
             <option value="HeatPump">HeatPump</option>
             <option value="Joint">Joint</option>
+            <option value="MobilityDemand">MobilityDemand</option>
             <option value="PowerPlant">PowerPlant</option>
             <option value="PVInstallation">PVInstallation</option>
             <option value="PVParc">PVParc</option>
@@ -1755,6 +1756,18 @@
     -->
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
 
 <script>
 
@@ -1836,6 +1849,7 @@
     var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
     var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
 	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
+    var MobilityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/MobilityDemand.png'}});
     var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
     var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
     var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
@@ -1983,6 +1997,7 @@
             if (selected_asset == 'HeatNetwork') layer.setIcon(new HeatNetworkMarker);
             if (selected_asset == 'HeatPump') layer.setIcon(new HeatPumpMarker);
 			if (selected_asset == 'Joint') layer.setIcon(new JointMarker);
+            if (selected_asset == 'MobilityDemand') layer.setIcon(new MobilityDemandMarker);
             if (selected_asset == 'PowerPlant') layer.setIcon(new PowerPlantMarker);
             if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
             if (selected_asset == 'Transformer') layer.setIcon(new TransformerMarker);
