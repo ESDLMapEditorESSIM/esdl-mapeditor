@@ -220,6 +220,7 @@
 
             marker.on('remove', function(e) {
                 // console.log('remove marker');
+                // marker.options.icon.tooltip('destroy');
                 if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
             });
 
@@ -278,6 +279,10 @@
             line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
+                if (layer.mouseOverArrowHead !== undefined) {
+                    map.removeLayer(layer.mouseOverArrowHead)
+                    delete layer.mouseOverArrowHead;
+                }
                 if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
             });
 
@@ -1757,18 +1762,6 @@
 </body>
 </html>
 
-
-
-
-
-
-
-
-
-
-
-
-
 <script>
 
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1783,25 +1776,6 @@
             connection_layer = L.featureGroup().addTo(map);
 
     connection_layer.bringToFront();
-
-//    var wms_layer = L.tileLayer.wms("http://geodata.nationaalgeoregister.nl/ahn2/wms?", {
-//        layers: 'ahn2_5m',
-//        format:'image/png',
-//        transparent: true
-//    });
-//
-//    wms_layer.addTo(map);
-//    wms_layer.bringToFront();
-//
-//   var wms_layer2 = L.tileLayer.wms("https://geodata.nationaalgeoregister.nl/restwarmte/wms?", {
-//        layers: 'liggingindustrieco2',
-//        format:'image/png',
-//        transparent: true
-//    });
-//
-//    wms_layer2.addTo(map);
-//    wms_layer2.bringToFront();
-
 
     // var geo = L.geoJson({features:[]},{onEachFeature:function popUp(f,l){
     // 		var out = [];
@@ -1831,32 +1805,43 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
-    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
-	var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
-    var EConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/EConnection.png'}});
-    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
-    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
-    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
-	var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
-	var GConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GConnection.png'}});
-	var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
-	var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
-    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
-    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConversion.png'}});
-    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericProducer.png'}});
-	var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GeothermalSource.png'}});
-    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatingDemand.png'}});
-    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
-    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
-	var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
-    var MobilityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/MobilityDemand.png'}});
-    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
-    var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
-    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
-    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
-    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});
-    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/UTES.png'}});
-    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/WindTurbine.png'}});
+    var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
+        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
+        "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
+        "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];
+
+    for (var i=0; i < assets_for_icons.length; i++) {
+        var ass_name = assets_for_icons[i];
+        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+            iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/' + ass_name +'.png'}});
+    }
+
+//    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
+//	  var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
+//    var EConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/EConnection.png'}});
+//    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
+//    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
+//    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
+//    var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
+//	  var GConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GConnection.png'}});
+//    var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
+//    var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
+//    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
+//    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConversion.png'}});
+//    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericProducer.png'}});
+//    var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GeothermalSource.png'}});
+//    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatingDemand.png'}});
+//    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
+//    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
+//    var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
+//    var MobilityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/MobilityDemand.png'}});
+//    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
+//    var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
+//    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
+//    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
+//    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});
+//    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/UTES.png'}});
+//    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
         edit: {
@@ -1977,51 +1962,17 @@
             // console.log('selected option: ' + selection);
             // console.log('selected asset: ' + selected_asset);
 
-            // set_marker_handlers(layer);  // is now called after server interaction, see below
             layer.name = selected_asset + '_' + layer.id.substring(0,4);
-
-            // TODO: This can probably be done smarter --> TODO: this is not necessary anymore?
-            if (selected_asset == 'Battery') layer.setIcon(new BatteryMarker);
-            if (selected_asset == 'CHP') layer.setIcon(new CHPMarker);
-            if (selected_asset == 'ElectricityDemand') layer.setIcon(new ElectricityDemandMarker);
-            if (selected_asset == 'ElectricityNetwork') layer.setIcon(new ElectricityNetworkMarker);
-            if (selected_asset == 'Electrolyzer') layer.setIcon(new ElectrolyzerMarker);
-            if (selected_asset == 'FuelCell') layer.setIcon(new FuelCellMarker);
-            if (selected_asset == 'GasHeater') layer.setIcon(new GasHeaterMarker);
-            if (selected_asset == 'GasNetwork') layer.setIcon(new GasNetworkMarker);
-            if (selected_asset == 'GenericConsumer') layer.setIcon(new GenericConsumerMarker);
-            if (selected_asset == 'GenericConversion') layer.setIcon(new GenericConversionMarker);
-            if (selected_asset == 'GenericProducer') layer.setIcon(new GenericProducerMarker);
-			if (selected_asset == 'GeothermalSource') layer.setIcon(new GeothermalSourceMarker);
-            if (selected_asset == 'HeatingDemand') layer.setIcon(new HeatingDemandMarker);
-            if (selected_asset == 'HeatNetwork') layer.setIcon(new HeatNetworkMarker);
-            if (selected_asset == 'HeatPump') layer.setIcon(new HeatPumpMarker);
-			if (selected_asset == 'Joint') layer.setIcon(new JointMarker);
-            if (selected_asset == 'MobilityDemand') layer.setIcon(new MobilityDemandMarker);
-            if (selected_asset == 'PowerPlant') layer.setIcon(new PowerPlantMarker);
-            if (selected_asset == 'PVParc') layer.setIcon(new PVParcMarker);
-            if (selected_asset == 'Transformer') layer.setIcon(new TransformerMarker);
-            if (selected_asset == 'UTES') layer.setIcon(new UTESMarker);
-            if (selected_asset == 'WindTurbine') layer.setIcon(new WindTurbineMarker);
-            if (selected_asset == 'ResidualHeatSourcePotential') layer.setIcon(new ResidualHeatSourcePotentialMarker);
-
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
-
-            // Let server send info including ports, so marker.contextmenu can be populated
-            // esdl_layer.addLayer(layer);
         }
         if (type === 'polyline') {
             line_type = document.getElementById("line_select").value;
             //console.log('selected line type: ' + line_type);
             layer.type = line_type;
-            layer.name = line_type+'_'+layer.id;
+            layer.name = line_type + '_' + layer.id.substring(0,4);
             layer.title = layer.name;
             polyline_length = calculate_length(layer);
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-
-            // Let server send info including ports, so line.contextmenu can be populated
-            // set_line_handlers(layer);
-            // esdl_layer.addLayer(layer);
         }
         if (type === 'polygon' || type === 'rectangle') {
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});

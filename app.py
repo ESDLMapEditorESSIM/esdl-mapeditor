@@ -2898,16 +2898,16 @@ def process_command(message):
 
             if carr_encunit == 'MJpkg':
                 encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      permultiplier = 'KILO', perunit = 'GRAM')
+                                                      perMultiplier = 'KILO', perUnit = 'GRAM')
             elif carr_encunit == 'MJpNm3':
                 encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      perunit = 'CUBIC_METRE')
+                                                      perUnit = 'CUBIC_METRE')
             elif carr_encunit == 'MJpMJ':
                 encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      permultiplier = 'MEGA', perunit = 'JOULE')
+                                                      perMultiplier = 'MEGA', perUnit = 'JOULE')
 
             emission_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'EMISSION', multiplier = 'KILO', unit = 'GRAM',
-                                                  permultiplier = 'GIGA', perunit = 'JOULE')
+                                                  perMultiplier = 'GIGA', perUnit = 'JOULE')
 
             carrier.set_energyContentUnit(encont_qandu)
             carrier.set_emissionUnit(emission_qandu)
