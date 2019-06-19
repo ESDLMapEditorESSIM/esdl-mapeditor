@@ -1696,7 +1696,7 @@
         <a href=".{{dir_settings.download_prefix}}/EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
-        <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
+        <button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button>
         <!-- Connect assets now works via context menu -->
         <!-- button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button-->
         <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
@@ -1708,6 +1708,7 @@
             <option value="ElectricityDemand">ElectricityDemand</option>
             <option value="ElectricityNetwork">ElectricityNetwork</option>
             <option value="Electrolyzer">Electrolyzer</option>
+            <option value="EVChargingStation">EVChargingStation</option>
             <option value="FuelCell">FuelCell</option>
             <option value="GConnection">GConnection</option>
             <option value="GasHeater">GasHeater</option>
@@ -1806,6 +1807,7 @@
     ).addTo(map);
 
     var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
+        "EVChargingStation",
         "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
         "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];

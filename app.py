@@ -2322,7 +2322,8 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
+        if assettype in ['Battery', 'ElectricityDemand', 'EVChargingStation', 'GenericConsumer', 'HeatingDemand',
+                         'MobilityDemand', 'UTES']:
             module = importlib.import_module('model.esdl_sup')
             class_ = getattr(module, assettype)
             asset = class_()
