@@ -75,6 +75,20 @@ esdl_config = {
             "measurement": "constant",
             "field": "value",
             "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Wind op land",
+            "multiplier": 1,
+            "measurement": "wind-2015",
+            "field": "Wind-op-land",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Wind op zee",
+            "multiplier": 1,
+            "measurement": "wind-2015",
+            "field": "Wind-op-zee",
+            "profileType": "ENERGY_IN_TJ"
         }
     ],
     "energy_carriers": [
