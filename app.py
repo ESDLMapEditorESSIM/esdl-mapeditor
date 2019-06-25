@@ -2977,7 +2977,7 @@ def process_command(message):
         emit('results_validation_for_ESSIM', res)
 
     if message['cmd'] == 'calculate_ESSIM_KPIs':
-        session['simulationRun'] = '5d10f273783bac5eff4575e8'
+        # session['simulationRun'] = '5d10f273783bac5eff4575e8'
 
         if 'simulationRun' in session:
             sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
