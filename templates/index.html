@@ -40,6 +40,7 @@
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -279,6 +280,7 @@
             line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
+                var layer = e.target;
                 if (layer.mouseOverArrowHead !== undefined) {
                     map.removeLayer(layer.mouseOverArrowHead)
                     delete layer.mouseOverArrowHead;
@@ -865,21 +867,24 @@
                     // console.log(data);
 
                     if (data["percentage"] == "1") {
-                        dashboardURL = data["url"];
+                        let dashboardURL = data["url"];
+                        let simulationRun = data["simulationRun"];
                         // console.log(dashboardURL);
-                        progress = document.getElementById('progress_percentage');
+                        let progress = document.getElementById('progress_percentage');
                         progress.innerHTML = 'Simulation finsihed';
-                        dbURL_location = document.getElementById('dashboard_url');
+                        let dbURL_location = document.getElementById('dashboard_url');
                         dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '" target="#">dashboard</a>';
+                        let simRun_location = document.getElementById('simulationRun');
+                        simRun_location.innerHTML = simulationRun;
 
-                        button_show = document.getElementById('button_close_simulation_dialog');
+                        let button_show = document.getElementById('button_close_simulation_dialog');
                         button_show.style.display = "block";
-                        button_hide = document.getElementById('button_cancel_simulation');
+                        let button_hide = document.getElementById('button_cancel_simulation');
                         button_hide.style.display = "none";
 
                     } else {
-                        percentage = Math.round(parseFloat(data["percentage"]) * 100);
-                        progress = document.getElementById('progress_percentage');
+                        let percentage = Math.round(parseFloat(data["percentage"]) * 100);
+                        let progress = document.getElementById('progress_percentage');
                         progress.innerHTML =  percentage + '%';
                         setTimeout(poll_simulation_progress, 1000);
                     }
@@ -900,12 +905,81 @@
             sidebar_ctr.innerHTML += table;
 
             sidebar_ctr.innerHTML += '<p id="dashboard_url"></p>';
+            sidebar_ctr.innerHTML += '<p id="simulationRun"></p>';
 
             sidebar_ctr.innerHTML += '<p id="button_cancel_simulation"><button onclick="cancel_ESSIM_simulation(); sidebar.hide();">Cancel simulation</button></p>';
             sidebar_ctr.innerHTML += '<p id="button_close_simulation_dialog" hidden><button onclick="sidebar.hide();">Close</button></p>';
 
             sidebar.show();
-            setTimeout(poll_simulation_progress, 1000)
+            setTimeout(poll_simulation_progress, 1000);
+        }
+
+        function calculate_ESSIM_KPIs() {
+            socket.emit('command', {cmd: 'calculate_ESSIM_KPIs'});
+        }
+
+        // format-number-with-si-prefix.js
+        // https://gist.github.com/cho45/9968462
+        function formatN (n) {
+            console.log("n: ", n);
+            var nn = n.toExponential(2).split(/e/);
+            console.log("nn: ", nn)
+            var u = Math.floor(+nn[1] / 3);
+            console.log("u: ", u)
+            return nn[0] * Math.pow(10, +nn[1] - u * 3) + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
+        }
+
+        function print_value_unit(val, unit) {
+            if (unit == 'kgCO2') {
+                val_s = parseFloat(Number(val / 1e6).toPrecision(2)).toString();
+                return val_s + ' kton CO2';
+            } else {
+                val_s = formatN(val);
+                console.log(val);
+                console.log(unit);
+                console.log(val_s);
+                return val_s + unit;
+            }
+        }
+
+        function show_ESSIM_KPIs(results) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>ESSIM KPI\'s</h1>';
+
+            let category = null;
+            let table = "";
+
+            for (let i=0; i<results.length; i++) {
+                let name = results[i]['name'];
+                let cat_kpi = name.split("-");
+                let cat = cat_kpi[0];
+                let kpi = cat_kpi[1];
+
+                if (cat != category) {            // stop table, start new one
+                    if (table != "") {
+                        table += '</table>';
+                        sidebar_ctr.innerHTML += table;
+                        table = "";
+                    }
+                    sidebar_ctr.innerHTML += '<h2>'+cat+'</h2>';
+                    table = '<table>';
+                    category = cat;
+                }
+                if (kpi.indexOf("Total") == 0) {
+                    bold_start = "<b>";
+                    bold_end = "</b>";
+                } else {
+                    bold_start = "";
+                    bold_end = "";
+                }
+                table += '<tr><td width=180>'+bold_start+kpi+bold_end+'</td>';
+                table += '<td>'+bold_start+print_value_unit(results[i]['value'], results[i]['unit'])+bold_end+'</td></tr>';
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar.show();
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1581,9 +1655,14 @@
             socket.on('results_validation_for_ESSIM', function(results) {
                 show_validate_for_ESSIM_window(results);
             });
+
+            socket.on('show_ESSIM_KPIs', function(results) {
+                show_ESSIM_KPIs(results);
+            });
+
+
         });
     </script>
-    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
 
 
@@ -1749,6 +1828,7 @@
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
         <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+        <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>

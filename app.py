@@ -17,11 +17,14 @@ import math
 import copy
 import json
 import importlib
-import datetime
+from datetime import datetime
 import random
 from RDWGSConverter import RDWGSConverter
 
+from es_generic import *
 from essim_validation import validate_ESSIM
+from essim_config import essim_config
+from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 
 # import numpy as np
@@ -82,9 +85,11 @@ AREA_FILLCOLOR = 'red'
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
 xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
+GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 GEIS_CLOUD_IP = '10.30.2.1'
 ESDL_STORE_PORT = '3003'
-store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
+# store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
+store_url = 'http://' + GEIS_CLOUD_HOSTNAME + '/store/'
 
 
 def write_energysystem_to_file(filename, es):
@@ -188,7 +193,8 @@ def get_boundary_from_service(scope, id):
     """
 
     try:
-        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        url = 'http://' + GEIS_CLOUD_HOSTNAME + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
 
@@ -201,6 +207,7 @@ def get_boundary_from_service(scope, id):
 
         return geom
     except:
+        print('ERROR: GEIS boundary service not reachable!')
         return None
 
 
@@ -234,7 +241,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 def start_ESSIM():
     es = session['es_edit']
     es_id = session['es_id']
-    es_simid = es_id
+    es_simid = None
     # session['es_simid'] = es_simid
 
     f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
@@ -252,10 +259,10 @@ def start_ESSIM():
 
     payload = {
         'user': ESSIM_config['user'],
-        'scenarioID': es_simid,
+        'scenarioID': es_id,
         'simulationDescription': '',
-        'startDate': '2015-01-01T00:00:00+0100',
-        'endDate': '2016-01-01T00:00:00+0100',
+        'startDate': ESSIM_config['start_datetime'],
+        'endDate': ESSIM_config['end_datetime'],
         'influxURL': ESSIM_config['influxURL'],
         'grafanaURL': ESSIM_config['grafanaURL'],
         'esdlContents': urllib.parse.quote(esdlstr)
@@ -603,13 +610,14 @@ def get_simulation_progress():
                         # print(result)
                         dashboardURL = result['dashboardURL']
                         print(dashboardURL)
+                        session['simulationRun'] = es_simid
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-                        return (jsonify({'percentage': '1', 'url': dashboardURL})), 200
+                        return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                     else:
                         send_alert('Error in getting the ESSIM dashboard URL')
                         abort(500, 'Error in getting the ESSIM dashboard URL')
                 else:
-                    return (jsonify({'percentage': result, 'url': ''})), 200
+                    return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
             else:
                 print('code: ', r.status_code)
                 send_alert('Error in getting the ESSIM progress status')
@@ -810,42 +818,6 @@ def get_asset_capability_type(asset):
     if isinstance(asset, esdl.Transport): return 'Transport'
     if isinstance(asset, esdl.Conversion): return 'Conversion'
     return 'none'
-
-
-def get_carrier_list(es):
-    carrier_list = []
-    esi = es.get_energySystemInformation()
-    if esi:
-        ecs = esi.get_carriers()
-        if ecs:
-            ec = ecs.get_carrier()
-
-            if ec:
-                for carrier in ec:
-                    carrier_info = {
-                        'type': type(carrier).__name__,
-                        'id': carrier.get_id(),
-                        'name': carrier.get_name(),
-                    }
-                    if isinstance(carrier, esdl.Commodity):
-                        if isinstance(carrier, esdl.ElectricityCommodity):
-                            carrier_info['voltage'] = carrier.get_voltage()
-                        if isinstance(carrier, esdl.GasCommodity):
-                            carrier_info['pressure'] = carrier.get_pressure()
-                        if isinstance(carrier, esdl.HeatCommodity):
-                            carrier_info['supplyTemperature'] = carrier.get_supplyTemperature()
-                            carrier_info['returnTemperature'] = carrier.get_returnTemperature()
-
-                    if isinstance(carrier, esdl.EnergyCarrier):
-                        carrier_info['energyContent'] = carrier.get_energyContent()
-                        carrier_info['emission'] = carrier.get_emission()
-                        carrier_info['energyCarrierType'] = carrier.get_energyCarrierType()
-                        carrier_info['stateOfMatter'] = carrier.get_stateOfMatter()
-
-                    # carrier_list.append({carrier.get_id(): carrier_info})
-                    carrier_list.append(carrier_info)
-
-    return carrier_list
 
 
 def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
@@ -3003,6 +2975,22 @@ def process_command(message):
         print('validation for ESSIM command received')
         res = validate_ESSIM(es_edit)
         emit('results_validation_for_ESSIM', res)
+
+    if message['cmd'] == 'calculate_ESSIM_KPIs':
+        session['simulationRun'] = '5d10f273783bac5eff4575e8'
+
+        if 'simulationRun' in session:
+            sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+            edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+
+            influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+            res = kpi_results.calculate_kpis()
+            emit('show_ESSIM_KPIs', res)
+        else:
+            send_alert('No simulation id defined')
 
     if message['cmd'] == 'add_layer':
         id = message['id']
