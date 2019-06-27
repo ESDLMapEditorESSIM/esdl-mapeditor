@@ -1868,6 +1868,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint = esdl.Joint()
             joint_id = str(uuid.uuid4())
             joint.set_id(joint_id)
+            joint.set_name('Joint_'+str(uuid.uuid4())[:4])
             inp = esdl.InPort()
             joint_inp_id = str(uuid.uuid4())
             inp.set_id(joint_inp_id)
@@ -1911,6 +1912,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                           'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
 
         # now send new objects to UI
+        print('assets to be added: {}'.format(esdl_assets_to_be_added))
         emit('add_esdl_objects', {'list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')
         emit('add_connections', conn_list)

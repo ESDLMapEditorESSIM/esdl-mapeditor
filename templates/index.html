@@ -99,7 +99,7 @@
         //  Splitting conductors (cables or pipes)
         // ------------------------------------------------------------------------------------------------------------
         splitConductorCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'no_connect');
+            splitConductor(e.relatedTarget.id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
@@ -107,7 +107,7 @@
         }
 
         splitConductorConnectCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'connect');
+            splitConductor(e.relatedTarget.id, e.latlng, 'connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
@@ -115,7 +115,9 @@
         }
 
         splitConductorAddJointCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'add_joint');
+            console.log("id = " + e.relatedTarget.id)
+            console.log(e)
+            splitConductor(e.relatedTarget.id, e.latlng, 'add_joint');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
