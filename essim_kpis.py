@@ -57,6 +57,10 @@ class ESSIM_KPIs:
 
         return results
 
+
+# SELECT sum("allocationEnergy") FROM "Ameland 2015 Electricity Network 0" WHERE ("simulationRun" = '5d124b98fe46646235a5ca08') AND ("allocationEnergy" > 0) AND ("capability" <> 'Transport') AND $timeFilter GROUP BY time(1h), "capability", "carrierName" fill(null)
+
+
     def get_total_production_per_carrier(self):
         print("--- get_total_production_per_carrier ---")
         try:

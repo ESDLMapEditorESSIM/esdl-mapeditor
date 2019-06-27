@@ -2248,6 +2248,12 @@ def str2float(string):
     except:
         return 0.0
 
+def str2int(string):
+    try:
+        i = int(string)
+        return i
+    except:
+        return 0
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
@@ -2625,9 +2631,11 @@ def process_command(message):
 
         # TODO: Find nice way to set al parameters based on their names
         # TODO: Take care of int, float, string (and ENUM?)
-        if param_name in ['name', 'description', 'prodType']:
+        if param_name in ['aggregated', 'name', 'originalIdInSource', 'description', 'prodType', 'shortName']:
             getattr(asset, 'set_' + param_name)(param_value)
-        if param_name in ['power', 'efficiency']:
+        if param_name in ['aggregationCount']:
+            getattr(asset, 'set_' + param_name)(str2int(param_value))
+        if param_name in ['COP', 'power', 'efficiency', 'surfaceArea']:
             getattr(asset, 'set_'+param_name)(str2float(param_value))
 
     if message['cmd'] == 'set_area_bld_polygon':
