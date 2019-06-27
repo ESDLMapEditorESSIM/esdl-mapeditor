@@ -10,14 +10,12 @@ from flask_socketio import SocketIO, emit
 from flask_session import Session
 import requests
 import urllib
-import time
 #from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import math
 import copy
 import json
 import importlib
-import datetime
 import random
 from RDWGSConverter import RDWGSConverter
 
@@ -28,7 +26,10 @@ from wms_layers import WMSLayers
 # from scipy.spatial import Delaunay
 # from shapely.geometry import Polygon, MultiPolygon, Point
 
-from model import esdl_sup as esdl
+#from model import esdl_sup as esdl
+from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing import ESDLGeometry, ESDLAsset
+from esdl import esdl
 import esdl_config
 import settings
 
@@ -301,144 +302,12 @@ def start_ESSIM():
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------
-def _parse_esdl_subpolygon(subpol):
-    ar = []
-    points = subpol.get_point()
-    firstlat = points[0].get_lat()
-    firstlon = points[0].get_lon()
-    for point in points:
-        lat = point.get_lat()
-        lon = point.get_lon()
-        ar.append([lon, lat])
-    ar.append([firstlon, firstlat])     # close the polygon: TODO: check if necessary??
-    return ar
-
-
-def create_boundary_from_contour(contour):
-    exterior = contour.get_exterior()
-    interiors = contour.get_interior()
-
-    ar = []
-    ar.append(_parse_esdl_subpolygon(exterior))
-    for interior in interiors:
-        ar.append(_parse_esdl_subpolygon(interior))
-
-    geom = {
-        'type': 'Polygon',
-        'coordinates': ar
-    }
-    # print(geom)
-
-    return geom
-
-
-def create_boundary_from_geometry(geometry):
-    if isinstance(geometry, esdl.Polygon):
-        exterior = geometry.get_exterior()
-        interiors = geometry.get_interior()
-
-        ar = []
-        ar.append(_parse_esdl_subpolygon(exterior))
-        for interior in interiors:
-            ar.append(_parse_esdl_subpolygon(interior))
-
-        geom = {
-            'type': 'Polygon',     # TODO: was POLYGON
-            'coordinates': ar
-        }
-        # print(geom)
-
-    if isinstance(geometry, esdl.MultiPolygon):
-        polygons = geometry.get_polygon()
-        mp = []
-        for polygon in polygons:
-            exterior = polygon.get_exterior()
-            interiors = polygon.get_interior()
-
-            ar = []
-            ar.append(_parse_esdl_subpolygon(exterior))
-            for interior in interiors:
-                ar.append(_parse_esdl_subpolygon(interior))
-
-            mp.append(ar)
-
-        geom = {
-            'type': 'MultiPolygon',
-            'coordinates': mp
-        }
-        # print(geom)
-
-    return geom
-
-
-def _convert_coordinates_into_subpolygon(coord_list):
-    # print(coord_list)
-    # [[x1,y1], [x2,y2], ...]
-
-    subpolygon = esdl.SubPolygon()
-    for coord_pairs in coord_list:
-        point = esdl.Point()
-        point.set_lat(coord_pairs[0])
-        point.set_lon(coord_pairs[1])
-        subpolygon.add_point(point)
-
-    return subpolygon
-
-
-def _convert_pcoordinates_into_polygon(coord_list):
-    polygon = esdl.Polygon()
-
-    coord_exterior = coord_list[0]
-    exterior = _convert_coordinates_into_subpolygon(coord_exterior)
-    polygon.set_exterior(exterior)
-
-    if len(coord_list) > 1:
-        coord_list.pop(0)  # remove exterior polygon
-        for coord_interior in coord_list:  # iterate over remaining interiors
-            interior = _convert_coordinates_into_subpolygon(coord_interior)
-            polygon.add_interior(interior)
-
-    return polygon
-
-
-def _convert_mpcoordinates_into_multipolygon(coord_list):
-    mp = esdl.MultiPolygon()
-    for coord_polygon in coord_list:
-        polygon = _convert_pcoordinates_into_polygon(coord_polygon)
-        mp.add_polygon(polygon)
-
-    return mp
-
-
-def create_geometry_from_geom(geom):
-    """
-    :param geom: geometry information
-    :return: esdl.MultiPolygon or esdl.Polygon
-    """
-    # paramter geom has following structure:
-    # 'geom': {
-    #    "type":"MultiPolygon",
-    #    "bbox":[...],
-    #    "coordinates":[[[[6.583651,53.209594], [6.58477,...,53.208816],[6.583651,53.209594]]]]
-    # }
-
-    type = geom['type']
-    coordinates = geom['coordinates']
-
-    if type == 'MultiPolygon':
-        return _convert_mpcoordinates_into_multipolygon(coordinates)
-    if type == 'Polygon':
-        return _convert_pcoordinates_into_polygon(coordinates)
-
-    return None
-
-
 def _determine_color(asset, color_method):
     building_color = '#808080'
 
     if isinstance(asset, esdl.Building):
         if color_method == 'building year':
-            building_year = asset.get_buildingYear()
+            building_year = asset.buildingYear
             if building_year:
                 building_color = None
                 i = 0
@@ -447,7 +316,7 @@ def _determine_color(asset, color_method):
                         building_color = BUILDING_COLORS_BUILDINGYEAR[i]['color']
                     i += 1
         elif color_method == 'floor area':
-            floorarea = asset.get_floorArea()
+            floorarea = asset.floorArea
             if floorarea:
                 building_color = None
                 i = 0
@@ -456,10 +325,10 @@ def _determine_color(asset, color_method):
                         building_color = BUILDING_COLORS_AREA[i]['color']
                     i += 1
         elif color_method == 'building type':
-            bassets = asset.get_asset()
+            bassets = asset.asset
             for basset in bassets:
                 if isinstance(basset, esdl.BuildingUnit):
-                    type = basset.get_type()
+                    type = basset.type
                     if type:
                         building_color = BUILDING_COLORS_TYPE[type]
 
@@ -467,9 +336,9 @@ def _determine_color(asset, color_method):
 
 
 def _find_more_area_boundaries(this_area):
-    area_id = this_area.get_id()
-    area_scope = this_area.get_scope()
-    area_geometry = this_area.get_geometry()
+    area_id = this_area.id
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
 
     print('Finding area boundaries for', area_scope, area_id)
     boundary = None
@@ -477,11 +346,11 @@ def _find_more_area_boundaries(this_area):
     if area_geometry:
         print('Geometry specified in the ESDL')
         if isinstance(area_geometry, esdl.Polygon):
-            boundary = create_boundary_from_geometry(area_geometry)
+            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             print('emiting Polygon WGS84')
             emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
-            boundary = create_boundary_from_geometry(area_geometry)
+            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             print('emiting MultiPolygon WGS84')
             emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
@@ -501,38 +370,38 @@ def _find_more_area_boundaries(this_area):
     if boundary:
         update_asset_geometries3(this_area, boundary)
 
-    assets = this_area.get_asset()
+    assets = this_area.asset
     for asset in assets:
         if isinstance(asset, esdl.AbstractBuilding):
-            name = asset.get_name()
+            name = asset.name
             if not name:
                 name = ''
-            asset_geometry = asset.get_geometry()
+            asset_geometry = asset.geometry
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
                     building_color = _determine_color(asset, session["color_method"])
-                    boundary = create_boundary_from_contour(asset_geometry)
+                    boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
 
                     emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
                                            'color': building_color, 'name': name, 'boundary_type': 'building'})
         else: # No AbstractBuilding
-            asset_geometry = asset.get_geometry()
-            name = asset.get_name()
+            asset_geometry = asset.geometry
+            name = asset.name
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.WKT):
-                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.get_value(),
+                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
                                                'color': 'grey', 'name': name, 'boundary_type': 'asset'})
 
-    potentials = this_area.get_potential()
+    potentials = this_area.potential
     for potential in potentials:
-        potential_geometry = potential.get_geometry()
-        potential_name = potential.get_name()
+        potential_geometry = potential.geometry
+        potential_name = potential.name
         if potential_geometry:
             if isinstance(potential_geometry, esdl.WKT):
-                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.get_value(), 'color': 'grey',
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
                                       'name': potential_name, 'boundary_type': 'potential'})
 
-    areas = this_area.get_area()
+    areas = this_area.area
     for area in areas:
         _find_more_area_boundaries(area)
 
@@ -640,119 +509,13 @@ def send_alert(message):
     emit('alert', message)
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-#  Functions to find assets in, remove assets from and add assets to areas and buildings
-# ---------------------------------------------------------------------------------------------------------------------
-def find_area(area, area_id):
-    if area.get_id() == area_id: return area
-    for a in area.get_area():
-        ar = find_area(a, area_id)
-        if ar:
-            return ar
-    return None
-
-
-def _find_asset_in_building(building, asset_id):
-    for ass in building.get_asset():
-        if ass.get_id() == asset_id:
-            return ass
-        if isinstance(ass, esdl.AbstractBuilding):
-            asset = _find_asset_in_building(ass, asset_id)
-            if asset:
-                return asset
-    return None
-
-
-def find_asset(area, asset_id):
-    for ass in area.get_asset():
-        if ass.get_id() == asset_id:
-            return ass
-        if isinstance(ass, esdl.AbstractBuilding):
-            asset = _find_asset_in_building(ass, asset_id)
-            if asset:
-                return asset
-
-    for subarea in area.get_area():
-        asset = find_asset(subarea, asset_id)
-        if asset:
-            return asset
-
-    return None
-
-
-def find_potential(area, pot_id):
-    for pot in area.get_potential():
-        if pot.get_id() == pot_id:
-            return pot
-
-    for subarea in area.get_area():
-        pot = find_potential(subarea, pot_id)
-        if pot:
-            return pot
-
-    return None
-
-
-def _find_asset_in_building_and_container(building, asset_id):
-    for ass in building.get_asset():
-        if ass.get_id() == asset_id:
-            return ass, building
-        if isinstance(ass, esdl.AbstractBuilding):
-            asset, build = _find_asset_in_building_and_container(ass, asset_id)
-            if asset:
-                return asset, build
-    return None
-
-
-def find_asset_and_container(area, asset_id):
-    for ass in area.get_asset():
-        if ass.get_id() == asset_id:
-            return ass, area
-        if isinstance(ass, esdl.AbstractBuilding):
-            asset, ar = _find_asset_in_building_and_container(ass, asset_id)
-            if asset:
-                return asset, ar
-
-    for subarea in area.get_area():
-        asset, ar = find_asset_and_container(subarea, asset_id)
-        if asset:
-            return asset, ar
-
-    return None
-
-
-def add_asset_to_area(es, asset, area_id):
-    # find area with area_id
-    instance = es.get_instance()[0]
-    area = instance.get_area()
-    ar = find_area(area, area_id)
-
-    if ar:
-        ar.add_asset_with_type(asset)
-        return 1
-    else:
-        return 0
-
-
-def add_asset_to_building(es, asset, building_id):
-    # find area with area_id
-    instance = es.get_instance()[0]
-    area = instance.get_area()
-    ar = find_asset(area, building_id)
-
-    if ar:
-        ar.add_asset_with_type(asset)
-        return 1
-    else:
-        return 0
-
-
+# FIXME: pyecore
 def _remove_port_references(port):
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
 
-    p_id = port.get_id()
-    connected_to = port.get_connectedTo()
+    p_id = port.id
+    connected_to = port.connectedTo
     if connected_to:
         connected_to_list = connected_to.split(' ')
         for conns in connected_to_list:
@@ -760,123 +523,44 @@ def _remove_port_references(port):
             ass_info = mapping[conns]
             # asset = find_asset(area, ass_info['asset_id'])    # find_asset doesn't look for asset in top level area
             asset = asset_dict[ass_info['asset_id']]
-            asset_ports = asset.get_port()
+            asset_ports = asset.port
             for p_remove_ref in asset_ports:
-                conn_to = p_remove_ref.get_connectedTo()
+                conn_to = p_remove_ref.connectedTo
                 conn_tos = conn_to.split(' ')
                 if p_id in conn_tos:
                     conn_tos.remove(p_id)
+                # FIXME: doesn't work in pyECORE
                 conn_to = ' '.join(conn_tos)
-                p_remove_ref.set_connectedTo(conn_to)
+                p_remove_ref.connectedTo = conn_to
 
+        # FIXME: pyecore
+    def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
+        mapping = session['port_to_asset_mapping']
+        asset_dict = session['asset_dict']
 
-def _remove_object_from_building(building, object_id):
-    for ass in building.get_asset():
-        if ass.get_id() == object_id:
-            for p in ass.get_port():
-                _remove_port_references(p)
-            building.asset.remove(ass)
-            print('Asset with id ' + object_id+ ' removed from building with id: ', + building.get_id())
+        asset = asset_dict[asset_id]
+        processed_assets.append(asset_id)
+        for p in asset.port:
+            p.set_carrier(carrier_id) #FIXME pyecore
+            conn_to = p.connectedTo
+            if conn_to:
+                conn_to_list = conn_to.split(' ')
+                for conn_port_id in conn_to_list:
+                    conn_asset_id = mapping[conn_port_id]['asset_id']
+                    conn_asset = asset_dict[conn_asset_id]
+                    if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange) \
+                            and not isinstance(conn_asset, esdl.Transformer):
+                        if not conn_asset_id in processed_assets:
+                            _set_carrier_for_connected_transport_assets(conn_asset_id, carrier_id, processed_assets)
+                    else:
+                        for conn_asset_port in conn_asset.port:
+                            if conn_asset_port.id == conn_port_id:
+                                conn_asset_port.set_carrier(carrier_id)
 
-
-def _recursively_remove_object_from_area(area, object_id):
-    for ass in area.get_asset():
-        if ass.get_id() == object_id:
-            for p in ass.get_port():
-                _remove_port_references(p)
-            area.asset.remove(ass)
-            print('Asset with id ' + object_id + ' removed from area with id: ' + area.get_id())
-        if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
-            _remove_object_from_building(ass, object_id)
-    for pot in area.get_potential():
-        if pot.get_id() == object_id:
-            area.potential.remove(pot)
-            print('Potential with id ' + object_id + ' removed from area with id: ' + area.get_id())
-    for sub_area in area.get_area():
-        _recursively_remove_object_from_area(sub_area, object_id)
-
-
-def remove_object_from_energysystem(es, object_id):
-    # find area with area_id
-    instance = es.get_instance()[0]
-    area = instance.get_area()
-    _recursively_remove_object_from_area(area, object_id)
-
-
-def get_asset_capability_type(asset):
-    if isinstance(asset, esdl.Producer): return 'Producer'
-    if isinstance(asset, esdl.Consumer): return 'Consumer'
-    if isinstance(asset, esdl.Storage): return 'Storage'
-    if isinstance(asset, esdl.Transport): return 'Transport'
-    if isinstance(asset, esdl.Conversion): return 'Conversion'
-    return 'none'
-
-
-def get_carrier_list(es):
-    carrier_list = []
-    esi = es.get_energySystemInformation()
-    if esi:
-        ecs = esi.get_carriers()
-        if ecs:
-            ec = ecs.get_carrier()
-
-            if ec:
-                for carrier in ec:
-                    carrier_info = {
-                        'type': type(carrier).__name__,
-                        'id': carrier.get_id(),
-                        'name': carrier.get_name(),
-                    }
-                    if isinstance(carrier, esdl.Commodity):
-                        if isinstance(carrier, esdl.ElectricityCommodity):
-                            carrier_info['voltage'] = carrier.get_voltage()
-                        if isinstance(carrier, esdl.GasCommodity):
-                            carrier_info['pressure'] = carrier.get_pressure()
-                        if isinstance(carrier, esdl.HeatCommodity):
-                            carrier_info['supplyTemperature'] = carrier.get_supplyTemperature()
-                            carrier_info['returnTemperature'] = carrier.get_returnTemperature()
-
-                    if isinstance(carrier, esdl.EnergyCarrier):
-                        carrier_info['energyContent'] = carrier.get_energyContent()
-                        carrier_info['emission'] = carrier.get_emission()
-                        carrier_info['energyCarrierType'] = carrier.get_energyCarrierType()
-                        carrier_info['stateOfMatter'] = carrier.get_stateOfMatter()
-
-                    # carrier_list.append({carrier.get_id(): carrier_info})
-                    carrier_list.append(carrier_info)
-
-    return carrier_list
-
-
-def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
-    mapping = session['port_to_asset_mapping']
-    asset_dict = session['asset_dict']
-
-    asset = asset_dict[asset_id]
-    processed_assets.append(asset_id)
-    for p in asset.get_port():
-        p.set_carrier(carrier_id)
-        conn_to = p.get_connectedTo()
-        if conn_to:
-            conn_to_list = conn_to.split(' ')
-            for conn_port_id in conn_to_list:
-                conn_asset_id = mapping[conn_port_id]['asset_id']
-                conn_asset = asset_dict[conn_asset_id]
-                if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange)\
-                        and not isinstance(conn_asset, esdl.Transformer):
-                    if not conn_asset_id in processed_assets:
-                        _set_carrier_for_connected_transport_assets(conn_asset_id, carrier_id, processed_assets)
-                else:
-                    for conn_asset_port in conn_asset.get_port():
-                        if conn_asset_port.get_id() == conn_port_id:
-                            conn_asset_port.set_carrier(carrier_id)
-
-
-def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
-    processed_assets = []       # List of asset_id's that are processed
-    _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
-    # print(processed_assets)
-
+    def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
+        processed_assets = []  # List of asset_id's that are processed
+        _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
+        # print(processed_assets)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialize
@@ -890,15 +574,15 @@ def initialize():
 #  Builds up a dictionary from asset_id to asset
 # ---------------------------------------------------------------------------------------------------------------------
 def _create_building_asset_dict(asset_dict, building):
-    for basset in building.get_asset():
-        asset_dict[basset.get_id()] = basset
+    for basset in building.asset:
+        asset_dict[basset.id] = basset
 
 
 def _create_area_asset_dict(asset_dict, area):
-    for ar in area.get_area():
+    for ar in area.area:
         _create_area_asset_dict(asset_dict, ar)
-    for asset in area.get_asset():
-        asset_dict[asset.get_id()] = asset
+    for asset in area.asset:
+        asset_dict[asset.id] = asset
         if isinstance(asset, esdl.AbstractBuilding):
             _create_building_asset_dict(asset_dict, asset)
 
@@ -914,68 +598,69 @@ def create_asset_dict(area):
 #  Builds up a mapping from ports to assets
 # ---------------------------------------------------------------------------------------------------------------------
 def create_building_port_to_asset_mapping(building, mapping):
-    for basset in building.get_asset():
+    for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
             create_building_port_to_asset_mapping(basset, mapping)
         else:
-            geom = basset.get_geometry()
-            ports = basset.get_port()
+            geom = basset.geometry
+            ports = basset.port
             if geom:
                 if isinstance(geom, esdl.Point):
-                    lat = geom.get_lat()
-                    lon = geom.get_lon()
+                    lat = geom.lat
+                    lon = geom.lon
                     coord = (lat, lon)
                     for p in ports:
-                        mapping[p.get_id()] = {'asset_id': basset.get_id(), 'coord': coord}
+                        mapping[p.id] = {'asset_id': basset.id, 'coord': coord}
                 if isinstance(geom, esdl.Line):
-                    points = geom.get_point()
+                    points = geom.point
                     if ports:
-                        first = (points[0].get_lat(), points[0].get_lon())
-                        last = (points[len(points)-1].get_lat(), points[len(points)-1].get_lon())
-                        mapping[ports[0].get_id()] = {'asset_id': basset.get_id(), 'coord': first}
-                        mapping[ports[1].get_id()] = {'asset_id': basset.get_id(), 'coord': last}
+                        first = (points[0].lat, points[0].lon)
+                        last = (points[len(points)-1].lat, points[len(points)-1].lon)
+                        mapping[ports[0].id] = {'asset_id': basset.id, 'coord': first}
+                        mapping[ports[1].id] = {'asset_id': basset.id, 'coord': last}
             else:
                 for p in ports:
-                    mapping[p.get_id()] = {'asset_id': basset.get_id(), 'coord': ()}
+                    mapping[p.id] = {'asset_id': basset.id, 'coord': ()}
 
 
+# FIXME: pyecore not necessary anymore
 def create_port_to_asset_mapping(area, mapping):
     # process subareas
-    for ar in area.get_area():
+    for ar in area.area:
         create_port_to_asset_mapping(ar, mapping)
 
     # process assets in area
-    for asset in area.get_asset():
+    for asset in area.asset:
         if isinstance(asset, esdl.AggregatedBuilding):
             create_building_port_to_asset_mapping(asset, mapping)
         else:
             if isinstance(asset, esdl.EnergyAsset):
-                geom = asset.get_geometry()
-                ports = asset.get_port()
+                geom = asset.geometry
+                ports = asset.port
                 if geom:
                     if isinstance(geom, esdl.Point):
-                        lat = geom.get_lat()
-                        lon = geom.get_lon()
+                        lat = geom.lat
+                        lon = geom.lon
                         coord = (lat, lon)
                         for p in ports:
-                            p_id = p.get_id()
+                            p_id = p.id
                             # hack for ESDL files generated by geis_dsl project:
                             #   if ESDL file contains ports without id's, create new id's
                             # Hmmm, doesn't work because assets have no geometry
                             if p_id is None:
                                 p_id = str(uuid.uuid4())
-                                p.set_id(p_id)
-                            mapping[p_id] = {'asset_id': asset.get_id(), 'coord': coord}
+                                p.id = p_id
+                            mapping[p_id] = {'asset_id': asset.id, 'coord': coord}
                     if isinstance(geom, esdl.Line):
-                        points = geom.get_point()
+                        points = geom.point
                         if ports:
-                            first = (points[0].get_lat(), points[0].get_lon())
-                            last = (points[len(points) - 1].get_lat(), points[len(points) - 1].get_lon())
-                            mapping[ports[0].get_id()] = {'asset_id': asset.get_id(), 'coord': first, 'pos': 'first'}
-                            mapping[ports[1].get_id()] = {'asset_id': asset.get_id(), 'coord': last, 'pos': 'last'}
+                            first = (points[0].lat, points[0].lon)
+                            last = (points[len(points) - 1].lat, points[len(points) - 1].lon)
+                            mapping[ports[0].id] = {'asset_id': asset.id, 'coord': first, 'pos': 'first'}
+                            mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
                 else:
                     for p in ports:
-                        mapping[p.get_id()] = {'asset_id': asset.get_id(), 'coord': ()}
+                        mapping[p.id] = {'asset_id': asset.id, 'coord': ()}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -986,40 +671,37 @@ def generate_point_in_area(boundary):
 
 
 def update_building_asset_geometries(building, avail_locations):
-    for basset in building.get_asset():
+    for basset in building.asset:
         if isinstance(basset, esdl.EnergyAsset):
-            geom = basset.get_geometry()
+            geom = basset.geometry
             if not geom:
                 location = avail_locations.pop(0)
-                geom = esdl.Point()
-                geom.set_lon(location[1])
-                geom.set_lat(location[0])
-                basset.set_geometry(geom)
+                geom = esdl.Point(lon=location[1], lat=location[0])
+                basset.geometry = geom
 
 
 def update_area_asset_geometries(area, avail_locations):
     # process subareas
-    for ar in area.get_area():
+    for ar in area.area:
         update_area_asset_geometries(ar, avail_locations)
 
     # process assets in area
-    for asset in area.get_asset():
+    for asset in area.asset:
         if isinstance(asset, esdl.AggregatedBuilding):
             update_building_asset_geometries(asset, avail_locations)
         if isinstance(asset, esdl.EnergyAsset):
-            geom = asset.get_geometry()
+            geom = asset.geometry
             if not geom:
                 location = avail_locations.pop(0)
                 geom = esdl.Point()
-                geom.set_lon(location[1])
-                geom.set_lat(location[0])
-                asset.set_geometry(geom)
+                geom = esdl.Point(lon=location[1], lat=location[0])
+                asset.geometry = geom
 
 
 def count_building_assets_and_potentials(building):
-    num = len(building.get_asset())
+    num = len(building.asset)
 
-    for basset in building.get_asset():
+    for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
             num += count_building_assets_and_potentials(basset)
 
@@ -1027,14 +709,14 @@ def count_building_assets_and_potentials(building):
 
 
 def count_assets_and_potentials(area):
-    num = len(area.get_asset())
-    num += len(area.get_potential())
+    num = len(area.asset)
+    num += len(area.potential)
 
-    for ar_asset in area.get_asset():
+    for ar_asset in area.asset:
         if isinstance(ar_asset, esdl.AbstractBuilding):
             num += count_building_assets_and_potentials(ar_asset)
 
-    for ar in area.get_area():
+    for ar in area.area:
         num += count_assets_and_potentials(ar)
 
     return num
@@ -1173,10 +855,10 @@ def update_asset_geometries3(area, boundary):
     center = calc_center(outer_polygon)
     print(center)
 
-    for asset in area.get_asset():
+    for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
-            for asset2 in asset.get_asset():
-                geom = asset2.get_geometry()
+            for asset2 in asset.asset:
+                geom = asset2.geometry
 
                 if not geom:
                     geom = esdl.Point()
@@ -1185,14 +867,14 @@ def update_asset_geometries3(area, boundary):
                     if x > 180 or y > 180:  # Assume RD
                         rdwgs = RDWGSConverter()
                         wgs = rdwgs.fromRdToWgs([x, y])
-                        geom.set_lat(wgs[0])
-                        geom.set_lon(wgs[1])
+                        geom.lat = wgs[0]
+                        geom.lon = wgs[1]
                     else:
-                        geom.set_lat(y)  # TODO: check order of lattitude and longitude
-                        geom.set_lon(x)
-                    asset2.set_geometry_with_type(geom)
+                        geom.lat = y  # TODO: check order of lattitude and longitude
+                        geom.lon = x
+                    asset2.geometry = geom
         else:
-            geom = asset.get_geometry()
+            geom = asset.geometry
 
             if not geom:
                 geom = esdl.Point()
@@ -1201,25 +883,25 @@ def update_asset_geometries3(area, boundary):
                 if x > 180 or y > 180:  # Assume RD
                     rdwgs = RDWGSConverter()
                     wgs = rdwgs.fromRdToWgs([x, y])
-                    geom.set_lat(wgs[0])
-                    geom.set_lon(wgs[1])
+                    geom.lat = wgs[0]
+                    geom.lon = wgs[1]
                 else:
-                    geom.set_lat(y)     # TODO: check order of lattitude and longitude
-                    geom.set_lon(x)
-                asset.set_geometry_with_type(geom)
+                    geom.lat = y  # TODO: check order of lattitude and longitude
+                    geom.lon = x
+                asset.geometry = geom
 
 
 def generate_profile_info(profile):
     profile_class = type(profile).__name__
-    profile_type = profile.get_profileType()
-    profile_name = profile.get_name()
+    profile_type = profile.profileType
+    profile_name = profile.name
     if profile_class == 'SingleValue':
-        value = profile.get_value()
+        value = profile.value
         profile_info = {'class': 'SingleValue', 'value': value, 'type': profile_type}
     if profile_class == 'InfluxDBProfile':
-        multiplier = profile.get_multiplier()
-        measurement = profile.get_measurement()
-        field = profile.get_field()
+        multiplier = profile.multiplier
+        measurement = profile.measurement
+        field = profile.field
         profile_name = 'UNKNOWN'
         for p in esdl_config.esdl_config['influxdb_profile_data']:
             if p['measurement'] == measurement and p['field'] == field:
@@ -1232,35 +914,35 @@ def generate_profile_info(profile):
 
 
 def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
-    area_bld_list.append(['Building', building.get_id(), building.get_name(), level])
+    area_bld_list.append(['Building', building.id, building.name, level])
 
-    for basset in building.get_asset():
+    for basset in building.asset:
         port_list = []
-        ports = basset.get_port()
+        ports = basset.port
         for p in ports:
-            conn_to = p.get_connectedTo()
-            port_list.append({'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': conn_to})
+            conn_to = p.connectedTo
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to})
 
-        geom = basset.get_geometry()
+        geom = basset.geometry
         coord = ()
         if geom:
             if isinstance(geom, esdl.Point):
-                lat = geom.get_lat()
-                lon = geom.get_lon()
+                lat = geom.lat
+                lon = geom.lon
                 coord = (lat, lon)
 
-                capability_type = get_asset_capability_type(basset)
-                asset_list.append(['point', 'asset', basset.get_name(), basset.get_id(), type(basset).__name__, lat, lon, port_list, capability_type])
+                capability_type = ESDLAsset.get_asset_capability_type(basset)
+                asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, lat, lon, port_list, capability_type])
 
-        ports = basset.get_port()
+        ports = basset.port
         for p in ports:
-            conn_to = p.get_connectedTo()
+            conn_to = p.connectedTo
             if conn_to:
                 conn_to_list = conn_to.split(' ')
                 for pc in conn_to_list:
                     pc_asset = port_asset_mapping[pc]
                     pc_asset_coord = pc_asset['coord']
-                    conn_list.append({'from-port-id': p.get_id(), 'from-asset-id': basset.get_id(), 'from-asset-coord': coord,
+                    conn_list.append({'from-port-id': p.id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
                         'to-port-id': pc, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
@@ -1268,65 +950,65 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
 
 
 def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area, level):
-    area_bld_list.append(['Area', area.get_id(), area.get_name(), level])
+    area_bld_list.append(['Area', area.id, area.name, level])
 
     # process subareas
-    for ar in area.get_area():
+    for ar in area.area:
         process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, ar, level+1)
 
     # process assets in area
-    for asset in area.get_asset():
+    for asset in area.asset:
         if isinstance(asset, esdl.AggregatedBuilding):
             process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, asset, level+1)
         if isinstance(asset, esdl.EnergyAsset):
             port_list = []
-            ports = asset.get_port()
+            ports = asset.port
             for p in ports:
-                p_asset = port_asset_mapping[p.get_id()]
+                p_asset = port_asset_mapping[p.id]
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
-                conn_to = p.get_connectedTo()
-                profile = p.get_profile()
+                conn_to = p.connectedTo
+                profile = p.profile
                 profile_info = {}
                 if profile:
                     profile_info = generate_profile_info(profile)
-                port_list.append({'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info})
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info})
                 if conn_to:
                     conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
                     for pc in conn_to_list:
                         pc_asset = port_asset_mapping[pc]
                         pc_asset_coord = pc_asset['coord']
 
-                        conn_list.append({'from-port-id': p.get_id(), 'from-asset-id': p_asset['asset_id'], 'from-asset-coord': p_asset_coord,
+                        conn_list.append({'from-port-id': p.id, 'from-asset-id': p_asset['asset_id'], 'from-asset-coord': p_asset_coord,
                                           'to-port-id': pc, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
-            geom = asset.get_geometry()
+            geom = asset.geometry
             if geom:
                 if isinstance(geom, esdl.Point):
-                    lat = geom.get_lat()
-                    lon = geom.get_lon()
+                    lat = geom.lat
+                    lon = geom.lon
 
                     capability_type = get_asset_capability_type(asset)
-                    asset_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, lat, lon, port_list, capability_type])
+                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, lat, lon, port_list, capability_type])
                 if isinstance(geom, esdl.Line):
                     coords = []
-                    for point in geom.get_point():
-                        coords.append([point.get_lat(), point.get_lon()])
-                    asset_list.append(['line', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, coords, port_list])
+                    for point in geom.point:
+                        coords.append([point.lat, point.lon])
+                    asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
-    for potential in area.get_potential():
-        geom = potential.get_geometry()
+    for potential in area.potential:
+        geom = potential.geometry
         if geom:
             if isinstance(geom, esdl.Point):
-                lat = geom.get_lat()
-                lon = geom.get_lon()
+                lat = geom.lat
+                lon = geom.lon
 
                 asset_list.append(
-                    ['point', 'potential', potential.get_name(), potential.get_id(), type(potential).__name__, lat, lon])
+                    ['point', 'potential', potential.name, potential.id, type(potential).__name__, lat, lon])
             # if isinstance(geom, esdl.Polygon):
             #     coords = []
-            #     for point in geom.get_point():
-            #         coords.append([point.get_lat(), point.get_lon()])
-            #     asset_list.append(['line', asset.get_name(), asset.get_id(), type(asset).__name__, coords, port_list])
+            #     for point in geom.point:
+            #         coords.append([point.lat, point.lon])
+            #     asset_list.append(['line', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
 
 # TODO: Not used now, should we keep the conn_list updated?
@@ -1375,7 +1057,7 @@ def update_transport_connection_locations(ass_id, asset, coords):
 
     session['conn_list'] = conn_list
 
-# mapping[ports[1].get_id()] = {'asset_id': asset.get_id(), 'coord': last, 'pos': 'last'}
+# mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1428,20 +1110,20 @@ def get_connected_to_info(asset):
     print(asset_dict)
     result = []
 
-    ports = asset.get_port()
+    ports = asset.port
     for p in ports:
-        pname = p.get_name()
-        pid = p.get_id()
+        pname = p.name
+        pid = p.id
         ptype = type(p).__name__
 
         ct_list = []
-        conn_to = p.get_connectedTo()
+        conn_to = p.connectedTo
         if conn_to:
             conn_to_list = conn_to.split(' ')
             for conn_port_id in conn_to_list:
                 conn_asset_id = mapping[conn_port_id]['asset_id']
                 conn_asset = asset_dict[conn_asset_id]
-                ct_list.append({'pid': conn_port_id, 'aid': conn_asset.get_id(), 'atype': type(conn_asset).__name__, 'aname': conn_asset.get_name()})
+                ct_list.append({'pid': conn_port_id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
 
         result.append({'pid': pid, 'ptype': ptype, 'pname': pname, 'ct_list': ct_list})
 
@@ -1453,30 +1135,31 @@ def get_connected_to_info(asset):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Create connections between assets
 # ---------------------------------------------------------------------------------------------------------------------
+# FIXME: pyECORE
 def connect_ports(port1, port2):
-    port1conn = port1.get_connectedTo()
-    port2conn = port2.get_connectedTo()
+    port1conn = port1.connectedTo
+    port2conn = port2.connectedTo
 
 
 
     if port1conn:
-        port1.set_connectedTo(port1conn + ' ' + port2.get_id())
+        port1.set_connectedTo(port1conn + ' ' + port2.id)
     else:
-        port1.set_connectedTo(port2.get_id())
+        port1.set_connectedTo(port2.id)
     if port2conn:
-        port2.set_connectedTo(port2conn + ' ' + port1.get_id())
+        port2.set_connectedTo(port2conn + ' ' + port1.id)
     else:
-        port2.set_connectedTo(port1.get_id())
+        port2.set_connectedTo(port1.id)
 
 
 def connect_asset_with_conductor(asset, conductor):
     conn_list = session["conn_list"]
 
-    asset_geom = asset.get_geometry()
-    cond_geom = conductor.get_geometry()
+    asset_geom = asset.geometry
+    cond_geom = conductor.geometry
 
     if isinstance(cond_geom, esdl.Line):
-        points = cond_geom.get_point()
+        points = cond_geom.point
         first_point = points[0]
         last_point = points[len(points) - 1]
     else:
@@ -1487,37 +1170,37 @@ def connect_asset_with_conductor(asset, conductor):
         send_alert('UNSUPPORTED - asset geometry is not a Point')
         return
 
-    if (distance((asset_geom.get_lat(), asset_geom.get_lon()), (first_point.get_lat(), first_point.get_lon())) <
-            distance((asset_geom.get_lat(), asset_geom.get_lon()), (last_point.get_lat(), last_point.get_lon()))):
+    if (distance((asset_geom.lat, asset_geom.lon), (first_point.lat, first_point.lon)) <
+            distance((asset_geom.lat, asset_geom.lon), (last_point.lat, last_point.lon))):
         # connect asset with first_point of conductor
 
-        cond_port = conductor.get_port()[0]
-        for p in asset.get_port():
+        cond_port = conductor.port[0]
+        for p in asset.port:
             if not type(p).__name__ == type(cond_port).__name__:
                 print('connect asset with first_point')
                 connect_ports(p, cond_port)
-                emit('add_new_conn', [[asset_geom.get_lat(),asset_geom.get_lon()],[first_point.get_lat(),first_point.get_lon()]])
+                emit('add_new_conn', [[asset_geom.lat,asset_geom.lon],[first_point.lat,first_point.lon]])
                 conn_list.append(
-                    {'from-port-id': p.get_id(), 'from-asset-id': asset.get_id(),
-                     'from-asset-coord': [asset_geom.get_lat(),asset_geom.get_lon()],
-                     'to-port-id': cond_port.get_id(), 'to-asset-id': conductor.get_id(),
-                     'to-asset-coord': [first_point.get_lat(),first_point.get_lon()]})
+                    {'from-port-id': p.id, 'from-asset-id': asset.id,
+                     'from-asset-coord': [asset_geom.lat,asset_geom.lon],
+                     'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
+                     'to-asset-coord': [first_point.lat,first_point.lon]})
 
     else:
         # connect asset with last_point of conductor
 
-        cond_port = conductor.get_port()[1]
-        for p in asset.get_port():
+        cond_port = conductor.port[1]
+        for p in asset.port:
             if not type(p).__name__ == type(cond_port).__name__:
                 print('connect asset with last_point')
                 connect_ports(p, cond_port)
                 emit('add_new_conn',
-                     [[asset_geom.get_lat(), asset_geom.get_lon()], [last_point.get_lat(), last_point.get_lon()]])
+                     [[asset_geom.lat, asset_geom.lon], [last_point.lat, last_point.lon]])
                 conn_list.append(
-                    {'from-port-id': p.get_id(), 'from-asset-id': asset.get_id(),
-                     'from-asset-coord': [asset_geom.get_lat(), asset_geom.get_lon()],
-                     'to-port-id': cond_port.get_id(), 'to-asset-id': conductor.get_id(),
-                     'to-asset-coord': [last_point.get_lat(), last_point.get_lon()]})
+                    {'from-port-id': p.id, 'from-asset-id': asset.id,
+                     'from-asset-coord': [asset_geom.lat, asset_geom.lon],
+                     'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
+                     'to-asset-coord': [last_point.lat, last_point.lon]})
 
     session["conn_list"] = conn_list
 
@@ -1525,12 +1208,12 @@ def connect_asset_with_conductor(asset, conductor):
 def connect_asset_with_asset(asset1, asset2):
     conn_list = session["conn_list"]
 
-    ports1 = asset1.get_port()
+    ports1 = asset1.port
     num_ports1 = len(ports1)
-    asset1_geom = asset1.get_geometry()
-    ports2 = asset2.get_port()
+    asset1_geom = asset1.geometry
+    ports2 = asset2.port
     num_ports2 = len(ports2)
-    asset2_geom = asset2.get_geometry()
+    asset2_geom = asset2.geometry
 
     if not isinstance(asset1_geom, esdl.Point) or not isinstance(asset2_geom, esdl.Point):
         send_alert('UNSUPPORTED - asset geometry is not a Point')
@@ -1548,8 +1231,8 @@ def connect_asset_with_asset(asset1, asset2):
                     p1 = ports1[0]
                     p2 = p
                     emit('add_new_conn',
-                         [[asset1_geom.get_lat(), asset1_geom.get_lon()],
-                          [asset2_geom.get_lat(), asset2_geom.get_lon()]])
+                         [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]])
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No InPort found on asset2')
@@ -1564,8 +1247,8 @@ def connect_asset_with_asset(asset1, asset2):
                     p1 = ports1[0]
                     p2 = p
                     emit('add_new_conn',
-                         [[asset1_geom.get_lat(), asset1_geom.get_lon()],
-                          [asset2_geom.get_lat(), asset2_geom.get_lon()]])
+                         [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]])
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No OutPort found on asset2')
@@ -1582,8 +1265,8 @@ def connect_asset_with_asset(asset1, asset2):
                     p1 = p
                     p2 = ports2[0]
                     emit('add_new_conn',
-                         [[asset1_geom.get_lat(), asset1_geom.get_lon()],
-                          [asset2_geom.get_lat(), asset2_geom.get_lon()]])
+                         [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]])
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No InPort found on asset1')
@@ -1598,8 +1281,8 @@ def connect_asset_with_asset(asset1, asset2):
                     p1 = p
                     p2 = ports2[0]
                     emit('add_new_conn',
-                         [[asset1_geom.get_lat(), asset1_geom.get_lon()],
-                          [asset2_geom.get_lat(), asset2_geom.get_lon()]])
+                         [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]])
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No OutPort found in asset1')
@@ -1610,10 +1293,10 @@ def connect_asset_with_asset(asset1, asset2):
 
     if found:
         conn_list.append(
-            {'from-port-id': p1.get_id(), 'from-asset-id': asset1.get_id(),
-             'from-asset-coord': [asset1_geom.get_lat(), asset1_geom.get_lon()],
-             'to-port-id': p2.get_id(), 'to-asset-id': asset2.get_id(),
-             'to-asset-coord': [asset2_geom.get_lat(), asset2_geom.get_lon()]})
+            {'from-port-id': p1.id, 'from-asset-id': asset1.id,
+             'from-asset-coord': [asset1_geom.lat, asset1_geom.lon],
+             'to-port-id': p2.id, 'to-asset-id': asset2.id,
+             'to-asset-coord': [asset2_geom.lat, asset2_geom.lon]})
 
     session["conn_list"] = conn_list
 
@@ -1621,18 +1304,18 @@ def connect_asset_with_asset(asset1, asset2):
 def connect_conductor_with_conductor(conductor1, conductor2):
     conn_list = session["conn_list"]
 
-    c1points = conductor1.get_geometry().get_point()
+    c1points = conductor1.geometry.point
     c1p0 = c1points[0]
     c1p1 = c1points[len(c1points) - 1]
-    c2points = conductor2.get_geometry().get_point()
+    c2points = conductor2.geometry.point
     c2p0 = c2points[0]
     c2p1 = c2points[len(c2points) - 1]
 
     dp = []
-    dp.append(distance((c1p0.get_lat(),c1p0.get_lon()),(c2p0.get_lat(),c2p0.get_lon())))
-    dp.append(distance((c1p0.get_lat(),c1p0.get_lon()),(c2p1.get_lat(),c2p1.get_lon())))
-    dp.append(distance((c1p1.get_lat(),c1p1.get_lon()),(c2p0.get_lat(),c2p0.get_lon())))
-    dp.append(distance((c1p1.get_lat(),c1p1.get_lon()),(c2p1.get_lat(),c2p1.get_lon())))
+    dp.append(distance((c1p0.lat,c1p0.lon),(c2p0.lat,c2p0.lon)))
+    dp.append(distance((c1p0.lat,c1p0.lon),(c2p1.lat,c2p1.lon)))
+    dp.append(distance((c1p1.lat,c1p1.lon),(c2p0.lat,c2p0.lon)))
+    dp.append(distance((c1p1.lat,c1p1.lon),(c2p1.lat,c2p1.lon)))
 
     smallest = 0
     for i in range(1,3):
@@ -1640,35 +1323,35 @@ def connect_conductor_with_conductor(conductor1, conductor2):
             smallest = i
 
     if smallest == 0:
-        conn1 = conductor1.get_port()[0]
-        conn2 = conductor2.get_port()[0]
+        conn1 = conductor1.port[0]
+        conn2 = conductor2.port[0]
         conn_pnt1 = c1p0
         conn_pnt2 = c2p0
     elif smallest == 1:
-        conn1 = conductor1.get_port()[0]
-        conn2 = conductor2.get_port()[1]
+        conn1 = conductor1.port[0]
+        conn2 = conductor2.port[1]
         conn_pnt1 = c1p0
         conn_pnt2 = c2p1
     elif smallest == 2:
-        conn1 = conductor1.get_port()[1]
-        conn2 = conductor2.get_port()[0]
+        conn1 = conductor1.port[1]
+        conn2 = conductor2.port[0]
         conn_pnt1 = c1p1
         conn_pnt2 = c2p0
     elif smallest == 3:
-        conn1 = conductor1.get_port()[1]
-        conn2 = conductor2.get_port()[1]
+        conn1 = conductor1.port[1]
+        conn2 = conductor2.port[1]
         conn_pnt1 = c1p1
         conn_pnt2 = c2p1
 
     if not type(conn1).__name__ == type(conn2).__name__:
         connect_ports(conn1, conn2)
         emit('add_new_conn',
-             [[conn_pnt1.get_lat(), conn_pnt1.get_lon()], [conn_pnt2.get_lat(), conn_pnt2.get_lon()]])
+             [[conn_pnt1.lat, conn_pnt1.lon], [conn_pnt2.lat, conn_pnt2.lon]])
         conn_list.append(
-            {'from-port-id': conn1.get_id(), 'from-asset-id': conductor1.get_id(),
-             'from-asset-coord': [conn_pnt1.get_lat(), conn_pnt1.get_lon()],
-             'to-port-id': conn2.get_id(), 'to-asset-id': conductor2.get_id(),
-             'to-asset-coord': [conn_pnt2.get_lat(), conn_pnt2.get_lon()]})
+            {'from-port-id': conn1.id, 'from-asset-id': conductor1.id,
+             'from-asset-coord': [conn_pnt1.lat, conn_pnt1.lon],
+             'to-port-id': conn2.id, 'to-asset-id': conductor2.id,
+             'to-asset-coord': [conn_pnt2.lat, conn_pnt2.lon]})
 
         session["conn_list"] = conn_list
     else:
@@ -1755,18 +1438,16 @@ def distance_point_to_line(p, p1, p2):
     
     return dx * dx + dy * dy
 
-
+# FIXME: pyEcore
 def split_conductor(conductor, location, mode, conductor_container):
     mapping = session['port_to_asset_mapping']
     conn_list = session['conn_list']
     asset_dict = session['asset_dict']
 
-    geometry = conductor.get_geometry()
+    geometry = conductor.geometry
     conductor_type = type(conductor).__name__
-    conductor_id = conductor.get_id()
-    middle_point = esdl.Point()
-    middle_point.set_lat(location['lat'])
-    middle_point.set_lon(location['lng'])
+    conductor_id = conductor.id
+    middle_point = esdl.Point(lat=location['lat'], lon=location['lng'])
 
     if isinstance(geometry, esdl.Line):
         #create two seperate line segments
@@ -1774,16 +1455,16 @@ def split_conductor(conductor, location, mode, conductor_container):
         line2 = esdl.Line()
 
         #find piece of line where user clicked
-        points = geometry.get_point()
+        points = geometry.point
         begin_point = points[0]
-        line1.add_point(begin_point)
+        line1.point.append(begin_point)
 
         points.pop(0)
         min_dist = 1e99
         segm_ctr = 0
         for point in points:
-            p1 = {'x': begin_point.get_lat(), 'y': begin_point.get_lon()}
-            p2 = {'x': point.get_lat(), 'y': point.get_lon()}
+            p1 = {'x': begin_point.lat, 'y': begin_point.lon}
+            p2 = {'x': point.lat, 'y': point.lon}
             p =  {'x': location['lat'], 'y': location['lng']}
             dist = distance_point_to_line(p, p1, p2)
             if dist < min_dist:
@@ -1793,21 +1474,21 @@ def split_conductor(conductor, location, mode, conductor_container):
             segm_ctr += 1
 
         # copy appropriate points in original conductor to either line1 or line2
-        points = geometry.get_point()
+        points = geometry.point
         segm_ctr = 0
         for point in points:
             if segm_ctr == min_dist_segm:
-                line1.add_point(copy.deepcopy(middle_point))
-                line2.add_point(copy.deepcopy(middle_point))
+                line1.point.append(copy.deepcopy(middle_point))
+                line2.point.append(copy.deepcopy(middle_point))
             if segm_ctr < min_dist_segm:
-                line1.add_point(point)
+                line1.point.append(point)
             else:
-                line2.add_point(point)
+                line2.point.append(point)
             segm_ctr += 1
         end_point = point
 
         #find old ports and connections
-        ports = conductor.get_port()
+        ports = conductor.port
         if len(ports) != 2:
             send_alert('UNSUPPORTED: Conductor doesn\'t have two ports!')
             return
@@ -1825,14 +1506,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_port1_id = str(uuid.uuid4())
         new_port2_id = str(uuid.uuid4())
 
-        new_cond1.set_id(new_cond1_id)
-        new_cond2.set_id(new_cond2_id)
+        new_cond1.id = new_cond1_id
+        new_cond2.id = new_cond2_id
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort()
         else:
             new_port2 = esdl.InPort()
-        new_port2.set_id(new_port2_id)
+        new_port2.id = new_port2_id
         if mode == 'connect':
             new_port2.set_connectedTo(new_port1_id)
         new_cond1.add_port_with_type(port1)
@@ -1848,11 +1529,11 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_cond2.add_port_with_type(new_port1)
         new_cond2.add_port_with_type(port2)
 
-        new_cond1.set_geometry_with_type(line1)
-        new_cond2.set_geometry_with_type(line2)
+        new_cond1.geometry(line1)
+        new_cond2.geometry(line2)
 
         # remove conductor from container (area or building) and add new two conductors
-        assets = conductor_container.get_asset()
+        assets = conductor_container.asset
         assets.remove(conductor)
         conductor_container.add_asset_with_type(new_cond1)
         conductor_container.add_asset_with_type(new_cond2)
@@ -1860,37 +1541,37 @@ def split_conductor(conductor, location, mode, conductor_container):
         asset_dict[new_cond2_id] = new_cond2
 
         # update port asset mappings for conductors
-        mapping[port1.get_id()] = {'asset_id': new_cond1_id, 'coord': (begin_point.get_lat(), begin_point.get_lon()), 'pos': 'first'}
-        mapping[new_port2.get_id()] = {'asset_id': new_cond1_id, 'coord': (middle_point.get_lat(), middle_point.get_lon()), 'pos': 'last'}
-        mapping[new_port1.get_id()] = {'asset_id': new_cond2_id, 'coord': (middle_point.get_lat(), middle_point.get_lon()), 'pos': 'first'}
-        mapping[port2.get_id()] = {'asset_id': new_cond2_id, 'coord': (end_point.get_lat(), end_point.get_lon()), 'pos': 'last'}
+        mapping[port1.id] = {'asset_id': new_cond1_id, 'coord': (begin_point.lat, begin_point.lon), 'pos': 'first'}
+        mapping[new_port2.id] = {'asset_id': new_cond1_id, 'coord': (middle_point.lat, middle_point.lon), 'pos': 'last'}
+        mapping[new_port1.id] = {'asset_id': new_cond2_id, 'coord': (middle_point.lat, middle_point.lon), 'pos': 'first'}
+        mapping[port2.id] = {'asset_id': new_cond2_id, 'coord': (end_point.lat, end_point.lon), 'pos': 'last'}
 
         # create list of ESDL assets to be added to UI
         esdl_assets_to_be_added = []
         coords = []
-        for point in line1.get_point():
-            coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.get_name(), new_cond1.get_id(), type(new_cond1).__name__, coords])
+        for point in line1.point:
+            coords.append([point.lat, point.lon])
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords])
         coords = []
-        for point in line2.get_point():
-            coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.get_name(), new_cond2.get_id(), type(new_cond2).__name__, coords])
+        for point in line2.point:
+            coords.append([point.lat, point.lon])
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
-            if c['from-asset-id'] == conductor_id and c['from-port-id'] == port1.get_id():
+            if c['from-asset-id'] == conductor_id and c['from-port-id'] == port1.id:
                 c['from-asset-id'] = new_cond1_id
-            if c['from-asset-id'] == conductor_id and c['from-port-id'] == port2.get_id():
+            if c['from-asset-id'] == conductor_id and c['from-port-id'] == port2.id:
                 c['from-asset-id'] = new_cond2_id
-            if c['to-asset-id'] == conductor_id and c['to-port-id'] == port1.get_id():
+            if c['to-asset-id'] == conductor_id and c['to-port-id'] == port1.id:
                 c['to-asset-id'] = new_cond1_id
-            if c['to-asset-id'] == conductor_id and c['to-port-id'] == port2.get_id():
+            if c['to-asset-id'] == conductor_id and c['to-port-id'] == port2.id:
                 c['to-asset-id'] = new_cond2_id
 
         # create list of connections to be added to UI
         if mode == 'connect':
-            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.get_lat(), middle_point.get_lon()),
-                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
+            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         if mode == 'add_joint':
             joint = esdl.Joint()
@@ -1928,15 +1609,15 @@ def split_conductor(conductor, location, mode, conductor_container):
             asset_dict[joint_id] = joint
 
             # Change port asset mappings
-            mapping[joint_inp_id] = {'asset_id': joint_id, 'coord': (middle_point.get_lat(), middle_point.get_lon())}
-            mapping[joint_outp_id] = {'asset_id': joint_id, 'coord': (middle_point.get_lat(), middle_point.get_lon())}
+            mapping[joint_inp_id] = {'asset_id': joint_id, 'coord': (middle_point.lat, middle_point.lon)}
+            mapping[joint_outp_id] = {'asset_id': joint_id, 'coord': (middle_point.lat, middle_point.lon)}
 
-            esdl_assets_to_be_added.append(['point', 'asset', joint.get_name(), joint_id, type(joint).__name__, middle_point.get_lat(), middle_point.get_lon(), 'transport'])
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint_id, type(joint).__name__, middle_point.lat, middle_point.lon, 'transport'])
 
-            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.get_lat(), middle_point.get_lon()),
-                          'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
-            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-asset-id': joint_id, 'from-asset-coord': (middle_point.get_lat(), middle_point.get_lon()),
-                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
+            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-asset-id': joint_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
         emit('add_esdl_objects', {'list': esdl_assets_to_be_added, 'zoom': False})
@@ -1958,28 +1639,24 @@ def update_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
 
     es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
+    instance = es_edit.instance
+    area = instance[0].area
     obj_id = message['id']
 
     if message['asspot'] == 'asset':
-        asset = find_asset(area, obj_id)
+        asset = ESDLAsset.find_asset(area, obj_id)
 
         if asset:
-            point = esdl.Point()
-            point.set_lon(message['lng'])
-            point.set_lat(message['lat'])
-            asset.set_geometry_with_type(point)
+            point = esdl.Point(lon=message['lng'], lat=message['lat'])
+            asset.geometry = point
 
         # Update locations of connections on moving assets
         update_asset_connection_locations(obj_id, message['lat'], message['lng'])
     else:
-        potential = find_potential(area, obj_id)
+        potential = ESDLAsset.find_potential(area, obj_id)
         if potential:
-            point = esdl.Point()
-            point.set_lon(message['lng'])
-            point.set_lat(message['lat'])
-            potential.set_geometry_with_type(point)
+            point = esdl.Point(lon=message['lng'], lat=message['lat'])
+            potential.geometry = point
 
     session['es_edit'] = es_edit
 
@@ -1990,27 +1667,25 @@ def update_line_coordinates(message):
     ass_id = message['id']
 
     es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
-    asset = find_asset(area, ass_id)
+    instance = es_edit.instance
+    area = instance[0].area
+    asset = ESDLAsset.find_asset(area, ass_id)
 
     if asset:
         polyline_data = message['polyline']
         # print(polyline_data)
         # print(type(polyline_data))
         polyline_length = float(message['length'])
-        asset.set_length(polyline_length)
+        asset.length = polyline_length
 
         line = esdl.Line()
         for i in range(0, len(polyline_data)):
             coord = polyline_data[i]
 
-            point = esdl.Point()
-            point.set_lon(coord['lng'])
-            point.set_lat(coord['lat'])
-            line.add_point(point)
+            point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
+            line.point.append(point)
 
-        asset.set_geometry_with_type(line)
+        asset.geometry = line
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
@@ -2034,19 +1709,19 @@ def get_boundary_info(info):
     # TODO: Check if valid scopes were given
 
     es_edit = session['es_edit']
-    instance = es_edit.get_instance()
-    area = instance[0].get_area()
+    instance = es_edit.instance
+    area = instance[0].area
 
     if initialize_ES:
         # change ID, name and scope of ES
-        area.set_id(identifier)
-        area.set_scope(str.upper(scope))
+        area.id = identifier
+        area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
         if add_boundary_to_ESDL:
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
             boundary = get_boundary_from_service(str.upper(scope), identifier)
             if boundary:
-                geometry = create_geometry_from_geom(boundary)
-                area.set_geometry(geometry)
+                geometry = ESDLGeometry.create_geometry_from_geom(boundary)
+                area.geometry = geometry
 
             # boundary = get_boundary_from_service(area_scope, area_id)
             # if boundary:
@@ -2074,12 +1749,12 @@ def get_boundary_info(info):
 
             if initialize_ES:
                 sub_area = esdl.Area()
-                sub_area.set_id(boundary["code"])
-                sub_area.set_scope(str.upper(subscope))
+                sub_area.id = boundary["code"]
+                sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
 
                 if add_boundary_to_ESDL:
-                    geometry = create_geometry_from_geom(geom)
-                    sub_area.set_geometry(geometry)
+                    geometry = ESDLGeometry.create_geometry_from_geom(geom)
+                    sub_area.geometry = geometry
 
                 area.add_area(sub_area)
 
@@ -2099,9 +1774,9 @@ def get_boundary_info(info):
 # ---------------------------------------------------------------------------------------------------------------------
 def get_control_strategies(es):
     strategies = []
-    services = es.get_services()
+    services = es.services
     if services:
-        services_list = services.get_service()
+        services_list = services.service
         for service in services_list:
             if isinstance(service, esdl.ControlStrategy):
                 strategies.append(service)
@@ -2115,8 +1790,8 @@ def get_control_strategy_for_asset(asset_id):
     strategies = get_control_strategies(es)
 
     for strategy in strategies:
-        cs_aid = strategy.get_energyAsset()
-        if cs_aid == asset_id:
+        cs_a = strategy.energyAsset
+        if cs_a.id == asset_id:
             return strategy
 
     return None
@@ -2125,40 +1800,40 @@ def get_control_strategy_for_asset(asset_id):
 def add_control_strategy_for_asset(asset_id, cs):
     es = session['es_edit']
 
-    services = es.get_services()
+    services = es.services
     if not services:
         services = esdl.Services()
-        es.set_services(services)
+        es.services = services
 
-    services_list = services.get_service()
+    services_list = services.service
     for service in services_list:
         if isinstance(service, esdl.ControlStrategy):
-            if service.get_energyAsset() == asset_id:
+            if service.energyAsset.id == asset_id:
                 services_list.remove(service)
 
-    services.add_service_with_type(cs)
+    services.service = cs
 
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     asset_dict = session['asset_dict']
 
-    module = importlib.import_module('model.esdl_sup')
+    module = importlib.import_module('esdl.esdl')
     class_ = getattr(module, control_strategy)
     cs = class_()
 
     asset = asset_dict[asset_id]
-    asset_name = asset.get_name()
+    asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
 
-    cs.set_id(str(uuid.uuid4()))
-    cs.set_name(control_strategy + ' for ' + asset_name)
-    cs.set_energyAsset(asset_id)
+    cs.id = str(uuid.uuid4())
+    cs.name = control_strategy + ' for ' + asset_name
+    cs.energyAsset = asset
 
     if control_strategy == 'DrivenByDemand':
-        cs.set_outPort(port_id)
+        cs.outPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
     if control_strategy == 'DrivenBySupply':
-        cs.set_inPort(port_id)
+        cs.inPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
 
     add_control_strategy_for_asset(asset_id, cs)
 
@@ -2169,25 +1844,19 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     cs = esdl.StorageStrategy()
 
     asset = asset_dict[asset_id]
-    asset_name = asset.get_name()
+    asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
 
-    cs.set_id(str(uuid.uuid4()))
-    cs.set_name('StorageStrategy for ' + asset_name)
-    cs.set_energyAsset(asset_id)
+    cs.id = str(uuid.uuid4())
+    cs.name = 'StorageStrategy for ' + asset_name
+    cs.energyAsset = asset
 
-    mcc_sv = esdl.SingleValue()
-    mcc_sv.set_id(str(uuid.uuid4()))
-    mcc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    mcc_sv.set_value(str2float(mcc))
-    cs.set_marginalChargeCosts(mcc_sv)
+    mcc_sv = esdl.SingleValue(id=str(uuid.uuid4()), name='marginalChargeCosts for ' + asset_name, value=str2float(mcc))
+    cs.marginalChargeCosts = mcc_sv
 
-    mdc_sv = esdl.SingleValue()
-    mdc_sv.set_id(str(uuid.uuid4()))
-    mdc_sv.set_name('marginalChargeCosts for ' + asset_name)
-    mdc_sv.set_value(str2float(mdc))
-    cs.set_marginalDischargeCosts(mdc_sv)
+    mdc_sv = esdl.SingleValue(id=str(uuid.uuid4()), name='marginalChargeCosts for ' + asset_name, value=str2float(mdc))
+    cs.marginalDischargeCosts = mdc_sv
 
     add_control_strategy_for_asset(asset_id, cs)
 
@@ -2198,20 +1867,20 @@ def get_storage_marginal_costs(asset_id):
 
     es = session['es_edit']
 
-    services = es.get_services()
+    services = es.services
     if services:
-        services_list = services.get_service()
+        services_list = services.service
         for service in services_list:
             if isinstance(service, esdl.StorageStrategy):
-                if service.get_energyAsset() == asset_id:
-                    mcc_sv = service.get_marginalChargeCosts()
-                    mdc_sv = service.get_marginalDischargeCosts()
+                if service.energyAsset == asset:
+                    mcc_sv = service.marginalChargeCosts
+                    mdc_sv = service.marginalDischargeCosts
                     if mcc_sv:
-                        mcc = mcc_sv.get_value()
+                        mcc = mcc_sv.value
                     else:
                         mcc = 0
                     if mdc_sv:
-                        mdc = mdc_sv.get_value()
+                        mdc = mdc_sv.value
                     else:
                         mdc = 0
                     return mcc, mdc
@@ -2220,15 +1889,20 @@ def get_storage_marginal_costs(asset_id):
 
 
 def remove_control_strategy_for_asset(asset_id):
-    es = session['es_edit']
+    #es = session['es_edit']
+    # updated for PyEcore
+    asset_dict = session['asset_dict']
+    asset = asset_dict[asset_id]
+    cs = asset.controlStrategy
+    cs.delete()
 
-    services_collection = es.get_services()
-    if services_collection:
-        services = services_collection.get_service()
-        for service in services:
-            if isinstance(service, esdl.ControlStrategy):
-                if service.get_energyAsset() == asset_id:
-                    services.remove(service)
+    #services_collection = es.services
+    #if services_collection:
+    #    services = services_collection.service
+    #    for service in services:
+    #        if isinstance(service, esdl.ControlStrategy):
+    #            if service.energyAsset == asset_id:
+    #                services.remove(service)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2237,16 +1911,16 @@ def remove_control_strategy_for_asset(asset_id):
 def set_marginal_costs_for_asset(asset_id, marginal_costs):
     asset_dict = session['asset_dict']
     asset = asset_dict[asset_id]
-    asset_name = asset.get_name()
+    asset_name = asset.name
     if not asset_name:
-        asset_name = asset.get_id()
+        asset_name = asset.id
 
-    ci = asset.get_costInformation()
+    ci = asset.costInformation
     if not ci:
         ci = esdl.CostInformation()
         asset.set_costInformation(ci)
 
-    mc = ci.get_marginalCosts()
+    mc = ci.marginalCosts
     if not mc:
         mc = esdl.SingleValue()
         mc.set_id(str(uuid.uuid4()))
@@ -2260,11 +1934,11 @@ def get_marginal_costs_for_asset(asset_id):
     asset_dict = session['asset_dict']
     asset = asset_dict[asset_id]
 
-    ci = asset.get_costInformation()
+    ci = asset.costInformation
     if ci:
-        mc = ci.get_marginalCosts()
+        mc = ci.marginalCosts
         if mc:
-            return mc.get_value()
+            return mc.value
 
     return None
 
@@ -2290,7 +1964,7 @@ def process_command(message):
     es_edit = session['es_edit']
     # test to see if this should be moved down:
     #  session.modified = True
-    # print (session['es_edit'].get_instance()[0].get_area().get_name())
+    # print (session['es_edit'].instance[0].area.name)
 
     if message['cmd'] == 'add_asset':
         area_bld_id = message['area_bld_id']
@@ -2462,14 +2136,14 @@ def process_command(message):
         # if assettype not in ['ElectricityCable', 'Pipe']:
         port_list = []
         asset_to_be_added_list = []
-        ports = asset.get_port()
+        ports = asset.port
         for p in ports:
             port_list.append(
-                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+                {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': p.connectedTo})
 
         if assettype not in ['ElectricityCable', 'Pipe']:
             capability_type = get_asset_capability_type(asset)
-            asset_to_be_added_list.append(['point', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, message['lat'], message['lng'], port_list, capability_type])
+            asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, message['lat'], message['lng'], port_list, capability_type])
         else:
             coords = []
             i = 0
@@ -2486,7 +2160,7 @@ def process_command(message):
                     prev_lng = coord['lng']
                 i += 1
 
-            asset_to_be_added_list.append(['line', 'asset', asset.get_name(), asset.get_id(), type(asset).__name__, coords, port_list])
+            asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
         emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
 
@@ -2504,29 +2178,29 @@ def process_command(message):
         asset_id = message['id']
         port_list = []
         if asset_id:
-            asset = find_asset(es_edit.get_instance()[0].get_area(), asset_id)
-            ports = asset.get_port()
+            asset = find_asset(es_edit.instance[0].area, asset_id)
+            ports = asset.port
             for p in ports:
-                port_list.append({id: p.get_id(), type: type(p).__name__})
+                port_list.append({id: p.id, type: type(p).__name__})
             emit('portlist', port_list)
 
     if message['cmd'] == 'connect_assets':
         asset_id1 = message['id1']
         asset_id2 = message['id2']
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
 
         asset1 = find_asset(area, asset_id1)
         asset2 = find_asset(area, asset_id2)
-        print('Connecting asset ' + asset1.get_id() + ' and asset ' + asset2.get_id())
+        print('Connecting asset ' + asset1.id + ' and asset ' + asset2.id)
 
-        geom1 = asset1.get_geometry()
-        geom2 = asset2.get_geometry()
+        geom1 = asset1.geometry
+        geom2 = asset2.geometry
 
         if isinstance(asset1, esdl.AbstractConductor) or isinstance(asset2, esdl.AbstractConductor):
 
             if isinstance(asset1, esdl.AbstractConductor):
                 if isinstance(geom1, esdl.Line):
-                    points = geom1.get_point()
+                    points = geom1.point
                     first_point1 = points[0]
                     last_point1 = points[len(points)-1]
                     first = 'line'
@@ -2540,7 +2214,7 @@ def process_command(message):
 
             if isinstance(asset2, esdl.AbstractConductor):
                 if isinstance(geom2, esdl.Line):
-                    points = geom2.get_point()
+                    points = geom2.point
                     first_point2 = points[0]
                     last_point2 = points[len(points)-1]
                     second = 'line'
@@ -2580,12 +2254,12 @@ def process_command(message):
 
         port1 = None
         port2 = None
-        for p in asset1.get_port():
-            if p.get_id() == port1_id:
+        for p in asset1.port:
+            if p.id == port1_id:
                 port1 = p
 
-        for p in asset2.get_port():
-            if p.get_id() == port2_id:
+        for p in asset2.port:
+            if p.id == port2_id:
                 port2 = p
 
         if port1 and port2:
@@ -2610,19 +2284,19 @@ def process_command(message):
     if message['cmd'] == 'get_object_info':
         object_id = message['id']
         asspot = message['asspot']
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
 
         if asspot == 'asset':
             asset = find_asset(area, object_id)
-            print('Get info for asset ' + asset.get_id())
+            print('Get info for asset ' + asset.id)
             attrs_sorted = get_asset_attributes(asset)
-            name = asset.get_name()
+            name = asset.name
             connected_to_info = get_connected_to_info(asset)
         else:
             pot = find_potential(area, object_id)
-            print('Get info for potential ' + pot.get_id())
+            print('Get info for potential ' + pot.id)
             attrs_sorted = get_potential_attributes(pot)
-            name = pot.get_name()
+            name = pot.name
             connected_to_info = []
 
         if name is None: name = ''
@@ -2631,12 +2305,12 @@ def process_command(message):
     if message['cmd'] == 'get_conductor_info':
         asset_id = message['id']
         latlng = message['latlng']
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
         asset = find_asset(area, asset_id)
         connected_to_info = get_connected_to_info(asset)
-        print('Get info for conductor ' + asset.get_id())
+        print('Get info for conductor ' + asset.id)
         attrs_sorted = get_asset_attributes(asset)
-        name = asset.get_name()
+        name = asset.name
         if name is None: name = ''
         emit('asset_info', {'id': asset_id, 'name': name, 'latlng': latlng, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info})
 
@@ -2645,7 +2319,7 @@ def process_command(message):
         param_name = message['param_name']
         param_value = message['param_value']
 
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
 
         asset = find_asset(area, asset_id)
         print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
@@ -2686,7 +2360,7 @@ def process_command(message):
                 prev_lng = coord['lng']
             i += 1
 
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
         area_selected = find_area(area, area_bld_id)
         if area_selected:
             area_selected.set_geometry(polygon)
@@ -2702,7 +2376,7 @@ def process_command(message):
         mode = message['mode']      # connect, add_joint, no_connect
         location_to_split = message['location']
 
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
         conductor, container = find_asset_and_container(area, cond_id)
 
         split_conductor(conductor, location_to_split, mode, container)
@@ -2712,11 +2386,11 @@ def process_command(message):
 
         asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
         if asset_id:
-            asset = find_asset(es_edit.get_instance()[0].get_area(), asset_id)
-            ports = asset.get_port()
+            asset = find_asset(es_edit.instance[0].area, asset_id)
+            ports = asset.port
             for p in ports:
-                if p.get_id() == port_id:
-                    profile = p.get_profile()
+                if p.id == port_id:
+                    profile = p.profile
                     if profile:
                         profile_info = generate_profile_info(profile)
                         emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info})
@@ -2768,10 +2442,10 @@ def process_command(message):
 
         asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
         if asset_id:
-            asset = find_asset(es_edit.get_instance()[0].get_area(), asset_id)
-            ports = asset.get_port()
+            asset = find_asset(es_edit.instance[0].area, asset_id)
+            ports = asset.port
             for p in ports:
-                if p.get_id() == port_id:
+                if p.id == port_id:
                     p.set_profile(esdl_profile)
 
     if message['cmd'] == 'add_port':
@@ -2788,12 +2462,12 @@ def process_command(message):
         port.set_id(pid)
         port.set_name(pname)
 
-        geom = asset.get_geometry()
+        geom = asset.geometry
         if isinstance(geom, esdl.Point):
-            lat = geom.get_lat()
-            lon = geom.get_lon()
+            lat = geom.lat
+            lon = geom.lon
             coord = (lat, lon)
-            mapping[pid] = {'asset_id': asset.get_id(), 'coord': coord}
+            mapping[pid] = {'asset_id': asset.id, 'coord': coord}
             asset.add_port_with_type(port)
         else:
             send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
@@ -2805,10 +2479,10 @@ def process_command(message):
         asset = asset_dict[asset_id]
 
         remove_idx = None
-        ports = asset.get_port()
+        ports = asset.port
 
         for p in ports:
-            if p.get_id() == pid:
+            if p.id == pid:
                 _remove_port_references(p)
                 ports.remove(p)
 
@@ -2819,11 +2493,11 @@ def process_command(message):
         to_asset_id = message['to_asset_id']
         to_asset = asset_dict[to_asset_id]
         to_port_id = message['to_port_id']
-        print('Removing connection {}#{} -> {}#{}'.format(from_asset.get_name(), from_port_id, to_asset.get_name(), to_port_id))
+        print('Removing connection {}#{} -> {}#{}'.format(from_asset.name, from_port_id, to_asset.name, to_port_id))
         # remove reference at both sides (this is quite ugly in generateDS-based ESDL...)
-        for p in from_asset.get_port():
-            if p.get_id() == from_port_id:
-                connected_to = p.get_connectedTo()
+        for p in from_asset.port:
+            if p.id == from_port_id:
+                connected_to = p.connectedTo
                 if connected_to:
                     connected_to_list = connected_to.split(' ')
                     new_connected_to_list = []
@@ -2833,9 +2507,9 @@ def process_command(message):
                             new_connected_to_list.append(conn_id)
                     p.set_connectedTo(' '.join(new_connected_to_list))
 
-        for p in to_asset.get_port():
-            if p.get_id() == to_port_id:
-                connected_to = p.get_connectedTo()
+        for p in to_asset.port:
+            if p.id == to_port_id:
+                connected_to = p.connectedTo
                 if connected_to:
                     connected_to_list = connected_to.split(' ')
                     new_connected_to_list = []
@@ -2866,11 +2540,11 @@ def process_command(message):
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']
         carrier_id = message['carrier_id']
-        area = es_edit.get_instance()[0].get_area()
+        area = es_edit.instance[0].area
 
         if asset_id:
             asset = find_asset(area, asset_id)
-            num_ports = len(asset.get_port())
+            num_ports = len(asset.port)
             if isinstance(asset, esdl.Transport) or num_ports == 1:
                 set_carrier_for_connected_transport_assets(asset_id, carrier_id)
             else:
@@ -2925,14 +2599,14 @@ def process_command(message):
         if carr_type == 'en_comm':
             carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name)
 
-        esi = es_edit.get_energySystemInformation()
+        esi = es_edit.energySystemInformation
         if not esi:
             esi_id = str(uuid.uuid4())
             esi = esdl.EnergySystemInformation()
             esi.set_id(esi_id)
             es_edit.set_energySystemInformation(esi)
 
-        ecs = esi.get_carriers()
+        ecs = esi.carriers
         if not ecs:
             ecs_id = str(uuid.uuid4())
             ecs = esdl.Carriers()
@@ -2948,9 +2622,9 @@ def process_command(message):
         session["color_method"] = message['method']
         print(session["color_method"])
 
-        instance = es_edit.get_instance()
+        instance = es_edit.instance
         if instance:
-            top_area = instance[0].get_area()
+            top_area = instance[0].area
             if top_area:
                 emit('clear_ui', {'layer': 'buildings'})
                 emit('clear_ui', {'layer': 'areas'})
@@ -3032,24 +2706,7 @@ def process_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
 # ---------------------------------------------------------------------------------------------------------------------
-def create_empty_energy_system(es_title, es_description, inst_title, area_title):
-    es = esdl.EnergySystem()
-    es_id = str(uuid.uuid4())
-    es.set_id(es_id)
-    es.set_name(es_title)
-    es.set_description(es_description)
 
-    instance = esdl.Instance()
-    instance.set_id(str(uuid.uuid4()))
-    instance.set_name(inst_title)
-    es.add_instance(instance)
-
-    area = esdl.Area()
-    area.set_id(str(uuid.uuid4()))
-    area.set_name(area_title)
-    instance.set_area(area)
-
-    return es
 
 
 def process_energy_system(es):
@@ -3058,7 +2715,7 @@ def process_energy_system(es):
     conn_list = []
     mapping = {}
 
-    area = es.get_instance()[0].get_area()
+    area = es.instance[0].area
     emit('clear_ui')
     find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
 
@@ -3068,16 +2725,16 @@ def process_energy_system(es):
     create_port_to_asset_mapping(area, mapping)
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
-    emit('es_title', es.get_name())
+    emit('es_title', es.name)
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
     emit('carrier_list', carrier_list)
 
-    session['es_title'] = es.get_name()
+    session['es_title'] = es.name
     session['es_edit'] = es
-    session['es_id'] = es.get_id()
-    session['es_descr'] = es.get_description()
+    session['es_id'] = es.id
+    session['es_descr'] = es.description
     # session['es_start'] = 'new'
 
     session['port_to_asset_mapping'] = mapping
@@ -3104,8 +2761,8 @@ def process_file_command(message):
         email = message['email']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
-
-        es_edit = create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
+        esh = EnergySystemHandler()
+        es_edit = esh.create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
         process_energy_system(es_edit)
 
         session['es_email'] = email
@@ -3196,7 +2853,7 @@ def on_connect():
     print("Websocket connection established")
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
-    emit('wms_layer_list', wms_layers.get_layers())
+    emit('wms_layer_list', wms_layers.layers)
 
     initialize_app()
 
