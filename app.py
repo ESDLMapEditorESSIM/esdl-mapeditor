@@ -2635,7 +2635,7 @@ def process_command(message):
             getattr(asset, 'set_' + param_name)(param_value)
         if param_name in ['aggregationCount']:
             getattr(asset, 'set_' + param_name)(str2int(param_value))
-        if param_name in ['COP', 'power', 'efficiency', 'surfaceArea']:
+        if param_name in ['COP', 'power', 'efficiency', 'electricalEfficiency', 'heatEfficiency', 'surfaceArea']:
             getattr(asset, 'set_'+param_name)(str2float(param_value))
 
     if message['cmd'] == 'set_area_bld_polygon':
