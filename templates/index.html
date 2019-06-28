@@ -98,24 +98,24 @@
         // ------------------------------------------------------------------------------------------------------------
         //  Splitting conductors (cables or pipes)
         // ------------------------------------------------------------------------------------------------------------
-        splitConductorCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'no_connect');
+        splitConductorCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
             clear_layer = false;
         }
 
-        splitConductorConnectCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'connect');
+        splitConductorConnectCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
             clear_layer = false;
         }
 
-        splitConductorAddJointCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'add_joint');
+        splitConductorAddJointCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'add_joint');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
@@ -249,21 +249,21 @@
         //  Handlers for clicking on a pipe or cable
         // ------------------------------------------------------------------------------------------------------------
         function set_line_handlers(line) {
+            let line_id = line.id;
             line.bindContextMenu({
                 contextmenu: true,
                 contextmenuWidth: 140,
                 contextmenuItems: []
             });
             line.options.contextmenuItems.push(
-                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorCallback });
+                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorCallback(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorConnectCallback });
+                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorConnectCallback(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback });
+                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorAddJointCallback(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
-            let line_id = line.id;
             for (let p=0; p<line.ports.length; p++) {
                 let port_id = ''+line.ports[p].id;
                 line.options.contextmenuItems.push({

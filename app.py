@@ -1837,16 +1837,26 @@ def split_conductor(conductor, location, mode, conductor_container):
         mapping[new_port1.get_id()] = {'asset_id': new_cond2_id, 'coord': (middle_point.get_lat(), middle_point.get_lon()), 'pos': 'first'}
         mapping[port2.get_id()] = {'asset_id': new_cond2_id, 'coord': (end_point.get_lat(), end_point.get_lon()), 'pos': 'last'}
 
+
         # create list of ESDL assets to be added to UI
         esdl_assets_to_be_added = []
         coords = []
         for point in line1.get_point():
             coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.get_name(), new_cond1.get_id(), type(new_cond1).__name__, coords])
+        # create port list
+        port_list = []
+        for p in new_cond1.get_port():
+            port_list.append(
+                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.get_name(), new_cond1.get_id(), type(new_cond1).__name__, coords, port_list])
         coords = []
         for point in line2.get_point():
             coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.get_name(), new_cond2.get_id(), type(new_cond2).__name__, coords])
+        port_list = []
+        for p in new_cond2.get_port():
+            port_list.append(
+                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.get_name(), new_cond2.get_id(), type(new_cond2).__name__, coords, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1911,6 +1921,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                           'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.get_lat(), middle_point.get_lon())})
 
         # now send new objects to UI
+        print(esdl_assets_to_be_added)
         emit('add_esdl_objects', {'list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')
         emit('add_connections', conn_list)
