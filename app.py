@@ -88,27 +88,12 @@ ESDL_STORE_PORT = '3003'
 store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 
 
-def write_energysystem_to_file(filename, es):
-    f = open(filename, 'w+', encoding='UTF-8')
-    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    es.export(f, 0, namespaceprefix_='esdl:', name_='esdl:EnergySystem', namespacedef_=xml_namespace, pretty_print=True)
-    f.close()
+def write_energysystem_to_file(filename, esh):
+    esh.save(filename=filename)
 
 
-def create_ESDL_store_item(id, es, title, description, email):
-    try:
-        f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-        # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-                       pretty_print=True)
-        f.close()
-
-        with open('/tmp/temp.xmi', 'r') as esdl_file:
-            esdlstr = esdl_file.read()
-    except:
-        send_alert('Error accessing temporary file system')
-        return
-
+def create_ESDL_store_item(id, esh, title, description, email):
+    esdlstr = esh.to_string()
     try:
         payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
         requests.post(store_url, data=payload)
@@ -126,28 +111,18 @@ def load_ESDL_EnergySystem(id):
         return None
 
     esdlstr = r.text
-    if esdlstr.startswith('<?xml'):
-        # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
-        esdlstr = esdlstr.split('\n', 1)[1]
-
-    esdlstr = esdlstr.encode()
     try:
-        es_load = esdl.parseString(esdlstr)
-        return es_load
+        esh = EnergySystemHandler()
+        esh.load_from_string(esdl_string=esdlstr)
+        return esh
     except:
         send_alert('Error interpreting ESDL file from store')
         return None
 
 
-def store_ESDL_EnergySystem(id, es):
-    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-                   pretty_print=True)
-    f.close()
 
-    with open('/tmp/temp.xmi', 'r') as esdl_file:
-        esdlstr = esdl_file.read()
+def store_ESDL_EnergySystem(id, esh):
+    esdlstr = esh.to_string()
 
     payload = {'id': id, 'esdl': esdlstr}
     try:
@@ -233,18 +208,12 @@ def get_subboundaries_from_service(scope, subscope, id):
 #  ESSIM interfacing
 # ---------------------------------------------------------------------------------------------------------------------
 def start_ESSIM():
-    es = session['es_edit']
+    esh = session['es_edit']
     es_id = session['es_id']
     es_simid = es_id
     # session['es_simid'] = es_simid
 
-    f = open('/tmp/temp.xmi', 'w', encoding='UTF-8')
-    es.export(f, 0, namespaceprefix_='', name_='esdl:EnergySystem', namespacedef_=xml_namespace,
-              pretty_print=True)
-    f.close()
-
-    with open('/tmp/temp.xmi', 'r') as esdl_file:
-        esdlstr = esdl_file.read()
+    esdlstr = esh.to_string()
 
     ESSIM_config = esdl_config.esdl_config['ESSIM']
 
@@ -987,7 +956,7 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                     lat = geom.lat
                     lon = geom.lon
 
-                    capability_type = get_asset_capability_type(asset)
+                    capability_type = ESDLAsset.get_asset_capability_type(asset)
                     asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, lat, lon, port_list, capability_type])
                 if isinstance(geom, esdl.Line):
                     coords = []
@@ -1137,19 +1106,18 @@ def get_connected_to_info(asset):
 # ---------------------------------------------------------------------------------------------------------------------
 # FIXME: pyECORE
 def connect_ports(port1, port2):
-    port1conn = port1.connectedTo
-    port2conn = port2.connectedTo
+    port1.connectedTo = port2
 
-
-
-    if port1conn:
-        port1.set_connectedTo(port1conn + ' ' + port2.id)
-    else:
-        port1.set_connectedTo(port2.id)
-    if port2conn:
-        port2.set_connectedTo(port2conn + ' ' + port1.id)
-    else:
-        port2.set_connectedTo(port1.id)
+    # port1conn = port1.connectedTo
+    # port2conn = port2.connectedTo
+    # if port1conn:
+    #     port1.set_connectedTo(port1conn + ' ' + port2.id)
+    # else:
+    #     port1.set_connectedTo(port2.id)
+    # if port2conn:
+    #     port2.set_connectedTo(port2conn + ' ' + port1.id)
+    # else:
+    #     port2.set_connectedTo(port1.id)
 
 
 def connect_asset_with_conductor(asset, conductor):
@@ -1496,7 +1464,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         port2 = ports[1]
 
         # create two conductors of same type as conductor that is splitted
-        module = importlib.import_module('model.esdl_sup')
+        module = importlib.import_module('esdl.esdl')
         class_ = getattr(module, conductor_type)
         new_cond1 = class_()
         new_cond2 = class_()
