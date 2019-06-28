@@ -1799,8 +1799,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         new_cond1.set_id(new_cond1_id)
         new_cond2.set_id(new_cond2_id)
-        new_cond1.set_name(conductor.get_name() + '_a')
-        new_cond2.set_name(conductor.get_name() + '_b')
+        new_cond1.set_name(str(conductor.get_name()) + '_a')
+        new_cond2.set_name(str(conductor.get_name()) + '_b')
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort()
