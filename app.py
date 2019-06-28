@@ -2730,23 +2730,20 @@ def process_file_command(message):
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
         esh = EnergySystemHandler()
-        es_edit = esh.create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
-        process_energy_system(es_edit)
+        esh.create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
+        process_energy_system(esh)
 
         session['es_email'] = email
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
-        if file_content.startswith('<?xml'):
-            # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
-            file_content = file_content.split('\n', 1)[1]
+        esh = EnergySystemHandler()
         try:
-            es_load = esdl.parseString(file_content, silence=True)
-            es_edit = es_load
+            esh.load_from_string(esdl_string=file_content)
+            process_energy_system(esh)
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
-        process_energy_system(es_edit)
         # start_ESSIM()
         # check_ESSIM_progress()
 
