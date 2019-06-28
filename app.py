@@ -1799,6 +1799,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         new_cond1.set_id(new_cond1_id)
         new_cond2.set_id(new_cond2_id)
+        new_cond1.set_name(conductor.get_name() + '_a')
+        new_cond2.set_name(conductor.get_name() + '_b')
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort()
@@ -1837,16 +1839,26 @@ def split_conductor(conductor, location, mode, conductor_container):
         mapping[new_port1.get_id()] = {'asset_id': new_cond2_id, 'coord': (middle_point.get_lat(), middle_point.get_lon()), 'pos': 'first'}
         mapping[port2.get_id()] = {'asset_id': new_cond2_id, 'coord': (end_point.get_lat(), end_point.get_lon()), 'pos': 'last'}
 
+
         # create list of ESDL assets to be added to UI
         esdl_assets_to_be_added = []
         coords = []
         for point in line1.get_point():
             coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.get_name(), new_cond1.get_id(), type(new_cond1).__name__, coords])
+        # create port list
+        port_list = []
+        for p in new_cond1.get_port():
+            port_list.append(
+                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.get_name(), new_cond1.get_id(), type(new_cond1).__name__, coords, port_list])
         coords = []
         for point in line2.get_point():
             coords.append([point.get_lat(), point.get_lon()])
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.get_name(), new_cond2.get_id(), type(new_cond2).__name__, coords])
+        port_list = []
+        for p in new_cond2.get_port():
+            port_list.append(
+                {'name': p.get_name(), 'id': p.get_id(), 'type': type(p).__name__, 'conn_to': p.get_connectedTo()})
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.get_name(), new_cond2.get_id(), type(new_cond2).__name__, coords, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1868,11 +1880,11 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint = esdl.Joint()
             joint_id = str(uuid.uuid4())
             joint.set_id(joint_id)
-            joint.set_name('Joint_'+str(uuid.uuid4())[:4])
-            inp = esdl.InPort()
+            joint.set_name('Joint_'+joint_id[:4])
+            inp = esdl.InPort(name='In')
             joint_inp_id = str(uuid.uuid4())
             inp.set_id(joint_inp_id)
-            outp = esdl.OutPort()
+            outp = esdl.OutPort(name='Out')
             joint_outp_id = str(uuid.uuid4())
             outp.set_id(joint_outp_id)
 
