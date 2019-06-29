@@ -89,6 +89,13 @@ esdl_config = {
             "measurement": "wind-2015",
             "field": "Wind-op-zee",
             "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Biomassa",
+            "multiplier": 1,
+            "measurement": "biomassa-2015",
+            "field": "value",
+            "profileType": "ENERGY_IN_TJ"
         }
     ],
     "energy_carriers": [

@@ -194,7 +194,8 @@
                         });
                     }
 
-                    if (marker.capability == 'Consumer' || marker.capability == 'Producer') {
+                    if (marker.capability == 'Consumer' || marker.capability == 'Producer' ||
+                            marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
@@ -729,7 +730,7 @@
             // here we tell the reader what to do when it's done reading...
             reader.onload = readerEvent => {
                 var content = readerEvent.target.result; // this is the content!
-                socket.emit('file_command', {cmd: 'load_esdl_from_file', file_content: content});
+                socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
             }
         }
 

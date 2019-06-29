@@ -21,7 +21,7 @@ from datetime import datetime
 import random
 from RDWGSConverter import RDWGSConverter
 
-from es_generic import *
+from es_generic import get_carrier_list
 from essim_validation import validate_ESSIM
 from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
@@ -1308,6 +1308,14 @@ def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_co
          'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
 
 
+def update_mapping(asset, coord):
+    mapping = session['port_to_asset_mapping']
+    ports = asset.get_port()
+    for p in ports:
+        mapping[p.get_id()] = {'asset_id': asset.get_id(), 'coord': coord}
+    session['port_to_asset_mapping'] = mapping
+
+
 def update_asset_connection_locations(ass_id, lat, lon):
     conn_list = session['conn_list']
     for c in conn_list:
@@ -1956,6 +1964,7 @@ def update_coordinates(message):
 
         # Update locations of connections on moving assets
         update_asset_connection_locations(obj_id, message['lat'], message['lng'])
+        update_mapping(asset, (message['lat'], message['lng']))
     else:
         potential = find_potential(area, obj_id)
         if potential:
@@ -1972,12 +1981,17 @@ def update_line_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
+    port_to_asset_mapping = session['port_to_asset_mapping']
     es_edit = session['es_edit']
     instance = es_edit.get_instance()
     area = instance[0].get_area()
     asset = find_asset(area, ass_id)
 
     if asset:
+        ports = asset.get_port()
+        first_port = ports[0]
+        last_port = ports[1]
+
         polyline_data = message['polyline']
         # print(polyline_data)
         # print(type(polyline_data))
@@ -1993,11 +2007,17 @@ def update_line_coordinates(message):
             point.set_lat(coord['lat'])
             line.add_point(point)
 
+            if i == 0:
+                port_to_asset_mapping[first_port.get_id()] = {'asset_id': asset.get_id(), 'coord': (coord['lat'], coord['lng']), 'pos': 'first'}
+            if i == len(polyline_data)-1:
+                port_to_asset_mapping[last_port.get_id()] = {'asset_id': asset.get_id(), 'coord': (coord['lat'], coord['lng']), 'pos': 'last'}
+
         asset.set_geometry_with_type(line)
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
     session['es_edit'] = es_edit
+    session['port_to_asset_mapping'] = port_to_asset_mapping
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2273,7 +2293,7 @@ def str2int(string):
 def process_command(message):
     print ('received: ' + message['cmd'])
     print (message)
-    print (session)
+    # print (session)
     mapping = session['port_to_asset_mapping']
     asset_dict = session['asset_dict']
     es_edit = session['es_edit']
@@ -2646,7 +2666,7 @@ def process_command(message):
             getattr(asset, 'set_' + param_name)(param_value)
         if param_name in ['aggregationCount']:
             getattr(asset, 'set_' + param_name)(str2int(param_value))
-        if param_name in ['COP', 'power', 'efficiency', 'electricalEfficiency', 'heatEfficiency', 'surfaceArea']:
+        if param_name in ['capacity', 'COP', 'power', 'efficiency', 'electricalEfficiency', 'heatEfficiency', 'surfaceArea']:
             getattr(asset, 'set_'+param_name)(str2float(param_value))
 
     if message['cmd'] == 'set_area_bld_polygon':
@@ -3060,7 +3080,7 @@ def create_empty_energy_system(es_title, es_description, inst_title, area_title)
     return es
 
 
-def process_energy_system(es):
+def process_energy_system(es, filename = None, es_title = None):
     asset_list = []
     area_bld_list = []
     conn_list = []
@@ -3076,7 +3096,18 @@ def process_energy_system(es):
     create_port_to_asset_mapping(area, mapping)
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
-    emit('es_title', es.get_name())
+    if es_title:
+        title = es_title
+    else:
+        name = es.get_name()
+        if not name:
+            title = 'ID: ' + es.get_id()
+        else:
+            title = 'Name: ' + name
+        if filename:
+            title += ', filename: ' + filename
+
+    emit('es_title', title)
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
@@ -3112,14 +3143,17 @@ def process_file_command(message):
         email = message['email']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
+        filename = 'Unknown'
 
         es_edit = create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
-        process_energy_system(es_edit)
+        process_energy_system(es_edit, filename)
 
+        session['es_filename'] = filename
         session['es_email'] = email
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
+        filename = message['filename']
         if file_content.startswith('<?xml'):
             # remove the <?xml encoding='' stuff, as the parseString doesn't like encoding in there
             file_content = file_content.split('\n', 1)[1]
@@ -3129,9 +3163,8 @@ def process_file_command(message):
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
-        process_energy_system(es_edit)
-        # start_ESSIM()
-        # check_ESSIM_progress()
+        session['es_filename'] = filename
+        process_energy_system(es_edit, filename)
 
     if message['cmd'] == 'get_list_from_store':
         try:
@@ -3154,7 +3187,14 @@ def process_file_command(message):
         if es_load:
             es_edit = es_load
 
-        process_energy_system(es_edit)
+        es_name = es_edit.get_name()
+        if es_name:
+            title = 'Store name: ' + es_name + ', id: ' + es_id
+        else:
+            title = 'Store id: ' + es_id
+
+        session['es_filename'] = title      # TODO: seperate filename and title
+        process_energy_system(es_edit, None, title)
 
     if message['cmd'] == 'store_esdl':
         es_edit = session['es_edit']
@@ -3195,7 +3235,7 @@ def initialize_app():
         print ('No energysystem in memory - generating empty energysystem')
         es_edit = create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
-    process_energy_system(es_edit)
+    process_energy_system(es_edit, None, 'Unknown')
     session.modified = True
 
 
