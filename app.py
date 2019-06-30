@@ -194,7 +194,7 @@ def get_boundary_from_service(scope, id):
 
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
-        url = 'http://' + GEIS_CLOUD_HOSTNAME + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT +'/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
 
@@ -3019,7 +3019,7 @@ def process_command(message):
         emit('results_validation_for_ESSIM', res)
 
     if message['cmd'] == 'calculate_ESSIM_KPIs':
-        # session['simulationRun'] = '5d10f273783bac5eff4575e8'
+        # session['simulationRun'] = '5d18a21ab31c7e3717bdc6db'
 
         if 'simulationRun' in session:
             sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
@@ -3032,7 +3032,7 @@ def process_command(message):
             res = kpi_results.calculate_kpis()
             emit('show_ESSIM_KPIs', res)
         else:
-            send_alert('No simulation id defined')
+            send_alert('No simulation id defined - run an ESSIM simulation first')
 
     if message['cmd'] == 'add_layer':
         id = message['id']
