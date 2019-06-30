@@ -51,8 +51,11 @@ class ESSIM_KPIs:
         # results.extend(self.calculate_total_energy_per_carrier())
         # self.get_total_production_consumption()   #TEST
 
-        results.extend(self.get_total_production_per_carrier())
-        results.extend(self.get_total_consumption_per_carrier())
+        res_tppc, tppc = self.get_total_production_per_carrier()
+        results.extend(res_tppc)
+        res_tcpc, tcpc = self.get_total_consumption_per_carrier()
+        results.extend(res_tcpc)
+        results.extend(self.get_total_system_efficiency(tppc, tcpc))
         results.extend(self.get_total_emission_per_carrier())
 
         return results
@@ -90,7 +93,7 @@ class ESSIM_KPIs:
 
             tp_arr.append({"name": "Production-Total", "value": tp_sum, "unit": "J"})
 
-            return tp_arr
+            return tp_arr, tp_sum
         except Exception as e:
             print('error with query: ', str(e))
 
@@ -124,13 +127,19 @@ class ESSIM_KPIs:
                 tc_arr.append({"name": k, "value": v, "unit": "J"})
 
             tc_arr.append({"name": "Consumption-Total", "value": tc_sum, "unit": "J"})
-
-            return tc_arr
-
+            return tc_arr, tc_sum
         except Exception as e:
             print('error with query: ', str(e))
-
         return []
+
+    def get_total_system_efficiency(self, tppc, tcpc):
+        try:
+            eff = 100 * tcpc / -tppc
+            return([{"name": "System KPIs-Total system efficiency", "value": eff, "unit": "%"}])
+        except Exception as e:
+            print('error with calculation of total system efficiency: ', str(e))
+        return []
+
 
     def get_total_emission_per_carrier(self):
         print("--- get_total_consumption_per_carrier ---")
