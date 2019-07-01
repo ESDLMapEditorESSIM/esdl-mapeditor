@@ -1111,6 +1111,45 @@
             sidebar.show();
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Energy System information
+        // ------------------------------------------------------------------------------------------------------------
+        function get_es_info() {
+            socket.emit('command', {cmd: 'get_es_info'});
+        }
+
+        function change_es_info(obj) {
+            es_info_param_id = obj.id;
+            es_info_param_name = obj.name;
+            es_info_param_value = obj.value;
+
+            socket.emit('command', {cmd: 'set_es_info_param', id: es_info_param_id, name: es_info_param_name, value: es_info_param_value});
+        }
+
+        function show_es_info(es_attrs) {
+            console.log(es_attrs);
+
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Energy system information</h1>';
+
+            table = '<table>';
+            for (i=0; i<es_attrs.length; i++) {
+                if (es_attrs[i][1] == null) {
+                    value = '';
+                } else {
+                    value = es_attrs[i][1];
+                }
+                table += '<tr><td width=180>' + es_attrs[i]['name'] + '</td>';
+                table += '<td><input type="text" width="60" id="' + es_attrs[i]['id'] + '" name="' +
+                        es_attrs[i]['name'] + '" value="' + es_attrs[i]['value']+ '" onchange="change_es_info(this);"></td></tr>';
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+            sidebar.show();
+        }
+
         var socket;
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1661,7 +1700,11 @@
                 show_ESSIM_KPIs(results);
             });
 
-
+            socket.on('show_es_info', function(es_attrs) {
+                console.log('show es info received');
+                console.log(es_attrs);
+                show_es_info(es_attrs);
+            });
         });
     </script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
@@ -1775,6 +1818,7 @@
         <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
         <a href=".{{dir_settings.download_prefix}}/EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
+        <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
         <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
         <!-- Connect assets now works via context menu -->

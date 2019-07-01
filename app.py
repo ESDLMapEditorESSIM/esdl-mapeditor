@@ -3055,6 +3055,22 @@ def process_command(message):
         id = message['id']
         wms_layers.remove_wms_layer(id)
 
+    if message['cmd'] == 'get_es_info':
+        attributes = [
+            { "id": 1, "name": "Energysystem name", "value": es_edit.get_name() },
+            { "id": 2, "name": "Energysystem description", "value": es_edit.get_description() }
+        ]
+        emit('show_es_info', attributes)
+
+    if message['cmd'] == 'set_es_info_param':
+        id = message['id']
+        value = message['value']
+
+        if id == "1":
+            es_edit.set_name(value)
+        if id == "2":
+            es_edit.set_description(value)
+
     session['es_edit'] = es_edit
     session['asset_dict'] = asset_dict
     session.modified = True
