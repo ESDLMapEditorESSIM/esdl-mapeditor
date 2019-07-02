@@ -297,6 +297,46 @@ class ESSIM_KPIs:
 
     # -----------------------------------------------------------------------------------------------------------------
     #
+    #       Animation of infrastructure load over time
+    #
+    # -----------------------------------------------------------------------------------------------------------------
+    def animate_load_geojson(self):
+        print("--- animate_load_geojson ---")
+        url = self.config['ESSIM_host'] + self.config['ESSIM_path'] + '/' + self.simulationRun + '/load_animation'
+        print(url)
+
+        headers = {
+            'Content-Type': "application/json",
+            'Accept': "application/json",
+            'User-Agent': "ESDL Mapeditor/0.1"
+            # 'Cache-Control': "no-cache",
+            # 'Host': ESSIM_config['ESSIM_host'],
+            # 'accept-encoding': "gzip, deflate",
+            # 'Connection': "keep-alive",
+            # 'cache-control': "no-cache"
+        }
+
+        try:
+            r = requests.get(url, headers=headers)
+            # print(r)
+            # print(r.content)
+            if r.status_code == 200:
+                return r.text
+            else:
+                send_alert('Error getting ESSIM load animation results - response ' + str(r.status_code)
+                           + ' with reason: ' + str(r.reason))
+                print(r)
+                print(r.content)
+                return json.loads("{}")
+        except Exception as e:
+            print('Exception: ')
+            print(e)
+            send_alert('Error accessing ESSIM API at getting load animation results')
+            return json.loads("{}")
+
+
+    # -----------------------------------------------------------------------------------------------------------------
+    #
     #       Older routines
     #
     # -----------------------------------------------------------------------------------------------------------------

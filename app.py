@@ -631,6 +631,28 @@ def get_simulation_progress():
         abort(500, 'Simulation not running')
 
 
+@app.route('/load_animation')
+def animate_load():
+
+    # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
+
+    if 'simulationRun' in session:
+        es_edit = session['es_edit']
+
+        sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+
+        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+        animation = kpi_results.animate_load_geojson()
+        print(animation)
+        return animation, 200
+    else:
+        abort(500, 'No simulation results')
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  parse the ESDL config file
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3079,11 +3101,11 @@ def process_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
 # ---------------------------------------------------------------------------------------------------------------------
-def create_empty_energy_system(es_title, es_description, inst_title, area_title):
+def create_empty_energy_system(name, es_description, inst_title, area_title):
     es = esdl.EnergySystem()
     es_id = str(uuid.uuid4())
     es.set_id(es_id)
-    es.set_name(es_title)
+    es.set_name(name)
     es.set_description(es_description)
 
     instance = esdl.Instance()
@@ -3132,7 +3154,7 @@ def process_energy_system(es, filename = None, es_title = None):
     emit('add_connections', conn_list)
     emit('carrier_list', carrier_list)
 
-    session['es_title'] = es.get_name()
+    session['es_title'] = title
     session['es_edit'] = es
     session['es_id'] = es.get_id()
     session['es_descr'] = es.get_description()
@@ -3157,14 +3179,14 @@ def process_file_command(message):
     print ('received: ' + message['cmd'])
 
     if message['cmd'] == 'new_esdl':
-        title = message['title']
+        name = message['name']
         description = message['description']
         email = message['email']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
         filename = 'Unknown'
 
-        es_edit = create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
+        es_edit = create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
         process_energy_system(es_edit, filename)
 
         session['es_filename'] = filename
@@ -3254,7 +3276,12 @@ def initialize_app():
         print ('No energysystem in memory - generating empty energysystem')
         es_edit = create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
-    process_energy_system(es_edit, None, 'Unknown')
+    if 'es_title' in session:
+        title = session['es_title']
+    else:
+        title = None
+
+    process_energy_system(es_edit, None, title)
     session.modified = True
 
 
