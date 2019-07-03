@@ -634,7 +634,7 @@ def get_simulation_progress():
 @app.route('/load_animation')
 def animate_load():
 
-    session['simulationRun'] = "5d1c534cc4e99410c1582f0f"
+    #session['simulationRun'] = "5d1c534cc4e99410c1582f0f"
 
     if 'simulationRun' in session:
         es_edit = session['es_edit']
