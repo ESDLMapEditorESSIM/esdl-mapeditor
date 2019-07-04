@@ -40,6 +40,7 @@
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -279,7 +280,7 @@
             line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
-                if (layer.mouseOverArrowHead !== undefined) {
+                if (layer !== undefined && layer.mouseOverArrowHead !== undefined) {
                     map.removeLayer(layer.mouseOverArrowHead)
                     delete layer.mouseOverArrowHead;
                 }
@@ -793,10 +794,9 @@
         }
 
         function change_param(obj) {
-            asset_id = obj.id;
+            asset_id = $(obj).attr('assetid');
             asset_param_name = obj.name;
             asset_param_value = obj.value;
-
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
         }
 
@@ -1228,24 +1228,60 @@
                 asset_id = asset_info['id'];
                 asset_name = asset_info['name'];
                 asset_attrs = asset_info['attrs'];
+                asset_doc = asset_info['asset_doc']
                 connected_to_info = asset_info['connected_to_info'];
-                // console.log(asset_attrs);
+                //console.log(asset_attrs);
 
                 sidebar_ctr = sidebar.getContainer();
 
-                sidebar_ctr.innerHTML = '<h1>' + asset_name + '</h1>';
-                sidebar_ctr.innerHTML += 'PS. Not all parameters can be set already!';
+                sidebar_ctr.innerHTML = '<h1 title="' + asset_doc + '">' + asset_name + '</h1>';
+                //sidebar_ctr.innerHTML += 'PS. Not all parameters can be set already!';
 
-                table = '<table>';
+                let idgen = 0; // generate Unique ID's otherwise jquery-ui will err
+                let table = '<table>';
                 for (i=0; i<asset_attrs.length; i++) {
-                    if (asset_attrs[i][1] == null) {
+                    if (asset_attrs[i]['value'] == null) {
                         value = '';
                     } else {
-                        value = asset_attrs[i][1];
+                        value = asset_attrs[i]['value'];
                     }
-                    table += '<tr><td width=180>' + asset_attrs[i][0] + '</td>';
-                    table += '<td><input type="text" width="60" id="' + asset_id + '" name="' +
-                            asset_attrs[i][0] + '" value="' + value + '" onchange="change_param(this);"></td></tr>';
+                    let title = 'data-html="true" title="';
+                    if (asset_attrs[i]['doc'] != null) {
+                        title += asset_attrs[i]['doc'];
+                    }
+                    if (asset_attrs[i]['type'] != null) {
+                        title += 'Data type = ';
+                        title += asset_attrs[i]['type'];
+                        title += ' ';
+                    }
+                    if (asset_attrs[i]['default'] != null) {
+                        title += 'Default value is ';
+                        title += asset_attrs[i]['default'];
+                    }
+                    title += '"';
+                    let edate = "";
+                    if (asset_attrs[i]['type'] == 'EDate') {
+                        edate = ' edate="true" ';
+                    }
+                    table += '<tr><td width=180 ' + title + '>' + asset_attrs[i]['name'] + '</td>';
+
+                    if (asset_attrs[i]['type'] == 'EEnum' || asset_attrs[i]['type'] == 'EBoolean') {
+                        options = asset_attrs[i]['options'];
+                        table += '<td><select width="60" style="width:145px" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
+                            asset_attrs[i]['name'] + '" onchange="change_param(this);">';
+                            for (let o=0; o<options.length; o++) {
+                                selected = "";
+                                if (options[o] == value) selected=" selected";
+                                caption = options[o].charAt(0).toUpperCase() + options[o].slice(1).toLowerCase();
+                                caption = caption.replace(/_/g, ' '); // replace _ with space to render nicely
+                                table += '<option value="' + options[o] + '" '+selected+'>' + caption + '</option>';
+                            }
+                        table += '</select></td></tr>';
+                    } else {
+                        table += '<td><input type="text" width="60" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
+                            asset_attrs[i]['name'] + '" value="' + value +'" onchange="change_param(this);" ' + edate + '></td></tr>';
+                    }
+                    idgen++;
                 }
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
@@ -1303,6 +1339,12 @@
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
+                // add date picker to date input fields
+                $( ":input[edate*='true']" ).datepicker({
+                    showOn: "both",
+                    dateFormat: "yy-mm-dd",
+                    constrainInput: true
+                    });
                 sidebar.show();
             });
 
@@ -1583,7 +1625,6 @@
             });
         });
     </script>
-    <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
 
 
