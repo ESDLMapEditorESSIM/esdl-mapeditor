@@ -1341,9 +1341,12 @@
 
                 // add date picker to date input fields
                 $( ":input[edate*='true']" ).datepicker({
-                    showOn: "both",
+                    showOn: "button",
                     dateFormat: "yy-mm-dd",
-                    constrainInput: true
+                    showAnim: "slideDown",
+                    changeYear: true,
+                    yearRange: "1980:2060",
+                    changeMonth: true
                     });
                 sidebar.show();
             });

@@ -494,32 +494,31 @@ def send_alert(message):
 #                 p_remove_ref.connectedTo = conn_to
 
         # FIXME: pyecore
-    def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
-        mapping = session['port_to_asset_mapping']
-        esh = session['es_edit']
-        asset = esh.get_by_id(asset_id)
-        processed_assets.append(asset_id)
-        for p in asset.port:
-            p.set_carrier(carrier_id) #FIXME pyecore
-            conn_to = p.connectedTo
-            if conn_to:
-                conn_to_list = conn_to.split(' ')
-                for conn_port_id in conn_to_list:
-                    conn_asset_id = mapping[conn_port_id]['asset_id']
-                    conn_asset = esh.get_by_id(conn_asset_id)
-                    if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange) \
-                            and not isinstance(conn_asset, esdl.Transformer):
-                        if conn_asset_id not in processed_assets:
-                            _set_carrier_for_connected_transport_assets(conn_asset_id, carrier_id, processed_assets)
-                    else:
-                        for conn_asset_port in conn_asset.port:
-                            if conn_asset_port.id == conn_port_id:
-                                conn_asset_port.set_carrier(carrier_id)
+def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
+    mapping = session['port_to_asset_mapping']
+    esh = session['es_edit']
+    asset = esh.get_by_id(asset_id)
+    processed_assets.append(asset_id)
+    for p in asset.port:
+        p.carrier = esh.get_by_id(carrier_id) #FIXME pyecore
+        conn_to = p.connectedTo
+        if conn_to:
+            for conn_port in conn_to:
+                conn_asset_id = mapping[conn_port.id]['asset_id']
+                conn_asset = esh.get_by_id(conn_asset_id)
+                if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange) \
+                        and not isinstance(conn_asset, esdl.Transformer):
+                    if conn_asset_id not in processed_assets:
+                        _set_carrier_for_connected_transport_assets(conn_asset_id, carrier_id, processed_assets)
+                else:
+                    for conn_asset_port in conn_asset.port:
+                        if conn_asset_port.id == conn_port.id:
+                            conn_asset_port.carrier = p.carrier
 
-    def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
-        processed_assets = []  # List of asset_id's that are processed
-        _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
-        # print(processed_assets)
+def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
+    processed_assets = []  # List of asset_id's that are processed
+    _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
+    # print(processed_assets)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialize
@@ -2439,7 +2438,7 @@ def process_command(message):
             asset = ESDLAsset.find_asset(area, asset_id)
             num_ports = len(asset.port)
             if isinstance(asset, esdl.Transport) or num_ports == 1:
-                ESDLAsset.set_carrier_for_connected_transport_assets(asset_id, carrier_id)
+                set_carrier_for_connected_transport_assets(asset_id, carrier_id)
             else:
                 send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
 
@@ -2476,36 +2475,38 @@ def process_command(message):
             emission_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'EMISSION', multiplier = 'KILO', unit = 'GRAM',
                                                   perMultiplier = 'GIGA', perUnit = 'JOULE')
 
-            carrier.energyContentUnit(encont_qandu)
-            carrier.emissionUnit(emission_qandu)
+            carrier.energyContentUnit = encont_qandu
+            carrier.emissionUnit = emission_qandu
 
         if carr_type == 'el_comm':
             carr_voltage = message['voltage']
-            carrier = esdl.ElectricityCommodity(id = carr_id, name = carr_name, voltage = str2float(carr_voltage))
+            carrier = esdl.ElectricityCommodity(id=carr_id, name=carr_name, voltage=str2float(carr_voltage))
         if carr_type == 'g_comm':
             carr_pressure = message['pressure']
-            carrier = esdl.GasCommodity(id = carr_id, name = carr_name, pressure = str2float(carr_pressure))
+            carrier = esdl.GasCommodity(id=carr_id, name=carr_name, pressure=str2float(carr_pressure))
         if carr_type == 'h_comm':
             carr_suptemp = message['suptemp']
             carr_rettemp = message['rettemp']
-            carrier = esdl.HeatCommodity(id = carr_id, name = carr_name, supplyTemperature = str2float(carr_suptemp), returnTemperature = str2float(carr_rettemp))
+            carrier = esdl.HeatCommodity(id=carr_id, name=carr_name, supplyTemperature=str2float(carr_suptemp), returnTemperature=str2float(carr_rettemp))
         if carr_type == 'en_comm':
-            carrier = esdl.EnergyCarrier(id = carr_id, name = carr_name)
+            carrier = esdl.EnergyCarrier(id=carr_id, name=carr_name)
+
+        esh.add_asset(carrier) # add carrier to ID list for easy retrieval
 
         esi = es_edit.energySystemInformation
         if not esi:
             esi_id = str(uuid.uuid4())
             esi = esdl.EnergySystemInformation()
-            esi.set_id(esi_id)
-            es_edit.set_energySystemInformation(esi)
+            esi.id = esi_id
+            es_edit.energySystemInformation = esi
+        esh.add_asset(esi)
 
         ecs = esi.carriers
         if not ecs:
             ecs_id = str(uuid.uuid4())
-            ecs = esdl.Carriers()
-            ecs.set_id(ecs_id)
-            esi.set_carriers(ecs)
-
+            ecs = esdl.Carriers(id=ecs_id)
+            esi.carriers = ecs
+        esh.add_asset(ecs)
         ecs.carrier.append(carrier)
 
         carrier_list = ESDLAsset.get_carrier_list(es_edit)
@@ -2760,5 +2761,6 @@ def on_disconnect():
 if __name__ == '__main__':
     parse_esdl_config()
     print("starting App")
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
+    # , use_reloader=False
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT)
 
