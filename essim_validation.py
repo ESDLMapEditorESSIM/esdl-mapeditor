@@ -56,6 +56,8 @@ def validate_ESSIM_asset(asset, results):
                     results.append('ERROR: Producer ' + asset_name + ' has power of 0')
             else:
                 results.append('ERROR: Producer ' + asset_name + ' has no power specified')
+            if not asset_has_marginal_costs:
+                results.append('ERROR: Producer ' + asset_name + ' has no marginal costs specified')
 
         else:
             if asset_has_marginal_costs:
