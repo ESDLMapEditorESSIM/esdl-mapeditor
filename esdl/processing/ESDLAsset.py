@@ -1,4 +1,5 @@
 from esdl import esdl
+from pyecore.ecore import EClass
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Functions to find assets in, remove assets from and add assets to areas and buildings
@@ -191,6 +192,31 @@ def get_asset_capability_type(asset):
     if isinstance(asset, esdl.Transport): return 'Transport'
     if isinstance(asset, esdl.Conversion): return 'Conversion'
     return 'none'
+
+def get_capabilities_list():
+    capabilities = dict()
+    capabilities['Producer'] = get_capability_list(esdl.Producer)
+    capabilities['Consumer'] = get_capability_list(esdl.Consumer)
+    capabilities['Storage'] = get_capability_list(esdl.Storage)
+    capabilities['Transport'] = get_capability_list(esdl.Transport)
+    capabilities['Conversion'] = get_capability_list(esdl.Conversion)
+    return capabilities
+
+
+def get_capability_list(capability=esdl.Producer):
+    """Returns a list of all subtypes of the specified capability.
+    Used to get a list of e.g. all producers in ESDL
+    The list is automatically generated based on the ESDL meta model"""
+    subtype_list = list()
+    for eclassifier in esdl.eClass.eClassifiers:
+        if isinstance(eclassifier, EClass):
+            if capability.eClass in eclassifier.eAllSuperTypes() and not eclassifier.abstract:
+                subtype_list.append(eclassifier.name)
+    return subtype_list
+
+
+
+
 
 
 

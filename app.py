@@ -852,7 +852,7 @@ def update_asset_geometries3(area, boundary):
 
 def generate_profile_info(profile):
     profile_class = type(profile).__name__
-    profile_type = profile.profileType
+    profile_type = profile.profileType.name
     profile_name = profile.name
     if profile_class == 'SingleValue':
         value = profile.value
@@ -1087,7 +1087,7 @@ def get_connected_to_info(asset):
 # ---------------------------------------------------------------------------------------------------------------------
 # FIXME: pyECORE
 def connect_ports(port1, port2):
-    port1.connectedTo = port2
+    port1.connectedTo.append(port2)
 
     # port1conn = port1.connectedTo
     # port2conn = port2.connectedTo
@@ -2329,8 +2329,8 @@ def process_command(message):
                     esdl_profile.database = esdl_config.esdl_config['profile_database']['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
 
-
         esdl_profile.id = str(uuid.uuid4())
+        esh.add_asset(esdl_profile)
 
         asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
         if asset_id:
@@ -2338,7 +2338,7 @@ def process_command(message):
             ports = asset.port
             for p in ports:
                 if p.id == port_id:
-                    p.set_profile(esdl_profile)
+                    p.profile = esdl_profile
 
     if message['cmd'] == 'add_port':
         direction = message['direction']
@@ -2743,6 +2743,7 @@ def on_connect():
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
+    emit('capability_list', ESDLAsset.get_capabilities_list())
 
     initialize_app()
 

@@ -41,6 +41,8 @@
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
     <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/utils.js"></script>
+    <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -1250,12 +1252,12 @@
                         title += asset_attrs[i]['doc'];
                     }
                     if (asset_attrs[i]['type'] != null) {
-                        title += 'Data type = ';
+                        title += '<br/>Data type:  ';
                         title += asset_attrs[i]['type'];
                         title += ' ';
                     }
                     if (asset_attrs[i]['default'] != null) {
-                        title += 'Default value is ';
+                        title += '<br/>Default value: ';
                         title += asset_attrs[i]['default'];
                     }
                     title += '"';
@@ -1263,7 +1265,7 @@
                     if (asset_attrs[i]['type'] == 'EDate') {
                         edate = ' edate="true" ';
                     }
-                    table += '<tr><td width=180 ' + title + '>' + asset_attrs[i]['name'] + '</td>';
+                    table += '<tr><td width=180 ' + title + '>' + camelCaseToWords(asset_attrs[i]['name']) + '</td>';
 
                     if (asset_attrs[i]['type'] == 'EEnum' || asset_attrs[i]['type'] == 'EBoolean') {
                         options = asset_attrs[i]['options'];
@@ -1348,6 +1350,12 @@
                     yearRange: "1980:2060",
                     changeMonth: true
                     });
+                // let tooltips support html styling
+                $('td[title]').tooltip({
+                    content: function() {
+                        return $(this).attr('title');
+                    }
+                });
                 sidebar.show();
             });
 
@@ -1626,6 +1634,27 @@
             socket.on('results_validation_for_ESSIM', function(results) {
                 show_validate_for_ESSIM_window(results);
             });
+
+            socket.on('capability_list', function(capabilities) {
+                $('#asset_menu').empty();
+                for (let key in capabilities) {
+                    //console.log(key + ' --> ' + capabilities[key])
+                    var optgroup = $('<optgroup>');
+                    optgroup.attr('label', key);
+                    optgroup.style = 'font-face: bold; font-size: 10px'
+                    for (let i in capabilities[key]) {
+                         let option = $("<option></option>");
+                         option.val(capabilities[key][i]);
+                         option.text(capabilities[key][i]);
+                         optgroup.append(option)
+                    }
+                    $("#asset_menu").append(optgroup);
+                }
+                $("#asset_menu").attr("size", "15");
+                $("#asset_menu-menu").css({'max-height': '600px' });
+
+                //$( "#asset_menu" ).addClass( "overflow" );
+            });
         });
     </script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
@@ -1633,7 +1662,7 @@
 
     <script>
         $(function() {
-            $("#asset_menu").selectmenu({ width:200 });
+            $("#asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
             $("#area_bld_select").selectmenu({ width:500 });
             $("#carrier_select").selectmenu({ width:150 });

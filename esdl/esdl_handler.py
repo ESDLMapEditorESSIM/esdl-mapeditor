@@ -1,5 +1,5 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EBoolean
+from pyecore.ecore import EEnum, EAttribute, EClass
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -104,6 +104,7 @@ class EnergySystemHandler:
     def remove_asset_by_id(self, asset_id):
         del self.resource.uuid_dict[asset_id]
 
+
     # returns a generator of all assets of a specific type. Not only the ones defined in  the main Instance's Area
     # e.g. QuantityAndUnits can be defined in the KPI of an Area or in the EnergySystemInformation object
     # this function returns all of them at once
@@ -189,8 +190,8 @@ class EnergySystemHandler:
                 attr['doc'] = x.__doc__
                 attributes.append(attr)
         print(attributes)
-        #attrs_sorted = sorted(attributes.items(), key=lambda kv: kv[0])
-        return attributes #attrs_sorted
+        attrs_sorted = sorted(attributes, key=lambda a: a['name'])
+        return attrs_sorted
 
 
 class StringURI(URI):
