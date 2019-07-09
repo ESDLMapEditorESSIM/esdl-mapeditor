@@ -141,19 +141,21 @@ class EnergySystemHandler:
         return self.energy_system
 
     # Support for Pickling when serializing the energy system in a session
-    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask
-    # Furthermore, they can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
+    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask.
+    # Internally Flask Sessions use Pickle to serialize a data structure by means of its __dict__. This does not work.
+    # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
     def __getstate__(self):
-        # Copy the object's state from self.__dict__ which contains
-        # all our instance attributes. Always use the dict.copy()
-        # method to avoid modifying the original state.
         state = dict()
+        print('Serializing EnergySystem...', end ="")
         state['energySystem'] = self.to_string();
+        print('done')
         return state
 
     def __setstate__(self, state):
         self.__init__()
+        print('Deserializing EnergySystem...', end="")
         self.load_from_string(state['energySystem'])
+        print('done')
 
     @staticmethod
     def get_asset_attributes(asset, esdl_doc=None):
@@ -169,7 +171,6 @@ class EnergySystemHandler:
                 attr['value'] = asset.eGet(x)
                 if attr['value'] is not None:
                     if x.many:
-                        print('Many {}:{}'.format(x.name, attr['value']))
                         if isinstance(attr['value'], EOrderedSet):
                             attr['value'] = [x.name for x in attr['value']]
                             attr['many'] = True

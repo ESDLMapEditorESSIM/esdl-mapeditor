@@ -74,7 +74,8 @@ BUILDING_COLORS_TYPE = {
     "HOTEL":       '#00ffff', # cyan
     "GREENHOUSE":  '#008000', # dark green
     "UTILITY":     '#330000', # brown
-    "OTHER":       '#888888'  # gray
+    "OTHER":       '#888888', # gray
+    "UNDEFINED":   '#555555'  # light gray
 }
 
 AREA_LINECOLOR = 'blue'
@@ -170,6 +171,7 @@ def get_boundary_from_service(scope, id):
 
         return geom
     except:
+        print('Cannot reach GEIS')
         return None
 
 
@@ -290,9 +292,8 @@ def _determine_color(asset, color_method):
             bassets = asset.asset
             for basset in bassets:
                 if isinstance(basset, esdl.BuildingUnit):
-                    type = basset.type
-                    if type:
-                        building_color = BUILDING_COLORS_TYPE[type]
+                    if basset.type:
+                        building_color = BUILDING_COLORS_TYPE[basset.type.name]
 
     return building_color
 
