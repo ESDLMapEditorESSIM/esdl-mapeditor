@@ -1,12 +1,11 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EClass
+from pyecore.ecore import EEnum, EAttribute, EOrderedSet
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
 from esdl import esdl
 from uuid import uuid4
 from io import BytesIO
-import json
 
 
 class EnergySystemHandler:
@@ -14,8 +13,6 @@ class EnergySystemHandler:
     def __init__(self, energy_system=None):
         if energy_system is not None:
             self.energy_system = energy_system
-        else:
-            self.energy_system = None
         self.resource = None
         self.rset = ResourceSet()
 
@@ -159,7 +156,7 @@ class EnergySystemHandler:
         self.load_from_string(state['energySystem'])
 
     @staticmethod
-    def get_asset_attributes(asset):
+    def get_asset_attributes(asset, esdl_doc=None):
         attributes = list()
         for x in asset.eClass.eAllStructuralFeatures():
             #print('{} is of type {}'.format(x.name, x.eClass.name))
@@ -172,7 +169,12 @@ class EnergySystemHandler:
                 attr['value'] = asset.eGet(x)
                 if attr['value'] is not None:
                     if x.many:
-                        attr['value'] = list(x.eType.to_string(attr['value']))
+                        print('Many {}:{}'.format(x.name, attr['value']))
+                        if isinstance(attr['value'], EOrderedSet):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        else:
+                            attr['value'] = list(x.eType.to_string(attr['value']))
                     else:
                         attr['value'] = x.eType.to_string(attr['value'])
                 if isinstance(x.eType, EEnum):
@@ -185,9 +187,11 @@ class EnergySystemHandler:
                     if x.eType.default_value is not None:
                         attr['default'] = x.eType.to_string(x.eType.default_value)
                 if x.eType.name == 'EBoolean':
-                    attr['options'] = ['true', 'false']
-                    print(attr['options'])
+                    attr['options'] = ['True', 'False']
                 attr['doc'] = x.__doc__
+                if x.__doc__ is None and esdl_doc is not None:
+                    attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
+
                 attributes.append(attr)
         print(attributes)
         attrs_sorted = sorted(attributes, key=lambda a: a['name'])

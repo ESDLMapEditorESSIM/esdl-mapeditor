@@ -1103,9 +1103,14 @@
                         classname = '';
                     }
 
+                    imgsrc = '{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png';
+                    if (!assets_for_icons.includes(list[i][4])) {
+                        imgsrc =  drawTextImage(getAbbrevation(list[i][4]));
+                    }
+
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<center><img class="circle-img" width="23" height="23" src="{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png"></img></center>',
+                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>',
 
                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
@@ -1648,6 +1653,13 @@
                          option.val(capabilities[key][i]);
                          option.text(capabilities[key][i]);
                          optgroup.append(option)
+                         // generate icons for markers that do not have an static image png
+                         if (!assets_for_icons.includes(capabilities[key][i])){
+                            console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
+                            genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
+                            window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+                         }
                     }
                     $("#asset_menu").append(optgroup);
                 }
@@ -1884,11 +1896,14 @@
         "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];
 
+    // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
         var ass_name = assets_for_icons[i];
         window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
             iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/' + ass_name +'.png'}});
     }
+
+
 
 //    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
 //	  var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});

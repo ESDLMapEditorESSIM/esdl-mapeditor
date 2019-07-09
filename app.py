@@ -29,6 +29,7 @@ from wms_layers import WMSLayers
 #from model import esdl_sup as esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 import esdl_config
 import settings
@@ -82,11 +83,12 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
+#xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
 GEIS_CLOUD_IP = '10.30.2.1'
 ESDL_STORE_PORT = '3003'
 store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
-
+# handler to retrieve E
+esdl_doc = EcoreDocumentation()
 
 def write_energysystem_to_file(filename, esh):
     esh.save(filename=filename)
@@ -1887,14 +1889,14 @@ def process_command(message):
         assettype = message['asset']
         asset_name = message['asset_name']
 
+        module = importlib.import_module('esdl.esdl')
+        class_ = getattr(module, assettype)
+        asset = class_()
+
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an OutPort
         # -------------------------------------------------------------------------------------------------------------
         if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'PVParc', 'WindTurbine']:
-            module = importlib.import_module('esdl.esdl')
-            class_ = getattr(module, assettype)
-            asset = class_()
-
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
             asset.port.append(outp)
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
@@ -1905,11 +1907,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
-            module = importlib.import_module('esdl.esdl')
-            class_ = getattr(module, assettype)
-            asset = class_()
-
+        elif assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             asset.port.append(inp)
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
@@ -1920,11 +1918,8 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['EConnection', 'ElectricityNetwork', 'Electrolyzer', 'GConnection', 'GasHeater',
-                         'GasNetwork', 'GenericConversion', 'HeatNetwork', 'HeatPump', 'Joint', 'Transformer', 'PowerPlant']:
-            module = importlib.import_module('esdl.esdl')
-            class_ = getattr(module, assettype)
-            asset = class_()
+        elif assettype in ['EConnection', 'ElectricityNetwork', 'Electrolyzer', 'GConnection', 'GasHeater',
+                         'GasNetwork', 'GenericConversion', 'HeatNetwork', 'HeatPump', 'Joint', 'Transformer', 'PowerPlant', 'CCS']:
 
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             asset.port.append(inp)
@@ -1939,11 +1934,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an InPort and two OutPorts
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['CHP', 'FuelCell']:
-            module = importlib.import_module('esdl.esdl')
-            class_ = getattr(module, assettype)
-            asset = class_()
-
+        elif assettype in ['CHP', 'FuelCell']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             asset.port.append(inp)
 
@@ -1962,11 +1953,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a polyline geometry and an InPort and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['ElectricityCable', 'Pipe']:
-            module = importlib.import_module('esdl.esdl')
-            class_ = getattr(module, assettype)
-            asset = class_()
-
+        elif assettype in ['ElectricityCable', 'Pipe']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             asset.port.append(inp)
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
@@ -2001,6 +1988,28 @@ def process_command(message):
 
             mapping[inp.id] = {'asset_id': asset_id, 'coord': first, 'pos': 'first'}
             mapping[outp.id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
+        else:
+            capability = ESDLAsset.get_asset_capability_type(asset)
+            if capability == 'Producer':
+                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                asset.port.append(outp)
+                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
+                mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+            elif capability == 'Consumer':
+                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                asset.port.append(inp)
+                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
+                mapping[inp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+            elif capability in ['Storage', 'Conversion', 'Transport']:
+                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                asset.port.append(inp)
+                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                asset.port.append(outp)
+                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
+                mapping[inp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+                mapping[outp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+            else:
+                print('Unknown asset capability ' % capability)
 
         asset.id = asset_id
         asset.name = asset_name
@@ -2169,7 +2178,7 @@ def process_command(message):
         if asspot == 'asset':
             asset = ESDLAsset.find_asset(area, object_id)
             print('Get info for asset ' + asset.id)
-            attrs_sorted = esh.get_asset_attributes(asset)
+            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
             name = asset.name
             connected_to_info = get_connected_to_info(asset)
             asset_doc = asset.__doc__
@@ -2177,7 +2186,7 @@ def process_command(message):
             pot = ESDLAsset.find_potential(area, object_id)
             print('Get info for potential ' + pot.id)
             #attrs_sorted = get_potential_attributes(pot)
-            attrs_sorted = esh.get_asset_attributes(pot)
+            attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
             name = pot.name
             connected_to_info = []
             asset_doc = pot.__doc__
@@ -2192,7 +2201,7 @@ def process_command(message):
         asset = ESDLAsset.find_asset(area, asset_id)
         connected_to_info = get_connected_to_info(asset)
         print('Get info for conductor ' + asset.id)
-        attrs_sorted = esh.get_asset_attributes(asset)
+        attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
         name = asset.name
         if name is None: name = ''
         asset_doc = asset.__doc__
@@ -2215,7 +2224,13 @@ def process_command(message):
                     parsed_value = attribute.eType.default_value
                 else:
                     parsed_value = attribute.eType.from_string(param_value)
-                asset.eSet(param_name, parsed_value)
+                if attribute.many:
+                    eOrderedSet = asset.eGet(param_name)
+                    eOrderedSet.clear() #TODO no support for multi-select of enums
+                    eOrderedSet.append(parsed_value)
+                    asset.eSet(param_name, eOrderedSet)
+                else:
+                    asset.eSet(param_name, parsed_value)
             else:
                 send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
         except Exception as e:
@@ -2244,10 +2259,8 @@ def process_command(message):
 
             # Don't understand why, but sometimes coordinates come in twice
             if prev_lat != coord['lat'] or prev_lng != coord['lng']:
-                point = esdl.Point()
-                point.set_lon(coord['lng'])
-                point.set_lat(coord['lat'])
-                exterior.add_point(point)
+                point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
+                exterior.point.append(point)
                 prev_lat = coord['lat']
                 prev_lng = coord['lng']
             i += 1
@@ -2763,5 +2776,5 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("starting App")
     # , use_reloader=False
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)
 
