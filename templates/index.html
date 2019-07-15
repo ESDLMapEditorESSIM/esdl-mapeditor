@@ -208,8 +208,8 @@
                             }
                         });
                     }
-                    marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({text: 'Cancel'});
+                    //marker.options.contextmenuItems.push('-');
+                    //marker.options.contextmenuItems.push({text: 'Cancel'});
                 }
             }
 
@@ -280,8 +280,8 @@
             line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push(
                 { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
-            line.options.contextmenuItems.push('-');
-            line.options.contextmenuItems.push({ text: 'Cancel' });
+            //line.options.contextmenuItems.push('-');
+            //line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
                 var layer = e.target;
@@ -1176,7 +1176,6 @@
             // update an asset.
             // currently only updates the ports for the context menu
             socket.on('update_asset', function(asset_update) {
-                console.log('Update ASSET');
                 asset_id = asset_update['asset_id'];
                 ports = asset_update['ports'];
                 layer = find_layer(asset_id);
