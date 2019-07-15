@@ -208,7 +208,6 @@
                             }
                         });
                     }
-                    console.log("Updating menu");
                     marker.options.contextmenuItems.push('-');
                     marker.options.contextmenuItems.push({text: 'Cancel'});
                 }
@@ -785,6 +784,17 @@
                 profile_type: profile_type, profile_class: profile_class_id});
         }
 
+        // find a layer assocated with an asset_id
+        function find_layer(asset_id) {
+           all_layers = esdl_layer.getLayers();
+           for (let i=0; i<all_layers.length; i++) {
+                layer = all_layers[i];
+                if (layer.id == asset_id) {
+                    return layer;
+                }
+           }
+        }
+
         function add_port(direction, asset_id) {
             // get name
             pname = document.getElementById('name_add_port').value;
@@ -1120,14 +1130,6 @@
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-                    var ESDLicon = L.icon({
-                        iconUrl: '{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png',
-
-                        iconSize:     [30, 30], // size of the icon
-                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
-                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
-                    });
-
 					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5], list[i][6]], {icon: divicon, title: title});
@@ -1169,6 +1171,23 @@
                     var bounds = esdl_layer.getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
                 }
+            });
+
+            // update an asset.
+            // currently only updates the ports for the context menu
+            socket.on('update_asset', function(asset_update) {
+                console.log('Update ASSET');
+                asset_id = asset_update['asset_id'];
+                ports = asset_update['ports'];
+                layer = find_layer(asset_id);
+                layer.ports = ports;
+                if (layer instanceof L.Marker) {
+                    set_marker_handlers(layer);
+                }
+                if (layer instanceof L.Polyline) {
+                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
+                }
+
             });
 
             // TODO: does not work
@@ -1644,6 +1663,7 @@
                 show_validate_for_ESSIM_window(results);
             });
 
+            // populate the asset menu grouped by capability
             socket.on('capability_list', function(capabilities) {
                 $('#asset_menu').empty();
                 for (let key in capabilities) {
@@ -1658,7 +1678,7 @@
                          optgroup.append(option)
                          // generate icons for markers that do not have an static image png
                          if (!assets_for_icons.includes(capabilities[key][i])){
-                            console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
+                            //console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
                             genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
                             window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
                                 iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
@@ -1895,6 +1915,7 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
+    // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
         "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
         "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
@@ -1906,35 +1927,6 @@
         window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
             iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/' + ass_name +'.png'}});
     }
-
-
-
-//    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
-//	  var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
-//    var EConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/EConnection.png'}});
-//    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
-//    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
-//    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
-//    var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
-//	  var GConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GConnection.png'}});
-//    var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
-//    var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
-//    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
-//    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConversion.png'}});
-//    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericProducer.png'}});
-//    var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GeothermalSource.png'}});
-//    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatingDemand.png'}});
-//    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
-//    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
-//    var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
-//    var MobilityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/MobilityDemand.png'}});
-//    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
-//    var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
-//    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
-//    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
-//    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});
-//    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/UTES.png'}});
-//    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
         edit: {

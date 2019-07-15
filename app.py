@@ -1876,8 +1876,10 @@ def process_command(message):
     print ('received: ' + message['cmd'])
     print (message)
     print (session)
-    mapping = session['port_to_asset_mapping']
     esh = session['energySystemHandler']
+    if esh is None:
+        print('ERROR finding esdlSystemHandler, Session issue??')
+    mapping = session['port_to_asset_mapping']
     es_edit = esh.get_energy_system()
     # test to see if this should be moved down:
     #  session.modified = True
@@ -2373,6 +2375,11 @@ def process_command(message):
             coord = (lat, lon)
             mapping[port.id] = {'asset_id': asset.id, 'coord': coord}
             asset.port.append(port)
+            port_list = []
+            for p in asset.port:
+                port_list.append(
+                    {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+            emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
         else:
             send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
 
@@ -2382,9 +2389,14 @@ def process_command(message):
         asset = esh.get_by_id(asset_id)
         ports = asset.port
 
+        port_list = []
         for p in ports:
             if p.id == pid:
                 ports.remove(p)
+            else:
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+        emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+
 
     if message['cmd'] == 'remove_connection':
         from_asset_id = message['from_asset_id']
@@ -2629,7 +2641,7 @@ def process_energy_system(esh):
     create_port_to_asset_mapping(area, mapping)
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
-    print('asset list: {}'.format(asset_list))
+    #print('asset list: {}'.format(asset_list))
 
     emit('es_title', es.name)
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
