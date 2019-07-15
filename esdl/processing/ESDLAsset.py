@@ -122,7 +122,7 @@ def remove_object_from_building(building, object_id):
                 p.connectedTo.clear()
 
             building.asset.remove(ass)
-            print('Asset with id ' + object_id + ' removed from building with id: ', + building.get_id())
+            print('Asset with id ' + object_id + ' removed from building with id: ', + building.id)
 
 
 def recursively_remove_object_from_area(area, object_id):
@@ -131,13 +131,13 @@ def recursively_remove_object_from_area(area, object_id):
             for p in ass.port:
                 p.connectedTo.clear()
             area.asset.remove(ass)
-            print('Asset with id ' + object_id + ' removed from area with id: ' + area.get_id())
+            print('Asset with id ' + object_id + ' removed from area with id: ' + area.id)
         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
             remove_object_from_building(ass, object_id)
     for pot in area.potential:
         if pot.id == object_id:
             area.potential.remove(pot)
-            print('Potential with id ' + object_id + ' removed from area with id: ' + area.get_id())
+            print('Potential with id ' + object_id + ' removed from area with id: ' + area.id)
     for sub_area in area.area:
         recursively_remove_object_from_area(sub_area, object_id)
 

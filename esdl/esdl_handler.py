@@ -188,7 +188,7 @@ class EnergySystemHandler:
                     if x.eType.default_value is not None:
                         attr['default'] = x.eType.to_string(x.eType.default_value)
                 if x.eType.name == 'EBoolean':
-                    attr['options'] = ['True', 'False']
+                    attr['options'] = ['true', 'false']
                 attr['doc'] = x.__doc__
                 if x.__doc__ is None and esdl_doc is not None:
                     attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)

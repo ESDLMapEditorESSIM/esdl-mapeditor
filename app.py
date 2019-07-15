@@ -85,7 +85,7 @@ AREA_FILLCOLOR = 'red'
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
 #xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
-GEIS_CLOUD_IP = '10.30.2.1'
+GEIS_CLOUD_IP = 'geis.hesi.energy'
 ESDL_STORE_PORT = '3003'
 store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 # handler to retrieve E
@@ -1088,7 +1088,6 @@ def get_connected_to_info(asset):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Create connections between assets
 # ---------------------------------------------------------------------------------------------------------------------
-# FIXME: pyECORE
 def connect_ports(port1, port2):
     port1.connectedTo.append(port2)
 
@@ -2177,7 +2176,8 @@ def process_command(message):
         area = es_edit.instance[0].area
 
         if asspot == 'asset':
-            asset = ESDLAsset.find_asset(area, object_id)
+            # asset = ESDLAsset.find_asset(area, object_id)
+            asset = esh.get_by_id(object_id)
             print('Get info for asset ' + asset.id)
             attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
             name = asset.name
@@ -2185,6 +2185,7 @@ def process_command(message):
             asset_doc = asset.__doc__
         else:
             pot = ESDLAsset.find_potential(area, object_id)
+            #asset = esh.get_by_id(object_id)
             print('Get info for potential ' + pot.id)
             #attrs_sorted = get_potential_attributes(pot)
             attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
@@ -2777,5 +2778,5 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("starting App")
     # , use_reloader=False
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 

@@ -135,7 +135,8 @@
                     marker.bindContextMenu({
                         contextmenu: true,
                         contextmenuWidth: 140,
-                        contextmenuItems: []
+                        contextmenuItems: [],
+                        contextmenuInheritItems: false
                     });
 
                     for (let p=0; p<marker.ports.length; p++) {
@@ -207,7 +208,7 @@
                             }
                         });
                     }
-
+                    console.log("Updating menu");
                     marker.options.contextmenuItems.push('-');
                     marker.options.contextmenuItems.push({text: 'Cancel'});
                 }
@@ -224,6 +225,7 @@
             marker.on('remove', function(e) {
                 // console.log('remove marker');
                 // marker.options.icon.tooltip('destroy');
+                $(".ui-tooltip-content").parents('div').remove();
                 if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
             });
 
@@ -255,7 +257,8 @@
             line.bindContextMenu({
                 contextmenu: true,
                 contextmenuWidth: 140,
-                contextmenuItems: []
+                contextmenuItems: [],
+                contextmenuInheritItems: false
             });
             line.options.contextmenuItems.push(
                 { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorCallback(e, line_id); } });
@@ -1665,6 +1668,7 @@
                 }
                 $("#asset_menu").attr("size", "15");
                 $("#asset_menu-menu").css({'max-height': '600px' });
+                $("#asset_menu").selectmenu("refresh");
 
                 //$( "#asset_menu" ).addClass( "overflow" );
             });
@@ -2067,6 +2071,10 @@
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
             area_layer.addLayer(layer, true);
         }
+    });
+
+    map.on('click', function(e) {
+        map.contextmenu.hide();
     });
 
 
