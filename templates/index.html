@@ -1169,7 +1169,7 @@
                             return {
                                 "color": feature.properties.stroke,
                                 "weight": feature.properties.strokewidth,
-                                "opacity": 0.4
+                                "opacity": 1
                             };
                         }
                     });
@@ -1180,7 +1180,7 @@
                         duration: 'PT1H',
                     });
 
-                    geoJsonTimeLayer.addTo(map);
+                    geoJsonTimeLayer.addTo(sim_layer);
                 },
                 error: function() {
                     alert("Error in getting load animation from backend");
@@ -1196,6 +1196,7 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
+            console.log(location);
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':5000, 'connect timeout': 5000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
             socket.on('connect', function() {
@@ -1952,7 +1953,8 @@
             area_layer = L.featureGroup().addTo(map),
             bld_layer = L.featureGroup().addTo(map),
             pot_layer = L.featureGroup().addTo(map),
-            connection_layer = L.featureGroup().addTo(map);
+            connection_layer = L.featureGroup().addTo(map),
+            sim_layer = L.featureGroup().addTo(map);
 
     connection_layer.bringToFront();
 
@@ -1979,7 +1981,14 @@
                 attribution: 'Google'
             })
         },
-        { 'Assets': esdl_layer, 'Area boundaries': area_layer, 'Building boundaries': bld_layer, 'Potential boundaries': pot_layer, 'Connections': connection_layer },
+        {
+            'Assets': esdl_layer,
+            'Area boundaries': area_layer,
+            'Building boundaries': bld_layer,
+            'Potential boundaries': pot_layer,
+            'Connections': connection_layer,
+            'Simulation results': sim_layer
+        },
         //, 'wms': wms_layer, 'wms2': wms_layer2 },
         { position: 'topleft', collapsed: false }
     ).addTo(map);

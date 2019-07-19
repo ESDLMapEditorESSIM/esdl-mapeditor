@@ -5,7 +5,7 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, Response
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import requests
@@ -195,6 +195,7 @@ def get_boundary_from_service(scope, id):
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT +'/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        print(url)
         r = requests.get(url)
         reply = json.loads(r.text)
 
@@ -220,7 +221,7 @@ def get_subboundaries_from_service(scope, subscope, id):
     """
 
     try:
-        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(subscope)]\
+        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(subscope)]\
               + '/' + scope + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
@@ -634,7 +635,7 @@ def get_simulation_progress():
 @app.route('/load_animation')
 def animate_load():
 
-    #session['simulationRun'] = "5d1c534cc4e99410c1582f0f"
+    # session['simulationRun'] = "5d237155076f371449457307"
 
     if 'simulationRun' in session:
         es_edit = session['es_edit']
@@ -648,6 +649,10 @@ def animate_load():
         kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
         animation = kpi_results.animate_load_geojson()
         print(animation)
+
+        # resp = Response(animation)
+        # resp.headers['Content-Encoding'] = 'gzip'
+        # return resp, 200
         return animation, 200
     else:
         abort(500, 'No simulation results')
