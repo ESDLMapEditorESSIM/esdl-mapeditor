@@ -26,3 +26,6 @@ Werkzeug==0.15.1
 # eventlet
 gevent
 gevent-websocket
+pyecore=0.10.2
+influxdb
+pandas

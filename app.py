@@ -17,9 +17,12 @@ import copy
 import json
 import importlib
 import random
+from datetime import datetime
 from RDWGSConverter import RDWGSConverter
 
 from essim_validation import validate_ESSIM
+from essim_config import essim_config
+from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 
 # import numpy as np
@@ -84,8 +87,10 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
 GEIS_CLOUD_IP = '10.30.2.1'
+GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 ESDL_STORE_PORT = '3003'
-store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
+# store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
+store_url = 'http://' + GEIS_CLOUD_HOSTNAME + '/store/'
 
 
 def write_energysystem_to_file(filename, esh):
@@ -155,7 +160,8 @@ def get_boundary_from_service(scope, id):
     """
 
     try:
-        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
 
@@ -168,6 +174,7 @@ def get_boundary_from_service(scope, id):
 
         return geom
     except:
+        print('ERROR: GEIS boundary service not reachable!')
         return None
 
 
@@ -180,7 +187,7 @@ def get_subboundaries_from_service(scope, subscope, id):
     """
 
     try:
-        url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(subscope)]\
+        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
               + '/' + scope + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
@@ -201,7 +208,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 def start_ESSIM():
     esh = session['es_edit']
     es_id = session['es_id']
-    es_simid = es_id
+    es_simid = None
     # session['es_simid'] = es_simid
 
     esdlstr = esh.to_string()
@@ -213,10 +220,10 @@ def start_ESSIM():
 
     payload = {
         'user': ESSIM_config['user'],
-        'scenarioID': es_simid,
+        'scenarioID': es_id,
         'simulationDescription': '',
-        'startDate': '2015-01-01T00:00:00+0100',
-        'endDate': '2016-01-01T00:00:00+0100',
+        'startDate': ESSIM_config['start_datetime'],
+        'endDate': ESSIM_config['end_datetime'],
         'influxURL': ESSIM_config['influxURL'],
         'grafanaURL': ESSIM_config['grafanaURL'],
         'esdlContents': urllib.parse.quote(esdlstr)
@@ -432,13 +439,14 @@ def get_simulation_progress():
                         # print(result)
                         dashboardURL = result['dashboardURL']
                         print(dashboardURL)
+                        session['simulationRun'] = es_simid
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-                        return (jsonify({'percentage': '1', 'url': dashboardURL})), 200
+                        return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                     else:
                         send_alert('Error in getting the ESSIM dashboard URL')
                         abort(500, 'Error in getting the ESSIM dashboard URL')
                 else:
-                    return (jsonify({'percentage': result, 'url': ''})), 200
+                    return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
             else:
                 print('code: ', r.status_code)
                 send_alert('Error in getting the ESSIM progress status')
@@ -450,6 +458,29 @@ def get_simulation_progress():
             abort(500, 'Error accessing ESSIM API')
     else:
         abort(500, 'Simulation not running')
+
+
+@app.route('/load_animation')
+def animate_load():
+
+    # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
+
+    if 'simulationRun' in session:
+        esh = session['es_edit']
+        es_edit = esh.get_energy_system()
+
+        sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+
+        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+        animation = kpi_results.animate_load_geojson()
+        print(animation)
+        return animation, 200
+    else:
+        abort(500, 'No simulation results')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -658,6 +689,8 @@ def update_area_asset_geometries(area, avail_locations):
 
 
 def count_building_assets_and_potentials(building):
+    # TODO: Error: BuildingUnits are taken into account
+    # TODO: add potentials
     num = len(building.asset)
 
     for basset in building.asset:
@@ -852,7 +885,7 @@ def update_asset_geometries3(area, boundary):
 
 def generate_profile_info(profile):
     profile_class = type(profile).__name__
-    profile_type = profile.profileType
+    profile_type = profile.profileType.name
     profile_name = profile.name
     if profile_class == 'SingleValue':
         value = profile.value
@@ -975,6 +1008,14 @@ def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_co
     conn_list.append(
         {'from-port-id': from_port_id, 'from-asset-id': from_asset_id, 'from-asset-coord': from_asset_coord,
          'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
+
+
+def update_mapping(asset, coord):
+    mapping = session['port_to_asset_mapping']
+    ports = asset.port
+    for p in ports:
+        mapping[p.id] = {'asset_id': asset.id, 'coord': coord}
+    session['port_to_asset_mapping'] = mapping
 
 
 def update_asset_connection_locations(ass_id, lat, lon):
@@ -1423,7 +1464,6 @@ def split_conductor(conductor, location, mode, conductor_container):
         esh.add_asset(new_cond1)
         esh.add_asset(new_cond2)
 
-
         new_cond1.id = new_cond1_id
         new_cond2.id = new_cond2_id
         # fixme: pyECORE
@@ -1457,7 +1497,6 @@ def split_conductor(conductor, location, mode, conductor_container):
         assets.remove(conductor)
         conductor_container.add_asset_with_type(new_cond1)
         conductor_container.add_asset_with_type(new_cond2)
-
 
         # update port asset mappings for conductors
         mapping[port1.id] = {'asset_id': new_cond1_id, 'coord': (begin_point.lat, begin_point.lon), 'pos': 'first'}
@@ -1572,6 +1611,7 @@ def update_coordinates(message):
 
         # Update locations of connections on moving assets
         update_asset_connection_locations(obj_id, message['lat'], message['lng'])
+        update_mapping(asset, (message['lat'], message['lng']))
     else:
         potential = ESDLAsset.find_potential(area, obj_id)
         if potential:
@@ -1586,6 +1626,7 @@ def update_line_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
+    port_to_asset_mapping = session['port_to_asset_mapping']
     esh = session['es_edit']
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
@@ -1593,6 +1634,10 @@ def update_line_coordinates(message):
     asset = ESDLAsset.find_asset(area, ass_id)
 
     if asset:
+        ports = asset.port
+        first_port = ports[0]
+        last_port = ports[1]
+
         polyline_data = message['polyline']
         # print(polyline_data)
         # print(type(polyline_data))
@@ -1606,11 +1651,17 @@ def update_line_coordinates(message):
             point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
             line.point.append(point)
 
+            if i == 0:
+                port_to_asset_mapping[first_port.id] = {'asset_id': asset.id, 'coord': (coord['lat'], coord['lng']), 'pos': 'first'}
+            if i == len(polyline_data)-1:
+                port_to_asset_mapping[last_port.id] = {'asset_id': asset.id, 'coord': (coord['lat'], coord['lng']), 'pos': 'last'}
+
         asset.geometry = line
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
     session['es_edit'] = esh
+    session['port_to_asset_mapping'] = port_to_asset_mapping
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2222,7 +2273,6 @@ def process_command(message):
             print('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
             send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
 
-
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']
         polygon_data = message['polygon']
@@ -2569,6 +2619,22 @@ def process_command(message):
         res = validate_ESSIM(es_edit)
         emit('results_validation_for_ESSIM', res)
 
+    if message['cmd'] == 'calculate_ESSIM_KPIs':
+        # session['simulationRun'] = '5d10f273783bac5eff4575e8'
+
+        if 'simulationRun' in session:
+            sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+            edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+
+            influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+            res = kpi_results.calculate_kpis()
+            emit('show_ESSIM_KPIs', res)
+        else:
+            send_alert('No simulation id defined - run an ESSIM simulation first')
+
     if message['cmd'] == 'add_layer':
         id = message['id']
         descr = message['descr']
@@ -2590,6 +2656,26 @@ def process_command(message):
         id = message['id']
         wms_layers.remove_wms_layer(id)
 
+    if message['cmd'] == 'get_es_info':
+        attributes = [
+            {"id": 1, "name": "Energysystem name", "value": es_edit.name},
+            {"id": 2, "name": "Energysystem description", "value": es_edit.description}
+        ]
+        emit('show_es_info', attributes)
+
+    if message['cmd'] == 'set_es_info_param':
+        id = message['id']
+        value = message['value']
+
+        if id == "1":
+            es_edit.name = value
+        if id == "2":
+            es_edit.description = value
+            es_edit.description = value
+
+
+
+
     session['es_edit'] = esh
     session.modified = True
 
@@ -2597,7 +2683,7 @@ def process_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh):
+def process_energy_system(esh, filename = None, es_title = None):
     asset_list = []
     area_bld_list = []
     conn_list = []
@@ -2616,7 +2702,18 @@ def process_energy_system(esh):
 
     print('asset list: {}'.format(asset_list))
 
-    emit('es_title', es.name)
+    if es_title:
+        title = es_title
+    else:
+        name = es.name
+        if not name:
+            title = 'ID: ' + es.id
+        else:
+            title = 'Name: ' + name
+        if filename:
+            title += ', filename: ' + filename
+
+    emit('es_title', title)
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
@@ -2647,26 +2744,30 @@ def process_file_command(message):
     print ('received: ' + message['cmd'])
 
     if message['cmd'] == 'new_esdl':
-        title = message['title']
+        name = message['name']
         description = message['description']
         email = message['email']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
+        filename = 'Unknown'
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system(title, description, 'Untitled instance', top_area_name)
-        process_energy_system(esh)
+        esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
+        process_energy_system(esh, filename)
 
+        session['es_filename'] = filename
         session['es_email'] = email
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
+        filename = message['filename']
         esh = EnergySystemHandler()
         try:
             esh.load_from_string(esdl_string=file_content)
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
-        process_energy_system(esh)
+        process_energy_system(esh, filename)
+        session['es_filename'] = filename
         # start_ESSIM()
         # check_ESSIM_progress()
 
@@ -2689,10 +2790,16 @@ def process_file_command(message):
 
         esh = load_ESDL_EnergySystem(es_id)
         if esh:
-            process_energy_system(esh)
+            es = esh.get_energy_system()
+            if es.name:
+                title = 'Store name: ' + es.name + ', id: ' + es_id
+            else:
+                title = 'Store id: ' + es_id
+
+            session['es_filename'] = title  # TODO: seperate filename and title
+            process_energy_system(esh, None, title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(es_id))
-
 
     if message['cmd'] == 'store_esdl':
         esh = session['es_edit']
@@ -2733,7 +2840,12 @@ def initialize_app():
         esh = EnergySystemHandler()
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
-    process_energy_system(esh)
+    if 'es_title' in session:
+        title = session['es_title']
+    else:
+        title = None
+
+    process_energy_system(esh, None, title)
     session.modified = True
 
 

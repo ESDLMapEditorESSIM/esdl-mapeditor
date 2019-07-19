@@ -41,6 +41,13 @@
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
     <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
+
+    <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css"/>
+    <script src="https://rawgit.com/nezasa/iso8601-js-period/master/iso8601.min.js"></script>
+    <script src="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.src.withlog.js"></script>
+
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/animate.js"></script>
+
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -194,7 +201,8 @@
                         });
                     }
 
-                    if (marker.capability == 'Consumer' || marker.capability == 'Producer') {
+                    if (marker.capability == 'Consumer' || marker.capability == 'Producer' ||
+                            marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
@@ -280,6 +288,7 @@
             line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
+                var layer = e.target;
                 if (layer !== undefined && layer.mouseOverArrowHead !== undefined) {
                     map.removeLayer(layer.mouseOverArrowHead)
                     delete layer.mouseOverArrowHead;
@@ -694,7 +703,7 @@
             sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
 
             table = '<table>';
-            table += '<tr><td width=180>Title</td><td><input type="text" width="60" id="new_title"></td></tr>';
+            table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="new_name"></td></tr>';
             table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
             table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
             table += '<tr><td width=180></td><td></td></tr>';
@@ -708,12 +717,12 @@
         }
 
         function click_new_ESDL_button(obj) {
-            new_title = document.getElementById('new_title').value;
+            new_name = document.getElementById('new_name').value;
             new_description = document.getElementById('new_description').value;
             new_email = document.getElementById('new_email').value;
             new_top_area_name = document.getElementById('new_area_name').value;
 
-            socket.emit('file_command', {cmd: 'new_esdl', title: new_title, description: new_description,
+            socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
                 email: new_email, top_area_name: new_top_area_name});
         }
 
@@ -728,7 +737,7 @@
             // here we tell the reader what to do when it's done reading...
             reader.onload = readerEvent => {
                 var content = readerEvent.target.result; // this is the content!
-                socket.emit('file_command', {cmd: 'load_esdl_from_file', file_content: content});
+                socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
             }
         }
 
@@ -865,21 +874,24 @@
                     // console.log(data);
 
                     if (data["percentage"] == "1") {
-                        dashboardURL = data["url"];
+                        let dashboardURL = data["url"];
+                        let simulationRun = data["simulationRun"];
                         // console.log(dashboardURL);
-                        progress = document.getElementById('progress_percentage');
+                        let progress = document.getElementById('progress_percentage');
                         progress.innerHTML = 'Simulation finsihed';
-                        dbURL_location = document.getElementById('dashboard_url');
+                        let dbURL_location = document.getElementById('dashboard_url');
                         dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '" target="#">dashboard</a>';
+                        let simRun_location = document.getElementById('simulationRun');
+                        simRun_location.innerHTML = simulationRun;
 
-                        button_show = document.getElementById('button_close_simulation_dialog');
+                        let button_show = document.getElementById('button_close_simulation_dialog');
                         button_show.style.display = "block";
-                        button_hide = document.getElementById('button_cancel_simulation');
+                        let button_hide = document.getElementById('button_cancel_simulation');
                         button_hide.style.display = "none";
 
                     } else {
-                        percentage = Math.round(parseFloat(data["percentage"]) * 100);
-                        progress = document.getElementById('progress_percentage');
+                        let percentage = Math.round(parseFloat(data["percentage"]) * 100);
+                        let progress = document.getElementById('progress_percentage');
                         progress.innerHTML =  percentage + '%';
                         setTimeout(poll_simulation_progress, 1000);
                     }
@@ -887,6 +899,7 @@
                 dataType: "json"
             });
         }
+
 
         function show_simulation_progress_window() {
             sidebar_ctr = sidebar.getContainer();
@@ -900,12 +913,81 @@
             sidebar_ctr.innerHTML += table;
 
             sidebar_ctr.innerHTML += '<p id="dashboard_url"></p>';
+            sidebar_ctr.innerHTML += '<p id="simulationRun"></p>';
 
             sidebar_ctr.innerHTML += '<p id="button_cancel_simulation"><button onclick="cancel_ESSIM_simulation(); sidebar.hide();">Cancel simulation</button></p>';
             sidebar_ctr.innerHTML += '<p id="button_close_simulation_dialog" hidden><button onclick="sidebar.hide();">Close</button></p>';
 
             sidebar.show();
             setTimeout(poll_simulation_progress, 1000)
+        }
+
+        function calculate_ESSIM_KPIs() {
+            socket.emit('command', {cmd: 'calculate_ESSIM_KPIs'});
+        }
+
+        // format-number-with-si-prefix.js
+        // https://gist.github.com/cho45/9968462
+        function formatN (n) {
+            console.log("n: ", n);
+            var nn = n.toExponential(2).split(/e/);
+            console.log("nn: ", nn)
+            var u = Math.floor(+nn[1] / 3);
+            console.log("u: ", u)
+            return nn[0] * Math.pow(10, +nn[1] - u * 3) + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
+        }
+
+        function print_value_unit(val, unit) {
+            if (unit == 'kgCO2') {
+                val_s = parseFloat(Number(val / 1e6).toPrecision(2)).toString();
+                return val_s + ' kton CO2';
+            } else {
+                val_s = formatN(val);
+                console.log(val);
+                console.log(unit);
+                console.log(val_s);
+                return val_s + unit;
+            }
+        }
+
+        function show_ESSIM_KPIs(results) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>ESSIM KPI\'s</h1>';
+
+            let category = null;
+            let table = "";
+
+            for (let i=0; i<results.length; i++) {
+                let name = results[i]['name'];
+                let cat_kpi = name.split("-");
+                let cat = cat_kpi[0];
+                let kpi = cat_kpi[1];
+
+                if (cat != category) {            // stop table, start new one
+                    if (table != "") {
+                        table += '</table>';
+                        sidebar_ctr.innerHTML += table;
+                        table = "";
+                    }
+                    sidebar_ctr.innerHTML += '<h2>'+cat+'</h2>';
+                    table = '<table>';
+                    category = cat;
+                }
+                if (kpi.indexOf("Total") == 0) {
+                    bold_start = "<b>";
+                    bold_end = "</b>";
+                } else {
+                    bold_start = "";
+                    bold_end = "";
+                }
+                table += '<tr><td width=180>'+bold_start+kpi+bold_end+'</td>';
+                table += '<td>'+bold_start+print_value_unit(results[i]['value'], results[i]['unit'])+bold_end+'</td></tr>';
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar.show();
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1034,6 +1116,77 @@
             sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
             sidebar.show();
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //  Energy System information
+        // ------------------------------------------------------------------------------------------------------------
+        function get_es_info() {
+            socket.emit('command', {cmd: 'get_es_info'});
+        }
+
+        function change_es_info(obj) {
+            es_info_param_id = obj.id;
+            es_info_param_name = obj.name;
+            es_info_param_value = obj.value;
+
+            socket.emit('command', {cmd: 'set_es_info_param', id: es_info_param_id, name: es_info_param_name, value: es_info_param_value});
+        }
+
+        function show_es_info(es_attrs) {
+            console.log(es_attrs);
+
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Energy system information</h1>';
+
+            table = '<table>';
+            for (i=0; i<es_attrs.length; i++) {
+                if (es_attrs[i][1] == null) {
+                    value = '';
+                } else {
+                    value = es_attrs[i][1];
+                }
+                table += '<tr><td width=180>' + es_attrs[i]['name'] + '</td>';
+                table += '<td><input type="text" width="60" id="' + es_attrs[i]['id'] + '" name="' +
+                        es_attrs[i]['name'] + '" value="' + es_attrs[i]['value']+ '" onchange="change_es_info(this);"></td></tr>';
+            }
+            table += '</table>';
+            sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+            sidebar.show();
+        }
+
+        function animate_ESSIM_load() {
+            $.ajax({
+		        url: '{{dir_settings.resource_prefix}}load_animation',
+                success: function(data){
+                    console.log('succes of zo ');
+                    console.log(data);
+
+                    var geoJsonLayer = L.geoJson(data, {
+                        style: function(feature) {
+                            return {
+                                "color": feature.properties.stroke,
+                                "weight": feature.properties.strokewidth,
+                                "opacity": 1
+                            };
+                        }
+                    });
+
+                    var geoJsonTimeLayer = L.timeDimension.layer.geoJson.geometryCollection(geoJsonLayer, {
+                        updateTimeDimension: true,
+                        updateTimeDimensionMode: 'replace',
+                        duration: 'PT1H',
+                    });
+
+                    geoJsonTimeLayer.addTo(sim_layer);
+                },
+                error: function() {
+                    alert("Error in getting load animation from backend");
+                },
+                dataType: "json"
+            });
         }
 
         var socket;
@@ -1598,7 +1751,7 @@
 
             socket.on('wms_layer_list', function(wms_layer_lst) {
                 wms_layer_list = wms_layer_lst;
-                console.log(wms_layer_list);
+                // console.log(wms_layer_list);
 
                 for (var key in wms_layer_list) {
                     var layer_info = wms_layer_list[key];
@@ -1625,6 +1778,16 @@
 
             socket.on('results_validation_for_ESSIM', function(results) {
                 show_validate_for_ESSIM_window(results);
+            });
+
+            socket.on('show_ESSIM_KPIs', function(results) {
+                show_ESSIM_KPIs(results);
+            });
+
+            socket.on('show_es_info', function(es_attrs) {
+                console.log('show es info received');
+                console.log(es_attrs);
+                show_es_info(es_attrs);
             });
         });
     </script>
@@ -1739,6 +1902,7 @@
         <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
         <a href=".{{dir_settings.download_prefix}}/EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
+        <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
         <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
         <!-- Connect assets now works via context menu -->
@@ -1792,6 +1956,8 @@
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
         <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+        <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
+        <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
@@ -1810,14 +1976,28 @@
 
     var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            osm = L.tileLayer(osmUrl, { maxZoom: 19, attribution: osmAttrib }),
-            // map = new L.Map('mapid', { center: new L.LatLng(53.44, 5.8), zoom: 12 }),  // Ameland centered
-            map = new L.Map('mapid', { center: new L.LatLng(52.1, 5.8), zoom: 8 }),
-            esdl_layer = L.featureGroup().addTo(map),
+            osm = L.tileLayer(osmUrl, { maxZoom: 19, attribution: osmAttrib });
+
+    var map = new L.Map('mapid', {
+        center: new L.LatLng(52.1, 5.8),
+        zoom: 8,
+        timeDimensionControl: true,
+        timeDimensionControlOptions: {
+            loopButton: true,
+        },
+        timeDimension: true,
+        timeDimensionOptions: {
+            timeInterval: "2015-01-01T00:00:00Z/2016-01-01T00:00:00Z",
+            period: "PT1H"
+        }
+    });
+
+    var esdl_layer = L.featureGroup().addTo(map),
             area_layer = L.featureGroup().addTo(map),
             bld_layer = L.featureGroup().addTo(map),
             pot_layer = L.featureGroup().addTo(map),
-            connection_layer = L.featureGroup().addTo(map);
+            connection_layer = L.featureGroup().addTo(map),
+            sim_layer = L.featureGroup().addTo(map);
 
     connection_layer.bringToFront();
 
@@ -1844,7 +2024,14 @@
                 attribution: 'Google'
             })
         },
-        { 'Assets': esdl_layer, 'Area boundaries': area_layer, 'Building boundaries': bld_layer, 'Potential boundaries': pot_layer, 'Connections': connection_layer },
+        {
+            'Assets': esdl_layer,
+            'Area boundaries': area_layer,
+            'Building boundaries': bld_layer,
+            'Potential boundaries': pot_layer,
+            'Connections': connection_layer,
+            'Simulation results': sim_layer
+        },
         //, 'wms': wms_layer, 'wms2': wms_layer2 },
         { position: 'topleft', collapsed: false }
     ).addTo(map);

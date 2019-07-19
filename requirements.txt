@@ -25,3 +25,5 @@ urllib3==1.23
 Werkzeug==0.15.1
 # eventlet
 pyecore=0.10.2
+influxdb
+pandas

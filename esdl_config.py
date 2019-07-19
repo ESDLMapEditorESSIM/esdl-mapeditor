@@ -75,6 +75,27 @@ esdl_config = {
             "measurement": "constant",
             "field": "value",
             "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Wind op land",
+            "multiplier": 1,
+            "measurement": "wind-2015",
+            "field": "Wind-op-land",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Wind op zee",
+            "multiplier": 1,
+            "measurement": "wind-2015",
+            "field": "Wind-op-zee",
+            "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Biomassa",
+            "multiplier": 1,
+            "measurement": "biomassa-2015",
+            "field": "value",
+            "profileType": "ENERGY_IN_TJ"
         }
     ],
     "energy_carriers": [
@@ -106,10 +127,12 @@ esdl_config = {
         },
     ],
     "ESSIM": {
-        "ESSIM_host": "http://10.30.2.1:8112",
+        "ESSIM_host": "http://geis.hesi.energy:8112",
         "ESSIM_path": "/essim/simulation",
-        "influxURL": "http://10.30.2.1:8086",
+        "influxURL": "http://geis.hesi.energy:8086",
         "grafanaURL": "http://geis.hesi.energy:3000",
-        "user": "essim"
+        "user": "essim",
+        "start_datetime": "2015-01-01T00:00:00+0100",
+        "end_datetime": "2016-01-01T00:00:00+0100"
     }
 }
