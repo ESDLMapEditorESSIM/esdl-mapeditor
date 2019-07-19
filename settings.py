@@ -19,6 +19,14 @@ if os.environ.get('GEIS'):
         'socket_prefix': '/webeditor',
         'download_prefix': '/webeditor'
     }
+elif os.environ.get('MAPEDITOR-TNO'):
+    # Settings for in GEIS cloud behind redbird reverse proxy
+    dir_settings = {
+        'plugin_prefix': '/mapeditor',
+        'resource_prefix': 'mapeditor/',
+        'socket_prefix': '/mapeditor',
+        'download_prefix': '/mapeditor'
+    }
 else:
     # Local settings
     dir_settings = {

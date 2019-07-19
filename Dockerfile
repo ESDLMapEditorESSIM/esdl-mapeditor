@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements-GEIS.txt
 COPY . /usr/src/app
 
 ENV PYTHONPATH=.:/usr/src/app
-ENV GEIS 1
+ENV MAPEDITOR-TNO 1
 
 EXPOSE 8111
 
