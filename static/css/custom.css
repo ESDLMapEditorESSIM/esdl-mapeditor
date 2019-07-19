@@ -1,0 +1,13 @@
+/*
+ custom css for ESDL Webeditor
+ */
+
+
+#asset_menu-menu .ui-menu-item {
+    margin-left: 0.5em;
+}
+
+#asset_menu-menu .ui-selectmenu-optgroup {
+	font-size: 1.2em  !important;
+}
+

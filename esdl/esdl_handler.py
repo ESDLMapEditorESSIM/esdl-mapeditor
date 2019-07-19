@@ -1,12 +1,11 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EBoolean
+from pyecore.ecore import EEnum, EAttribute, EOrderedSet
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
 from esdl import esdl
 from uuid import uuid4
 from io import BytesIO
-import json
 
 
 class EnergySystemHandler:
@@ -14,8 +13,6 @@ class EnergySystemHandler:
     def __init__(self, energy_system=None):
         if energy_system is not None:
             self.energy_system = energy_system
-        else:
-            self.energy_system = None
         self.resource = None
         self.rset = ResourceSet()
 
@@ -143,22 +140,24 @@ class EnergySystemHandler:
         return self.energy_system
 
     # Support for Pickling when serializing the energy system in a session
-    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask
-    # Furthermore, they can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
+    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask.
+    # Internally Flask Sessions use Pickle to serialize a data structure by means of its __dict__. This does not work.
+    # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
     def __getstate__(self):
-        # Copy the object's state from self.__dict__ which contains
-        # all our instance attributes. Always use the dict.copy()
-        # method to avoid modifying the original state.
         state = dict()
+        print('Serializing EnergySystem...', end ="")
         state['energySystem'] = self.to_string();
+        print('done')
         return state
 
     def __setstate__(self, state):
         self.__init__()
+        print('Deserializing EnergySystem...', end="")
         self.load_from_string(state['energySystem'])
+        print('done')
 
     @staticmethod
-    def get_asset_attributes(asset):
+    def get_asset_attributes(asset, esdl_doc=None):
         attributes = list()
         for x in asset.eClass.eAllStructuralFeatures():
             #print('{} is of type {}'.format(x.name, x.eClass.name))
@@ -171,7 +170,11 @@ class EnergySystemHandler:
                 attr['value'] = asset.eGet(x)
                 if attr['value'] is not None:
                     if x.many:
-                        attr['value'] = list(x.eType.to_string(attr['value']))
+                        if isinstance(attr['value'], EOrderedSet):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        else:
+                            attr['value'] = list(x.eType.to_string(attr['value']))
                     else:
                         attr['value'] = x.eType.to_string(attr['value'])
                 if isinstance(x.eType, EEnum):
@@ -185,12 +188,14 @@ class EnergySystemHandler:
                         attr['default'] = x.eType.to_string(x.eType.default_value)
                 if x.eType.name == 'EBoolean':
                     attr['options'] = ['true', 'false']
-                    print(attr['options'])
                 attr['doc'] = x.__doc__
+                if x.__doc__ is None and esdl_doc is not None:
+                    attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
+
                 attributes.append(attr)
         print(attributes)
-        #attrs_sorted = sorted(attributes.items(), key=lambda kv: kv[0])
-        return attributes #attrs_sorted
+        attrs_sorted = sorted(attributes, key=lambda a: a['name'])
+        return attrs_sorted
 
 
 class StringURI(URI):

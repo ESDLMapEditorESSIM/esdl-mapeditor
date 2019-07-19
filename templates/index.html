@@ -42,6 +42,9 @@
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
     <script src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
 
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/utils.js"></script>
+    <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
+
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css"/>
     <script src="https://rawgit.com/nezasa/iso8601-js-period/master/iso8601.min.js"></script>
     <script src="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.src.withlog.js"></script>
@@ -105,24 +108,24 @@
         // ------------------------------------------------------------------------------------------------------------
         //  Splitting conductors (cables or pipes)
         // ------------------------------------------------------------------------------------------------------------
-        splitConductorCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'no_connect');
+        splitConductorCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
             clear_layer = false;
         }
 
-        splitConductorConnectCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'connect');
+        splitConductorConnectCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
             clear_layer = false;
         }
 
-        splitConductorAddJointCallback = function(e) {
-            splitConductor(e.relatedTarget.options.id, e.latlng, 'add_joint');
+        splitConductorAddJointCallback = function(e, id) {
+            splitConductor(id, e.latlng, 'add_joint');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             esdl_layer.removeLayer(e.relatedTarget);
@@ -140,7 +143,8 @@
                     marker.bindContextMenu({
                         contextmenu: true,
                         contextmenuWidth: 140,
-                        contextmenuItems: []
+                        contextmenuItems: [],
+                        contextmenuInheritItems: false
                     });
 
                     for (let p=0; p<marker.ports.length; p++) {
@@ -213,9 +217,8 @@
                             }
                         });
                     }
-
-                    marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({text: 'Cancel'});
+                    //marker.options.contextmenuItems.push('-');
+                    //marker.options.contextmenuItems.push({text: 'Cancel'});
                 }
             }
 
@@ -230,6 +233,7 @@
             marker.on('remove', function(e) {
                 // console.log('remove marker');
                 // marker.options.icon.tooltip('destroy');
+                $(".ui-tooltip-content").parents('div').remove();
                 if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
             });
 
@@ -257,21 +261,22 @@
         //  Handlers for clicking on a pipe or cable
         // ------------------------------------------------------------------------------------------------------------
         function set_line_handlers(line) {
+            let line_id = line.id;
             line.bindContextMenu({
                 contextmenu: true,
                 contextmenuWidth: 140,
-                contextmenuItems: []
+                contextmenuItems: [],
+                contextmenuInheritItems: false
             });
             line.options.contextmenuItems.push(
-                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorCallback });
+                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorCallback(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorConnectCallback });
+                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorConnectCallback(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: splitConductorAddJointCallback });
+                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorAddJointCallback(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
             //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
-            let line_id = line.id;
             for (let p=0; p<line.ports.length; p++) {
                 let port_id = ''+line.ports[p].id;
                 line.options.contextmenuItems.push({
@@ -284,12 +289,12 @@
             line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push(
                 { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
-            line.options.contextmenuItems.push('-');
-            line.options.contextmenuItems.push({ text: 'Cancel' });
+            //line.options.contextmenuItems.push('-');
+            //line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
                 var layer = e.target;
-                if (layer !== undefined && layer.mouseOverArrowHead !== undefined) {
+                if (layer.mouseOverArrowHead !== undefined) {
                     map.removeLayer(layer.mouseOverArrowHead)
                     delete layer.mouseOverArrowHead;
                 }
@@ -788,6 +793,17 @@
                 profile_type: profile_type, profile_class: profile_class_id});
         }
 
+        // find a layer assocated with an asset_id
+        function find_layer(asset_id) {
+           all_layers = esdl_layer.getLayers();
+           for (let i=0; i<all_layers.length; i++) {
+                layer = all_layers[i];
+                if (layer.id == asset_id) {
+                    return layer;
+                }
+           }
+        }
+
         function add_port(direction, asset_id) {
             // get name
             pname = document.getElementById('name_add_port').value;
@@ -899,7 +915,6 @@
                 dataType: "json"
             });
         }
-
 
         function show_simulation_progress_window() {
             sidebar_ctr = sidebar.getContainer();
@@ -1253,17 +1268,14 @@
                         classname = '';
                     }
 
+                    imgsrc = '{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png';
+                    if (!assets_for_icons.includes(list[i][4])) {
+                        imgsrc =  drawTextImage(getAbbrevation(list[i][4]));
+                    }
+
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<center><img class="circle-img" width="23" height="23" src="{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png"></img></center>',
-
-                        iconSize:     [30, 30], // size of the icon
-                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
-                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
-                    });
-
-                    var ESDLicon = L.icon({
-                        iconUrl: '{{dir_settings.resource_prefix}}images/' + list[i][4] + '.png',
+                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>',
 
                         iconSize:     [30, 30], // size of the icon
                         iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
@@ -1310,6 +1322,21 @@
                 if (list.length > 0 && options['zoom']) {
                     var bounds = esdl_layer.getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
+                }
+            });
+
+            // update an asset.
+            // currently only updates the ports for the context menu
+            socket.on('update_asset', function(asset_update) {
+                asset_id = asset_update['asset_id'];
+                ports = asset_update['ports'];
+                layer = find_layer(asset_id);
+                layer.ports = ports;
+                if (layer instanceof L.Marker) {
+                    set_marker_handlers(layer);
+                }
+                if (layer instanceof L.Polyline) {
+                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
                 }
             });
 
@@ -1403,12 +1430,12 @@
                         title += asset_attrs[i]['doc'];
                     }
                     if (asset_attrs[i]['type'] != null) {
-                        title += 'Data type = ';
+                        title += '<br/>Data type:  ';
                         title += asset_attrs[i]['type'];
                         title += ' ';
                     }
                     if (asset_attrs[i]['default'] != null) {
-                        title += 'Default value is ';
+                        title += '<br/>Default value: ';
                         title += asset_attrs[i]['default'];
                     }
                     title += '"';
@@ -1416,7 +1443,7 @@
                     if (asset_attrs[i]['type'] == 'EDate') {
                         edate = ' edate="true" ';
                     }
-                    table += '<tr><td width=180 ' + title + '>' + asset_attrs[i]['name'] + '</td>';
+                    table += '<tr><td width=180 ' + title + '>' + camelCaseToWords(asset_attrs[i]['name']) + '</td>';
 
                     if (asset_attrs[i]['type'] == 'EEnum' || asset_attrs[i]['type'] == 'EBoolean') {
                         options = asset_attrs[i]['options'];
@@ -1501,6 +1528,12 @@
                     yearRange: "1980:2060",
                     changeMonth: true
                     });
+                // let tooltips support html styling
+                $('td[title]').tooltip({
+                    content: function() {
+                        return $(this).attr('title');
+                    }
+                });
                 sidebar.show();
             });
 
@@ -1789,6 +1822,36 @@
                 console.log(es_attrs);
                 show_es_info(es_attrs);
             });
+
+            // populate the asset menu grouped by capability
+            socket.on('capability_list', function(capabilities) {
+                $('#asset_menu').empty();
+                for (let key in capabilities) {
+                    //console.log(key + ' --> ' + capabilities[key])
+                    var optgroup = $('<optgroup>');
+                    optgroup.attr('label', key);
+                    optgroup.style = 'font-face: bold; font-size: 10px'
+                    for (let i in capabilities[key]) {
+                         let option = $("<option></option>");
+                         option.val(capabilities[key][i]);
+                         option.text(capabilities[key][i]);
+                         optgroup.append(option)
+                         // generate icons for markers that do not have an static image png
+                         if (!assets_for_icons.includes(capabilities[key][i])){
+                            //console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
+                            genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
+                            window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+                         }
+                    }
+                    $("#asset_menu").append(optgroup);
+                }
+                $("#asset_menu").attr("size", "15");
+                $("#asset_menu-menu").css({'max-height': '600px' });
+                $("#asset_menu").selectmenu("refresh");
+
+                //$( "#asset_menu" ).addClass( "overflow" );
+            });
         });
     </script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
@@ -1796,7 +1859,7 @@
 
     <script>
         $(function() {
-            $("#asset_menu").selectmenu({ width:200 });
+            $("#asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
             $("#area_bld_select").selectmenu({ width:500 });
             $("#carrier_select").selectmenu({ width:150 });
@@ -2036,43 +2099,18 @@
         { position: 'topleft', collapsed: false }
     ).addTo(map);
 
+    // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
         "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
         "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];
 
+    // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
         var ass_name = assets_for_icons[i];
         window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
             iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/' + ass_name +'.png'}});
     }
-
-//    var BatteryMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Battery.png'}});
-//	  var CHPMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/CHP.png'}});
-//    var EConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/EConnection.png'}});
-//    var ElectricityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityDemand.png'}});
-//    var ElectricityNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ElectricityNetwork.png'}});
-//    var ElectrolyzerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Electrolyzer.png'}});
-//    var FuelCellMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/FuelCell.png'}});
-//	  var GConnectionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GConnection.png'}});
-//    var GasHeaterMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasHeater.png'}});
-//    var GasNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GasNetwork.png'}});
-//    var GenericConsumerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConsumer.png'}});
-//    var GenericConversionMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericConversion.png'}});
-//    var GenericProducerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GenericProducer.png'}});
-//    var GeothermalSourceMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/GeothermalSource.png'}});
-//    var HeatingDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatingDemand.png'}});
-//    var HeatNetworkMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatNetwork.png'}});
-//    var HeatPumpMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/HeatPump.png'}});
-//    var JointMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Joint.png'}});
-//    var MobilityDemandMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/MobilityDemand.png'}});
-//    var PowerPlantMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PowerPlant.png'}});
-//    var PVInstallationMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVInstallation.png'}});
-//    var PVParcMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/PVParc.png'}});
-//    var ResidualHeatSourcePotentialMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/ResidualHeatSourcePotential.png'}});
-//    var TransformerMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/Transformer.png'}});
-//    var UTESMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/UTES.png'}});
-//    var WindTurbineMarker = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12), iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/WindTurbine.png'}});
 
     var drawControl = new L.Control.Draw({
         edit: {
@@ -2209,6 +2247,10 @@
             socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
             area_layer.addLayer(layer, true);
         }
+    });
+
+    map.on('click', function(e) {
+        map.contextmenu.hide();
     });
 
 
