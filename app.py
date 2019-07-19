@@ -1629,7 +1629,7 @@ def update_line_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
-    port_to_asset_mapping = session['port_to_asset_mapping'
+    port_to_asset_mapping = session['port_to_asset_mapping']
     esh = session['energySystemHandler']
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
