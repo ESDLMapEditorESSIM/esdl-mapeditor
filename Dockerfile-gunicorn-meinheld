@@ -1,0 +1,16 @@
+FROM tiangolo/meinheld-gunicorn
+
+#
+# Documentation: https://github.com/tiangolo/meinheld-gunicorn-docker
+#
+
+COPY . /app/app
+WORKDIR /app
+
+RUN pip install -r app/requirements-GEIS.txt 
+
+EXPOSE 8111
+
+ENV PYTHONPATH /app/app
+ENV MAPEDITOR-TNO 1
+ENV PORT 8111
