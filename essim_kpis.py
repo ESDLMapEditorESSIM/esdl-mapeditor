@@ -3,7 +3,7 @@ from esdl.processing import ESDLAsset
 from essim_config import essim_config
 from influxdb import InfluxDBClient
 import pandas as pd
-import numpy as np
+# import numpy as np
 import requests
 import json
 import re

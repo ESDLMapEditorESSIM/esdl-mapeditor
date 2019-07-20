@@ -29,3 +29,4 @@ Werkzeug==0.15.1
 pyecore==0.10.2
 influxdb
 pandas
+uWGSI
