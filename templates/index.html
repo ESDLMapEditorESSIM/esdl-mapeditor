@@ -79,6 +79,26 @@
         colors['Pipe_hoover'] = '#9999ff'
 
         // ------------------------------------------------------------------------------------------------------------
+        //  Building colors based on their usage type
+        // ------------------------------------------------------------------------------------------------------------
+        var building_type_colors = {
+            'UNDEFINED': '#808080',
+            'RESIDENTIAL': '#a6cee3',
+            'GATHERING': '#1f78b4',
+            'PRISON': '#b2df8a',
+            'HEALTHCARE': '#33a02c',
+            'INDUSTRY': '#fb9a99',
+            'OFFICE': '#e31a1c',
+            'EDUCATION': '#fdbf6f',
+            'SPORTS': '#ff7f00',
+            'SHOPPING': '#cab2d6',
+            'HOTEL': '#6a3d9a',
+            'GREENHOUSE': '#ffff99',
+            'UTILITY': '#b15928',
+            'OTHER': '#000000'
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
         function uuidv4() {
@@ -1858,7 +1878,7 @@
             // --------------------------------------------------------------------------------------------------------
             var geojson;
             function highlightArea(e) {
-                var layer = e.target;
+                let layer = e.target;
 
                 layer.setStyle({
                     weight: 5,
@@ -1874,26 +1894,9 @@
                 layer.openPopup();
             }
             function resetHighlightArea(e) {
-                var layer = e.target;
+                let layer = e.target;
                 geojson.resetStyle(layer);
                 layer.closePopup();
-            }
-
-            building_type_colors = {
-                'UNDEFINED': '#808080',
-                'RESIDENTIAL': '#a6cee3',
-                'GATHERING': '#1f78b4',
-                'PRISON': '#b2df8a',
-                'HEALTHCARE': '#33a02c',
-                'INDUSTRY': '#fb9a99',
-                'OFFICE': '#e31a1c',
-                'EDUCATION': '#fdbf6f',
-                'SPORTS': '#ff7f00',
-                'SHOPPING': '#cab2d6',
-                'HOTEL': '#6a3d9a',
-                'GREENHOUSE': '#ffff99',
-                'UTILITY': '#b15928',
-                'OTHER': '#000000'
             }
 
             function style(feature) {
@@ -1908,8 +1911,8 @@
             }
 
             socket.on('geojson', function(message) {
-                layer = message['layer'];
-                geojson_area_bld = message['geojson'];
+                let layer = message['layer'];
+                let geojson_area_bld = message['geojson'];
 
                 if (layer == 'area_layer') {
                     geojson = L.geoJson(geojson_area_bld, {
@@ -1926,12 +1929,8 @@
                 }
 
                 if (layer == 'bld_layer') {
-                    console.log('building info received');
-                    console.log(geojson_area_bld);
-
                     geojson = L.geoJson(geojson_area_bld, {
                         style: style,
-                        weight: 1,
                         onEachFeature: function(feature, layer) {
                             if (feature.properties) {
                                 let text = "Building year: " + feature.properties.buildingYear + "<br>" +
@@ -2236,6 +2235,21 @@
         closeButton: true
     });
     map.addControl(sidebar);
+
+    var legend = L.control({position: 'bottomright'});
+
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend');
+
+        for (key in building_type_colors) {
+            color = building_type_colors[key];
+            div.innerHTML += '<i style="background:' + color + '"></i> ' + key + '<br>';
+        }
+
+        return div;
+    };
+
+    legend.addTo(map);
 
     // the 'dragend' event of Polyline does not work, this is an alternative solution
     map.on('draw:edited', function (e) {
