@@ -1,5 +1,5 @@
 from esdl import esdl
-
+from utils.RDWGSConverter import RDWGSConverter
    
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
@@ -135,5 +135,34 @@ def create_geometry_from_geom(geom):
 
     return None
 
+def convert_mp_rd_to_wgs(coords):
+    RDWGS = RDWGSConverter()
+
+    for i in range(0, len(coords)):
+        for j in range(0, len(coords[i])):
+            for k in range(0, len(coords[i][j])):
+                point = coords[i][j][k]
+                coords[i][j][k] = RDWGS.fromRdToWgs(point)
+
+    return coords
 
 
+def exchange_polygon_coordinates(coords):
+
+    for i in range(0, len(coords)):
+        for j in range(0, len(coords[i])):
+            point = coords[i][j]
+            coords[i][j] = [point[1], point[0]]
+
+    return coords
+
+
+def exchange_multipolygon_coordinates(coords):
+
+    for i in range(0, len(coords)):
+        for j in range(0, len(coords[i])):
+            for k in range(0, len(coords[i][j])):
+                point = coords[i][j][k]
+                coords[i][j][k] = [point[1], point[0]]
+
+    return coords

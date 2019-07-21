@@ -1852,6 +1852,101 @@
 
                 //$( "#asset_menu" ).addClass( "overflow" );
             });
+
+            // --------------------------------------------------------------------------------------------------------
+            //   Visualize areas and buildings
+            // --------------------------------------------------------------------------------------------------------
+            var geojson;
+            function highlightArea(e) {
+                var layer = e.target;
+
+                layer.setStyle({
+                    weight: 5,
+                    color: '#666',
+                    dashArray: '',
+                    fillOpacity: 0.7
+                });
+
+                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                    layer.bringToFront();
+                }
+
+                layer.openPopup();
+            }
+            function resetHighlightArea(e) {
+                var layer = e.target;
+                geojson.resetStyle(layer);
+                layer.closePopup();
+            }
+
+            building_type_colors = {
+                'UNDEFINED': '#808080',
+                'RESIDENTIAL': '#a6cee3',
+                'GATHERING': '#1f78b4',
+                'PRISON': '#b2df8a',
+                'HEALTHCARE': '#33a02c',
+                'INDUSTRY': '#fb9a99',
+                'OFFICE': '#e31a1c',
+                'EDUCATION': '#fdbf6f',
+                'SPORTS': '#ff7f00',
+                'SHOPPING': '#cab2d6',
+                'HOTEL': '#6a3d9a',
+                'GREENHOUSE': '#ffff99',
+                'UTILITY': '#b15928',
+                'OTHER': '#000000'
+            }
+
+            function style(feature) {
+                return {
+                    fillColor: building_type_colors[feature.properties.buildingType],
+                    weight: 2,
+                    opacity: 1,
+                    color: building_type_colors[feature.properties.buildingType],
+                    dashArray: '',
+                    fillOpacity: 0.7
+                };
+            }
+
+            socket.on('geojson', function(message) {
+                layer = message['layer'];
+                geojson_area_bld = message['geojson'];
+
+                if (layer == 'area_layer') {
+                    geojson = L.geoJson(geojson_area_bld, {
+                        color: 'blue',
+                        weight: 1,
+                        onEachFeature: function(feature, layer) {
+                            if (feature.properties && feature.properties.id) {
+                                layer.bindPopup(feature.properties.id, {closeButton: false, offset: L.point(0, -20)});
+                                layer.on('mouseover', highlightArea);
+                                layer.on('mouseout', resetHighlightArea);
+                            }
+                        }
+                    }).addTo(area_layer);
+                }
+
+                if (layer == 'bld_layer') {
+                    console.log('building info received');
+                    console.log(geojson_area_bld);
+
+                    geojson = L.geoJson(geojson_area_bld, {
+                        style: style,
+                        weight: 1,
+                        onEachFeature: function(feature, layer) {
+                            if (feature.properties) {
+                                let text = "Building year: " + feature.properties.buildingYear + "<br>" +
+                                    "Floor area: " + feature.properties.floorArea + "m2<br>" +
+                                    "Building type: " + feature.properties.buildingType;
+
+                                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
+                                layer.on('mouseover', highlightArea);
+                                layer.on('mouseout', resetHighlightArea);
+                            }
+                        }
+                    }).addTo(bld_layer);
+                }
+
+            });
         });
     </script>
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>

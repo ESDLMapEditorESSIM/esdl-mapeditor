@@ -18,14 +18,14 @@ import json
 import importlib
 import random
 from datetime import datetime
-from RDWGSConverter import RDWGSConverter
+from utils.RDWGSConverter import RDWGSConverter
 
 from essim_validation import validate_ESSIM
 from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 
-# import numpy as np
+import numpy as np
 # from scipy.spatial import Delaunay
 # from shapely.geometry import Polygon, MultiPolygon, Point
 
@@ -169,7 +169,7 @@ def get_boundary_from_service(scope, id):
         r = requests.get(url)
         reply = json.loads(r.text)
 
-        print(reply)
+        # print(reply)
         geom = reply['geom']
 
         # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
@@ -195,7 +195,7 @@ def get_subboundaries_from_service(scope, subscope, id):
               + '/' + scope + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
-        print(reply)
+        # print(reply)
 
         # ARRAY OF:
         # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
@@ -273,6 +273,138 @@ def start_ESSIM():
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------
+def find_area_info_geojson(building_list, area_list, this_area):
+    area_id = this_area.id
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
+    boundary = None
+
+    geojson_KPIs = {}
+    area_KPIs = this_area.KPIs
+    if area_KPIs:
+        for kpi in KPIs.kpi:
+            geojson_KPIs[kpi.name] = kpi.value
+
+    if area_geometry:
+        if isinstance(area_geometry, esdl.Polygon):
+            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            area_list.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'])
+                },
+                "properties": {
+                    "id": area_id,
+                    "KPIs": geojson_KPIs
+                }
+            })
+        if isinstance(area_geometry, esdl.MultiPolygon):
+            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            for i in range(0, len(boundary['coordinates'])):
+                if len(boundary['coordinates']) > 1:
+                    area_id_number = " ({} of {})".format(i + 1, len(boundary['coordinates']))
+                else:
+                    area_id_number = ""
+                area_list.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
+                    },
+                    "properties": {
+                        "id": area_id + area_id_number,
+                        "KPIs": geojson_KPIs
+                    }
+                })
+    else:
+        # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
+        if area_id and area_scope:
+            if len(area_id) < 20:
+                # print('Finding boundary from GEIS service')
+                boundary = get_boundary_from_service(area_scope, area_id)
+                boundary['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(boundary['coordinates'])    # Convert to WGS
+                for i in range(0, len(boundary['coordinates'])):
+                    if len(boundary['coordinates']) > 1:
+                        area_id_number = " ({} of {})".format(i+1, len(boundary['coordinates']))
+                    else:
+                        area_id_number = ""
+                    area_list.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
+                        },
+                        "properties": {
+                            "id": area_id + area_id_number,
+                            "KPIs": geojson_KPIs
+                        }
+                    })
+
+    assets = this_area.asset
+    for asset in assets:
+        if isinstance(asset, esdl.AbstractBuilding):
+            name = asset.name
+            if not name:
+                name = ''
+            id = asset.id
+            if not id:
+                id = ''
+            asset_geometry = asset.geometry
+            if asset_geometry:
+                if isinstance(asset_geometry, esdl.Polygon):
+                    building_type = None
+                    # Assume this is a building
+                    for basset in asset.asset:
+                        if isinstance(basset, esdl.BuildingUnit):
+                            building_type = basset.type.name
+
+                    building_color = _determine_color(asset, session["color_method"])
+                    boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
+                    building_list.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": boundary['coordinates']
+                        },
+                        "properties": {
+                            "id": id,
+                            "name": name,
+                            "buildingYear": asset.buildingYear,
+                            "floorArea": asset.floorArea,
+                            "buildingType": building_type
+                        }
+                    })
+        #else: # No AbstractBuilding
+            #asset_geometry = asset.geometry
+            #name = asset.name
+            #if asset_geometry:
+            #    if isinstance(asset_geometry, esdl.WKT):
+                        #emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
+                        #                      'color': 'grey', 'name': name, 'boundary_type': 'asset'})
+
+#    potentials = this_area.potential
+#    for potential in potentials:
+#        potential_geometry = potential.geometry
+#        potential_name = potential.name
+#        if potential_geometry:
+#            if isinstance(potential_geometry, esdl.WKT):
+#                print(potential_geometry)
+#                #emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
+#                #                      'name': potential_name, 'boundary_type': 'potential'})
+
+    areas = this_area.area
+    for area in areas:
+        find_area_info_geojson(building_list, area_list, area)
+
+
+def create_area_info_geojson(area):
+    building_list = []
+    area_list = []
+    find_area_info_geojson(building_list, area_list, area)
+    return area_list, building_list
+
+
 def _determine_color(asset, color_method):
     building_color = '#808080'
 
@@ -310,19 +442,19 @@ def _find_more_area_boundaries(this_area):
     area_scope = this_area.scope
     area_geometry = this_area.geometry
 
-    print('Finding area boundaries for', area_scope, area_id)
+    # print('Finding area boundaries for', area_scope, area_id)
     boundary = None
 
     if area_geometry:
-        print('Geometry specified in the ESDL')
+        # print('Geometry specified in the ESDL')
         if isinstance(area_geometry, esdl.Polygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            print('emiting Polygon WGS84')
-            emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            # print('emiting Polygon WGS84')
+            # emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            print('emiting MultiPolygon WGS84')
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            # print('emiting MultiPolygon WGS84')
+            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
         # check to see if ESDL file contains asset locations; if not generate locations
         # TODO: following call does nothing now
@@ -332,10 +464,10 @@ def _find_more_area_boundaries(this_area):
         # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
         if area_id and area_scope:
             if len(area_id) < 20:
-                print('Finding boundary from GEIS service')
+                # print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
-                if boundary:
-                    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+                # if boundary:
+                    # emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     if boundary:
         update_asset_geometries3(this_area, boundary)
@@ -352,8 +484,8 @@ def _find_more_area_boundaries(this_area):
                     building_color = _determine_color(asset, session["color_method"])
                     boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
 
-                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
-                                           'color': building_color, 'name': name, 'boundary_type': 'building'})
+                    # emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
+                    #                        'color': building_color, 'name': name, 'boundary_type': 'building'})
         else: # No AbstractBuilding
             asset_geometry = asset.geometry
             name = asset.name
@@ -376,9 +508,13 @@ def _find_more_area_boundaries(this_area):
         _find_more_area_boundaries(area)
 
 
-# TODO: This seems not to be required. No seperate treatment for top level area?
 def find_boundaries_in_ESDL(top_area):
+    print("Finding area and building boundaries in ESDL")
     _find_more_area_boundaries(top_area)
+    area_list, building_list = create_area_info_geojson(top_area)
+
+    emit('geojson', {"layer": "area_layer", "geojson": area_list})
+    emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -837,8 +973,8 @@ def calc_center(coords):
 def update_asset_geometries3(area, boundary):
     coords = boundary['coordinates']
     type = boundary['type']
-    print(coords)
-    print(type)
+    # print(coords)
+    # print(type)
 
     if type == 'Polygon':
         outer_polygon = coords[0]       # Take exterior polygon
@@ -848,7 +984,7 @@ def update_asset_geometries3(area, boundary):
         send_alert('Non supported polygon')
 
     center = calc_center(outer_polygon)
-    print(center)
+    # print(center)
 
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
@@ -933,8 +1069,7 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
         for p in ports:
             conn_to = p.connectedTo
             if conn_to:
-                conn_to_list = conn_to.split(' ')
-                for pc in conn_to_list:
+                for pc in conn_to:
                     pc_asset = port_asset_mapping[pc]
                     pc_asset_coord = pc_asset['coord']
                     conn_list.append({'from-port-id': p.id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
