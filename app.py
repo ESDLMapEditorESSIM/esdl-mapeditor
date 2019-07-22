@@ -5,9 +5,13 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, g
 from flask_socketio import SocketIO, emit
 from flask_session import Session
+import flask_login
+from flask_login import login_required
+from flask_oidc import OpenIDConnect
+
 import requests
 import urllib
 #from apscheduler.schedulers.background import BackgroundScheduler
@@ -529,7 +533,28 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
 socketio = SocketIO(app, async_mode=async_mode, manage_session=False, path='/socket.io')
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
-# socketio = SocketIO(app, async_mode=async_mode)
+
+login_manager = flask_login.LoginManager()
+login_manager.init_app(app)
+
+app.config.update({
+    'SECRET_KEY': 'u\x91\xcf\xfa\x0c\xb9\x95\xe3t\xba2K\x7f\xfd\xca\xa3\x9f\x90\x88\xb8\xee\xa4\xd6\xe4',
+    'TESTING': True,
+    'DEBUG': True,
+    'OIDC_ID_TOKEN_COOKIE_SECURE': False,
+    'OIDC_REQUIRE_VERIFIED_EMAIL': False,
+    'OIDC_USER_INFO_ENABLED': True,
+    'OIDC_OPENID_REALM': 'esdl-mapeditor',
+    'OIDC_SCOPES': ['openid', 'email', 'profile'],
+    'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post'
+})
+
+if os.environ.get('MAPEDITOR-TNO'):
+    app.config.update({'OIDC_CLIENT_SECRETS': 'credentials/client_secrets_mapeditor.json'})
+else:
+    app.config.update({'OIDC_CLIENT_SECRETS': 'credentials/client_secrets_local.json'})
+
+oidc = OpenIDConnect(app)
 
 
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING
@@ -544,11 +569,21 @@ def add_header(r):
     r.headers['Cache-Control'] = 'public, max-age=0'
     return r
 
-
 @app.route('/')
+@oidc.require_login
 def index():
     # print('in index()')
-    return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
+    if oidc.user_loggedin:
+        return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
+    else:
+        return render_template('welcome.html')
+
+@app.route('/logout')
+def logout():
+    """Performs local logout by removing the session cookie."""
+
+    oidc.logout()
+    return 'Hi, you have been logged out! <p><a href="/">Login</a></p>'
 
 
 @app.route('/<path:path>')

@@ -30,3 +30,5 @@ pyecore==0.10.2
 influxdb
 pandas
 # uWSGI
+flask-login
+flask-oidc

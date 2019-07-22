@@ -1876,8 +1876,10 @@
             // --------------------------------------------------------------------------------------------------------
             //   Visualize areas and buildings
             // --------------------------------------------------------------------------------------------------------
-            var geojson;
-            function highlightArea(e) {
+            var geojson_area;
+            var geojson_building;
+
+            function highlightAreaOrBuilding(e) {
                 let layer = e.target;
 
                 layer.setStyle({
@@ -1895,7 +1897,12 @@
             }
             function resetHighlightArea(e) {
                 let layer = e.target;
-                geojson.resetStyle(layer);
+                geojson_area.resetStyle(layer);
+                layer.closePopup();
+            }
+            function resetHighlightBuilding(e) {
+                let layer = e.target;
+                geojson_building.resetStyle(layer);
                 layer.closePopup();
             }
 
@@ -1915,13 +1922,13 @@
                 let geojson_area_bld = message['geojson'];
 
                 if (layer == 'area_layer') {
-                    geojson = L.geoJson(geojson_area_bld, {
+                    geojson_area = L.geoJson(geojson_area_bld, {
                         color: 'blue',
                         weight: 1,
                         onEachFeature: function(feature, layer) {
                             if (feature.properties && feature.properties.id) {
                                 layer.bindPopup(feature.properties.id, {closeButton: false, offset: L.point(0, -20)});
-                                layer.on('mouseover', highlightArea);
+                                layer.on('mouseover', highlightAreaOrBuilding);
                                 layer.on('mouseout', resetHighlightArea);
                             }
                         }
@@ -1929,7 +1936,7 @@
                 }
 
                 if (layer == 'bld_layer') {
-                    geojson = L.geoJson(geojson_area_bld, {
+                    geojson_building = L.geoJson(geojson_area_bld, {
                         style: style,
                         onEachFeature: function(feature, layer) {
                             if (feature.properties) {
@@ -1938,8 +1945,8 @@
                                     "Building type: " + feature.properties.buildingType;
 
                                 layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
-                                layer.on('mouseover', highlightArea);
-                                layer.on('mouseout', resetHighlightArea);
+                                layer.on('mouseover', highlightAreaOrBuilding);
+                                layer.on('mouseout', resetHighlightBuilding);
                             }
                         }
                     }).addTo(bld_layer);
@@ -2115,6 +2122,7 @@
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
         <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
         <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
+        <a href=".{{dir_settings.resource_prefix}}/logout"><button id="logout">Logout</button></a>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
