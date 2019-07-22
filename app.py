@@ -100,7 +100,7 @@ ESDL_STORE_PORT = '3003'
 store_url = 'http://' + GEIS_CLOUD_HOSTNAME + '/store/'
 
 # handler to retrieve E
-esdl_doc = EcoreDocumentation()
+esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
 
 def write_energysystem_to_file(filename, esh):
     esh.save(filename=filename)
