@@ -110,8 +110,8 @@ def create_ESDL_store_item(id, esh, title, description, email):
     try:
         payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
         requests.post(store_url, data=payload)
-    except:
-        send_alert('Error accessing ESDL store')
+    except Exception as e:
+        send_alert('Error accessing ESDL store:' + str(e))
 
 
 # TODO: move to EDR plugin
@@ -120,8 +120,8 @@ def load_ESDL_EnergySystem(id):
 
     try:
         r = requests.get(url)
-    except:
-        send_alert('Error accessing ESDL store')
+    except Exception as e:
+        send_alert('Error accessing ESDL store:' + str(e))
         return None
 
     esdlstr = r.text
@@ -129,8 +129,8 @@ def load_ESDL_EnergySystem(id):
         esh = EnergySystemHandler()
         esh.load_from_string(esdl_string=esdlstr)
         return esh
-    except:
-        send_alert('Error interpreting ESDL file from store')
+    except Exception as e:
+        send_alert('Error interpreting ESDL file from store: ' + str(e))
         return None
 
 def store_ESDL_EnergySystem(id, esh):
@@ -139,8 +139,8 @@ def store_ESDL_EnergySystem(id, esh):
     payload = {'id': id, 'esdl': esdlstr}
     try:
         requests.put(store_url + id, data=payload)
-    except:
-        send_alert('Error saving ESDL file to store')
+    except Exception as e:
+        send_alert('Error saving ESDL file to store: ' + str(e))
 
 def send_ESDL_as_file(esh, name):
     esh.save(filename='/tmp/temp.xmi')
@@ -181,8 +181,8 @@ def get_boundary_from_service(scope, id):
         # 'tCode': 'GM0003', 'tName': 'Appingedam'}
 
         return geom
-    except:
-        print('ERROR: GEIS boundary service not reachable!')
+    except Exception as e:
+        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope, id, str(e)))
         return None
 
 
@@ -206,7 +206,8 @@ def get_subboundaries_from_service(scope, subscope, id):
         # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
 
         return reply
-    except:
+    except Exception as e:
+        print('ERROR in accessing GEIS boundary service for {} with id {}, subscope {}: {}'.format(scope, id, subscope, str(e)))
         return {}
 
 
@@ -266,9 +267,8 @@ def start_ESSIM():
             # emit('', {})
             return 0
     except Exception as e:
-        print('Exception: ')
-        print(e)
-        send_alert('Error accessing ESSIM API at starting')
+        print('Error accessing ESSIM API at starting: ' + str(e))
+        send_alert('Error accessing ESSIM API at starting: ' + str(e))
         return 0
 
     return 1
@@ -285,9 +285,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
 
     geojson_KPIs = {}
     area_KPIs = this_area.KPIs
-    if area_KPIs:
-        for kpi in KPIs.kpi:
-            geojson_KPIs[kpi.name] = kpi.value
+#    if area_KPIs:
+#        for kpi in KPIs.kpi:
+#            geojson_KPIs[kpi.name] = kpi.value
 
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):
@@ -323,27 +323,28 @@ def find_area_info_geojson(building_list, area_list, this_area):
                 })
     else:
         # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
-        if area_id and area_scope:
+        if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
-                boundary['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(boundary['coordinates'])    # Convert to WGS
-                for i in range(0, len(boundary['coordinates'])):
-                    if len(boundary['coordinates']) > 1:
-                        area_id_number = " ({} of {})".format(i+1, len(boundary['coordinates']))
-                    else:
-                        area_id_number = ""
-                    area_list.append({
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
-                        },
-                        "properties": {
-                            "id": area_id + area_id_number,
-                            "KPIs": geojson_KPIs
-                        }
-                    })
+                if boundary:
+                    boundary['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(boundary['coordinates'])    # Convert to WGS
+                    for i in range(0, len(boundary['coordinates'])):
+                        if len(boundary['coordinates']) > 1:
+                            area_id_number = " ({} of {})".format(i+1, len(boundary['coordinates']))
+                        else:
+                            area_id_number = ""
+                        area_list.append({
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
+                            },
+                            "properties": {
+                                "id": area_id + area_id_number,
+                                "KPIs": geojson_KPIs
+                            }
+                        })
 
     assets = this_area.asset
     for asset in assets:
@@ -466,7 +467,7 @@ def _find_more_area_boundaries(this_area):
         update_asset_geometries2(this_area, boundary)
     else:
         # simple hack to check if ID is not a UUID and area_scope is defined --> then query GEIS for boundary
-        if area_id and area_scope:
+        if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
@@ -1885,8 +1886,8 @@ def get_boundary_info(info):
         geom = None
         try:
             geom = json.loads(boundary["geom"])
-        except:
-            print('exception: probably unable to parse JSON from GEIS boundary service')
+        except Exception as e:
+            print('Error parsing JSON from GEIS boundary service: '+ str(e))
 
         if geom:
             # print('boundary["geom"]: ')
@@ -2968,8 +2969,9 @@ def process_file_command(message):
     if message['cmd'] == 'get_list_from_store':
         try:
             result = requests.get(store_url)
-        except:
-            send_alert('Error accessing ESDL store')
+        except Exception as e:
+            print('Error accessing ESDL store' + str(e))
+            send_alert('Error accessing ESDL store' + str(e))
             return
 
         data = result.json()
