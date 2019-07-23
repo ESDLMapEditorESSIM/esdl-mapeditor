@@ -71,6 +71,7 @@ class EnergySystemHandler:
             fileresource.append(self.energy_system)
             # save the resource
             fileresource.save()
+            self.rset.remove_resource(fileresource)
 
     def get_energy_system(self):
         return self.energy_system

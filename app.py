@@ -5,7 +5,7 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, g
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import flask_login
@@ -531,6 +531,8 @@ app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
+app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+
 socketio = SocketIO(app, async_mode=async_mode, manage_session=False, path='/socket.io')
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
@@ -585,6 +587,29 @@ def logout():
 
     oidc.logout()
     return 'Hi, you have been logged out! <p><a href="/">Login</a></p>'
+
+@app.route('/esdl')
+def download_esdl():
+    """Sends the current ESDL file to the browser as an attachment"""
+    esh = session['energySystemHandler']
+    unique_filename = uuid.uuid4().hex
+    print('Resources: ')
+    print(esh.rset)
+    # need unique name if multiple people are accessing the service at the same time
+    filename = '/tmp/{}.esdl'.format(unique_filename)
+    try:
+        esh.save(filename=filename)
+        name = esh.get_energy_system().name
+        if name is None:
+            name = "UntitledEnergySystem"
+        name = '{}.esdl'.format(name)
+        response = send_file(filename, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
+        os.unlink(filename)
+        return response
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return "Error sending ESDL file, due to {}".format(e)
 
 
 @app.route('/<path:path>')
