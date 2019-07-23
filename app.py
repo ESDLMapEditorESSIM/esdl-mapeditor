@@ -287,7 +287,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
     geojson_KPIs = {}
     area_KPIs = this_area.KPIs
     if area_KPIs:
-        for kpi in KPIs.kpi:
+        for kpi in area_KPIs.kpi:
             geojson_KPIs[kpi.name] = kpi.value
 
     if area_geometry:
@@ -594,11 +594,11 @@ def download_esdl():
     esh = session['energySystemHandler']
     unique_filename = uuid.uuid4().hex
     print('Resources: ')
-    print(esh.rset)
+    print(esh.rset.resources)
     # need unique name if multiple people are accessing the service at the same time
     filename = '/tmp/{}.esdl'.format(unique_filename)
     try:
-        esh.save(filename=filename)
+        esh.save_as(filename=filename)
         name = esh.get_energy_system().name
         if name is None:
             name = "UntitledEnergySystem"
@@ -3093,7 +3093,7 @@ def on_disconnect():
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parse_esdl_config()
-    print("starting App")
+    print("Starting App")
     # , use_reloader=False
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 

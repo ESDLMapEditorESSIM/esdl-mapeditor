@@ -39,3 +39,10 @@ This means that there is no 'sticky session'. Socket.IO has support for message-
 but that setup is quite complicated. (see https://flask-socketio.readthedocs.io/en/latest/#using-multiple-workers)
 
 The  alternative is to scale the Mapeditor itself, e.g. start several instances and load-balance them by e.g. Nginx.
+
+### Building docker image
+
+```docker build -t mapeditor -f docker/Dockerfile-uwsgi .```
+
+```docker run --rm -p 8111:8111 mapeditor:latest```
+ 
