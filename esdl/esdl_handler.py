@@ -77,7 +77,14 @@ class EnergySystemHandler:
         # return the string
         return uri.getvalue()
 
+    def to_bytesio(self):
+        """Returns a BytesIO stream for the energy system"""
+        uri = StringURI('to_string.esdl')
+        self.resource.save(uri)
+        return uri.get_stream()
+
     def save(self, filename=None):
+        """Add the resource to the resourceSet when saving"""
         if filename is None:
             self.resource.save()
         else:
@@ -90,6 +97,7 @@ class EnergySystemHandler:
             self.rset.remove_resource(fileresource)
 
     def save_as(self, filename):
+        """Saves the resource under a different filename"""
         self.resource.save(output=filename)
 
     def get_energy_system(self):
@@ -165,7 +173,7 @@ class EnergySystemHandler:
     # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
     def __getstate__(self):
         state = dict()
-        print('Serialize rset {}'.format(self.rset.resources))
+        #print('Serialize rset {}'.format(self.rset.resources))
         print('Serializing EnergySystem...', end ="")
         state['energySystem'] = self.to_string();
         print('done')
@@ -173,7 +181,7 @@ class EnergySystemHandler:
 
     def __setstate__(self, state):
         self.__init__()
-        print('Deserialize rset {}'.format(self.rset.resources))
+        #print('Deserialize rset {}'.format(self.rset.resources))
         print('Deserializing EnergySystem...', end="")
         self.load_from_string(state['energySystem'])
         print('done')
@@ -237,4 +245,7 @@ class StringURI(URI):
 
     def create_outstream(self):
         self.__stream = BytesIO()
+        return self.__stream
+
+    def get_stream(self):
         return self.__stream

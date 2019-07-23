@@ -40,12 +40,9 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 import esdl_config
 import settings
-import uwsgi
 
-# Set this variable to "threading", "eventlet" or "gevent" to test the
-# different async modes, or leave it set to None for the application to choose
-# the best option based on installed packages.
-async_mode = 'gevent_uwsgi' #None
+
+
 
 wms_layers = WMSLayers()
 
@@ -533,6 +530,14 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 
+# Set this variable to "threading", "eventlet" or "gevent" to test the
+# different async modes, or leave it set to None for the application to choose
+# the best option based on installed packages.
+#if os.environ.get('MAPEDITOR-TNO'):
+async_mode = 'gevent_uwsgi' #For running in uWSGI
+#else:
+#    async_mode = 'gevent' # For running stand-alone
+
 socketio = SocketIO(app, async_mode=async_mode, manage_session=False, path='/socket.io')
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
@@ -592,19 +597,18 @@ def logout():
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
     esh = session['energySystemHandler']
-    unique_filename = uuid.uuid4().hex
-    print('Resources: ')
-    print(esh.rset.resources)
+    #unique_filename = uuid.uuid4().hex
     # need unique name if multiple people are accessing the service at the same time
-    filename = '/tmp/{}.esdl'.format(unique_filename)
+    #filename = '/tmp/{}.esdl'.format(unique_filename)
     try:
-        esh.save_as(filename=filename)
+        #esh.save_as(filename=filename)
+        stream = esh.to_bytesio()
         name = esh.get_energy_system().name
         if name is None:
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
-        response = send_file(filename, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
-        os.unlink(filename)
+        response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
+        #os.unlink(filename)
         return response
     except Exception as e:
         import traceback
@@ -3088,6 +3092,15 @@ def on_disconnect():
     print('Client disconnected: {}'.format(request.sid))
 
 
+# Does not work unfortunately...
+def is_running_in_uwsgi():
+    try:
+        import uwsgi
+        return True
+    except ImportError:
+        return False
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3095,5 +3108,6 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
     # , use_reloader=False
+    # does not work: print('Running inside uWSGI: ', is_running_in_uwsgi())
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
