@@ -1231,7 +1231,7 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':5000, 'connect timeout': 5000, path: "{{dir_settings.socket_prefix}}/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':15000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
             socket.on('connect', function() {
                 console.log('connected');
@@ -2064,7 +2064,7 @@
         <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
         <button id="save-esdl" onclick="save_ESDL();" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
         <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
-        <a href=".{{dir_settings.download_prefix}}/EnergySystem.esdl" hidden><button id="download-esdl">Download ESDL</button></a>
+        <a href=".{{dir_settings.download_prefix}}/esdl" hidden><button id="download-esdl">Download ESDL</button></a>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
         <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>

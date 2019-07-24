@@ -33,6 +33,13 @@ class EnergySystemHandler:
         esdl.EnergySystem.__repr__ = \
             lambda x: '{}: ({})'.format(x.name, EnergySystemHandler.attr_to_dict(x))
 
+    def _new_resource_set(self):
+        """Resets the resourceset (e.g. when loading a new file)"""
+        self.rset = ResourceSet()
+        self.resource = None
+        # Assign files with the .esdl extension to the XMLResource instead of default XMI
+        self.rset.resource_factory['esdl'] = lambda uri: XMLResource(uri)
+
     def load_file(self, uri_or_filename):
         if uri_or_filename[:4] == 'http':
             uri = HttpURI(uri_or_filename)
@@ -41,6 +48,15 @@ class EnergySystemHandler:
         return self.load_uri(uri)
 
     def load_uri(self, uri):
+        """Loads a new resource in a new resourceSet"""
+        self._new_resource_set()
+        self.resource = self.rset.get_resource(uri)
+        # At this point, the model instance is loaded!
+        self.energy_system = self.resource.contents[0]
+        return self.energy_system
+
+    def add_uri(self, uri):
+        """Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to."""
         self.resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
@@ -48,7 +64,7 @@ class EnergySystemHandler:
 
     def load_from_string(self, esdl_string):
         uri = StringURI('from_string.esdl', esdl_string)
-        # this overrides the current loaded resource
+        #self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
         self.resource.load()
         self.energy_system = self.resource.contents[0]
@@ -61,7 +77,14 @@ class EnergySystemHandler:
         # return the string
         return uri.getvalue()
 
+    def to_bytesio(self):
+        """Returns a BytesIO stream for the energy system"""
+        uri = StringURI('to_string.esdl')
+        self.resource.save(uri)
+        return uri.get_stream()
+
     def save(self, filename=None):
+        """Add the resource to the resourceSet when saving"""
         if filename is None:
             self.resource.save()
         else:
@@ -71,6 +94,11 @@ class EnergySystemHandler:
             fileresource.append(self.energy_system)
             # save the resource
             fileresource.save()
+            self.rset.remove_resource(fileresource)
+
+    def save_as(self, filename):
+        """Saves the resource under a different filename"""
+        self.resource.save(output=filename)
 
     def get_energy_system(self):
         return self.energy_system
@@ -145,6 +173,7 @@ class EnergySystemHandler:
     # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
     def __getstate__(self):
         state = dict()
+        #print('Serialize rset {}'.format(self.rset.resources))
         print('Serializing EnergySystem...', end ="")
         state['energySystem'] = self.to_string();
         print('done')
@@ -152,6 +181,7 @@ class EnergySystemHandler:
 
     def __setstate__(self, state):
         self.__init__()
+        #print('Deserialize rset {}'.format(self.rset.resources))
         print('Deserializing EnergySystem...', end="")
         self.load_from_string(state['energySystem'])
         print('done')
@@ -215,4 +245,7 @@ class StringURI(URI):
 
     def create_outstream(self):
         self.__stream = BytesIO()
+        return self.__stream
+
+    def get_stream(self):
         return self.__stream
