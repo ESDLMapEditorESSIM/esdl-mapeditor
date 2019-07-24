@@ -520,6 +520,16 @@ def find_boundaries_in_ESDL(top_area):
     emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
 
+def is_running_in_uwsgi():
+    try:
+        import uwsgi
+        a = uwsgi.opt
+        print("uWSGI startup options: {}".format(a))
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
@@ -531,20 +541,16 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 
-# Set this variable to "threading", "eventlet" or "gevent" to test the
-# different async modes, or leave it set to None for the application to choose
-# the best option based on installed packages.
-#if os.environ.get('MAPEDITOR-TNO'):
-async_mode = 'gevent_uwsgi' #For running in uWSGI
-#else:
-#    async_mode = 'gevent' # For running stand-alone
-
-socketio = SocketIO(app, async_mode=async_mode, manage_session=False, path='/socket.io')
+print("Socket.IO Async mode: ", settings.ASYNC_MODE)
+print('Running inside uWSGI: ', is_running_in_uwsgi())
+socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io')
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
 
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
+
+#TODO: check secret key with itsdangerous error and testing and debug here
 
 app.config.update({
     'SECRET_KEY': 'u\x91\xcf\xfa\x0c\xb9\x95\xe3t\xba2K\x7f\xfd\xca\xa3\x9f\x90\x88\xb8\xee\xa4\xd6\xe4',
@@ -555,13 +561,9 @@ app.config.update({
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
     'OIDC_SCOPES': ['openid', 'email', 'profile'],
-    'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post'
+    'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
+    'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
-
-if os.environ.get('MAPEDITOR-TNO'):
-    app.config.update({'OIDC_CLIENT_SECRETS': 'credentials/client_secrets_mapeditor.json'})
-else:
-    app.config.update({'OIDC_CLIENT_SECRETS': 'credentials/client_secrets_local.json'})
 
 oidc = OpenIDConnect(app)
 
@@ -598,18 +600,13 @@ def logout():
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
     esh = session['energySystemHandler']
-    #unique_filename = uuid.uuid4().hex
-    # need unique name if multiple people are accessing the service at the same time
-    #filename = '/tmp/{}.esdl'.format(unique_filename)
     try:
-        #esh.save_as(filename=filename)
         stream = esh.to_bytesio()
         name = esh.get_energy_system().name
         if name is None:
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
-        #os.unlink(filename)
         return response
     except Exception as e:
         import traceback
@@ -3094,15 +3091,6 @@ def on_disconnect():
     print('Client disconnected: {}'.format(request.sid))
 
 
-# Does not work unfortunately...
-def is_running_in_uwsgi():
-    try:
-        import uwsgi
-        return True
-    except ImportError:
-        return False
-
-
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3110,6 +3098,6 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
     # , use_reloader=False
-    # does not work: print('Running inside uWSGI: ', is_running_in_uwsgi())
+    # does not work:
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
