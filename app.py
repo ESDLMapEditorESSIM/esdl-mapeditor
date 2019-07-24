@@ -17,7 +17,6 @@ import urllib
 #from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import math
-import copy
 import json
 import importlib
 import random
@@ -29,11 +28,6 @@ from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 
-import numpy as np
-# from scipy.spatial import Delaunay
-# from shapely.geometry import Polygon, MultiPolygon, Point
-
-#from model import esdl_sup as esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
@@ -55,10 +49,12 @@ def get_handler():
         set_handler(esh)
         return esh
 
+
 def set_handler(esh):
     id = session['client_id']
     print('Set ESH id={}, es.name={}'.format(id, esh.get_energy_system().name))
     energy_system_handler_cache[id] = esh
+
 
 wms_layers = WMSLayers()
 
@@ -105,7 +101,6 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\nxsi:schemaLocation="http://www.tno.nl/esdl ../esdl/model/esdl.ecore"\n')
 GEIS_CLOUD_IP = '10.30.2.1'
 GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 ESDL_STORE_PORT = '3003'
@@ -3086,7 +3081,7 @@ def initialize_app():
     session.permanent = True
     print('Client connected: ', request.sid)
 
-    if 'energySystemHandler' in session:
+    if 'client_id' in session:
         print ('Energysystem in memory - reloading client data')
         esh = get_handler()
     else:

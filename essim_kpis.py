@@ -1,16 +1,16 @@
-from esdl import esdl
+#from esdl import esdl
 from esdl.processing import ESDLAsset
 from essim_config import essim_config
 from influxdb import InfluxDBClient
-import pandas as pd
+#import pandas as pd
 # import numpy as np
 import requests
 import json
 import re
 
-pd.set_option('display.max_rows', 16)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
+#pd.set_option('display.max_rows', 16)
+#pd.set_option('display.max_columns', 500)
+#pd.set_option('display.width', 1000)
 
 
 def send_alert(msg):

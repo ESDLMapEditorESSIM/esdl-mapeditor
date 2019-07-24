@@ -34,9 +34,9 @@ elif os.environ.get('MAPEDITOR-TNO'):
     }
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_mapeditor.json'
 
-elif os.environ.get('MAPEDITOR-HESI-ENERGY'):
+elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
     # Settings for in GEIS cloud behind traefik reverse proxy and served at /mapeditor
-    print('Starting application with MAPEDITOR-HESI-ENERGY settings (hosting at mapeditor.hesi.energy)')
+    print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
     dir_settings = {
         'plugin_prefix': '',
         'resource_prefix': '',
