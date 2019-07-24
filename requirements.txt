@@ -4,9 +4,11 @@ attrs==19.1.0
 certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
-Flask==1.0.2                # 1.03
-flask-restplus==0.10.0      # 0.12.1
-Flask-SocketIO==3.3.2       # 4.1.0
+#Flask==1.0.2                # 1.03
+Flask==1.1.1
+flask-restplus==0.12.1
+#Flask-SocketIO==3.3.2       # 4.1.0
+Flask-SocketIO==4.0.0
 Flask-Session==0.3.1
 idna==2.7
 itsdangerous==1.1.0
@@ -25,7 +27,7 @@ six==1.12.0
 urllib3==1.23
 Werkzeug==0.15.1
 # eventlet
-pyecore==0.10.2
+pyecore==0.10.3
 influxdb
 pandas
 # uWSGI

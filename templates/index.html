@@ -1231,7 +1231,10 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':15000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
+
+            // tell server we are ready to receive
+            socket.emit('initialize');
 
             socket.on('connect', function() {
                 console.log('connected');

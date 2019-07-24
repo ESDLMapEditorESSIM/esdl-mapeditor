@@ -42,7 +42,23 @@ import esdl_config
 import settings
 
 
+energy_system_handler_cache = dict()
+def get_handler():
+    id = session['client_id']
+    if id in energy_system_handler_cache:
+        print('Retrieve ESH id={}, es.name={}'.format(id, energy_system_handler_cache[id].get_energy_system().name))
+        return energy_system_handler_cache[id]
+    else:
+        print('Session has timed-out. Returning empty energy system')
+        esh = EnergySystemHandler()
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+        set_handler(esh)
+        return esh
 
+def set_handler(esh):
+    id = session['client_id']
+    print('Set ESH id={}, es.name={}'.format(id, esh.get_energy_system().name))
+    energy_system_handler_cache[id] = esh
 
 wms_layers = WMSLayers()
 
@@ -157,6 +173,8 @@ boundary_service_mapping = {
     'COUNTRY': 'countries'
 }
 
+#create a cache for the boundary service
+boundary_cache = dict()
 
 def get_boundary_from_service(scope, id):
     """
@@ -165,22 +183,33 @@ def get_boundary_from_service(scope, id):
     :return: the geomertry of the indicated 'scope'
     """
 
+    if id in boundary_cache:
+        print('Retrieve boundary from cache ', id)
+        return boundary_cache[id]
+
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
+        print(url)
         r = requests.get(url)
-        reply = json.loads(r.text)
-
-        # print(reply)
-        geom = reply['geom']
+        if len(r.text) > 0:
+            reply = json.loads(r.text)
+            geom = reply['geom']
 
         # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
         # 594477.125], [253641.50000000006, 594417.8126220703]]]]}, 'code': 'BU00030000', 'name': 'Appingedam-Centrum',
         # 'tCode': 'GM0003', 'tName': 'Appingedam'}
+            boundary_cache[id] = geom
+            return geom
+        else:
+            print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope, id))
+            return None
 
-        return geom
     except Exception as e:
-        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope, id, str(e)))
+        #import traceback
+        #traceback.print_exc()
+        #print(r.text)
+        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope, id, e))
         return None
 
 
@@ -213,7 +242,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 #  ESSIM interfacing
 # ---------------------------------------------------------------------------------------------------------------------
 def start_ESSIM():
-    esh = session['energySystemHandler']
+    esh = get_handler()
     es_id = session['es_id']
     es_simid = None
     # session['es_simid'] = es_simid
@@ -378,13 +407,13 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             "buildingType": building_type
                         }
                     })
-        #else: # No AbstractBuilding
-            #asset_geometry = asset.geometry
-            #name = asset.name
-            #if asset_geometry:
-            #    if isinstance(asset_geometry, esdl.WKT):
-                        #emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
-                        #                      'color': 'grey', 'name': name, 'boundary_type': 'asset'})
+        else: # No AbstractBuilding
+            asset_geometry = asset.geometry
+            name = asset.name
+            if asset_geometry:
+               if isinstance(asset_geometry, esdl.WKT):
+                        emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
+                                             'color': 'grey', 'name': name, 'boundary_type': 'asset'})
 
 #    potentials = this_area.potential
 #    for potential in potentials:
@@ -452,12 +481,12 @@ def _find_more_area_boundaries(this_area):
         # print('Geometry specified in the ESDL')
         if isinstance(area_geometry, esdl.Polygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            # print('emiting Polygon WGS84')
-            # emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            print('emiting Polygon WGS84')
+            emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            # print('emiting MultiPolygon WGS84')
-            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            print('emiting MultiPolygon WGS84')
+            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
         # check to see if ESDL file contains asset locations; if not generate locations
         # TODO: following call does nothing now
@@ -469,8 +498,8 @@ def _find_more_area_boundaries(this_area):
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
-                # if boundary:
-                    # emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+                if boundary:
+                    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     if boundary:
         update_asset_geometries3(this_area, boundary)
@@ -487,8 +516,8 @@ def _find_more_area_boundaries(this_area):
                     building_color = _determine_color(asset, session["color_method"])
                     boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
 
-                    # emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
-                    #                        'color': building_color, 'name': name, 'boundary_type': 'building'})
+                    emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
+                                           'color': building_color, 'name': name, 'boundary_type': 'building'})
         else: # No AbstractBuilding
             asset_geometry = asset.geometry
             name = asset.name
@@ -585,6 +614,7 @@ def add_header(r):
 def index():
     # print('in index()')
     if oidc.user_loggedin:
+        session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
         return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
     else:
         return render_template('welcome.html')
@@ -599,7 +629,7 @@ def logout():
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
-    esh = session['energySystemHandler']
+    esh = get_handler()
     try:
         stream = esh.to_bytesio()
         name = esh.get_energy_system().name
@@ -729,7 +759,7 @@ def send_alert(message):
         # FIXME: pyecore
 def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
     mapping = session['port_to_asset_mapping']
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     processed_assets.append(asset_id)
     for p in asset.port:
@@ -1598,7 +1628,7 @@ def split_conductor(conductor, location, mode, conductor_container):
     mapping = session['port_to_asset_mapping']
     conn_list = session['conn_list']
     #asset_dict = session['asset_dict']
-    esh = session['energySystemHandler']
+    esh = get_handler()
 
     geometry = conductor.geometry
     conductor_type = type(conductor).__name__
@@ -1796,7 +1826,7 @@ def split_conductor(conductor, location, mode, conductor_container):
 def update_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
 
-    esh = session['energySystemHandler']
+    esh = get_handler()
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
     area = instance[0].area
@@ -1819,7 +1849,7 @@ def update_coordinates(message):
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
             potential.geometry = point
 
-    session['energySystemHandler'] = esh
+    set_handler(esh)
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1828,7 +1858,7 @@ def update_line_coordinates(message):
     ass_id = message['id']
 
     port_to_asset_mapping = session['port_to_asset_mapping']
-    esh = session['energySystemHandler']
+    esh = get_handler()
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
     area = instance[0].area
@@ -1861,7 +1891,7 @@ def update_line_coordinates(message):
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
-    session['energySystemHandler'] = esh
+    set_handler(esh)
     session['port_to_asset_mapping'] = port_to_asset_mapping
 
 
@@ -1881,7 +1911,7 @@ def get_boundary_info(info):
 
     # TODO: Check if valid scopes were given
 
-    esh = session['energySystemHandler']
+    esh = get_handler()
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
     area = instance[0].area
@@ -1940,7 +1970,7 @@ def get_boundary_info(info):
 
     print('Ready processing boundary information')
 
-    session['energySystemHandler'] = esh
+    set_handler(esh)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1958,7 +1988,7 @@ def get_control_strategies(es):
 
 
 def get_control_strategy_for_asset(asset_id):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     return asset.controlStrategy
 
@@ -1971,7 +2001,7 @@ def get_control_strategy_for_asset(asset_id):
 
 
 def add_control_strategy_for_asset(asset_id, cs):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     es = esh.get_energy_system()
 
     services = es.services
@@ -1989,7 +2019,7 @@ def add_control_strategy_for_asset(asset_id, cs):
 
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
-    esh = session['energySystemHandler']
+    esh = get_handler()
 
     module = importlib.import_module('esdl.esdl')
     class_ = getattr(module, control_strategy)
@@ -2013,7 +2043,7 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
 
 
 def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
@@ -2033,7 +2063,7 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
 
 
 def get_storage_marginal_costs(asset_id):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     es = esh.get_energy_system()
 
@@ -2059,7 +2089,7 @@ def get_storage_marginal_costs(asset_id):
 
 
 def remove_control_strategy_for_asset(asset_id):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     cs = asset.controlStrategy
     cs.delete()
@@ -2077,7 +2107,7 @@ def remove_control_strategy_for_asset(asset_id):
 #  Marginal Costs
 # ---------------------------------------------------------------------------------------------------------------------
 def set_marginal_costs_for_asset(asset_id, marginal_costs):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     asset_name = asset.name
     if not asset_name:
@@ -2099,7 +2129,7 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
 
 
 def get_marginal_costs_for_asset(asset_id):
-    esh = session['energySystemHandler']
+    esh = get_handler()
     asset = esh.get_by_id(asset_id)
     ci = asset.costInformation
     if ci:
@@ -2126,14 +2156,14 @@ def process_command(message):
     print ('received: ' + message['cmd'])
     print (message)
     print (session)
-    esh = session['energySystemHandler']
+    esh = get_handler()
     if esh is None:
         print('ERROR finding esdlSystemHandler, Session issue??')
     mapping = session['port_to_asset_mapping']
     es_edit = esh.get_energy_system()
     # test to see if this should be moved down:
     #  session.modified = True
-    # print (session['energySystemHandler'].instance[0].area.name)
+    # print (get_handler().instance[0].area.name)
 
     if message['cmd'] == 'add_asset':
         area_bld_id = message['area_bld_id']
@@ -2898,7 +2928,7 @@ def process_command(message):
             es_edit.description = value
             es_edit.description = value
 
-    session['energySystemHandler'] = esh
+    set_handler(esh)
     session.modified = True
 
 
@@ -2942,7 +2972,7 @@ def process_energy_system(esh, filename = None, es_title = None):
     emit('carrier_list', carrier_list)
 
     session['es_title'] = es.name
-    session['energySystemHandler'] = esh
+    set_handler(esh)
     session['es_id'] = es.id
     session['es_descr'] = es.description
     # session['es_start'] = 'new'
@@ -2985,6 +3015,7 @@ def process_file_command(message):
         esh = EnergySystemHandler()
         try:
             esh.load_from_string(esdl_string=file_content)
+            set_handler(esh)
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
@@ -3025,13 +3056,13 @@ def process_file_command(message):
             send_alert('Error loading ESDL file with id {} from store'.format(es_id))
 
     if message['cmd'] == 'store_esdl':
-        esh = session['energySystemHandler']
+        esh = get_handler()
         es_id = session['es_id']
 
         store_ESDL_EnergySystem(es_id, esh)
 
     if message['cmd'] == 'save_esdl':
-        esh = session['energySystemHandler']
+        esh = get_handler()
         try:
             write_energysystem_to_file('./static/EnergySystem.esdl', esh)
             # TODO: do we need to flush??
@@ -3040,7 +3071,7 @@ def process_file_command(message):
             send_alert('Error saving ESDL file to filesystem - exception: '+str(e))
 
     if message['cmd'] == 'download_esdl':
-        esh = session['energySystemHandler']
+        esh = get_handler()
         name = session['es_title'].replace(' ', '_')
 
         send_ESDL_as_file(esh, name)
@@ -3057,7 +3088,7 @@ def initialize_app():
 
     if 'energySystemHandler' in session:
         print ('Energysystem in memory - reloading client data')
-        esh = session['energySystemHandler']
+        esh = get_handler()
     else:
         print ('No energysystem in memory - generating empty energysystem')
         esh = EnergySystemHandler()
@@ -3073,13 +3104,27 @@ def initialize_app():
 
 
 @socketio.on('connect', namespace='/esdl')
-def on_connect():
+def connect():
     print("Websocket connection established")
+
+    if 'id' in session:
+        print('Old socketio id={}, new socketio id={}'.format(session['id'], request.sid))
+    else:
+        print('Old socketio id={}, new socketio id={}'.format(None, request.sid))
+    session['id'] = request.sid
+    if 'client_id' in session:
+        print('Client id: {}'.format(session['client_id']))
+    else:
+        print('No client id in session')
+
+
+@socketio.on('initialize', namespace='/esdl')
+def browser_initialize():
+    print('Send initial stuff to browser')
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
-
     initialize_app()
 
 
