@@ -10,7 +10,7 @@ Flask-Login==0.4.1
 flask-oidc==1.4.0
 Flask-Session==0.3.1
 Flask-SocketIO==4.0.0
-gevent==1.4.0
+#gevent==1.4.0
 greenlet==0.4.15
 httplib2==0.13.0
 idna==2.7
