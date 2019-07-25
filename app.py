@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import logging
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -556,12 +557,13 @@ def is_running_in_uwsgi():
         print("uWSGI startup options: {}".format(a))
         return True
     except Exception as e:
-        print(e)
         return False
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
+if settings.FLASK_DEBUG:
+    logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
 app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
@@ -572,7 +574,8 @@ app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
 
 print("Socket.IO Async mode: ", settings.ASYNC_MODE)
 print('Running inside uWSGI: ', is_running_in_uwsgi())
-socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io')
+
+socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
 
@@ -3139,12 +3142,18 @@ def on_disconnect():
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Error logging
+# ---------------------------------------------------------------------------------------------------------------------
+@socketio.on_error_default
+def default_error_handler(e):
+    print(request.event["message"]) # "my error event"
+    print(request.event["args"])    # (data,)
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
-    # , use_reloader=False
-    # does not work:
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
