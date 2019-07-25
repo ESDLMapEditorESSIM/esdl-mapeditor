@@ -1909,7 +1909,39 @@
                 layer.closePopup();
             }
 
-            function style(feature) {
+            function get_area_color(d) {
+                return d > 1000000 ? '#800026' :
+                       d > 500000  ? '#BD0026' :
+                       d > 200000  ? '#E31A1C' :
+                       d > 100000  ? '#FC4E2A' :
+                       d > 50000   ? '#FD8D3C' :
+                       d > 20000   ? '#FEB24C' :
+                       d > 10000   ? '#FED976' :
+                                  '#FFEDA0';
+            }
+
+            function style_area(feature) {
+                if (feature.properties.KPIs.Maatschappelijke_kosten) {
+                    return {
+                        fillColor: get_area_color(feature.properties.KPIs.Maatschappelijke_kosten),
+                        weight: 2,
+                        opacity: 1,
+                        color: get_area_color(feature.properties.KPIs.Maatschappelijke_kosten),
+                        dashArray: '',
+                        fillOpacity: 0.7
+                    };
+                } else {
+                    return {
+                        fillColor: "blue",
+                        weight: 2,
+                        opacity: 1,
+                        color: "blue",
+                        dashArray: '',
+                        fillOpacity: 0.7
+                    };
+                }
+            }
+            function style_building(feature) {
                 return {
                     fillColor: building_type_colors[feature.properties.buildingType],
                     weight: 2,
@@ -1926,10 +1958,15 @@
 
                 if (layer == 'area_layer') {
                     geojson_area = L.geoJson(geojson_area_bld, {
-                        color: 'blue',
-                        weight: 1,
+                        style: style_area,
                         onEachFeature: function(feature, layer) {
                             if (feature.properties && feature.properties.id) {
+                                let text = "ID: " + feature.properties.id;
+
+                                // Object.keys(feature.properties.KPIs).forEach(function (key) {
+                                //     text += "<br>" + key + ": " + feature.properties.KPIs[key];
+                                // });
+
                                 layer.bindPopup(feature.properties.id, {closeButton: false, offset: L.point(0, -20)});
                                 layer.on('mouseover', highlightAreaOrBuilding);
                                 layer.on('mouseout', resetHighlightArea);
@@ -1940,7 +1977,7 @@
 
                 if (layer == 'bld_layer') {
                     geojson_building = L.geoJson(geojson_area_bld, {
-                        style: style,
+                        style: style_building,
                         onEachFeature: function(feature, layer) {
                             if (feature.properties) {
                                 let text = "Building year: " + feature.properties.buildingYear + "<br>" +

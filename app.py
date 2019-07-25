@@ -180,13 +180,13 @@ def get_boundary_from_service(scope, id):
     """
 
     if id in boundary_cache:
-        print('Retrieve boundary from cache ', id)
+        # print('Retrieve boundary from cache ', id)
         return boundary_cache[id]
 
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
-        print(url)
+        # print(url)
         r = requests.get(url)
         if len(r.text) > 0:
             reply = json.loads(r.text)
@@ -369,6 +369,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             }
                         })
 
+    if boundary:
+        update_asset_geometries3(this_area, boundary)
+
     assets = this_area.asset
     for asset in assets:
         if isinstance(asset, esdl.AbstractBuilding):
@@ -382,7 +385,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
                     building_type = None
-                    # Assume this is a building
+                    # Assume this is a building, see if there are buildingUnits to find usage ('gebruiksdoel')
+                    # For now, use first BuildingUnit ...
+                    # TODO: Improve to use most 'dominant' (based on area?) Or introduce 'mixed' category?
                     for basset in asset.asset:
                         if isinstance(basset, esdl.BuildingUnit):
                             building_type = basset.type.name
@@ -411,15 +416,15 @@ def find_area_info_geojson(building_list, area_list, this_area):
                         emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
                                              'color': 'grey', 'name': name, 'boundary_type': 'asset'})
 
-#    potentials = this_area.potential
-#    for potential in potentials:
-#        potential_geometry = potential.geometry
-#        potential_name = potential.name
-#        if potential_geometry:
-#            if isinstance(potential_geometry, esdl.WKT):
-#                print(potential_geometry)
-#                #emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
-#                #                      'name': potential_name, 'boundary_type': 'potential'})
+    potentials = this_area.potential
+    for potential in potentials:
+        potential_geometry = potential.geometry
+        potential_name = potential.name
+        if potential_geometry:
+            if isinstance(potential_geometry, esdl.WKT):
+                print(potential_geometry)
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
+                                      'name': potential_name, 'boundary_type': 'potential'})
 
     areas = this_area.area
     for area in areas:
@@ -478,11 +483,11 @@ def _find_more_area_boundaries(this_area):
         if isinstance(area_geometry, esdl.Polygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             print('emiting Polygon WGS84')
-            emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            # emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             print('emiting MultiPolygon WGS84')
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
         # check to see if ESDL file contains asset locations; if not generate locations
         # TODO: following call does nothing now
@@ -494,8 +499,8 @@ def _find_more_area_boundaries(this_area):
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
                 boundary = get_boundary_from_service(area_scope, area_id)
-                if boundary:
-                    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+                # if boundary:
+                #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
     if boundary:
         update_asset_geometries3(this_area, boundary)
@@ -538,7 +543,7 @@ def _find_more_area_boundaries(this_area):
 
 def find_boundaries_in_ESDL(top_area):
     print("Finding area and building boundaries in ESDL")
-    _find_more_area_boundaries(top_area)
+    # _find_more_area_boundaries(top_area)
     area_list, building_list = create_area_info_geojson(top_area)
 
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
@@ -1077,6 +1082,8 @@ def update_asset_geometries3(area, boundary):
     center = calc_center(outer_polygon)
     # print(center)
 
+
+    # TODO: An area with a building, with buildingunits with assets is not supported yet
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
             for asset2 in asset.asset:
@@ -1084,15 +1091,15 @@ def update_asset_geometries3(area, boundary):
 
                 if not geom:
                     geom = esdl.Point()
-                    x = center[0] + (-0.5 + random.random()) * 1000
-                    y = center[1] + (-0.5 + random.random()) * 1000
+                    x = center[0] + (-0.5 + random.random()) * 0.1
+                    y = center[1] + (-0.5 + random.random()) * 0.1
                     if x > 180 or y > 180:  # Assume RD
                         rdwgs = RDWGSConverter()
                         wgs = rdwgs.fromRdToWgs([x, y])
                         geom.lat = wgs[0]
                         geom.lon = wgs[1]
                     else:
-                        geom.lat = y  # TODO: check order of lattitude and longitude
+                        geom.lat = y
                         geom.lon = x
                     asset2.geometry = geom
         else:
@@ -1100,15 +1107,15 @@ def update_asset_geometries3(area, boundary):
 
             if not geom:
                 geom = esdl.Point()
-                x = center[0]+(-0.5+random.random())*1000
-                y = center[1]+(-0.5+random.random())*1000
+                x = center[0]+(-0.5+random.random()) * 0.1
+                y = center[1]+(-0.5+random.random()) * 0.1
                 if x > 180 or y > 180:  # Assume RD
                     rdwgs = RDWGSConverter()
                     wgs = rdwgs.fromRdToWgs([x, y])
                     geom.lat = wgs[0]
                     geom.lon = wgs[1]
                 else:
-                    geom.lat = y  # TODO: check order of lattitude and longitude
+                    geom.lat = y
                     geom.lon = x
                 asset.geometry = geom
 
