@@ -43,6 +43,7 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         'socket_prefix': '',
         'download_prefix': ''
     }
+    FLASK_DEBUG = True
     ASYNC_MODE = 'gevent_uwsgi'
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_mapeditor.hesi.energy.json'
 else:
