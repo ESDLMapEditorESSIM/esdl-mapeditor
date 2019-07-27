@@ -17,4 +17,4 @@ ENV PYTHONPATH=.:/usr/src/app
 
 EXPOSE 8111
 
-CMD cd /usr/src/app && uwsgi uwsgi.ini 
+CMD cd /usr/src/app && uwsgi uwsgi-long-polling.ini 

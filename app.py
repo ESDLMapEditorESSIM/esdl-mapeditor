@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-import os
+import os, time
 import logging
+from sys import getsizeof
+from flask_executor import Executor
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -178,15 +180,15 @@ def get_boundary_from_service(scope, id):
     :param id: the identifier of the 'scope'
     :return: the geomertry of the indicated 'scope'
     """
-
+    time.sleep(0.01) # yield a little concurrency when running this in a thread
     if id in boundary_cache:
-        # print('Retrieve boundary from cache ', id)
+        print('Retrieve boundary from cache', id)
         return boundary_cache[id]
 
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
-        # print(url)
+        print('Retrieve from boundary service', id)
         r = requests.get(url)
         if len(r.text) > 0:
             reply = json.loads(r.text)
@@ -546,11 +548,12 @@ def find_boundaries_in_ESDL(top_area):
     # _find_more_area_boundaries(top_area)
     area_list, building_list = create_area_info_geojson(top_area)
 
-
     print(area_list)
+    print('Sending boundary information to client, size={}'.format(getsizeof(area_list)))
 
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
-    emit('geojson', {"layer": "bld_layer", "geojson": building_list})
+    #print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
+    #emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
 
 def is_running_in_uwsgi():
@@ -581,6 +584,7 @@ print('Running inside uWSGI: ', is_running_in_uwsgi())
 socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
+executor = Executor(app)
 
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
@@ -2162,8 +2166,8 @@ def str2float(string):
 @socketio.on('command', namespace='/esdl')
 def process_command(message):
     print ('received: ' + message['cmd'])
-    print (message)
-    print (session)
+    #print (message)
+    #print (session)
     esh = get_handler()
     if esh is None:
         print('ERROR finding esdlSystemHandler, Session issue??')
@@ -2338,7 +2342,7 @@ def process_command(message):
 
             asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
-        print(asset_to_be_added_list)
+        #print(asset_to_be_added_list)
         emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
         esh.add_asset(asset)
 
@@ -2727,7 +2731,7 @@ def process_command(message):
         # refresh connections in gui
         conn_list = session['conn_list']
         new_list = []
-        print(conn_list)
+        #print(conn_list)
         for conn in conn_list:
             if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
                     conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
@@ -2952,7 +2956,13 @@ def process_energy_system(esh, filename = None, es_title = None):
     es = esh.get_energy_system()
     area = es.instance[0].area
     emit('clear_ui')
-    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+
+    # schedule find_foundaries in a background process
+    executor.submit(find_boundaries_in_ESDL, area)
+    # background_thread = Thread(target=find_boundaries_in_ESDL, args=(area,))
+    # background_thread.start()
+
+    #find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
 
     #asset_dict = create_asset_dict(esh, area)
     carrier_list = ESDLAsset.get_carrier_list(es)

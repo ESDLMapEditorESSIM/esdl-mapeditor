@@ -11,7 +11,8 @@ RESTPLUS_VALIDATE = True
 RESTPLUS_MASK_SWAGGER = False
 RESTPLUS_ERROR_404_HELP = False
 
-ASYNC_MODE = 'gevent' # default for non uWGSI deployments
+#ASYNC_MODE = 'gevent' # default for non uWGSI deployments
+ASYNC_MODE = None # default for non uWGSI deployments
 
 if os.environ.get('GEIS'):
     # Settings for in GEIS cloud behind redbird reverse proxy
@@ -43,8 +44,9 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         'socket_prefix': '',
         'download_prefix': ''
     }
-    FLASK_DEBUG = True
-    ASYNC_MODE = 'gevent_uwsgi'
+    FLASK_DEBUG = False 
+    #ASYNC_MODE = 'gevent_uwsgi'
+    ASYNC_MODE = None
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_mapeditor.hesi.energy.json'
 else:
     # Local settings
