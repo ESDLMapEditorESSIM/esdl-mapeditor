@@ -254,7 +254,10 @@
                 // console.log('remove marker');
                 // marker.options.icon.tooltip('destroy');
                 $(".ui-tooltip-content").parents('div').remove();
-                if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+
+                // TEST IF THIS IS BETTER
+                //if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+                if (deleting_objects == true) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
             });
 
             marker.on('click', function(e) {
@@ -318,7 +321,9 @@
                     map.removeLayer(layer.mouseOverArrowHead)
                     delete layer.mouseOverArrowHead;
                 }
-                if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
+                // TEST IF THIS IS BETTER
+                // if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
+                if (deleting_objects == true) socket.emit('command', {cmd: 'remove_object', id: line.id});
             });
 
             line.on('click', function(e) {
@@ -1886,10 +1891,10 @@
                 let layer = e.target;
 
                 layer.setStyle({
-                    weight: 5,
-                    color: '#666',
+                    weight: 3,
+                    color: 'white',
                     dashArray: '',
-                    fillOpacity: 0.7
+                    fillOpacity: 0.5
                 });
 
                 if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
@@ -1933,11 +1938,11 @@
                 } else {
                     return {
                         fillColor: "blue",
-                        weight: 2,
-                        opacity: 1,
+                        weight: 1,
+//                        opacity: 1,
                         color: "blue",
-                        dashArray: '',
-                        fillOpacity: 0.7
+//                        dashArray: '',
+//                        fillOpacity: 0.7
                     };
                 }
             }

@@ -546,6 +546,9 @@ def find_boundaries_in_ESDL(top_area):
     # _find_more_area_boundaries(top_area)
     area_list, building_list = create_area_info_geojson(top_area)
 
+
+    print(area_list)
+
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
     emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
