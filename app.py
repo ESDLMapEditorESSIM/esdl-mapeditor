@@ -8,7 +8,7 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import flask_login
@@ -619,9 +619,11 @@ def add_header(r):
     r.headers['Cache-Control'] = 'public, max-age=0'
     return r
 
+
 @app.route('/')
 def index():
     return render_template('index.html', dir_settings=settings.dir_settings)
+
 
 @app.route('/editor')
 @oidc.require_login
@@ -638,7 +640,8 @@ def logout():
     """Performs local logout by removing the session cookie."""
 
     oidc.logout()
-    return 'Hi, you have been logged out! <p><a href="/">Login</a></p>'
+    return redirect("/", code=302)
+
 
 @app.route('/esdl')
 def download_esdl():
@@ -712,7 +715,7 @@ def animate_load():
     # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
 
     if 'simulationRun' in session:
-        esh = session['es_edit']
+        esh = get_handler()
         es_edit = esh.get_energy_system()
 
         sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')

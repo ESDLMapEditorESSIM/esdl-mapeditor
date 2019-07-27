@@ -111,6 +111,17 @@
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
+        function show_loader() {
+            document.getElementById("loader").style.display = "block";
+        }
+
+        function hide_loader() {
+            document.getElementById("loader").style.display = "none";
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //
+        // ------------------------------------------------------------------------------------------------------------
         function calculate_length(layer) {
             var previousPoint;
             var polyline_length = 0;
@@ -769,6 +780,9 @@
                 var content = readerEvent.target.result; // this is the content!
                 socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
             }
+
+            // show loader
+            show_loader();
         }
 
         function send_cmd_load_ESDL() {
@@ -785,6 +799,9 @@
             title_div.innerHTML = '<h1>' + es_title + '</h1>';
 
             socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
+
+            // show loader
+            show_loader();
         }
 
         function save_ESDL() {
@@ -964,6 +981,9 @@
 
         function calculate_ESSIM_KPIs() {
             socket.emit('command', {cmd: 'calculate_ESSIM_KPIs'});
+
+            // show loader
+            show_loader();
         }
 
         // format-number-with-si-prefix.js
@@ -1198,6 +1218,7 @@
         }
 
         function animate_ESSIM_load() {
+            show_loader();
             $.ajax({
 		        url: '{{dir_settings.resource_prefix}}load_animation',
                 success: function(data){
@@ -1221,8 +1242,10 @@
                     });
 
                     geoJsonTimeLayer.addTo(sim_layer);
+                    hide_loader();
                 },
                 error: function() {
+                    hide_loader();
                     alert("Error in getting load animation from backend");
                 },
                 dataType: "json"
@@ -1283,6 +1306,8 @@
                 // 'point'  asset      name    id      class_name  lat     lon     [ports]  capability
                 // 'line'   asset      name    id      class_name  [...]   [ports]
                 // 'point'  potential  name    id      class_name  lat     lon
+
+                // hide_loader();
 
                 list = options['list'];
 
@@ -1842,6 +1867,7 @@
             });
 
             socket.on('show_ESSIM_KPIs', function(results) {
+                hide_loader();
                 show_ESSIM_KPIs(results);
             });
 
@@ -1960,6 +1986,8 @@
             socket.on('geojson', function(message) {
                 let layer = message['layer'];
                 let geojson_area_bld = message['geojson'];
+
+                hide_loader();
 
                 if (layer == 'area_layer') {
                     geojson_area = L.geoJson(geojson_area_bld, {
@@ -2167,18 +2195,13 @@
         <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
         <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
         <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
-        <a href="/"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
+        <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
     </div>
 
     <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
 
-    <div id="sidebar">
-    </div>
-
-    <!--
-    <div id="log" style="float: left;"><h2>Logs:</h2></div>
-    <div id="esdltxt" style="float: left;"></div>
-    -->
+    <div id="sidebar"></div>
+    <div id="loader"></div>
 </body>
 </html>
 
