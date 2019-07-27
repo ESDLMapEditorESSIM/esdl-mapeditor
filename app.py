@@ -620,14 +620,18 @@ def add_header(r):
     return r
 
 @app.route('/')
-@oidc.require_login
 def index():
-    # print('in index()')
+    return render_template('index.html', dir_settings=settings.dir_settings)
+
+@app.route('/editor')
+@oidc.require_login
+def editor():
     if oidc.user_loggedin:
         session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
-        return render_template('index.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
+        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
     else:
-        return render_template('welcome.html')
+        return render_template('index.html', dir_settings=settings.dir_settings)
+
 
 @app.route('/logout')
 def logout():
