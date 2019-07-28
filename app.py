@@ -630,7 +630,13 @@ def index():
 def editor():
     if oidc.user_loggedin:
         session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
-        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings)
+        userinfo = oidc.user_getinfo(['role'])
+        if 'role' in userinfo:
+            role = userinfo['role']
+        else:
+            role = ''
+        # print("role:" + role)
+        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         return render_template('index.html', dir_settings=settings.dir_settings)
 
