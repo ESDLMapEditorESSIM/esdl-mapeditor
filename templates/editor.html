@@ -1859,7 +1859,7 @@
             socket.on('and_now_press_download_file', function() {
                 $("#download-esdl").click();
             });
-
+{% if role == 'essim' %}
             socket.on('show_simulation_progress_window', function() {
                 show_simulation_progress_window();
             });
@@ -1872,7 +1872,7 @@
                 hide_loader();
                 show_ESSIM_KPIs(results);
             });
-
+{% endif %}
             socket.on('show_es_info', function(es_attrs) {
                 console.log('show es info received');
                 console.log(es_attrs);
