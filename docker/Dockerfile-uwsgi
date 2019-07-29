@@ -1,7 +1,7 @@
 FROM python:3.7-alpine
 MAINTAINER Ewoud Werkman <ewoud.werkman@tno.nl> 
 
-RUN apk add --update --no-cache g++ gcc libxslt-dev linux-headers musl-dev pcre pcre-dev zlib zlib-dev libressl-dev mailcap
+RUN apk add --update --no-cache g++ gcc libxslt-dev linux-headers musl-dev pcre pcre-dev zlib zlib-dev libressl-dev mailcap libffi-dev libffi
 RUN pip3.7 install --upgrade pip
 
 RUN mkdir -p /usr/src/app
