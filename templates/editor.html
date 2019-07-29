@@ -2060,6 +2060,14 @@
                 var selected_method = $(e.target).val();
                 socket.emit('command', {cmd: 'set_building_color_method', method: selected_method});
             });
+
+{% if role != 'essim' %}
+            $("#valESSIM").button({disabled: true});
+            $("#ESSIM").button({disabled: true});
+            $("#ESSIMkpis").button({disabled: true});
+            $("#ESSIM_load_animation").button({disabled: true});
+{% endif %}
+
         });
 
         $(function() {
@@ -2192,11 +2200,11 @@
         </select>
 
         <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+        <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
 {% if role == 'essim' %}
         <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
         <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
-        <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
         <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
         <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
 {% endif %}
