@@ -19,6 +19,7 @@ import requests
 import urllib
 import uuid
 import math
+import copy
 import json
 import importlib
 import random
@@ -126,7 +127,7 @@ def create_ESDL_store_item(id, esh, title, description, email):
         send_alert('Error accessing ESDL store:' + str(e))
 
 
-# TODO: move to EDR plugin
+# TODO: move to EDR plugin (not EDR! :-))
 def load_ESDL_EnergySystem(id):
     url = store_url + 'esdl/' + id + '?format=xml'
 
@@ -181,13 +182,15 @@ def get_boundary_from_service(scope, id):
     """
     time.sleep(0.01) # yield a little concurrency when running this in a thread
     if id in boundary_cache:
-        print('Retrieve boundary from cache', id)
+        # print('Retrieve boundary from cache', id)
+        # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
+        # return res_boundary
         return boundary_cache[id]
 
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
-        print('Retrieve from boundary service', id)
+        # print('Retrieve from boundary service', id)
         r = requests.get(url)
         if len(r.text) > 0:
             reply = json.loads(r.text)
@@ -302,7 +305,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
     area_id = this_area.id
     area_scope = this_area.scope
     area_geometry = this_area.geometry
-    boundary = None
+    boundary_gps = None
 
     geojson_KPIs = {}
     area_KPIs = this_area.KPIs
@@ -312,12 +315,12 @@ def find_area_info_geojson(building_list, area_list, this_area):
 
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):
-            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            boundary_gps = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             area_list.append({
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
-                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'])
+                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'])
                 },
                 "properties": {
                     "id": area_id,
@@ -325,17 +328,17 @@ def find_area_info_geojson(building_list, area_list, this_area):
                 }
             })
         if isinstance(area_geometry, esdl.MultiPolygon):
-            boundary = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            for i in range(0, len(boundary['coordinates'])):
-                if len(boundary['coordinates']) > 1:
-                    area_id_number = " ({} of {})".format(i + 1, len(boundary['coordinates']))
+            boundary_gps = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            for i in range(0, len(boundary_gps['coordinates'])):
+                if len(boundary_gps['coordinates']) > 1:
+                    area_id_number = " ({} of {})".format(i + 1, len(boundary_gps['coordinates']))
                 else:
                     area_id_number = ""
                 area_list.append({
                     "type": "Feature",
                     "geometry": {
                         "type": "Polygon",
-                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
+                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'][i])
                     },
                     "properties": {
                         "id": area_id + area_id_number,
@@ -347,19 +350,22 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
-                boundary = get_boundary_from_service(area_scope, area_id)
-                if boundary:
-                    boundary['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(boundary['coordinates'])    # Convert to WGS
-                    for i in range(0, len(boundary['coordinates'])):
-                        if len(boundary['coordinates']) > 1:
-                            area_id_number = " ({} of {})".format(i+1, len(boundary['coordinates']))
+                boundary_rd = get_boundary_from_service(area_scope, area_id)
+                if boundary_rd:
+                    # this really prevents messing up the cache
+                    tmp = copy.deepcopy(boundary_rd)
+                    tmp['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(tmp['coordinates'])    # Convert to WGS
+                    boundary_gps = tmp
+                    for i in range(0, len(boundary_gps['coordinates'])):
+                        if len(boundary_gps['coordinates']) > 1:
+                            area_id_number = " ({} of {})".format(i+1, len(boundary_gps['coordinates']))
                         else:
                             area_id_number = ""
                         area_list.append({
                             "type": "Feature",
                             "geometry": {
                                 "type": "Polygon",
-                                "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary['coordinates'][i])
+                                "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'][i])
                             },
                             "properties": {
                                 "id": area_id + area_id_number,
@@ -367,8 +373,8 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             }
                         })
 
-    if boundary:
-        update_asset_geometries3(this_area, boundary)
+    if boundary_gps:
+        update_asset_geometries3(this_area, boundary_gps)
 
     assets = this_area.asset
     for asset in assets:
@@ -391,12 +397,12 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             building_type = basset.type.name
 
                     building_color = _determine_color(asset, session["color_method"])
-                    boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
+                    bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
                     building_list.append({
                         "type": "Feature",
                         "geometry": {
                             "type": "Polygon",
-                            "coordinates": boundary['coordinates']
+                            "coordinates": bld_boundary['coordinates']
                         },
                         "properties": {
                             "id": id,
@@ -432,7 +438,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
 def create_area_info_geojson(area):
     building_list = []
     area_list = []
+    print("Finding ESDL boundaries...")
     find_area_info_geojson(building_list, area_list, area)
+    print("Done")
     return area_list, building_list
 
 
@@ -467,7 +475,7 @@ def _determine_color(asset, color_method):
 
     return building_color
 
-
+"""
 def _find_more_area_boundaries(this_area):
     area_id = this_area.id
     area_scope = this_area.scope
@@ -537,6 +545,7 @@ def _find_more_area_boundaries(this_area):
     areas = this_area.area
     for area in areas:
         _find_more_area_boundaries(area)
+"""
 
 
 def find_boundaries_in_ESDL(top_area):
@@ -546,7 +555,6 @@ def find_boundaries_in_ESDL(top_area):
 
     #print(area_list)
     print('Sending boundary information to client, size={}'.format(getsizeof(area_list)))
-
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
     print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
     emit('geojson', {"layer": "bld_layer", "geojson": building_list})
@@ -2967,7 +2975,7 @@ def process_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
-# in a seperate thread.
+#  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
 @executor.job
 def process_energy_system(esh, filename=None, es_title=None):
