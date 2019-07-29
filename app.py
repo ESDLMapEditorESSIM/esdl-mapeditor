@@ -107,7 +107,8 @@ AREA_FILLCOLOR = 'red'
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
 GEIS_CLOUD_IP = '10.30.2.1'
-GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
+# GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
+GEIS_CLOUD_HOSTNAME = '10.30.2.1'
 ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 store_url = 'http://' + GEIS_CLOUD_HOSTNAME + '/store/'
@@ -630,7 +631,7 @@ def index():
 @oidc.require_login
 def editor():
     if oidc.user_loggedin:
-        # session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+        session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
 
 #        whole_token = oidc.get_access_token()
 #        print("whole_token: ", whole_token)
