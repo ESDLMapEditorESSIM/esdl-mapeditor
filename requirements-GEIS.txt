@@ -32,3 +32,4 @@ pandas
 # uWSGI
 flask-login
 flask-oidc
+pyjwt==1.7.1

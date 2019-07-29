@@ -25,6 +25,8 @@ import importlib
 import random
 from datetime import datetime
 from utils.RDWGSConverter import RDWGSConverter
+# from base64 import b64decode
+# import jwt
 
 from essim_validation import validate_ESSIM
 from essim_config import essim_config
@@ -592,7 +594,6 @@ login_manager.init_app(app)
 #TODO: check secret key with itsdangerous error and testing and debug here
 
 app.config.update({
-    'SECRET_KEY': 'u\x91\xcf\xfa\x0c\xb9\x95\xe3t\xba2K\x7f\xfd\xca\xa3\x9f\x90\x88\xb8\xee\xa4\xd6\xe4',
     'TESTING': True,
     'DEBUG': True,
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
@@ -629,7 +630,25 @@ def index():
 @oidc.require_login
 def editor():
     if oidc.user_loggedin:
-        session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+        # session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+
+#        whole_token = oidc.get_access_token()
+#        print("whole_token: ", whole_token)
+#        if whole_token:
+#            pre, tkn, post = whole_token.split('.')
+#            try:
+
+#                jwt_tkn = jwt.decode(whole_token, "44e7afc8-392f-4020-9044-59e3682a465f", algorithms=['HS256'])
+#                print("JWT: ", jwt_tkn)
+
+#                tkn_decode = b64decode(tkn)
+#                print(tkn_decode)
+#                access_token = json.loads(b64decode(tkn))
+#                print(access_token)
+#            except Exception as e:
+#                print("error in decoding token: ", str(e))
+        # if role in access_token['resource_access'][client]['roles']:
+
         userinfo = oidc.user_getinfo(['role'])
         if 'role' in userinfo:
             role = userinfo['role']
