@@ -12,12 +12,11 @@ from flask import Flask, render_template, session, request, send_from_directory,
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import flask_login
-from flask_login import login_required
 from flask_oidc import OpenIDConnect
+import jwt
 
 import requests
 import urllib
-#from apscheduler.schedulers.background import BackgroundScheduler
 import uuid
 import math
 import json
@@ -25,8 +24,6 @@ import importlib
 import random
 from datetime import datetime
 from utils.RDWGSConverter import RDWGSConverter
-# from base64 import b64decode
-# import jwt
 
 from essim_validation import validate_ESSIM
 from essim_config import essim_config
@@ -634,7 +631,6 @@ def editor():
         print("whole_token: ", whole_token)
         if whole_token:
             try:
-                import jwt
                 jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account')
                 print("JWT: ", jwt_tkn)
             except Exception as e:
