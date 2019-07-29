@@ -576,6 +576,7 @@ app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
 app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged for tasks run in threads
 
 print("Socket.IO Async mode: ", settings.ASYNC_MODE)
 print('Running inside uWSGI: ', is_running_in_uwsgi())
