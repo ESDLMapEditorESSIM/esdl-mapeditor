@@ -106,12 +106,12 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-GEIS_CLOUD_IP = '10.30.2.1'
+#GEIS_CLOUD_IP = '10.30.2.1'
 # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
-GEIS_CLOUD_HOSTNAME = '10.30.2.1'
+#GEIS_CLOUD_HOSTNAME = '10.30.2.1'
 ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
-store_url = 'http://' + GEIS_CLOUD_HOSTNAME + '/store/'
+store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + '/store/'
 
 # handler to retrieve E
 esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
@@ -163,7 +163,6 @@ def send_ESDL_as_file(esh, name):
 # ---------------------------------------------------------------------------------------------------------------------
 #  GEIS Boundary service access
 # ---------------------------------------------------------------------------------------------------------------------
-BOUNDARY_SERVICE_PORT = '4000'
 boundary_service_mapping = {
     'ZIPCODE': 'zipcodes',
     'NEIGHBOURHOOD': 'neighbourhoods',
@@ -190,7 +189,7 @@ def get_boundary_from_service(scope, id):
 
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
-        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
+        url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
         print('Retrieve from boundary service', id)
         r = requests.get(url)
         if len(r.text) > 0:
@@ -207,9 +206,6 @@ def get_boundary_from_service(scope, id):
             return None
 
     except Exception as e:
-        #import traceback
-        #traceback.print_exc()
-        #print(r.text)
         print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope, id, e))
         return None
 
@@ -223,7 +219,7 @@ def get_subboundaries_from_service(scope, subscope, id):
     """
 
     try:
-        url = 'http://' + GEIS_CLOUD_HOSTNAME + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
+        url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
               + '/' + scope + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
@@ -551,12 +547,12 @@ def find_boundaries_in_ESDL(top_area):
     # _find_more_area_boundaries(top_area)
     area_list, building_list = create_area_info_geojson(top_area)
 
-    print(area_list)
+    #print(area_list)
     print('Sending boundary information to client, size={}'.format(getsizeof(area_list)))
 
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
-    #print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
-    #emit('geojson', {"layer": "bld_layer", "geojson": building_list})
+    print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
+    emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
 
 def is_running_in_uwsgi():
@@ -2979,8 +2975,11 @@ def process_command(message):
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
+#  If this function is run through process_energy_system.submit(filename, es_title) it is executed
+# in a seperate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename = None, es_title = None):
+@executor.job
+def process_energy_system(esh, filename=None, es_title=None):
     asset_list = []
     area_bld_list = []
     conn_list = []
@@ -2991,11 +2990,11 @@ def process_energy_system(esh, filename = None, es_title = None):
     emit('clear_ui')
 
     # schedule find_foundaries in a background process
-    executor.submit(find_boundaries_in_ESDL, area)
+    #executor.submit(find_boundaries_in_ESDL, area)
     # background_thread = Thread(target=find_boundaries_in_ESDL, args=(area,))
     # background_thread.start()
 
-    #find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
 
     #asset_dict = create_asset_dict(esh, area)
     carrier_list = ESDLAsset.get_carrier_list(es)
@@ -3031,12 +3030,11 @@ def process_energy_system(esh, filename = None, es_title = None):
     session['port_to_asset_mapping'] = mapping
     session['conn_list'] = conn_list
     session['carrier_list'] = carrier_list
-    #session['asset_dict'] = asset_dict
     session['color_method'] = 'building type'
 
     session.modified = True
     print('session variables set')
-    print('ed_id: ', session['es_id'])
+    print('es_id: ', session['es_id'])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3070,7 +3068,7 @@ def process_file_command(message):
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
-        process_energy_system(esh, filename)
+        process_energy_system.submit(esh, filename) # run in seperate thread
         session['es_filename'] = filename
         # start_ESSIM()
         # check_ESSIM_progress()
@@ -3150,7 +3148,7 @@ def initialize_app():
     else:
         title = None
 
-    process_energy_system(esh, None, title)
+    process_energy_system.submit(esh, None, title) # run in a seperate thread
     session.modified = True
 
 

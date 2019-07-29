@@ -11,6 +11,9 @@ RESTPLUS_VALIDATE = True
 RESTPLUS_MASK_SWAGGER = False
 RESTPLUS_ERROR_404_HELP = False
 
+GEIS_CLOUD_HOSTNAME = '10.30.2.1'
+BOUNDARY_SERVICE_PORT = '4000'
+
 #ASYNC_MODE = 'gevent' # default for non uWGSI deployments
 ASYNC_MODE = None # default for non uWGSI deployments
 
@@ -59,6 +62,7 @@ else:
     }
     # FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
+    GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
 
 
