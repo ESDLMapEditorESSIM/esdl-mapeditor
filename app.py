@@ -629,21 +629,15 @@ def editor():
     if oidc.user_loggedin:
         session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
 
-#        whole_token = oidc.get_access_token()
-#        print("whole_token: ", whole_token)
-#        if whole_token:
-#            pre, tkn, post = whole_token.split('.')
-#            try:
-
-#                jwt_tkn = jwt.decode(whole_token, "44e7afc8-392f-4020-9044-59e3682a465f", algorithms=['HS256'])
-#                print("JWT: ", jwt_tkn)
-
-#                tkn_decode = b64decode(tkn)
-#                print(tkn_decode)
-#                access_token = json.loads(b64decode(tkn))
-#                print(access_token)
-#            except Exception as e:
-#                print("error in decoding token: ", str(e))
+        whole_token = oidc.get_access_token()
+        print("whole_token: ", whole_token)
+        if whole_token:
+            try:
+                import jwt
+                jwt_tkn = jwt.decode(whole_token, "44e7afc8-392f-4020-9044-59e3682a465f", algorithms=['HS256'], verify=False)
+                print("JWT: ", jwt_tkn)
+            except Exception as e:
+                print("error in decoding token: ", str(e))
         # if role in access_token['resource_access'][client]['roles']:
 
         userinfo = oidc.user_getinfo(['role'])
@@ -659,10 +653,10 @@ def editor():
 
 @app.route('/logout')
 def logout():
-    """Performs local logout by removing the session cookie."""
-
+    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     oidc.logout()
-    return redirect("/", code=302)
+    #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
+    return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
 
 
 @app.route('/esdl')
