@@ -9,14 +9,15 @@ from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask, session
 from flask_socketio import SocketIO
+from extensions.session_manager import get_handler, get_session
 
 DEFAULT_SHIFT_LAT = 0.000080
 DEFAULT_SHIFT_LON = 0.000080
 
 
 class HeatNetwork:
-    def __init__(self, app: Flask, socket: SocketIO):
-        self.app = app
+    def __init__(self, flask_app: Flask, socket: SocketIO):
+        self.flask_app = flask_app
         self.socketio = socket
         self.register()
 
@@ -25,51 +26,52 @@ class HeatNetwork:
 
         @self.socketio.on('duplicate', namespace='/esdl')
         def socketio_duplicate(message):
-            #with self.app.test_request_context('/editor'):
-            with self.app.app_context():
-                import app as mapeditor
-                esh = mapeditor.get_handler()
-                print('Duplicate message: %s' % message)
+            with self.flask_app.app_context():
+                esh = get_handler()
+                print('Duplicate EnergyAsset: %s' % message)
                 duplicate = duplicate_energy_asset(esh, message['asset_id'])
                 self.add_asset_and_emit(esh, duplicate, message['area_bld_id'])
 
     def add_asset_and_emit(self, esh: EnergySystemHandler, asset: EnergyAsset, area_bld_id: str):
-        asset_to_be_added_list = list()
+        with self.flask_app.app_context():
+            print(session)
+            asset_to_be_added_list = list()
 
-        # add port mappings to session
-        mapping = session['mapping']
-        port_list = list()
+            # add port mappings to session
+            mapping = get_session('port_to_asset_mapping')
+            port_list = list()
 
-        for i in range(0..len(asset.port)):
-            port = asset.port[i]
-            if i == 0:
-                mapping[port.id] = {'asset_id': asset.id,
-                                    'coord': (asset.geometry.points[i].lat, asset.geometry.points[i].lon),
-                                    'pos': 'first'}
-            elif i == len(asset.port) - 1:
-                mapping[port.id] = {'asset_id': asset.id,
-                                    'coord': (asset.geometry.points[i].lat, asset.geometry.points[i].lon),
-                                    'pos': 'last'}
-            connTo_ids = list(o.id for o in port.connectedTo)
-            port_list.append(
-                {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})
-            if isinstance(asset, AbstractConductor):
-                # assume a Line geometry here
-                coords = [(p.lat, p.lon) for p in asset.geometry.points]
-                asset_to_be_added_list.append(
-                    ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+            for i in range(len(asset.port)):
+                port = asset.port[i]
+                coord = ()
+                if isinstance(asset.geometry, Point):
+                    coord = (asset.geometry.lat, asset.geometry.lon)
+                elif isinstance(asset.geometry, Line):
+                    coord = (asset.geometry.point[i].lat, asset.geometry.point[i].lon)
+                if i == 0:
+                    mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'first'}
+                elif i == len(asset.port) - 1:
+                    mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'last'}
+                connTo_ids = list(o.id for o in port.connectedTo)
+                port_list.append(
+                    {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})
+                if isinstance(asset, AbstractConductor):
+                    # assume a Line geometry here
+                    coords = [(p.lat, p.lon) for p in asset.geometry.point]
+                    asset_to_be_added_list.append(
+                        ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
-            else:
-                capability_type = ESDLAsset.get_asset_capability_type(asset)
-                asset_to_be_added_list.append(
-                    ['point', 'asset', asset.name, asset.id, type(asset).__name__, asset.geometry.lat,
-                     asset.geometry.lon, port_list,
-                     capability_type])
+                else:
+                    capability_type = ESDLAsset.get_asset_capability_type(asset)
+                    asset_to_be_added_list.append(
+                        ['point', 'asset', asset.name, asset.id, type(asset).__name__, asset.geometry.lat,
+                         asset.geometry.lon, port_list,
+                         capability_type])
 
-        if not ESDLAsset.add_asset_to_area(esh.get_energy_system(), asset, area_bld_id):
-            ESDLAsset.add_asset_to_building(esh.get_energy_system(), asset, area_bld_id)
+            if not ESDLAsset.add_asset_to_area(esh.get_energy_system(), asset, area_bld_id):
+                ESDLAsset.add_asset_to_building(esh.get_energy_system(), asset, area_bld_id)
 
-        self.socketio.emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
+            self.socketio.emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
 
 ######
@@ -85,9 +87,11 @@ def duplicate_energy_asset(esh: EnergySystemHandler, energy_asset_id: str):
     duplicate_asset.id = str(uuid4())
     name = original_asset.name + '_ret'
     if original_asset.name.endswith('_ret'):
-        name = original_asset.name + '_sup'
+        name = original_asset.name[:-4] + '_sup'
+    if original_asset.name.endswith('_sup'):
+        name = original_asset.name[:-4] + '_ret'
     if not isinstance(duplicate_asset, Pipe): # do different naming for other pipes
-        name = original_asset + '_' + duplicate_asset.id[:4]
+        name = '{}_{}'.format(original_asset.name, '_copy')
     duplicate_asset.name = name
 
     geometry = original_asset.geometry

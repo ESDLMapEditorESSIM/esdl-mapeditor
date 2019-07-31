@@ -12,16 +12,16 @@ function duplicate(event, id) {
 
 function update(event) {
     if (event.type === 'add_contextmenu') {
-        layer = event.layer;
-        id = layer.id;
+        let layer = event.layer;
+        let id = layer.id;
         console.log('Extension HeatNetwork add_contextmenu for id=' + id)
         layer.options.contextmenuItems.push(
-                { text: 'Duplicate', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { duplicate(e, id); } });
+                { text: 'Duplicate', icon: resource_uri + 'icons/SplitLine.png', callback: function(e) { duplicate(e, id); } });
     }
 
 }
 
 
 $(document).ready(function() {
-    //extensions.push(update)
+    extensions.push(update)
 });

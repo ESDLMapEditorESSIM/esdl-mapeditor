@@ -2,6 +2,7 @@
 import os
 import time
 import logging
+import threading
 from sys import getsizeof
 from warnings import warn
 from flask_executor import Executor
@@ -29,7 +30,8 @@ from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
-#from extensions.heatnetwork import HeatNetwork
+from extensions.heatnetwork import HeatNetwork
+from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session
 import esdl_config
 import settings
 
@@ -37,24 +39,6 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-energy_system_handler_cache = dict()
-def get_handler():
-    id = session['client_id']
-    if id in energy_system_handler_cache:
-        print('Retrieve ESH id={}, es.name={}'.format(id, energy_system_handler_cache[id].get_energy_system().name))
-        return energy_system_handler_cache[id]
-    else:
-        print('Session has timed-out. Returning empty energy system')
-        esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
-        set_handler(esh)
-        return esh
-
-
-def set_handler(esh):
-    id = session['client_id']
-    print('Set ESH id={}, es.name={}'.format(id, esh.get_energy_system().name))
-    energy_system_handler_cache[id] = esh
 
 
 wms_layers = WMSLayers()
@@ -236,7 +220,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 # ---------------------------------------------------------------------------------------------------------------------
 def start_ESSIM():
     esh = get_handler()
-    es_id = session['es_id']
+    es_id = get_session('es_id')
     es_simid = None
     # session['es_simid'] = es_simid
 
@@ -277,7 +261,7 @@ def start_ESSIM():
             result = json.loads(r.text)
             #print(result)
             id = result['id']
-            session['es_simid'] = id
+            set_session('es_simid', id)
             print(id)
             # emit('', {})
         else:
@@ -591,7 +575,8 @@ login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
 #extensions
-#HeatNetwork(app, socketio)
+schedule_session_clean_up()
+HeatNetwork(app, socketio)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -676,6 +661,8 @@ def download_esdl():
         if name is None:
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
+        print('Sending file %s' % name)
+        print(esh.to_string())
         response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
         return response
     except Exception as e:
@@ -693,7 +680,7 @@ def serve_static(path):
 @app.route('/simulation_progress')
 def get_simulation_progress():
     if 'es_simid' in session:
-        es_simid = session['es_simid']
+        es_simid = get_session('es_simid')
         ESSIM_config = esdl_config.esdl_config['ESSIM']
         url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
 
@@ -706,12 +693,12 @@ def get_simulation_progress():
                 if float(result) >= 1:
                     r = requests.get(url)
                     if r.status_code == 200:
-                        del session['es_simid']         # simulation ready
+                        del_session('es_simid')         # simulation ready
                         result = json.loads(r.text)
                         # print(result)
                         dashboardURL = result['dashboardURL']
                         print(dashboardURL)
-                        session['simulationRun'] = es_simid
+                        set_session('simulationRun', es_simid)
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
                         return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                     else:
@@ -747,7 +734,7 @@ def animate_load():
         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+        kpi_results = ESSIM_KPIs(es_edit, get_session('simulationRun'), influxdb_startdate, influxdb_enddate)
         animation = kpi_results.animate_load_geojson()
         print(animation)
         return animation, 200
@@ -798,7 +785,7 @@ def send_alert(message):
 
         # FIXME: pyecore
 def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
-    mapping = session['port_to_asset_mapping']
+    mapping = get_session('port_to_asset_mapping')
     esh = get_handler()
     asset = esh.get_by_id(asset_id)
     processed_assets.append(asset_id)
@@ -828,7 +815,7 @@ def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
 #  TODO: find out what should be here :-)
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize():
-    session['port_to_asset_mapping'] = {}
+    set_session('port_to_asset_mapping', {})
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1284,15 +1271,16 @@ def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_co
 
 
 def update_mapping(asset, coord):
-    mapping = session['port_to_asset_mapping']
+    mapping = get_session('port_to_asset_mapping')
     ports = asset.port
     for p in ports:
         mapping[p.id] = {'asset_id': asset.id, 'coord': coord}
-    session['port_to_asset_mapping'] = mapping
+    # TODO: can be removed
+    set_session('port_to_asset_mapping', mapping)
 
 
 def update_asset_connection_locations(ass_id, lat, lon):
-    conn_list = session['conn_list']
+    conn_list = get_session('conn_list')
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             c['from-asset-coord'] = (lat, lon)
@@ -1301,13 +1289,13 @@ def update_asset_connection_locations(ass_id, lat, lon):
 
     emit('clear_connections')
     emit('add_connections', conn_list)
-
-    session['conn_list'] = conn_list
+    # TODO: can be removed
+    set_session('conn_list', conn_list)
 
 
 def update_transport_connection_locations(ass_id, asset, coords):
-    conn_list = session['conn_list']
-    mapping = session['port_to_asset_mapping']
+    conn_list = get_session('conn_list')
+    mapping = get_session('port_to_asset_mapping')
     print('Updating locations')
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
@@ -1328,7 +1316,7 @@ def update_transport_connection_locations(ass_id, asset, coords):
     emit('clear_connections')
     emit('add_connections', conn_list)
 
-    session['conn_list'] = conn_list
+    set_session('conn_list', conn_list)
 
 # mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
 
@@ -1667,8 +1655,8 @@ def distance_point_to_line(p, p1, p2):
 
 # FIXME: pyEcore
 def split_conductor(conductor, location, mode, conductor_container):
-    mapping = session['port_to_asset_mapping']
-    conn_list = session['conn_list']
+    mapping = get_session('port_to_asset_mapping')
+    conn_list = get_session('conn_list')
     #asset_dict = session['asset_dict']
     esh = get_handler()
 
@@ -1855,8 +1843,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         emit('clear_connections')
         emit('add_connections', conn_list)
 
-        session['port_to_asset_mapping'] = mapping
-        session['conn_list'] = conn_list
+        set_session('port_to_asset_mapping', mapping)
+        set_session('conn_list', conn_list)
     else:
         send_alert('UNSUPPORTED: Conductor is not of type esdl.Line!')
 
@@ -1899,7 +1887,7 @@ def update_line_coordinates(message):
     print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
-    port_to_asset_mapping = session['port_to_asset_mapping']
+    port_to_asset_mapping = get_session('port_to_asset_mapping')
     esh = get_handler()
     es_edit = esh.get_energy_system()
     instance = es_edit.instance
@@ -1934,7 +1922,7 @@ def update_line_coordinates(message):
         update_transport_connection_locations(ass_id, asset, polyline_data)
 
     set_handler(esh)
-    session['port_to_asset_mapping'] = port_to_asset_mapping
+    set_session('port_to_asset_mapping', port_to_asset_mapping)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2196,12 +2184,16 @@ def str2float(string):
 @socketio.on('command', namespace='/esdl')
 def process_command(message):
     print ('received: ' + message['cmd'])
+    if not valid_session():
+        send_alert("Session has timed out, please refresh")
+        return
     #print (message)
-    #print (session)
+    print (session)
+    print (get_session())
     esh = get_handler()
     if esh is None:
         print('ERROR finding esdlSystemHandler, Session issue??')
-    mapping = session['port_to_asset_mapping']
+    mapping = get_session('port_to_asset_mapping')
     es_edit = esh.get_energy_system()
     # test to see if this should be moved down:
     #  session.modified = True
@@ -2375,6 +2367,7 @@ def process_command(message):
         #print(asset_to_be_added_list)
         emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
         esh.add_asset(asset)
+        set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
         # removes asset or potential from EnergySystem
@@ -2759,7 +2752,7 @@ def process_command(message):
         #             p.set_connectedTo(' '.join(new_connected_to_list))
 
         # refresh connections in gui
-        conn_list = session['conn_list']
+        conn_list = get_session('conn_list')
         new_list = []
         #print(conn_list)
         for conn in conn_list:
@@ -2772,7 +2765,7 @@ def process_command(message):
                 new_list.append(conn)  # add connections that we are not interested in
             else:
                 print(' - removed {}'.format(conn))
-        session['conn_list'] = new_list  # set new connection list
+        set_session('conn_list', new_list)  # set new connection list
         emit('clear_connections')  # update gui
         emit('add_connections', new_list)
 
@@ -2926,7 +2919,7 @@ def process_command(message):
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            kpi_results = ESSIM_KPIs(es_edit, session['simulationRun'], influxdb_startdate, influxdb_enddate)
+            kpi_results = ESSIM_KPIs(es_edit, get_session('simulationRun'), influxdb_startdate, influxdb_enddate)
             res = kpi_results.calculate_kpis()
             emit('show_ESSIM_KPIs', res)
         else:
@@ -2980,7 +2973,7 @@ def process_command(message):
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
 @executor.job
-def process_energy_system(esh, filename=None, es_title=None):
+def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     asset_list = []
     area_bld_list = []
     conn_list = []
@@ -2989,15 +2982,7 @@ def process_energy_system(esh, filename=None, es_title=None):
     es = esh.get_energy_system()
     area = es.instance[0].area
     emit('clear_ui')
-
-    # schedule find_foundaries in a background process
-    #executor.submit(find_boundaries_in_ESDL, area)
-    # background_thread = Thread(target=find_boundaries_in_ESDL, args=(area,))
-    # background_thread.start()
-
     find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-
-    #asset_dict = create_asset_dict(esh, area)
     carrier_list = ESDLAsset.get_carrier_list(es)
 
     create_port_to_asset_mapping(area, mapping)
@@ -3014,7 +2999,7 @@ def process_energy_system(esh, filename=None, es_title=None):
         else:
             title = 'Name: ' + name
         if filename:
-            title += ', filename: ' + filename
+            title += ', Filename: ' + filename
 
     emit('es_title', title)
     emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
@@ -3022,20 +3007,20 @@ def process_energy_system(esh, filename=None, es_title=None):
     emit('add_connections', conn_list)
     emit('carrier_list', carrier_list)
 
-    session['es_title'] = es.name
+    set_session('es_title',es.name)
     set_handler(esh)
-    session['es_id'] = es.id
-    session['es_descr'] = es.description
+    set_session('es_id', es.id)
+    set_session('es_descr', es.description)
     # session['es_start'] = 'new'
 
-    session['port_to_asset_mapping'] = mapping
-    session['conn_list'] = conn_list
-    session['carrier_list'] = carrier_list
-    session['color_method'] = 'building type'
+    set_session('port_to_asset_mapping', mapping)
+    set_session('conn_list', conn_list)
+    set_session('carrier_list', carrier_list)
+    set_session('color_method', 'building type')
 
-    session.modified = True
-    print('session variables set')
-    print('es_id: ', session['es_id'])
+    #session.modified = True
+    print('session variables set', session)
+    print('es_id: ', get_session('es_id'))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3056,8 +3041,8 @@ def process_file_command(message):
         esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
         process_energy_system(esh, filename)
 
-        session['es_filename'] = filename
-        session['es_email'] = email
+        set_session('es_filename', filename)
+        set_session('es_email', email)
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
@@ -3070,7 +3055,9 @@ def process_file_command(message):
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
 
         process_energy_system.submit(esh, filename) # run in seperate thread
-        session['es_filename'] = filename
+        #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
+        #thread.start()
+        set_session('es_filename', filename)
         # start_ESSIM()
         # check_ESSIM_progress()
 
@@ -3100,14 +3087,14 @@ def process_file_command(message):
             else:
                 title = 'Store id: ' + es_id
 
-            session['es_filename'] = title  # TODO: seperate filename and title
+            set_session('es_filename', title)  # TODO: seperate filename and title
             process_energy_system(esh, None, title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(es_id))
 
     if message['cmd'] == 'store_esdl':
         esh = get_handler()
-        es_id = session['es_id']
+        es_id = get_session('es_id')
 
         store_ESDL_EnergySystem(es_id, esh)
 
@@ -3122,7 +3109,7 @@ def process_file_command(message):
 
     if message['cmd'] == 'download_esdl':
         esh = get_handler()
-        name = session['es_title'].replace(' ', '_')
+        name = get_session('es_title').replace(' ', '_')
 
         send_ESDL_as_file(esh, name)
 
@@ -3145,12 +3132,14 @@ def initialize_app():
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
     if 'es_title' in session:
-        title = session['es_title']
+        title = get_session('es_title')
     else:
         title = None
 
     process_energy_system.submit(esh, None, title) # run in a seperate thread
-    session.modified = True
+    #thread = threading.Thread(target=process_energy_system, args=(esh,None,title,current_app._get_current_object()))
+    #thread.start()
+    #session.modified = True
 
 
 @socketio.on('connect', namespace='/esdl')
@@ -3162,10 +3151,15 @@ def connect():
     else:
         print('Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
+
+    # Client ID is used to retrieve session variables in handler_manager
+    # So this is a very important session variable!!
     if 'client_id' in session:
         print('Client id: {}'.format(session['client_id']))
     else:
         print('No client id in session')
+    if not valid_session():
+        send_alert("Session has timed out, please refresh")
 
 
 @socketio.on('initialize', namespace='/esdl')
@@ -3191,8 +3185,11 @@ def on_disconnect():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on_error_default
 def default_error_handler(e):
-    print(request.event["message"]) # "my error event"
-    print(request.event["args"])    # (data,)
+    print('Error in SocketIO handler: %s' % e)
+    import traceback
+    print('\tSocket IO message: %s' % request.event["message"]) # "my error event"
+    print('\tSocket IO arguments: %s' % request.event["args"])
+    traceback.print_exc()
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application

@@ -131,7 +131,8 @@ class EnergySystemHandler:
         if object_id in self.resource.uuid_dict:
             return self.resource.uuid_dict[object_id]
         else:
-            print('Can\'t find asset for id = {}'.format(object_id))
+            print('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
+            raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
     def add_asset(self, asset):
