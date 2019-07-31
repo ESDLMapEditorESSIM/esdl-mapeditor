@@ -1,5 +1,5 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EOrderedSet
+from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -23,6 +23,26 @@ class EnergySystemHandler:
         # use 'start' instead of 'from' when using a ProfileElement
         # alias('start', esdl.ProfileElement.findEStructuralFeature('from'))
         alias('start', esdl.ProfileElement.from_)
+
+        # add support for shallow copying or cloning an object
+        # it copies the object's attributes (e.g. clone an object), does only shallow copying
+        def clone(self):
+            """
+            Shallow copying or cloning an object
+            It only copies the object's attributes (e.g. clone an object)
+            Usage object.clone() or copy.copy(object) (as _copy__() is also implemented)
+            :param self:
+            :return: A clone of the object
+            """
+            newone = type(self)()
+            eclass = self.eClass
+            for x in eclass.eAllStructuralFeatures():
+                if isinstance(x, EAttribute):
+                    newone.eSet(x.name, self.eGet(x.name))
+            return newone
+
+        setattr(EObject, '__copy__', clone)
+        setattr(EObject, 'clone', clone)
 
         # def toJSON(self):
         #     return json.dumps(self, default=lambda o: list(o),

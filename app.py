@@ -1,20 +1,16 @@
 #!/usr/bin/env python
-import os, time
+import os
+import time
 import logging
 from sys import getsizeof
+from warnings import warn
 from flask_executor import Executor
-
-if os.environ.get('GEIS'):
-    import gevent.monkey
-    gevent.monkey.patch_all()
-
 from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 import flask_login
 from flask_oidc import OpenIDConnect
 import jwt
-
 import requests
 import urllib
 import uuid
@@ -25,19 +21,21 @@ import importlib
 import random
 from datetime import datetime
 from utils.RDWGSConverter import RDWGSConverter
-
 from essim_validation import validate_ESSIM
 from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
-
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
+#from extensions.heatnetwork import HeatNetwork
 import esdl_config
 import settings
 
+if os.environ.get('GEIS'):
+    import gevent.monkey
+    gevent.monkey.patch_all()
 
 energy_system_handler_cache = dict()
 def get_handler():
@@ -104,9 +102,7 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-#GEIS_CLOUD_IP = '10.30.2.1'
-# GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
-#GEIS_CLOUD_HOSTNAME = '10.30.2.1'
+
 ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + '/store/'
@@ -594,6 +590,10 @@ executor = Executor(app)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
+#extensions
+#HeatNetwork(app, socketio)
+
+
 #TODO: check secret key with itsdangerous error and testing and debug here
 
 app.config.update({
@@ -634,6 +634,8 @@ def index():
 def editor():
     if oidc.user_loggedin:
         session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+        if session['client_id'] == None:
+            warn('WARNING: No client_id in session!!')
 
         whole_token = oidc.get_access_token()
         print("whole_token: ", whole_token)
