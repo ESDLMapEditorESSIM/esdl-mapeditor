@@ -824,8 +824,17 @@
             show_loader();
         }
 
-        function save_ESDL() {
-            socket.emit('file_command', {cmd: 'save_esdl'});
+
+        // Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
+        // if we set the window.location.href directly...
+        var $idown;  // Keep it outside of the function, so it's initialized once.
+        function save_ESDL(e) {
+            let url = '.{{dir_settings.download_prefix}}/esdl'
+            if ($idown) {
+                $idown.attr('src',url);
+            } else {
+                $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
+            }
         }
 
         function send_cmd_store_ESDL() {
@@ -2165,12 +2174,7 @@
         <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
         <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
         <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
-        <a href=".{{dir_settings.download_prefix}}/esdl"><button id="save-esdl" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button></a>
-        <!-- button id="download-esdl" onclick="send_download_ESDL();">Download ESDL</button-->
-        <!--<a href=".{{dir_settings.download_prefix}}/esdl" hidden><button id="download-esdl">Download ESDL</button></a>-->
-        <!--<form method="get" action=".{{dir_settings.download_prefix}}/esdl">-->
-            <!--<button id="save-esdl" class="ui-button ui-widget ui-corner-all ui-button-icon-only"type="submit"><span class="ui-icon ui-icon-disk"></span>Save to file</button>-->
-        <!--</form>-->
+        <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
         <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
         <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
         <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
@@ -2241,6 +2245,8 @@
     <div id="loader"></div>
 </body>
 </html>
+
+
 
 <script>
 

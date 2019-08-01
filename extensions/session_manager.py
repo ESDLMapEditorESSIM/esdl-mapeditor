@@ -10,10 +10,11 @@ import time
 managed_sessions = dict()
 ESH_KEY = 'esh'
 LAST_ACCESSED_KEY = 'last-accessed'
-SESSION_TIMEOUT = 60 #*60*24 # 1 day
-CLEANUP_INTERVAL = 60 # every hour
+SESSION_TIMEOUT = 60*60*24 # 1 day
+CLEANUP_INTERVAL = 60*60 # every hour
 
 def get_handler():
+    global managed_sessions
     id = session['client_id']
     if id in managed_sessions:
         esh = managed_sessions[id][ESH_KEY]
@@ -28,6 +29,7 @@ def get_handler():
 
 
 def set_handler(esh):
+    global managed_sessions
     id = session['client_id']
     print('Set ESH client_id={}, es.name={}'.format(id, esh.get_energy_system().name))
     set_session(ESH_KEY, esh)
@@ -39,11 +41,14 @@ def valid_session():
     return False
 
 def set_session(key, value):
+    global managed_sessions
+    print('Current Thread %s' % threading.currentThread().getName())
     id = session['client_id']
     if id not in managed_sessions:
         managed_sessions[id] = dict()
     managed_sessions[id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[id][key] = value
+    print(managed_sessions)
 
 def get_session(key=None):
     """
@@ -51,6 +56,7 @@ def get_session(key=None):
     :param key: key to retrieve a value for. If key is None, it will return the whole session for this client
     :return:
     """
+    global managed_sessions
     id = session['client_id']
     if id not in managed_sessions:
         warn('No client id for the session is available, cannot return value for key %s' % key)
@@ -62,6 +68,7 @@ def get_session(key=None):
             return managed_sessions[id][key]
 
 def del_session(key):
+    global managed_sessions
     id = session['client_id']
     if id not in managed_sessions:
         warn('No client id for the session is available, cannot return value for key %s' % key)
@@ -70,11 +77,13 @@ def del_session(key):
         del managed_sessions[id][key]
 
 
+# does not work
 def clean_up_sessions():
     global managed_sessions
-    print('Clean up sessions: number of sessions: {}'.format( managed_sessions))
-    for key,value in managed_sessions.items():
-        last_accessed = value[LAST_ACCESSED_KEY]
+    print('Current Thread %s' % threading.currentThread().getName())
+    print('Clean up sessions: current number of sessions: {}'.format(len(managed_sessions)))
+    for key in list(managed_sessions.keys()): # make a copy of the keys in the list
+        last_accessed = managed_sessions[key][LAST_ACCESSED_KEY]
         now = datetime.now()
         difference = (now - last_accessed).total_seconds()
         if difference > SESSION_TIMEOUT:
@@ -83,7 +92,9 @@ def clean_up_sessions():
 
 
 def schedule_session_clean_up():
-    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name='Session Cleanup Thread')
+    print("Scheduling session clean-up thread every %d seconds", CLEANUP_INTERVAL)
+    global managed_sessions
+    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name='Session-Cleanup-Thread')
     clean_thread.start()
 
 

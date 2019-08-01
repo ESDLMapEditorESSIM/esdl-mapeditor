@@ -662,8 +662,9 @@ def download_esdl():
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
-        print(esh.to_string())
+        #print(esh.to_string())
         response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
+        print(response)
         return response
     except Exception as e:
         import traceback
@@ -3039,7 +3040,7 @@ def process_file_command(message):
         filename = 'Unknown'
         esh = EnergySystemHandler()
         esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
-        process_energy_system(esh, filename)
+        process_energy_system.submit(esh, filename)
 
         set_session('es_filename', filename)
         set_session('es_email', email)
