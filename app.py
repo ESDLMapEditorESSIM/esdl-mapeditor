@@ -39,7 +39,9 @@ if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
 
-
+#TODO fix send_file in uwsgi
+# debugging with pycharm:
+#https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
 wms_layers = WMSLayers()
 
