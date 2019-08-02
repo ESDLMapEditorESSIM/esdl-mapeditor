@@ -379,7 +379,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
                         if isinstance(basset, esdl.BuildingUnit):
                             building_type = basset.type.name
 
-                    building_color = _determine_color(asset, session["color_method"])
+                    building_color = _determine_color(asset, get_session('color_method'))
                     bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
                     building_list.append({
                         "type": "Feature",
@@ -503,7 +503,7 @@ def _find_more_area_boundaries(this_area):
             asset_geometry = asset.geometry
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
-                    building_color = _determine_color(asset, session["color_method"])
+                    building_color = _determine_color(asset, get_session("color_method"))
                     boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
 
                     emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
@@ -1413,7 +1413,7 @@ def connect_ports(port1, port2):
 
 
 def connect_asset_with_conductor(asset, conductor):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     asset_geom = asset.geometry
     cond_geom = conductor.geometry
@@ -1462,11 +1462,11 @@ def connect_asset_with_conductor(asset, conductor):
                      'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
                      'to-asset-coord': [last_point.lat, last_point.lon]})
 
-    session["conn_list"] = conn_list
+    set_session("conn_list", conn_list)
 
 
 def connect_asset_with_asset(asset1, asset2):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     ports1 = asset1.port
     num_ports1 = len(ports1)
@@ -1558,11 +1558,11 @@ def connect_asset_with_asset(asset1, asset2):
              'to-port-id': p2.id, 'to-asset-id': asset2.id,
              'to-asset-coord': [asset2_geom.lat, asset2_geom.lon]})
 
-    session["conn_list"] = conn_list
+    set_session("conn_list", conn_list)
 
 
 def connect_conductor_with_conductor(conductor1, conductor2):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     c1points = conductor1.geometry.point
     c1p0 = c1points[0]
@@ -1613,7 +1613,7 @@ def connect_conductor_with_conductor(conductor1, conductor2):
              'to-port-id': conn2.id, 'to-asset-id': conductor2.id,
              'to-asset-coord': [conn_pnt2.lat, conn_pnt2.lon]})
 
-        session["conn_list"] = conn_list
+        set_session("conn_list", conn_list)
     else:
         send_alert('UNSUPPORTED - Cannot connect two ports of same type')
 
@@ -2488,12 +2488,12 @@ def process_command(message):
                 emit('add_new_conn',
                      [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
 
-                conn_list = session["conn_list"]
+                conn_list = get_session("conn_list")
                 conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
                                   'to-port-id': port2_id, 'to-asset-id': asset2_id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
-                session["conn_list"] = conn_list
+                set_session("conn_list", conn_list)
         else:
             send_alert('Serious error connecting ports')
 
