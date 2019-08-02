@@ -2989,6 +2989,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     conn_list = []
     mapping = {}
 
+    set_session('color_method', 'building type')
+
     es = esh.get_energy_system()
     area = es.instance[0].area
     emit('clear_ui')
@@ -3026,7 +3028,6 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     set_session('port_to_asset_mapping', mapping)
     set_session('conn_list', conn_list)
     set_session('carrier_list', carrier_list)
-    set_session('color_method', 'building type')
 
     #session.modified = True
     print('session variables set', session)
