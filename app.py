@@ -179,13 +179,13 @@ def get_boundary_from_service(scope, id):
         r = requests.get(url)
         if len(r.text) > 0:
             reply = json.loads(r.text)
-            geom = reply['geom']
+            # geom = reply['geom']
 
         # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
         # 594477.125], [253641.50000000006, 594417.8126220703]]]]}, 'code': 'BU00030000', 'name': 'Appingedam-Centrum',
         # 'tCode': 'GM0003', 'tName': 'Appingedam'}
-            boundary_cache[id] = geom
-            return geom
+            boundary_cache[id] = reply
+            return reply
         else:
             print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope.name, id))
             return None
@@ -227,7 +227,7 @@ def preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id):
         code = sub_boundary['code']
         geom = sub_boundary['geom']
         if code and geom:
-            boundary_cache[code] = geom
+            boundary_cache[code] = sub_boundary
 
 
 def preload_area_subboundaries_in_cache(top_area):
@@ -367,25 +367,26 @@ def find_area_info_geojson(building_list, area_list, this_area):
                     # tmp = copy.deepcopy(boundary_rd)
                     # tmp['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(tmp['coordinates'])    # Convert to WGS
                     # boundary_wgs = tmp
-                    for i in range(0, len(boundary_wgs['coordinates'])):
-                        if len(boundary_wgs['coordinates']) > 1:
-                            area_id_number = " ({} of {})".format(i+1, len(boundary_wgs['coordinates']))
+                    for i in range(0, len(boundary_wgs['geom']['coordinates'])):
+                        if len(boundary_wgs['geom']['coordinates']) > 1:
+                            area_id_number = " ({} of {})".format(i+1, len(boundary_wgs['geom']['coordinates']))
                         else:
                             area_id_number = ""
                         area_list.append({
                             "type": "Feature",
                             "geometry": {
                                 "type": "Polygon",
-                                "coordinates": boundary_wgs['coordinates'][i]
+                                "coordinates": boundary_wgs['geom']['coordinates'][i]
                             },
                             "properties": {
                                 "id": area_id + area_id_number,
+                                "name": boundary_wgs['name'],
                                 "KPIs": geojson_KPIs
                             }
                         })
 
     if boundary_wgs:
-        update_asset_geometries3(this_area, boundary_wgs)
+        update_asset_geometries3(this_area, boundary_wgs['geom'])
 
     assets = this_area.asset
     for asset in assets:
@@ -2000,7 +2001,7 @@ def get_boundary_info(info):
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
             boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), identifier)
             if boundary:
-                geometry = ESDLGeometry.create_geometry_from_geom(boundary)
+                geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
                 area.geometry = geometry
 
             # boundary = get_boundary_from_service(area_scope, area_id)
@@ -2036,6 +2037,7 @@ def get_boundary_info(info):
             if initialize_ES:
                 sub_area = esdl.Area()
                 sub_area.id = boundary["code"]
+                sub_area.name = boundary["name"]
                 sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
 
                 if add_boundary_to_ESDL:
@@ -2063,6 +2065,7 @@ def get_boundary_info(info):
                     },
                     "properties": {
                         "id": sub_area.id + area_id_number,
+                        "name": sub_area.name,
                         "KPIs": []
                     }
                 })

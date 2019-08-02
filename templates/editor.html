@@ -2026,12 +2026,15 @@
                         onEachFeature: function(feature, layer) {
                             if (feature.properties && feature.properties.id) {
                                 let text = "ID: " + feature.properties.id;
+                                if (feature.properties.name) {
+                                    text = feature.properties.name + "<br>" + text;
+                                }
 
                                 // Object.keys(feature.properties.KPIs).forEach(function (key) {
                                 //     text += "<br>" + key + ": " + feature.properties.KPIs[key];
                                 // });
 
-                                layer.bindPopup(feature.properties.id, {closeButton: false, offset: L.point(0, -20)});
+                                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
                                 layer.on('mouseover', highlightAreaOrBuilding);
                                 layer.on('mouseout', resetHighlightArea);
                             }
@@ -2163,83 +2166,85 @@
     </style>
 
 </head>
-<body>
-    <div class="header" style="height: 25px">
-        <div style="float: left; padding:2px;"><img src="{{dir_settings.resource_prefix}}favicon.ico" height="20"></div>
-        <div style="float: left; padding:2px;"><b>ESDL Web Editor:</b></div>
-        <div style="float: left; padding:2px;" id="es_title"></div>
-    </div>
+<body class="flexbox-parent">
+    <div class="flexbox-item">
+        <div class="header" style="height: 25px">
+            <div style="float: left; padding:2px;"><img src="{{dir_settings.resource_prefix}}favicon.ico" height="20"></div>
+            <div style="float: left; padding:2px;"><b>ESDL Web Editor:</b></div>
+            <div style="float: left; padding:2px;" id="es_title"></div>
+        </div>
 
-    <div id="ctrl" style="clear: left; position: relative; height: 28px; padding:3px;">
-        <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
-        <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
-        <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
-        <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
-        <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
-        <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
-        <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
-        <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
-        <!-- Connect assets now works via context menu -->
-        <!-- button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button-->
-        <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
+        <div id="ctrl" style="clear: left; position: relative; padding:3px;">
+            <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
+            <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
+            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
+            <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
+            <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
+            <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
+            <button id="EC" onclick="energy_carrier_info()" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
+            <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
+            <!-- Connect assets now works via context menu -->
+            <!-- button id="conn-disconn-assets" onclick="conn_disconn_assets();" title="Connect assets" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-link"></span>Connect</button-->
+            <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
 
-        <select id="asset_menu" style='position:relative;z-index:100'>
-            <option value="Battery">Battery</option>
-            <option value="CHP">Combined Heat and Power</option>
-            <option value="EConnection">EConnection</option>
-            <option value="ElectricityDemand">ElectricityDemand</option>
-            <option value="ElectricityNetwork">ElectricityNetwork</option>
-            <option value="Electrolyzer">Electrolyzer</option>
-            <option value="FuelCell">FuelCell</option>
-            <option value="GConnection">GConnection</option>
-            <option value="GasHeater">GasHeater</option>
-            <option value="GasNetwork">GasNetwork</option>
-            <option value="GenericConsumer">GenericConsumer</option>
-            <option value="GenericConversion">GenericConversion</option>
-            <option value="GenericProducer">GenericProducer</option>
-            <option value="GeothermalSource">GeothermalSource</option>
-            <option value="HeatingDemand">HeatingDemand</option>
-            <option value="HeatNetwork">HeatNetwork</option>
-            <option value="HeatPump">HeatPump</option>
-            <option value="Joint">Joint</option>
-            <option value="MobilityDemand">MobilityDemand</option>
-            <option value="PowerPlant">PowerPlant</option>
-            <option value="PVInstallation">PVInstallation</option>
-            <option value="PVParc">PVParc</option>
-            <option value="Transformer">Transformer</option>
-            <option value="UTES">UTES</option>
-            <option value="WindTurbine">WindTurbine</option>
-            <!-- option value="ResidualHeatSourcePotential">ResidualHeatSourcePotential</option-->
-        </select>
+            <select id="asset_menu" style='position:relative;z-index:100'>
+                <option value="Battery">Battery</option>
+                <option value="CHP">Combined Heat and Power</option>
+                <option value="EConnection">EConnection</option>
+                <option value="ElectricityDemand">ElectricityDemand</option>
+                <option value="ElectricityNetwork">ElectricityNetwork</option>
+                <option value="Electrolyzer">Electrolyzer</option>
+                <option value="FuelCell">FuelCell</option>
+                <option value="GConnection">GConnection</option>
+                <option value="GasHeater">GasHeater</option>
+                <option value="GasNetwork">GasNetwork</option>
+                <option value="GenericConsumer">GenericConsumer</option>
+                <option value="GenericConversion">GenericConversion</option>
+                <option value="GenericProducer">GenericProducer</option>
+                <option value="GeothermalSource">GeothermalSource</option>
+                <option value="HeatingDemand">HeatingDemand</option>
+                <option value="HeatNetwork">HeatNetwork</option>
+                <option value="HeatPump">HeatPump</option>
+                <option value="Joint">Joint</option>
+                <option value="MobilityDemand">MobilityDemand</option>
+                <option value="PowerPlant">PowerPlant</option>
+                <option value="PVInstallation">PVInstallation</option>
+                <option value="PVParc">PVParc</option>
+                <option value="Transformer">Transformer</option>
+                <option value="UTES">UTES</option>
+                <option value="WindTurbine">WindTurbine</option>
+                <!-- option value="ResidualHeatSourcePotential">ResidualHeatSourcePotential</option-->
+            </select>
 
-        <select id="line_select">
-            <option value="ElectricityCable">ElectricityCable</option>
-            <option value="Pipe">Pipe</option>
-        </select>
+            <select id="line_select">
+                <option value="ElectricityCable">ElectricityCable</option>
+                <option value="Pipe">Pipe</option>
+            </select>
 
-        <select id="area_bld_select"></select>
-        <select id="carrier_select"></select>
+            <select id="area_bld_select"></select>
+            <select id="carrier_select"></select>
 
-        <select id="building_color">
-            <option value="building type">Building type</option>
-            <option value="building year">Building year</option>
-            <option value="floor area">Floor area</option>
-        </select>
+            <select id="building_color">
+                <option value="building type">Building type</option>
+                <option value="building year">Building year</option>
+                <option value="floor area">Floor area</option>
+            </select>
 
-        <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
-        <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
+            <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+            <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
 {% if role == 'essim' %}
-        <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
-        <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
-        <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
-        <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
+            <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
+            <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
+            <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
+            <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
 {% endif %}
 
-        <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
+            <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
+        </div>
     </div>
-
-    <div id="mapid" style="float: left; width: 100%; height: 850px; position:relative; z-index:10"></div>
+    <!--div id="mapid" style="float: left; width: 100%; height: 100%; position:relative; z-index:10"></div-->
+    <div id="mapid" class="flexbox-item flexbox-item-grow"></div>
 
     <div id="sidebar"></div>
     <div id="loader"></div>
