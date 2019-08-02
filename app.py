@@ -2032,7 +2032,7 @@ def get_boundary_info(info):
                     geometry = ESDLGeometry.create_geometry_from_geom(geom)
                     sub_area.geometry = geometry
 
-                area.add_area(sub_area)
+                area.area.append(sub_area)
 
             # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
             # boundary = create_boundary_from_contour(area_contour)
@@ -3192,10 +3192,10 @@ def initialize_app():
         esh = EnergySystemHandler()
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
-    if 'es_title' in session:
-        title = get_session('es_title')
-    else:
-        title = None
+    #if 'es_title' in session:
+    title = get_session('es_title')
+    #else:
+    #    title = None
 
     process_energy_system.submit(esh, None, title) # run in a seperate thread
     #thread = threading.Thread(target=process_energy_system, args=(esh,None,title,current_app._get_current_object()))

@@ -50,6 +50,7 @@ def set_session(key, value):
     managed_sessions[id][key] = value
     print(managed_sessions)
 
+
 def get_session(key=None):
     """
     Return memory-bases session variable
@@ -65,7 +66,11 @@ def get_session(key=None):
         if key is None:
             return managed_sessions[id]
         else:
-            return managed_sessions[id][key]
+            try:
+                return managed_sessions[id][key]
+            except:
+                return None
+
 
 def del_session(key):
     global managed_sessions
