@@ -6,9 +6,10 @@ import threading
 from sys import getsizeof
 from warnings import warn
 from flask_executor import Executor
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect, Response, stream_with_context
 from flask_socketio import SocketIO, emit
 from flask_session import Session
+from werkzeug.wsgi import FileWrapper
 import flask_login
 from flask_oidc import OpenIDConnect
 import jwt
@@ -619,8 +620,8 @@ def index():
 @app.route('/editor')
 @oidc.require_login
 def editor():
+    session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
     if oidc.user_loggedin:
-        session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
 
@@ -652,22 +653,28 @@ def logout():
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
 
-
+# Cant find out why send_file does not work in uWSGI with threading.
+# Now we send manually the ESDL as string, which is (probably) not efficient.
+# This still works with a 1.6 MB file... Not sure if this scales any further...
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
     esh = get_handler()
     try:
-        stream = esh.to_bytesio()
+        #stream = esh.to_bytesio()
+        content = esh.to_string()
         name = esh.get_energy_system().name
         if name is None:
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
-        #print(esh.to_string())
-        response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
-        print(response)
-        return response
+        #wrapped_io = FileWrapper(stream)
+        headers = dict()
+        headers['Content-Type'] =  'application/esdl+xml'
+        headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
+        headers['Content-Length'] = len(content)
+        return Response(content, mimetype='application/esdl+xml', direct_passthrough=True, headers=headers)
+        #return send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1383,7 +1390,7 @@ def get_connected_to_info(asset):
                 conn_asset = conn_port.energyasset #small a instead of Asset
                 ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
         result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'ct_list': ct_list})
-    print(result)
+    #print(result)
     return result
 
 

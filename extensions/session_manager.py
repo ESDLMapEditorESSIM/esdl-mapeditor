@@ -42,13 +42,13 @@ def valid_session():
 
 def set_session(key, value):
     global managed_sessions
-    print('Current Thread %s' % threading.currentThread().getName())
+    #print('Current Thread %s' % threading.currentThread().getName())
     id = session['client_id']
     if id not in managed_sessions:
         managed_sessions[id] = dict()
     managed_sessions[id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[id][key] = value
-    print(managed_sessions)
+    #print(managed_sessions)
 
 def get_session(key=None):
     """
