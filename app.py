@@ -6,9 +6,10 @@ import threading
 from sys import getsizeof
 from warnings import warn
 from flask_executor import Executor
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect
+from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect, Response, stream_with_context
 from flask_socketio import SocketIO, emit
 from flask_session import Session
+from werkzeug.wsgi import FileWrapper
 import flask_login
 from flask_oidc import OpenIDConnect
 import jwt
@@ -406,7 +407,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
                         if isinstance(basset, esdl.BuildingUnit):
                             building_type = basset.type.name
 
-                    # building_color = _determine_color(asset, session["color_method"])
+                    # building_color = _determine_color(asset, get_session('color_method'))
                     bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
                     building_list.append({
                         "type": "Feature",
@@ -531,7 +532,7 @@ def _find_more_area_boundaries(this_area):
             asset_geometry = asset.geometry
             if asset_geometry:
                 if isinstance(asset_geometry, esdl.Polygon):
-                    building_color = _determine_color(asset, session["color_method"])
+                    building_color = _determine_color(asset, get_session("color_method"))
                     boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
 
                     emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary,
@@ -648,8 +649,8 @@ def index():
 @app.route('/editor')
 @oidc.require_login
 def editor():
+    session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
     if oidc.user_loggedin:
-        session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
 
@@ -681,22 +682,28 @@ def logout():
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
 
-
+# Cant find out why send_file does not work in uWSGI with threading.
+# Now we send manually the ESDL as string, which is (probably) not efficient.
+# This still works with a 1.6 MB file... Not sure if this scales any further...
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
     esh = get_handler()
     try:
-        stream = esh.to_bytesio()
+        #stream = esh.to_bytesio()
+        content = esh.to_string()
         name = esh.get_energy_system().name
         if name is None:
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
-        #print(esh.to_string())
-        response = send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
-        print(response)
-        return response
+        #wrapped_io = FileWrapper(stream)
+        headers = dict()
+        headers['Content-Type'] =  'application/esdl+xml'
+        headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
+        headers['Content-Length'] = len(content)
+        return Response(content, mimetype='application/esdl+xml', direct_passthrough=True, headers=headers)
+        #return send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1412,7 +1419,7 @@ def get_connected_to_info(asset):
                 conn_asset = conn_port.energyasset #small a instead of Asset
                 ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
         result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'ct_list': ct_list})
-    print(result)
+    #print(result)
     return result
 
 
@@ -1435,7 +1442,7 @@ def connect_ports(port1, port2):
 
 
 def connect_asset_with_conductor(asset, conductor):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     asset_geom = asset.geometry
     cond_geom = conductor.geometry
@@ -1484,11 +1491,11 @@ def connect_asset_with_conductor(asset, conductor):
                      'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
                      'to-asset-coord': [last_point.lat, last_point.lon]})
 
-    session["conn_list"] = conn_list
+    set_session("conn_list", conn_list)
 
 
 def connect_asset_with_asset(asset1, asset2):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     ports1 = asset1.port
     num_ports1 = len(ports1)
@@ -1580,11 +1587,11 @@ def connect_asset_with_asset(asset1, asset2):
              'to-port-id': p2.id, 'to-asset-id': asset2.id,
              'to-asset-coord': [asset2_geom.lat, asset2_geom.lon]})
 
-    session["conn_list"] = conn_list
+    set_session("conn_list", conn_list)
 
 
 def connect_conductor_with_conductor(conductor1, conductor2):
-    conn_list = session["conn_list"]
+    conn_list = get_session("conn_list")
 
     c1points = conductor1.geometry.point
     c1p0 = c1points[0]
@@ -1635,7 +1642,7 @@ def connect_conductor_with_conductor(conductor1, conductor2):
              'to-port-id': conn2.id, 'to-asset-id': conductor2.id,
              'to-asset-coord': [conn_pnt2.lat, conn_pnt2.lon]})
 
-        session["conn_list"] = conn_list
+        set_session("conn_list", conn_list)
     else:
         send_alert('UNSUPPORTED - Cannot connect two ports of same type')
 
@@ -2539,12 +2546,12 @@ def process_command(message):
                 emit('add_new_conn',
                      [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
 
-                conn_list = session["conn_list"]
+                conn_list = get_session("conn_list")
                 conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
                                   'to-port-id': port2_id, 'to-asset-id': asset2_id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
-                session["conn_list"] = conn_list
+                set_session("conn_list", conn_list)
         else:
             send_alert('Serious error connecting ports')
 
@@ -2914,8 +2921,8 @@ def process_command(message):
         emit('carrier_list', carrier_list)
 
     if message['cmd'] == 'set_building_color_method':
-        session["color_method"] = message['method']
-        print(session["color_method"])
+        set_session("color_method", message['method'])
+        print(get_session("color_method"))
 
         instance = es_edit.instance
         if instance:
@@ -3040,6 +3047,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     conn_list = []
     mapping = {}
 
+    set_session('color_method', 'building type')
+
     es = esh.get_energy_system()
     area = es.instance[0].area
     emit('clear_ui')
@@ -3077,7 +3086,6 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     set_session('port_to_asset_mapping', mapping)
     set_session('conn_list', conn_list)
     set_session('carrier_list', carrier_list)
-    set_session('color_method', 'building type')
 
     #session.modified = True
     print('session variables set', session)
