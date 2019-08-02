@@ -202,7 +202,7 @@
                     }
 
                     marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({ text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
+                    marker.options.contextmenuItems.push({ text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/SetCarrier.png', callback: setCarrier });
 
                     if (marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
@@ -244,7 +244,7 @@
                             marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
                         marker.options.contextmenuItems.push({
-                            icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
+                            icon: '{{dir_settings.resource_prefix}}icons/Costs.png',
                             text: 'Set marginal costs for [' + asset_id + ']',
                             callback: function(e) {
                                 socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
@@ -334,7 +334,7 @@
 
             line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push(
-                { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', callback: setCarrier });
+                { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/SetCarrier.png', callback: setCarrier });
             //line.options.contextmenuItems.push('-');
             //line.options.contextmenuItems.push({ text: 'Cancel' });
 
