@@ -108,7 +108,7 @@ def validate_ESSIM_asset(asset, results):
             if isinstance(cs, esdl.CurtailmentStrategy):
                 results.append('ERROR: CurtailmentStrategy not supported yet')
         else:
-            results.append('WARNING: Conversion ' + asset_name + ' has no control strategy')
+            results.append('ERROR: Conversion ' + asset_name + ' has no control strategy')
 
 
 def validate_ESSIM_building(building, results):
