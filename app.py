@@ -1114,7 +1114,7 @@ def update_asset_geometries2(area, boundary):
     pass
 
 
-def calc_center(coords):
+def calc_center_and_size(coords):
     min_x = float('inf')
     min_y = float('inf')
     max_x = 0
@@ -1126,7 +1126,10 @@ def calc_center(coords):
         if c[0] > max_x: max_x = c[0]
         if c[1] > max_y: max_y = c[1]
 
-    return [(min_x + max_x) / 2, (min_y + max_y) / 2]
+    delta_x = max_x - min_x
+    delta_y = max_y - min_y
+
+    return [(min_x + max_x) / 2, (min_y + max_y) / 2], delta_x, delta_y
 
 
 def update_asset_geometries3(area, boundary):
@@ -1142,7 +1145,7 @@ def update_asset_geometries3(area, boundary):
     else:
         send_alert('Non supported polygon')
 
-    center = calc_center(outer_polygon)
+    center, delta_x, delta_y = calc_center_and_size(outer_polygon)
     # print(center)
 
 
@@ -1154,8 +1157,8 @@ def update_asset_geometries3(area, boundary):
 
                 if not geom:
                     geom = esdl.Point()
-                    x = center[0] + (-0.5 + random.random()) * 0.1
-                    y = center[1] + (-0.5 + random.random()) * 0.1
+                    x = center[0] + ((-0.5 + random.random()) * delta_x / 2)
+                    y = center[1] + ((-0.5 + random.random()) * delta_y / 2)
                     if x > 180 or y > 180:  # Assume RD
                         rdwgs = RDWGSConverter()
                         wgs = rdwgs.fromRdToWgs([x, y])
@@ -1170,8 +1173,8 @@ def update_asset_geometries3(area, boundary):
 
             if not geom:
                 geom = esdl.Point()
-                x = center[0]+(-0.5+random.random()) * 0.1
-                y = center[1]+(-0.5+random.random()) * 0.1
+                x = center[0] + ((-0.5 + random.random()) * delta_x / 2)
+                y = center[1] + ((-0.5 + random.random()) * delta_y / 2)
                 if x > 180 or y > 180:  # Assume RD
                     rdwgs = RDWGSConverter()
                     wgs = rdwgs.fromRdToWgs([x, y])
