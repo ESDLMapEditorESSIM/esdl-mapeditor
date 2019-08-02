@@ -169,13 +169,14 @@ boundary_service_mapping = {
     'NEIGHBOURHOOD': 'neighbourhoods',
     'DISTRICT': 'districts',
     'MUNICIPALITY': 'municipalities',
-    'ENERGYREGION': 'energyregions',
+    'REGION': 'regions',
     'PROVINCE': 'provinces',
     'COUNTRY': 'countries'
 }
 
 #create a cache for the boundary service
 boundary_cache = dict()
+
 
 def get_boundary_from_service(scope, id):
     """
@@ -193,6 +194,7 @@ def get_boundary_from_service(scope, id):
     try:
         # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
         url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
+
         # print('Retrieve from boundary service', id)
         r = requests.get(url)
         if len(r.text) > 0:
@@ -205,11 +207,11 @@ def get_boundary_from_service(scope, id):
             boundary_cache[id] = geom
             return geom
         else:
-            print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope, id))
+            print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope.name, id))
             return None
 
     except Exception as e:
-        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope, id, e))
+        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope.name, id, e))
         return None
 
 
@@ -223,7 +225,7 @@ def get_subboundaries_from_service(scope, subscope, id):
 
     try:
         url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
-              + '/' + scope + '/' + id
+              + '/' + boundary_service_mapping[scope.name] + '/' + id
         r = requests.get(url)
         reply = json.loads(r.text)
         # print(reply)
@@ -234,8 +236,30 @@ def get_subboundaries_from_service(scope, subscope, id):
 
         return reply
     except Exception as e:
-        print('ERROR in accessing GEIS boundary service for {} with id {}, subscope {}: {}'.format(scope, id, subscope, str(e)))
+        print('ERROR in accessing GEIS boundary service for {} with id {}, subscope {}: {}'.format(scope.name, id, subscope.name, str(e)))
         return {}
+
+
+def preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id):
+    sub_boundaries = get_subboundaries_from_service(top_area_scope, sub_area_scope, top_area_id)
+
+    for sub_boundary in sub_boundaries:
+        code = sub_boundary['code']
+        geom = sub_boundary['geom']
+        if code and geom:
+            boundary_cache[code] = geom
+
+
+def preload_area_subboundaries_in_cache(top_area):
+    top_area_scope = top_area.scope
+    top_area_id = top_area.id
+    sub_areas = top_area.area
+    if sub_areas:
+        first_sub_area = sub_areas[0]
+        sub_area_scope = first_sub_area.scope
+
+        if top_area_scope and sub_area_scope and len(top_area_id) <= 10:
+            preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -306,9 +330,11 @@ def start_ESSIM():
 # ---------------------------------------------------------------------------------------------------------------------
 def find_area_info_geojson(building_list, area_list, this_area):
     area_id = this_area.id
+    area_name = this_area.name
+    if not area_name: area_name = ""
     area_scope = this_area.scope
     area_geometry = this_area.geometry
-    boundary_gps = None
+    boundary_wgs = None
 
     geojson_KPIs = {}
     area_KPIs = this_area.KPIs
@@ -318,33 +344,35 @@ def find_area_info_geojson(building_list, area_list, this_area):
 
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):
-            boundary_gps = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            boundary_wgs = ESDLGeometry.create_boundary_from_geometry(area_geometry)
             area_list.append({
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
-                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'])
+                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'])
                 },
                 "properties": {
                     "id": area_id,
+                    "name": area_name,
                     "KPIs": geojson_KPIs
                 }
             })
         if isinstance(area_geometry, esdl.MultiPolygon):
-            boundary_gps = ESDLGeometry.create_boundary_from_geometry(area_geometry)
-            for i in range(0, len(boundary_gps['coordinates'])):
-                if len(boundary_gps['coordinates']) > 1:
-                    area_id_number = " ({} of {})".format(i + 1, len(boundary_gps['coordinates']))
+            boundary_wgs = ESDLGeometry.create_boundary_from_geometry(area_geometry)
+            for i in range(0, len(boundary_wgs['coordinates'])):
+                if len(boundary_wgs['coordinates']) > 1:
+                    area_id_number = " ({} of {})".format(i + 1, len(boundary_wgs['coordinates']))
                 else:
                     area_id_number = ""
                 area_list.append({
                     "type": "Feature",
                     "geometry": {
                         "type": "Polygon",
-                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'][i])
+                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'][i])
                     },
                     "properties": {
                         "id": area_id + area_id_number,
+                        "name": area_name,
                         "KPIs": geojson_KPIs
                     }
                 })
@@ -353,22 +381,22 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
-                boundary_rd = get_boundary_from_service(area_scope, area_id)
-                if boundary_rd:
+                boundary_wgs = get_boundary_from_service(area_scope, area_id)
+                if boundary_wgs:
                     # this really prevents messing up the cache
-                    tmp = copy.deepcopy(boundary_rd)
-                    tmp['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(tmp['coordinates'])    # Convert to WGS
-                    boundary_gps = tmp
-                    for i in range(0, len(boundary_gps['coordinates'])):
-                        if len(boundary_gps['coordinates']) > 1:
-                            area_id_number = " ({} of {})".format(i+1, len(boundary_gps['coordinates']))
+                    # tmp = copy.deepcopy(boundary_rd)
+                    # tmp['coordinates'] = ESDLGeometry.convert_mp_rd_to_wgs(tmp['coordinates'])    # Convert to WGS
+                    # boundary_wgs = tmp
+                    for i in range(0, len(boundary_wgs['coordinates'])):
+                        if len(boundary_wgs['coordinates']) > 1:
+                            area_id_number = " ({} of {})".format(i+1, len(boundary_wgs['coordinates']))
                         else:
                             area_id_number = ""
                         area_list.append({
                             "type": "Feature",
                             "geometry": {
                                 "type": "Polygon",
-                                "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_gps['coordinates'][i])
+                                "coordinates": boundary_wgs['coordinates'][i]
                             },
                             "properties": {
                                 "id": area_id + area_id_number,
@@ -376,8 +404,8 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             }
                         })
 
-    if boundary_gps:
-        update_asset_geometries3(this_area, boundary_gps)
+    if boundary_wgs:
+        update_asset_geometries3(this_area, boundary_wgs)
 
     assets = this_area.asset
     for asset in assets:
@@ -399,7 +427,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
                         if isinstance(basset, esdl.BuildingUnit):
                             building_type = basset.type.name
 
-                    building_color = _determine_color(asset, session["color_method"])
+                    # building_color = _determine_color(asset, session["color_method"])
                     bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
                     building_list.append({
                         "type": "Feature",
@@ -442,11 +470,12 @@ def create_area_info_geojson(area):
     building_list = []
     area_list = []
     print("Finding ESDL boundaries...")
+    preload_area_subboundaries_in_cache(area)
     find_area_info_geojson(building_list, area_list, area)
     print("Done")
     return area_list, building_list
 
-
+"""
 def _determine_color(asset, color_method):
     building_color = '#808080'
 
@@ -478,7 +507,7 @@ def _determine_color(asset, color_method):
 
     return building_color
 
-"""
+
 def _find_more_area_boundaries(this_area):
     area_id = this_area.id
     area_scope = this_area.scope
@@ -1960,13 +1989,17 @@ def get_boundary_info(info):
     instance = es_edit.instance
     area = instance[0].area
 
+    preload_subboundaries_in_cache(esdl.AreaScopeEnum.from_string(str.upper(scope)),
+                                   esdl.AreaScopeEnum.from_string(str.upper(subscope)),
+                                   identifier)
+
     if initialize_ES:
         # change ID, name and scope of ES
         area.id = identifier
         area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
         if add_boundary_to_ESDL:
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
-            boundary = get_boundary_from_service(str.upper(scope), identifier)
+            boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), identifier)
             if boundary:
                 geometry = ESDLGeometry.create_geometry_from_geom(boundary)
                 area.geometry = geometry
@@ -1975,7 +2008,9 @@ def get_boundary_info(info):
             # if boundary:
             #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
 
-    boundaries = get_subboundaries_from_service(scope, subscope, identifier)
+    boundaries = get_subboundaries_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)),
+                                                esdl.AreaScopeEnum.from_string(str.upper(subscope)),
+                                                identifier)
     # result (boundaries) is an ARRAY of:
     # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
     # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
@@ -1983,10 +2018,14 @@ def get_boundary_info(info):
     if not boundaries:
         send_alert('Error processing boundary information or no boundary information returned')
 
+
+    area_list = []
+
     for boundary in boundaries:
         geom = None
         try:
-            geom = json.loads(boundary["geom"])
+#            geom = json.loads(boundary["geom"])
+            geom = boundary["geom"]
         except Exception as e:
             print('Error parsing JSON from GEIS boundary service: '+ str(e))
 
@@ -2010,7 +2049,26 @@ def get_boundary_info(info):
             # boundary = create_boundary_from_contour(area_contour)
             # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
 
-            emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
+            for i in range(0, len(geom['coordinates'])):
+                if len(geom['coordinates']) > 1:
+                    area_id_number = " ({} of {})".format(i + 1, len(geom['coordinates']))
+                else:
+                    area_id_number = ""
+                area_list.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": geom['coordinates'][i]
+                    },
+                    "properties": {
+                        "id": sub_area.id + area_id_number,
+                        "KPIs": []
+                    }
+                })
+
+    emit('geojson', {"layer": "area_layer", "geojson": area_list})
 
     print('Ready processing boundary information')
 
