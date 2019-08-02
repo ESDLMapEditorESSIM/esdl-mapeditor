@@ -2863,8 +2863,8 @@ def process_command(message):
         emit('carrier_list', carrier_list)
 
     if message['cmd'] == 'set_building_color_method':
-        session["color_method"] = message['method']
-        print(session["color_method"])
+        set_session("color_method", message['method'])
+        print(get_session("color_method"))
 
         instance = es_edit.instance
         if instance:
