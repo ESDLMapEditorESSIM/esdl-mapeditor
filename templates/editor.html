@@ -523,6 +523,7 @@
             initialize_ES = document.getElementById('initialize_ES').checked;
             add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
 
+            show_loader();
             socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope: subscope,
                 initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
         }
