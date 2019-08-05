@@ -335,7 +335,7 @@
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
                     var id = line.id;
-                    console.log('line clicked: ' + line.title + '(' + line.type + ')');
+                    // console.log('line clicked: ' + line.title + '(' + line.type + ')');
 
                     if (connecting_assets) {
                         connectAssets(line);
@@ -397,12 +397,12 @@
         //  Connecting assets (This way of connecting is not used now and button currently disabled)
         // ------------------------------------------------------------------------------------------------------------
         function connectAssets(object) {
-            console.log('this object is either a line or a marker: ');
-            console.log(object);
+            // console.log('this object is either a line or a marker: ');
+            // console.log(object);
             if (first_clicked) {
                 first_clicked = false;
                 if (first_clicked_id == object.id) {       // clicked same asset twice
-                    console.log('first clicked cancelled');
+                    // console.log('first clicked cancelled');
                 } else {                            // connect two assets
                     document.getElementById('conn_asset_id2').innerHTML = object.id;
                     document.getElementById('conn_asset_name2').innerHTML = object.name;
@@ -410,7 +410,7 @@
                     document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
                     document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
 
-                    console.log('second clicked' + object.id + ', connecting...');
+                    // console.log('second clicked' + object.id + ', connecting...');
                     socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
 
                     // TODO: timer to clear sidebar?
@@ -426,7 +426,7 @@
                 document.getElementById('conn_asset_result').innerHTML = '';
                 document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
 
-                console.log('first clicked ' + first_clicked_id);
+                // console.log('first clicked ' + first_clicked_id);
             }
         }
 
@@ -681,13 +681,13 @@
         // ------------------------------------------------------------------------------------------------------------
         function set_marginal_costs(asset_id) {
             mc = document.getElementById('marg_costs').value;
-            console.log(mc);
+            // console.log(mc);
             socket.emit('command', {cmd: 'set_marg_costs', asset_id: asset_id, marg_costs: mc});
         }
 
         function marginal_costs_window(asset_id, mc) {
-            console.log(typeof(mc));
-            console.log(mc);
+            // console.log(typeof(mc));
+            // console.log(mc);
             if (mc == null) { mc = ''; }
 
             sidebar_ctr = sidebar.getContainer();
@@ -831,7 +831,7 @@
         //
         // ------------------------------------------------------------------------------------------------------------
         setPortProfile = function(e, marker_id, port_id) {
-            console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
+            // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
 
@@ -883,8 +883,8 @@
         }
 
         function connectAsset(e, feature_id, port_id) {
-            console.log('connectAsset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
-            //console.log(e);
+            // console.log('connectAsset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
+            // console.log(e);
             if (connect_ports != null) {
                 socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
                 connect_ports = null;
@@ -1001,11 +1001,11 @@
         // format-number-with-si-prefix.js
         // https://gist.github.com/cho45/9968462
         function formatN (n) {
-            console.log("n: ", n);
+            // console.log("n: ", n);
             var nn = n.toExponential(2).split(/e/);
-            console.log("nn: ", nn)
+            // console.log("nn: ", nn)
             var u = Math.floor(+nn[1] / 3);
-            console.log("u: ", u)
+            // console.log("u: ", u)
             return nn[0] * Math.pow(10, +nn[1] - u * 3) + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
         }
 
@@ -1015,9 +1015,9 @@
                 return val_s + ' kton CO2';
             } else {
                 val_s = formatN(val);
-                console.log(val);
-                console.log(unit);
-                console.log(val_s);
+                // console.log(val);
+                // console.log(unit);
+                // console.log(val_s);
                 return val_s + unit;
             }
         }
@@ -1143,7 +1143,7 @@
 
         function remove_layer(id) {
             socket.emit('command', {cmd: 'remove_layer', id: id});
-            console.log('remove layer: '+id);
+            // console.log('remove layer: '+id);
             map.removeLayer(wms_layer_list[id].layer_ref);
             delete wms_layer_list[id];
         }
@@ -1151,12 +1151,12 @@
         function click_layer(id) {
             checkbox = document.getElementById('cb_'+id);
             if (checkbox.checked) {
-                console.log('add layer to map: '+id);
+                // console.log('add layer to map: '+id);
                 wms_layer_list[id].layer_ref.addTo(map);
                 wms_layer_list[id].layer_ref.bringToFront();
                 wms_layer_list[id].visible = true;
             } else {
-                console.log('remove layer from map: '+id);
+                // console.log('remove layer from map: '+id);
                 map.removeLayer(wms_layer_list[id].layer_ref);
                 wms_layer_list[id].visible = false;
             }
@@ -1207,7 +1207,7 @@
         }
 
         function show_es_info(es_attrs) {
-            console.log(es_attrs);
+            // console.log(es_attrs);
 
             sidebar_ctr = sidebar.getContainer();
 
@@ -1235,8 +1235,8 @@
             $.ajax({
 		        url: '{{dir_settings.resource_prefix}}load_animation',
                 success: function(data){
-                    console.log('succes of zo ');
-                    console.log(data);
+                    // console.log('succes');
+                    // console.log(data);
 
                     var geoJsonLayer = L.geoJson(data, {
                         style: function(feature) {
@@ -1307,7 +1307,7 @@
             });
 
             socket.on('add_marker', function(point_coords) {
-                console.log(point_coords);
+                // console.log(point_coords);
 
                 var marker = L.Marker(point_coords);
                 esdl_layer.addLayer(marker); // marker.addTo(map);
@@ -1678,6 +1678,7 @@
             });
 
             socket.on('alert', function(message) {
+                hide_loader();      // when backend sends error message, stop displaying loader
                 alert(message);
             });
 
@@ -1749,9 +1750,9 @@
 
                 // coordinates are in CRS WGS84 (Lat/Lon)
                 if (info_type == 'MP-WGS84') {
-                    console.log('received MP-WGS84')
+                    // console.log('received MP-WGS84')
                     var mp = geometry['coordinates'];
-                    console.log(mp);
+                    // console.log(mp);
 
                     for (i=0; i<mp.length; i++) {
                         polygon = mp[i];
@@ -1763,7 +1764,7 @@
                                 coordinates: polygon
                             }
                         };
-                        console.log(areaBoundary);
+                        // console.log(areaBoundary);
                         L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(area_layer);
                     }
                 }
@@ -1885,8 +1886,8 @@
             });
 {% endif %}
             socket.on('show_es_info', function(es_attrs) {
-                console.log('show es info received');
-                console.log(es_attrs);
+                // console.log('show es info received');
+                // console.log(es_attrs);
                 show_es_info(es_attrs);
             });
 
@@ -2203,7 +2204,7 @@
         // this event is fired for all contextmenu clicks
         // TODO: how to filter add profile in a better way???
         menu_item_text = e.el.innerText;
-        console.log(e);
+        // console.log(e);
 
 //        if (menu_item_text.substring(0, 11) == 'Set profile') {
 //            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));

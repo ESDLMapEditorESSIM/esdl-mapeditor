@@ -125,7 +125,10 @@ esdl_config = {
                 }
             ]
         },
-    ],
+    ]
+}
+
+"""
     "ESSIM": {
         "ESSIM_host": "http://geis.hesi.energy:8112",
         "ESSIM_path": "/essim/simulation",
@@ -136,3 +139,4 @@ esdl_config = {
         "end_datetime": "2016-01-01T00:00:00+0100"
     }
 }
+"""

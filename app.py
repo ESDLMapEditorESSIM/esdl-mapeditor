@@ -90,9 +90,9 @@ AREA_FILLCOLOR = 'red'
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
 
-ESDL_STORE_PORT = '3003'
+# ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
-store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + '/store/'
+store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.ESDL_STORE_PORT + '/store/'
 
 # handler to retrieve E
 esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
@@ -253,7 +253,7 @@ def start_ESSIM():
 
     esdlstr = esh.to_string()
 
-    ESSIM_config = esdl_config.esdl_config['ESSIM']
+    ESSIM_config = settings.essim_config
 
     url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
     # print('ESSIM url: ', url)
@@ -289,7 +289,6 @@ def start_ESSIM():
             #print(result)
             id = result['id']
             set_session('es_simid', id)
-            print(id)
             # emit('', {})
         else:
             send_alert('Error starting ESSIM simulation - response '+ str(r.status_code) + ' with reason: ' + str(r.reason))
@@ -440,7 +439,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
         potential_name = potential.name
         if potential_geometry:
             if isinstance(potential_geometry, esdl.WKT):
-                print(potential_geometry)
+                # print(potential_geometry)
                 emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
                                       'name': potential_name, 'boundary_type': 'potential'})
 
@@ -721,16 +720,16 @@ def serve_static(path):
 
 @app.route('/simulation_progress')
 def get_simulation_progress():
-    if 'es_simid' in session:
-        es_simid = get_session('es_simid')
-        ESSIM_config = esdl_config.esdl_config['ESSIM']
+    es_simid = get_session('es_simid')
+    if es_simid:
+        ESSIM_config = settings.essim_config
         url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
 
         try:
             r = requests.get(url + '/status')
             if r.status_code == 200:
                 result = r.text
-                print(result)
+                # print(result)
                 # emit('update_simulation_progress', {'percentage': result, 'url': ''})
                 if float(result) >= 1:
                     r = requests.get(url)
@@ -758,6 +757,8 @@ def get_simulation_progress():
             send_alert('Error accessing ESSIM API')
             abort(500, 'Error accessing ESSIM API')
     else:
+        print("No es_simid in session")
+        print(session)
         abort(500, 'Simulation not running')
 
 
@@ -765,18 +766,20 @@ def get_simulation_progress():
 def animate_load():
 
     # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
+    ESSIM_config = settings.essim_config
 
-    if 'simulationRun' in session:
+    simulation_run = get_session('simulationRun')
+    if simulation_run:
         esh = get_handler()
         es_edit = esh.get_energy_system()
 
-        sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-        edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
 
         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        kpi_results = ESSIM_KPIs(es_edit, get_session('simulationRun'), influxdb_startdate, influxdb_enddate)
+        kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
         animation = kpi_results.animate_load_geojson()
         print(animation)
         return animation, 200
@@ -2264,8 +2267,7 @@ def process_command(message):
         send_alert("Session has timed out, please refresh")
         return
     #print (message)
-    print (session)
-    print (get_session())
+    #print (session)
     esh = get_handler()
     if esh is None:
         print('ERROR finding esdlSystemHandler, Session issue??')
@@ -2930,7 +2932,7 @@ def process_command(message):
 
     if message['cmd'] == 'set_building_color_method':
         set_session("color_method", message['method'])
-        print(get_session("color_method"))
+        # print(get_session("color_method"))
 
         instance = es_edit.instance
         if instance:
@@ -2988,14 +2990,17 @@ def process_command(message):
     if message['cmd'] == 'calculate_ESSIM_KPIs':
         # session['simulationRun'] = '5d10f273783bac5eff4575e8'
 
-        if 'simulationRun' in session:
-            sdt = datetime.strptime(essim_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-            edt = datetime.strptime(essim_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        ESSIM_config = settings.essim_config
+
+        simulation_run = get_session('simulationRun')
+        if simulation_run:
+            sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+            edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
 
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            kpi_results = ESSIM_KPIs(es_edit, get_session('simulationRun'), influxdb_startdate, influxdb_enddate)
+            kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
             res = kpi_results.calculate_kpis()
             emit('show_ESSIM_KPIs', res)
         else:
@@ -3165,7 +3170,7 @@ def process_file_command(message):
                 title = 'Store id: ' + es_id
 
             set_session('es_filename', title)  # TODO: seperate filename and title
-            process_energy_system(esh, None, title)
+            process_energy_system.submit(esh, None, title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(es_id))
 
