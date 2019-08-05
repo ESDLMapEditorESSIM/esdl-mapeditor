@@ -1,14 +1,22 @@
 /*
- custom css for ESDL Webeditor
- */
-
-
+    CSS for ESDL map editor
+*/
 html, body
 {
     position: relative;
     height: 100%;
+    padding: 0;
+    margin: 0;
+}
+.header, .footer {
+  background-color: grey;
+  color: white;
+  padding: 4px;
 }
 
+/*
+    Using Flexbox to make map full screen
+*/
 .flexbox-parent
 {
     width: 100%;
@@ -23,7 +31,6 @@ html, body
 
     background: rgba(255, 255, 255, .1);
 }
-
 .flexbox-item
 {
     padding: 0px;
@@ -33,6 +40,42 @@ html, body
     flex: 1; /* same as flex: 1 1 auto; */
 }
 
+/*
+    ESDL Asset styles
+*/
+.circle {
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+}
+.circle-img {
+    vertical-align: middle;
+}
+.Producer {
+    background: #93a800;
+    border: 3px solid #6b7a00;
+}
+.Consumer {
+    background: #649ec9;
+    border: 3px solid #477393;
+}
+.Conversion {
+    background: #b574ba;
+    border: 3px solid #7030a0;
+}
+.Storage {
+    background: #cb1325;
+    border: 3px solid #950b18;
+}
+.Transport {
+    background: #ffcb00;
+    border: 3px solid #bc9500;
+}
+
+/*
+    Asset menu
+*/
 #asset_menu-menu .ui-menu-item {
     margin-left: 0.5em;
 }
@@ -42,7 +85,7 @@ html, body
 }
 
 /*
-css for Legend Control box
+    Legend Control box
 */
 .info {
     padding: 6px 8px;
@@ -51,6 +94,15 @@ css for Legend Control box
     background: rgba(255,255,255,0.8);
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
+}
+.legend_title {
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    font-weight: bold;
+}
+.legend_select {
+    line-height: 20px;
+    color: #000080;
+    padding: 6px 2px;
 }
 .legend {
     line-height: 18px;
@@ -64,7 +116,9 @@ css for Legend Control box
     opacity: 0.7;
 }
 
-/* Loader */
+/*
+    Loader
+*/
 #loader {
   position: absolute;
   left: 50%;

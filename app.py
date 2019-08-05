@@ -419,9 +419,11 @@ def find_area_info_geojson(building_list, area_list, this_area):
                         "properties": {
                             "id": id,
                             "name": name,
-                            "buildingYear": asset.buildingYear,
-                            "floorArea": asset.floorArea,
-                            "buildingType": building_type
+                            "KPIs": {
+                                "buildingYear": asset.buildingYear,
+                                "floorArea": asset.floorArea,
+                                "buildingType": building_type
+                            }
                         }
                     })
         else: # No AbstractBuilding
@@ -566,7 +568,7 @@ def find_boundaries_in_ESDL(top_area):
     # _find_more_area_boundaries(top_area)
     area_list, building_list = create_area_info_geojson(top_area)
 
-    #print(area_list)
+    # Sending an empty list triggers removing the legend at client side
     print('Sending boundary information to client, size={}'.format(getsizeof(area_list)))
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
     print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
