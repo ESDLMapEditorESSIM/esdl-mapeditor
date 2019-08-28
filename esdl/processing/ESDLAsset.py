@@ -1,5 +1,6 @@
 from esdl import esdl
 from pyecore.ecore import EClass
+from uuid import uuid4
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Functions to find assets in, remove assets from and add assets to areas and buildings
@@ -185,6 +186,46 @@ def get_carrier_list(es):
     return carrier_list
 
 
+def get_sector_list(es):
+    sector_list = []
+    esi = es.energySystemInformation
+    if esi:
+        sectors = esi.sectors
+        if sectors:
+            sector = sectors.sector
+
+            if sector:
+                for s in sector:
+                    sector_info = { 'id': s.id, 'name': s.name, 'descr': s.description, 'code': s.code }
+                    sector_list.append(sector_info)
+
+    return sector_list
+
+
+def add_sector(es, sector_name):
+    esi = es.energySystemInformation
+    if esi:
+        sectors = esi.sectors
+        if sectors:
+            sector = sectors.sector
+            sector_info = esdl.Sector()
+            sector_info.id = str(uuid4())
+            sector_info.name = sector_name
+            sector.append(sector_info)
+
+
+def remove_sector(es, sector_id):
+    esi = es.energySystemInformation
+    if esi:
+        sectors = esi.sectors
+        if sectors:
+            sector = sectors.sector
+            if sector:
+                for s in sector:
+                    if s.id == sector_id:
+                        sector.remove(s)
+
+
 def get_asset_capability_type(asset):
     if isinstance(asset, esdl.Producer): return 'Producer'
     if isinstance(asset, esdl.Consumer): return 'Consumer'
@@ -192,6 +233,7 @@ def get_asset_capability_type(asset):
     if isinstance(asset, esdl.Transport): return 'Transport'
     if isinstance(asset, esdl.Conversion): return 'Conversion'
     return 'none'
+
 
 def get_capabilities_list():
     capabilities = dict()

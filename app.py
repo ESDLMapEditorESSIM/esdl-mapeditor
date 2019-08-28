@@ -141,6 +141,7 @@ def store_ESDL_EnergySystem(id, esh):
 def send_ESDL_as_file(esh, name):
     esh.save(filename='/tmp/temp.xmi')
 
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  GEIS Boundary service access
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3044,6 +3045,62 @@ def process_command(message):
             es_edit.description = value
             es_edit.description = value
 
+    if message['cmd'] == 'add_sector':
+        name = message['name']
+        descr = message['descr']
+        code = message['code']
+        esi = es_edit.energySystemInformation
+        if not esi:
+            esi_id = str(uuid.uuid4())
+            esi = esdl.EnergySystemInformation()
+            esi.id = esi_id
+            es_edit.energySystemInformation = esi
+
+        sectors = esi.sectors
+        if not sectors:
+            sectors_id = str(uuid.uuid4())
+            sectors = esdl.Sectors()
+            sectors.id = sectors_id
+            esi.sectors = sectors
+
+        sector = sectors.sector
+        sector_info = esdl.Sector()
+        sector_info.id = str(uuid.uuid4())
+        sector_info.name = name
+        sector_info.description = descr
+        sector_info.code = code
+        sector.append(sector_info)
+
+        sector_list = ESDLAsset.get_sector_list(es_edit)
+        emit('sector_list', sector_list)
+
+    if message['cmd'] == 'remove_sector':
+        id = message['id']
+        esi = es_edit.energySystemInformation
+        sectors = esi.sectors
+        sector = sectors.sector
+        for s in sector:
+            if s.id == id:
+                sector.remove(s)
+
+        sector_list = ESDLAsset.get_sector_list(es_edit)
+        emit('sector_list', sector_list)
+
+    if message['cmd'] == 'set_sector':
+        asset_id = message['asset_id']
+        sector_id = message['sector_id']
+
+        instance = es_edit.instance
+        area = instance[0].area
+        asset = ESDLAsset.find_asset(area, asset_id)
+
+        esi = es_edit.energySystemInformation
+        sectors = esi.sectors
+        sector = sectors.sector
+        for s in sector:
+            if s.id == sector_id:
+                asset.sector = s
+
     set_handler(esh)
     session.modified = True
 
@@ -3067,6 +3124,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     emit('clear_ui')
     find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
     carrier_list = ESDLAsset.get_carrier_list(es)
+    sector_list = ESDLAsset.get_sector_list(es)
 
     create_port_to_asset_mapping(area, mapping)
     process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
@@ -3089,6 +3147,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     emit('area_bld_list', area_bld_list)
     emit('add_connections', conn_list)
     emit('carrier_list', carrier_list)
+    emit('sector_list', sector_list)
 
     set_session('es_title',es.name)
     set_handler(esh)
