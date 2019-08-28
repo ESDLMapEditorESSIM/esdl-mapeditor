@@ -180,7 +180,8 @@ class EnergySystemHandler:
         instance = esdl.Instance(id=str(uuid4()), name=inst_title)
         self.energy_system.instance.append(instance)
 
-        area = esdl.Area(id=str(uuid4()), name=area_title)
+        # TODO: check if this (adding scope) solves error????
+        area = esdl.Area(id=str(uuid4()), name=area_title, scope=esdl.AreaScopeEnum.from_string('UNDEFINED'))
         instance.area = area
 
         self.resource = self.rset.create_resource(StringURI('string_resource.esdl'))
