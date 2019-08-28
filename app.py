@@ -385,8 +385,12 @@ def find_area_info_geojson(building_list, area_list, this_area):
                             }
                         })
 
+                    # small hack:
+                    # get_boundary_from_service returns different struct than create_boundary_from_geometry
+                    boundary_wgs = boundary_wgs['geom']
+
     if boundary_wgs:
-        update_asset_geometries3(this_area, boundary_wgs['geom'])
+        update_asset_geometries3(this_area, boundary_wgs)
 
     assets = this_area.asset
     for asset in assets:
