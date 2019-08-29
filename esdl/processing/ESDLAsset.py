@@ -1,6 +1,6 @@
 from esdl import esdl
 from pyecore.ecore import EClass
-from uuid import uuid4
+import uuid
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Functions to find assets in, remove assets from and add assets to areas and buildings
@@ -186,6 +186,7 @@ def get_carrier_list(es):
     return carrier_list
 
 
+# TODO: ESDLAsset is not the right place?
 def get_sector_list(es):
     sector_list = []
     esi = es.energySystemInformation
@@ -202,18 +203,27 @@ def get_sector_list(es):
     return sector_list
 
 
-def add_sector(es, sector_name):
+# TODO: ESDLAsset is not the right place?
+def add_sector(es, sector_name, sector_code, sector_descr):
     esi = es.energySystemInformation
-    if esi:
-        sectors = esi.sectors
-        if sectors:
-            sector = sectors.sector
-            sector_info = esdl.Sector()
-            sector_info.id = str(uuid4())
-            sector_info.name = sector_name
-            sector.append(sector_info)
+    if not esi:
+        esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+        es.energySystemInformation = esi
+    sectors = esi.sectors
+    if not sectors:
+        sectors = esdl.Sectors(id=str(uuid.uuid4()))
+        esi.sectors = sectors
+
+    sector = sectors.sector
+    sector_info = esdl.Sector()
+    sector_info.id = str(uuid.uuid4())
+    sector_info.name = sector_name
+    sector_info.code = sector_code
+    sector_info.description = sector_descr
+    sector.append(sector_info)
 
 
+# TODO: ESDLAsset is not the right place?
 def remove_sector(es, sector_id):
     esi = es.energySystemInformation
     if esi:
