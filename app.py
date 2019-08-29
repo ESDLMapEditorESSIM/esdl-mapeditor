@@ -2129,7 +2129,7 @@ def add_control_strategy_for_asset(asset_id, cs):
             if service.energyAsset.id == asset_id:
                 services_list.remove(service)
 
-    services.service = cs
+    services.service.append(cs)
 
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
@@ -3053,40 +3053,13 @@ def process_command(message):
         name = message['name']
         descr = message['descr']
         code = message['code']
-        esi = es_edit.energySystemInformation
-        if not esi:
-            esi_id = str(uuid.uuid4())
-            esi = esdl.EnergySystemInformation()
-            esi.id = esi_id
-            es_edit.energySystemInformation = esi
-
-        sectors = esi.sectors
-        if not sectors:
-            sectors_id = str(uuid.uuid4())
-            sectors = esdl.Sectors()
-            sectors.id = sectors_id
-            esi.sectors = sectors
-
-        sector = sectors.sector
-        sector_info = esdl.Sector()
-        sector_info.id = str(uuid.uuid4())
-        sector_info.name = name
-        sector_info.description = descr
-        sector_info.code = code
-        sector.append(sector_info)
-
+        ESDLAsset.add_sector(es_edit, name, code, descr)
         sector_list = ESDLAsset.get_sector_list(es_edit)
         emit('sector_list', sector_list)
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
-        esi = es_edit.energySystemInformation
-        sectors = esi.sectors
-        sector = sectors.sector
-        for s in sector:
-            if s.id == id:
-                sector.remove(s)
-
+        ESDLAsset.remove_sector(id)
         sector_list = ESDLAsset.get_sector_list(es_edit)
         emit('sector_list', sector_list)
 
