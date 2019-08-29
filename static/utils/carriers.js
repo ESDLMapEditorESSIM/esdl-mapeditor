@@ -7,16 +7,16 @@ function update_carrier_list(carr_list) {
     carrier_list = carr_list;
     // console.log(carr_list);
 
-    var select = document.getElementById('carrier_select');
-    select.innerHTML = '';
-    for (i=0; i<carrier_list.length; i++) {
-        var option = document.createElement("option");
-        if (i==0) { option.classList.add("ui-state-active"); }
-        option.text = carrier_list[i]['name']
-        option.value = carrier_list[i]['id']
-        select.add(option, null);
-    }
-    $("#carrier_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
+//    var select = document.getElementById('carrier_select');
+//    select.innerHTML = '';
+//    for (i=0; i<carrier_list.length; i++) {
+//        var option = document.createElement("option");
+//        if (i==0) { option.classList.add("ui-state-active"); }
+//        option.text = carrier_list[i]['name']
+//        option.value = carrier_list[i]['id']
+//        select.add(option, null);
+//    }
+//    $("#carrier_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
 }
 
 setCarrier = function(e) {

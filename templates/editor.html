@@ -47,6 +47,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/area_building_layer.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/sectors.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/carriers.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -1868,6 +1869,7 @@
             <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
             <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
 
+            <button id="edr-asset-btn" onclick="get_esdl_edr_asset('{{dir_settings.resource_prefix}}edr_asset', 'a4ce4d97-6cd3-4bbb-98cd-aec34c99400d');" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
             <select id="asset_menu" style='position:relative;z-index:100'>
                 <option value="Battery">Battery</option>
                 <option value="CHP">Combined Heat and Power</option>

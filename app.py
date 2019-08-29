@@ -36,6 +36,7 @@ from extensions.session_manager import set_handler, get_handler, get_session, se
 import esdl_config
 import settings
 
+
 if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
@@ -790,6 +791,57 @@ def animate_load():
         return animation, 200
     else:
         abort(500, 'No simulation results')
+
+
+@app.route('/edr_assets')
+def get_edr_assets():
+    edr_url = 'https://edr.hesi.energy/store/tagged?tag=asset'
+    print('accessing URL: '+edr_url)
+
+    try:
+        r = requests.get(edr_url)
+        if r.status_code == 200:
+            result = json.loads(r.text)
+            asset_list = []
+            for a in result:
+                asset = {'id': a["id"], 'title': a["title"], 'description': a["description"]}
+                asset_list.append(asset)
+
+            return (jsonify({'asset_list': asset_list})), 200
+        else:
+            print('code: ', r.status_code)
+            send_alert('Error in getting the EDR assets')
+            abort(500, 'Error in getting the EDR assets')
+    except Exception as e:
+        print('Exception: ')
+        print(e)
+        send_alert('Error accessing EDR API')
+        abort(500, 'Error accessing EDR API')
+
+
+@app.route('/edr_asset/<id>')
+def get_esdl_edr_asset(id):
+    edr_url = 'https://edr.hesi.energy/store/esdl/'+id+'?format=xml'
+    print('accessing URL: '+edr_url)
+
+    try:
+        r = requests.get(edr_url)
+        if r.status_code == 200:
+            result = r.text
+            print (result)
+            asset = ESDLAsset.load_asset_from_string(result)
+            print(asset)
+            return 'OK', 200
+        else:
+            print('code: ', r.status_code)
+            send_alert('Error in getting the ESDL for EDR asset')
+            abort(500, 'Error in getting the ESDL for EDR asset')
+    except Exception as e:
+        print('Exception: ')
+        print(e)
+        send_alert('Error accessing EDR API')
+        abort(500, 'Error accessing EDR API')
+
 
 
 # ---------------------------------------------------------------------------------------------------------------------

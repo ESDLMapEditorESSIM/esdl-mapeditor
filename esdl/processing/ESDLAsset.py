@@ -1,5 +1,7 @@
 from esdl import esdl
 from pyecore.ecore import EClass
+from pyecore.resources import ResourceSet
+from esdl.esdl_handler import StringURI
 import uuid
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -266,7 +268,14 @@ def get_capability_list(capability=esdl.Producer):
                 subtype_list.append(eclassifier.name)
     return subtype_list
 
-
+def load_asset_from_string(esdl_string):
+    uri = StringURI('from_string.esdl', esdl_string)
+    # self._new_resource_set()
+    rset = ResourceSet()
+    resource = rset.create_resource(uri)
+    resource.load()
+    esdl_instance = resource.contents[0]
+    return esdl_instance
 
 
 
