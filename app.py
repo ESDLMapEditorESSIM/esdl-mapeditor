@@ -35,6 +35,7 @@ from extensions.heatnetwork import HeatNetwork
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session
 import esdl_config
 import settings
+from edr_assets import EDR_assets
 
 
 if os.environ.get('GEIS'):
@@ -2340,9 +2341,16 @@ def process_command(message):
         assettype = message['asset']
         asset_name = message['asset_name']
 
-        module = importlib.import_module('esdl.esdl')
-        class_ = getattr(module, assettype)
-        asset = class_()
+        # TODO: Quick 'hack' to add EDR assets, discuss with Ewoud
+        edr_asset = get_session('adding_edr_assets')
+        if edr_asset:
+            assettype = type(edr_asset).__name__
+            set_session('adding_edr_assets', None)
+            asset = edr_asset
+        else:
+            module = importlib.import_module('esdl.esdl')
+            class_ = getattr(module, assettype)
+            asset = class_()
 
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an OutPort
@@ -3129,6 +3137,17 @@ def process_command(message):
         for s in sector:
             if s.id == sector_id:
                 asset.sector = s
+
+    if message['cmd'] == 'get_edr_asset':
+        edr_asset_id = message['edr_asset_id']
+        edr_assets = EDR_assets()
+        edr_asset = edr_assets.get_asset_from_EDR(edr_asset_id)
+        if edr_asset:
+            edr_asset_type = type(edr_asset).__name__
+            emit('place_edr_asset', edr_asset_type)
+            set_session('adding_edr_assets', edr_asset)
+        else:
+            send_alert('Error getting ESDL model from EDR')
 
     set_handler(esh)
     session.modified = True

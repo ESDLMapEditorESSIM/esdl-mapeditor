@@ -268,6 +268,7 @@ def get_capability_list(capability=esdl.Producer):
                 subtype_list.append(eclassifier.name)
     return subtype_list
 
+
 def load_asset_from_string(esdl_string):
     uri = StringURI('from_string.esdl', esdl_string)
     # self._new_resource_set()

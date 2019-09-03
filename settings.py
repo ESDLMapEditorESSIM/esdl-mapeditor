@@ -34,6 +34,11 @@ IDM_PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AM
 #ASYNC_MODE = 'gevent' # default for non uWGSI deployments
 ASYNC_MODE = None # default for non uWGSI deployments
 
+edr_config = {
+    "EDR_host": "https://edr.hesi.energy",
+    "EDR_path": "/store/esdl/",
+}
+
 if os.environ.get('GEIS'):
     # Settings for in GEIS cloud behind redbird reverse proxy
     print('Starting application with GEIS settings (hosting at geis.hesi.energy/webeditor)')
