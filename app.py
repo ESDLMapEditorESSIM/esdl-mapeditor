@@ -707,7 +707,7 @@ def download_esdl():
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
         #wrapped_io = FileWrapper(stream)
-        print(content)
+        #print(content)
         headers = dict()
         headers['Content-Type'] =  'application/esdl+xml'
         headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
@@ -1486,7 +1486,7 @@ def get_connected_to_info(asset):
             for conn_port in conn_to:
                 conn_asset = conn_port.energyasset #small a instead of Asset
                 ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
-        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': p.carrier, 'ct_list': ct_list})
+        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': p.carrier.name, 'ct_list': ct_list})
     #print(result)
     return result
 
@@ -2643,6 +2643,10 @@ def process_command(message):
             attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
             name = asset.name
             connected_to_info = get_connected_to_info(asset)
+            if asset.controlStrategy:
+                ctrl_strategy = asset.controlStrategy.name
+            else:
+                ctrl_strategy = None
             asset_doc = asset.__doc__
         else:
             pot = ESDLAsset.find_potential(area, object_id)
@@ -2652,10 +2656,11 @@ def process_command(message):
             attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
             name = pot.name
             connected_to_info = []
+            ctrl_strategy = None
             asset_doc = pot.__doc__
 
         if name is None: name = ''
-        emit('asset_info', {'id': object_id, 'name': name, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'asset_doc': asset_doc})
+        emit('asset_info', {'id': object_id, 'name': name, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'ctrl_strategy': ctrl_strategy, 'asset_doc': asset_doc})
 
     if message['cmd'] == 'get_conductor_info':
         asset_id = message['id']

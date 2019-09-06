@@ -1348,7 +1348,10 @@
                 asset_attrs = asset_info['attrs'];
                 asset_doc = asset_info['asset_doc']
                 connected_to_info = asset_info['connected_to_info'];
+                ctrl_strategy = asset_info['ctrl_strategy'];
                 //console.log(asset_attrs);
+                //console.log(connected_to_info);
+                //console.log(ctrl_strategy);
 
                 sidebar_ctr = sidebar.getContainer();
 
@@ -1430,6 +1433,11 @@
                 }
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+                if (ctrl_strategy) {
+                    sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
+                }
 
                 sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
                 table = '<table>';
