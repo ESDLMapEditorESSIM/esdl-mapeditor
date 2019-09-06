@@ -707,6 +707,7 @@ def download_esdl():
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
         #wrapped_io = FileWrapper(stream)
+        print(content)
         headers = dict()
         headers['Content-Type'] =  'application/esdl+xml'
         headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
@@ -1485,7 +1486,7 @@ def get_connected_to_info(asset):
             for conn_port in conn_to:
                 conn_asset = conn_port.energyasset #small a instead of Asset
                 ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
-        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'ct_list': ct_list})
+        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': p.carrier, 'ct_list': ct_list})
     #print(result)
     return result
 

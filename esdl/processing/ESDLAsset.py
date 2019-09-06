@@ -180,8 +180,8 @@ def get_carrier_list(es):
                     if isinstance(carrier, esdl.EnergyCarrier):
                         carrier_info['energyContent'] = carrier.energyContent
                         carrier_info['emission'] = carrier.emission
-                        carrier_info['energyCarrierType'] = carrier.energyCarrierType.name #ENUM
-                        carrier_info['stateOfMatter'] = carrier.stateOfMatter.name #ENUM
+                        carrier_info['energyCarrierType'] = carrier.energyCarrierType.__str__() #ENUM
+                        carrier_info['stateOfMatter'] = carrier.stateOfMatter.__str__() #ENUM
 
                     # carrier_list.append({carrier.id: carrier_info})
                     carrier_list.append(carrier_info)

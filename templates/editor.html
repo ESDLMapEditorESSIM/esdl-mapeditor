@@ -1413,16 +1413,20 @@
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                sidebar_ctr.innerHTML += '<h2>Remove ports:</h2>';
+                sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
                 table = '<table>';
                 for (i=0; i<connected_to_info.length; i++) {
                     pname = connected_to_info[i]['pname'];
                     if (pname == '') {
                         pname = 'No name';
                     }
+                    pcarr = connected_to_info[i]['pcarr'];
+                    if (pcarr == '') {
+                        pcarr = 'No carrier';
+                    }
                     table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
                     table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
-                        + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
+                        + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
                 }
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
