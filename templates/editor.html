@@ -1187,20 +1187,22 @@
 
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0        1          2       3           4       5       6       7        8
-                // 'point'  asset      name    id      class_name  lat     lon     [ports]  capability
-                // 'line'   asset      name    id      class_name  [...]   [ports]
-                // 'point'  potential  name    id      class_name  lat     lon
+                // 0         1          2       3           4       5          6       7
+                // 'point'   asset      name    id      class_name  [lat,lon]  [ports] capability
+                // 'line'    asset      name    id      class_name  [...]      [ports]
+                // 'polygon' asset      name    id      class_name  [...]      [ports] capability
+                // 'point'   potential  name    id      class_name  [lat,lon]
 
                 // hide_loader();
 
                 list = options['list'];
+                console.log(list);
 
                 for (i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
 
                     if (list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') {
-                        capability = list[i][8];
+                        capability = list[i][7];
                         classname = 'circle ' + capability;
                     } else {
                         classname = '';
@@ -1222,7 +1224,7 @@
 
 					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][5], list[i][6]], {icon: divicon, title: title});
+                        var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title});
 
                         marker.title = title;
                         marker.id = list[i][3];
@@ -1230,8 +1232,8 @@
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
                         if (marker.asspot == 'asset') {
-                            marker.ports = list[i][7];
-                            marker.capability = list[i][8];
+                            marker.ports = list[i][6];
+                            marker.capability = list[i][7];
                         }
 
                         set_marker_handlers(marker);

@@ -1292,7 +1292,7 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
                 coord = (lat, lon)
 
                 capability_type = ESDLAsset.get_asset_capability_type(basset)
-                asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, lat, lon, port_list, capability_type])
+                asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
 
         ports = basset.port
         for p in ports:
@@ -1347,7 +1347,7 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                     lon = geom.lon
 
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
-                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, lat, lon, port_list, capability_type])
+                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], port_list, capability_type])
                 if isinstance(geom, esdl.Line):
                     coords = []
                     for point in geom.point:
@@ -1362,7 +1362,7 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                 lon = geom.lon
 
                 asset_list.append(
-                    ['point', 'potential', potential.name, potential.id, type(potential).__name__, lat, lon])
+                    ['point', 'potential', potential.name, potential.id, type(potential).__name__, [lat, lon]])
             # if isinstance(geom, esdl.Polygon):
             #     coords = []
             #     for point in geom.point:
@@ -1945,7 +1945,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             mapping[inp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
             mapping[outp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
 
-            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, middle_point.lat, middle_point.lon, 'transport'])
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], 'transport'])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
                           'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
@@ -2497,7 +2497,7 @@ def process_command(message):
 
         if assettype not in ['ElectricityCable', 'Pipe']:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, message['lat'], message['lng'], port_list, capability_type])
+            asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [message['lat'], message['lng']], port_list, capability_type])
         else:
             coords = []
             i = 0
