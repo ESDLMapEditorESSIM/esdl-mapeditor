@@ -798,7 +798,7 @@ def animate_load():
 @app.route('/edr_assets')
 def get_edr_assets():
     edr_url = 'https://edr.hesi.energy/store/tagged?tag=asset'
-    print('accessing URL: '+edr_url)
+    // print('accessing URL: '+edr_url)
 
     try:
         r = requests.get(edr_url)
@@ -819,31 +819,6 @@ def get_edr_assets():
         print(e)
         send_alert('Error accessing EDR API')
         abort(500, 'Error accessing EDR API')
-
-
-@app.route('/edr_asset/<id>')
-def get_esdl_edr_asset(id):
-    edr_url = 'https://edr.hesi.energy/store/esdl/'+id+'?format=xml'
-    print('accessing URL: '+edr_url)
-
-    try:
-        r = requests.get(edr_url)
-        if r.status_code == 200:
-            result = r.text
-            print (result)
-            asset = ESDLAsset.load_asset_from_string(result)
-            print(asset)
-            return 'OK', 200
-        else:
-            print('code: ', r.status_code)
-            send_alert('Error in getting the ESDL for EDR asset')
-            abort(500, 'Error in getting the ESDL for EDR asset')
-    except Exception as e:
-        print('Exception: ')
-        print(e)
-        send_alert('Error accessing EDR API')
-        abort(500, 'Error accessing EDR API')
-
 
 
 # ---------------------------------------------------------------------------------------------------------------------

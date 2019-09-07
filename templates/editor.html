@@ -1800,10 +1800,8 @@
             });
 
             socket.on('place_edr_asset', function(asset_type) {
-                console.log('setting asset menu to: ', asset_type);
                 $('#asset_menu').val(asset_type);
                 $("#asset_menu").selectmenu("refresh");
-                // $("#asset_menu").trigger("selectmenuchange");
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
                 initiate_draw_asset();
             });

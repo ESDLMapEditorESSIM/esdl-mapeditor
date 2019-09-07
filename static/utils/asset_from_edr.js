@@ -4,23 +4,9 @@ function get_edr_assets(url) {
     $.ajax({
         url: url,
         success: function(data){
-            console.log(data);
             edr_asset_list = data["asset_list"];
-            console.log(edr_asset_list);
         },
         dataType: "json"
-    });
-}
-
-function get_esdl_edr_asset(url, id) {
-    console.log(url);
-    console.log(id);
-    $.ajax({
-        url: url + '/' + id,
-        success: function(data){
-            console.log(data);
-        },
-        dataType: "xml"
     });
 }
 
@@ -53,5 +39,4 @@ function select_edr_asset_window(url) {
     }
 
     sidebar.show();
-
 }
