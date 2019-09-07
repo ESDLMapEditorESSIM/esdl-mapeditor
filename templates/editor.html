@@ -1801,7 +1801,9 @@
                 console.log('setting asset menu to: ', asset_type);
                 $('#asset_menu').val(asset_type);
                 $("#asset_menu").selectmenu("refresh");
-                $("#asset_menu").trigger("selectmenuchange");
+                // $("#asset_menu").trigger("selectmenuchange");
+                socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
+                initiate_draw_asset();
             });
 
             addGeoJSONListener(socket, map);
@@ -1810,6 +1812,32 @@
 
 
     <script>
+
+        function initiate_draw_asset() {
+            var select_box = document.getElementById('asset_menu');
+            console.log(select_box);
+            console.log(select_box.options);
+            console.log(select_box.selectedIndex);
+            var selected_asset = select_box.options[select_box.selectedIndex].value;
+            var marker_class_name = window[selected_asset + "Marker"];
+
+            drawControl.setDrawingOptions({
+                marker: {
+                    icon: new marker_class_name()
+                }
+            });
+
+            var line_assets = ["ElectricityCable", "Pipe"];
+            var area_assets = ["PVParc", "WindParc"];
+            if (line_assets.includes(selected_asset)) {
+                drawControl._toolbars.draw._modes.polyline.handler.enable();
+            } else if (area_assets.includes(selected_asset)) {
+                drawControl._toolbars.draw._modes.polygon.handler.enable();
+            } else {
+                drawControl._toolbars.draw._modes.marker.handler.enable();
+            }
+        }
+
         $(function() {
             $("#asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
@@ -1821,16 +1849,8 @@
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
-                var selected_asset = $(e.target).val();
-                var marker_class_name = window[selected_asset + "Marker"];
-
-                drawControl.setDrawingOptions({
-                    marker: {
-                        icon: new marker_class_name()
-                    }
-                });
-
-                drawControl._toolbars.draw._modes.marker.handler.enable();
+                socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
+                initiate_draw_asset();
             });
 
 {% if role != 'essim' %}
@@ -2130,8 +2150,8 @@
     });
 
     map.on(L.Draw.Event.CREATED, function (event) {
-        var layer = event.layer;
-        var type = event.layerType;
+        let layer = event.layer;
+        let type = event.layerType;
         layer.id = uuidv4();
 
         selected_area_bld_index = document.getElementById("area_bld_select").selectedIndex;

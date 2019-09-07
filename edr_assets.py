@@ -11,7 +11,8 @@ def send_alert(msg):
 class EDR_assets:
 
     def __init__(self):
-        self.current_asset = None
+        # self.current_asset = None
+        self.current_asset_string = ''
         self.EDR_config = settings.edr_config
         pass
 
@@ -37,8 +38,9 @@ class EDR_assets:
             if r.status_code == 200:
                 result = r.text
                 # print(result)
-                self.current_asset = ESDLAsset.load_asset_from_string(result)
-                return self.current_asset
+                self.current_asset_string = result
+                # self.current_asset = ESDLAsset.load_asset_from_string(result)
+                return self.current_asset_string
             else:
                 send_alert('Error getting EDR asset - response ' + str(r.status_code) + ' with reason: ' + str(
                     r.reason))

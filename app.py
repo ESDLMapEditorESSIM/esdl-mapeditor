@@ -1480,13 +1480,20 @@ def get_connected_to_info(asset):
     ports = asset.port
     for p in ports:
         ptype = type(p).__name__
+
+        if p.carrier:
+            pcarr = p.carrier.name
+        else:
+            pcarr = None
+
         ct_list = []
         conn_to = p.connectedTo
         if conn_to:
             for conn_port in conn_to:
                 conn_asset = conn_port.energyasset #small a instead of Asset
                 ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
-        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': p.carrier.name, 'ct_list': ct_list})
+
+        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': pcarr, 'ct_list': ct_list})
     #print(result)
     return result
 
@@ -2342,12 +2349,13 @@ def process_command(message):
         assettype = message['asset']
         asset_name = message['asset_name']
 
-        # TODO: Quick 'hack' to add EDR assets, discuss with Ewoud
-        edr_asset = get_session('adding_edr_assets')
-        if edr_asset:
-            assettype = type(edr_asset).__name__
-            set_session('adding_edr_assets', None)
-            asset = edr_asset
+        edr_asset_str = get_session('adding_edr_assets')
+        if edr_asset_str:
+            asset = ESDLAsset.load_asset_from_string(edr_asset_str)
+            # TODO: deepcopy does not work.
+            # asset = copy.deepcopy(edr_asset)
+            # Quick fix: session variable adding_edr_assets now contains ESDL string
+            assettype = type(asset).__name__
         else:
             module = importlib.import_module('esdl.esdl')
             class_ = getattr(module, assettype)
@@ -3147,13 +3155,19 @@ def process_command(message):
     if message['cmd'] == 'get_edr_asset':
         edr_asset_id = message['edr_asset_id']
         edr_assets = EDR_assets()
-        edr_asset = edr_assets.get_asset_from_EDR(edr_asset_id)
-        if edr_asset:
+        edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
+        if edr_asset_str:
+            edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
             edr_asset_type = type(edr_asset).__name__
             emit('place_edr_asset', edr_asset_type)
-            set_session('adding_edr_assets', edr_asset)
+            set_session('adding_edr_assets', edr_asset_str)
         else:
             send_alert('Error getting ESDL model from EDR')
+
+    if message['cmd'] == 'set_asset_drawing_mode':
+        mode = message['mode']
+        if mode == 'empty_assets':
+            set_session('adding_edr_assets', None)
 
     set_handler(esh)
     session.modified = True
