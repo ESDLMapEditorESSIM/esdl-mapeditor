@@ -1,19 +1,21 @@
 from esdl import esdl
 from utils.RDWGSConverter import RDWGSConverter
    
+   
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------
-    
 def convert_coordinates_into_subpolygon(coord_list):
     # print(coord_list)
     # [[x1,y1], [x2,y2], ...]
 
+    # coord_list contains coordinates in [lon, lat] order!
+
     subpolygon = esdl.SubPolygon()
     for coord_pairs in coord_list:
         point = esdl.Point()
-        point.lat = coord_pairs[0]
-        point.lon = coord_pairs[1]
+        point.lat = coord_pairs[1]
+        point.lon = coord_pairs[0]
         subpolygon.point.append(point)
 
     return subpolygon
@@ -23,8 +25,8 @@ def convert_pcoordinates_into_polygon(coord_list):
     polygon = esdl.Polygon()
 
     coord_exterior = coord_list[0]
-    exterior  = convert_coordinates_into_subpolygon(coord_exterior)
-    polygon.exterior.append(exterior)
+    exterior = convert_coordinates_into_subpolygon(coord_exterior)
+    polygon.exterior = exterior
 
     if len(coord_list) > 1:
         coord_list.pop(0)  # remove exterior polygon
@@ -82,7 +84,7 @@ def create_boundary_from_geometry(geometry):
     return geom
 
 
-def parse_esdl_subpolygon(subpol):
+def parse_esdl_subpolygon(subpol, close=True):
     ar = []
     points = subpol.point
     firstlat = points[0].lat
@@ -91,7 +93,8 @@ def parse_esdl_subpolygon(subpol):
         lat = point.lat
         lon = point.lon
         ar.append([lon, lat])
-    ar.append([firstlon, firstlat])  # close the polygon: TODO: check if necessary??
+    if close:
+        ar.append([firstlon, firstlat])  # close the polygon: TODO: check if necessary??
     return ar
 
 
@@ -147,6 +150,15 @@ def convert_mp_rd_to_wgs(coords):
     return coords
 
 
+def exchange_coordinates(coords):
+
+    for i in range(0, len(coords)):
+        point = coords[i]
+        coords[i] = [point[1], point[0]]
+
+    return coords
+
+
 def exchange_polygon_coordinates(coords):
 
     for i in range(0, len(coords)):
@@ -166,3 +178,62 @@ def exchange_multipolygon_coordinates(coords):
                 coords[i][j][k] = [point[1], point[0]]
 
     return coords
+
+
+def calculate_polygon_center(polygon):
+    min_lat = float('inf')
+    min_lon = float('inf')
+    max_lat = 0
+    max_lon = 0
+
+    exterior = polygon.exterior
+    points = exterior.point
+    for p in points:
+        if p.lat < min_lat: min_lat = p.lat
+        if p.lon < min_lon: min_lon = p.lon
+        if p.lat > max_lat: max_lat = p.lat
+        if p.lon > max_lon: max_lon = p.lon
+
+    return ((min_lat + max_lat) / 2, (min_lon + max_lon) / 2)
+
+
+def remove_latlng_annotation_in_array(coords):
+    for i in range(0, len(coords)):
+        c = coords[i]
+        c_new = [c['lat'], c['lng']]
+        coords[i] = c_new
+
+    return coords
+
+
+def remove_latlng_annotation_in_array_of_arrays(coords):
+    for i in range(0, len(coords)):
+        coords[i] = remove_latlng_annotation_in_array(coords[i])
+
+    return coords
+
+
+def remove_duplicates_in_polyline(array_of_points):
+    coords = []
+    i = 0
+    prev_lat = 0
+    prev_lng = 0
+    while i < len(array_of_points):
+        coord = array_of_points[i]
+
+        # Don't understand why, but sometimes coordinates come in twice
+        if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+            coords.append({'lat': coord['lat'], 'lng': coord['lng']})
+
+            prev_lat = coord['lat']
+            prev_lng = coord['lng']
+        i += 1
+
+    return coords
+
+
+def remove_duplicates_in_polygon(array_of_array_of_points):
+    for i in range(0, len(array_of_array_of_points)):
+        array_of_array_of_points[i] = remove_duplicates_in_polyline(array_of_array_of_points[i])
+
+    return array_of_array_of_points

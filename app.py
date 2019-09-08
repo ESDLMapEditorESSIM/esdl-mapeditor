@@ -331,7 +331,10 @@ def find_area_info_geojson(building_list, area_list, this_area):
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
-                    "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'])
+                    # bug in ESDL genaration with 'get_boundary_info': convert_coordinates_into_subpolygon now
+                    # handles order of lat-lon correctly. Exchanging not required anymore
+                    # "coordinates": ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'])
+                    "coordinates": boundary_wgs['coordinates']
                 },
                 "properties": {
                     "id": area_id,
@@ -350,7 +353,10 @@ def find_area_info_geojson(building_list, area_list, this_area):
                     "type": "Feature",
                     "geometry": {
                         "type": "Polygon",
-                        "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'][i])
+                        # bug in ESDL genaration with 'get_boundary_info': convert_coordinates_into_subpolygon now
+                        # handles order of lat-lon correctly. Exchanging not required anymore
+                        # "coordinates":  ESDLGeometry.exchange_polygon_coordinates(boundary_wgs['coordinates'][i])
+                        "coordinates":  boundary_wgs['coordinates'][i]
                     },
                     "properties": {
                         "id": area_id + area_id_number,
@@ -707,7 +713,7 @@ def download_esdl():
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
         #wrapped_io = FileWrapper(stream)
-        #print(content)
+        print(content)
         headers = dict()
         headers['Content-Type'] =  'application/esdl+xml'
         headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
@@ -798,7 +804,7 @@ def animate_load():
 @app.route('/edr_assets')
 def get_edr_assets():
     edr_url = 'https://edr.hesi.energy/store/tagged?tag=asset'
-    // print('accessing URL: '+edr_url)
+    # print('accessing URL: '+edr_url)
 
     try:
         r = requests.get(edr_url)
@@ -986,6 +992,10 @@ def create_port_to_asset_mapping(area, mapping):
                             last = (points[len(points) - 1].lat, points[len(points) - 1].lon)
                             mapping[ports[0].id] = {'asset_id': asset.id, 'coord': first, 'pos': 'first'}
                             mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
+                    if isinstance(geom, esdl.Polygon):
+                        center = ESDLGeometry.calculate_polygon_center(geom)
+                        for p in ports:
+                            mapping[p.id] = {'asset_id': asset.id, 'coord': center}
                 else:
                     for p in ports:
                         mapping[p.id] = {'asset_id': asset.id, 'coord': ()}
@@ -1328,6 +1338,13 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                     for point in geom.point:
                         coords.append([point.lat, point.lon])
                     asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+                if isinstance(geom, esdl.Polygon):
+                    if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc):
+                        coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
+                        coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
+                        capability_type = ESDLAsset.get_asset_capability_type(asset)
+                        print(coords)
+                        asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
 
     for potential in area.potential:
         geom = potential.geometry
@@ -2339,7 +2356,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a point location and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'PVParc', 'WindTurbine']:
+        if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'WindTurbine']:
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
             asset.port.append(outp)
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
@@ -2431,6 +2448,32 @@ def process_command(message):
 
             mapping[inp.id] = {'asset_id': asset_id, 'coord': first, 'pos': 'first'}
             mapping[outp.id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
+        # -------------------------------------------------------------------------------------------------------------
+        #  Add assets with a polygon or point geometry and an OutPort
+        # -------------------------------------------------------------------------------------------------------------
+        elif assettype in ['PVParc', 'WindParc']:
+            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            asset.port.append(outp)
+
+            try:
+                polygon_data = message['polygon']                   # [lat, lon]
+                polygon_area = float(message['polygon_area'])
+                polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+                polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+                polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+
+                polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+                asset.geometry = polygon
+                polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+                mapping[outp.id] = {'asset_id': asset_id, 'coord': polygon_center}
+            except:
+                try:
+                    point = esdl.Point(lon=message['lng'], lat=message['lat'])
+                    asset.geometry = point
+
+                    mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+                except:
+                    pass
         else:
             capability = ESDLAsset.get_asset_capability_type(asset)
             if capability == 'Producer':
@@ -2470,10 +2513,17 @@ def process_command(message):
             port_list.append(
                 {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids})
 
-        if assettype not in ['ElectricityCable', 'Pipe']:
+        if assettype not in ['ElectricityCable', 'Pipe', 'PVParc', 'WindParc']:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [message['lat'], message['lng']], port_list, capability_type])
-        else:
+        elif assettype in ['PVParc', 'WindParc']:
+            coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
+            coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
+            capability_type = ESDLAsset.get_asset_capability_type(asset)
+            # print(coords)
+            asset_to_be_added_list.append(
+                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
+        elif assettype in ['ElectricityCable', 'Pipe']:
             coords = []
             i = 0
             prev_lat = 0

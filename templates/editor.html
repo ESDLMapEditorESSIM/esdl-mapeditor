@@ -124,6 +124,26 @@
             return polyline_length;
         }
 
+        function calculate_area(layer) {
+            return 0;
+        }
+
+        function calculate_polygon_center(coords) {
+            let lat_min = Infinity;
+            let lon_min = Infinity;
+            let lat_max = 0;
+            let lon_max = 0;
+
+            for (let i=0; i<coords.length; i++) {
+                if (coords[i][0] < lat_min) { lat_min = coords[i][0]; }
+                if (coords[i][0] > lat_max) { lat_max = coords[i][0]; }
+                if (coords[i][1] < lon_min) { lon_min = coords[i][1]; }
+                if (coords[i][1] > lon_max) { lon_max = coords[i][1]; }
+            }
+
+            return [(lat_min + lat_max) / 2, (lon_min + lon_max) / 2];
+        }
+
         // ------------------------------------------------------------------------------------------------------------
         //  Splitting conductors (cables or pipes)
         // ------------------------------------------------------------------------------------------------------------
@@ -1196,12 +1216,12 @@
                 // hide_loader();
 
                 list = options['list'];
-                console.log(list);
 
-                for (i = 0; i<list.length; i++) {
+                for (let i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
 
-                    if (list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') {
+                    if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
+                        (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
                         capability = list[i][7];
                         classname = 'circle ' + capability;
                     } else {
@@ -1225,6 +1245,34 @@
 					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title});
+
+                        marker.title = title;
+                        marker.id = list[i][3];
+                        marker.name = list[i][2];
+                        marker.type = list[i][4];
+                        marker.asspot = list[i][1];
+                        if (marker.asspot == 'asset') {
+                            marker.ports = list[i][6];
+                            marker.capability = list[i][7];
+                        }
+
+                        set_marker_handlers(marker);
+                        esdl_layer.addLayer(marker);
+                    }
+                    if (list[i][0] == 'polygon') {
+                        var coords = list[i][5];
+                        var polygon = L.polygon(coords, {color: 'green', weight: 3, draggable:true, title: title});
+
+                        polygon.title = title;
+                        polygon.id = list[i][3];
+                        polygon.name = list[i][2];
+                        polygon.type = list[i][4];
+                        polygon.asspot = list[i][1];
+
+                        esdl_layer.addLayer(polygon);
+
+                        var polygon_center = calculate_polygon_center(coords);
+                        var marker = L.marker(polygon_center, {icon: divicon, title: title});
 
                         marker.title = title;
                         marker.id = list[i][3];
@@ -1815,9 +1863,6 @@
 
         function initiate_draw_asset() {
             var select_box = document.getElementById('asset_menu');
-            console.log(select_box);
-            console.log(select_box.options);
-            console.log(select_box.selectedIndex);
             var selected_asset = select_box.options[select_box.selectedIndex].value;
             var marker_class_name = window[selected_asset + "Marker"];
 
@@ -1832,6 +1877,7 @@
             if (line_assets.includes(selected_asset)) {
                 drawControl._toolbars.draw._modes.polyline.handler.enable();
             } else if (area_assets.includes(selected_asset)) {
+                socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
                 drawControl._toolbars.draw._modes.polygon.handler.enable();
             } else {
                 drawControl._toolbars.draw._modes.marker.handler.enable();
@@ -2179,8 +2225,19 @@
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
         }
         if (type === 'polygon' || type === 'rectangle') {
-            socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
-            area_layer.addLayer(layer, true);
+            // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
+            // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
+            // area_layer.addLayer(layer, true);
+
+            selection = document.getElementById("asset_menu").selectedIndex;
+            asset_options = document.getElementById("asset_menu").options;
+            selected_asset = asset_options[selection].value;
+            // console.log('selected option: ' + selection);
+            // console.log('selected asset: ' + selected_asset);
+
+            layer.name = selected_asset + '_' + layer.id.substring(0,4);
+            polygon_area = calculate_area(layer);
+            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
         }
     });
 
