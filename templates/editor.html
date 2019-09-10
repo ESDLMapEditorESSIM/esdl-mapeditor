@@ -125,10 +125,10 @@
         }
 
         function calculate_area(layer) {
-            return 0;
+            return L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
         }
 
-        function calculate_polygon_center(coords) {
+        function calculate_array_polygon_center(coords) {
             let lat_min = Infinity;
             let lon_min = Infinity;
             let lat_max = 0;
@@ -139,6 +139,22 @@
                 if (coords[i][0] > lat_max) { lat_max = coords[i][0]; }
                 if (coords[i][1] < lon_min) { lon_min = coords[i][1]; }
                 if (coords[i][1] > lon_max) { lon_max = coords[i][1]; }
+            }
+
+            return [(lat_min + lat_max) / 2, (lon_min + lon_max) / 2];
+        }
+
+        function calculate_leaflet_polygon_center(coords) {
+            let lat_min = Infinity;
+            let lon_min = Infinity;
+            let lat_max = 0;
+            let lon_max = 0;
+
+            for (let i=0; i<coords.length; i++) {
+                if (coords[i]['lat'] < lat_min) { lat_min = coords[i]['lat']; }
+                if (coords[i]['lat'] > lat_max) { lat_max = coords[i]['lat']; }
+                if (coords[i]['lng'] < lon_min) { lon_min = coords[i]['lng']; }
+                if (coords[i]['lng'] > lon_max) { lon_max = coords[i]['lng']; }
             }
 
             return [(lat_min + lat_max) / 2, (lon_min + lon_max) / 2];
@@ -290,9 +306,19 @@
                 // marker.options.icon.tooltip('destroy');
                 $(".ui-tooltip-content").parents('div').remove();
 
-                // TEST IF THIS IS BETTER
-                //if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
-                if (deleting_objects == true) socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+                if (deleting_objects == true) {
+                    // Remove polygon that belongs to marker, if one is present
+                    if (marker.polygon) {
+                       all_layers = esdl_layer.getLayers();
+                       for (let i=0; i<all_layers.length; i++) {
+                            layer = all_layers[i];
+                            if (layer.id == asset_id && layer instanceof L.Polygon) {
+                                esdl_layer.removeLayer(layer);
+                            }
+                       }
+                    }
+                    socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+                }
             });
 
             marker.on('click', function(e) {
@@ -1271,7 +1297,7 @@
 
                         esdl_layer.addLayer(polygon);
 
-                        var polygon_center = calculate_polygon_center(coords);
+                        var polygon_center = calculate_array_polygon_center(coords);
                         var marker = L.marker(polygon_center, {icon: divicon, title: title});
 
                         marker.title = title;
@@ -1279,6 +1305,7 @@
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
+                        marker.polygon = true;
                         if (marker.asspot == 'asset') {
                             marker.ports = list[i][6];
                             marker.capability = list[i][7];
@@ -2127,10 +2154,29 @@
     map.on('draw:edited', function (e) {
         var layers = e.layers;
         layers.eachLayer(function (layer) {
-            if (layer instanceof L.Polyline) {
+            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);
-                // console.log(layer.getLatLngs());
                 socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+            }
+            if (layer instanceof L.Polygon) {
+
+                // Find marker belonging to Polygon and recalculate center
+                esdl_objects = esdl_layer.getLayers();
+                for (let i=0; i<esdl_objects.length; i++) {
+                    esdl_object = esdl_objects[i];
+                    if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
+                        polygon_center = calculate_leaflet_polygon_center(layer.getLatLngs()[0]);
+                        var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
+                        esdl_object.setLatLng(newLatLng);
+
+                        // send updated coordinates to backend to update port_to_asset_mapping and update connections
+                        socket.emit('update-coord', {id: layer.id, lat: polygon_center[0], lng: polygon_center[1], asspot: layer.asspot});
+                    }
+                }
+
+                // recalculate area
+                polygon_area = calculate_area(layer);
+                socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
             }
         });
     });

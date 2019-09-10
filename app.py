@@ -1417,6 +1417,22 @@ def update_transport_connection_locations(ass_id, asset, coords):
 
     set_session('conn_list', conn_list)
 
+
+def update_polygon_asset_connection_locations(ass_id, coords):
+    conn_list = get_session('conn_list')
+    for c in conn_list:
+        if c['from-asset-id'] == ass_id:
+            c['from-asset-coord'] = coords
+        if c['to-asset-id'] == ass_id:
+            c['to-asset-coord'] = coords
+
+    emit('clear_connections')
+    emit('add_connections', conn_list)
+
+    set_session('conn_list', conn_list)
+
+
+
 # mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
 
 
@@ -1960,7 +1976,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('update-coord', namespace='/esdl')
 def update_coordinates(message):
-    print ('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
+    # print("updating coordinates")
+    # print('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
 
     esh = get_handler()
     es_edit = esh.get_energy_system()
@@ -1973,8 +1990,14 @@ def update_coordinates(message):
         asset = ESDLAsset.find_asset(area, obj_id)
 
         if asset:
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
-            asset.geometry = point
+            geom = asset.geometry
+            if isinstance(geom, esdl.Point):
+                point = esdl.Point(lon=message['lng'], lat=message['lat'])
+                asset.geometry = point
+            # elif isinstance(geom, esdl.Polygon):
+                # Do nothing in case of a polygon
+                # only update the connection locations and mappings based on the center of the polygon
+                # that is given as a parameter.
 
         # Update locations of connections on moving assets
         update_asset_connection_locations(obj_id, message['lat'], message['lng'])
@@ -1990,7 +2013,7 @@ def update_coordinates(message):
 
 @socketio.on('update-line-coord', namespace='/esdl')
 def update_line_coordinates(message):
-    print ('received: ' + str(message['id']) + ':' + str(message['polyline']))
+    # print ('received polyline: ' + str(message['id']) + ':' + str(message['polyline']))
     ass_id = message['id']
 
     port_to_asset_mapping = get_session('port_to_asset_mapping')
@@ -2026,6 +2049,40 @@ def update_line_coordinates(message):
         asset.geometry = line
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
+
+    set_handler(esh)
+    set_session('port_to_asset_mapping', port_to_asset_mapping)
+
+
+@socketio.on('update-polygon-coord', namespace='/esdl')
+def update_polygon_coordinates(message):
+    # print ('received polygon: ' + str(message['id']) + ':' + str(message['polygon']))
+    ass_id = message['id']
+
+    port_to_asset_mapping = get_session('port_to_asset_mapping')
+    esh = get_handler()
+    es_edit = esh.get_energy_system()
+    instance = es_edit.instance
+    area = instance[0].area
+    asset = ESDLAsset.find_asset(area, ass_id)
+
+    if asset:
+        polygon_data = message['polygon']
+        # print(polygon_data)
+        # print(type(polygon_data))
+        polygon_area = int(message['polygon_area'])
+        asset.surfaceArea = polygon_area
+
+        polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+        polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+        polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+        polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+        asset.geometry = polygon
+
+        polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+
+        port_to_asset_mapping[asset.port[0].id] = {'asset_id': asset.id, 'coord': polygon_center}
+        update_polygon_asset_connection_locations(ass_id, polygon_center)
 
     set_handler(esh)
     set_session('port_to_asset_mapping', port_to_asset_mapping)
@@ -2457,13 +2514,14 @@ def process_command(message):
 
             try:
                 polygon_data = message['polygon']                   # [lat, lon]
-                polygon_area = float(message['polygon_area'])
+                polygon_area = int(message['polygon_area'])
                 polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
                 polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
                 polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
 
                 polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
                 asset.geometry = polygon
+                asset.surfaceArea = polygon_area
                 polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
                 mapping[outp.id] = {'asset_id': asset_id, 'coord': polygon_center}
             except:
