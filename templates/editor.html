@@ -131,8 +131,8 @@
         function calculate_array_polygon_center(coords) {
             let lat_min = Infinity;
             let lon_min = Infinity;
-            let lat_max = 0;
-            let lon_max = 0;
+            let lat_max = -Infinity;
+            let lon_max = -Infinity;
 
             for (let i=0; i<coords.length; i++) {
                 if (coords[i][0] < lat_min) { lat_min = coords[i][0]; }
