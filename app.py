@@ -235,7 +235,11 @@ def preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id):
 
 def preload_area_subboundaries_in_cache(top_area):
     top_area_scope = top_area.scope
+    # fix bug in that the top area does not have an id
+    if top_area.id is None:
+        top_area.id = str(uuid.uuid4())
     top_area_id = top_area.id
+
     sub_areas = top_area.area
     if sub_areas:
         first_sub_area = sub_areas[0]
@@ -656,6 +660,12 @@ def add_header(r):
     return r
 
 
+@app.before_request
+def before_request():
+    # store session id
+    session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
+
+
 @app.route('/')
 def index():
     return render_template('index.html', dir_settings=settings.dir_settings)
@@ -664,7 +674,9 @@ def index():
 @app.route('/editor')
 @oidc.require_login
 def editor():
-    session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+    #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
+    #set_session('client_id', session['client_id'])
+    print('client_id is set to %s' % session['client_id'])
     if oidc.user_loggedin:
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
@@ -715,8 +727,8 @@ def download_esdl():
         #wrapped_io = FileWrapper(stream)
         print(content)
         headers = dict()
-        headers['Content-Type'] =  'application/esdl+xml'
-        headers['Content-Disposition'] = 'attachment, filename="{}"'.format(name)
+        #headers['Content-Type'] =  'application/esdl+xml'
+        headers['Content-Disposition'] = 'attachment; filename="{}"'.format(name)
         headers['Content-Length'] = len(content)
         return Response(content, mimetype='application/esdl+xml', direct_passthrough=True, headers=headers)
         #return send_file(stream, as_attachment=True, mimetype='application/esdl+xml', attachment_filename=name)

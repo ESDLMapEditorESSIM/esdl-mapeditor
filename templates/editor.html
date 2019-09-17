@@ -727,11 +727,68 @@
         var $idown;  // Keep it outside of the function, so it's initialized once.
         function save_ESDL(e) {
             let url = '.{{dir_settings.download_prefix}}/esdl'
-            if ($idown) {
-                $idown.attr('src',url);
-            } else {
-                $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
-            }
+            //if ($idown) {
+            //    $idown.attr('src',url);
+            //} else {
+            //    $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
+            //}
+            // The following code does a HTML5 download request.
+            // From stackoverflow:
+            // simply setting the window.url to the download url does not work as it navigates away from the current
+            // page, releasing the websocket connection.
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.responseType = 'arraybuffer';
+            xhr.onload = function () {
+                if (this.status === 200) {
+                    var filename = "";
+                    var disposition = xhr.getResponseHeader('Content-Disposition');
+                    if (disposition && disposition.indexOf('attachment') !== -1) {
+                        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                        var matches = filenameRegex.exec(disposition);
+                        if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                    }
+                    var type = xhr.getResponseHeader('Content-Type');
+
+                    var blob;
+                    if (typeof File === 'function') {
+                        try {
+                            blob = new File([this.response], filename, { type: type });
+                        } catch (e) { /* Edge */ }
+                    }
+                    if (typeof blob === 'undefined') {
+                        blob = new Blob([this.response], { type: type });
+                    }
+
+                    if (typeof window.navigator.msSaveBlob !== 'undefined') {
+                        // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
+                        window.navigator.msSaveBlob(blob, filename);
+                    } else {
+                        var URL = window.URL || window.webkitURL;
+                        var downloadUrl = URL.createObjectURL(blob);
+
+                        if (filename) {
+                            // use HTML5 a[download] attribute to specify filename
+                            var a = document.createElement("a");
+                            // safari doesn't support this yet
+                            if (typeof a.download === 'undefined') {
+                                window.location = downloadUrl;
+                            } else {
+                                a.href = downloadUrl;
+                                a.download = filename;
+                                document.body.appendChild(a);
+                                a.click();
+                            }
+                        } else {
+                            window.location = downloadUrl;
+                        }
+
+                        setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
+                    }
+                }
+            };
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            xhr.send();
         }
 
         function send_cmd_store_ESDL() {
