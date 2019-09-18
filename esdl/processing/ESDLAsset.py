@@ -119,7 +119,7 @@ def add_asset_to_building(es, asset, building_id):
 
 
 def remove_object_from_building(building, object_id):
-    for ass in building.asset:
+    for ass in set(building.asset):
         if ass.id == object_id:
             for p in ass.port:
                 p.connectedTo.clear()
@@ -129,7 +129,7 @@ def remove_object_from_building(building, object_id):
 
 
 def recursively_remove_object_from_area(area, object_id):
-    for ass in area.asset:
+    for ass in set(area.asset):
         if ass.id == object_id:
             for p in ass.port:
                 p.connectedTo.clear()
@@ -137,7 +137,7 @@ def recursively_remove_object_from_area(area, object_id):
             print('Asset with id ' + object_id + ' removed from area with id: ' + area.id)
         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
             remove_object_from_building(ass, object_id)
-    for pot in area.potential:
+    for pot in set(area.potential):
         if pot.id == object_id:
             area.potential.remove(pot)
             print('Potential with id ' + object_id + ' removed from area with id: ' + area.id)
@@ -233,7 +233,7 @@ def remove_sector(es, sector_id):
         if sectors:
             sector = sectors.sector
             if sector:
-                for s in sector:
+                for s in set(sector):
                     if s.id == sector_id:
                         sector.remove(s)
 
@@ -279,7 +279,13 @@ def load_asset_from_string(esdl_string):
     return esdl_instance
 
 
+def add_profile_to_port(port, profile):
+    profile_list = port.profile
 
+    for i in range(0,len(profile_list)):
+        p = profile_list[i]
+        if p.profileType == profile.profileType:
+            profile_list[i] = profile
+            return
 
-
-    # end
+    profile_list.append(profile)

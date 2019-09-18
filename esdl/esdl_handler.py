@@ -135,19 +135,19 @@ class EnergySystemHandler:
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
-    def add_asset(self, asset):
+    def add_object_to_dict(self, asset):
         if hasattr(asset, 'id'):
-            if id is not None:
+            if asset.id is not None:
                 self.resource.uuid_dict[asset.id] = asset
             else:
                 print('Id has not been set for asset {}({})', asset.eClass.name, asset)
 
-    def remove_asset(self, asset):
+    def remove_object_from_dict(self, asset):
         if hasattr(asset, 'id'):
-            if id is not None:
+            if asset.id is not None:
                 del self.resource.uuid_dict[asset.id]
 
-    def remove_asset_by_id(self, asset_id):
+    def remove_object_from_dict_by_id(self, asset_id):
         del self.resource.uuid_dict[asset_id]
 
     # returns a generator of all assets of a specific type. Not only the ones defined in  the main Instance's Area

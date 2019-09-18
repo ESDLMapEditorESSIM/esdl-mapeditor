@@ -1643,23 +1643,26 @@
 			});
 
             socket.on('port_profile_info', function(port_profile_info) {
-                profile_info = port_profile_info['profile_info'];
+                profile_info_list = port_profile_info['profile_info'];
                 port_id = port_profile_info['port_id'];
 
-                profile_class = profile_info['class'];
-                profile_type = profile_info['type'];
-                if (profile_class == 'SingleValue') {
-                    profile_value_or_multiplier = profile_info['value'];
-                    profile_uiname = 'SingleValue';
-                } else if (profile_class == 'InfluxDBProfile') {
-                    profile_value_or_multiplier = profile_info['multiplier'];
-                    profile_uiname = profile_info['uiname'];
-                } else if (profile_class == 'DateTimeProfile') {
-                    profile_value_or_multiplier = 0;
-                    profile_uiname = 'DateTimeProfile';
-                }
-
                 sidebar_ctr = sidebar.getContainer();
+
+                for (let p=0; p<profile_info_list.length; p++) {
+                    profile_info = profile_info_list[p];
+                    profile_class = profile_info['class'];
+                    profile_type = profile_info['type'];
+                    if (profile_class == 'SingleValue') {
+                        profile_value_or_multiplier = profile_info['value'];
+                        profile_uiname = 'SingleValue';
+                    } else if (profile_class == 'InfluxDBProfile') {
+                        profile_value_or_multiplier = profile_info['multiplier'];
+                        profile_uiname = profile_info['uiname'];
+                    } else if (profile_class == 'DateTimeProfile') {
+                        profile_value_or_multiplier = 0;
+                        profile_uiname = 'DateTimeProfile';
+                    }
+                }
 
                 sidebar_ctr.innerHTML = '<h1>Set profile of port:</h1>';
                 table = '<table>';
