@@ -2354,16 +2354,16 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
     ci = asset.costInformation
     if not ci:
         ci = esdl.CostInformation()
-        asset.set_costInformation(ci)
+        asset.costInformation = ci
 
     mc = ci.marginalCosts
     if not mc:
         mc = esdl.SingleValue()
-        mc.set_id(str(uuid.uuid4()))
-        mc.set_name(asset_name+'-MarginalCosts')
+        mc.id = str(uuid.uuid4())
+        mc.name = asset_name + '-MarginalCosts'
 
-    mc.set_value(marginal_costs)
-    ci.set_marginalCosts(mc)
+    mc.value = marginal_costs
+    ci.marginalCosts = mc
 
 
 def get_marginal_costs_for_asset(asset_id):
