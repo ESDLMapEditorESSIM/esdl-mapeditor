@@ -1248,26 +1248,28 @@ def update_asset_geometries3(area, boundary):
                 asset.geometry = geom
 
 
-def generate_profile_info(profile):
-    profile_class = type(profile).__name__
-    profile_type = profile.profileType.name
-    profile_name = profile.name
-    if profile_class == 'SingleValue':
-        value = profile.value
-        profile_info = {'class': 'SingleValue', 'value': value, 'type': profile_type}
-    if profile_class == 'InfluxDBProfile':
-        multiplier = profile.multiplier
-        measurement = profile.measurement
-        field = profile.field
-        profile_name = 'UNKNOWN'
-        for p in esdl_config.esdl_config['influxdb_profile_data']:
-            if p['measurement'] == measurement and p['field'] == field:
-                profile_name = p['profile_uiname']
-        profile_info = {'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name}
-    if profile_class == 'DateTimeProfile':
-        profile_info = {'class': 'DateTimeProfile', 'type': profile_type}
+def generate_profile_info(profile_list):
+    profile_info_list = []
+    for profile in profile_list:
+        profile_class = type(profile).__name__
+        profile_type = profile.profileType.name
+        profile_name = profile.name
+        if profile_class == 'SingleValue':
+            value = profile.value
+            profile_info_list.append({'class': 'SingleValue', 'value': value, 'type': profile_type})
+        if profile_class == 'InfluxDBProfile':
+            multiplier = profile.multiplier
+            measurement = profile.measurement
+            field = profile.field
+            profile_name = 'UNKNOWN'
+            for p in esdl_config.esdl_config['influxdb_profile_data']:
+                if p['measurement'] == measurement and p['field'] == field:
+                    profile_name = p['profile_uiname']
+            profile_info_list.append({'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
+        if profile_class == 'DateTimeProfile':
+            profile_info_list.append({'class': 'DateTimeProfile', 'type': profile_type})
 
-    return profile_info
+    return profile_info_list
 
 
 def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
@@ -1324,10 +1326,10 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to = [cp.id for cp in p.connectedTo]
                 profile = p.profile
-                profile_info = {}
+                profile_info_list = []
                 if profile:
-                    profile_info = generate_profile_info(profile)
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info})
+                    profile_info_list = generate_profile_info(profile)
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info_list})
                 if conn_to:
                     #conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
                     for id in conn_to:
@@ -1861,8 +1863,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         class_ = getattr(module, conductor_type)
         new_cond1 = class_(id=new_cond1_id, name=conductor.name + '_a')
         new_cond2 = class_(id=new_cond2_id, name=conductor.name + '_b')
-        esh.add_asset(new_cond1)
-        esh.add_asset(new_cond2)
+        esh.add_object_to_dict(new_cond1)
+        esh.add_object_to_dict(new_cond2)
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort(id=new_port2_id, name='Out')
@@ -1882,8 +1884,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_cond2.port.append(new_port1)
         new_cond2.port.append(port2)
 
-        esh.add_asset(new_port1)
-        esh.add_asset(new_port2)
+        esh.add_object_to_dict(new_port1)
+        esh.add_object_to_dict(new_port2)
 
         new_cond1.geometry = line1
         new_cond2.geometry = line2
@@ -1957,9 +1959,9 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint.port.append(outp)
             joint.geometry = middle_point
             conductor_container.asset.append(joint)
-            esh.add_asset(joint)
-            esh.add_asset(inp)
-            esh.add_asset(outp)
+            esh.add_object_to_dict(joint)
+            esh.add_object_to_dict(inp)
+            esh.add_object_to_dict(outp)
 
             # Change port asset mappings
             mapping[inp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
@@ -2246,7 +2248,7 @@ def add_control_strategy_for_asset(asset_id, cs):
         es.services = services
 
     services_list = services.service
-    for service in services_list:
+    for service in set(services_list):
         if isinstance(service, esdl.ControlStrategy):
             if service.energyAsset.id == asset_id:
                 services_list.remove(service)
@@ -2352,16 +2354,16 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
     ci = asset.costInformation
     if not ci:
         ci = esdl.CostInformation()
-        asset.set_costInformation(ci)
+        asset.costInformation = ci
 
     mc = ci.marginalCosts
     if not mc:
         mc = esdl.SingleValue()
-        mc.set_id(str(uuid.uuid4()))
-        mc.set_name(asset_name+'-MarginalCosts')
+        mc.id = str(uuid.uuid4())
+        mc.name = asset_name + '-MarginalCosts'
 
-    mc.set_value(marginal_costs)
-    ci.set_marginalCosts(mc)
+    mc.value = marginal_costs
+    ci.marginalCosts = mc
 
 
 def get_marginal_costs_for_asset(asset_id):
@@ -2613,7 +2615,7 @@ def process_command(message):
 
         #print(asset_to_be_added_list)
         emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
-        esh.add_asset(asset)
+        esh.add_object_to_dict(asset)
         set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
@@ -2867,10 +2869,10 @@ def process_command(message):
                 if p.id == port_id:
                     profile = p.profile
                     if profile:
-                        profile_info = generate_profile_info(profile)
-                        emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info})
+                        profile_info_list = generate_profile_info(profile)
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info_list})
                     else:
-                        emit('port_profile_info', {'port_id': port_id, 'profile_info': {'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'}})
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': [{'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'}]})
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
@@ -2913,7 +2915,7 @@ def process_command(message):
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
 
         esdl_profile.id = str(uuid.uuid4())
-        esh.add_asset(esdl_profile)
+        esh.add_object_to_dict(esdl_profile)
 
         asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
         if asset_id:
@@ -2921,7 +2923,8 @@ def process_command(message):
             ports = asset.port
             for p in ports:
                 if p.id == port_id:
-                    p.profile = esdl_profile
+                    # p.profile = esdl_profile
+                    ESDLAsset.add_profile_to_port(p, esdl_profile)
 
     if message['cmd'] == 'add_port':
         direction = message['direction']
@@ -2956,7 +2959,7 @@ def process_command(message):
         ports = asset.port
 
         port_list = []
-        for p in ports:
+        for p in set(ports):
             if p.id == pid:
                 ports.remove(p)
             else:
@@ -3083,7 +3086,7 @@ def process_command(message):
         if carr_type == 'en_comm':
             carrier = esdl.EnergyCarrier(id=carr_id, name=carr_name)
 
-        esh.add_asset(carrier) # add carrier to ID list for easy retrieval
+        esh.add_object_to_dict(carrier) # add carrier to ID list for easy retrieval
 
         esi = es_edit.energySystemInformation
         if not esi:
@@ -3091,14 +3094,14 @@ def process_command(message):
             esi = esdl.EnergySystemInformation()
             esi.id = esi_id
             es_edit.energySystemInformation = esi
-        esh.add_asset(esi)
+        esh.add_object_to_dict(esi)
 
         ecs = esi.carriers
         if not ecs:
             ecs_id = str(uuid.uuid4())
             ecs = esdl.Carriers(id=ecs_id)
             esi.carriers = ecs
-        esh.add_asset(ecs)
+        esh.add_object_to_dict(ecs)
         ecs.carrier.append(carrier)
 
         carrier_list = ESDLAsset.get_carrier_list(es_edit)
@@ -3228,7 +3231,8 @@ def process_command(message):
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
-        ESDLAsset.remove_sector(id)
+        esh = get_handler()
+        ESDLAsset.remove_sector(esh.get_energy_system(), id)
         sector_list = ESDLAsset.get_sector_list(es_edit)
         emit('sector_list', sector_list)
 

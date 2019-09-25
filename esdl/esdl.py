@@ -103,11 +103,11 @@ VehicleTypeEnum = EEnum('VehicleTypeEnum', literals=['UNDEFINED', 'CAR', 'TRUCK'
 MultiplierEnum = EEnum('MultiplierEnum', literals=[
                        'NONE', 'KILO', 'MEGA', 'GIGA', 'TERRA', 'PETA', 'MILLI', 'MICRO', 'NANO', 'PICO'])
 
-PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE',
-                                                               'EMISSION', 'COST', 'TIME', 'LENGTH', 'DISTANCE', 'IRRADIANCE', 'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA'])
+PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE', 'EMISSION',
+                                                               'COST', 'TIME', 'LENGTH', 'DISTANCE', 'IRRADIANCE', 'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA', 'POWER_REACTIVE', 'COMPOSITION', 'FLOW', 'STATE'])
 
-UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND',
-                                       'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT'])
+UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND', 'MINUTE', 'QUARTER',
+                                       'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT', 'VOLT_AMPERE', 'VOLT_AMPERE_REACTIVE'])
 
 TimeUnit = EEnum('TimeUnit', literals=['NONE', 'SECOND',
                                        'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
@@ -150,6 +150,8 @@ InterpolationMethodEnum = EEnum('InterpolationMethodEnum', literals=[
 PipeDiameterEnum = EEnum('PipeDiameterEnum', literals=['VALUE_SPECIFIED', 'DN6', 'DN8', 'DN10', 'DN15', 'DN20', 'DN25', 'DN32', 'DN40', 'DN50', 'DN65', 'DN80', 'DN100',
                                                        'DN125', 'DN150', 'DN200', 'DN250', 'DN300', 'DN350', 'DN400', 'DN450', 'DN500', 'DN600', 'DN650', 'DN700', 'DN800', 'DN900', 'DN1000', 'DN1100', 'DN1200'])
 
+StateEnum = EEnum('StateEnum', literals=['UNDEFINED', 'OPEN', 'CLOSED'])
+
 
 class EnergySystem(EObject, metaclass=MetaEClass):
     """This is the main class to describe an EnergySystem in ESDL. Each energy system description should start with this class. More information about ESDL and the Energy System can be found in the gitbook at https://energytransition.gitbook.io/esdl/"""
@@ -158,13 +160,14 @@ class EnergySystem(EObject, metaclass=MetaEClass):
     geographicalScope = EAttribute(eType=EString, derived=False, changeable=True)
     sector = EAttribute(eType=SectorEnum, derived=False, changeable=True, upper=-1)
     id = EAttribute(eType=EString, derived=False, changeable=True, iD=True)
+    version = EAttribute(eType=EString, derived=False, changeable=True)
     measures = EReference(ordered=True, unique=True, containment=True)
     instance = EReference(ordered=True, unique=True, containment=True, upper=-1)
     energySystemInformation = EReference(ordered=True, unique=True, containment=True)
     parties = EReference(ordered=True, unique=True, containment=True)
     services = EReference(ordered=True, unique=True, containment=True)
 
-    def __init__(self, *, name=None, description=None, geographicalScope=None, sector=None, measures=None, instance=None, energySystemInformation=None, parties=None, services=None, id=None, **kwargs):
+    def __init__(self, *, name=None, description=None, geographicalScope=None, sector=None, measures=None, instance=None, energySystemInformation=None, parties=None, services=None, id=None, version=None, **kwargs):
         if kwargs:
             raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -184,6 +187,9 @@ class EnergySystem(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if version is not None:
+            self.version = version
 
         if measures is not None:
             self.measures = measures
@@ -284,7 +290,7 @@ class Port(EObject, metaclass=MetaEClass):
     simultaneousPower = EAttribute(eType=EDouble, derived=False, changeable=True)
     name = EAttribute(eType=EString, derived=False, changeable=True)
     energyasset = EReference(ordered=True, unique=True, containment=False)
-    profile = EReference(ordered=True, unique=True, containment=True)
+    profile = EReference(ordered=True, unique=True, containment=True, upper=-1)
     carrier = EReference(ordered=True, unique=True, containment=False)
 
     def __init__(self, *, id=None, maxPower=None, energyasset=None, profile=None, carrier=None, simultaneousPower=None, name=None, **kwargs):
@@ -308,8 +314,8 @@ class Port(EObject, metaclass=MetaEClass):
         if energyasset is not None:
             self.energyasset = energyasset
 
-        if profile is not None:
-            self.profile = profile
+        if profile:
+            self.profile.extend(profile)
 
         if carrier is not None:
             self.carrier = carrier
@@ -1407,13 +1413,14 @@ class Asset(Item):
     aggregated = EAttribute(eType=EBoolean, derived=False, changeable=True)
     aggregationCount = EAttribute(eType=EInt, derived=False, changeable=True, default_value=1)
     installationDuration = EAttribute(eType=EDouble, derived=False, changeable=True)
+    assetType = EAttribute(eType=EString, derived=False, changeable=True)
     area = EReference(ordered=True, unique=True, containment=False)
     containingBuilding = EReference(ordered=True, unique=True, containment=False)
     geometry = EReference(ordered=True, unique=True, containment=True)
     costInformation = EReference(ordered=True, unique=True, containment=True)
     KPIs = EReference(ordered=True, unique=True, containment=True)
 
-    def __init__(self, *, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, area=None, containingBuilding=None, geometry=None, costInformation=None, technicalLifetime=None, aggregated=None, aggregationCount=None, installationDuration=None, KPIs=None, **kwargs):
+    def __init__(self, *, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, area=None, containingBuilding=None, geometry=None, costInformation=None, technicalLifetime=None, aggregated=None, aggregationCount=None, installationDuration=None, KPIs=None, assetType=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -1440,6 +1447,9 @@ class Asset(Item):
 
         if installationDuration is not None:
             self.installationDuration = installationDuration
+
+        if assetType is not None:
+            self.assetType = assetType
 
         if area is not None:
             self.area = area
@@ -3474,13 +3484,17 @@ class DrivenBySupply(ControlStrategy):
 class DrivenByProfile(ControlStrategy):
     """Control strategy specifying that an asset is driven by a profile specified in one of the ports (used in ESDL-based simulation tools)"""
     profile = EReference(ordered=True, unique=True, containment=True)
+    port = EReference(ordered=True, unique=True, containment=False)
 
-    def __init__(self, *, profile=None, **kwargs):
+    def __init__(self, *, profile=None, port=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if profile is not None:
             self.profile = profile
+
+        if port is not None:
+            self.port = port
 
 
 class WaterToPower(Producer):
@@ -3515,10 +3529,14 @@ class AbstractConductor(Transport):
 @abstract
 class AbstractSwitch(Transport):
     """Abstract class to describe switches such as valve and a circuit breaker"""
+    state = EAttribute(eType=StateEnum, derived=False, changeable=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, state=None, **kwargs):
 
         super().__init__(**kwargs)
+
+        if state is not None:
+            self.state = state
 
 
 @abstract
@@ -3589,6 +3607,14 @@ class CurtailmentStrategy(ControlStrategy):
 
 class PVTInstallation(Producer):
     """Defines an installation that combines PV and thermal energy collection"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+@abstract
+class AbstractSensor(Transport):
 
     def __init__(self, **kwargs):
 
@@ -3874,6 +3900,51 @@ class WaterBuffer(HeatStorage):
 
 class Joint(AbstractConductor):
     """A Joint is a means to connect AbstractConductors, such as Pipes and ElectricalCables. This helps when these conductors have opposite Ports."""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class Bus(AbstractConductor):
+
+    voltage = EAttribute(eType=EDouble, derived=False, changeable=True)
+
+    def __init__(self, *, voltage=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if voltage is not None:
+            self.voltage = voltage
+
+
+class Sensor(AbstractSensor):
+
+    quantityAndUnit = EReference(ordered=True, unique=True, containment=True)
+
+    def __init__(self, *, quantityAndUnit=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if quantityAndUnit is not None:
+            self.quantityAndUnit = quantityAndUnit
+
+
+class Switch(AbstractSwitch):
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class Compressor(AbstractTransformer):
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class PressureReducingValve(AbstractTransformer):
 
     def __init__(self, **kwargs):
 

@@ -112,8 +112,8 @@ def duplicate_energy_asset(esh: EnergySystemHandler, energy_asset_id: str):
         newport = port.clone()
         newport.id = str(uuid4())
         duplicate_asset.port.append(newport)
-        esh.add_asset(newport) # add to UUID registry
+        esh.add_object_to_dict(newport) # add to UUID registry
 
-    esh.add_asset(duplicate_asset) # add to UUID registry
+    esh.add_object_to_dict(duplicate_asset) # add to UUID registry
 
     return duplicate_asset
