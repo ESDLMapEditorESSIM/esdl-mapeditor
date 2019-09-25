@@ -725,7 +725,7 @@ def download_esdl():
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
         #wrapped_io = FileWrapper(stream)
-        print(content)
+        #print(content)
         headers = dict()
         #headers['Content-Type'] =  'application/esdl+xml'
         headers['Content-Disposition'] = 'attachment; filename="{}"'.format(name)
@@ -853,7 +853,7 @@ def parse_esdl_config():
 # ---------------------------------------------------------------------------------------------------------------------
 def send_alert(message):
     print(message)
-    emit('alert', message)
+    emit('alert', message, namespace='/esdl')
 
 
 # FIXME: pyecore
