@@ -284,8 +284,17 @@ def add_profile_to_port(port, profile):
 
     for i in range(0,len(profile_list)):
         p = profile_list[i]
+        # TODO: Support Quantity and Unit Type
         if p.profileType == profile.profileType:
             profile_list[i] = profile
             return
 
     profile_list.append(profile)
+
+
+def remove_profile_from_port(port, profile_id):
+    profile_list = port.profile
+
+    for profile in set(profile_list):
+        if profile.id == profile_id:
+            profile_list.remove(profile)

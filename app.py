@@ -681,6 +681,8 @@ def editor():
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
 
+        print("************* USER LOGIN (" + oidc.user_getfield('email') + ") at " + str(datetime.now()))
+
         whole_token = oidc.get_access_token()
         print("whole_token: ", whole_token)
         if whole_token:
@@ -1254,20 +1256,21 @@ def generate_profile_info(profile_list):
         profile_class = type(profile).__name__
         profile_type = profile.profileType.name
         profile_name = profile.name
+        profile_id = profile.id
         if profile_class == 'SingleValue':
             value = profile.value
-            profile_info_list.append({'class': 'SingleValue', 'value': value, 'type': profile_type})
+            profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
             multiplier = profile.multiplier
             measurement = profile.measurement
             field = profile.field
-            profile_name = 'UNKNOWN'
+            # profile_name = 'UNKNOWN'
             for p in esdl_config.esdl_config['influxdb_profile_data']:
                 if p['measurement'] == measurement and p['field'] == field:
                     profile_name = p['profile_uiname']
-            profile_info_list.append({'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
+            profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
-            profile_info_list.append({'class': 'DateTimeProfile', 'type': profile_type})
+            profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 
     return profile_info_list
 
@@ -2872,7 +2875,7 @@ def process_command(message):
                         profile_info_list = generate_profile_info(profile)
                         emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info_list})
                     else:
-                        emit('port_profile_info', {'port_id': port_id, 'profile_info': [{'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'}]})
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': []})
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
@@ -2925,6 +2928,20 @@ def process_command(message):
                 if p.id == port_id:
                     # p.profile = esdl_profile
                     ESDLAsset.add_profile_to_port(p, esdl_profile)
+
+    if message['cmd'] == 'remove_profile_from_port':
+        port_id = message['port_id']
+        profile_id = message['profile_id']
+
+        asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+        if asset_id:
+            asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
+            ports = asset.port
+            for p in ports:
+                if p.id == port_id:
+                    # p.profile = esdl_profile
+                    ESDLAsset.remove_profile_from_port(p, profile_id)
+
 
     if message['cmd'] == 'add_port':
         direction = message['direction']

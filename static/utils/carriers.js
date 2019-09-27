@@ -115,6 +115,7 @@ function energy_carrier_info() {
     sidebar_ctr.innerHTML = '<h1>Energy Carriers and Commodities:</h1>';
 
     table = '<table>';
+    table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td></tr>';
     for (i=0; i<carrier_list.length; i++) {
         // type, id, name
         table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +

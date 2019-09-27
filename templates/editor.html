@@ -818,6 +818,10 @@
                 profile_type: profile_type, profile_class: profile_class_id});
         }
 
+        function remove_profile_from_port(port_id, profile_id) {
+            socket.emit('command', {cmd: 'remove_profile_from_port', port_id: port_id, profile_id: profile_id});
+        }
+
         // find a layer assocated with an asset_id
         function find_layer(asset_id) {
            all_layers = esdl_layer.getLayers();
@@ -1648,41 +1652,49 @@
 
                 sidebar_ctr = sidebar.getContainer();
 
+                sidebar_ctr.innerHTML = '<h1>Current profiles of port:</h1>';
+
+                table = '<table id="profiles_table">';
+                table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Value</b></td><td><b>Class</b></td></tr>';
                 for (let p=0; p<profile_info_list.length; p++) {
-                    profile_info = profile_info_list[p];
-                    profile_class = profile_info['class'];
-                    profile_type = profile_info['type'];
+                    let profile_info = profile_info_list[p];
+                    let profile_class = profile_info['class'];
+                    let profile_type = profile_info['type'];
+                    let profile_name = profile_info['uiname'];
+                    let profile_id = profile_info['id'];
+                    let profile_value_or_multiplier = 0;
+
                     if (profile_class == 'SingleValue') {
                         profile_value_or_multiplier = profile_info['value'];
                         profile_uiname = 'SingleValue';
                     } else if (profile_class == 'InfluxDBProfile') {
                         profile_value_or_multiplier = profile_info['multiplier'];
-                        profile_uiname = profile_info['uiname'];
                     } else if (profile_class == 'DateTimeProfile') {
                         profile_value_or_multiplier = 0;
                         profile_uiname = 'DateTimeProfile';
                     }
-                }
 
-                sidebar_ctr.innerHTML = '<h1>Set profile of port:</h1>';
+                    table += '<tr><td><button onclick="document.getElementById(\'profiles_table\').deleteRow('+(p+1)+');remove_profile_from_port(\'' + port_id + '\', \''+ profile_id +
+                        '\');">Del</button></td><td>'+profile_name+'</td><td>'+profile_value_or_multiplier+'</td><td>' +
+                        profile_class+'</td></tr>';
+                }
+                table += '</table>';
+                sidebar_ctr.innerHTML += table;
+
+                sidebar_ctr.innerHTML += '<h1>Add profile to port:</h1>';
                 table = '<table>';
                 table += '<tr><td width=180>Profile class</td>';
-                table += '<td><select id="profile_class"><option value="SingleValue"';
-                if (profile_uiname == 'SingleValue') { table += ' selected'; }
-                table += '>Single Value</option>';
-                table += '<option value="DateTimeProfile"';
-                if (profile_uiname == 'DateTimeProfile') { table += ' selected'; }
-                table += '>DateTime Profile</option>';
+                table += '<td><select id="profile_class"><option value="SingleValue" selected>Single Value</option>';
+                table += '<option value="DateTimeProfile">DateTime Profile</option>';
+
                 for (p=0; p<profile_array.length; p++) {
-                    table += '<option value="'+profile_array[p]["profile_uiname"]+'"';
-                    if (profile_uiname == profile_array[p]["profile_uiname"]) { table += ' selected'; }
-                    table += '>'+profile_array[p]["profile_uiname"]+'</option>';
+                    table += '<option value="'+profile_array[p]["profile_uiname"]+'">'+profile_array[p]["profile_uiname"]+'</option>';
                 }
                 table += '</select></td></tr>';
                 table += '<tr><td width=180>Multiplier or value</td>';
-                table += '<td><input type="text" width="60" id="profile_multiplier" value="'+profile_value_or_multiplier+'"></td></tr>';
+                table += '<td><input type="text" width="60" id="profile_multiplier" value=""></td></tr>';
                 table += '<tr><td width=180>Profile Type</td>';
-                table += '<td><input type="text" width="60" id="profile_type" value="'+profile_type+'">';
+                table += '<td><input type="text" width="60" id="profile_type" value="">';
                 table += '<input type="hidden" id="profile_port_id" value="'+port_id+'"></td></tr>';
                 table += '</table>'
 
@@ -1816,23 +1828,6 @@
 
             socket.on('profile_info', function(pa) {
                 profile_array = pa;
-                // This functionality is now in the contextmenu
-                <!--var select = document.getElementById('profile_menu');-->
-                <!--select.innerHTML = '';-->
-
-                <!--var option = document.createElement("option");-->
-                <!--option.classList.add("ui-state-active");-->
-                <!--option.text = "SingleValue profile";-->
-                <!--option.value = "SingleValue";-->
-                <!--select.add(option, null);-->
-
-                <!--for (i=0; i<profile_array.length; i++) {-->
-                    <!--var option = document.createElement("option");-->
-                    <!--option.text = profile_array[i]["profile_uiname"];-->
-                    <!--option.value = profile_array[i]["profile_uiname"];-->
-                    <!--select.add(option, null);-->
-                <!--}-->
-                <!--$("#profile_menu").selectmenu("refresh");    // to update the selectmenu based on the selected value-->
             });
 
             socket.on('control_strategy_config', function(csc) {
@@ -2168,10 +2163,11 @@
     ).addTo(map);
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
-        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
-        "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
-        "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];
+    var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
+        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
+        "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Joint", "MobilityDemand", "PowerPlant",
+        "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",
+        "UTES", "WindTurbine"];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
