@@ -125,6 +125,34 @@ esdl_config = {
                 }
             ]
         },
+    ],
+    "predefined_quantity_and_units": [
+        {
+            "id": "eb07bccb-203f-407e-af98-e687656a221d",
+            "description": "Energy in GJ",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "GIGA",
+            "unit": "JOULE"
+        },
+        {
+            "id": "cc224fa0-4c45-46c0-9c6c-2dba44aaaacc",
+            "description": "Energy in TJ",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "TERRA",
+            "unit": "JOULE"
+        },
+        {
+            "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1c",
+            "description": "Power in VA",
+            "physicalQuantity": "POWER",
+            "unit": "VOLT_AMPERE"
+        },
+        {
+            "id": "6279c72a-228b-4c2c-8924-6b794c81778c",
+            "description": "Reactive power in VAR",
+            "physicalQuantity": "POWER",
+            "unit": "VOLT_AMPERE_REACTIVE"
+        }
     ]
 }
 

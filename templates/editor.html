@@ -47,6 +47,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/area_building_layer.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/sectors.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/carriers.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/profiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
@@ -56,12 +57,12 @@
 
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/animate.js"></script>
 
-    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
 
         var profile_array;
+        var quantity_and_units_info;
         var control_strategy_config;
         var wms_layer_list;
         var leaflet_layers = {};
@@ -805,21 +806,6 @@
         setPortProfile = function(e, marker_id, port_id) {
             // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
-        }
-
-        function add_profile_to_port() {
-            port_id = document.getElementById('profile_port_id').value;
-            multiplier = document.getElementById('profile_multiplier').value;
-            profile_type = document.getElementById('profile_type').value;
-            profile_class_select = document.getElementById('profile_class');
-            profile_class_id = profile_class_select.options[profile_class_select.selectedIndex].value;
-
-            socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: multiplier,
-                profile_type: profile_type, profile_class: profile_class_id});
-        }
-
-        function remove_profile_from_port(port_id, profile_id) {
-            socket.emit('command', {cmd: 'remove_profile_from_port', port_id: port_id, profile_id: profile_id});
         }
 
         // find a layer assocated with an asset_id
@@ -1647,61 +1633,7 @@
 			});
 
             socket.on('port_profile_info', function(port_profile_info) {
-                profile_info_list = port_profile_info['profile_info'];
-                port_id = port_profile_info['port_id'];
-
-                sidebar_ctr = sidebar.getContainer();
-
-                sidebar_ctr.innerHTML = '<h1>Current profiles of port:</h1>';
-
-                table = '<table id="profiles_table">';
-                table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Value</b></td><td><b>Class</b></td></tr>';
-                for (let p=0; p<profile_info_list.length; p++) {
-                    let profile_info = profile_info_list[p];
-                    let profile_class = profile_info['class'];
-                    let profile_type = profile_info['type'];
-                    let profile_name = profile_info['uiname'];
-                    let profile_id = profile_info['id'];
-                    let profile_value_or_multiplier = 0;
-
-                    if (profile_class == 'SingleValue') {
-                        profile_value_or_multiplier = profile_info['value'];
-                        profile_uiname = 'SingleValue';
-                    } else if (profile_class == 'InfluxDBProfile') {
-                        profile_value_or_multiplier = profile_info['multiplier'];
-                    } else if (profile_class == 'DateTimeProfile') {
-                        profile_value_or_multiplier = 0;
-                        profile_uiname = 'DateTimeProfile';
-                    }
-
-                    table += '<tr><td><button onclick="document.getElementById(\'profiles_table\').deleteRow('+(p+1)+');remove_profile_from_port(\'' + port_id + '\', \''+ profile_id +
-                        '\');">Del</button></td><td>'+profile_name+'</td><td>'+profile_value_or_multiplier+'</td><td>' +
-                        profile_class+'</td></tr>';
-                }
-                table += '</table>';
-                sidebar_ctr.innerHTML += table;
-
-                sidebar_ctr.innerHTML += '<h1>Add profile to port:</h1>';
-                table = '<table>';
-                table += '<tr><td width=180>Profile class</td>';
-                table += '<td><select id="profile_class"><option value="SingleValue" selected>Single Value</option>';
-                table += '<option value="DateTimeProfile">DateTime Profile</option>';
-
-                for (p=0; p<profile_array.length; p++) {
-                    table += '<option value="'+profile_array[p]["profile_uiname"]+'">'+profile_array[p]["profile_uiname"]+'</option>';
-                }
-                table += '</select></td></tr>';
-                table += '<tr><td width=180>Multiplier or value</td>';
-                table += '<td><input type="text" width="60" id="profile_multiplier" value=""></td></tr>';
-                table += '<tr><td width=180>Profile Type</td>';
-                table += '<td><input type="text" width="60" id="profile_type" value="">';
-                table += '<input type="hidden" id="profile_port_id" value="'+port_id+'"></td></tr>';
-                table += '</table>'
-
-                sidebar_ctr.innerHTML += table;
-                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
-
-                sidebar.show();
+                port_profile_info_window(port_profile_info);
             });
 
             socket.on('es_title', function(title) {
@@ -1830,6 +1762,11 @@
                 profile_array = pa;
             });
 
+            socket.on('qau_information', function(qau_info) {
+                quantity_and_units_info = qau_info;
+                console.log(qau_info);
+            });
+
             socket.on('control_strategy_config', function(csc) {
                 control_strategy_config = csc
             });
@@ -1939,6 +1876,7 @@
             addGeoJSONListener(socket, map);
         });
     </script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
 
 
     <script>

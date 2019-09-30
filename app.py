@@ -28,7 +28,7 @@ from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
@@ -2879,43 +2879,52 @@ def process_command(message):
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
-        multiplier_or_value = message['multiplier']
         profile_class = message['profile_class']
-        profile_type = message['profile_type']
+        quap_type = message["qaup_type"]
 
-        # print(port_id)
-        # print(multiplier_or_value)
-        # print(profile_class)
-
-        module = importlib.import_module('esdl.esdl')
-
-        # TODO: Am I nuts? Why use getattr here?
         if profile_class == 'SingleValue':
-            esdl_profile_class = getattr(module, 'SingleValue')
-            esdl_profile = esdl_profile_class()
-            esdl_profile.value = str2float(multiplier_or_value)
-            esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
+            value = message['value']
+            esdl_profile = esdl.SingleValue()
+            esdl_profile.value = str2float(value)
         elif profile_class == 'DateTimeProfile':
-            esdl_profile_class = getattr(module, 'DateTimeProfile')
-            esdl_profile = esdl_profile_class()
+            esdl_profile = esdl.DateTimeProfile()
             # TODO: Determine how to deal with DateTimeProfiles in the UI
         else:
             # Assume all other options are InfluxDBProfiles
+            multiplier = message['multiplier']
+
             profiles = esdl_config.esdl_config['influxdb_profile_data']
             for p in profiles:
                 if p['profile_uiname'] == profile_class:
-                    esdl_profile_class = getattr(module, 'InfluxDBProfile')
-                    esdl_profile = esdl_profile_class()
-                    esdl_profile.multiplier = str2float(multiplier_or_value)
-                    esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
+                    esdl_profile = esdl.InfluxDBProfile()
+                    esdl_profile.multiplier = str2float(multiplier)
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-
                     esdl_profile.host = esdl_config.esdl_config['profile_database']['host']
                     esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
                     esdl_profile.database = esdl_config.esdl_config['profile_database']['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
+
+        if quap_type == 'predefined_qau':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, predefined_qau: predefined_qau});
+            predefined_qau = message["predefined_qau"]
+            for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
+                if pqau['id'] == predefined_qau:
+                    qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
+            esdl_profile.profileQuantityAndUnit = qau
+        elif quap_type == 'custom_qau':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
+            custom_qau = message["custom_qau"]
+            qau = ESDLQuantityAndUnits.build_qau_from_dict(custom_qau)
+            esdl_profile.profileQuantityAndUnit = qau
+        elif quap_type == 'profiletype':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, profile_type: profile_type});
+            profile_type = message['profile_type']
+            esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
 
         esdl_profile.id = str(uuid.uuid4())
         esh.add_object_to_dict(esdl_profile)
@@ -3487,13 +3496,22 @@ def connect():
         send_alert("Session has timed out, please refresh")
 
 
+def get_qau_information():
+    qau_info = dict()
+    qau_info['generic'] = ESDLQuantityAndUnits.get_qau_information()
+    qau_info['profile_type_enum_values'] = ESDLQuantityAndUnits.get_profile_type_enum_values()
+    qau_info['predefined_qau'] = esdl_config.esdl_config['predefined_quantity_and_units']
+    return qau_info
+
+
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
-    print('Send initial stuff to browser')
+    print('Send initial information to client')
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
+    emit('qau_information', get_qau_information())
     initialize_app()
 
 
