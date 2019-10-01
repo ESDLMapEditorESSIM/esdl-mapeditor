@@ -2626,7 +2626,7 @@ def process_command(message):
         obj_id = message['id']
         if obj_id:
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_asset_by_id(obj_id)
+            esh.remove_object_from_dict_by_id(obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
