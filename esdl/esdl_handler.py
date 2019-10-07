@@ -127,8 +127,12 @@ class EnergySystemHandler:
         """Saves the resource under a different filename"""
         self.resource.save(output=filename)
 
-    def get_energy_system(self):
-        return self.energy_system
+    def get_energy_system(self, es_id = None):
+        if es_id is None:
+            return self.energy_system
+        else:
+            # todo: implement
+            return self.energy_system
 
     # Using this function you can query for objects by ID
     # After loading an ESDL-file, all objects that have an ID defines are stored in resource.uuid_dict automatically

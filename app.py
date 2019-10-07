@@ -36,7 +36,7 @@ from extensions.session_manager import set_handler, get_handler, get_session, se
 import esdl_config
 import settings
 from edr_assets import EDR_assets
-
+from esdl_services import ESDLServices
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -47,6 +47,7 @@ if os.environ.get('GEIS'):
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
 wms_layers = WMSLayers()
+esdl_services = ESDLServices()
 
 color_method = 'buildingyear'
 BUILDING_COLORS_BUILDINGYEAR = [
@@ -3337,10 +3338,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
 
     emit('es_title', title)
     emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
-    emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list)
-    emit('add_connections', {'es_id': es.id, 'conn_list': conn_list)
-    emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list)
-    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list)
+    emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
+    emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
+    emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
     set_session('es_title',es.name)
     set_handler(esh)
@@ -3513,6 +3514,7 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
     emit('qau_information', get_qau_information())
+    emit('esdl_services', esdl_services.get_services_list())
     initialize_app()
 
 

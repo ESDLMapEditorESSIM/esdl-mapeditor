@@ -153,6 +153,46 @@ esdl_config = {
             "physicalQuantity": "POWER",
             "unit": "VOLT_AMPERE_REACTIVE"
         }
+    ],
+    "predefined_esdl_services": [
+        {
+            "id": "18d106cf-2af1-407d-8697-0dae23a0ac3e",
+            "name": "Windpotentie",
+            "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/windturbinegebied",
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "PROVINCE", "url_value": "provincies"},
+                    {"scope": "REGION", "url_value": "resgebieden"},
+                    {"scope": "MUNICIPALITY", "url_value": "gemeenten"}
+                ]
+            },
+            "query_parameters": [
+                {
+                    "name": "Minimum distance to the built environment (in meters)",
+                    "parameter_name": "bebouwingsafstand",
+                    "type": "integer"
+                },
+                {
+                    "name": "Restriction",
+                    "parameter_name": "restrictie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Preference",
+                    "parameter_name": "preferentie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Include geometry in ESDL",
+                    "parameter_name": "geometrie",
+                    "type": "boolean"
+                }
+            ]
+        }
     ]
 }
 
