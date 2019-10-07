@@ -3336,11 +3336,11 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             title += ', Filename: ' + filename
 
     emit('es_title', title)
-    emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-    emit('area_bld_list', area_bld_list)
-    emit('add_connections', conn_list)
-    emit('carrier_list', carrier_list)
-    emit('sector_list', sector_list)
+    emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
+    emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list)
+    emit('add_connections', {'es_id': es.id, 'conn_list': conn_list)
+    emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list)
+    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list)
 
     set_session('es_title',es.name)
     set_handler(esh)
@@ -3384,6 +3384,7 @@ def process_file_command(message):
         esh = EnergySystemHandler()
         try:
             esh.load_from_string(esdl_string=file_content)
+
             set_handler(esh)
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))

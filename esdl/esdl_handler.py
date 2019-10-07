@@ -67,6 +67,13 @@ class EnergySystemHandler:
             uri = URI(uri_or_filename)
         return self.load_uri(uri)
 
+    def import_file(self, uri_or_filename):
+        if uri_or_filename[:4] == 'http':
+            uri = HttpURI(uri_or_filename)
+        else:
+            uri = URI(uri_or_filename)
+        return self.add_uri(uri)
+
     def load_uri(self, uri):
         """Loads a new resource in a new resourceSet"""
         self._new_resource_set()
@@ -77,10 +84,10 @@ class EnergySystemHandler:
 
     def add_uri(self, uri):
         """Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to."""
-        self.resource = self.rset.get_resource(uri)
+        tmp_resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
-        self.energy_system = self.resource.contents[0]
-        return self.energy_system
+        # self.energy_system = self.resource.contents[0]
+        return tmp_resource.contents[0].energy_system
 
     def load_from_string(self, esdl_string):
         uri = StringURI('from_string.esdl', esdl_string)

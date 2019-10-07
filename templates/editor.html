@@ -1288,7 +1288,8 @@
 
                 // hide_loader();
 
-                list = options['list'];
+                list = options['asset_pot_list'];
+                es_id = options['es_id'];
 
                 for (let i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
@@ -1321,6 +1322,7 @@
 
                         marker.title = title;
                         marker.id = list[i][3];
+                        marker.esid = es_id;
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
@@ -1338,6 +1340,7 @@
 
                         polygon.title = title;
                         polygon.id = list[i][3];
+                        polygon.esid = es_id;
                         polygon.name = list[i][2];
                         polygon.type = list[i][4];
                         polygon.asspot = list[i][1];
@@ -1349,6 +1352,7 @@
 
                         marker.title = title;
                         marker.id = list[i][3];
+                        marker.esid = es_id;
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
@@ -1372,6 +1376,7 @@
                         // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
                         line.id = list[i][3];
+                        line.esid = es_id;
                         line.ports = list[i][6];
                         line.type = list[i][4];
                         line.name = "";
@@ -1411,16 +1416,17 @@
             socket.on('area_bld_list', function(areas_buildings) {
                 var select = document.getElementById('area_bld_select');
                 select.innerHTML = '';
-                for (i=0; i<areas_buildings.length; i++) {
+                area_bld_list = areas_buildings['area_bld_list']
+                for (i=0; i<area_bld_list.length; i++) {
                     var option = document.createElement("option");
                     if (i==0) { option.classList.add("ui-state-active"); }
-                    var level = areas_buildings[i][3];
+                    var level = area_bld_list[i][3];
                     option.text = '';
                     if (level > 0) {
                          for (j=0; j<level; j++) option.text = option.text + '-';
                     }
-                    option.text = option.text + '- ' + areas_buildings[i][0] + ': ' + areas_buildings[i][2] + ' (' + areas_buildings[i][1] + ')';
-                    option.value = areas_buildings[i][1];
+                    option.text = option.text + '- ' + area_bld_list[i][0] + ': ' + area_bld_list[i][2] + ' (' + area_bld_list[i][1] + ')';
+                    option.value = area_bld_list[i][1];
                     select.add(option, null);
                 }
                 $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
@@ -1433,8 +1439,9 @@
             });
 
             socket.on('add_connections', function(connections) {
-                for (i = 0; i<connections.length; i++) {
-                    var con = connections[i];
+                conn_list = connections['conn_list']
+                for (i = 0; i<conn_list.length; i++) {
+                    var con = conn_list[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
@@ -1787,11 +1794,11 @@
             });
 
             socket.on('carrier_list', function(carr_list) {
-                update_carrier_list(carr_list);
+                update_carrier_list(carr_list['carrier_list']);
             });
 
             socket.on('sector_list', function(list) {
-                set_sector_list(list);
+                set_sector_list(list['sector_list']);
             });
 
             socket.on('wms_layer_list', function(wms_layer_lst) {
