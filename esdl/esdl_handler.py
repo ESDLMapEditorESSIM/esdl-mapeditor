@@ -97,6 +97,13 @@ class EnergySystemHandler:
         self.energy_system = self.resource.contents[0]
         return self.energy_system
 
+    def add_from_string(self, name, esdl_string):
+        uri = StringURI(name + '.esdl', esdl_string)
+        # self.add_uri(uri)
+        tmp_resource = self.rset.get_resource(uri)
+        tmp_resource.load()
+        return tmp_resource.contents[0]
+
     def to_string(self):
         # to use strings as resources, we simulate a string as being a URI
         uri = StringURI('to_string.esdl')

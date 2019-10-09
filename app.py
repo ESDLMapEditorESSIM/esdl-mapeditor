@@ -703,6 +703,11 @@ def editor():
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         return render_template('index.html', dir_settings=settings.dir_settings)
+        # to enable working offline without IDM:
+        # - comment the @oidc.require_login above this method
+        # - comment the line above: return render_template('index.html', dir_settings=settings.dir_settings)
+        # - uncomment the following line:
+        # return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
 
 
 @app.route('/logout')
@@ -3294,6 +3299,11 @@ def process_command(message):
         mode = message['mode']
         if mode == 'empty_assets':
             set_session('adding_edr_assets', None)
+
+    if message['cmd'] == 'query_esdl_service':
+        params = message['params']
+        print(params)
+        esdl_services.call_esdl_service(params)
 
     set_handler(esh)
     session.modified = True

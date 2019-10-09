@@ -49,6 +49,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/carriers.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/profiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -1801,6 +1802,10 @@
                 set_sector_list(list['sector_list']);
             });
 
+            socket.on('esdl_services', function(list) {
+                set_esdl_services_information(list);
+            });
+
             socket.on('wms_layer_list', function(wms_layer_lst) {
                 wms_layer_list = wms_layer_lst;
                 // console.log(wms_layer_list);
@@ -2022,6 +2027,7 @@
             <select id="area_bld_select"></select>
             <!-- <select id="carrier_select"></select> -->
 
+            <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>ESDL Services</button>
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 

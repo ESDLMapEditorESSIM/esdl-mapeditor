@@ -170,24 +170,28 @@ esdl_config = {
             },
             "query_parameters": [
                 {
-                    "name": "Minimum distance to the built environment (in meters)",
+                    "name": "Distance to buildings",
+                    "description": "Minimum distance to the built environment (in meters)",
                     "parameter_name": "bebouwingsafstand",
                     "type": "integer"
                 },
                 {
                     "name": "Restriction",
+                    "description": "",
                     "parameter_name": "restrictie",
                     "type": "multi-selection",
                     "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
                 },
                 {
                     "name": "Preference",
+                    "description": "",
                     "parameter_name": "preferentie",
                     "type": "multi-selection",
                     "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
                 },
                 {
                     "name": "Include geometry in ESDL",
+                    "description": "",
                     "parameter_name": "geometrie",
                     "type": "boolean"
                 }
