@@ -23,7 +23,7 @@ function query_esdl_service(index) {
             parameter_value = document.getElementById(parameter_name+'_boolean').options[document.getElementById(parameter_name+'_boolean').selectedIndex].value;
         }
         else if (ptype == 'multi-selection') {
-            parameter_value = document.getElementById(parameter_name+'_select').options[document.getElementById(parameter_name+'_select').selectedIndex].value;
+            parameter_value = Array.from(document.getElementById(parameter_name+'_select').selectedOptions).map(option => option.value);
         }
         params['query_params'][parameter_name] = parameter_value;
     }

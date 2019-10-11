@@ -12,6 +12,12 @@ class ESDLServices:
     def get_services_list(self):
         return self.config
 
+    def array2list(self, ar):
+        if isinstance(ar, list):
+            return ','.join(ar)
+        else:
+            return ar
+
     def call_esdl_service(self, service_params):
 
         esh = get_handler()
@@ -35,10 +41,11 @@ class ESDLServices:
                     url = url + '?'
                     first_qp = True
                     for key in query_params:
-                        if not first_qp:
-                            url = url + '&'
-                        url = url + key + '=' + query_params[key]
-                        first_qp = False
+                        if query_params[key]:       # to filter empty lists for multi-selection parameters
+                            if not first_qp:
+                                url = url + '&'
+                            url = url + key + '=' + self.array2list(query_params[key])
+                            first_qp = False
 
                 print(url)
 
@@ -58,7 +65,7 @@ class ESDLServices:
                         esh.add_from_string(service['name'], r.text)
                     else:
                         print(
-                            'Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(
+                            'Error running ESDL service - response ' + str(r.status_code) + ' with reason: ' + str(
                                 r.reason))
                         print(r)
                         print(r.content)

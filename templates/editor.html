@@ -22,6 +22,7 @@
 
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
+    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/proj4leaflet.js"></script>
 
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
@@ -50,6 +51,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/profiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -58,6 +60,7 @@
 
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/animate.js"></script>
 
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -704,6 +707,24 @@
             show_loader();
         }
 
+        function import_ESDL(event) {
+            // getting a hold of the file reference
+            var file = event.target.files[0];
+
+            // setting up the reader
+            var reader = new FileReader();
+            reader.readAsText(file); // this is reading as data url
+
+            // here we tell the reader what to do when it's done reading...
+            reader.onload = readerEvent => {
+                var content = readerEvent.target.result; // this is the content!
+                socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
+            }
+
+            // show loader
+            show_loader();
+        }
+
         function send_cmd_load_ESDL() {
             socket.emit('file_command', {cmd: 'get_list_from_store'});
         }
@@ -1128,7 +1149,7 @@
         function show_layers() {
             sidebar_ctr = sidebar.getContainer();
 
-            sidebar_ctr.innerHTML = '<h1>Layers</h1>';
+            sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
             table = '<table>';
             for (var key in wms_layer_list) {
                 let value = wms_layer_list[key];
@@ -1656,12 +1677,13 @@
             });
 
             socket.on('area_boundary', function(area_boundary) {
-                geometry = area_boundary['boundary']
-                color = area_boundary['color']
-                fillcolor = area_boundary['fillcolor']
-                info_type = area_boundary['info-type']
-                name = area_boundary['name']
-                boundary_type = area_boundary['boundary_type']
+                geometry = area_boundary['boundary'];
+                color = area_boundary['color'];
+                fillcolor = area_boundary['fillcolor'];
+                info_type = area_boundary['info-type'];
+                name = area_boundary['name'];
+                boundary_type = area_boundary['boundary_type'];
+                crs = area_boundary['crs'];
                 // console.log(color)
 
                 if (info_type == 'MP-RD') {
@@ -1743,6 +1765,10 @@
                 }
 
                 if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
                     layer = omnivore.wkt.parse(geometry);
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
@@ -1756,8 +1782,13 @@
                 info_type = pot_boundary['info-type'];
                 name = pot_boundary['name'];
                 color = pot_boundary['color'];
+                crs = pot_boundary['crs'];
 
                 if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
                     layer = omnivore.wkt.parse(geometry);
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
@@ -1772,7 +1803,6 @@
 
             socket.on('qau_information', function(qau_info) {
                 quantity_and_units_info = qau_info;
-                console.log(qau_info);
             });
 
             socket.on('control_strategy_config', function(csc) {
@@ -1888,7 +1918,6 @@
             addGeoJSONListener(socket, map);
         });
     </script>
-    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
 
 
     <script>
@@ -1924,6 +1953,7 @@
             $("#profile_menu").selectmenu({ width:150 });
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
             $('#layer-info').button({text: false, icons: {primary: "layers"}});
+            $('#import-esdl').button({text: false, icons: {primary: "import"}});
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
@@ -1965,6 +1995,11 @@
         width: 25;
         height: 25;
     }
+    .ui-button .ui-icon.import{
+        background-image: url({{dir_settings.resource_prefix}}icons/Import.png);
+        width: 25;
+        height: 25;
+    }
     </style>
 
 
@@ -1981,6 +2016,9 @@
             <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
             <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
             <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
+            <button id="import-esdl" onclick="document.querySelector('.inputImportFile').click();" title="Import ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Import</button>
+            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
+
             <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
             <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
             <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
@@ -2027,7 +2065,7 @@
             <select id="area_bld_select"></select>
             <!-- <select id="carrier_select"></select> -->
 
-            <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>ESDL Services</button>
+            <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all">ESDL Services</button>
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 

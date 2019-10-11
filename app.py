@@ -449,7 +449,8 @@ def find_area_info_geojson(building_list, area_list, this_area):
             if asset_geometry:
                if isinstance(asset_geometry, esdl.WKT):
                         emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
-                                             'color': 'grey', 'name': name, 'boundary_type': 'asset'})
+                                               'crs': asset_geometry.CRS, 'color': 'grey', 'name': name,
+                                               'boundary_type': 'asset'})
 
     potentials = this_area.potential
     for potential in potentials:
@@ -458,8 +459,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if potential_geometry:
             if isinstance(potential_geometry, esdl.WKT):
                 # print(potential_geometry)
-                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
-                                      'name': potential_name, 'boundary_type': 'potential'})
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value,
+                                      'crs': potential_geometry.CRS, 'color': 'grey', 'name': potential_name,
+                                      'boundary_type': 'potential'})
 
     areas = this_area.area
     for area in areas:
@@ -673,7 +675,7 @@ def index():
 
 
 @app.route('/editor')
-@oidc.require_login
+# @oidc.require_login
 def editor():
     #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
     #set_session('client_id', session['client_id'])
@@ -702,12 +704,12 @@ def editor():
         # print("role:" + role)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
-        return render_template('index.html', dir_settings=settings.dir_settings)
+        # return render_template('index.html', dir_settings=settings.dir_settings)
         # to enable working offline without IDM:
         # - comment the @oidc.require_login above this method
         # - comment the line above: return render_template('index.html', dir_settings=settings.dir_settings)
         # - uncomment the following line:
-        # return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
+        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
 
 
 @app.route('/logout')
@@ -3304,6 +3306,7 @@ def process_command(message):
         params = message['params']
         print(params)
         esdl_services.call_esdl_service(params)
+        process_energy_system.submit(esh)
 
     set_handler(esh)
     session.modified = True
@@ -3320,43 +3323,50 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     area_bld_list = []
     conn_list = []
     mapping = {}
+    carrier_list = []
+    sector_list = []
 
     set_session('color_method', 'building type')
-
-    es = esh.get_energy_system()
-    area = es.instance[0].area
     emit('clear_ui')
-    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-    carrier_list = ESDLAsset.get_carrier_list(es)
-    sector_list = ESDLAsset.get_sector_list(es)
 
-    create_port_to_asset_mapping(area, mapping)
-    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-    #print('asset list: {}'.format(asset_list))
-
+    main_es = esh.get_energy_system()
+    # TODO: how to deal with the multiple titles? There should be one main ES, how to keep track of that?
     if es_title:
         title = es_title
     else:
-        name = es.name
+        name = main_es.name
         if not name:
-            title = 'ID: ' + es.id
+            title = 'ID: ' + main_es.id
         else:
             title = 'Name: ' + name
         if filename:
             title += ', Filename: ' + filename
 
     emit('es_title', title)
-    emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
-    emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
-    emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
-    emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-    set_session('es_title',es.name)
+    es_list = esh.get_energy_systems()
+
+    for es in es_list:
+        area = es.instance[0].area
+        find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+        carrier_list = ESDLAsset.get_carrier_list(es)
+        sector_list = ESDLAsset.get_sector_list(es)
+
+        create_port_to_asset_mapping(area, mapping)
+        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+
+        emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
+        emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
+        emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
+        if carrier_list:
+            emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+        if sector_list:
+            emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+
+    set_session('es_title',main_es.name)
     set_handler(esh)
-    set_session('es_id', es.id)
-    set_session('es_descr', es.description)
+    set_session('es_id', main_es.id)
+    set_session('es_descr', main_es.description)
     # session['es_start'] = 'new'
 
     set_session('port_to_asset_mapping', mapping)
@@ -3406,6 +3416,18 @@ def process_file_command(message):
         set_session('es_filename', filename)
         # start_ESSIM()
         # check_ESSIM_progress()
+
+    if message['cmd'] == 'import_esdl_from_file':
+        file_content = message['file_content']
+        filename = message['filename']
+        esh = get_handler()
+        try:
+            esh.add_from_string(name=filename, esdl_string=file_content)
+        except Exception as e:
+            send_alert('Error interpreting ESDL from file - Exception: '+str(e))
+
+        process_energy_system.submit(esh, filename) # run in seperate thread
+
 
     if message['cmd'] == 'get_list_from_store':
         try:
