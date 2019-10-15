@@ -71,7 +71,7 @@ class HeatNetwork:
             if not ESDLAsset.add_asset_to_area(esh.get_energy_system(), asset, area_bld_id):
                 ESDLAsset.add_asset_to_building(esh.get_energy_system(), asset, area_bld_id)
 
-            self.socketio.emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
+            self.socketio.emit('add_esdl_objects', {'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
 
 ######

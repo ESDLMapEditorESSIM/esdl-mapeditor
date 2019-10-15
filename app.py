@@ -675,7 +675,7 @@ def index():
 
 
 @app.route('/editor')
-# @oidc.require_login
+@oidc.require_login
 def editor():
     #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
     #set_session('client_id', session['client_id'])
@@ -1412,7 +1412,7 @@ def update_asset_connection_locations(ass_id, lat, lon):
             c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')
-    emit('add_connections', conn_list)
+    emit('add_connections', {'conn_list': conn_list})
     # TODO: can be removed
     set_session('conn_list', conn_list)
 
@@ -1438,7 +1438,7 @@ def update_transport_connection_locations(ass_id, asset, coords):
                 c['to-asset-coord'] = coords[len(coords)-1]
 
     emit('clear_connections')
-    emit('add_connections', conn_list)
+    emit('add_connections', {'conn_list': conn_list})
 
     set_session('conn_list', conn_list)
 
@@ -1452,7 +1452,7 @@ def update_polygon_asset_connection_locations(ass_id, coords):
             c['to-asset-coord'] = coords
 
     emit('clear_connections')
-    emit('add_connections', conn_list)
+    emit('add_connections', {'conn_list': conn_list})
 
     set_session('conn_list', conn_list)
 
@@ -1978,7 +1978,11 @@ def split_conductor(conductor, location, mode, conductor_container):
             mapping[inp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
             mapping[outp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
 
-            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], 'transport'])
+            port_list = []
+            for p in new_cond2.port:
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+            capability_type = ESDLAsset.get_asset_capability_type(joint)
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], port_list, capability_type])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
                           'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
@@ -1986,9 +1990,9 @@ def split_conductor(conductor, location, mode, conductor_container):
                           'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
-        emit('add_esdl_objects', {'list': esdl_assets_to_be_added, 'zoom': False})
+        emit('add_esdl_objects', {'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')
-        emit('add_connections', conn_list)
+        emit('add_connections', {'conn_list': conn_list})
 
         set_session('port_to_asset_mapping', mapping)
         set_session('conn_list', conn_list)
@@ -2625,7 +2629,7 @@ def process_command(message):
             asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
         #print(asset_to_be_added_list)
-        emit('add_esdl_objects', {'list': asset_to_be_added_list, 'zoom': False})
+        emit('add_esdl_objects', {'asset_pot_list': asset_to_be_added_list, 'zoom': False})
         esh.add_object_to_dict(asset)
         set_handler(esh)
 
@@ -3056,7 +3060,7 @@ def process_command(message):
                 print(' - removed {}'.format(conn))
         set_session('conn_list', new_list)  # set new connection list
         emit('clear_connections')  # update gui
-        emit('add_connections', new_list)
+        emit('add_connections', {'conn_list': new_list})
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']
