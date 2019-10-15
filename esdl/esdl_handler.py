@@ -16,8 +16,8 @@ class EnergySystemHandler:
         self.resource = None
         self.rset = ResourceSet()
 
-        # Assign files with the .esdl extension to the XMLResource instead of default XMI
-        self.rset.resource_factory['esdl'] = lambda uri: XMLResource(uri)
+        self._set_resource_factories()
+
 
         # fix python builtin 'from' that is also used in ProfileElement as attribute
         # use 'start' instead of 'from' when using a ProfileElement
@@ -57,10 +57,16 @@ class EnergySystemHandler:
         """Resets the resourceset (e.g. when loading a new file)"""
         self.rset = ResourceSet()
         self.resource = None
+        self._set_resource_factories()
+
+    def _set_resource_factories(self):
         # Assign files with the .esdl extension to the XMLResource instead of default XMI
-        self.rset.resource_factory['esdl'] = lambda uri: XMLResource(uri)
+        self.rset.resource_factory['esdl'] = XMLResource
+        self.rset.resource_factory['*'] = XMLResource
 
     def load_file(self, uri_or_filename):
+        """Loads a EnergySystem file or URI into a new resourceSet
+        :returns EnergySystem the first item in the resourceSet"""
         if uri_or_filename[:4] == 'http':
             uri = HttpURI(uri_or_filename)
         else:
@@ -83,12 +89,24 @@ class EnergySystemHandler:
         return self.energy_system
 
     def load_from_string(self, esdl_string):
+        """Loads an energy system from a string and adds it to the resourceSet
+        :returns the loaded EnergySystem """
         uri = StringURI('from_string.esdl', esdl_string)
         #self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
         self.resource.load()
         self.energy_system = self.resource.contents[0]
         return self.energy_system
+
+    def load_external_string(self, esdl_string):
+        """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
+        It returns an Energy System, but it is not part of a resource in the ResourceSet """
+        uri = StringURI('from_string.esdl', esdl_string)
+        external_rset = ResourceSet()
+        external_resource = external_rset.create_resource(uri)
+        external_resource.load()
+        external_energy_system = external_resource.contents[0]
+        return external_energy_system
 
     def to_string(self):
         # to use strings as resources, we simulate a string as being a URI
@@ -119,6 +137,16 @@ class EnergySystemHandler:
     def save_as(self, filename):
         """Saves the resource under a different filename"""
         self.resource.save(output=filename)
+
+    def save_resourceSet(self):
+        """Saves the complete resourceSet, including additional loaded resources encountered during loading of the
+        initial resource"""
+        for uri, resource in self.rset.resources.items():
+            if not uri[:4] == 'http':
+                print('Saving {}'.format(uri))
+                resource.save()  # raises an Error for HTTP resources
+            else:
+                print("Not saving {}, http-based resource saving is not supported yet".format(uri))
 
     def get_energy_system(self):
         return self.energy_system
