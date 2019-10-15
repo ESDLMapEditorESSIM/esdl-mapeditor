@@ -22,6 +22,7 @@
 
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
+    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/proj4leaflet.js"></script>
 
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
@@ -47,7 +48,10 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/area_building_layer.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/sectors.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/carriers.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/profiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -62,6 +66,7 @@
         var sidebar;
 
         var profile_array;
+        var quantity_and_units_info;
         var control_strategy_config;
         var wms_layer_list;
         var leaflet_layers = {};
@@ -702,6 +707,24 @@
             show_loader();
         }
 
+        function import_ESDL(event) {
+            // getting a hold of the file reference
+            var file = event.target.files[0];
+
+            // setting up the reader
+            var reader = new FileReader();
+            reader.readAsText(file); // this is reading as data url
+
+            // here we tell the reader what to do when it's done reading...
+            reader.onload = readerEvent => {
+                var content = readerEvent.target.result; // this is the content!
+                socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
+            }
+
+            // show loader
+            show_loader();
+        }
+
         function send_cmd_load_ESDL() {
             socket.emit('file_command', {cmd: 'get_list_from_store'});
         }
@@ -805,17 +828,6 @@
         setPortProfile = function(e, marker_id, port_id) {
             // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
-        }
-
-        function add_profile_to_port() {
-            port_id = document.getElementById('profile_port_id').value;
-            multiplier = document.getElementById('profile_multiplier').value;
-            profile_type = document.getElementById('profile_type').value;
-            profile_class_select = document.getElementById('profile_class');
-            profile_class_id = profile_class_select.options[profile_class_select.selectedIndex].value;
-
-            socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: multiplier,
-                profile_type: profile_type, profile_class: profile_class_id});
         }
 
         // find a layer assocated with an asset_id
@@ -1137,7 +1149,7 @@
         function show_layers() {
             sidebar_ctr = sidebar.getContainer();
 
-            sidebar_ctr.innerHTML = '<h1>Layers</h1>';
+            sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
             table = '<table>';
             for (var key in wms_layer_list) {
                 let value = wms_layer_list[key];
@@ -1298,7 +1310,8 @@
 
                 // hide_loader();
 
-                list = options['list'];
+                list = options['asset_pot_list'];
+                es_id = options['es_id'];
 
                 for (let i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
@@ -1331,6 +1344,7 @@
 
                         marker.title = title;
                         marker.id = list[i][3];
+                        marker.esid = es_id;
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
@@ -1348,6 +1362,7 @@
 
                         polygon.title = title;
                         polygon.id = list[i][3];
+                        polygon.esid = es_id;
                         polygon.name = list[i][2];
                         polygon.type = list[i][4];
                         polygon.asspot = list[i][1];
@@ -1359,6 +1374,7 @@
 
                         marker.title = title;
                         marker.id = list[i][3];
+                        marker.esid = es_id;
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
@@ -1382,6 +1398,7 @@
                         // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
                         line.id = list[i][3];
+                        line.esid = es_id;
                         line.ports = list[i][6];
                         line.type = list[i][4];
                         line.name = "";
@@ -1421,16 +1438,17 @@
             socket.on('area_bld_list', function(areas_buildings) {
                 var select = document.getElementById('area_bld_select');
                 select.innerHTML = '';
-                for (i=0; i<areas_buildings.length; i++) {
+                area_bld_list = areas_buildings['area_bld_list']
+                for (i=0; i<area_bld_list.length; i++) {
                     var option = document.createElement("option");
                     if (i==0) { option.classList.add("ui-state-active"); }
-                    var level = areas_buildings[i][3];
+                    var level = area_bld_list[i][3];
                     option.text = '';
                     if (level > 0) {
                          for (j=0; j<level; j++) option.text = option.text + '-';
                     }
-                    option.text = option.text + '- ' + areas_buildings[i][0] + ': ' + areas_buildings[i][2] + ' (' + areas_buildings[i][1] + ')';
-                    option.value = areas_buildings[i][1];
+                    option.text = option.text + '- ' + area_bld_list[i][0] + ': ' + area_bld_list[i][2] + ' (' + area_bld_list[i][1] + ')';
+                    option.value = area_bld_list[i][1];
                     select.add(option, null);
                 }
                 $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
@@ -1443,8 +1461,9 @@
             });
 
             socket.on('add_connections', function(connections) {
-                for (i = 0; i<connections.length; i++) {
-                    var con = connections[i];
+                conn_list = connections['conn_list']
+                for (i = 0; i<conn_list.length; i++) {
+                    var con = conn_list[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
@@ -1643,53 +1662,7 @@
 			});
 
             socket.on('port_profile_info', function(port_profile_info) {
-                profile_info_list = port_profile_info['profile_info'];
-                port_id = port_profile_info['port_id'];
-
-                sidebar_ctr = sidebar.getContainer();
-
-                for (let p=0; p<profile_info_list.length; p++) {
-                    profile_info = profile_info_list[p];
-                    profile_class = profile_info['class'];
-                    profile_type = profile_info['type'];
-                    if (profile_class == 'SingleValue') {
-                        profile_value_or_multiplier = profile_info['value'];
-                        profile_uiname = 'SingleValue';
-                    } else if (profile_class == 'InfluxDBProfile') {
-                        profile_value_or_multiplier = profile_info['multiplier'];
-                        profile_uiname = profile_info['uiname'];
-                    } else if (profile_class == 'DateTimeProfile') {
-                        profile_value_or_multiplier = 0;
-                        profile_uiname = 'DateTimeProfile';
-                    }
-                }
-
-                sidebar_ctr.innerHTML = '<h1>Set profile of port:</h1>';
-                table = '<table>';
-                table += '<tr><td width=180>Profile class</td>';
-                table += '<td><select id="profile_class"><option value="SingleValue"';
-                if (profile_uiname == 'SingleValue') { table += ' selected'; }
-                table += '>Single Value</option>';
-                table += '<option value="DateTimeProfile"';
-                if (profile_uiname == 'DateTimeProfile') { table += ' selected'; }
-                table += '>DateTime Profile</option>';
-                for (p=0; p<profile_array.length; p++) {
-                    table += '<option value="'+profile_array[p]["profile_uiname"]+'"';
-                    if (profile_uiname == profile_array[p]["profile_uiname"]) { table += ' selected'; }
-                    table += '>'+profile_array[p]["profile_uiname"]+'</option>';
-                }
-                table += '</select></td></tr>';
-                table += '<tr><td width=180>Multiplier or value</td>';
-                table += '<td><input type="text" width="60" id="profile_multiplier" value="'+profile_value_or_multiplier+'"></td></tr>';
-                table += '<tr><td width=180>Profile Type</td>';
-                table += '<td><input type="text" width="60" id="profile_type" value="'+profile_type+'">';
-                table += '<input type="hidden" id="profile_port_id" value="'+port_id+'"></td></tr>';
-                table += '</table>'
-
-                sidebar_ctr.innerHTML += table;
-                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
-
-                sidebar.show();
+                port_profile_info_window(port_profile_info);
             });
 
             socket.on('es_title', function(title) {
@@ -1704,12 +1677,13 @@
             });
 
             socket.on('area_boundary', function(area_boundary) {
-                geometry = area_boundary['boundary']
-                color = area_boundary['color']
-                fillcolor = area_boundary['fillcolor']
-                info_type = area_boundary['info-type']
-                name = area_boundary['name']
-                boundary_type = area_boundary['boundary_type']
+                geometry = area_boundary['boundary'];
+                color = area_boundary['color'];
+                fillcolor = area_boundary['fillcolor'];
+                info_type = area_boundary['info-type'];
+                name = area_boundary['name'];
+                boundary_type = area_boundary['boundary_type'];
+                crs = area_boundary['crs'];
                 // console.log(color)
 
                 if (info_type == 'MP-RD') {
@@ -1791,6 +1765,10 @@
                 }
 
                 if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
                     layer = omnivore.wkt.parse(geometry);
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
@@ -1804,8 +1782,13 @@
                 info_type = pot_boundary['info-type'];
                 name = pot_boundary['name'];
                 color = pot_boundary['color'];
+                crs = pot_boundary['crs'];
 
                 if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
                     layer = omnivore.wkt.parse(geometry);
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
@@ -1816,23 +1799,10 @@
 
             socket.on('profile_info', function(pa) {
                 profile_array = pa;
-                // This functionality is now in the contextmenu
-                <!--var select = document.getElementById('profile_menu');-->
-                <!--select.innerHTML = '';-->
+            });
 
-                <!--var option = document.createElement("option");-->
-                <!--option.classList.add("ui-state-active");-->
-                <!--option.text = "SingleValue profile";-->
-                <!--option.value = "SingleValue";-->
-                <!--select.add(option, null);-->
-
-                <!--for (i=0; i<profile_array.length; i++) {-->
-                    <!--var option = document.createElement("option");-->
-                    <!--option.text = profile_array[i]["profile_uiname"];-->
-                    <!--option.value = profile_array[i]["profile_uiname"];-->
-                    <!--select.add(option, null);-->
-                <!--}-->
-                <!--$("#profile_menu").selectmenu("refresh");    // to update the selectmenu based on the selected value-->
+            socket.on('qau_information', function(qau_info) {
+                quantity_and_units_info = qau_info;
             });
 
             socket.on('control_strategy_config', function(csc) {
@@ -1855,11 +1825,15 @@
             });
 
             socket.on('carrier_list', function(carr_list) {
-                update_carrier_list(carr_list);
+                update_carrier_list(carr_list['carrier_list']);
             });
 
             socket.on('sector_list', function(list) {
-                set_sector_list(list);
+                set_sector_list(list['sector_list']);
+            });
+
+            socket.on('esdl_services', function(list) {
+                set_esdl_services_information(list);
             });
 
             socket.on('wms_layer_list', function(wms_layer_lst) {
@@ -1979,6 +1953,7 @@
             $("#profile_menu").selectmenu({ width:150 });
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
             $('#layer-info').button({text: false, icons: {primary: "layers"}});
+            $('#import-esdl').button({text: false, icons: {primary: "import"}});
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
@@ -2020,6 +1995,11 @@
         width: 25;
         height: 25;
     }
+    .ui-button .ui-icon.import{
+        background-image: url({{dir_settings.resource_prefix}}icons/Import.png);
+        width: 25;
+        height: 25;
+    }
     </style>
 
 
@@ -2036,6 +2016,9 @@
             <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
             <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
             <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
+            <button id="import-esdl" onclick="document.querySelector('.inputImportFile').click();" title="Import ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Import</button>
+            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
+
             <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
             <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
             <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
@@ -2082,6 +2065,7 @@
             <select id="area_bld_select"></select>
             <!-- <select id="carrier_select"></select> -->
 
+            <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all">ESDL Services</button>
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
@@ -2168,10 +2152,11 @@
     ).addTo(map);
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
-        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GenericConsumer", "GenericConversion", "GenericProducer",
-        "GeothermalSource", "HeatingDemand", "HeatNetwork", "HeatPump", "Joint", "MobilityDemand", "PowerPlant",
-        "PVInstallation", "PVParc", "ResidualHeatSourcePotential", "Transformer", "UTES", "WindTurbine"];
+    var assets_for_icons = ["Battery", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
+        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
+        "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Joint", "MobilityDemand", "PowerPlant",
+        "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",
+        "UTES", "WindTurbine"];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {

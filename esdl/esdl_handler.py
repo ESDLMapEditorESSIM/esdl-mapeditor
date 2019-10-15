@@ -15,6 +15,7 @@ class EnergySystemHandler:
             self.energy_system = energy_system
         self.resource = None
         self.rset = ResourceSet()
+        self.esid_uri_dict = {}
 
         self._set_resource_factories()
 
@@ -73,20 +74,29 @@ class EnergySystemHandler:
             uri = URI(uri_or_filename)
         return self.load_uri(uri)
 
+    def import_file(self, uri_or_filename):
+        if uri_or_filename[:4] == 'http':
+            uri = HttpURI(uri_or_filename)
+        else:
+            uri = URI(uri_or_filename)
+        return self.add_uri(uri)
+
     def load_uri(self, uri):
         """Loads a new resource in a new resourceSet"""
         self._new_resource_set()
         self.resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
+        self.esid_uri_dict[self.energy_system.id] = uri
         return self.energy_system
 
     def add_uri(self, uri):
         """Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to."""
-        self.resource = self.rset.get_resource(uri)
+        tmp_resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
-        self.energy_system = self.resource.contents[0]
-        return self.energy_system
+        # self.energy_system = self.resource.contents[0]
+        self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        return tmp_resource.contents[0]
 
     def load_from_string(self, esdl_string):
         """Loads an energy system from a string and adds it to the resourceSet
@@ -96,7 +106,9 @@ class EnergySystemHandler:
         self.resource = self.rset.create_resource(uri)
         self.resource.load()
         self.energy_system = self.resource.contents[0]
+        self.esid_uri_dict[self.energy_system.id] = uri
         return self.energy_system
+
 
     def load_external_string(self, esdl_string):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
@@ -107,6 +119,15 @@ class EnergySystemHandler:
         external_resource.load()
         external_energy_system = external_resource.contents[0]
         return external_energy_system
+
+    def add_from_string(self, name, esdl_string):
+        uri = StringURI(name + '.esdl', esdl_string)
+        # self.add_uri(uri)
+        tmp_resource = self.rset.get_resource(uri)
+        tmp_resource.load()
+        self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        return tmp_resource.contents[0]
+
 
     def to_string(self):
         # to use strings as resources, we simulate a string as being a URI
@@ -138,6 +159,7 @@ class EnergySystemHandler:
         """Saves the resource under a different filename"""
         self.resource.save(output=filename)
 
+
     def save_resourceSet(self):
         """Saves the complete resourceSet, including additional loaded resources encountered during loading of the
         initial resource"""
@@ -148,8 +170,24 @@ class EnergySystemHandler:
             else:
                 print("Not saving {}, http-based resource saving is not supported yet".format(uri))
 
-    def get_energy_system(self):
-        return self.energy_system
+
+    def get_energy_system(self, es_id = None):
+        if es_id is None:
+            return self.energy_system
+        else:
+            # todo: implement
+            return self.energy_system
+
+    def get_energy_systems(self):
+        es_list = []
+        # for esid in self.esid_uri_dict:
+        #    uri = self.esid_uri_dict[esid]
+        #    es_list.append(self.rset.resources[uri])
+
+        for key in self.rset.resources.keys():
+            es_list.append(self.rset.resources[key].contents[0])
+        return es_list
+
 
     # Using this function you can query for objects by ID
     # After loading an ESDL-file, all objects that have an ID defines are stored in resource.uuid_dict automatically
@@ -212,9 +250,12 @@ class EnergySystemHandler:
         area = esdl.Area(id=str(uuid4()), name=area_title, scope=esdl.AreaScopeEnum.from_string('UNDEFINED'))
         instance.area = area
 
-        self.resource = self.rset.create_resource(StringURI('string_resource.esdl'))
+        uri = StringURI('empty_energysystem.esdl')
+        self.resource = self.rset.create_resource(uri)
         # add the current energy system
         self.resource.append(self.energy_system)
+        self.esid_uri_dict[self.energy_system.id] = uri
+
         return self.energy_system
 
     # Support for Pickling when serializing the energy system in a session

@@ -28,7 +28,7 @@ from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
@@ -36,7 +36,7 @@ from extensions.session_manager import set_handler, get_handler, get_session, se
 import esdl_config
 import settings
 from edr_assets import EDR_assets
-
+from esdl_services import ESDLServices
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -47,6 +47,7 @@ if os.environ.get('GEIS'):
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
 wms_layers = WMSLayers()
+esdl_services = ESDLServices()
 
 color_method = 'buildingyear'
 BUILDING_COLORS_BUILDINGYEAR = [
@@ -448,7 +449,8 @@ def find_area_info_geojson(building_list, area_list, this_area):
             if asset_geometry:
                if isinstance(asset_geometry, esdl.WKT):
                         emit('area_boundary', {'info-type': 'WKT', 'boundary': asset_geometry.value,
-                                             'color': 'grey', 'name': name, 'boundary_type': 'asset'})
+                                               'crs': asset_geometry.CRS, 'color': 'grey', 'name': name,
+                                               'boundary_type': 'asset'})
 
     potentials = this_area.potential
     for potential in potentials:
@@ -457,8 +459,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if potential_geometry:
             if isinstance(potential_geometry, esdl.WKT):
                 # print(potential_geometry)
-                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value, 'color': 'grey',
-                                      'name': potential_name, 'boundary_type': 'potential'})
+                emit('pot_boundary', {'info-type': 'WKT', 'boundary': potential_geometry.value,
+                                      'crs': potential_geometry.CRS, 'color': 'grey', 'name': potential_name,
+                                      'boundary_type': 'potential'})
 
     areas = this_area.area
     for area in areas:
@@ -672,7 +675,7 @@ def index():
 
 
 @app.route('/editor')
-@oidc.require_login
+# @oidc.require_login
 def editor():
     #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
     #set_session('client_id', session['client_id'])
@@ -680,6 +683,8 @@ def editor():
     if oidc.user_loggedin:
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
+
+        print("************* USER LOGIN (" + oidc.user_getfield('email') + ") at " + str(datetime.now()))
 
         whole_token = oidc.get_access_token()
         print("whole_token: ", whole_token)
@@ -699,7 +704,12 @@ def editor():
         # print("role:" + role)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
-        return render_template('index.html', dir_settings=settings.dir_settings)
+        # return render_template('index.html', dir_settings=settings.dir_settings)
+        # to enable working offline without IDM:
+        # - comment the @oidc.require_login above this method
+        # - comment the line above: return render_template('index.html', dir_settings=settings.dir_settings)
+        # - uncomment the following line:
+        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
 
 
 @app.route('/logout')
@@ -1254,20 +1264,21 @@ def generate_profile_info(profile_list):
         profile_class = type(profile).__name__
         profile_type = profile.profileType.name
         profile_name = profile.name
+        profile_id = profile.id
         if profile_class == 'SingleValue':
             value = profile.value
-            profile_info_list.append({'class': 'SingleValue', 'value': value, 'type': profile_type})
+            profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
             multiplier = profile.multiplier
             measurement = profile.measurement
             field = profile.field
-            profile_name = 'UNKNOWN'
+            # profile_name = 'UNKNOWN'
             for p in esdl_config.esdl_config['influxdb_profile_data']:
                 if p['measurement'] == measurement and p['field'] == field:
                     profile_name = p['profile_uiname']
-            profile_info_list.append({'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
+            profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
-            profile_info_list.append({'class': 'DateTimeProfile', 'type': profile_type})
+            profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 
     return profile_info_list
 
@@ -2623,7 +2634,7 @@ def process_command(message):
         obj_id = message['id']
         if obj_id:
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_asset_by_id(obj_id)
+            esh.remove_object_from_dict_by_id(obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
@@ -2872,47 +2883,56 @@ def process_command(message):
                         profile_info_list = generate_profile_info(profile)
                         emit('port_profile_info', {'port_id': port_id, 'profile_info': profile_info_list})
                     else:
-                        emit('port_profile_info', {'port_id': port_id, 'profile_info': [{'class': 'SingleValue', 'value': 1, 'type': 'ENERGY_IN_TJ'}]})
+                        emit('port_profile_info', {'port_id': port_id, 'profile_info': []})
 
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
-        multiplier_or_value = message['multiplier']
         profile_class = message['profile_class']
-        profile_type = message['profile_type']
+        quap_type = message["qaup_type"]
 
-        # print(port_id)
-        # print(multiplier_or_value)
-        # print(profile_class)
-
-        module = importlib.import_module('esdl.esdl')
-
-        # TODO: Am I nuts? Why use getattr here?
         if profile_class == 'SingleValue':
-            esdl_profile_class = getattr(module, 'SingleValue')
-            esdl_profile = esdl_profile_class()
-            esdl_profile.value = str2float(multiplier_or_value)
-            esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
+            value = message['value']
+            esdl_profile = esdl.SingleValue()
+            esdl_profile.value = str2float(value)
         elif profile_class == 'DateTimeProfile':
-            esdl_profile_class = getattr(module, 'DateTimeProfile')
-            esdl_profile = esdl_profile_class()
+            esdl_profile = esdl.DateTimeProfile()
             # TODO: Determine how to deal with DateTimeProfiles in the UI
         else:
             # Assume all other options are InfluxDBProfiles
+            multiplier = message['multiplier']
+
             profiles = esdl_config.esdl_config['influxdb_profile_data']
             for p in profiles:
                 if p['profile_uiname'] == profile_class:
-                    esdl_profile_class = getattr(module, 'InfluxDBProfile')
-                    esdl_profile = esdl_profile_class()
-                    esdl_profile.multiplier = str2float(multiplier_or_value)
-                    esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
+                    esdl_profile = esdl.InfluxDBProfile()
+                    esdl_profile.multiplier = str2float(multiplier)
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-
                     esdl_profile.host = esdl_config.esdl_config['profile_database']['host']
                     esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
                     esdl_profile.database = esdl_config.esdl_config['profile_database']['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
+
+        if quap_type == 'predefined_qau':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, predefined_qau: predefined_qau});
+            predefined_qau = message["predefined_qau"]
+            for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
+                if pqau['id'] == predefined_qau:
+                    qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
+            esdl_profile.profileQuantityAndUnit = qau
+        elif quap_type == 'custom_qau':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
+            custom_qau = message["custom_qau"]
+            qau = ESDLQuantityAndUnits.build_qau_from_dict(custom_qau)
+            esdl_profile.profileQuantityAndUnit = qau
+        elif quap_type == 'profiletype':
+            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            #    profile_class: profile_class, quap_type: qaup_type, profile_type: profile_type});
+            profile_type = message['profile_type']
+            esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
 
         esdl_profile.id = str(uuid.uuid4())
         esh.add_object_to_dict(esdl_profile)
@@ -2925,6 +2945,20 @@ def process_command(message):
                 if p.id == port_id:
                     # p.profile = esdl_profile
                     ESDLAsset.add_profile_to_port(p, esdl_profile)
+
+    if message['cmd'] == 'remove_profile_from_port':
+        port_id = message['port_id']
+        profile_id = message['profile_id']
+
+        asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+        if asset_id:
+            asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
+            ports = asset.port
+            for p in ports:
+                if p.id == port_id:
+                    # p.profile = esdl_profile
+                    ESDLAsset.remove_profile_from_port(p, profile_id)
+
 
     if message['cmd'] == 'add_port':
         direction = message['direction']
@@ -3268,6 +3302,12 @@ def process_command(message):
         if mode == 'empty_assets':
             set_session('adding_edr_assets', None)
 
+    if message['cmd'] == 'query_esdl_service':
+        params = message['params']
+        print(params)
+        esdl_services.call_esdl_service(params)
+        process_energy_system.submit(esh)
+
     set_handler(esh)
     session.modified = True
 
@@ -3283,43 +3323,50 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     area_bld_list = []
     conn_list = []
     mapping = {}
+    carrier_list = []
+    sector_list = []
 
     set_session('color_method', 'building type')
-
-    es = esh.get_energy_system()
-    area = es.instance[0].area
     emit('clear_ui')
-    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-    carrier_list = ESDLAsset.get_carrier_list(es)
-    sector_list = ESDLAsset.get_sector_list(es)
 
-    create_port_to_asset_mapping(area, mapping)
-    process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
-
-    #print('asset list: {}'.format(asset_list))
-
+    main_es = esh.get_energy_system()
+    # TODO: how to deal with the multiple titles? There should be one main ES, how to keep track of that?
     if es_title:
         title = es_title
     else:
-        name = es.name
+        name = main_es.name
         if not name:
-            title = 'ID: ' + es.id
+            title = 'ID: ' + main_es.id
         else:
             title = 'Name: ' + name
         if filename:
             title += ', Filename: ' + filename
 
     emit('es_title', title)
-    emit('add_esdl_objects', {'list': asset_list, 'zoom': True})
-    emit('area_bld_list', area_bld_list)
-    emit('add_connections', conn_list)
-    emit('carrier_list', carrier_list)
-    emit('sector_list', sector_list)
 
-    set_session('es_title',es.name)
+    es_list = esh.get_energy_systems()
+
+    for es in es_list:
+        area = es.instance[0].area
+        find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+        carrier_list = ESDLAsset.get_carrier_list(es)
+        sector_list = ESDLAsset.get_sector_list(es)
+
+        create_port_to_asset_mapping(area, mapping)
+        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+
+        emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
+        emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
+        emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
+        if carrier_list:
+            emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+        if sector_list:
+            emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+
+    set_session('es_title',main_es.name)
     set_handler(esh)
-    set_session('es_id', es.id)
-    set_session('es_descr', es.description)
+    set_session('es_id', main_es.id)
+    set_session('es_descr', main_es.description)
     # session['es_start'] = 'new'
 
     set_session('port_to_asset_mapping', mapping)
@@ -3358,6 +3405,7 @@ def process_file_command(message):
         esh = EnergySystemHandler()
         try:
             esh.load_from_string(esdl_string=file_content)
+
             set_handler(esh)
         except Exception as e:
             send_alert('Error interpreting ESDL from file - Exception: '+str(e))
@@ -3368,6 +3416,18 @@ def process_file_command(message):
         set_session('es_filename', filename)
         # start_ESSIM()
         # check_ESSIM_progress()
+
+    if message['cmd'] == 'import_esdl_from_file':
+        file_content = message['file_content']
+        filename = message['filename']
+        esh = get_handler()
+        try:
+            esh.add_from_string(name=filename, esdl_string=file_content)
+        except Exception as e:
+            send_alert('Error interpreting ESDL from file - Exception: '+str(e))
+
+        process_energy_system.submit(esh, filename) # run in seperate thread
+
 
     if message['cmd'] == 'get_list_from_store':
         try:
@@ -3470,13 +3530,23 @@ def connect():
         send_alert("Session has timed out, please refresh")
 
 
+def get_qau_information():
+    qau_info = dict()
+    qau_info['generic'] = ESDLQuantityAndUnits.get_qau_information()
+    qau_info['profile_type_enum_values'] = ESDLQuantityAndUnits.get_profile_type_enum_values()
+    qau_info['predefined_qau'] = esdl_config.esdl_config['predefined_quantity_and_units']
+    return qau_info
+
+
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
-    print('Send initial stuff to browser')
+    print('Send initial information to client')
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
+    emit('qau_information', get_qau_information())
+    emit('esdl_services', esdl_services.get_services_list())
     initialize_app()
 
 

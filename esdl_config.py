@@ -125,6 +125,78 @@ esdl_config = {
                 }
             ]
         },
+    ],
+    "predefined_quantity_and_units": [
+        {
+            "id": "eb07bccb-203f-407e-af98-e687656a221d",
+            "description": "Energy in GJ",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "GIGA",
+            "unit": "JOULE"
+        },
+        {
+            "id": "cc224fa0-4c45-46c0-9c6c-2dba44aaaacc",
+            "description": "Energy in TJ",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "TERRA",
+            "unit": "JOULE"
+        },
+        {
+            "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1c",
+            "description": "Power in VA",
+            "physicalQuantity": "POWER",
+            "unit": "VOLT_AMPERE"
+        },
+        {
+            "id": "6279c72a-228b-4c2c-8924-6b794c81778c",
+            "description": "Reactive power in VAR",
+            "physicalQuantity": "POWER",
+            "unit": "VOLT_AMPERE_REACTIVE"
+        }
+    ],
+    "predefined_esdl_services": [
+        {
+            "id": "18d106cf-2af1-407d-8697-0dae23a0ac3e",
+            "name": "Windpotentie",
+            "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/windturbinegebied",
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "PROVINCE", "url_value": "provincies"},
+                    {"scope": "REGION", "url_value": "resgebieden"},
+                    {"scope": "MUNICIPALITY", "url_value": "gemeenten"}
+                ]
+            },
+            "query_parameters": [
+                {
+                    "name": "Distance to buildings",
+                    "description": "Minimum distance to the built environment (in meters)",
+                    "parameter_name": "bebouwingsafstand",
+                    "type": "integer"
+                },
+                {
+                    "name": "Restriction",
+                    "description": "",
+                    "parameter_name": "restrictie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Preference",
+                    "description": "",
+                    "parameter_name": "preferentie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Include geometry in ESDL",
+                    "description": "",
+                    "parameter_name": "geometrie",
+                    "type": "boolean"
+                }
+            ]
+        }
     ]
 }
 
