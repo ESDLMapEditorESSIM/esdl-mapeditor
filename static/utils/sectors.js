@@ -1,4 +1,4 @@
-var sector_list;
+var sector_list = [];
 
 function set_sector_list(list) {
     sector_list = list;

@@ -59,7 +59,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         }
     };
 
-    console.log(kpi_list);
+    // console.log(kpi_list);
 }
 
 function calc_order_of_magnitude(n) {

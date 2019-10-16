@@ -1573,6 +1573,7 @@ def connect_ports(port1, port2):
 
 def connect_asset_with_conductor(asset, conductor):
     conn_list = get_session("conn_list")
+    es_id = get_session("es_id")
 
     asset_geom = asset.geometry
     cond_geom = conductor.geometry
@@ -1598,7 +1599,7 @@ def connect_asset_with_conductor(asset, conductor):
             if not type(p).__name__ == type(cond_port).__name__:
                 print('connect asset with first_point')
                 connect_ports(p, cond_port)
-                emit('add_new_conn', [[asset_geom.lat,asset_geom.lon],[first_point.lat,first_point.lon]])
+                emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat,asset_geom.lon],[first_point.lat,first_point.lon]]})
                 conn_list.append(
                     {'from-port-id': p.id, 'from-asset-id': asset.id,
                      'from-asset-coord': [asset_geom.lat,asset_geom.lon],
@@ -1613,8 +1614,7 @@ def connect_asset_with_conductor(asset, conductor):
             if not type(p).__name__ == type(cond_port).__name__:
                 print('connect asset with last_point')
                 connect_ports(p, cond_port)
-                emit('add_new_conn',
-                     [[asset_geom.lat, asset_geom.lon], [last_point.lat, last_point.lon]])
+                emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat, asset_geom.lon], [last_point.lat, last_point.lon]]})
                 conn_list.append(
                     {'from-port-id': p.id, 'from-asset-id': asset.id,
                      'from-asset-coord': [asset_geom.lat, asset_geom.lon],
@@ -1626,6 +1626,7 @@ def connect_asset_with_conductor(asset, conductor):
 
 def connect_asset_with_asset(asset1, asset2):
     conn_list = get_session("conn_list")
+    es_id = get_session("es_id")
 
     ports1 = asset1.port
     num_ports1 = len(ports1)
@@ -1649,9 +1650,8 @@ def connect_asset_with_asset(asset1, asset2):
                     connect_ports(p, ports1[0])
                     p1 = ports1[0]
                     p2 = p
-                    emit('add_new_conn',
-                         [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]])
+                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]]})
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No InPort found on asset2')
@@ -1665,9 +1665,8 @@ def connect_asset_with_asset(asset1, asset2):
                     connect_ports(p, ports1[0])
                     p1 = ports1[0]
                     p2 = p
-                    emit('add_new_conn',
-                         [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]])
+                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]]})
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No OutPort found on asset2')
@@ -1683,9 +1682,8 @@ def connect_asset_with_asset(asset1, asset2):
                     connect_ports(p, ports2[0])
                     p1 = p
                     p2 = ports2[0]
-                    emit('add_new_conn',
-                         [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]])
+                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]]})
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No InPort found on asset1')
@@ -1699,9 +1697,8 @@ def connect_asset_with_asset(asset1, asset2):
                     connect_ports(p, ports2[0])
                     p1 = p
                     p2 = ports2[0]
-                    emit('add_new_conn',
-                         [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]])
+                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+                          [asset2_geom.lat, asset2_geom.lon]]})
                     found = 1
             if not found:
                 send_alert('UNSUPPORTED - No OutPort found in asset1')
@@ -1722,6 +1719,7 @@ def connect_asset_with_asset(asset1, asset2):
 
 def connect_conductor_with_conductor(conductor1, conductor2):
     conn_list = get_session("conn_list")
+    es_id = get_session("es_id")
 
     c1points = conductor1.geometry.point
     c1p0 = c1points[0]
@@ -1765,7 +1763,7 @@ def connect_conductor_with_conductor(conductor1, conductor2):
     if not type(conn1).__name__ == type(conn2).__name__:
         connect_ports(conn1, conn2)
         emit('add_new_conn',
-             [[conn_pnt1.lat, conn_pnt1.lon], [conn_pnt2.lat, conn_pnt2.lon]])
+             {'es_id': es_id, 'new_conn': [[conn_pnt1.lat, conn_pnt1.lon], [conn_pnt2.lat, conn_pnt2.lon]]})
         conn_list.append(
             {'from-port-id': conn1.id, 'from-asset-id': conductor1.id,
              'from-asset-coord': [conn_pnt1.lat, conn_pnt1.lon],
@@ -1826,6 +1824,7 @@ def distance_point_to_line(p, p1, p2):
 def split_conductor(conductor, location, mode, conductor_container):
     mapping = get_session('port_to_asset_mapping')
     conn_list = get_session('conn_list')
+    es_id = get_session('es_id')
     #asset_dict = session['asset_dict']
     esh = get_handler()
 
@@ -2012,7 +2011,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                           'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
-        emit('add_esdl_objects', {'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
+        emit('add_esdl_objects', {'es_id': es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')
         emit('add_connections', {'conn_list': conn_list})
 
@@ -2188,7 +2187,6 @@ def get_boundary_info(info):
 
     if not boundaries:
         send_alert('Error processing boundary information or no boundary information returned')
-
 
     area_list = []
 
@@ -2651,7 +2649,7 @@ def process_command(message):
             asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
         #print(asset_to_be_added_list)
-        emit('add_esdl_objects', {'asset_pot_list': asset_to_be_added_list, 'zoom': False})
+        emit('add_esdl_objects', {'es_id': es_edit.id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
         esh.add_object_to_dict(asset)
         set_handler(esh)
 
@@ -2761,8 +2759,8 @@ def process_command(message):
             else:
                 connect_ports(port1, port2)
 
-                emit('add_new_conn',
-                     [[asset1_port_location[0], asset1_port_location[1]], [asset2_port_location[0], asset2_port_location[1]]])
+                emit('add_new_conn', {'es_id': es_edit.id, 'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
+                                                                   [asset2_port_location[0], asset2_port_location[1]]]})
 
                 conn_list = get_session("conn_list")
                 conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
@@ -3165,7 +3163,7 @@ def process_command(message):
         ecs.carrier.append(carrier)
 
         carrier_list = ESDLAsset.get_carrier_list(es_edit)
-        emit('carrier_list', carrier_list)
+        emit('carrier_list', {'es_id': es_edit.id, 'carrier_list': carrier_list})
 
     if message['cmd'] == 'set_building_color_method':
         set_session("color_method", message['method'])
@@ -3287,14 +3285,14 @@ def process_command(message):
         code = message['code']
         ESDLAsset.add_sector(es_edit, name, code, descr)
         sector_list = ESDLAsset.get_sector_list(es_edit)
-        emit('sector_list', sector_list)
+        emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
         esh = get_handler()
         ESDLAsset.remove_sector(esh.get_energy_system(), id)
         sector_list = ESDLAsset.get_sector_list(es_edit)
-        emit('sector_list', sector_list)
+        emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'set_sector':
         asset_id = message['asset_id']

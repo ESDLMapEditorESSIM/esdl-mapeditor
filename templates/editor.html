@@ -1310,7 +1310,7 @@
                 // 'point'   potential  name    id      class_name  [lat,lon]
 
                 // hide_loader();
-                console.log(options);
+                // console.log(options);
                 list = options['asset_pot_list'];
                 es_id = options['es_id'];
 
@@ -1463,19 +1463,24 @@
 
             socket.on('add_connections', function(connections) {
                 conn_list = connections['conn_list']
+                es_id = connections['es_id'];
                 for (i = 0; i<conn_list.length; i++) {
                     var con = conn_list[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
+                    line.es_id = es_id;
                     connection_layer.addLayer(line);
                 }
             });
 
             socket.on('add_new_conn', function(connection) {
-                var coords = [connection[0], connection[1]];
+                var new_conn = connection['new_conn'];
+                var es_id = connection['es_id'];
+                var coords = [new_conn[0], new_conn[1]];
                 // console.log(coords);
                 var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
+                line.es_id = es_id
                 connection_layer.addLayer(line);
             });
 
