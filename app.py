@@ -95,7 +95,9 @@ AREA_FILLCOLOR = 'red'
 
 # ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
-store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.ESDL_STORE_PORT + '/store/'
+default_store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.ESDL_STORE_PORT + '/store/'
+mondaine_hub_url = 'https://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.MONDAINE_HUB_PORT + '/store/'
+# mondaine_hub_url = 'https://mondaine-hub.hesi.energy'+ '/store/'
 
 # handler to retrieve E
 esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
@@ -105,6 +107,13 @@ def write_energysystem_to_file(filename, esh):
 
 
 def create_ESDL_store_item(id, esh, title, description, email):
+
+    role = get_session('user-role')
+    if 'mondaine' in role:
+        store_url = mondaine_hub_url
+    else:
+        store_url = default_store_url
+
     esdlstr = esh.to_string()
     try:
         payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
@@ -115,6 +124,12 @@ def create_ESDL_store_item(id, esh, title, description, email):
 
 # TODO: move to EDR plugin (not EDR! :-))
 def load_ESDL_EnergySystem(id):
+    role = get_session('user-role')
+    if 'mondaine' in role:
+        store_url = mondaine_hub_url
+    else:
+        store_url = default_store_url
+
     url = store_url + 'esdl/' + id + '?format=xml'
 
     try:
@@ -133,6 +148,12 @@ def load_ESDL_EnergySystem(id):
         return None
 
 def store_ESDL_EnergySystem(id, esh):
+    role = get_session('user-role')
+    if 'mondaine' in role:
+        store_url = mondaine_hub_url
+    else:
+        store_url = default_store_url
+
     esdlstr = esh.to_string()
 
     payload = {'id': id, 'esdl': esdlstr}
@@ -698,10 +719,11 @@ def editor():
 
         userinfo = oidc.user_getinfo(['role'])
         if 'role' in userinfo:
-            role = userinfo['role']
+            role = userinfo['role'].split(',')
         else:
-            role = ''
+            role = []
         # print("role:" + role)
+        set_session('user-role', role)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         # return render_template('index.html', dir_settings=settings.dir_settings)
@@ -3434,6 +3456,12 @@ def process_file_command(message):
 
 
     if message['cmd'] == 'get_list_from_store':
+        role = get_session('user-role')
+        if 'mondaine' in role:
+            store_url = mondaine_hub_url
+        else:
+            store_url = default_store_url
+
         try:
             result = requests.get(store_url)
         except Exception as e:

@@ -36,7 +36,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
             KPI_value = KPIs[kpi];
             if (!(kpi in kpi_list)) {
                 if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
-                if (isNumeric(KPI_value)) {
+                if (isNumeric(KPI_value) && KPI_value != "") {
                     if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
                     value = parseFloat(KPI_value);
                     kpi_list[kpi] = { "min": value, "max": value };
@@ -45,18 +45,21 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                     kpi_list[kpi] = [KPI_value];
                 }
             } else {
-                if (isNumeric(KPI_value)) {
+                if (isNumeric(KPI_value) && KPI_value != "") {
                     value = parseFloat(KPI_value);
                     if (value < kpi_list[kpi]["min"]) { kpi_list[kpi]["min"] = value; }
                     if (value > kpi_list[kpi]["max"]) { kpi_list[kpi]["max"] = value; }
                 } else {
-                    kpi_list[kpi].push(KPI_value);
+                    // if (!(KPI_value in (kpi_list[kpi]))) {       // why is this not working?
+                    if (!(kpi_list[kpi].includes(KPI_value))) {
+                        (kpi_list[kpi]).push(KPI_value);
+                    }
                 }
             }
         }
     };
 
-    // console.log(kpi_list);
+    console.log(kpi_list);
 }
 
 function calc_order_of_magnitude(n) {
@@ -160,15 +163,17 @@ function get_floorArea_colors(value) {
     return color_grades[get_range_color_index(value, building_area_categories, num_building_area_categories)];
 }
 
+
+var area_legend_ranges;
 var num_area_range_colors;
 function get_area_range_colors(value) {
     return grades[num_area_range_colors.toString()][get_range_color_index(value, area_legend_ranges, num_area_range_colors)];
 }
 
-var area_legend_ranges;
+var area_legend_array;
 var num_area_array_colors;
 function get_area_array_colors(value) {
-    return color_grades[area_legend_ranges.indexOf(value)];
+    return color_grades[area_legend_array.indexOf(value)];
 }
 
 function get_area_default_color(value) {
@@ -214,8 +219,6 @@ function create_range_area_legendClassesDiv(kpi) {
             area_legend_ranges[i] + (area_legend_ranges[i + 1] ? '&ndash;' + area_legend_ranges[i + 1] + '<br>' : '+');
     }
 }
-
-var area_legend_array;
 
 function create_array_area_legendClassesDiv(kpi) {
     areaLegendClassesDiv.innerHTML = '';
@@ -347,11 +350,17 @@ function selectBuildingKPI(selectObject) {
 function create_area_array_or_range_legendClassesDiv(kpi) {
     if (Array.isArray(kpi)) {
         if (kpi.length > 9) {
-            alert("More than 9 labels in KPI "+areaLegendChoice);
-            return;
+            alert("More than 9 labels ("+kpi.length+") in KPI "+areaLegendChoice);
+            rb = new Rainbow();
+            rb.setNumberRange(0, kpi.length-1);
+            color_grades = [];
+            for (i=0; i<kpi.length; i++) {
+                color_grades.push('#' + rb.colourAt(i));
+            }
+        } else {
+            color_grades = grades[kpi.length]
         }
-        area_legend_array = area_KPIs[kpi];
-        color_grades = grades[kpi.length]
+        area_legend_array = area_KPIs[areaLegendChoice];
         num_area_array_colors = kpi.length;
         get_area_color = get_area_array_colors;
         create_array_area_legendClassesDiv(kpi);

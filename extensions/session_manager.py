@@ -17,8 +17,14 @@ def get_handler():
     global managed_sessions
     client_id = session['client_id']
     if client_id in managed_sessions:
-        esh = managed_sessions[client_id][ESH_KEY]
-        print('Retrieve ESH client_id={}, es.name={}'.format(client_id, esh.get_energy_system().name))
+        if ESH_KEY in managed_sessions[client_id]:
+            esh = managed_sessions[client_id][ESH_KEY]
+            print('Retrieve ESH client_id={}, es.name={}'.format(client_id, esh.get_energy_system().name))
+        else:
+            print('No esh in session. Returning empty energy system')
+            esh = EnergySystemHandler()
+            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+            set_handler(esh)
         return esh
     else:
         print('Session has timed-out. Returning empty energy system')

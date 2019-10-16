@@ -42,6 +42,7 @@
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/rainbowvis.js"></script>
 
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/utils.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/heatnetwork.js"></script>
@@ -885,7 +886,7 @@
             socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
         }
 
-{% if role == 'essim' %}
+{% if 'essim' in role %}
         // ------------------------------------------------------------------------------------------------------------
         //   ESSIM related functions
         // ------------------------------------------------------------------------------------------------------------
@@ -1858,7 +1859,7 @@
             socket.on('and_now_press_download_file', function() {
                 $("#download-esdl").click();
             });
-{% if role == 'essim' %}
+{% if 'essim' in role %}
             socket.on('show_simulation_progress_window', function() {
                 show_simulation_progress_window();
             });
@@ -1961,7 +1962,7 @@
                 initiate_draw_asset();
             });
 
-{% if role != 'essim' %}
+{% if not 'essim' in role %}
             $("#valESSIM").button({disabled: true});
             $("#ESSIM").button({disabled: true});
             $("#ESSIMkpis").button({disabled: true});
@@ -2069,7 +2070,7 @@
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
-{% if role == 'essim' %}
+{% if 'essim' in role %}
             <button id="valESSIM" onclick="validate_for_ESSIM();" title="Validate before ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-check"></span>Validate</button>
             <button id="ESSIM" onclick="run_ESSIM_simulation();" title="Run an ESSIM simulation" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>Simulate</button>
             <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
