@@ -1487,7 +1487,11 @@
             socket.on('store_list', function(store_items) {
                 sidebar_ctr = sidebar.getContainer();
 
+{% if 'mondaine' in role %}
+                sidebar_ctr.innerHTML = '<h1>Load ESDL from Mondaine Hub</h1>';
+{% else %}
                 sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
+{% endif %}
                 select = '<select id="load_es_selection">';
                 for (i = 0; i<store_items.length; i++) {
                     select += '<option value="'+store_items[i]['id']+'"';
@@ -2026,11 +2030,17 @@
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
 
             <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
+{% if 'mondaine' in role %}
+            <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from Mondaine Hub" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Hub</button>
+            <button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to Mondaine Hub" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Hub</button>
+{% else %}
             <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from ESDL store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Store</button>
+{% endif %}
+
             <button id="es-info" onclick="get_es_info();" title="Generic energy system information" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-info"></span>Info</button>
             <button id="EC" onclick="energy_carrier_info();" title="Energy carriers and commodities" class="ui-button ui-widget ui-corner-all">ECs</button>
             <button id="sector-btn" onclick="sector_info();" title="Sectors" class="ui-button ui-widget ui-corner-all">S</button>
-            <!--button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to ESDL Store" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Store</button-->
+
             <button id="boundary-info" onclick="boundary_info_window();" title="Get boundary information for region (and subregions)" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Boundary</button>
 
             <button id="edr-asset-btn" onclick="select_edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
