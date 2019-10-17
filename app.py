@@ -96,7 +96,7 @@ AREA_FILLCOLOR = 'red'
 # ESDL_STORE_PORT = '3003'
 # store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
 default_store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.ESDL_STORE_PORT + '/store/'
-mondaine_hub_url = 'https://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.MONDAINE_HUB_PORT + '/store/'
+mondaine_hub_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.MONDAINE_HUB_PORT + '/store/'
 # mondaine_hub_url = 'https://mondaine-hub.hesi.energy'+ '/store/'
 
 # handler to retrieve E
