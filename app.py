@@ -726,12 +726,12 @@ def editor():
         set_session('user-role', role)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
-        # return render_template('index.html', dir_settings=settings.dir_settings)
+        return render_template('index.html', dir_settings=settings.dir_settings)
         # to enable working offline without IDM:
         # - comment the @oidc.require_login above this method
         # - comment the line above: return render_template('index.html', dir_settings=settings.dir_settings)
         # - uncomment the following line:
-        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
+        # return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
 
 
 @app.route('/logout')
@@ -1313,7 +1313,8 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
         ports = basset.port
         for p in ports:
             conn_to = p.connectedTo
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to})
+            conn_to_id_list = [ct.id for ct in conn_to]
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
 
         geom = basset.geometry
         coord = ()
@@ -1331,10 +1332,10 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
             conn_to = p.connectedTo
             if conn_to:
                 for pc in conn_to:
-                    pc_asset = port_asset_mapping[pc]
+                    pc_asset = port_asset_mapping[pc.id]
                     pc_asset_coord = pc_asset['coord']
                     conn_list.append({'from-port-id': p.id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
-                        'to-port-id': pc, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
+                        'to-port-id': pc.id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, basset, level+1)
