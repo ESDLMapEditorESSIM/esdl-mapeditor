@@ -68,34 +68,42 @@ function calc_order_of_magnitude(n) {
     return Math.pow(10,order);
 }
 
+// TODO: what if min == max???
 function create_ranges(min, max) {
     var ranges = [];
     if (min == 0 && max == 0) {
         ranges = [0, 1];
-    } else if (min >= 0) {
-        var delta = max - min;
+//    } else if (min == max) {
+//    } else if (min >= 0) {
+    } else {
+        var delta = Math.abs(max - min);
         var order_of_magnitude = calc_order_of_magnitude(delta);
-        var start = Math.floor(min / order_of_magnitude) * order_of_magnitude;
-        var numsteps = Math.ceil(delta / order_of_magnitude);
-        var stepsize;
-        if (numsteps < 3) {
-            numsteps *= 4;
-            stepsize = order_of_magnitude / 4;
-        } else if (numsteps < 4) {
-            numsteps *= 2;
-            stepsize = order_of_magnitude / 2;
-        } else if (numsteps > 8) {
-            numsteps /= 2;
-            stepsize = order_of_magnitude * 2;
-        } else {
-            stepsize = order_of_magnitude;
+        var start = 0;
+        var numsteps = 1;
+        var stepsize = 0;
+        if (order_of_magnitude != 0) {
+            start = Math.floor(min / order_of_magnitude) * order_of_magnitude;
+            numsteps = Math.ceil(delta / order_of_magnitude);
+
+            if (numsteps < 3) {
+                numsteps *= 4;
+                stepsize = order_of_magnitude / 4;
+            } else if (numsteps < 4) {
+                numsteps *= 2;
+                stepsize = order_of_magnitude / 2;
+            } else if (numsteps > 8) {
+                numsteps /= 2;
+                stepsize = order_of_magnitude * 2;
+            } else {
+                stepsize = order_of_magnitude;
+            }
         }
 
         for (i=0; i<numsteps; i++) {
             ranges[i] = start + i * stepsize;
         }
-    } else {
-        alert('support for negative values in calculating legends should still be implemented');
+//    } else {
+//        alert('support for negative values in calculating legends should still be implemented');
     }
     return ranges;
 }
@@ -130,6 +138,7 @@ var num_building_area_categories = building_area_categories.length;
     Generated with http://colorbrewer2.org/#type=sequential&scheme=PuBu&n=3
 */
 var grades = {
+    "1": ['#ece7f2'],
     "2": ['#ece7f2','#2b8cbe'],
     "3": ['#ece7f2','#a6bddb','#2b8cbe'],
     "4": ['#f1eef6','#bdc9e1','#74a9cf','#0570b0'],
@@ -142,7 +151,7 @@ var grades = {
 
 function get_range_color_index(value, range, range_length) {
     let i;
-    for (i=1; i<range_length; i++) {
+    for (i=0; i<range_length; i++) {
         if (value < range[i]) return i-1;
     }
     return i-1;
@@ -190,7 +199,7 @@ function create_floorArea_legendClassesDiv() {
     for (var i = 0; i < building_area_categories.length; i++) {
         buildingLegendClassesDiv.innerHTML +=
             '<i style="background:' + get_floorArea_colors(building_area_categories[i] + 1) + '"></i> ' +
-            building_area_categories[i] + (building_area_categories[i + 1] ? '&ndash;' + building_area_categories[i + 1] + '<br>' : '+');
+            building_area_categories[i] + (building_area_categories[i + 1] ? ' <b>&ndash;</b> ' + building_area_categories[i + 1] + '<br>' : '+');
     }
 }
 
@@ -199,7 +208,7 @@ function create_buildingYear_legendClassesDiv() {
     for (var i = 0; i < building_year_categories.length; i++) {
         buildingLegendClassesDiv.innerHTML +=
             '<i style="background:' + get_buildingYear_colors(building_year_categories[i] + 1) + '"></i> ' +
-            building_year_categories[i] + (building_year_categories[i + 1] ? '&ndash;' + building_year_categories[i + 1] + '<br>' : '+');
+            building_year_categories[i] + ((i != building_year_categories.length-1)  ? ' <b>&ndash;</b> ' + building_year_categories[i + 1] + '<br>' : '+');
     }
 }
 
@@ -216,7 +225,7 @@ function create_range_area_legendClassesDiv(kpi) {
     for (var i = 0; i < area_legend_ranges.length; i++) {
         areaLegendClassesDiv.innerHTML +=
             '<i style="background:' + get_area_range_colors(area_legend_ranges[i]) + '"></i> ' +
-            area_legend_ranges[i] + (area_legend_ranges[i + 1] ? '&ndash;' + area_legend_ranges[i + 1] + '<br>' : '+');
+            area_legend_ranges[i] + ((i != area_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + area_legend_ranges[i + 1] + '<br>' : '+');
     }
 }
 

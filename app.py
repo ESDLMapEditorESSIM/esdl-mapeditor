@@ -395,7 +395,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
-                boundary_wgs = get_boundary_from_service(area_scope, area_id)
+                boundary_wgs = get_boundary_from_service(area_scope, str.upper(area_id))
                 if boundary_wgs:
                     # this really prevents messing up the cache
                     # tmp = copy.deepcopy(boundary_rd)
@@ -413,7 +413,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
                                 "coordinates": boundary_wgs['geom']['coordinates'][i]
                             },
                             "properties": {
-                                "id": area_id + area_id_number,
+                                "id": str.upper(area_id) + area_id_number,
                                 "name": boundary_wgs['name'],
                                 "KPIs": geojson_KPIs
                             }
@@ -2162,7 +2162,7 @@ def get_boundary_info(info):
 
     preload_subboundaries_in_cache(esdl.AreaScopeEnum.from_string(str.upper(scope)),
                                    esdl.AreaScopeEnum.from_string(str.upper(subscope)),
-                                   identifier)
+                                   str.upper(identifier))
 
     if initialize_ES:
         # change ID, name and scope of ES
@@ -2170,7 +2170,7 @@ def get_boundary_info(info):
         area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
         if add_boundary_to_ESDL:
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
-            boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), identifier)
+            boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
             if boundary:
                 geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
                 area.geometry = geometry
@@ -2181,7 +2181,7 @@ def get_boundary_info(info):
 
     boundaries = get_subboundaries_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)),
                                                 esdl.AreaScopeEnum.from_string(str.upper(subscope)),
-                                                identifier)
+                                                str.upper(identifier))
     # result (boundaries) is an ARRAY of:
     # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
     # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
