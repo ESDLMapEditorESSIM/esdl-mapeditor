@@ -96,6 +96,13 @@ esdl_config = {
             "measurement": "biomassa-2015",
             "field": "value",
             "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Elektriciteit Curacao",
+            "multiplier": 1,
+            "measurement": "elektr-curacao-2015",
+            "field": "elektr",
+            "profileType": "ENERGY_IN_TJ"
         }
     ],
     "energy_carriers": [
