@@ -53,6 +53,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_from_edr.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -816,7 +817,8 @@
         }
 
         function send_cmd_store_ESDL() {
-            socket.emit('file_command', {cmd: 'store_esdl'});
+            // socket.emit('file_command', {cmd: 'store_esdl'});
+            esdl_store_save_window();
         }
 
         function send_download_ESDL() {
@@ -1046,6 +1048,42 @@
 
             sidebar.show();
         }
+
+        function animate_ESSIM_load() {
+            show_loader();
+            $.ajax({
+		        url: '{{dir_settings.resource_prefix}}load_animation',
+                success: function(data){
+                    // console.log('succes');
+                    // console.log(data);
+
+                    var geoJsonLayer = L.geoJson(data, {
+                        style: function(feature) {
+                            return {
+                                "color": feature.properties.stroke,
+                                "weight": feature.properties.strokewidth,
+                                "opacity": 1
+                            };
+                        }
+                    });
+
+                    var geoJsonTimeLayer = L.timeDimension.layer.geoJson.geometryCollection(geoJsonLayer, {
+                        updateTimeDimension: true,
+                        updateTimeDimensionMode: 'replace',
+                        duration: 'PT1H',
+                    });
+
+                    geoJsonTimeLayer.addTo(sim_layer);
+                    hide_loader();
+                },
+                error: function() {
+                    hide_loader();
+                    alert("Error in getting load animation from backend");
+                },
+                dataType: "json"
+            });
+        }
+
 {% endif %}
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1213,41 +1251,6 @@
             sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
             sidebar.show();
-        }
-
-        function animate_ESSIM_load() {
-            show_loader();
-            $.ajax({
-		        url: '{{dir_settings.resource_prefix}}load_animation',
-                success: function(data){
-                    // console.log('succes');
-                    // console.log(data);
-
-                    var geoJsonLayer = L.geoJson(data, {
-                        style: function(feature) {
-                            return {
-                                "color": feature.properties.stroke,
-                                "weight": feature.properties.strokewidth,
-                                "opacity": 1
-                            };
-                        }
-                    });
-
-                    var geoJsonTimeLayer = L.timeDimension.layer.geoJson.geometryCollection(geoJsonLayer, {
-                        updateTimeDimension: true,
-                        updateTimeDimensionMode: 'replace',
-                        duration: 'PT1H',
-                    });
-
-                    geoJsonTimeLayer.addTo(sim_layer);
-                    hide_loader();
-                },
-                error: function() {
-                    hide_loader();
-                    alert("Error in getting load animation from backend");
-                },
-                dataType: "json"
-            });
         }
 
         var socket;
@@ -1503,6 +1506,10 @@
                 sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_load_ESDL_button(this);">Load</button>';
 
                 sidebar.show();
+            });
+
+            socket.on('store_item_metadata', function(data) {
+                process_store_item_metadata(data);
             });
 
             socket.on('asset_info', function(asset_info) {
