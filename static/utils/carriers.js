@@ -1,10 +1,10 @@
 // ------------------------------------------------------------------------------------------------------------
 //  Carriers and commodities
 // ------------------------------------------------------------------------------------------------------------
-var carrier_list = [];
+//var carrier_list = [];
 
-function update_carrier_list(carr_list) {
-    carrier_list = carr_list;
+//function update_carrier_list(carr_list) {
+//    carrier_list = carr_list;
     // console.log(carr_list);
 
 //    var select = document.getElementById('carrier_select');
@@ -17,7 +17,7 @@ function update_carrier_list(carr_list) {
 //        select.add(option, null);
 //    }
 //    $("#carrier_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
-}
+// }
 
 setCarrier = function(e) {
     asset_id = e.relatedTarget.id;
@@ -111,19 +111,21 @@ function select_other_carrier() {
 
 function energy_carrier_info() {
     sidebar_ctr = sidebar.getContainer();
-
     sidebar_ctr.innerHTML = '<h1>Energy Carriers and Commodities:</h1>';
 
-    table = '<table>';
-    table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td></tr>';
-    for (i=0; i<carrier_list.length; i++) {
-        // type, id, name
-        table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +
-            '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
-            carrier_list[i]['type'] + '</td></tr>';
+    carrier_list = get_carrier_list(active_layer_id);
+    if (carrier_list) {
+        table = '<table>';
+        table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td></tr>';
+        for (i=0; i<carrier_list.length; i++) {
+            // type, id, name
+            table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +
+                '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
+                carrier_list[i]['type'] + '</td></tr>';
+        }
+        table += '</table>';
+        sidebar_ctr.innerHTML += table;
     }
-    table += '</table>';
-    sidebar_ctr.innerHTML += table;
 
     sidebar_ctr.innerHTML += '<h2>Add carrier:</h2>';
     table = '<table>';
@@ -179,6 +181,7 @@ function select_carrier_menu(asset_id) {
 
     sidebar_ctr.innerHTML = '<h1>Carriers:</h1>';
 
+    carrier_list = get_carrier_list(active_layer_id);
     if (carrier_list) {
         var size;
         if (carrier_list.length < 4) { size = 4; } else { size = carrier_list.length; }

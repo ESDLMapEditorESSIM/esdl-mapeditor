@@ -104,10 +104,13 @@ class EnergySystemHandler:
         uri = StringURI('from_string.esdl', esdl_string)
         #self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
-        self.resource.load()
-        self.energy_system = self.resource.contents[0]
-        self.esid_uri_dict[self.energy_system.id] = uri
-        return self.energy_system
+        try:
+            self.resource.load()
+            self.energy_system = self.resource.contents[0]
+            self.esid_uri_dict[self.energy_system.id] = uri
+            return self.energy_system
+        except Exception as e:
+            return e            # TODO: how is this done nicely?
 
 
     def load_external_string(self, esdl_string):
@@ -124,15 +127,28 @@ class EnergySystemHandler:
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
         tmp_resource = self.rset.get_resource(uri)
-        tmp_resource.load()
-        self.esid_uri_dict[tmp_resource.contents[0].id] = uri
-        return tmp_resource.contents[0]
+        try:
+            if tmp_resource.contents[0].id is None:
+                tmp_resource.contents[0].id = self.generate_uuid()
+            self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+            return tmp_resource.contents[0]
+        except Exception as e:
+            return e            # TODO: how is this done nicely?
 
 
-    def to_string(self):
+    def to_string(self, es_id=None):
         # to use strings as resources, we simulate a string as being a URI
         uri = StringURI('to_string.esdl')
-        self.resource.save(uri)
+        if es_id is None:
+            self.resource.save(uri)
+        else:
+            if es_id in self.esid_uri_dict:
+                my_uri = self.esid_uri_dict[es_id]
+                resource = self.rset.resources[my_uri.normalize()]
+                resource.save(uri)
+            else:
+                # TODO: what to do? original behaviour
+                self.resource.save(uri)
         # return the string
         return uri.getvalue()
 
@@ -142,15 +158,34 @@ class EnergySystemHandler:
         self.resource.save(uri)
         return uri.get_stream()
 
-    def save(self, filename=None):
+    def save(self, es_id=None, filename=None):
         """Add the resource to the resourceSet when saving"""
         if filename is None:
-            self.resource.save()
+            if es_id is None:
+                self.resource.save()
+            else:
+                if es_id in self.esid_uri_dict:
+                    my_uri = self.esid_uri_dict[es_id]
+                    resource = self.rset.resources[my_uri.normalize()]
+                    resource.save()
+                else:
+                    # TODO: what to do? original behaviour
+                    self.resource.save()
         else:
             uri = URI(filename)
             fileresource = self.rset.create_resource(uri)
-            # add the current energy system
-            fileresource.append(self.energy_system)
+            if es_id is None:
+                # add the current energy system
+                fileresource.append(self.energy_system)
+            else:
+                if es_id in self.esid_uri_dict:
+                    my_uri = self.esid_uri_dict[es_id]
+                    es = self.rset.resources[my_uri.normalize()].contents[0]
+                    fileresource.append(es)
+                else:
+                    # TODO: what to do? original behaviour
+                    # add the current energy system
+                    fileresource.append(self.energy_system)
             # save the resource
             fileresource.save()
             self.rset.remove_resource(fileresource)
@@ -175,8 +210,12 @@ class EnergySystemHandler:
         if es_id is None:
             return self.energy_system
         else:
-            # todo: implement
-            return self.energy_system
+            if es_id in self.esid_uri_dict:
+                my_uri = self.esid_uri_dict[es_id]
+                es = self.rset.resources[my_uri.normalize()].contents[0]
+                return es
+            else:
+                return None
 
     def get_energy_systems(self):
         es_list = []

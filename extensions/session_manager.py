@@ -90,7 +90,8 @@ def del_session(key):
         warn('No client id for the session is available, cannot return value for key %s' % key)
         return None
     else:
-        del managed_sessions[client_id][key]
+        if key in managed_sessions[client_id]:
+            del managed_sessions[client_id][key]
 
 
 # does not work
@@ -118,3 +119,22 @@ def _clean_up_sessions_every_hour():
     while True:
         time.sleep(CLEANUP_INTERVAL)
         clean_up_sessions()
+
+
+def get_session_for_esid(es_id, key):
+    res = get_session(key)
+    if res is not None:
+        if es_id in res:
+            return res[es_id]
+    return None
+
+
+def set_session_for_esid(es_id, key, value):
+    res = get_session(key)
+    if res is not None:
+        res[es_id] = value
+        set_session(key, res)
+    else:
+        new_dict = {}
+        new_dict[es_id] = value
+        set_session(key, new_dict)

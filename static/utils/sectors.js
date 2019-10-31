@@ -1,8 +1,8 @@
-var sector_list = [];
+// var sector_list = [];
 
-function set_sector_list(list) {
-    sector_list = list;
-}
+// function set_sector_list(list) {
+//    sector_list = list;
+//}
 
 function add_sector() {
     sector_name = document.getElementById('add_sector_name').value;
@@ -16,11 +16,11 @@ function remove_sector(id) {
 
 function sector_info() {
     sidebar_ctr = sidebar.getContainer();
-
     sidebar_ctr.innerHTML = '<h1>Sectors:</h1>';
 
-    table = '<table>';
+    sector_list = get_sector_list(active_layer_id);
     if (sector_list) {
+        table = '<table>';
         for (i=0; i<sector_list.length; i++) {
             // id, name
             table += '<tr><td><button onclick="remove_sector(\'' + sector_list[i]['id'] +
@@ -53,9 +53,9 @@ function select_sector(asset_id) {
 
 function select_sector_menu(asset_id) {
     sidebar_ctr = sidebar.getContainer();
-
     sidebar_ctr.innerHTML = '<h1>Sectors:</h1>';
 
+    sector_list = get_sector_list(active_layer_id);
     if (sector_list) {
         var size;
         if (sector_list.length < 4) { size = 4; } else { size = sector_list.length; }

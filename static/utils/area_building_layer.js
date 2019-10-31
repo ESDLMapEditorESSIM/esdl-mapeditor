@@ -299,7 +299,7 @@ function add_area_layer(area_data) {
                 layer.on('mouseout', resetHighlightArea);
             }
         }
-    }).addTo(area_layer);
+    }).addTo(get_layers(active_layer_id, 'area_layer'));
 }
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
@@ -320,7 +320,7 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
         }
-    }).addTo(bld_layer);
+    }).addTo(get_layers(active_layer_id, 'bld_layer'));
 }
 
 

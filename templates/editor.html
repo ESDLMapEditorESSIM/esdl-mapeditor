@@ -20,6 +20,9 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
+
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/proj4.js"></script>
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
@@ -54,6 +57,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/multi_esdl.js"></script>
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
     <link rel="stylesheet" href="https://rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css" type="text/css"/>
@@ -106,6 +110,11 @@
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
+        function update_title(title) {
+            title_div = document.getElementById('es_title');
+            title_div.innerHTML = '<b>' + title + '<b>';
+        }
+
         function show_loader() {
             document.getElementById("loader").style.display = "block";
         }
@@ -174,7 +183,8 @@
             splitConductor(id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
-            esdl_layer.removeLayer(e.relatedTarget);
+            //esdl_layer.removeLayer(e.relatedTarget);
+            remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
             clear_layer = false;
         }
 
@@ -182,7 +192,8 @@
             splitConductor(id, e.latlng, 'connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
-            esdl_layer.removeLayer(e.relatedTarget);
+            //esdl_layer.removeLayer(e.relatedTarget);
+            remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
             clear_layer = false;
         }
 
@@ -190,7 +201,8 @@
             splitConductor(id, e.latlng, 'add_joint');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
-            esdl_layer.removeLayer(e.relatedTarget);
+            //esdl_layer.removeLayer(e.relatedTarget);
+            remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
             clear_layer = false;
         }
 
@@ -266,9 +278,9 @@
                         marker.options.contextmenuItems.push('-');
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
-                            text: 'Set StorageStrategy for [' + marker.id + ']',
+                            text: 'Set StorageStrategy for [' + asset_id + ']',
                             callback: function(e) {
-                                // set_storage_strategy(asset_id);
+                                socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
                             }
                         });
                     }
@@ -316,11 +328,13 @@
                 if (deleting_objects == true) {
                     // Remove polygon that belongs to marker, if one is present
                     if (marker.polygon) {
-                       all_layers = esdl_layer.getLayers();
+                       // all_layers = esdl_layer.getLayers();
+                       all_layers = get_layers(active_layer_id, 'esdl_layer');
                        for (let i=0; i<all_layers.length; i++) {
                             layer = all_layers[i];
                             if (layer.id == asset_id && layer instanceof L.Polygon) {
-                                esdl_layer.removeLayer(layer);
+                                // esdl_layer.removeLayer(layer);
+                                remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
                             }
                        }
                     }
@@ -737,8 +751,8 @@
             es_title = select.options[select.selectedIndex].innerHTML;
             // console.log(es_id);
 
-            title_div = document.getElementById('es_title');
-            title_div.innerHTML = '<h1>' + es_title + '</h1>';
+            // title_div = document.getElementById('es_title');
+            // title_div.innerHTML = '<h1>' + es_title + '</h1>';
 
             socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
 
@@ -835,13 +849,15 @@
 
         // find a layer assocated with an asset_id
         function find_layer(asset_id) {
-           all_layers = esdl_layer.getLayers();
-           for (let i=0; i<all_layers.length; i++) {
+            // all_layers = esdl_layer.getLayers();
+            all_layers = get_layers(active_layer_id, 'esdl_layer');
+
+            for (let i=0; i<all_layers.length; i++) {
                 layer = all_layers[i];
                 if (layer.id == asset_id) {
                     return layer;
                 }
-           }
+            }
         }
 
         function add_port(direction, asset_id) {
@@ -1253,6 +1269,30 @@
             sidebar.show();
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Update the select element to indicate to what area or building to add assets
+        // ------------------------------------------------------------------------------------------------------------
+        function update_area_bld_list_select() {
+            var select = document.getElementById('area_bld_select');
+            select.innerHTML = '';
+            area_bld_list = get_area_bld_list(active_layer_id);
+            if (area_bld_list) {
+                for (i=0; i<area_bld_list.length; i++) {
+                    var option = document.createElement("option");
+                    if (i==0) { option.classList.add("ui-state-active"); }
+                    var level = area_bld_list[i][3];
+                    option.text = '';
+                    if (level > 0) {
+                         for (j=0; j<level; j++) option.text = option.text + '-';
+                    }
+                    option.text = option.text + '- ' + area_bld_list[i][0] + ': ' + area_bld_list[i][2] + ' (' + area_bld_list[i][1] + ')';
+                    option.value = area_bld_list[i][1];
+                    select.add(option, null);
+                }
+            }
+            $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
+        }
+
         var socket;
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1280,28 +1320,49 @@
             socket.on('clear_ui', function(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
-                    esdl_layer.clearLayers();
+                    // esdl_layer.clearLayers();
+                    clear_layers(active_layer_id, 'esdl_layer');
                 }
                 if (msg == null || msg['layer'] == 'areas') {
-                    area_layer.clearLayers();
+                    // area_layer.clearLayers();
+                    clear_layers(active_layer_id, 'area_layer');
                 }
                 if (msg == null || msg['layer'] == 'potentials') {
-                    pot_layer.clearLayers();
+                    // pot_layer.clearLayers();
+                    clear_layers(active_layer_id, 'pot_layer');
                 }
                 if (msg == null || msg['layer'] == 'buildings') {
-                    bld_layer.clearLayers();
+                    // bld_layer.clearLayers();
+                    clear_layers(active_layer_id, 'bld_layer');
                 }
                 if (msg == null || msg['layer'] == 'connections') {
-                    connection_layer.clearLayers();
+                    // connection_layer.clearLayers();
+                    clear_layers(active_layer_id, 'connection_layer');
                 }
                 clear_layer = false;
             });
 
-            socket.on('add_marker', function(point_coords) {
-                // console.log(point_coords);
+            socket.on('clear_esdl_layer_list', function() {
+                clear_esdl_layer_list();
+                active_layer_id = null;
+            });
 
-                var marker = L.Marker(point_coords);
-                esdl_layer.addLayer(marker); // marker.addTo(map);
+            socket.on('create_new_esdl_layer', function(message) {
+                title = message['title'];
+                es_id = message['es_id'];
+
+                create_new_esdl_layer(es_id, title);
+                add_select_esdl();      // update list with esdl layers
+                // title_div = document.getElementById('es_title');
+                // title_div.innerHTML = '<b>' + title + '<b>';
+            });
+
+            socket.on('set_active_layer_id', function(id) {
+                active_layer_id = id;
+                update_area_bld_list_select();      // update the list of areas and buildings to add assets to
+                add_draw_control();                 // couple draw_control to active layer
+
+                update_title(esdl_list[active_layer_id].title);
             });
 
             socket.on('add_esdl_objects', function(options) {
@@ -1358,7 +1419,8 @@
                         }
 
                         set_marker_handlers(marker);
-                        esdl_layer.addLayer(marker);
+                        // esdl_layer.addLayer(marker);
+                        add_object_to_layer(es_id, 'esdl_layer', marker);
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
@@ -1371,7 +1433,8 @@
                         polygon.type = list[i][4];
                         polygon.asspot = list[i][1];
 
-                        esdl_layer.addLayer(polygon);
+                        // esdl_layer.addLayer(polygon);
+                        add_object_to_layer(es_id, 'esdl_layer', polygon);
 
                         var polygon_center = calculate_array_polygon_center(coords);
                         var marker = L.marker(polygon_center, {icon: divicon, title: title});
@@ -1389,7 +1452,8 @@
                         }
 
                         set_marker_handlers(marker);
-                        esdl_layer.addLayer(marker);
+                        // esdl_layer.addLayer(marker);
+                        add_object_to_layer(es_id, 'esdl_layer', marker);
                     }
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
@@ -1408,12 +1472,14 @@
                         line.name = "";
 
                         set_line_handlers(line);
-                        esdl_layer.addLayer(line);
+                        // esdl_layer.addLayer(line);
+                        add_object_to_layer(es_id, 'esdl_layer', line);
                     }
                 }
 
                 if (list.length > 0 && options['zoom']) {
-                    var bounds = esdl_layer.getBounds();
+                    // var bounds = esdl_layer.getBounds();
+                    var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
                 }
             });
@@ -1440,27 +1506,15 @@
             });
 
             socket.on('area_bld_list', function(areas_buildings) {
-                var select = document.getElementById('area_bld_select');
-                select.innerHTML = '';
-                area_bld_list = areas_buildings['area_bld_list']
-                for (i=0; i<area_bld_list.length; i++) {
-                    var option = document.createElement("option");
-                    if (i==0) { option.classList.add("ui-state-active"); }
-                    var level = area_bld_list[i][3];
-                    option.text = '';
-                    if (level > 0) {
-                         for (j=0; j<level; j++) option.text = option.text + '-';
-                    }
-                    option.text = option.text + '- ' + area_bld_list[i][0] + ': ' + area_bld_list[i][2] + ' (' + area_bld_list[i][1] + ')';
-                    option.value = area_bld_list[i][1];
-                    select.add(option, null);
-                }
-                $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
+                es_id = areas_buildings['es_id'];
+                area_bld_list = areas_buildings['area_bld_list'];
+                set_area_bld_list(es_id, area_bld_list);
+                update_area_bld_list_select();
             });
 
             socket.on('clear_connections', function() {
                 clear_layer = true;
-                connection_layer.clearLayers();
+                clear_layers(active_layer_id, 'connection_layer');
                 clear_layer = false;
             });
 
@@ -1473,7 +1527,8 @@
 
                     var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
                     line.es_id = es_id;
-                    connection_layer.addLayer(line);
+                    // connection_layer.addLayer(line);
+                    add_object_to_layer(es_id, 'connection_layer', line);
                 }
             });
 
@@ -1484,7 +1539,8 @@
                 // console.log(coords);
                 var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
                 line.es_id = es_id
-                connection_layer.addLayer(line);
+                // connection_layer.addLayer(line);
+                add_object_to_layer(es_id, 'connection_layer', line);
             });
 
             socket.on('store_list', function(store_items) {
@@ -1682,12 +1738,6 @@
                 port_profile_info_window(port_profile_info);
             });
 
-            socket.on('es_title', function(title) {
-                title_div = document.getElementById('es_title');
-                // title_div.innerHTML = '<h1>' + title + '</h1>';
-                title_div.innerHTML = '<b>' + title + '<b>';
-            });
-
             socket.on('alert', function(message) {
                 hide_loader();      // when backend sends error message, stop displaying loader
                 alert(message);
@@ -1730,7 +1780,7 @@
                             }
                         };
                         // L.Proj.geoJson(areaBoundary).addTo(map);
-                        L.Proj.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(area_layer);
+                        L.Proj.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
                     }
                 }
 
@@ -1751,12 +1801,12 @@
                         L.geoJson(areaBoundary, {
                             color: color, fillcolor: fillcolor, weight: 1, name: name
                         }).bindPopup(function (layer) {
-                            return 'name:'+layer.options.name}).addTo(bld_layer);
+                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'bld_layer'));
                     } else {
                         L.geoJson(areaBoundary, {
                             color: color, fillcolor: fillcolor, weight: 1, name: name
                         }).bindPopup(function (layer) {
-                            return 'name:'+layer.options.name}).addTo(area_layer);
+                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'area_layer'));
                     }
                 }
 
@@ -1777,7 +1827,7 @@
                             }
                         };
                         // console.log(areaBoundary);
-                        L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(area_layer);
+                        L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
                     }
                 }
 
@@ -1790,7 +1840,7 @@
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
                             return 'name:'+layer.options.name});
-                    layer.addTo(area_layer);
+                    layer.addTo(get_layers(active_layer_id, 'area_layer'));
                 }
             });
 
@@ -1810,7 +1860,7 @@
                     layer.setStyle({color: color, weight: 2, name: name});
                     layer.bindPopup(function (layer) {
                             return 'name:'+layer.options.name});
-                    layer.addTo(pot_layer);
+                    layer.addTo(get_layers(active_layer_id, 'pot_layer'));
                 }
             });
 
@@ -1842,11 +1892,11 @@
             });
 
             socket.on('carrier_list', function(carr_list) {
-                update_carrier_list(carr_list['carrier_list']);
+                set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
             });
 
             socket.on('sector_list', function(list) {
-                set_sector_list(list['sector_list']);
+                set_sector_list(list['es_id'], list['sector_list']);
             });
 
             socket.on('esdl_services', function(list) {
@@ -1944,7 +1994,7 @@
             var selected_asset = select_box.options[select_box.selectedIndex].value;
             var marker_class_name = window[selected_asset + "Marker"];
 
-            drawControl.setDrawingOptions({
+            draw_control.setDrawingOptions({
                 marker: {
                     icon: new marker_class_name()
                 }
@@ -1953,12 +2003,12 @@
             var line_assets = ["ElectricityCable", "Pipe"];
             var area_assets = ["PVParc", "WindParc"];
             if (line_assets.includes(selected_asset)) {
-                drawControl._toolbars.draw._modes.polyline.handler.enable();
+                draw_control._toolbars.draw._modes.polyline.handler.enable();
             } else if (area_assets.includes(selected_asset)) {
                 socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
-                drawControl._toolbars.draw._modes.polygon.handler.enable();
+                draw_control._toolbars.draw._modes.polygon.handler.enable();
             } else {
-                drawControl._toolbars.draw._modes.marker.handler.enable();
+                draw_control._toolbars.draw._modes.marker.handler.enable();
             }
         }
 
@@ -2025,7 +2075,7 @@
     <div class="flexbox-item">
         <div class="header" style="height: 25px">
             <div style="float: left; padding:2px;"><img src="{{dir_settings.resource_prefix}}favicon.ico" height="20"></div>
-            <div style="float: left; padding:2px;"><b>ESDL Map Editor:</b></div>
+            <div style="float: left; padding:2px;"><b>ESDL Map Editor - </b></div>
             <div style="float: left; padding:2px;" id="es_title"></div>
         </div>
 
@@ -2130,14 +2180,15 @@
         }
     });
 
-    var esdl_layer = L.featureGroup().addTo(map),
-            area_layer = L.featureGroup().addTo(map),
-            bld_layer = L.featureGroup().addTo(map),
-            pot_layer = L.featureGroup().addTo(map),
-            connection_layer = L.featureGroup().addTo(map),
-            sim_layer = L.featureGroup().addTo(map);
+    //var esdl_layer = L.featureGroup().addTo(map),
+    //        area_layer = L.featureGroup().addTo(map),
+    //        bld_layer = L.featureGroup().addTo(map),
+    //        pot_layer = L.featureGroup().addTo(map),
+    //        connection_layer = L.featureGroup().addTo(map),
+    //        sim_layer = L.featureGroup().addTo(map);
 
-    connection_layer.bringToFront();
+    // TODO: Check how this should be handled
+    // get_layers(active_layer_id, 'connection_layer').bringToFront();
 
     // var geo = L.geoJson({features:[]},{onEachFeature:function popUp(f,l){
     // 		var out = [];
@@ -2155,24 +2206,65 @@
 	//    console.log(a)
 	// });
 
-    L.control.layers(
-        {
-            'OpenStreetMap': osm.addTo(map),
-            "Google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
-                attribution: 'Google'
-            })
-        },
-        {
-            'Assets': esdl_layer,
-            'Area boundaries': area_layer,
-            'Building boundaries': bld_layer,
-            'Potential boundaries': pot_layer,
-            'Connections': connection_layer,
-            'Simulation results': sim_layer
-        },
-        //, 'wms': wms_layer, 'wms2': wms_layer2 },
-        { position: 'topleft', collapsed: false }
-    ).addTo(map);
+
+    baseTree = {
+        label: 'Base layers',
+        children: [
+            {
+                label: 'OpenStreetMap',
+                layer: osm.addTo(map)
+            },
+            {
+                label: 'Google',
+                layer: L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+                    attribution: 'Google'
+                })
+            }
+        ]
+    };
+
+    //overlaysTree = {
+    //    label: 'ESDL',
+    //    children: [
+    //        {
+    //            label: 'Untitled EnergySystem',
+    //            children: [
+    //                { label: 'Area', layer: area_layer },
+    //                { label: 'Assets', layer: esdl_layer },
+    //                { label: 'Connections', layer: connection_layer },
+    //                { label: 'Buildings', layer: bld_layer },
+    //                { label: 'Potentials', layer: pot_layer },
+    //                { label: 'Simulation results', layer: sim_layer }
+    //            ]
+    //        }
+    //    ]
+    //};
+
+    overlaysTree = {
+        label: 'ESDL',
+        children: []
+    };
+
+    layer_ctrl_tree = L.control.layers.tree(baseTree, overlaysTree, { position: 'topright', collapsed: false }).addTo(map);
+
+<!--    L.control.layers(-->
+<!--        {-->
+<!--            'OpenStreetMap': osm.addTo(map),-->
+<!--            "Google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {-->
+<!--                attribution: 'Google'-->
+<!--            })-->
+<!--        },-->
+<!--        {-->
+<!--            'Assets': esdl_layer,-->
+<!--            'Area boundaries': area_layer,-->
+<!--            'Building boundaries': bld_layer,-->
+<!--            'Potential boundaries': pot_layer,-->
+<!--            'Connections': connection_layer,-->
+<!--            'Simulation results': sim_layer-->
+<!--        },-->
+<!--        //, 'wms': wms_layer, 'wms2': wms_layer2 },-->
+<!--        { position: 'topleft', collapsed: false }-->
+<!--    ).addTo(map);-->
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["Battery", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
@@ -2187,30 +2279,6 @@
         window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
             iconSize: new L.Point(30, 30), iconUrl: '{{dir_settings.resource_prefix}}images/' + ass_name +'.png'}});
     }
-
-    var drawControl = new L.Control.Draw({
-        edit: {
-            featureGroup: esdl_layer,
-            poly: {
-                allowIntersection: true
-            }
-        },
-        draw: {
-            polygon: {
-                allowIntersection: true,
-                showArea: true
-            },
-            circle: false,
-            polyline: {
-                repeatMode: true
-            },
-            marker: {
-                icon: new WindTurbineMarker(),
-                repeatMode: true
-            }
-        }
-    })
-    map.addControl(drawControl);
 
     sidebar = L.control.sidebar('sidebar', {
         position: 'right',
@@ -2303,10 +2371,10 @@
 //            }
 //        }
 
-        if (menu_item_text.substring(0, 11) ==  'Set Storage') {
-            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
-            socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
-        }
+//        if (menu_item_text.substring(0, 11) ==  'Set Storage') {
+//            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
+//            socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
+//        }
     });
 
     map.on(L.Draw.Event.CREATED, function (event) {
