@@ -1,6 +1,6 @@
 #from esdl import esdl
 from esdl.processing import ESDLAsset
-from essim_config import essim_config
+import settings
 from influxdb import InfluxDBClient
 #import pandas as pd
 # import numpy as np
@@ -34,7 +34,7 @@ class ESSIM_KPIs:
         self.connect_to_database()
 
     def init_config(self):
-        return essim_config
+        return settings.essim_config
 
     def set_es(self, es=None, simulationRun=None):
         self.es = es
