@@ -24,7 +24,6 @@ import random
 from datetime import datetime
 from utils.RDWGSConverter import RDWGSConverter
 from essim_validation import validate_ESSIM
-from essim_config import essim_config
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
