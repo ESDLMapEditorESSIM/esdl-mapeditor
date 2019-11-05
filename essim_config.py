@@ -4,7 +4,7 @@ essim_config = {}
     "ESSIM_host": "http://geis.hesi.energy:8112",
     "ESSIM_path": "/essim/simulation",
     "influxURL": "http://geis.hesi.energy:8086",
-    "grafanaURL": "http://geis.hesi.energy:3000",
+    "grafanaURL": "https://essim-dashboard.hesi.energy",
     "user": "essim",
     "ESSIM_database_server": "geis.hesi.energy",
     "ESSIM_database_port": 8086,
