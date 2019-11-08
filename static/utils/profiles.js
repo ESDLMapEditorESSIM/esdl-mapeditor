@@ -143,7 +143,7 @@ function port_profile_info_window(port_profile_info) {
 
     if (profile_info_list.length > 0) {
         table = '<table id="profiles_table">';
-        table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Value</b></td><td><b>Class</b></td></tr>';
+        table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Value</b></td><td><b>Unit</b></td></tr>';
         for (let p=0; p<profile_info_list.length; p++) {
             let profile_info = profile_info_list[p];
             let profile_class = profile_info['class'];
@@ -163,8 +163,8 @@ function port_profile_info_window(port_profile_info) {
             }
 
             table += '<tr><td><button onclick="document.getElementById(\'profiles_table\').deleteRow('+(p+1)+');remove_profile_from_port(\'' + port_id + '\', \''+ profile_id +
-                '\');">Del</button></td><td>'+profile_name+'</td><td>'+profile_value_or_multiplier+'</td><td>' +
-                profile_class+'</td></tr>';
+                '\');">Del</button></td><td><p title="'+profile_class+'">'+profile_name+'</p></td><td>'+profile_value_or_multiplier+'</td><td>' +
+                profile_type +'</td></tr>';
         }
         table += '</table>';
         sidebar_ctr.innerHTML += table;

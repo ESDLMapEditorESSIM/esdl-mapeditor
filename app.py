@@ -1194,7 +1194,11 @@ def generate_profile_info(profile_list):
     profile_info_list = []
     for profile in profile_list:
         profile_class = type(profile).__name__
-        profile_type = profile.profileType.name
+        qau = profile.profileQuantityAndUnit
+        if qau:
+            profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
+        else:
+            profile_type = profile.profileType.name
         profile_name = profile.name
         profile_id = profile.id
         if profile_class == 'SingleValue':

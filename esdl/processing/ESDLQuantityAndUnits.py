@@ -83,3 +83,74 @@ def build_qau_from_dict(qau_dict):
         qau.perTimeUnit = esdl.TimeUnit.from_string(qau_dict['perTimeUnit'])
 
     return qau
+
+unitdict = {
+    'JOULE': 'J',
+    'WATTHOUR': 'Wh',
+    'WATT': 'W',
+    'VOLT': 'V',
+    'BAR': 'bar',
+    'PSI': 'psi',
+    'DEGREES_CELSIUS': 'oC',
+    'KELVIN': 'K',
+    'GRAM': 'g',
+    'EURO': 'EUR',
+    'DOLLAR': 'USD',
+    'METRE': 'm',
+    'SQUARE_METRE': 'm2',
+    'QUBIC_METRE': 'm3',
+    'LITRE': 'l',
+    'WATTSECOND': 'Ws',
+    'ARE': 'a',
+    'HECTARE': 'ha',
+    'PERCENT': '%',
+    'VOLT_AMPERE': 'VA',
+    'VOLT_AMPERE_REACTIVE': 'VAR'
+}
+
+timeunitdict = {
+    'SECOND': 'sec',
+    'MINUTE': 'min',
+    'QUARTER': '15mins',
+    'HOUR': 'hr',
+    'DAY': 'day',
+    'WEEK': 'wk',
+    'MONTH': 'mon',
+    'YEAR': 'yr'
+}
+
+multiplierdict = {
+    'PICO': 'p',
+    'NANO': 'n',
+    'MICRO': 'u',
+    'MILLI': 'm',
+    'KILO': 'k',
+    'MEGA': 'M',
+    'GIGA': 'G',
+    'TERRA': 'T',
+    'PETA': 'P'
+}
+
+def qau_to_string(qau):
+    pq = qau.physicalQuantity.name
+    mult = qau.multiplier.name
+    unit = qau.unit.name
+    pmult = qau.perMultiplier.name
+    punit = qau.perUnit.name
+    ptunit = qau.perTimeUnit.name
+
+    s = pq
+    if unit != 'NONE' and unit != 'UNDEFINED':
+        s += ' in '
+        if mult != 'NONE' and mult != 'UNDEFINED':
+            s += multiplierdict[mult]
+        s += unitdict[unit]
+    if punit != 'NONE' and punit != 'UNDEFINED':
+        s += '/'
+        if pmult != 'NONE' and pmult != 'UNDEFINED':
+            s += multiplierdict[pmult]
+        s += unitdict[punit]
+    if ptunit != 'NONE' and ptunit != 'UNDEFINED':
+        s += '/' + timeunitdict[ptunit]
+
+    return s
