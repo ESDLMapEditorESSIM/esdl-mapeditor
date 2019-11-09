@@ -2333,9 +2333,9 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
         mc = esdl.SingleValue()
         mc.id = str(uuid.uuid4())
         mc.name = asset_name + '-MarginalCosts'
+        ci.marginalCosts = mc
 
     mc.value = marginal_costs
-    ci.marginalCosts = mc
 
 
 def get_marginal_costs_for_asset(asset_id):
