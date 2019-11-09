@@ -21,6 +21,7 @@ import copy
 import json
 import importlib
 import random
+import re
 from datetime import datetime
 from utils.RDWGSConverter import RDWGSConverter
 from essim_validation import validate_ESSIM
@@ -189,40 +190,47 @@ boundary_service_mapping = {
 boundary_cache = dict()
 
 
+def is_valid_boundary_id(id):
+    return re.match('PV[0-9]{2,2}|RES[0-9]{2,2}|GM[0-9]{4,4}|WK[0-9]{6,6}|BU[0-9]{8,8}', id.upper())
+
+
 def get_boundary_from_service(scope, id):
     """
     :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
     :param id: the identifier of the 'scope'
     :return: the geomertry of the indicated 'scope'
     """
-    time.sleep(0.01) # yield a little concurrency when running this in a thread
-    if id in boundary_cache:
-        # print('Retrieve boundary from cache', id)
-        # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
-        # return res_boundary
-        return boundary_cache[id]
+    if is_valid_boundary_id(id):
+        time.sleep(0.01) # yield a little concurrency when running this in a thread
+        if id in boundary_cache:
+            # print('Retrieve boundary from cache', id)
+            # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
+            # return res_boundary
+            return boundary_cache[id]
 
-    try:
-        # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
-        url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
+        try:
+            # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
+            url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
 
-        # print('Retrieve from boundary service', id)
-        r = requests.get(url)
-        if len(r.text) > 0:
-            reply = json.loads(r.text)
-            # geom = reply['geom']
+            # print('Retrieve from boundary service', id)
+            r = requests.get(url)
+            if len(r.text) > 0:
+                reply = json.loads(r.text)
+                # geom = reply['geom']
 
-        # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
-        # 594477.125], [253641.50000000006, 594417.8126220703]]]]}, 'code': 'BU00030000', 'name': 'Appingedam-Centrum',
-        # 'tCode': 'GM0003', 'tName': 'Appingedam'}
-            boundary_cache[id] = reply
-            return reply
-        else:
-            print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope.name, id))
+            # {'type': 'MultiPolygon', 'coordinates': [[[[253641.50000000006, 594417.8126220703], [253617, .... ,
+            # 594477.125], [253641.50000000006, 594417.8126220703]]]]}, 'code': 'BU00030000', 'name': 'Appingedam-Centrum',
+            # 'tCode': 'GM0003', 'tName': 'Appingedam'}
+                boundary_cache[id] = reply
+                return reply
+            else:
+                print("WARNING: Empty response for GEIS boundary service for {} with id {}".format(scope.name, id))
+                return None
+
+        except Exception as e:
+            print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope.name, id, e))
             return None
-
-    except Exception as e:
-        print('ERROR in accessing GEIS boundary service for {} with id {}: {}'.format(scope.name, id, e))
+    else:
         return None
 
 
@@ -234,20 +242,23 @@ def get_subboundaries_from_service(scope, subscope, id):
     :return: the geomertry of the indicated 'scope'
     """
 
-    try:
-        url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
-              + '/' + boundary_service_mapping[scope.name] + '/' + id
-        r = requests.get(url)
-        reply = json.loads(r.text)
-        # print(reply)
+    if is_valid_boundary_id(id):
+        try:
+            url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
+                  + '/' + boundary_service_mapping[scope.name] + '/' + id
+            r = requests.get(url)
+            reply = json.loads(r.text)
+            # print(reply)
 
-        # ARRAY OF:
-        # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
-        # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
+            # ARRAY OF:
+            # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
+            # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
 
-        return reply
-    except Exception as e:
-        print('ERROR in accessing GEIS boundary service for {} with id {}, subscope {}: {}'.format(scope.name, id, subscope.name, str(e)))
+            return reply
+        except Exception as e:
+            print('ERROR in accessing GEIS boundary service for {} with id {}, subscope {}: {}'.format(scope.name, id, subscope.name, str(e)))
+            return {}
+    else:
         return {}
 
 
@@ -273,7 +284,7 @@ def preload_area_subboundaries_in_cache(top_area):
         first_sub_area = sub_areas[0]
         sub_area_scope = first_sub_area.scope
 
-        if top_area_scope and sub_area_scope and len(top_area_id) <= 10:
+        if top_area_scope and sub_area_scope and is_valid_boundary_id(top_area_id):
             preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id)
 
 
@@ -2290,7 +2301,8 @@ def remove_control_strategy_for_asset(asset_id):
     esh = get_handler()
     asset = esh.get_by_id(asset_id)
     cs = asset.controlStrategy
-    cs.delete()
+    if cs:
+        cs.delete()
 
     #services_collection = es.services
     #if services_collection:
@@ -2589,6 +2601,9 @@ def process_command(message):
         # removes asset or potential from EnergySystem
         obj_id = message['id']
         if obj_id:
+            asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            if asset:
+                remove_control_strategy_for_asset(asset.id)
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
             esh.remove_object_from_dict_by_id(obj_id)
         else:
@@ -3251,7 +3266,9 @@ def process_command(message):
     if message['cmd'] == 'query_esdl_service':
         params = message['params']
         print(params)
-        esdl_services.call_esdl_service(params)
+        esdl_service_result = esdl_services.call_esdl_service(params)
+        if esdl_service_result is not None:
+            emit('esdl_service_result', esdl_service_result)
         process_energy_system.submit(esh)
 
     set_handler(esh)

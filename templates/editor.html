@@ -1903,6 +1903,10 @@
                 set_esdl_services_information(list);
             });
 
+            socket.on('esdl_service_result', function(results) {
+                process_service_results(results)
+            });
+
             socket.on('wms_layer_list', function(wms_layer_lst) {
                 wms_layer_list = wms_layer_lst;
                 // console.log(wms_layer_list);

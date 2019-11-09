@@ -165,7 +165,20 @@ esdl_config = {
         {
             "id": "18d106cf-2af1-407d-8697-0dae23a0ac3e",
             "name": "Windpotentie",
+            "explanation": "This queries the Geodan windpotential service for a certain area",
             "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/windturbinegebied",
+            "http_method": "get",
+            "headers": {
+                "Accept": "application/esdl+xml",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "geo_query",
+            "result": [
+                {
+                    "code": 200,
+                    "action": "esdl"
+                }
+            ],
             "geographical_scope": {
                 "url_area_scope": "<area_scope>",
                 "url_area_id": "<area_id>",
@@ -201,6 +214,25 @@ esdl_config = {
                     "description": "",
                     "parameter_name": "geometrie",
                     "type": "boolean"
+                }
+            ]
+        },
+        {
+            "id": "7f8722a9-669c-499d-8d75-4a1960e0429f",
+            "name": "Create ETM scenario",
+            "explanation": "This service sends the ESDL information to the ETM and tries to generate an ETM scenario out of it.",
+        #    "url": "http://10.30.2.1:7001/api/v1/EnergySystem/",
+            "url": "http://localhost:5000/api/v1/EnergySystem/",
+            "http_method": "post",
+            "headers": {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            "type": "send_esdl",
+            "body": "url_encoded",
+            "result": [
+                {
+                    "code": 200,
+                    "action": "print"
                 }
             ]
         }
