@@ -1,6 +1,7 @@
 from esdl import esdl
 import esdl_config
 import requests
+import json
 import urllib.parse
 from extensions.session_manager import get_handler, get_session
 
@@ -73,12 +74,12 @@ class ESDLServices:
                         r = requests.post(url, headers=headers, data="energysystem="+body)
 
                     if r.status_code == 200:
-                        print(r.text)
+                        # print(r.text)
                         if service['result'][0]['action'] == 'esdl':
                             esh.add_from_string(service['name'], r.text)
                             return None
                         elif service['result'][0]['action']  == 'print':
-                            return r.text
+                            return json.loads(r.text)
                     else:
                         print(
                             'Error running ESDL service - response ' + str(r.status_code) + ' with reason: ' + str(

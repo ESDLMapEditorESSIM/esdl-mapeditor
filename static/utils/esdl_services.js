@@ -31,6 +31,8 @@ function query_esdl_service(index) {
     }
     console.log(params);
 
+    document.getElementById('query_service_button').style.display = 'none';
+    show_loader();
     socket.emit('command', {cmd: 'query_esdl_service', params: params});
 
     // TODO: Determine when to close
@@ -42,8 +44,9 @@ function query_esdl_service(index) {
 function process_service_results(results) {
     service_results_div = document.getElementById('service_results_div');
 
+    hide_loader();
     // TODO: Make this more generic
-    service_results_div.innerHTML = '<link href="' + results['etm_url'] + '">Open ETM</link>';
+    service_results_div.innerHTML = '<a href="' + results['etm_url'] + '" target="_blank">Open ETM</link>';
     service_results_div.innerHTML += '<p><button onclick="sidebar.hide();">Close</button></p>';
 }
 

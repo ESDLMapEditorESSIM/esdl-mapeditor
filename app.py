@@ -3266,13 +3266,22 @@ def process_command(message):
     if message['cmd'] == 'query_esdl_service':
         params = message['params']
         print(params)
-        esdl_service_result = esdl_services.call_esdl_service(params)
-        if esdl_service_result is not None:
-            emit('esdl_service_result', esdl_service_result)
-        process_energy_system.submit(esh)
+        query_esdl_services.submit(params)
 
     set_handler(esh)
     session.modified = True
+
+
+@executor.job
+def query_esdl_services(params):
+    esh = get_handler()
+    print('calling service')
+    esdl_service_result = esdl_services.call_esdl_service(params)
+    print('emitting result to browser')
+    if esdl_service_result is not None:
+        emit('esdl_service_result', esdl_service_result)
+    print('processing energy system')
+    process_energy_system.submit(esh)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

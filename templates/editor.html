@@ -1904,6 +1904,7 @@
             });
 
             socket.on('esdl_service_result', function(results) {
+                hide_loader();
                 process_service_results(results)
             });
 
