@@ -74,10 +74,10 @@ class ESDLServices:
 
                     if r.status_code == 200:
                         print(r.text)
-                        if service['result'] == 'esdl':
+                        if service['result'][0]['action'] == 'esdl':
                             esh.add_from_string(service['name'], r.text)
                             return None
-                        elif service['result'] == 'print':
+                        elif service['result'][0]['action']  == 'print':
                             return r.text
                     else:
                         print(
