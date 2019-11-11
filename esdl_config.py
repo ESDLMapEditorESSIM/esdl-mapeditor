@@ -103,6 +103,13 @@ esdl_config = {
             "measurement": "elektr-curacao-2015",
             "field": "elektr",
             "profileType": "ENERGY_IN_TJ"
+        },
+        {
+            "profile_uiname": "Wind Curacao",
+            "multiplier": 1,
+            "measurement": "wind-curacao-2015",
+            "field": "value",
+            "profileType": "ENERGY_IN_TJ"
         }
     ],
     "energy_carriers": [
