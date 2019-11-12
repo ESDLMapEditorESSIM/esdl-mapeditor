@@ -291,7 +291,7 @@ def preload_area_subboundaries_in_cache(top_area):
 # ---------------------------------------------------------------------------------------------------------------------
 #  ESSIM interfacing
 # ---------------------------------------------------------------------------------------------------------------------
-def start_ESSIM():
+def start_ESSIM(sim_description):
     esh = get_handler()
     active_es_id = get_session('active_es_id')
     es_simid = None
@@ -307,13 +307,14 @@ def start_ESSIM():
     payload = {
         'user': ESSIM_config['user'],
         'scenarioID': active_es_id,
-        'simulationDescription': '',
+        'simulationDescription': sim_description,
         'startDate': ESSIM_config['start_datetime'],
         'endDate': ESSIM_config['end_datetime'],
         'influxURL': ESSIM_config['influxURL'],
         'grafanaURL': ESSIM_config['grafanaURL'],
         'esdlContents': urllib.parse.quote(esdlstr)
     }
+    print(payload)
 
     headers = {
         'Content-Type': "application/json",
@@ -332,7 +333,7 @@ def start_ESSIM():
         #print(r.content)
         if r.status_code == 201:
             result = json.loads(r.text)
-            #print(result)
+            print(result)
             id = result['id']
             set_session('es_simid', id)
             # emit('', {})
@@ -697,6 +698,7 @@ def serve_static(path):
 @app.route('/simulation_progress')
 def get_simulation_progress():
     es_simid = get_session('es_simid')
+    print(es_simid)
     if es_simid:
         ESSIM_config = settings.essim_config
         url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
@@ -705,7 +707,7 @@ def get_simulation_progress():
             r = requests.get(url + '/status')
             if r.status_code == 200:
                 result = r.text
-                # print(result)
+                print(result)
                 # emit('update_simulation_progress', {'percentage': result, 'url': ''})
                 if float(result) >= 1:
                     r = requests.get(url)
@@ -1200,6 +1202,8 @@ def update_asset_geometries3(area, boundary):
                     geom.lon = x
                 asset.geometry = geom
 
+def generate_ctrl_strategy_info(asset):
+    pass
 
 def generate_profile_info(profile_list):
     profile_info_list = []
@@ -2532,12 +2536,12 @@ def process_command(message):
                 asset.port.append(outp)
                 asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
                 mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
-            elif capability == 'Consumer':
+            elif capability in ['Consumer', 'Storage']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                 asset.port.append(inp)
                 asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
                 mapping[inp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
-            elif capability in ['Storage', 'Conversion', 'Transport']:
+            elif capability in ['Conversion', 'Transport']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                 asset.port.append(inp)
                 outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
@@ -3148,9 +3152,10 @@ def process_command(message):
 
     if message['cmd'] == 'run_ESSIM_simulation':
         print('ESSIM simulation command received')
+        sim_descr = message['sim_description']
         # Create the HTTP POST to start the simulation
-        if start_ESSIM():
-            emit('show_simulation_progress_window', {'simulation': 'ESSIM'})
+        if not start_ESSIM(sim_descr):
+            emit('simulation_not_started')
         # start_checking_ESSIM_progress()
         # check_ESSIM_progress()
 
