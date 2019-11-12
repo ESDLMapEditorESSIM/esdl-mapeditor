@@ -1,4 +1,4 @@
-ESSIM_simulation_URL_prefix =  None;
+ESSIM_simulation_URL_prefix = '';
 
 // ------------------------------------------------------------------------------------------------------------
 //   ESSIM validation

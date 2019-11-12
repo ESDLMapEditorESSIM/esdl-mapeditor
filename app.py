@@ -698,7 +698,7 @@ def serve_static(path):
 @app.route('/simulation_progress')
 def get_simulation_progress():
     es_simid = get_session('es_simid')
-    print(es_simid)
+    # print(es_simid)
     if es_simid:
         ESSIM_config = settings.essim_config
         url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
@@ -707,7 +707,7 @@ def get_simulation_progress():
             r = requests.get(url + '/status')
             if r.status_code == 200:
                 result = r.text
-                print(result)
+                # print(result)
                 # emit('update_simulation_progress', {'percentage': result, 'url': ''})
                 if float(result) >= 1:
                     r = requests.get(url)
@@ -716,7 +716,8 @@ def get_simulation_progress():
                         result = json.loads(r.text)
                         # print(result)
                         dashboardURL = result['dashboardURL']
-                        print(dashboardURL)
+                        dashboardURL = dashboardURL.replace('http://geis.hesi.energy:3000', 'https://essim-dashboard.hesi.energy')
+                        # print(dashboardURL)
                         set_session('simulationRun', es_simid)
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
                         return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
@@ -726,12 +727,12 @@ def get_simulation_progress():
                 else:
                     return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
             else:
-                print('code: ', r.status_code)
+                # print('code: ', r.status_code)
                 send_alert('Error in getting the ESSIM progress status')
                 abort(500, 'Error in getting the ESSIM progress status')
         except Exception as e:
-            print('Exception: ')
-            print(e)
+            # print('Exception: ')
+            # print(e)
             send_alert('Error accessing ESSIM API')
             abort(500, 'Error accessing ESSIM API')
     else:
