@@ -52,6 +52,8 @@ esdl_services = ESDLServices()
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
 
+es_info_list = {}
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3297,13 +3299,13 @@ def query_esdl_services(params):
 # ---------------------------------------------------------------------------------------------------------------------
 @executor.job
 def process_energy_system(esh, filename=None, es_title=None, app_context=None):
-    emit('clear_ui')
+    # emit('clear_ui')
 
     main_es = esh.get_energy_system()
     set_session('active_es_id', main_es.id)     # TODO: check if required here?
     es_list = esh.get_energy_systems()
 
-    emit('clear_esdl_layer_list')
+    # emit('clear_esdl_layer_list')
 
     conn_list = []
     mapping = {}
@@ -3319,33 +3321,38 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
         if es.id is None:
             es.id = str(uuid.uuid4())
 
-        name = es.name
-        if not name:
-            title = 'ID: ' + es.id
-        else:
-            title = 'Name: ' + name
+        if not es.id in es_info_list:
+            name = es.name
+            if not name:
+                title = 'ID: ' + es.id
+            else:
+                title = 'Name: ' + name
 
-        emit('create_new_esdl_layer', {'es_id': es.id, 'title': title})
-        emit('set_active_layer_id', es.id)
+            emit('create_new_esdl_layer', {'es_id': es.id, 'title': title})
+            emit('set_active_layer_id', es.id)
 
-        area = es.instance[0].area
-        find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-        carrier_list = ESDLAsset.get_carrier_list(es)
-        sector_list = ESDLAsset.get_sector_list(es)
+            area = es.instance[0].area
+            find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+            carrier_list = ESDLAsset.get_carrier_list(es)
+            sector_list = ESDLAsset.get_sector_list(es)
 
-        create_port_to_asset_mapping(area, mapping)
-        process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
+            create_port_to_asset_mapping(area, mapping)
+            process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
 
-        emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
-        emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
-        emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
-        if carrier_list:
-            emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-        if sector_list:
-            emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
+            emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
+            emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
+            if carrier_list:
+                emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+            if sector_list:
+                emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-        set_session_for_esid(es.id, 'port_to_asset_mapping', mapping)
-        set_session_for_esid(es.id, 'conn_list', conn_list)
+            set_session_for_esid(es.id, 'port_to_asset_mapping', mapping)
+            set_session_for_esid(es.id, 'conn_list', conn_list)
+
+            es_info_list[es.id] = {
+                "processed": True
+            }
 
     set_handler(esh)
     # emit('set_active_layer_id', main_es.id)
@@ -3384,6 +3391,9 @@ def process_file_command(message):
         filename = 'Unknown'
         esh = EnergySystemHandler()
         es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
+        es_info_list = {}
+        emit('clear_ui')
+        emit('clear_esdl_layer_list')
         process_energy_system.submit(esh, filename)
 
         del_session('store_item_metadata')
@@ -3404,6 +3414,9 @@ def process_file_command(message):
             send_alert('Error interpreting ESDL from file - Exception: '+str(result))
         else:
             set_handler(esh)
+            es_info_list = {}
+            emit('clear_ui')
+            emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, filename) # run in seperate thread
             #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
             #thread.start()
@@ -3459,6 +3472,9 @@ def process_file_command(message):
 
             set_session('active_es_id', es.id)
             set_session('es_filename', title)  # TODO: separate filename and title
+            es_info_list = {}
+            emit('clear_ui')
+            emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, None, title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(store_id))
@@ -3513,6 +3529,9 @@ def initialize_app():
         esh = EnergySystemHandler()
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
+    es_info_list = {}
+    emit('clear_ui')
+    emit('clear_esdl_layer_list')
     process_energy_system.submit(esh, None, None) # run in a seperate thread
     #thread = threading.Thread(target=process_energy_system, args=(esh,None,title,current_app._get_current_object()))
     #thread.start()
