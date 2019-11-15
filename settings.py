@@ -79,7 +79,7 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "ESSIM_host": "http://10.30.2.1:8112",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://10.30.2.1:8086",
-        "grafanaURL": "http://geis.hesi.energy:3000",
+        "grafanaURL": "https://essim-dashboard.hesi.energy",
         "user": "essim",
         "ESSIM_database_server": "10.30.2.1",
         "ESSIM_database_port": 8086,
