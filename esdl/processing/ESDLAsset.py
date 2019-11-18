@@ -250,6 +250,8 @@ def get_asset_capability_type(asset):
 def get_capabilities_list():
     capabilities = dict()
     capabilities['Producer'] = get_capability_list(esdl.Producer)
+    capabilities['Producer'].remove('WindParc')     # Deprecated, replaced by WindPark
+    capabilities['Producer'].remove('PVParc')       # Deprecated, replaced by PVPark
     capabilities['Consumer'] = get_capability_list(esdl.Consumer)
     capabilities['Storage'] = get_capability_list(esdl.Storage)
     capabilities['Transport'] = get_capability_list(esdl.Transport)
@@ -266,6 +268,7 @@ def get_capability_list(capability=esdl.Producer):
         if isinstance(eclassifier, EClass):
             if capability.eClass in eclassifier.eAllSuperTypes() and not eclassifier.abstract:
                 subtype_list.append(eclassifier.name)
+    subtype_list.sort()
     return subtype_list
 
 
