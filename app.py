@@ -52,8 +52,6 @@ esdl_services = ESDLServices()
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
 
-es_info_list = {}
-
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
@@ -718,7 +716,7 @@ def get_simulation_progress():
                         result = json.loads(r.text)
                         # print(result)
                         dashboardURL = result['dashboardURL']
-                        dashboardURL = dashboardURL.replace('http://geis.hesi.energy:3000', 'https://essim-dashboard.hesi.energy')
+                        # dashboardURL = dashboardURL.replace('http://geis.hesi.energy:3000', 'https://essim-dashboard.hesi.energy')
                         # print(dashboardURL)
                         set_session('simulationRun', es_simid)
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
@@ -3300,10 +3298,11 @@ def query_esdl_services(params):
 @executor.job
 def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     # emit('clear_ui')
-
+    print("Processing energysystems in esh")
     main_es = esh.get_energy_system()
     set_session('active_es_id', main_es.id)     # TODO: check if required here?
     es_list = esh.get_energy_systems()
+    es_info_list = get_session("es_info_list")
 
     # emit('clear_esdl_layer_list')
 
@@ -3322,6 +3321,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             es.id = str(uuid.uuid4())
 
         if not es.id in es_info_list:
+            print("- Processing energysystem with id {}".format(es.id))
             name = es.name
             if not name:
                 title = 'ID: ' + es.id
@@ -3353,6 +3353,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             es_info_list[es.id] = {
                 "processed": True
             }
+        else:
+            print("- Energysystem with id {} already processed".format(es.id))
 
     set_handler(esh)
     # emit('set_active_layer_id', main_es.id)
@@ -3381,6 +3383,7 @@ def set_active_es_id(id):
 @socketio.on('file_command', namespace='/esdl')
 def process_file_command(message):
     print ('received: ' + message['cmd'])
+    es_info_list = get_session("es_info_list")
 
     if message['cmd'] == 'new_esdl':
         name = message['name']
@@ -3530,6 +3533,7 @@ def initialize_app():
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
 
     es_info_list = {}
+    set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
     process_energy_system.submit(esh, None, None) # run in a seperate thread
@@ -3543,17 +3547,17 @@ def connect():
     print("Websocket connection established")
 
     if 'id' in session:
-        print('Old socketio id={}, new socketio id={}'.format(session['id'], request.sid))
+        print('- Old socketio id={}, new socketio id={}'.format(session['id'], request.sid))
     else:
-        print('Old socketio id={}, new socketio id={}'.format(None, request.sid))
+        print('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
     if 'client_id' in session:
-        print('Client id: {}'.format(session['client_id']))
+        print('- Client id: {}'.format(session['client_id']))
     else:
-        print('No client id in session')
+        print('- No client id in session')
     if not valid_session():
         send_alert("Session has timed out, please refresh")
 
