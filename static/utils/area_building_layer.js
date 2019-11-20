@@ -504,7 +504,7 @@ function addGeoJSONListener(socket, map) {
 // ------------------------------------------------------------------------------------------------------------
 //   Initial styling of buildings and areas   --> must be changed too
 // ------------------------------------------------------------------------------------------------------------
-function get_area_color(d) {
+function get_area_color_old(d) {
     return d > 1000000 ? '#800026' :
            d > 500000  ? '#BD0026' :
            d > 200000  ? '#E31A1C' :
