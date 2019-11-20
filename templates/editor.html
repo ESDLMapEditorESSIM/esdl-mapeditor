@@ -2035,6 +2035,10 @@
                 layer: L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
                     attribution: 'Google'
                 })
+            },
+            {
+                label: 'No map',
+                layer: L.imageOverlay('', [[50.803721015, 3.31497114423], [53.5104033474, 7.09205325687]])
             }
         ]
     };
