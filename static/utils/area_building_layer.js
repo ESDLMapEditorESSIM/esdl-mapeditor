@@ -51,6 +51,8 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                     if (value > kpi_list[kpi]["max"]) { kpi_list[kpi]["max"] = value; }
                 } else {
                     // if (!(KPI_value in (kpi_list[kpi]))) {       // why is this not working?
+                    // console.log(kpi_list+" "+kpi);
+
                     if (!(kpi_list[kpi].includes(KPI_value))) {
                         (kpi_list[kpi]).push(KPI_value);
                     }

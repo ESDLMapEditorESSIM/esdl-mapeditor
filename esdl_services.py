@@ -77,16 +77,18 @@ class ESDLServices:
                         # print(r.text)
                         if service['result'][0]['action'] == 'esdl':
                             esh.add_from_string(service['name'], r.text)
-                            return None
+                            return True, None
                         elif service['result'][0]['action']  == 'print':
-                            return json.loads(r.text)
+                            return True, json.loads(r.text)
                     else:
                         print(
                             'Error running ESDL service - response ' + str(r.status_code) + ' with reason: ' + str(
                                 r.reason))
                         print(r)
                         print(r.content)
-                        return None
+                        return False, None
                 except Exception as e:
                     print('Error accessing external ESDL service: ' + str(e))
-                    return 0
+                    return False, None
+
+        return False, None

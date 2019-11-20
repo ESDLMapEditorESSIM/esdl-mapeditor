@@ -314,7 +314,7 @@ def start_ESSIM(sim_description):
         'grafanaURL': ESSIM_config['grafanaURL'],
         'esdlContents': urllib.parse.quote(esdlstr)
     }
-    print(payload)
+    # print(payload)
 
     headers = {
         'Content-Type': "application/json",
@@ -509,10 +509,10 @@ def find_area_info_geojson(building_list, area_list, this_area):
 def create_area_info_geojson(area):
     building_list = []
     area_list = []
-    print("Finding ESDL boundaries...")
+    print("- Finding ESDL boundaries...")
     preload_area_subboundaries_in_cache(area)
     find_area_info_geojson(building_list, area_list, area)
-    print("Done")
+    print("- Done")
     return area_list, building_list
 
 
@@ -522,9 +522,9 @@ def find_boundaries_in_ESDL(top_area):
     area_list, building_list = create_area_info_geojson(top_area)
 
     # Sending an empty list triggers removing the legend at client side
-    print('Sending boundary information to client, size={}'.format(getsizeof(area_list)))
+    print('- Sending boundary information to client, size={}'.format(getsizeof(area_list)))
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
-    print('Sending asset information to client, size={}'.format(getsizeof(building_list)))
+    print('- Sending asset information to client, size={}'.format(getsizeof(building_list)))
     emit('geojson', {"layer": "bld_layer", "geojson": building_list})
 
 
@@ -1317,11 +1317,11 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                         coords.append([point.lat, point.lon])
                     asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
                 if isinstance(geom, esdl.Polygon):
-                    if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc):
+                    if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                         coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                         capability_type = ESDLAsset.get_asset_capability_type(asset)
-                        print(coords)
+                        # print(coords)
                         asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
 
     for potential in area.potential:
@@ -1377,7 +1377,7 @@ def update_transport_connection_locations(ass_id, asset, coords):
     mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
-    print('Updating locations')
+    # print('Updating locations')
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             port_id = c['from-port-id']
@@ -2091,7 +2091,10 @@ def get_boundary_info(info):
     initialize_ES = info["initialize_ES"]
     add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
 
-    # TODO: Check if valid scopes were given
+    if not is_valid_boundary_id(identifier):
+        send_alert("Not a valid identifier. Try identifiers like PV27(Noord-Holland) or GM0060 (Ameland)")
+        return
+
     active_es_id = get_session('active_es_id')
     esh = get_handler()
     es_edit = esh.get_energy_system(es_id=active_es_id)
@@ -3282,11 +3285,14 @@ def process_command(message):
 def query_esdl_services(params):
     esh = get_handler()
     print('calling service')
-    esdl_service_result = esdl_services.call_esdl_service(params)
+    esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
     print('emitting result to browser')
-    if esdl_service_result is not None:
-        emit('esdl_service_result', esdl_service_result)
-    print('processing energy system')
+    if esdl_service_ok:
+        if esdl_service_result is not None:
+            emit('esdl_service_result', esdl_service_result)
+    else:
+        send_alert('Error calling service')
+    # print('processing energy system')
     process_energy_system.submit(esh)
 
 

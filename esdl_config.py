@@ -171,8 +171,8 @@ esdl_config = {
     "predefined_esdl_services": [
         {
             "id": "18d106cf-2af1-407d-8697-0dae23a0ac3e",
-            "name": "Windpotentie",
-            "explanation": "This queries the Geodan windpotential service for a certain area",
+            "name": "Get PICO wind potential",
+            "explanation": "This queries the Geodan wind potential service for a certain area",
             "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/windturbinegebied",
             "http_method": "get",
             "headers": {
