@@ -859,7 +859,7 @@
         // find a layer assocated with an asset_id
         function find_layer(asset_id) {
             // all_layers = esdl_layer.getLayers();
-            all_layers = get_layers(active_layer_id, 'esdl_layer');
+            all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
 
             for (let i=0; i<all_layers.length; i++) {
                 layer = all_layers[i];
