@@ -57,18 +57,18 @@ class HeatNetwork:
                 connTo_ids = list(o.id for o in port.connectedTo)
                 port_list.append(
                     {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})
-                if isinstance(asset, AbstractConductor):
-                    # assume a Line geometry here
-                    coords = [(p.lat, p.lon) for p in asset.geometry.point]
-                    asset_to_be_added_list.append(
-                        ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
-                else:
-                    capability_type = ESDLAsset.get_asset_capability_type(asset)
-                    asset_to_be_added_list.append(
-                        ['point', 'asset', asset.name, asset.id, type(asset).__name__, asset.geometry.lat,
-                         asset.geometry.lon, port_list,
-                         capability_type])
+            if isinstance(asset, AbstractConductor):
+                # assume a Line geometry here
+                coords = [(p.lat, p.lon) for p in asset.geometry.point]
+                asset_to_be_added_list.append(
+                    ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+            else:
+                capability_type = ESDLAsset.get_asset_capability_type(asset)
+                asset_to_be_added_list.append(
+                    ['point', 'asset', asset.name, asset.id, type(asset).__name__, asset.geometry.lat,
+                     asset.geometry.lon, port_list,
+                     capability_type])
 
             if not ESDLAsset.add_asset_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
                 ESDLAsset.add_asset_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
