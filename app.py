@@ -1777,6 +1777,10 @@ def split_conductor(conductor, location, mode, conductor_container):
         #find piece of line where user clicked
         points = geometry.point
         begin_point = points[0]
+        first_point = points[0] # make an additional copy
+        # Ewoud: this code is not so nice since it manipulates the original geometry.point with points.pop(0) later on
+        # this should be fixed, but not now (not time)
+
         # pyEcore: somehow using points[0] does something strange in the serialization to XML
         # instead of <point xsi:type="esdl:Point"> you get <esdl:Point lat=...> which is wrong
         # duplicating this point manually fixes this, probably because there is a reference to this point
@@ -1787,6 +1791,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         points.pop(0)
         min_dist = 1e99
         segm_ctr = 0
+        min_dist_segm = 0
         for point in points:
             p1 = {'x': begin_point.lat, 'y': begin_point.lon}
             p2 = {'x': point.lat, 'y': point.lon}
@@ -1801,17 +1806,21 @@ def split_conductor(conductor, location, mode, conductor_container):
         # copy appropriate points in original conductor to either line1 or line2
         points = geometry.point
         segm_ctr = 0
+        print('segment min = {}'.format(min_dist_segm))
         for point in points:
             if segm_ctr == min_dist_segm:
                 new_point = esdl.Point(lon=middle_point.lon, lat=middle_point.lat, elevation=middle_point.elevation);
                 line1.point.append(new_point)
-                line2.point.append(new_point)
+                line2.point.append(new_point.clone())
             if segm_ctr < min_dist_segm:
                 line1.point.append(point)
+                prev_point = point
             else:
                 line2.point.append(point)
             segm_ctr += 1
+
         end_point = point
+
 
         #find old ports and connections
         ports = conductor.port
@@ -1855,8 +1864,26 @@ def split_conductor(conductor, location, mode, conductor_container):
         esh.add_object_to_dict(active_es_id, new_port1)
         esh.add_object_to_dict(active_es_id, new_port2)
 
+        # calculate line lengths
+        start = line1.point[0]
+        length = 0
+        for i in range(1, len(line1.point)):
+            length += distance((start.lat, start.lon), (line1.point[i].lat, line1.point[i].lon)) * 1000
+            start = line1.point[i]
+        new_cond1.length = length
+
+        start = line2.point[0]
+        length = 0
+        for i in range(1, len(line2.point)):
+            length += distance((start.lat, start.lon), (line2.point[i].lat, line2.point[i].lon)) * 1000
+            start = line2.point[i]
+        new_cond2.length = length
+
+        print('split-conductor: line1 length={}, line2 length={}'.format(new_cond1.length, new_cond2.length))
+        # assign line geometry to the correct conductor
         new_cond1.geometry = line1
         new_cond2.geometry = line2
+
 
         # remove conductor from container (area or building) and add new two conductors
         assets = conductor_container.asset
@@ -1865,27 +1892,27 @@ def split_conductor(conductor, location, mode, conductor_container):
         conductor_container.asset.append(new_cond2)
 
         # update port asset mappings for conductors
-        mapping[port1.id] = {'asset_id': new_cond1_id, 'coord': (begin_point.lat, begin_point.lon), 'pos': 'first'}
+        mapping[port1.id] = {'asset_id': new_cond1_id, 'coord': (first_point.lat, first_point.lon), 'pos': 'first'}
         mapping[new_port2.id] = {'asset_id': new_cond1_id, 'coord': (middle_point.lat, middle_point.lon), 'pos': 'last'}
         mapping[new_port1.id] = {'asset_id': new_cond2_id, 'coord': (middle_point.lat, middle_point.lon), 'pos': 'first'}
         mapping[port2.id] = {'asset_id': new_cond2_id, 'coord': (end_point.lat, end_point.lon), 'pos': 'last'}
 
         # create list of ESDL assets to be added to UI
         esdl_assets_to_be_added = []
-        coords = []
+        coords1 = []
         for point in line1.point:
-            coords.append([point.lat, point.lon])
+            coords1.append([point.lat, point.lon])
         port_list = []
         for p in new_cond1.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords, port_list])
-        coords = []
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, port_list])
+        coords2 = []
         for point in line2.point:
-            coords.append([point.lat, point.lon])
+            coords2.append([point.lat, point.lon])
         port_list = []
         for p in new_cond2.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords, port_list])
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1936,7 +1963,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             mapping[outp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
 
             port_list = []
-            for p in new_cond2.port:
+            for p in joint.port:
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             capability_type = ESDLAsset.get_asset_capability_type(joint)
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], port_list, capability_type])
@@ -2723,12 +2750,11 @@ def process_command(message):
                 emit('add_new_conn', {'es_id': es_edit.id, 'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
                                                                    [asset2_port_location[0], asset2_port_location[1]]]})
 
-                conn_list = get_session("conn_list")
+                conn_list = get_session_for_esid(active_es_id, 'conn_list')
                 conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
                                   'to-port-id': port2_id, 'to-asset-id': asset2_id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
-                set_session("conn_list", conn_list)
         else:
             send_alert('Serious error connecting ports')
 
