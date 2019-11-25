@@ -19,7 +19,6 @@ class EnergySystemHandler:
 
         self._set_resource_factories()
 
-
         # fix python builtin 'from' that is also used in ProfileElement as attribute
         # use 'start' instead of 'from' when using a ProfileElement
         # alias('start', esdl.ProfileElement.findEStructuralFeature('from'))
@@ -112,7 +111,6 @@ class EnergySystemHandler:
         except Exception as e:
             return e            # TODO: how is this done nicely?
 
-
     def load_external_string(self, esdl_string):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
         It returns an Energy System, but it is not part of a resource in the ResourceSet """
@@ -194,7 +192,6 @@ class EnergySystemHandler:
         """Saves the resource under a different filename"""
         self.resource.save(output=filename)
 
-
     def save_resourceSet(self):
         """Saves the complete resourceSet, including additional loaded resources encountered during loading of the
         initial resource"""
@@ -205,8 +202,18 @@ class EnergySystemHandler:
             else:
                 print("Not saving {}, http-based resource saving is not supported yet".format(uri))
 
+    def get_resource(self, es_id=None):
+        if es_id is None:
+            return self.resource
+        else:
+            if es_id in self.esid_uri_dict:
+                my_uri = self.esid_uri_dict[es_id]
+                res = self.rset.resources[my_uri.normalize()]
+                return res
+            else:
+                return None
 
-    def get_energy_system(self, es_id = None):
+    def get_energy_system(self, es_id=None):
         if es_id is None:
             return self.energy_system
         else:
@@ -227,33 +234,32 @@ class EnergySystemHandler:
             es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
-
     # Using this function you can query for objects by ID
     # After loading an ESDL-file, all objects that have an ID defines are stored in resource.uuid_dict automatically
     # Note: If you add things later to the resource, it won't be added automatically to this dictionary though.
     # Use get_by_id_slow() for that
-    def get_by_id(self, object_id):
-        if object_id in self.resource.uuid_dict:
-            return self.resource.uuid_dict[object_id]
+    def get_by_id(self, es_id, object_id):
+        if object_id in self.get_resource(es_id).uuid_dict:
+            return self.get_resource(es_id).uuid_dict[object_id]
         else:
             print('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
-    def add_object_to_dict(self, asset):
+    def add_object_to_dict(self, es_id, asset):
         if hasattr(asset, 'id'):
             if asset.id is not None:
-                self.resource.uuid_dict[asset.id] = asset
+                self.get_resource(es_id).uuid_dict[asset.id] = asset
             else:
                 print('Id has not been set for asset {}({})', asset.eClass.name, asset)
 
-    def remove_object_from_dict(self, asset):
+    def remove_object_from_dict(self, es_id, asset):
         if hasattr(asset, 'id'):
             if asset.id is not None:
-                del self.resource.uuid_dict[asset.id]
+                del self.get_resource(es_id).uuid_dict[asset.id]
 
-    def remove_object_from_dict_by_id(self, asset_id):
-        del self.resource.uuid_dict[asset_id]
+    def remove_object_from_dict_by_id(self, es_id, asset_id):
+        del self.get_resource(es_id).uuid_dict[asset_id]
 
     # returns a generator of all assets of a specific type. Not only the ones defined in  the main Instance's Area
     # e.g. QuantityAndUnits can be defined in the KPI of an Area or in the EnergySystemInformation object

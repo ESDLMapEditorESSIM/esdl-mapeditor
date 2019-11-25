@@ -34,27 +34,29 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         let KPIs = layer.properties.KPIs;
         for (kpi in KPIs) {
             KPI_value = KPIs[kpi];
-            if (!(kpi in kpi_list)) {
-                if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
-                if (isNumeric(KPI_value) && KPI_value != "") {
-                    if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
-                    value = parseFloat(KPI_value);
-                    kpi_list[kpi] = { "min": value, "max": value };
+            if (KPI_value != "") {
+                if (!(kpi in kpi_list)) {
+                    if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
+                    if (isNumeric(KPI_value)) {
+                        if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
+                        value = parseFloat(KPI_value);
+                        kpi_list[kpi] = { "min": value, "max": value };
+                    } else {
+                        if (layer_type === "area" && !get_area_color) { get_area_color = get_area_array_colors; }
+                        kpi_list[kpi] = [KPI_value];
+                    }
                 } else {
-                    if (layer_type === "area" && !get_area_color) { get_area_color = get_area_array_colors; }
-                    kpi_list[kpi] = [KPI_value];
-                }
-            } else {
-                if (isNumeric(KPI_value) && KPI_value != "") {
-                    value = parseFloat(KPI_value);
-                    if (value < kpi_list[kpi]["min"]) { kpi_list[kpi]["min"] = value; }
-                    if (value > kpi_list[kpi]["max"]) { kpi_list[kpi]["max"] = value; }
-                } else {
-                    // if (!(KPI_value in (kpi_list[kpi]))) {       // why is this not working?
-                    // console.log(kpi_list+" "+kpi);
+                    if (isNumeric(KPI_value)) {
+                        value = parseFloat(KPI_value);
+                        if (value < kpi_list[kpi]["min"]) { kpi_list[kpi]["min"] = value; }
+                        if (value > kpi_list[kpi]["max"]) { kpi_list[kpi]["max"] = value; }
+                    } else {
+                        // if (!(KPI_value in (kpi_list[kpi]))) {       // why is this not working?
+                        // console.log(kpi_list+" "+kpi);
 
-                    if (!(kpi_list[kpi].includes(KPI_value))) {
-                        (kpi_list[kpi]).push(KPI_value);
+                        if (!(kpi_list[kpi].includes(KPI_value))) {
+                            (kpi_list[kpi]).push(KPI_value);
+                        }
                     }
                 }
             }
@@ -286,6 +288,9 @@ function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
         onEachFeature: function(feature, layer) {
+            if (Object.keys(feature.properties.KPIs).length != 0) {
+                feature.properties.get_area_color = get_area_range_colors;
+            }
             if (feature.properties && feature.properties.id) {
                 let text = "ID: " + feature.properties.id;
                 if (feature.properties.name) {
@@ -517,6 +522,9 @@ function get_area_color_old(d) {
 
 function style_area(feature) {
     if (Object.keys(feature.properties.KPIs).length != 0) {
+        //if (feature.properties.get_area_color) {
+        //    get_area_color = feature.properties.get_area_color;
+        //}
         var color = get_area_color(feature.properties.KPIs[areaLegendChoice]);
         return {
             fillColor: color,

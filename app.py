@@ -839,15 +839,15 @@ def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_
     active_es_id = get_session('active_es_id')
     mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     processed_assets.append(asset_id)
     for p in asset.port:
-        p.carrier = esh.get_by_id(carrier_id) #FIXME pyecore
+        p.carrier = esh.get_by_id(active_es_id, carrier_id) #FIXME pyecore
         conn_to = p.connectedTo
         if conn_to:
             for conn_port in conn_to:
                 conn_asset_id = mapping[conn_port.id]['asset_id']
-                conn_asset = esh.get_by_id(conn_asset_id)
+                conn_asset = esh.get_by_id(active_es_id, conn_asset_id)
                 if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange) \
                         and not isinstance(conn_asset, esdl.Transformer):
                     if conn_asset_id not in processed_assets:
@@ -1831,8 +1831,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         class_ = getattr(module, conductor_type)
         new_cond1 = class_(id=new_cond1_id, name=conductor.name + '_a')
         new_cond2 = class_(id=new_cond2_id, name=conductor.name + '_b')
-        esh.add_object_to_dict(new_cond1)
-        esh.add_object_to_dict(new_cond2)
+        esh.add_object_to_dict(active_es_id, new_cond1)
+        esh.add_object_to_dict(active_es_id, new_cond2)
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort(id=new_port2_id, name='Out')
@@ -1852,8 +1852,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_cond2.port.append(new_port1)
         new_cond2.port.append(port2)
 
-        esh.add_object_to_dict(new_port1)
-        esh.add_object_to_dict(new_port2)
+        esh.add_object_to_dict(active_es_id, new_port1)
+        esh.add_object_to_dict(active_es_id, new_port2)
 
         new_cond1.geometry = line1
         new_cond2.geometry = line2
@@ -1927,9 +1927,9 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint.port.append(outp)
             joint.geometry = middle_point
             conductor_container.asset.append(joint)
-            esh.add_object_to_dict(joint)
-            esh.add_object_to_dict(inp)
-            esh.add_object_to_dict(outp)
+            esh.add_object_to_dict(active_es_id, joint)
+            esh.add_object_to_dict(active_es_id, inp)
+            esh.add_object_to_dict(active_es_id, outp)
 
             # Change port asset mappings
             mapping[inp.id] = {'asset_id': joint.id, 'coord': (middle_point.lat, middle_point.lon)}
@@ -2203,8 +2203,9 @@ def get_control_strategies(es):
 
 
 def get_control_strategy_for_asset(asset_id):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     return asset.controlStrategy
 
     # strategies = get_control_strategies(es)
@@ -2235,13 +2236,14 @@ def add_control_strategy_for_asset(asset_id, cs):
 
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
 
     module = importlib.import_module('esdl.esdl')
     class_ = getattr(module, control_strategy)
     cs = class_()
 
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
@@ -2259,8 +2261,9 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
 
 
 def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
 
@@ -2281,7 +2284,7 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
 def get_storage_marginal_costs(asset_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     es = esh.get_energy_system(es_id=active_es_id)
 
     services = es.services
@@ -2306,8 +2309,9 @@ def get_storage_marginal_costs(asset_id):
 
 
 def remove_control_strategy_for_asset(asset_id):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     cs = asset.controlStrategy
     if cs:
         cs.delete()
@@ -2325,8 +2329,9 @@ def remove_control_strategy_for_asset(asset_id):
 #  Marginal Costs
 # ---------------------------------------------------------------------------------------------------------------------
 def set_marginal_costs_for_asset(asset_id, marginal_costs):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = asset.id
@@ -2347,8 +2352,9 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
 
 
 def get_marginal_costs_for_asset(asset_id):
+    active_es_id = get_session('active_es_id')
     esh = get_handler()
-    asset = esh.get_by_id(asset_id)
+    asset = esh.get_by_id(active_es_id, asset_id)
     ci = asset.costInformation
     if ci:
         mc = ci.marginalCosts
@@ -2509,7 +2515,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         #  Add assets with a polygon or point geometry and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        elif assettype in ['PVParc', 'WindParc']:
+        elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
             asset.port.append(outp)
 
@@ -2572,10 +2578,10 @@ def process_command(message):
             port_list.append(
                 {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids})
 
-        if assettype not in ['ElectricityCable', 'Pipe', 'PVParc', 'WindParc']:
+        if assettype not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [message['lat'], message['lng']], port_list, capability_type])
-        elif assettype in ['PVParc', 'WindParc']:
+        elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
             coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
             coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
             capability_type = ESDLAsset.get_asset_capability_type(asset)
@@ -2602,7 +2608,7 @@ def process_command(message):
 
         #print(asset_to_be_added_list)
         emit('add_esdl_objects', {'es_id': es_edit.id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
-        esh.add_object_to_dict(asset)
+        esh.add_object_to_dict(es_edit.id, asset)
         set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
@@ -2613,7 +2619,7 @@ def process_command(message):
             if asset:
                 remove_control_strategy_for_asset(asset.id)
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_object_from_dict_by_id(obj_id)
+            esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
@@ -2692,8 +2698,8 @@ def process_command(message):
         asset1_port_location = mapping[port1_id]['coord']
         asset2_port_location = mapping[port2_id]['coord']
 
-        asset1 = esh.get_by_id(asset1_id)
-        asset2 = esh.get_by_id(asset2_id)
+        asset1 = esh.get_by_id(es_edit.id, asset1_id)
+        asset2 = esh.get_by_id(es_edit.id, asset2_id)
 
         port1 = None
         port2 = None
@@ -2733,7 +2739,7 @@ def process_command(message):
 
         if asspot == 'asset':
             # asset = ESDLAsset.find_asset(area, object_id)
-            asset = esh.get_by_id(object_id)
+            asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for asset ' + asset.id)
             attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
             name = asset.name
@@ -2745,7 +2751,7 @@ def process_command(message):
             asset_doc = asset.__doc__
         else:
             pot = ESDLAsset.find_potential(area, object_id)
-            #asset = esh.get_by_id(object_id)
+            #asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for potential ' + pot.id)
             #attrs_sorted = get_potential_attributes(pot)
             attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
@@ -2914,7 +2920,7 @@ def process_command(message):
             esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
 
         esdl_profile.id = str(uuid.uuid4())
-        esh.add_object_to_dict(esdl_profile)
+        esh.add_object_to_dict(es_edit.id, esdl_profile)
 
         asset_id = mapping[port_id]['asset_id'] # {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
         if asset_id:
@@ -2944,7 +2950,7 @@ def process_command(message):
         asset_id = message['asset_id']
         pname = message['pname']
 
-        asset = esh.get_by_id(asset_id)
+        asset = esh.get_by_id(es_edit.id, asset_id)
         if direction == 'in':
             port = esdl.InPort(id=str(uuid.uuid4()), name=pname)
         else:
@@ -2968,7 +2974,7 @@ def process_command(message):
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
         asset_id = mapping[pid]['asset_id']
-        asset = esh.get_by_id(asset_id)
+        asset = esh.get_by_id(es_edit.id, asset_id)
         ports = asset.port
 
         port_list = []
@@ -2981,10 +2987,10 @@ def process_command(message):
 
     if message['cmd'] == 'remove_connection':
         from_asset_id = message['from_asset_id']
-        from_asset = esh.get_by_id(from_asset_id)
+        from_asset = esh.get_by_id(es_edit.id, from_asset_id)
         from_port_id = message['from_port_id']
         to_asset_id = message['to_asset_id']
-        to_asset = esh.get_by_id(to_asset_id)
+        to_asset = esh.get_by_id(es_edit.id, to_asset_id)
         to_port_id = message['to_port_id']
         print('Removing connection {}#{} -> {}#{}'.format(from_asset.name, from_port_id, to_asset.name, to_port_id))
 
@@ -3101,7 +3107,7 @@ def process_command(message):
         if carr_type == 'en_comm':
             carrier = esdl.EnergyCarrier(id=carr_id, name=carr_name)
 
-        esh.add_object_to_dict(carrier) # add carrier to ID list for easy retrieval
+        esh.add_object_to_dict(es_edit.id, carrier) # add carrier to ID list for easy retrieval
 
         esi = es_edit.energySystemInformation
         if not esi:
@@ -3109,14 +3115,14 @@ def process_command(message):
             esi = esdl.EnergySystemInformation()
             esi.id = esi_id
             es_edit.energySystemInformation = esi
-        esh.add_object_to_dict(esi)
+        esh.add_object_to_dict(es_edit.id, esi)
 
         ecs = esi.carriers
         if not ecs:
             ecs_id = str(uuid.uuid4())
             ecs = esdl.Carriers(id=ecs_id)
             esi.carriers = ecs
-        esh.add_object_to_dict(ecs)
+        esh.add_object_to_dict(es_edit.id, ecs)
         ecs.carrier.append(carrier)
 
         carrier_list = ESDLAsset.get_carrier_list(es_edit)

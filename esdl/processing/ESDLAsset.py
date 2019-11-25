@@ -250,8 +250,9 @@ def get_asset_capability_type(asset):
 def get_capabilities_list():
     capabilities = dict()
     capabilities['Producer'] = get_capability_list(esdl.Producer)
-    capabilities['Producer'].remove('WindParc')     # Deprecated, replaced by WindPark
-    capabilities['Producer'].remove('PVParc')       # Deprecated, replaced by PVPark
+    # don't remove WindParc and PVParc until all tools are adapted
+    # capabilities['Producer'].remove('WindParc')     # Deprecated, replaced by WindPark
+    # capabilities['Producer'].remove('PVParc')       # Deprecated, replaced by PVPark
     capabilities['Consumer'] = get_capability_list(esdl.Consumer)
     capabilities['Storage'] = get_capability_list(esdl.Storage)
     capabilities['Transport'] = get_capability_list(esdl.Transport)

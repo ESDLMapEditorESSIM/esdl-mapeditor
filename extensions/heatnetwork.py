@@ -9,7 +9,7 @@ from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask, session
 from flask_socketio import SocketIO
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_session, get_session_for_esid
 
 DEFAULT_SHIFT_LAT = 0.000080
 DEFAULT_SHIFT_LON = 0.000080
@@ -28,17 +28,19 @@ class HeatNetwork:
         def socketio_duplicate(message):
             with self.flask_app.app_context():
                 esh = get_handler()
+                active_es_id = get_session('active_es_id')
                 print('Duplicate EnergyAsset: %s' % message)
-                duplicate = duplicate_energy_asset(esh, message['asset_id'])
-                self.add_asset_and_emit(esh, duplicate, message['area_bld_id'])
+                duplicate = duplicate_energy_asset(esh, active_es_id, message['asset_id'])
+                self.add_asset_and_emit(esh, active_es_id, duplicate, message['area_bld_id'])
 
-    def add_asset_and_emit(self, esh: EnergySystemHandler, asset: EnergyAsset, area_bld_id: str):
+    def add_asset_and_emit(self, esh: EnergySystemHandler, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():
             print(session)
             asset_to_be_added_list = list()
 
             # add port mappings to session
-            mapping = get_session('port_to_asset_mapping')
+            # mapping = get_session('port_to_asset_mapping')
+            mapping = get_session_for_esid(es_id, 'port_to_asset_mapping')
             port_list = list()
 
             for i in range(len(asset.port)):
@@ -68,10 +70,10 @@ class HeatNetwork:
                          asset.geometry.lon, port_list,
                          capability_type])
 
-            if not ESDLAsset.add_asset_to_area(esh.get_energy_system(), asset, area_bld_id):
-                ESDLAsset.add_asset_to_building(esh.get_energy_system(), asset, area_bld_id)
+            if not ESDLAsset.add_asset_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
+                ESDLAsset.add_asset_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
 
-            self.socketio.emit('add_esdl_objects', {'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
+            self.socketio.emit('add_esdl_objects', {'es_id': es_id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
 
 ######
@@ -80,8 +82,8 @@ def _shift_point(point: Point):
         point.lon = point.lon - DEFAULT_SHIFT_LON
 
 
-def duplicate_energy_asset(esh: EnergySystemHandler, energy_asset_id: str):
-    original_asset = esh.get_by_id(energy_asset_id)
+def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str):
+    original_asset = esh.get_by_id(es_id, energy_asset_id)
 
     duplicate_asset = original_asset.clone()
     duplicate_asset.id = str(uuid4())
@@ -112,8 +114,8 @@ def duplicate_energy_asset(esh: EnergySystemHandler, energy_asset_id: str):
         newport = port.clone()
         newport.id = str(uuid4())
         duplicate_asset.port.append(newport)
-        esh.add_object_to_dict(newport) # add to UUID registry
+        esh.add_object_to_dict(es_id, newport) # add to UUID registry
 
-    esh.add_object_to_dict(duplicate_asset) # add to UUID registry
+    esh.add_object_to_dict(es_id, duplicate_asset) # add to UUID registry
 
     return duplicate_asset
