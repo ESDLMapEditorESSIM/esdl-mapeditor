@@ -716,25 +716,24 @@ def get_simulation_progress():
                         result = json.loads(r.text)
                         # print(result)
                         dashboardURL = result['dashboardURL']
-                        # dashboardURL = dashboardURL.replace('http://geis.hesi.energy:3000', 'https://essim-dashboard.hesi.energy')
                         # print(dashboardURL)
                         set_session('simulationRun', es_simid)
                         # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
                         return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                     else:
                         send_alert('Error in getting the ESSIM dashboard URL')
-                        abort(500, 'Error in getting the ESSIM dashboard URL')
+                        abort(r.status_code, 'Error in getting the ESSIM dashboard URL')
                 else:
                     return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
             else:
                 # print('code: ', r.status_code)
                 send_alert('Error in getting the ESSIM progress status')
-                abort(500, 'Error in getting the ESSIM progress status')
+                abort(r.status_code, 'Error in getting the ESSIM progress status')
         except Exception as e:
             # print('Exception: ')
             # print(e)
-            send_alert('Error accessing ESSIM API')
-            abort(500, 'Error accessing ESSIM API')
+            send_alert('Error accessing ESSIM API: '+str(e))
+            abort(500, 'Error accessing ESSIM API: '+str(e))
     else:
         print("No es_simid in session")
         print(session)
