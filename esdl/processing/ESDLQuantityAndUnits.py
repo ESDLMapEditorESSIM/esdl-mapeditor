@@ -98,7 +98,7 @@ unitdict = {
     'DOLLAR': 'USD',
     'METRE': 'm',
     'SQUARE_METRE': 'm2',
-    'QUBIC_METRE': 'm3',
+    'CUBIC_METRE': 'm3',
     'LITRE': 'l',
     'WATTSECOND': 'Ws',
     'ARE': 'a',

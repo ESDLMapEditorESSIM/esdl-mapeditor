@@ -11,7 +11,15 @@ class ESDLServices:
     def __init__(self):
         self.config = esdl_config.esdl_config['predefined_esdl_services']
 
-    def get_services_list(self):
+    def get_services_list(self, roles=[]):
+        self.config = esdl_config.esdl_config['predefined_esdl_services']
+
+        print(roles)
+        for s in list(self.config):
+            if 'required_role' in s:
+                if not s['required_role'] in roles:
+                    self.config.remove(s)
+
         return self.config
 
     def array2list(self, ar):
@@ -42,10 +50,13 @@ class ESDLServices:
                     area_id_tag = service['geographical_scope']['url_area_id']
 
                     area_scope = service_params['area_scope']
-                    ares_id = service_params['area_id']
-
                     url = url.replace(area_scope_tag, area_scope)
+                    ares_id = service_params['area_id']
                     url = url.replace(area_id_tag, ares_id)
+                    if "url_area_subscope" in service['geographical_scope']:
+                        area_subscope_tag = service['geographical_scope']['url_area_subscope']
+                        area_subscope = service_params['area_subscope']
+                        url = url.replace(area_subscope_tag, area_subscope)
 
                     query_params = service_params['query_params']
                     if query_params:

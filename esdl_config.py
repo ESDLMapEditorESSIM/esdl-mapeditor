@@ -242,6 +242,45 @@ esdl_config = {
                     "action": "print"
                 }
             ]
+        },
+        {
+            "id": "3e3f3d4d-5600-4f1b-875d-4b630f2f8d01",
+            "required_role": "geis",
+            "name": "Query Energy Information Base service",
+            "explanation": "This service queries multiple (open) energy data sources for a certain area",
+            "url": "http://10.30.2.1:2000/api/EnergySystemBuilder/<area_scope>/<area_id>",
+            "http_method": "get",
+            "headers": {
+                "Accept": "test/xml",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "geo_query",
+            "result": [
+                {
+                    "code": 200,
+                    "action": "esdl"
+                }
+            ],
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                # "url_area_subscope": "<area_subscope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "PROVINCE", "url_value": "province"},
+                    {"scope": "REGION", "url_value": "region"},
+                    {"scope": "MUNICIPALITY", "url_value": "municipality"},
+                    {"scope": "DISTRICT", "url_value": "district"},
+                    {"scope": "NEIGHBOURHOOD", "url_value": "neighbourhood"}
+                ],
+                "area_subscopes": [
+                    {"scope": "PROVINCE", "url_value": "province"},
+                    {"scope": "REGION", "url_value": "region"},
+                    {"scope": "MUNICIPALITY", "url_value": "municipality"},
+                    {"scope": "DISTRICT", "url_value": "districts"},
+                    {"scope": "NEIGHBOURHOOD", "url_value": "neighbourhood"}
+                ]
+            },
+            "query_parameters": []
         }
     ]
 }

@@ -11,6 +11,9 @@ function query_esdl_service(index) {
     if (esdl_services_information[index]['type'] == 'geo_query') {
         params['area_scope'] = document.getElementById('area_scope').options[document.getElementById('area_scope').selectedIndex].value;
         params['area_id'] = document.getElementById('area_id').value;
+        if ("url_area_subscope" in esdl_services_information[index]['geographical_scope']) {
+            params['area_subscope'] = document.getElementById('area_subscope').options[document.getElementById('area_subscope').selectedIndex].value;
+        }
 
         params['query_params'] = {}
         q_params = esdl_services_information[index]['query_parameters'];
@@ -68,41 +71,52 @@ function show_service_settings(index) {
             table += '<option value="'+scopes[i]['url_value']+'">'+scopes[i]['scope']+'</option>';
         }
         table += '</select></td></tr>';
+
+        if ("url_area_subscope" in gs_info) {
+            subscopes = gs_info['area_subscopes'];
+            table += '<table>';
+            table += '<tr><td width=180>Sub scope</td><td><select id="area_subscope">';
+            for (i=0; i<scopes.length; i++) {
+                table += '<option value="'+subscopes[i]['url_value']+'">'+subscopes[i]['scope']+'</option>';
+            }
+            table += '</select></td></tr>';
+        }
         table += '<tr><td width=180>Area id</td><td><input id="area_id" type="text"></input></td></tr>';
         table += '</table>';
         service_settings_div.innerHTML += table;
 
-        service_settings_div.innerHTML += '<h3>Service parameters</h3>';
-
         q_params = esdl_services_information[index]['query_parameters'];
 
-        table = '<table>';
-        for (i=0; i<q_params.length; i++) {
-            table += '<tr><td width=180>'+q_params[i]['name']+'</td><td>';
+        if (q_params.length > 0) {
+            service_settings_div.innerHTML += '<h3>Service parameters</h3>';
 
-            ptype = q_params[i]['type'];
-            if (ptype == 'integer') {
-                table += '<input id="'+q_params[i]['parameter_name']+'_integer" type="text"></input>';
-            }
-            else if (ptype == 'boolean') {
-                table += '<select id="'+q_params[i]['parameter_name']+'_boolean"><option value="true">TRUE</value><option value="false">FALSE</value></select>';
-            }
-            else if (ptype == 'multi-selection') {
-                table += '<select id="'+q_params[i]['parameter_name']+'_select" multiple>';
-                pos_values = q_params[i]['possible_values'];
-                for (j=0; j<pos_values.length; j++) {
-                    table += '<option value="'+pos_values[j]+'">'+pos_values[j]+'</option>';
+            table = '<table>';
+            for (i=0; i<q_params.length; i++) {
+                table += '<tr><td width=180>'+q_params[i]['name']+'</td><td>';
+
+                ptype = q_params[i]['type'];
+                if (ptype == 'integer') {
+                    table += '<input id="'+q_params[i]['parameter_name']+'_integer" type="text"></input>';
                 }
-                table += '</select>';
+                else if (ptype == 'boolean') {
+                    table += '<select id="'+q_params[i]['parameter_name']+'_boolean"><option value="true">TRUE</value><option value="false">FALSE</value></select>';
+                }
+                else if (ptype == 'multi-selection') {
+                    table += '<select id="'+q_params[i]['parameter_name']+'_select" multiple>';
+                    pos_values = q_params[i]['possible_values'];
+                    for (j=0; j<pos_values.length; j++) {
+                        table += '<option value="'+pos_values[j]+'">'+pos_values[j]+'</option>';
+                    }
+                    table += '</select>';
+                }
+                table += '</td></tr>';
+                // table += '<option value="'++'">'++'</option>';
             }
-            table += '</td></tr>';
-            // table += '<option value="'++'">'++'</option>';
+
+            table += '</table>';
+            service_settings_div.innerHTML += table;
         }
-
-        table += '</table>';
-        service_settings_div.innerHTML += table;
     }
-
     service_settings_div.innerHTML += '<button id="query_service_button" onclick="query_esdl_service('+index+');">Query ESDL Service</button>';
 }
 

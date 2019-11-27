@@ -1203,14 +1203,18 @@ def update_asset_geometries3(area, boundary):
                     geom.lon = x
                 asset.geometry = geom
 
+
 def generate_ctrl_strategy_info(asset):
     pass
+
 
 def generate_profile_info(profile_list):
     profile_info_list = []
     for profile in profile_list:
         profile_class = type(profile).__name__
         qau = profile.profileQuantityAndUnit
+        if isinstance(qau, esdl.QuantityAndUnitReference):
+            qau = qau.reference
         if qau:
             profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
         else:
@@ -3584,13 +3588,15 @@ def get_qau_information():
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
+    role = get_session('user-role')
+
     print('Send initial information to client')
     emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list())
+    emit('esdl_services', esdl_services.get_services_list(role))
     initialize_app()
 
 
