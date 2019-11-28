@@ -73,6 +73,14 @@ html, body
     border: 3px solid #bc9500;
 }
 
+.Overload_marker {
+    border: 5px solid red;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+}
+
 /*
     Asset menu
 */

@@ -236,6 +236,7 @@ esdl_config = {
             },
             "type": "send_esdl",
             "body": "url_encoded",
+            "query_parameters": [],
             "result": [
                 {
                     "code": 200,
@@ -281,6 +282,37 @@ esdl_config = {
                 ]
             },
             "query_parameters": []
+        },
+        {
+            "id": "193182ba-6805-4555-9f63-a0b2d5bb3d48",
+            "required_role": "loadflow",
+            "name": "Loadflow",
+            "explanation": "This service runs a specific kind of loadflow calculation on the energysystem (DC loadflow, DC optimal loadflow, AC loadflow, AC optimal loadflow)",
+            "url": "http://10.30.2.1:7002/api/v1/PandapowerLoadflow/<method>",
+            "http_method": "post",
+            "headers": {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "simulation",
+            "body": "url_encoded",
+            "query_parameters": [
+                {
+                    "name": "Method",
+                    "location": "url",
+                    "description": "",
+                    "parameter_name": "method",
+                    "type": "selection",
+                    "possible_values": ["dclf", "dcopf", "lf", "opf"]
+                }
+            ],
+            "result": [
+                {
+                    "code": 200,
+                    "action": "print"
+                }
+            ]
         }
     ]
 }

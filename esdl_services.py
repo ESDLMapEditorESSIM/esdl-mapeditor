@@ -34,7 +34,7 @@ class ESDLServices:
         active_es_id = get_session('active_es_id')
 
         # {'service_id': '18d106cf-2af1-407d-8697-0dae23a0ac3e', 'area_scope': 'provincies', 'area_id': '12',
-        #  'query_params': {'bebouwingsafstand': '32432', 'restrictie': 'vliegveld', 'preferentie': 'infrastructuur', 'geometrie': 'true'}}
+        #  'query_parameters': {'bebouwingsafstand': '32432', 'restrictie': 'vliegveld', 'preferentie': 'infrastructuur', 'geometrie': 'true'}}
         for service in self.config:
             if service['id'] == service_params['service_id']:
                 url = service['url']
@@ -57,19 +57,6 @@ class ESDLServices:
                         area_subscope_tag = service['geographical_scope']['url_area_subscope']
                         area_subscope = service_params['area_subscope']
                         url = url.replace(area_subscope_tag, area_subscope)
-
-                    query_params = service_params['query_params']
-                    if query_params:
-                        url = url + '?'
-                        first_qp = True
-                        for key in query_params:
-                            if query_params[key]:  # to filter empty lists for multi-selection parameters
-                                if not first_qp:
-                                    url = url + '&'
-                                url = url + key + '=' + self.array2list(query_params[key])
-                                first_qp = False
-
-                    print(url)
                 elif service['type'] == 'send_esdl':
                     esdlstr = esh.to_string(active_es_id)
 
@@ -77,6 +64,33 @@ class ESDLServices:
                         body = urllib.parse.quote(esdlstr)
                     else:
                         body = esdlstr
+                elif service['type'] == 'simulation':
+                    esdlstr = esh.to_string(active_es_id)
+
+                    if service['body'] == 'url_encoded':
+                        body = urllib.parse.quote(esdlstr)
+                    else:
+                        body = esdlstr
+
+                query_params = service_params['query_parameters']
+                config_service_params = service["query_parameters"]
+                if query_params:
+                    first_qp = True
+                    for key in query_params:
+                        if query_params[key]:  # to filter empty lists for multi-selection parameters
+                            for cfg_service_param in config_service_params:
+                                if cfg_service_param["parameter_name"] == key:
+                                    if "location" in cfg_service_param:
+                                        if cfg_service_param["location"] == "url":
+                                            url = url.replace('<'+cfg_service_param["parameter_name"]+'>', query_params[key])
+                                    else:
+                                        if first_qp:
+                                            url = url + '?'
+                                        else:
+                                            url = url + '&'
+                                        url = url + key + '=' + self.array2list(query_params[key])
+                                        first_qp = False
+                    print(url)
 
                 try:
                     if service['http_method'] == 'get':

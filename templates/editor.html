@@ -47,6 +47,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/rainbowvis.js"></script>
 
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/multi_esdl.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/utils.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/heatnetwork.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/area_building_layer.js"></script>
@@ -57,7 +58,6 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_services.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
-    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/multi_esdl.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
@@ -338,7 +338,7 @@
                     // Remove polygon that belongs to marker, if one is present
                     if (marker.polygon) {
                        // all_layers = esdl_layer.getLayers();
-                       all_layers = get_layers(active_layer_id, 'esdl_layer');
+                       all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
                        for (let i=0; i<all_layers.length; i++) {
                             layer = all_layers[i];
                             if (layer.id == asset_id && layer instanceof L.Polygon) {
