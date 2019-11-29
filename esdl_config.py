@@ -286,7 +286,7 @@ esdl_config = {
         {
             "id": "193182ba-6805-4555-9f63-a0b2d5bb3d48",
             "required_role": "loadflow",
-            "name": "Loadflow",
+            "name": "Loadflow Calculation",
             "explanation": "This service runs a specific kind of loadflow calculation on the energysystem (DC loadflow, DC optimal loadflow, AC loadflow, AC optimal loadflow)",
             "url": "http://10.30.2.1:7002/api/v1/PandapowerLoadflow/<method>",
             "http_method": "post",

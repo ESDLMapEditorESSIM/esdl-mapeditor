@@ -179,7 +179,7 @@ function show_service_settings(index) {
             service_settings_div.innerHTML += table;
         }
     }
-    service_settings_div.innerHTML += '<button id="query_service_button" onclick="query_esdl_service('+index+');">Query ESDL Service</button>';
+    service_settings_div.innerHTML += '<button id="query_service_button" onclick="query_esdl_service('+index+');">Run Service</button>';
 }
 
 function esdl_services_info() {

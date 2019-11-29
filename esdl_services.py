@@ -2,6 +2,7 @@ from esdl import esdl
 import esdl_config
 import requests
 import json
+import copy
 import urllib.parse
 from extensions.session_manager import get_handler, get_session
 
@@ -15,12 +16,13 @@ class ESDLServices:
         self.config = esdl_config.esdl_config['predefined_esdl_services']
 
         print(roles)
-        for s in list(self.config):
+        this_config = copy.deepcopy(self.config)
+        for s in list(this_config):
             if 'required_role' in s:
                 if not s['required_role'] in roles:
-                    self.config.remove(s)
+                    this_config.remove(s)
 
-        return self.config
+        return this_config
 
     def array2list(self, ar):
         if isinstance(ar, list):
