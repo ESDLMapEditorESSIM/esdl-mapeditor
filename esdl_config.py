@@ -313,6 +313,28 @@ esdl_config = {
                     "action": "print"
                 }
             ]
+        },
+        {
+            "id": "d2ecfa3a-f0cd-4091-a78e-2675801dfcb1",
+            "required_role": "urban-strategy",
+            "name": "Urban Strategy Charging Stations",
+            "explanation": "This service queries the US database for Charging Station information",
+            "url": "http://10.30.2.1:7003/api/v1/ChargingStations",
+#            "url": "http://localhost:5000/api/v1/ChargingStations",
+            "http_method": "get",
+            "headers": {
+                "Accept": "application/json",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "",
+            "query_parameters": [
+            ],
+            "result": [
+                {
+                    "code": 200,
+                    "action": "add_assets"
+                }
+            ]
         }
     ]
 }

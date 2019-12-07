@@ -5,6 +5,10 @@ import json
 import copy
 import urllib.parse
 from extensions.session_manager import get_handler, get_session
+from esdl.processing import ESDLAsset
+from esdl_helper import energy_asset_to_ui, create_port_asset_mapping
+from extensions.session_manager import get_session_for_esid
+from flask_socketio import emit
 
 
 class ESDLServices:
@@ -102,11 +106,36 @@ class ESDLServices:
 
                     if r.status_code == 200:
                         # print(r.text)
+
                         if service['result'][0]['action'] == 'esdl':
                             esh.add_from_string(service['name'], r.text)
                             return True, None
                         elif service['result'][0]['action']  == 'print':
                             return True, json.loads(r.text)
+                        elif service['result'][0]['action']  == 'add_assets':
+                            es_edit = esh.get_energy_system(es_id=active_es_id)
+                            instance = es_edit.instance
+                            area = instance[0].area
+                            mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
+
+                            asset_str_list = json.loads(r.text)
+
+                            try:
+                                for asset_str in asset_str_list['add_assets']:
+                                    asset = ESDLAsset.load_asset_from_string(asset_str)
+                                    esh.add_object_to_dict(active_es_id, asset)
+                                    ESDLAsset.add_asset_to_area(es_edit, asset, area.id)
+                                    create_port_asset_mapping(asset, mapping)
+                                    asset_ui, conn_list = energy_asset_to_ui(asset, mapping)
+                                    emit('add_esdl_objects',
+                                         {'es_id': active_es_id, 'asset_pot_list': [asset_ui],
+                                          'zoom': True})
+                                    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+                            except Exception as e:
+                                print ('Exception occurred: '+str(e))
+                                return False, None
+
+                            return True, { 'send_message_to_UI_but_do_nothing': {} }
                     else:
                         print(
                             'Error running ESDL service - response ' + str(r.status_code) + ' with reason: ' + str(

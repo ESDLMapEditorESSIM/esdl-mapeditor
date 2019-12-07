@@ -34,6 +34,7 @@ from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
+from esdl_helper import generate_profile_info
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
@@ -1205,37 +1206,6 @@ def update_asset_geometries3(area, boundary):
 
 def generate_ctrl_strategy_info(asset):
     pass
-
-
-def generate_profile_info(profile_list):
-    profile_info_list = []
-    for profile in profile_list:
-        profile_class = type(profile).__name__
-        qau = profile.profileQuantityAndUnit
-        if isinstance(qau, esdl.QuantityAndUnitReference):
-            qau = qau.reference
-        if qau:
-            profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
-        else:
-            profile_type = profile.profileType.name
-        profile_name = profile.name
-        profile_id = profile.id
-        if profile_class == 'SingleValue':
-            value = profile.value
-            profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
-        if profile_class == 'InfluxDBProfile':
-            multiplier = profile.multiplier
-            measurement = profile.measurement
-            field = profile.field
-            # profile_name = 'UNKNOWN'
-            for p in esdl_config.esdl_config['influxdb_profile_data']:
-                if p['measurement'] == measurement and p['field'] == field:
-                    profile_name = p['profile_uiname']
-            profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
-        if profile_class == 'DateTimeProfile':
-            profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
-
-    return profile_info_list
 
 
 def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
