@@ -80,7 +80,7 @@ def build_qau_from_dict(qau_dict):
     if 'perUnit' in qau_dict:
         qau.perUnit = esdl.UnitEnum.from_string(qau_dict['perUnit'])
     if 'perTimeUnit' in qau_dict:
-        qau.perTimeUnit = esdl.TimeUnit.from_string(qau_dict['perTimeUnit'])
+        qau.perTimeUnit = esdl.TimeUnitEnum.from_string(qau_dict['perTimeUnit'])
 
     return qau
 
