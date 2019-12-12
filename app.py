@@ -2528,7 +2528,10 @@ def process_command(message):
 
                 polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
                 asset.geometry = polygon
-                asset.surfaceArea = polygon_area
+                if asset.surfaceArea:
+                    if asset.power:
+                        asset.power = asset.power * polygon_area / asset.surfaceArea
+                        asset.surfaceArea = polygon_area
                 polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
                 mapping[outp.id] = {'asset_id': asset_id, 'coord': polygon_center}
             except:
