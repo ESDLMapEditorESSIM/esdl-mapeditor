@@ -2528,7 +2528,10 @@ def process_command(message):
 
                 polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
                 asset.geometry = polygon
-                asset.surfaceArea = polygon_area
+                if asset.surfaceArea:
+                    if asset.power:
+                        asset.power = asset.power * polygon_area / asset.surfaceArea
+                        asset.surfaceArea = polygon_area
                 polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
                 mapping[outp.id] = {'asset_id': asset_id, 'coord': polygon_center}
             except:
@@ -3406,6 +3409,7 @@ def process_file_command(message):
         esh = EnergySystemHandler()
         es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
         es_info_list = {}
+        set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
         process_energy_system.submit(esh, filename)
@@ -3429,6 +3433,7 @@ def process_file_command(message):
         else:
             set_handler(esh)
             es_info_list = {}
+            set_session("es_info_list", es_info_list)
             emit('clear_ui')
             emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, filename) # run in seperate thread
@@ -3487,6 +3492,7 @@ def process_file_command(message):
             set_session('active_es_id', es.id)
             set_session('es_filename', title)  # TODO: separate filename and title
             es_info_list = {}
+            set_session("es_info_list", es_info_list)
             emit('clear_ui')
             emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, None, title)

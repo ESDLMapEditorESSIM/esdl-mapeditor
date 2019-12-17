@@ -408,8 +408,13 @@
             }
 
             line.options.contextmenuItems.push('-');
-            line.options.contextmenuItems.push(
-                { text: 'Set carrier', icon: '{{dir_settings.resource_prefix}}icons/SetCarrier.png', callback: setCarrier });
+            line.options.contextmenuItems.push({
+                text: 'Set carrier',
+                icon: '{{dir_settings.resource_prefix}}icons/SetCarrier.png',
+                callback: function(e) {
+                    select_carrier_menu(line_id);
+                }
+            });
             //line.options.contextmenuItems.push('-');
             //line.options.contextmenuItems.push({ text: 'Cancel' });
 

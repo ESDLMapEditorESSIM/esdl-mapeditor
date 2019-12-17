@@ -335,6 +335,97 @@ esdl_config = {
                     "action": "add_assets"
                 }
             ]
+        },
+        {
+            "id": "d0239a80-5ec5-4940-b6df-4d431f7746e8",
+            "required_role": "businessparks",
+            "name": "Business Parks Information",
+            "explanation": "This service queries the IBIS database for Business Parks Information",
+            "workflow": [
+                {
+                    "nr": 1,
+                    "name": "Business Parks",
+                    "description": "Select business park(s)",
+                    "type": "multi-select-with-filter",
+                    "get_select_list": {
+                        "url": "http://localhost:5000/api/v1/BusinessParks/",
+                        "http_method": "get",
+                        "headers": {
+                            "Accept": "application/json",
+                            "User-Agent": "ESDL Mapeditor/0.1"
+                        },
+                        "result": {
+                            "type": "array_of_arrays",
+                            "id_index": 0,
+                            "option_name_index": 1
+                        }
+                    },
+                    "select_variable": "selected_parks",
+                    "next_step": 2
+                },
+                {
+                    "nr": 2,
+                    "name": "Area Contour",
+                    "description": "Do you want to get the area contours",
+                    "type": "choice",
+                    "options": [
+                        {
+                            "id": 1,
+                            "name": "Yes",
+                            "next_step": 3
+                        },
+                        {
+                            "id": 2,
+                            "name": "No",
+                            "next_step": 4
+                        }
+                    ]
+                },
+                {
+                    "nr": 3,
+                    "type": "query",
+                    "url": "",
+                    "http_method": "get",
+                    "headers": {
+                        "Accept": "application/json",
+                        "User-Agent": "ESDL Mapeditor/0.1"
+                    },
+                    "result": {
+
+                    },
+                },
+                {
+                    "nr": 4,
+                    "name": "Building Contours",
+                    "description": "Do you want to get the building contours",
+                    "type": "choice",
+                    "options": [
+                        {
+                            "id": 1,
+                            "name": "Yes",
+                            "next_step": 5
+                        },
+                        {
+                            "id": 2,
+                            "name": "No",
+                            "next_step": 0
+                        }
+                    ]
+                },
+                {
+                    "nr": 5,
+                    "type": "query",
+                    "url": "",
+                    "http_method": "get",
+                    "headers": {
+                        "Accept": "application/json",
+                        "User-Agent": "ESDL Mapeditor/0.1"
+                    },
+                    "result": {
+
+                    },
+                }
+            ]
         }
     ]
 }
