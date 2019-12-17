@@ -625,7 +625,7 @@ def editor():
         print("whole_token: ", whole_token)
         if whole_token:
             try:
-                jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account')
+                jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account', verify=False)
                 print("JWT: ", jwt_tkn)
             except Exception as e:
                 print("error in decoding token: ", str(e))
