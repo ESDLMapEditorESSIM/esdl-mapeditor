@@ -3409,6 +3409,7 @@ def process_file_command(message):
         esh = EnergySystemHandler()
         es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
         es_info_list = {}
+        set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
         process_energy_system.submit(esh, filename)
@@ -3432,6 +3433,7 @@ def process_file_command(message):
         else:
             set_handler(esh)
             es_info_list = {}
+            set_session("es_info_list", es_info_list)
             emit('clear_ui')
             emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, filename) # run in seperate thread
@@ -3490,6 +3492,7 @@ def process_file_command(message):
             set_session('active_es_id', es.id)
             set_session('es_filename', title)  # TODO: separate filename and title
             es_info_list = {}
+            set_session("es_info_list", es_info_list)
             emit('clear_ui')
             emit('clear_esdl_layer_list')
             process_energy_system.submit(esh, None, title)

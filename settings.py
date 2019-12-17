@@ -35,6 +35,14 @@ IDM_PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AM
 #ASYNC_MODE = 'gevent' # default for non uWGSI deployments
 ASYNC_MODE = None # default for non uWGSI deployments
 
+ibis_config = {
+    "host": "localhost",
+    "port": "5000",
+    "path_list": "/api/v1/BusinessParks/",
+    "path_contour": "/api/v1/BusinessParks/contour/"
+}
+
+
 edr_config = {
     "EDR_host": "https://edr.hesi.energy",
     "EDR_path": "/store/esdl/",
