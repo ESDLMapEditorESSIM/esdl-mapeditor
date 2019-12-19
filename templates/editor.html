@@ -20,6 +20,10 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" type=text/css">
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"/>
+
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
 
@@ -59,6 +63,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_browser.js"></script>
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
 {% endif %}
@@ -90,7 +95,7 @@
         var clear_layer = false;        // to indicate if esdl items need to be removed too (or only UI clear)
         var deleting_objects = false;   // to indicate if objects are being deleted (to prevent on click)
         var editing_objects = false;    // to indicate if objects are being edited (to prevent on click)
-
+        console.log("extensions");
         var extensions = [];            // list of extensions
         var resource_uri = '{{dir_settings.resource_prefix}}';  // make the resource_prefix accessible by extensions
 
@@ -1127,6 +1132,13 @@
             socket.on('connect', function() {
                 console.log('connected');
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
+                // let extensions know client is connected
+                // and socket variable is available
+                for (let i=0; i<extensions.length; i++) {
+                    updatefun = extensions[i];
+                    updatefun({type: 'client_connected'});
+                }
+
             });
 
             socket.on('log', function(msg) {
@@ -1763,7 +1775,8 @@
             socket.on('show_es_info', function(es_attrs) {
                 // console.log('show es info received');
                 // console.log(es_attrs);
-                show_es_info(es_attrs);
+                //show_es_info(es_attrs);
+                esdl_browser.open_browser(active_layer_id);
             });
 
             // populate the asset menu grouped by capability
@@ -1804,6 +1817,7 @@
             });
 
             addGeoJSONListener(socket, map);
+
         });
     </script>
 

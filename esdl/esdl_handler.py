@@ -1,5 +1,5 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject
+from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject, EReference
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -363,6 +363,50 @@ class EnergySystemHandler:
         attrs_sorted = sorted(attributes, key=lambda a: a['name'])
         return attrs_sorted
 
+    @staticmethod
+    def string_repr(item):
+        if item is None:
+            return item
+        if hasattr(item, 'name'):
+            return item.name
+        return item.eClass.name
+
+    @staticmethod
+    def get_asset_references(asset, esdl_doc=None):
+        references = list()
+        for x in asset.eClass.eAllStructuralFeatures():
+            if isinstance(x, EReference):
+                ref = dict()
+                valuedict = dict()
+                ref['name'] = x.name
+                ref['type'] = x.eType.eClass.name
+                value = asset.eGet(x)
+                if value is None:
+                    valuedict['repr'] = value
+                elif isinstance(value, EOrderedSet):
+                    values = list()
+                    for item in value:
+                        repr = EnergySystemHandler.string_repr(item)
+                        refValue = dict()
+                        refValue['name'] = repr
+                        refValue['type'] = item.eClass.name
+                        if hasattr(item, 'id'):
+                            refValue['id'] = item.id
+                        values.append(refValue)
+                    ref['value'] = values
+                else:
+                    refValue = dict()
+                    repr = EnergySystemHandler.string_repr(value)
+                    refValue['name'] = repr
+                    refValue['type'] = value.eClass.name
+                    if hasattr(value, 'id'):
+                        refValue['id'] = value.id
+                    ref['value'] = refValue
+                ref['doc'] = x.__doc__
+                if x.__doc__ is None and esdl_doc is not None:
+                    ref['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
+                references.append(ref)
+        return references
 
 class StringURI(URI):
     def __init__(self, uri, text=None):

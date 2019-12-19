@@ -32,6 +32,7 @@ from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
+from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
 from esdl_helper import generate_profile_info
@@ -566,6 +567,7 @@ login_manager.init_app(app)
 #extensions
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
+ESDLBrowser(app, socketio, esdl_doc)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
