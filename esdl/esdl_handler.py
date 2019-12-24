@@ -87,6 +87,7 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
         self.esid_uri_dict[self.energy_system.id] = uri
+        self.add_object_to_dict(self.energy_system.id, self.energy_system)
         return self.energy_system
 
     def add_uri(self, uri):
@@ -95,6 +96,7 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
         self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
         return tmp_resource.contents[0]
 
     def load_from_string(self, esdl_string):
@@ -107,6 +109,7 @@ class EnergySystemHandler:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
             self.esid_uri_dict[self.energy_system.id] = uri
+            self.add_object_to_dict(self.energy_system.id, self.energy_system)
             return self.energy_system
         except Exception as e:
             return e            # TODO: how is this done nicely?
@@ -129,6 +132,8 @@ class EnergySystemHandler:
             if tmp_resource.contents[0].id is None:
                 tmp_resource.contents[0].id = self.generate_uuid()
             self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+            # hack to add energySystem id to uuid_dict
+            self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
             return tmp_resource.contents[0]
         except Exception as e:
             return e            # TODO: how is this done nicely?
@@ -243,6 +248,7 @@ class EnergySystemHandler:
             return self.get_resource(es_id).uuid_dict[object_id]
         else:
             print('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
+            print(self.get_resource(es_id).uuid_dict)
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
@@ -300,6 +306,11 @@ class EnergySystemHandler:
         # add the current energy system
         self.resource.append(self.energy_system)
         self.esid_uri_dict[self.energy_system.id] = uri
+
+        # add generated id's to uuid dict
+        self.add_object_to_dict(es_id, self.energy_system)
+        self.add_object_to_dict(es_id, instance)
+        self.add_object_to_dict(es_id, area)
 
         return self.energy_system
 
@@ -367,8 +378,10 @@ class EnergySystemHandler:
     def string_repr(item):
         if item is None:
             return item
-        if hasattr(item, 'name'):
+        if hasattr(item, 'name') and item.name is not None:
             return item.name
+        if hasattr(item, 'id') and item.id is not None:
+            return item.eClass.name + ' (id=' + item.id + ')'
         return item.eClass.name
 
     @staticmethod
@@ -377,18 +390,18 @@ class EnergySystemHandler:
         for x in asset.eClass.eAllStructuralFeatures():
             if isinstance(x, EReference):
                 ref = dict()
-                valuedict = dict()
                 ref['name'] = x.name
                 ref['type'] = x.eType.eClass.name
+                ref['many'] = x.many
                 value = asset.eGet(x)
                 if value is None:
-                    valuedict['repr'] = value
+                    ref['value'] = {"repr": value}
                 elif isinstance(value, EOrderedSet):
                     values = list()
                     for item in value:
                         repr = EnergySystemHandler.string_repr(item)
                         refValue = dict()
-                        refValue['name'] = repr
+                        refValue['repr'] = repr
                         refValue['type'] = item.eClass.name
                         if hasattr(item, 'id'):
                             refValue['id'] = item.id
@@ -397,7 +410,7 @@ class EnergySystemHandler:
                 else:
                     refValue = dict()
                     repr = EnergySystemHandler.string_repr(value)
-                    refValue['name'] = repr
+                    refValue['repr'] = repr
                     refValue['type'] = value.eClass.name
                     if hasattr(value, 'id'):
                         refValue['id'] = value.id
@@ -407,6 +420,7 @@ class EnergySystemHandler:
                     ref['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
                 references.append(ref)
         return references
+
 
 class StringURI(URI):
     def __init__(self, uri, text=None):

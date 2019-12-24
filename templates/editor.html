@@ -3,7 +3,7 @@
 <head>
     <title>ESDL Map Editor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    
+
     <link rel="shortcut icon" href=".{{dir_settings.plugin_prefix}}/favicon.ico" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" type="text/css"/>
     <script type="text/javascript" src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
@@ -20,7 +20,8 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
-    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" type=text/css">
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/pure-table.css" type="text/css"/>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"/>
 
@@ -35,7 +36,7 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script>
 
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
@@ -46,6 +47,11 @@
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.js" type="text/javascript"></script>
 
     <script type="text/javascript" src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.5.0/lodash.min.js" crossorigin=""></script>
+    <link href=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.js" type="text/javascript"></script>
+
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
@@ -64,6 +70,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_browser.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
 {% endif %}
@@ -79,6 +86,7 @@
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
+        var dialog;
 
         var profile_array;
         var quantity_and_units_info;
@@ -1983,6 +1991,7 @@
             <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
             <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
 {% endif %}
+            <button id="Table editor" onclick="open_es_table_editor(dialog);" title="Table editor" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-calculator"></span></button>
 
             <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
         </div>
@@ -2124,6 +2133,17 @@
         closeButton: true
     });
     map.addControl(sidebar);
+
+    let options = {
+        size: [ 1600, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 2000, 800 ],
+        anchor: [ 10, 50 ],
+        initOpen: false
+    };
+
+    dialog = L.control.dialog(options);
+    map.addControl(dialog);
 
     // the 'dragend' event of Polyline does not work, this is an alternative solution
     map.on('draw:edited', function (e) {

@@ -26,9 +26,30 @@ class ESDLBrowser:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 esdl_object = esh.get_by_id(active_es_id, esdl_object_id);
+                esdl_object_descr = \
+                    {'name': esdl_object.name,
+                     'doc':esdl_object.__doc__,
+                     'type': esdl_object.eClass.name,
+                     'id': esdl_object_id}
+                container = esdl_object.eContainer()
+                container_descr = self.get_container_dict(container)
                 attributes = esh.get_asset_attributes(esdl_object, self.esdl_doc)
                 references = esh.get_asset_references(esdl_object, self.esdl_doc)
-                self.socketio.emit('esdl_browse_to', {'es_id': active_es_id, 'attributes': attributes, 'references': references}, namespace='/esdl')
+
+                self.socketio.emit('esdl_browse_to',
+                                   {'es_id': active_es_id,
+                                    'object': esdl_object_descr,
+                                    'attributes': attributes,
+                                    'references': references,
+                                    'container': container_descr},
+                                   namespace='/esdl')
 
 
+    def get_container_dict(self, container):
+        if container is None:
+            return None
+        if hasattr(container, 'name'):
+            return {'name': container.name, 'doc':container.__doc__, 'type': container.eClass.name, 'id': container.id}
+        else:
+            return {'name': "No Name", 'doc':container.__doc__, 'type': container.eClass.name, 'id': container.id}
 

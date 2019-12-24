@@ -2424,6 +2424,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'WindTurbine']:
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            esh.add_object_to_dict(active_es_id, outp)
             asset.port.append(outp)
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
             asset.geometry = point
@@ -2435,6 +2436,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         elif assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+            esh.add_object_to_dict(active_es_id, inp)
             asset.port.append(inp)
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
             asset.geometry = point
@@ -2448,8 +2450,10 @@ def process_command(message):
                          'GasNetwork', 'GenericConversion', 'HeatNetwork', 'HeatPump', 'Joint', 'Transformer', 'PowerPlant', 'CCS']:
 
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+            esh.add_object_to_dict(active_es_id, inp)
             asset.port.append(inp)
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            esh.add_object_to_dict(active_es_id, outp)
             asset.port.append(outp)
 
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
@@ -2462,11 +2466,14 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         elif assettype in ['CHP', 'FuelCell']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+            esh.add_object_to_dict(active_es_id, inp)
             asset.port.append(inp)
 
             e_outp = esdl.OutPort(id=str(uuid.uuid4()), name='E Out')
+            esh.add_object_to_dict(active_es_id, e_outp)
             asset.port.append(e_outp)
             h_outp = esdl.OutPort(id=str(uuid.uuid4()), name='H Out')
+            esh.add_object_to_dict(active_es_id, h_outp)
             asset.port.append(h_outp)
 
             point = esdl.Point(lon=message['lng'], lat=message['lat'])
@@ -2481,8 +2488,10 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         elif assettype in ['ElectricityCable', 'Pipe']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+            esh.add_object_to_dict(active_es_id, inp)
             asset.port.append(inp)
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            esh.add_object_to_dict(active_es_id, outp)
             asset.port.append(outp)
 
             polyline_data = message['polyline']
@@ -2519,6 +2528,7 @@ def process_command(message):
         # -------------------------------------------------------------------------------------------------------------
         elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            esh.add_object_to_dict(active_es_id, outp)
             asset.port.append(outp)
 
             try:
@@ -2548,18 +2558,22 @@ def process_command(message):
             capability = ESDLAsset.get_asset_capability_type(asset)
             if capability == 'Producer':
                 outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                esh.add_object_to_dict(active_es_id, outp)
                 asset.port.append(outp)
                 asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
                 mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
             elif capability in ['Consumer', 'Storage']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                esh.add_object_to_dict(active_es_id, inp)
                 asset.port.append(inp)
                 asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
                 mapping[inp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
             elif capability in ['Conversion', 'Transport']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                esh.add_object_to_dict(active_es_id, inp)
                 asset.port.append(inp)
                 outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                esh.add_object_to_dict(active_es_id, outp)
                 asset.port.append(outp)
                 asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
                 mapping[inp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
@@ -2967,6 +2981,7 @@ def process_command(message):
             coord = (lat, lon)
             mapping[port.id] = {'asset_id': asset.id, 'coord': coord}
             asset.port.append(port)
+            esh.add_object_to_dict(active_es_id, port)
             port_list = []
             for p in asset.port:
                 port_list.append(
