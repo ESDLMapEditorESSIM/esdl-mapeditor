@@ -26,11 +26,20 @@ class ESDLBrowser:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 esdl_object = esh.get_by_id(active_es_id, esdl_object_id);
+                if not hasattr(esdl_object, 'name'):
+                    name = esdl_object.eClass.name
+                else:
+                    name = esdl_object.name
+
+                if not hasattr(esdl_object, 'id'):
+                    id = None
+                else:
+                    id = esdl_object.id
                 esdl_object_descr = \
-                    {'name': esdl_object.name,
+                    {'name': name,
                      'doc':esdl_object.__doc__,
                      'type': esdl_object.eClass.name,
-                     'id': esdl_object_id}
+                     'id': id}
                 container = esdl_object.eContainer()
                 container_descr = self.get_container_dict(container)
                 attributes = esh.get_asset_attributes(esdl_object, self.esdl_doc)
