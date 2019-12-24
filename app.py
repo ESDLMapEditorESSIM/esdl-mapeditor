@@ -2801,7 +2801,8 @@ def process_command(message):
 
         area = es_edit.instance[0].area
 
-        asset = ESDLAsset.find_asset(area, asset_id)
+        #asset = ESDLAsset.find_asset(area, asset_id)
+        asset = esh.get_by_id(active_es_id, asset_id)
         print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
 
         try:

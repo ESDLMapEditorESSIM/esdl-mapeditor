@@ -17,7 +17,11 @@ class ESDLBrowser {
 
     static generateTable(data) {
         let $div = $('<div>');
-        let $h1 = $('<h1>').text(`${data.object.type} - ${data.object.name}`).attr('title',data.object.doc);
+        let object_name = data.object.name;
+        if (object_name == null) {
+            object_name = 'Unnamed';
+        }
+        let $h1 = $('<h1>').text(`${data.object.type} - ${object_name}`).attr('title',data.object.doc);
         $div.append($h1);
         if (data.container != null) {
             let $parent = $('<h3>').append('<span>').text(`Part of container ${data.container.type} `).addClass('italic')
@@ -44,7 +48,7 @@ class ESDLBrowser {
             let value = data.attributes[i].value;
             let doc = data.attributes[i].doc;
             var $repr;
-            if (data.attributes[i].type === "EEnum" || data.attributes[i].type=="EBoolean" ) {
+            if (data.attributes[i].type === "EEnum" || data.attributes[i].type === "EBoolean" ) {
                 //<select width="60" style="width:145px" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
                 //asset_attrs[i]['name'] + '" onchange="change_param(this);">';
                 $repr = $('<select>')
@@ -57,7 +61,7 @@ class ESDLBrowser {
                     let caption = data.attributes[i].options[j].charAt(0).toUpperCase() + data.attributes[i].options[j].slice(1).toLowerCase();
                     caption = caption.replace(/_/g, ' '); // replace _ with space to render nicely
                     let $option = $('<option>').attr('value', data.attributes[i].options[j]).text(caption);
-                    if (options[j] == value) $option.attr('selected', 'selected')
+                    if (data.attributes[i].options[j] == value) $option = $option.attr('selected', 'selected')
                     $repr.append($option)
                 }
             } else {
@@ -93,18 +97,24 @@ class ESDLBrowser {
                     let v = data.references[i].value[j];
                     let $a = $('<a>').text(v.repr).attr('href', "#");
                     $a.click( function(e) { e.preventDefault(); console.log('navigating to '+v.id);esdl_browser.open_browser(v.id); return false; });
+                    let $span = $('<span>').text(' (' + v.type + ')');
                     $sub.append($a)
+                    $sub.append($span)
                     $repr.append($sub);
                 }
             } else {
                 if (value.repr == null) value.repr = '';
-                if (value.hasOwnProperty('id')) {
+                if (value.hasOwnProperty('id') && value.id != null) {
                     let $a = $('<a>').text(value.repr).attr('href', "#");
                     //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
                     $a.click( function(e) { e.preventDefault(); console.log('navigating to '+value.id);esdl_browser.open_browser(value.id); return false; });
                     $repr.append($a);
+                    //let $span = $('<span>').text(' (' + value.type + ')');
+                    //$repr.append($span)
                 } else {
                     $repr.text(value.repr);
+                    //let $span = $('<span>').text(' (' + value.type + ')');
+                    //p$repr.append($span)
                 }
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);;

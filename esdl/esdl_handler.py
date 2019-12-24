@@ -374,6 +374,9 @@ class EnergySystemHandler:
         attrs_sorted = sorted(attributes, key=lambda a: a['name'])
         return attrs_sorted
 
+    """
+    Simple function to create a representation of an object
+    """
     @staticmethod
     def string_repr(item):
         if item is None:
@@ -384,8 +387,17 @@ class EnergySystemHandler:
             return item.eClass.name + ' (id=' + item.id + ')'
         return item.eClass.name
 
+
+    """
+    Creates a dict with object references
+    :param repr_function defines a function to create a string representation from the object
+    :param esdl_doc a reference to ESDLDocumentation, to add missing documentation for references (from a dynamic meta model)
+    :return a dict with the object references.
+    """
     @staticmethod
-    def get_asset_references(asset, esdl_doc=None):
+    def get_asset_references(asset, esdl_doc=None, repr_function=None):
+        if repr_function is None:
+            repr_function = EnergySystemHandler.string_repr
         references = list()
         for x in asset.eClass.eAllStructuralFeatures():
             if isinstance(x, EReference):
@@ -393,13 +405,14 @@ class EnergySystemHandler:
                 ref['name'] = x.name
                 ref['type'] = x.eType.eClass.name
                 ref['many'] = x.many
+                #ref['subtypes'] = EnergySystemHandler.get_subtypes(x.eType)
                 value = asset.eGet(x)
                 if value is None:
                     ref['value'] = {"repr": value}
                 elif isinstance(value, EOrderedSet):
                     values = list()
                     for item in value:
-                        repr = EnergySystemHandler.string_repr(item)
+                        repr = repr_function(item)
                         refValue = dict()
                         refValue['repr'] = repr
                         refValue['type'] = item.eClass.name
@@ -409,7 +422,7 @@ class EnergySystemHandler:
                     ref['value'] = values
                 else:
                     refValue = dict()
-                    repr = EnergySystemHandler.string_repr(value)
+                    repr = repr_function(value)
                     refValue['repr'] = repr
                     refValue['type'] = value.eClass.name
                     if hasattr(value, 'id'):
@@ -420,6 +433,11 @@ class EnergySystemHandler:
                     ref['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
                 references.append(ref)
         return references
+
+    @staticmethod
+    def get_subtypes(self, eType):
+        pass
+        #x.eType
 
 
 class StringURI(URI):
