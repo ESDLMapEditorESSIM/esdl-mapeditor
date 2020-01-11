@@ -112,7 +112,7 @@ function process_service_results(results) {
 function show_service_settings(index) {
     service_settings_div = document.getElementById('service_settings_div');
 
-    service_settings_div.innerHTML += '<h1>' + esdl_services_information[index]['name'] + '</h1>';
+    service_settings_div.innerHTML = '<h1>' + esdl_services_information[index]['name'] + '</h1>';
     service_settings_div.innerHTML += '<p>' + esdl_services_information[index]['explanation'] + '</p>';
 
     if (esdl_services_information[index]['type'] == 'geo_query') {
