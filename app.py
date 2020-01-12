@@ -1290,12 +1290,12 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
                         coords.append([point.lat, point.lon])
                     asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
                 if isinstance(geom, esdl.Polygon):
-                    if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
-                        coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
-                        coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
-                        capability_type = ESDLAsset.get_asset_capability_type(asset)
-                        # print(coords)
-                        asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
+                    # if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
+                    coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
+                    coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
+                    capability_type = ESDLAsset.get_asset_capability_type(asset)
+                    # print(coords)
+                    asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
 
     for potential in area.potential:
         geom = potential.geometry
@@ -2373,6 +2373,66 @@ def str2float(string):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Helper functions for command 'add_asset' - Create ESDL geometry from info from browser
+# ---------------------------------------------------------------------------------------------------------------------
+def create_ESDL_geometry(shape):
+
+    if shape['type'] == 'point':
+        geometry = esdl.Point(lon=shape['lng'], lat=shape['lat'])
+
+    elif shape['type'] == 'polyline':
+        polyline_data = shape['coordinates']
+        geometry = esdl.Line()
+
+        i = 0
+        prev_lat = 0
+        prev_lng = 0
+        while i < len(polyline_data):
+            coord = polyline_data[i]
+
+            # Don't understand why, but sometimes coordinates come in twice
+            if prev_lat != coord['lat'] or prev_lng != coord['lng']:
+                point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
+                geometry.point.append(point)
+                prev_lat = coord['lat']
+                prev_lng = coord['lng']
+            i += 1
+
+    elif shape['type'] == 'polygon' or shape['type'] == 'rectangle':
+        polygon_data = shape['coordinates']  # [lat, lon]
+        print(polygon_data)
+        polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+        polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+        polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+
+        geometry = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+
+    # elif shape['type'] == 'rectangle':
+    #     rect_data = shape['coordinates']
+    #     print(rect_data)
+    #     #polygon_data = [[rect_data[0], [rect_data[0][0],rect_data[1][1]], rect_data[1], [rect_data[1][0],rect_data[0][1]]]]
+    #
+    #     geometry = ESDLGeometry.convert_pcoordinates_into_polygon(rect_data)  # expects [lon, lat]
+
+
+    return geometry
+
+
+def get_first_last_of_line(line):
+    first = ()
+    last = ()
+
+    i = 0
+    for point in line.point:
+        if i == 0:
+            first = (point.lat, point.lon)
+        i+=1
+
+    last = (point.lat, point.lon)
+    return first, last
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('command', namespace='/esdl')
@@ -2404,6 +2464,7 @@ def process_command(message):
         asset_id = message['asset_id']
         assettype = message['asset']
         asset_name = message['asset_name']
+        asset = None
 
         edr_asset_str = get_session('adding_edr_assets')
         if edr_asset_str:
@@ -2417,46 +2478,39 @@ def process_command(message):
             class_ = getattr(module, assettype)
             asset = class_()
 
-        # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a point location and an OutPort
-        # -------------------------------------------------------------------------------------------------------------
-        if assettype in ['GenericProducer', 'GeothermalSource', 'PVInstallation', 'WindTurbine']:
-            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-            asset.port.append(outp)
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
-            asset.geometry = point
+        shape = message['shape']
+        geometry = create_ESDL_geometry(shape)
+        asset.geometry = geometry
 
-            mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+        if isinstance(geometry, esdl.Point):
+            port_loc = (shape['lat'], shape['lng'])
+        elif isinstance(geometry, esdl.Polygon):
+            port_loc = ESDLGeometry.calculate_polygon_center(geometry)
 
-        # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a point location and an InPort
-        # -------------------------------------------------------------------------------------------------------------
-        elif assettype in ['Battery', 'ElectricityDemand', 'GenericConsumer', 'HeatingDemand', 'MobilityDemand', 'UTES']:
-            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-            asset.port.append(inp)
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
-            asset.geometry = point
+            polygon_area = int(shape['polygon_area'])
 
-            mapping[inp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+            if asset.surfaceArea:
+                if asset.power:
+                    asset.power = asset.power * polygon_area / asset.surfaceArea
+                    asset.surfaceArea = polygon_area
+            else:
+                asset.surfaceArea = polygon_area
 
         # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a point location and an InPort and an OutPort
+        #  Add assets with a polyline geometry and an InPort and an OutPort
         # -------------------------------------------------------------------------------------------------------------
-        elif assettype in ['EConnection', 'ElectricityNetwork', 'Electrolyzer', 'GConnection', 'GasHeater',
-                         'GasNetwork', 'GenericConversion', 'HeatNetwork', 'HeatPump', 'Joint', 'Transformer', 'PowerPlant', 'CCS']:
-
+        if assettype in ['ElectricityCable', 'Pipe']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             asset.port.append(inp)
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
             asset.port.append(outp)
+            asset.length = float(shape['length'])
+            first, last = get_first_last_of_line(geometry)
+            mapping[inp.id] = {'asset_id': asset_id, 'coord': first, 'pos': 'first'}
+            mapping[outp.id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
 
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
-            asset.geometry = point
-
-            mapping[inp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
-            mapping[outp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
         # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a point location and an InPort and two OutPorts
+        #  Add assets with an InPort and two OutPorts (either point or polygon)
         # -------------------------------------------------------------------------------------------------------------
         elif assettype in ['CHP', 'FuelCell']:
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
@@ -2467,101 +2521,27 @@ def process_command(message):
             h_outp = esdl.OutPort(id=str(uuid.uuid4()), name='H Out')
             asset.port.append(h_outp)
 
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
-            asset.geometry = point
+            mapping[inp.id] = {"asset_id": asset_id, "coord": port_loc}
+            mapping[e_outp.id] = {"asset_id": asset_id, "coord": port_loc}
+            mapping[h_outp.id] = {"asset_id": asset_id, "coord": port_loc}
 
-            mapping[inp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
-            mapping[e_outp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
-            mapping[h_outp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
-
-        # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a polyline geometry and an InPort and an OutPort
-        # -------------------------------------------------------------------------------------------------------------
-        elif assettype in ['ElectricityCable', 'Pipe']:
-            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-            asset.port.append(inp)
-            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-            asset.port.append(outp)
-
-            polyline_data = message['polyline']
-            # print(polyline_data)
-            # print(type(polyline_data))
-            asset.length = float(message['length'])
-
-            line = esdl.Line()
-            i = 0
-            prev_lat = 0
-            prev_lng = 0
-            while i < len(polyline_data):
-                coord = polyline_data[i]
-
-                if i == 0:
-                    first = (coord['lat'], coord['lng'])
-                if i == len(polyline_data)-1:
-                    last = (coord['lat'], coord['lng'])
-
-                # Don't understand why, but sometimes coordinates come in twice
-                if prev_lat != coord['lat'] and prev_lng != coord['lng']:
-                    point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
-                    line.point.append(point)
-                    prev_lat = coord['lat']
-                    prev_lng = coord['lng']
-                i += 1
-
-            asset.geometry = line
-
-            mapping[inp.id] = {'asset_id': asset_id, 'coord': first, 'pos': 'first'}
-            mapping[outp.id] = {'asset_id': asset_id, 'coord': last, 'pos': 'last'}
-        # -------------------------------------------------------------------------------------------------------------
-        #  Add assets with a polygon or point geometry and an OutPort
-        # -------------------------------------------------------------------------------------------------------------
-        elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
-            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-            asset.port.append(outp)
-
-            try:
-                polygon_data = message['polygon']                   # [lat, lon]
-                polygon_area = int(message['polygon_area'])
-                polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-                polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-                polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-
-                polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-                asset.geometry = polygon
-                if asset.surfaceArea:
-                    if asset.power:
-                        asset.power = asset.power * polygon_area / asset.surfaceArea
-                        asset.surfaceArea = polygon_area
-                polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
-                mapping[outp.id] = {'asset_id': asset_id, 'coord': polygon_center}
-            except:
-                try:
-                    point = esdl.Point(lon=message['lng'], lat=message['lat'])
-                    asset.geometry = point
-
-                    mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
-                except:
-                    pass
         else:
             capability = ESDLAsset.get_asset_capability_type(asset)
             if capability == 'Producer':
                 outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                 asset.port.append(outp)
-                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
-                mapping[outp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+                mapping[outp.id] = {'asset_id': asset_id, 'coord': port_loc}
             elif capability in ['Consumer', 'Storage']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                 asset.port.append(inp)
-                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
-                mapping[inp.id] = {'asset_id': asset_id, 'coord': (message['lat'], message['lng'])}
+                mapping[inp.id] = {'asset_id': asset_id, 'coord': port_loc}
             elif capability in ['Conversion', 'Transport']:
                 inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                 asset.port.append(inp)
                 outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                 asset.port.append(outp)
-                asset.geometry = esdl.Point(lon=message['lng'], lat=message['lat'])
-                mapping[inp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
-                mapping[outp.id] = {"asset_id": asset_id, "coord": (message['lat'], message['lng'])}
+                mapping[inp.id] = {"asset_id": asset_id, "coord": port_loc}
+                mapping[outp.id] = {"asset_id": asset_id, "coord": port_loc}
             else:
                 print('Unknown asset capability ' % capability)
 
@@ -2581,32 +2561,23 @@ def process_command(message):
             port_list.append(
                 {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids})
 
-        if assettype not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
+        # if assettype not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
+        if isinstance(geometry, esdl.Point):
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [message['lat'], message['lng']], port_list, capability_type])
-        elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
+            asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['lat'], shape['lng']], port_list, capability_type])
+        # elif assettype in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
+        elif isinstance(geometry, esdl.Polygon):
             coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
             coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             # print(coords)
             asset_to_be_added_list.append(
                 ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
-        elif assettype in ['ElectricityCable', 'Pipe']:
+        # elif assettype in ['ElectricityCable', 'Pipe']:
+        elif isinstance(geometry, esdl.Line):
             coords = []
-            i = 0
-            prev_lat = 0
-            prev_lng = 0
-            while i < len(polyline_data):
-                coord = polyline_data[i]
-
-                # Don't understand why, but sometimes coordinates come in twice
-                if prev_lat != coord['lat'] and prev_lng != coord['lng']:
-                    coords.append([coord['lat'] ,coord['lng']])
-
-                    prev_lat = coord['lat']
-                    prev_lng = coord['lng']
-                i += 1
-
+            for point in geometry.point:
+                coords.append([point.lat, point.lon])
             asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
         #print(asset_to_be_added_list)
