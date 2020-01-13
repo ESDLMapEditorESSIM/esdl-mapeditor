@@ -1480,211 +1480,208 @@ def connect_ports(port1, port2):
     #     port2.set_connectedTo(port1.id)
 
 
-def connect_asset_with_conductor(asset, conductor):
-    conn_list = get_session("conn_list")
-    es_id = get_session("es_id")
-
-    asset_geom = asset.geometry
-    cond_geom = conductor.geometry
-
-    if isinstance(cond_geom, esdl.Line):
-        points = cond_geom.point
-        first_point = points[0]
-        last_point = points[len(points) - 1]
-    else:
-        send_alert('UNSUPPORTED - conductor geometry is not a Line')
-        return
-
-    if not isinstance(asset_geom, esdl.Point):
-        send_alert('UNSUPPORTED - asset geometry is not a Point')
-        return
-
-    if (distance((asset_geom.lat, asset_geom.lon), (first_point.lat, first_point.lon)) <
-            distance((asset_geom.lat, asset_geom.lon), (last_point.lat, last_point.lon))):
-        # connect asset with first_point of conductor
-
-        cond_port = conductor.port[0]
-        for p in asset.port:
-            if not type(p).__name__ == type(cond_port).__name__:
-                print('connect asset with first_point')
-                connect_ports(p, cond_port)
-                emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat,asset_geom.lon],[first_point.lat,first_point.lon]]})
-                conn_list.append(
-                    {'from-port-id': p.id, 'from-asset-id': asset.id,
-                     'from-asset-coord': [asset_geom.lat,asset_geom.lon],
-                     'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
-                     'to-asset-coord': [first_point.lat,first_point.lon]})
-
-    else:
-        # connect asset with last_point of conductor
-
-        cond_port = conductor.port[1]
-        for p in asset.port:
-            if not type(p).__name__ == type(cond_port).__name__:
-                print('connect asset with last_point')
-                connect_ports(p, cond_port)
-                emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat, asset_geom.lon], [last_point.lat, last_point.lon]]})
-                conn_list.append(
-                    {'from-port-id': p.id, 'from-asset-id': asset.id,
-                     'from-asset-coord': [asset_geom.lat, asset_geom.lon],
-                     'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
-                     'to-asset-coord': [last_point.lat, last_point.lon]})
-
-    set_session("conn_list", conn_list)
-
-
-def connect_asset_with_asset(asset1, asset2):
-    conn_list = get_session("conn_list")
-    es_id = get_session("es_id")
-
-    ports1 = asset1.port
-    num_ports1 = len(ports1)
-    asset1_geom = asset1.geometry
-    ports2 = asset2.port
-    num_ports2 = len(ports2)
-    asset2_geom = asset2.geometry
-
-    if not isinstance(asset1_geom, esdl.Point) or not isinstance(asset2_geom, esdl.Point):
-        send_alert('UNSUPPORTED - asset geometry is not a Point')
-        return
-
-    if num_ports1 == 1:
-        found = None
-        if isinstance(ports1[0], esdl.OutPort):
-            # find InPort on other asset
-            for p in ports2:
-                if isinstance(p, esdl.InPort):
-                    # connect p and ports1[0]
-                    print('connect p and ports1[0]')
-                    connect_ports(p, ports1[0])
-                    p1 = ports1[0]
-                    p2 = p
-                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]]})
-                    found = 1
-            if not found:
-                send_alert('UNSUPPORTED - No InPort found on asset2')
-                return
-        else:
-            # find OutPort on other asset
-            for p in ports2:
-                if isinstance(p, esdl.OutPort):
-                    # connect p and ports1[0]
-                    print('connect p and ports1[0]')
-                    connect_ports(p, ports1[0])
-                    p1 = ports1[0]
-                    p2 = p
-                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]]})
-                    found = 1
-            if not found:
-                send_alert('UNSUPPORTED - No OutPort found on asset2')
-                return
-    elif num_ports2 == 1:
-        found = None
-        if isinstance(ports2[0], esdl.OutPort):
-            # find InPort on other asset
-            for p in ports1:
-                if isinstance(p, esdl.InPort):
-                    # connect p and ports2[0]
-                    print('connect p and ports2[0]')
-                    connect_ports(p, ports2[0])
-                    p1 = p
-                    p2 = ports2[0]
-                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]]})
-                    found = 1
-            if not found:
-                send_alert('UNSUPPORTED - No InPort found on asset1')
-                return
-        else:
-            # find OutPort on other asset
-            for p in ports1:
-                if isinstance(p, esdl.OutPort):
-                    # connect p and ports2[0]
-                    print('connect p and ports2[0]')
-                    connect_ports(p, ports2[0])
-                    p1 = p
-                    p2 = ports2[0]
-                    emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
-                          [asset2_geom.lat, asset2_geom.lon]]})
-                    found = 1
-            if not found:
-                send_alert('UNSUPPORTED - No OutPort found in asset1')
-                return
-    else:
-        send_alert('UNSUPPORTED - Cannot determine what ports to connect')
-        return
-
-    if found:
-        conn_list.append(
-            {'from-port-id': p1.id, 'from-asset-id': asset1.id,
-             'from-asset-coord': [asset1_geom.lat, asset1_geom.lon],
-             'to-port-id': p2.id, 'to-asset-id': asset2.id,
-             'to-asset-coord': [asset2_geom.lat, asset2_geom.lon]})
-
-    set_session("conn_list", conn_list)
+# def connect_asset_with_conductor(asset, conductor):
+#     conn_list = get_session("conn_list")
+#     es_id = get_session("es_id")
+#
+#     asset_geom = asset.geometry
+#     cond_geom = conductor.geometry
+#
+#     if isinstance(cond_geom, esdl.Line):
+#         points = cond_geom.point
+#         first_point = points[0]
+#         last_point = points[len(points) - 1]
+#     else:
+#         send_alert('UNSUPPORTED - conductor geometry is not a Line')
+#         return
+#
+#     if not isinstance(asset_geom, esdl.Point):
+#         send_alert('UNSUPPORTED - asset geometry is not a Point')
+#         return
+#
+#     if (distance((asset_geom.lat, asset_geom.lon), (first_point.lat, first_point.lon)) <
+#             distance((asset_geom.lat, asset_geom.lon), (last_point.lat, last_point.lon))):
+#         # connect asset with first_point of conductor
+#
+#         cond_port = conductor.port[0]
+#         for p in asset.port:
+#             if not type(p).__name__ == type(cond_port).__name__:
+#                 print('connect asset with first_point')
+#                 connect_ports(p, cond_port)
+#                 emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat,asset_geom.lon],[first_point.lat,first_point.lon]]})
+#                 conn_list.append(
+#                     {'from-port-id': p.id, 'from-asset-id': asset.id,
+#                      'from-asset-coord': [asset_geom.lat,asset_geom.lon],
+#                      'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
+#                      'to-asset-coord': [first_point.lat,first_point.lon]})
+#
+#     else:
+#         # connect asset with last_point of conductor
+#
+#         cond_port = conductor.port[1]
+#         for p in asset.port:
+#             if not type(p).__name__ == type(cond_port).__name__:
+#                 print('connect asset with last_point')
+#                 connect_ports(p, cond_port)
+#                 emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset_geom.lat, asset_geom.lon], [last_point.lat, last_point.lon]]})
+#                 conn_list.append(
+#                     {'from-port-id': p.id, 'from-asset-id': asset.id,
+#                      'from-asset-coord': [asset_geom.lat, asset_geom.lon],
+#                      'to-port-id': cond_port.id, 'to-asset-id': conductor.id,
+#                      'to-asset-coord': [last_point.lat, last_point.lon]})
+#
+#     set_session("conn_list", conn_list)
 
 
-def connect_conductor_with_conductor(conductor1, conductor2):
-    conn_list = get_session("conn_list")
-    es_id = get_session("es_id")
+# def connect_asset_with_asset(asset1, asset2):
+#     conn_list = get_session("conn_list")
+#     es_id = get_session("es_id")
+#
+#     ports1 = asset1.port
+#     num_ports1 = len(ports1)
+#     asset1_geom = asset1.geometry
+#     ports2 = asset2.port
+#     num_ports2 = len(ports2)
+#     asset2_geom = asset2.geometry
+#
+#     if not isinstance(asset1_geom, esdl.Point) or not isinstance(asset2_geom, esdl.Point):
+#         send_alert('UNSUPPORTED - asset geometry is not a Point')
+#         return
+#
+#     if num_ports1 == 1:
+#         found = None
+#         if isinstance(ports1[0], esdl.OutPort):
+#             # find InPort on other asset
+#             for p in ports2:
+#                 if isinstance(p, esdl.InPort):
+#                     # connect p and ports1[0]
+#                     print('connect p and ports1[0]')
+#                     connect_ports(p, ports1[0])
+#                     p1 = ports1[0]
+#                     p2 = p
+#                     emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+#                           [asset2_geom.lat, asset2_geom.lon]]})
+#                     found = 1
+#             if not found:
+#                 send_alert('UNSUPPORTED - No InPort found on asset2')
+#                 return
+#         else:
+#             # find OutPort on other asset
+#             for p in ports2:
+#                 if isinstance(p, esdl.OutPort):
+#                     # connect p and ports1[0]
+#                     print('connect p and ports1[0]')
+#                     connect_ports(p, ports1[0])
+#                     p1 = ports1[0]
+#                     p2 = p
+#                     emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+#                           [asset2_geom.lat, asset2_geom.lon]]})
+#                     found = 1
+#             if not found:
+#                 send_alert('UNSUPPORTED - No OutPort found on asset2')
+#                 return
+#     elif num_ports2 == 1:
+#         found = None
+#         if isinstance(ports2[0], esdl.OutPort):
+#             # find InPort on other asset
+#             for p in ports1:
+#                 if isinstance(p, esdl.InPort):
+#                     # connect p and ports2[0]
+#                     print('connect p and ports2[0]')
+#                     connect_ports(p, ports2[0])
+#                     p1 = p
+#                     p2 = ports2[0]
+#                     emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+#                           [asset2_geom.lat, asset2_geom.lon]]})
+#                     found = 1
+#             if not found:
+#                 send_alert('UNSUPPORTED - No InPort found on asset1')
+#                 return
+#         else:
+#             # find OutPort on other asset
+#             for p in ports1:
+#                 if isinstance(p, esdl.OutPort):
+#                     # connect p and ports2[0]
+#                     print('connect p and ports2[0]')
+#                     connect_ports(p, ports2[0])
+#                     p1 = p
+#                     p2 = ports2[0]
+#                     emit('add_new_conn', {'es_id': es_id, 'new_conn': [[asset1_geom.lat, asset1_geom.lon],
+#                           [asset2_geom.lat, asset2_geom.lon]]})
+#                     found = 1
+#             if not found:
+#                 send_alert('UNSUPPORTED - No OutPort found in asset1')
+#                 return
+#     else:
+#         send_alert('UNSUPPORTED - Cannot determine what ports to connect')
+#         return
+#
+#     if found:
+#         conn_list.append(
+#             {'from-port-id': p1.id, 'from-asset-id': asset1.id,
+#              'from-asset-coord': [asset1_geom.lat, asset1_geom.lon],
+#              'to-port-id': p2.id, 'to-asset-id': asset2.id,
+#              'to-asset-coord': [asset2_geom.lat, asset2_geom.lon]})
+#
+#     set_session("conn_list", conn_list)
 
-    c1points = conductor1.geometry.point
-    c1p0 = c1points[0]
-    c1p1 = c1points[len(c1points) - 1]
-    c2points = conductor2.geometry.point
-    c2p0 = c2points[0]
-    c2p1 = c2points[len(c2points) - 1]
 
-    dp = []
-    dp.append(distance((c1p0.lat,c1p0.lon),(c2p0.lat,c2p0.lon)))
-    dp.append(distance((c1p0.lat,c1p0.lon),(c2p1.lat,c2p1.lon)))
-    dp.append(distance((c1p1.lat,c1p1.lon),(c2p0.lat,c2p0.lon)))
-    dp.append(distance((c1p1.lat,c1p1.lon),(c2p1.lat,c2p1.lon)))
-
-    smallest = 0
-    for i in range(1,3):
-        if dp[i] < dp[smallest]:
-            smallest = i
-
-    if smallest == 0:
-        conn1 = conductor1.port[0]
-        conn2 = conductor2.port[0]
-        conn_pnt1 = c1p0
-        conn_pnt2 = c2p0
-    elif smallest == 1:
-        conn1 = conductor1.port[0]
-        conn2 = conductor2.port[1]
-        conn_pnt1 = c1p0
-        conn_pnt2 = c2p1
-    elif smallest == 2:
-        conn1 = conductor1.port[1]
-        conn2 = conductor2.port[0]
-        conn_pnt1 = c1p1
-        conn_pnt2 = c2p0
-    elif smallest == 3:
-        conn1 = conductor1.port[1]
-        conn2 = conductor2.port[1]
-        conn_pnt1 = c1p1
-        conn_pnt2 = c2p1
-
-    if not type(conn1).__name__ == type(conn2).__name__:
-        connect_ports(conn1, conn2)
-        emit('add_new_conn',
-             {'es_id': es_id, 'new_conn': [[conn_pnt1.lat, conn_pnt1.lon], [conn_pnt2.lat, conn_pnt2.lon]]})
-        conn_list.append(
-            {'from-port-id': conn1.id, 'from-asset-id': conductor1.id,
-             'from-asset-coord': [conn_pnt1.lat, conn_pnt1.lon],
-             'to-port-id': conn2.id, 'to-asset-id': conductor2.id,
-             'to-asset-coord': [conn_pnt2.lat, conn_pnt2.lon]})
-
-        set_session("conn_list", conn_list)
-    else:
-        send_alert('UNSUPPORTED - Cannot connect two ports of same type')
-
-
-
+# def connect_conductor_with_conductor(conductor1, conductor2):
+#     conn_list = get_session("conn_list")
+#     es_id = get_session("es_id")
+#
+#     c1points = conductor1.geometry.point
+#     c1p0 = c1points[0]
+#     c1p1 = c1points[len(c1points) - 1]
+#     c2points = conductor2.geometry.point
+#     c2p0 = c2points[0]
+#     c2p1 = c2points[len(c2points) - 1]
+#
+#     dp = []
+#     dp.append(distance((c1p0.lat,c1p0.lon),(c2p0.lat,c2p0.lon)))
+#     dp.append(distance((c1p0.lat,c1p0.lon),(c2p1.lat,c2p1.lon)))
+#     dp.append(distance((c1p1.lat,c1p1.lon),(c2p0.lat,c2p0.lon)))
+#     dp.append(distance((c1p1.lat,c1p1.lon),(c2p1.lat,c2p1.lon)))
+#
+#     smallest = 0
+#     for i in range(1,3):
+#         if dp[i] < dp[smallest]:
+#             smallest = i
+#
+#     if smallest == 0:
+#         conn1 = conductor1.port[0]
+#         conn2 = conductor2.port[0]
+#         conn_pnt1 = c1p0
+#         conn_pnt2 = c2p0
+#     elif smallest == 1:
+#         conn1 = conductor1.port[0]
+#         conn2 = conductor2.port[1]
+#         conn_pnt1 = c1p0
+#         conn_pnt2 = c2p1
+#     elif smallest == 2:
+#         conn1 = conductor1.port[1]
+#         conn2 = conductor2.port[0]
+#         conn_pnt1 = c1p1
+#         conn_pnt2 = c2p0
+#     elif smallest == 3:
+#         conn1 = conductor1.port[1]
+#         conn2 = conductor2.port[1]
+#         conn_pnt1 = c1p1
+#         conn_pnt2 = c2p1
+#
+#     if not type(conn1).__name__ == type(conn2).__name__:
+#         connect_ports(conn1, conn2)
+#         emit('add_new_conn',
+#              {'es_id': es_id, 'new_conn': [[conn_pnt1.lat, conn_pnt1.lon], [conn_pnt2.lat, conn_pnt2.lon]]})
+#         conn_list.append(
+#             {'from-port-id': conn1.id, 'from-asset-id': conductor1.id,
+#              'from-asset-coord': [conn_pnt1.lat, conn_pnt1.lon],
+#              'to-port-id': conn2.id, 'to-asset-id': conductor2.id,
+#              'to-asset-coord': [conn_pnt2.lat, conn_pnt2.lon]})
+#
+#         set_session("conn_list", conn_list)
+#     else:
+#         send_alert('UNSUPPORTED - Cannot connect two ports of same type')
 
 
 # def get_potential_attributes(potential):
@@ -2607,61 +2604,61 @@ def process_command(message):
                 port_list.append({id: p.id, type: type(p).__name__})
             emit('portlist', port_list)
 
-    if message['cmd'] == 'connect_assets':
-        asset_id1 = message['id1']
-        asset_id2 = message['id2']
-        area = es_edit.instance[0].area
-
-        asset1 = ESDLAsset.find_asset(area, asset_id1)
-        asset2 = ESDLAsset.find_asset(area, asset_id2)
-        print('Connecting asset ' + asset1.id + ' and asset ' + asset2.id)
-
-        geom1 = asset1.geometry
-        geom2 = asset2.geometry
-
-        if isinstance(asset1, esdl.AbstractConductor) or isinstance(asset2, esdl.AbstractConductor):
-
-            if isinstance(asset1, esdl.AbstractConductor):
-                if isinstance(geom1, esdl.Line):
-                    points = geom1.point
-                    first_point1 = points[0]
-                    last_point1 = points[len(points)-1]
-                    first = 'line'
-                if isinstance(geom1, esdl.Point): # in case of a Joint
-                    point1=geom1
-                    first='point'
-            else:
-                if isinstance(geom1, esdl.Point):
-                    point1 = geom1
-                    first = 'point'
-
-            if isinstance(asset2, esdl.AbstractConductor):
-                if isinstance(geom2, esdl.Line):
-                    points = geom2.point
-                    first_point2 = points[0]
-                    last_point2 = points[len(points)-1]
-                    second = 'line'
-                if isinstance(geom2, esdl.Point): # in case of a Joint
-                    point2=geom2
-                    second='point'
-            else:
-                if isinstance(geom2, esdl.Point):
-                    point2 = geom2
-                    second = 'point'
-        else:
-            point1 = geom1
-            first = 'point'
-            point2 = geom2
-            second = 'point'
-
-        if first == 'point' and second == 'point':
-            connect_asset_with_asset(asset1, asset2)
-        if first == 'point' and second == 'line':
-            connect_asset_with_conductor(asset1, asset2)
-        if first == 'line' and second == 'point':
-            connect_asset_with_conductor(asset2, asset1)
-        if first == 'line' and second == 'line':
-            connect_conductor_with_conductor(asset1, asset2)
+    # if message['cmd'] == 'connect_assets':
+    #     asset_id1 = message['id1']
+    #     asset_id2 = message['id2']
+    #     area = es_edit.instance[0].area
+    #
+    #     asset1 = ESDLAsset.find_asset(area, asset_id1)
+    #     asset2 = ESDLAsset.find_asset(area, asset_id2)
+    #     print('Connecting asset ' + asset1.id + ' and asset ' + asset2.id)
+    #
+    #     geom1 = asset1.geometry
+    #     geom2 = asset2.geometry
+    #
+    #     if isinstance(asset1, esdl.AbstractConductor) or isinstance(asset2, esdl.AbstractConductor):
+    #
+    #         if isinstance(asset1, esdl.AbstractConductor):
+    #             if isinstance(geom1, esdl.Line):
+    #                 points = geom1.point
+    #                 first_point1 = points[0]
+    #                 last_point1 = points[len(points)-1]
+    #                 first = 'line'
+    #             if isinstance(geom1, esdl.Point): # in case of a Joint
+    #                 point1=geom1
+    #                 first='point'
+    #         else:
+    #             if isinstance(geom1, esdl.Point):
+    #                 point1 = geom1
+    #                 first = 'point'
+    #
+    #         if isinstance(asset2, esdl.AbstractConductor):
+    #             if isinstance(geom2, esdl.Line):
+    #                 points = geom2.point
+    #                 first_point2 = points[0]
+    #                 last_point2 = points[len(points)-1]
+    #                 second = 'line'
+    #             if isinstance(geom2, esdl.Point): # in case of a Joint
+    #                 point2=geom2
+    #                 second='point'
+    #         else:
+    #             if isinstance(geom2, esdl.Point):
+    #                 point2 = geom2
+    #                 second = 'point'
+    #     else:
+    #         point1 = geom1
+    #         first = 'point'
+    #         point2 = geom2
+    #         second = 'point'
+    #
+    #     if first == 'point' and second == 'point':
+    #         connect_asset_with_asset(asset1, asset2)
+    #     if first == 'point' and second == 'line':
+    #         connect_asset_with_conductor(asset1, asset2)
+    #     if first == 'line' and second == 'point':
+    #         connect_asset_with_conductor(asset2, asset1)
+    #     if first == 'line' and second == 'line':
+    #         connect_conductor_with_conductor(asset1, asset2)
 
     if message['cmd'] == 'connect_ports':
         port1_id = message['port1id']

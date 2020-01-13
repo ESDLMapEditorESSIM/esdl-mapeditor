@@ -95,7 +95,7 @@
         var wms_layer_list;
         var leaflet_layers = {};
 
-        var connecting_assets = false;
+        //var connecting_assets = false;
         var first_clicked = false;
         var first_clicked_id;
 
@@ -378,15 +378,15 @@
                     var marker = e.target;
                     var id = marker.id;
 
-                    if (connecting_assets) {
-                        if (marker.asspot == 'asset') {
-                            connectAssets(marker);
-                        } else {
-                            alert('Cannot connect to potential');
-                        }
-                    } else {
+                    //if (connecting_assets) {
+                    //    if (marker.asspot == 'asset') {
+                    //        connectAssets(marker);
+                    //    } else {
+                    //        alert('Cannot connect to potential');
+                    //    }
+                    //} else {
                         socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
-                    }
+                    //}
                 }
             });
 
@@ -452,15 +452,15 @@
             line.on('click', function(e) {
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
-                    var id = line.id;
+                    //var id = line.id;
                     // console.log('line clicked: ' + line.title + '(' + line.type + ')');
 
-                    if (connecting_assets) {
-                        connectAssets(line);
-                    } else {
+                    //if (connecting_assets) {
+                    //    connectAssets(line);
+                    //} else {
                         // show popup after getting conductor info
                         socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
-                    }
+                    //}
                 }
             });
 
@@ -514,39 +514,39 @@
         // ------------------------------------------------------------------------------------------------------------
         //  Connecting assets (This way of connecting is not used now and button currently disabled)
         // ------------------------------------------------------------------------------------------------------------
-        function connectAssets(object) {
-            // console.log('this object is either a line or a marker: ');
-            // console.log(object);
-            if (first_clicked) {
-                first_clicked = false;
-                if (first_clicked_id == object.id) {       // clicked same asset twice
-                    // console.log('first clicked cancelled');
-                } else {                            // connect two assets
-                    document.getElementById('conn_asset_id2').innerHTML = object.id;
-                    document.getElementById('conn_asset_name2').innerHTML = object.name;
-                    document.getElementById('conn_asset_type2').innerHTML = object.type;
-                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
-                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
-
-                    // console.log('second clicked' + object.id + ', connecting...');
-                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
-
-                    // TODO: timer to clear sidebar?
-                }
-                first_clicked_id = 0;
-            } else {
-                first_clicked = true;
-                first_clicked_id = object.id;
-
-                document.getElementById('conn_asset_id1').innerHTML = object.id;
-                document.getElementById('conn_asset_name1').innerHTML = object.name;
-                document.getElementById('conn_asset_type1').innerHTML = object.type;
-                document.getElementById('conn_asset_result').innerHTML = '';
-                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
-
-                // console.log('first clicked ' + first_clicked_id);
-            }
-        }
+//        function connectAssets(object) {
+//            // console.log('this object is either a line or a marker: ');
+//            // console.log(object);
+//            if (first_clicked) {
+//                first_clicked = false;
+//                if (first_clicked_id == object.id) {       // clicked same asset twice
+//                    // console.log('first clicked cancelled');
+//                } else {                            // connect two assets
+//                    document.getElementById('conn_asset_id2').innerHTML = object.id;
+//                    document.getElementById('conn_asset_name2').innerHTML = object.name;
+//                    document.getElementById('conn_asset_type2').innerHTML = object.type;
+//                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
+//                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+//
+//                    // console.log('second clicked' + object.id + ', connecting...');
+//                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
+//
+//                    // TODO: timer to clear sidebar?
+//                }
+//                first_clicked_id = 0;
+//            } else {
+//                first_clicked = true;
+//                first_clicked_id = object.id;
+//
+//                document.getElementById('conn_asset_id1').innerHTML = object.id;
+//                document.getElementById('conn_asset_name1').innerHTML = object.name;
+//                document.getElementById('conn_asset_type1').innerHTML = object.type;
+//                document.getElementById('conn_asset_result').innerHTML = '';
+//                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+//
+//                // console.log('first clicked ' + first_clicked_id);
+//            }
+//        }
 
         function conn_assets_window() {
             sidebar_ctr = sidebar.getContainer();
@@ -573,19 +573,19 @@
             sidebar.show();
         }
 
-        function conn_disconn_assets() {
-            var button = document.getElementById('conn-disconn-assets');
-            first_clicked = false;
-            if (connecting_assets) {
-                connecting_assets = false;
-                button.innerHTML = 'Connect assets';
-                sidebar.hide();
-            } else {
-                conn_assets_window();
-                connecting_assets = true;
-                button.innerHTML = 'Stop connecting assets';
-            }
-        }
+        //function conn_disconn_assets() {
+        //    var button = document.getElementById('conn-disconn-assets');
+        //    first_clicked = false;
+        //    if (connecting_assets) {
+        //        connecting_assets = false;
+        //        button.innerHTML = 'Connect assets';
+        //        sidebar.hide();
+        //    } else {
+        //        conn_assets_window();
+        //        connecting_assets = true;
+        //        button.innerHTML = 'Stop connecting assets';
+        //    }
+        //}
 
         // ------------------------------------------------------------------------------------------------------------
         //  Boundary information from GEIS boundary service
