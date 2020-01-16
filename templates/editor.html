@@ -43,9 +43,9 @@
     <link href=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.js" type="text/javascript"></script>
     <link href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" rel="stylesheet" type="text/css" />
-    <script src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js" type="text/javascript"></script
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js" type="text/javascript"></script>
 
-    <script type="text/javascript" src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
+    <script type="text/javascript" src='http://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
 {% if 'table' in role %}
     <link href=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
@@ -1357,11 +1357,35 @@
             socket.on('add_connections', function(connections) {
                 conn_list = connections['conn_list']
                 es_id = connections['es_id'];
+                carrier_info_mapping = get_carrier_info_mapping(es_id);
+
+                var linecolor = 0;
+                var linewidth = 2;
+
                 for (i = 0; i<conn_list.length; i++) {
                     var con = conn_list[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
+                    var title = '';
 
-                    var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
+                    if (con['from-port-carrier'] == con['to-port-carrier']) {
+                        linewidth = 2;
+                        if (con['from-port-carrier']) {          // same carrier specified
+                            linecolor = carrier_info_mapping[con['from-port-carrier']]['color'];
+                            title = carrier_info_mapping[con['from-port-carrier']]['name'];
+                        } else {                                 // no carrier specified
+                            linecolor = carrier_info_mapping[0]['color'];
+                            title = carrier_info_mapping[0]['name'];
+                        }
+                    } else {                                    // conflicting carriers
+                        linewidth = 4;
+                        linecolor = carrier_info_mapping[1]['color'];
+                        title = carrier_info_mapping[1]['name'];
+                    }
+
+                    var line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title});
+                    if (title) {
+                        line.bindPopup(title);
+                    }
                     line.es_id = es_id;
                     // connection_layer.addLayer(line);
                     add_object_to_layer(es_id, 'connection_layer', line);

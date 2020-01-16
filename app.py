@@ -1217,6 +1217,7 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
         for p in ports:
             conn_to = p.connectedTo
             conn_to_id_list = [ct.id for ct in conn_to]
+            # TODO: add profile_info and carrier
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
 
         geom = basset.geometry
@@ -1232,13 +1233,20 @@ def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, b
 
         ports = basset.port
         for p in ports:
+            p_carr_id = None
+            if p.carrier:
+                p_carr_id = p.carrier.id
             conn_to = p.connectedTo
             if conn_to:
                 for pc in conn_to:
                     pc_asset = port_asset_mapping[pc.id]
                     pc_asset_coord = pc_asset['coord']
-                    conn_list.append({'from-port-id': p.id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
-                        'to-port-id': pc.id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
+
+                    pc_carr_id = None
+                    if pc.carrier:
+                        pc_carr_id = pc.carrier.id
+                    conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
+                        'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, basset, level+1)
@@ -1261,20 +1269,25 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
             for p in ports:
                 p_asset = port_asset_mapping[p.id]
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
-                conn_to = [cp.id for cp in p.connectedTo]
+                conn_to_ids = [cp.id for cp in p.connectedTo]
                 profile = p.profile
                 profile_info_list = []
+                p_carr_id = None
+                if p.carrier:
+                    p_carr_id = p.carrier.id
                 if profile:
                     profile_info_list = generate_profile_info(profile)
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info_list})
-                if conn_to:
-                    #conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
-                    for id in conn_to:
-                        pc_asset = port_asset_mapping[id]
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list, 'carrier': p_carr_id})
+                if conn_to_ids:
+                    for pc in p.connectedTo:
+                        pc_asset = port_asset_mapping[pc.id]
                         pc_asset_coord = pc_asset['coord']
 
-                        conn_list.append({'from-port-id': p.id, 'from-asset-id': p_asset['asset_id'], 'from-asset-coord': p_asset_coord,
-                                          'to-port-id': id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
+                        pc_carr_id = None
+                        if pc.carrier:
+                            pc_carr_id = pc.carrier.id
+                        conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': p_asset['asset_id'], 'from-asset-coord': p_asset_coord,
+                                          'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
             geom = asset.geometry
             if geom:
@@ -1314,11 +1327,11 @@ def process_area(asset_list, area_bld_list, conn_list, port_asset_mapping, area,
 
 
 # TODO: Not used now, should we keep the conn_list updated?
-def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_coord, to_port_id, to_asset_id, to_asset_coord):
-    conn_list.append(
-        {'from-port-id': from_port_id, 'from-asset-id': from_asset_id, 'from-asset-coord': from_asset_coord,
-         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
-
+# 13-1-2020: Commented out: energycarrier info for port not added yet because function is not used at the moment.
+#def add_connection_to_list(conn_list, from_port_id, from_asset_id, from_asset_coord, to_port_id, to_asset_id, to_asset_coord):
+#    conn_list.append(
+#        {'from-port-id': from_port_id, 'from-asset-id': from_asset_id, 'from-asset-coord': from_asset_coord,
+#         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
 
 def update_mapping(asset, coord):
     active_es_id = get_session('active_es_id')
@@ -1854,7 +1867,6 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_cond1.geometry = line1
         new_cond2.geometry = line2
 
-
         # remove conductor from container (area or building) and add new two conductors
         assets = conductor_container.asset
         assets.remove(conductor)
@@ -1897,8 +1909,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         # create list of connections to be added to UI
         if mode == 'connect':
-            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-port-carrier': None, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         if mode == 'add_joint':
             joint_id = str(uuid.uuid4())
@@ -1938,10 +1950,10 @@ def split_conductor(conductor, location, mode, conductor_container):
             capability_type = ESDLAsset.get_asset_capability_type(joint)
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], port_list, capability_type])
 
-            conn_list.append({'from-port-id': new_port2_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port2_conn_to_id, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
-            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port2_conn_to_id, 'to-port-carrier': None, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-port-carrier': None, 'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-port-carrier': None, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
@@ -2694,10 +2706,16 @@ def process_command(message):
                 emit('add_new_conn', {'es_id': es_edit.id, 'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
                                                                    [asset2_port_location[0], asset2_port_location[1]]]})
 
+                p1_carr_id = None
+                if port1.carrier:
+                    p1_carr_id = port1.carrier.id
+                p2_carr_id = None
+                if port2.carrier:
+                    p2_carr_id = port2.carrier.id
                 conn_list = get_session_for_esid(active_es_id, 'conn_list')
-                conn_list.append({'from-port-id': port1_id, 'from-asset-id': asset1_id,
+                conn_list.append({'from-port-id': port1_id, 'from-port-carrier': p1_carr_id, 'from-asset-id': asset1_id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
-                                  'to-port-id': port2_id, 'to-asset-id': asset2_id,
+                                  'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2_id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
         else:
             send_alert('Serious error connecting ports')
@@ -3253,6 +3271,11 @@ def process_command(message):
         print(params)
         query_esdl_services.submit(params)
 
+    if message['cmd'] == 'redraw_connections':
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        emit('clear_connections')  # clear current active layer connections
+        emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+
     set_handler(esh)
     session.modified = True
 
@@ -3316,7 +3339,11 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             area = es.instance[0].area
             find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
             carrier_list = ESDLAsset.get_carrier_list(es)
+            if carrier_list:
+                emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
             sector_list = ESDLAsset.get_sector_list(es)
+            if sector_list:
+                emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
             create_port_to_asset_mapping(area, mapping)
             process_area(asset_list, area_bld_list, conn_list, mapping, area, 0)
@@ -3324,10 +3351,6 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
-            if carrier_list:
-                emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-            if sector_list:
-                emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
             set_session_for_esid(es.id, 'port_to_asset_mapping', mapping)
             set_session_for_esid(es.id, 'conn_list', conn_list)
