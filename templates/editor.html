@@ -1382,9 +1382,26 @@
                         title = carrier_info_mapping[1]['name'];
                     }
 
-                    var line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title});
+                    let line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title});
                     if (title) {
-                        line.bindPopup(title);
+                        let popup = L.popup();
+                        popup.setContent(title);
+                        line.bindPopup(popup);
+
+                        line.on('mouseover', function (e) {
+                            var popup = e.target.getPopup();
+                            popup.setLatLng(e.latlng).openOn(map);
+                        });
+
+                        line.on('mouseout', function(e) {
+                            e.target.closePopup();
+                        });
+
+                        line.on('mousemove', function (e) {
+                            e.target.closePopup();
+                            var popup = e.target.getPopup();
+                            popup.setLatLng(e.latlng).openOn(map);
+                        });
                     }
                     line.es_id = es_id;
                     // connection_layer.addLayer(line);
