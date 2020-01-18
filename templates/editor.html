@@ -1778,7 +1778,8 @@
                     layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
                         layers: layer_info.layer_name,
                         format:'image/png',
-                        transparent: true
+                        transparent: true,
+                        attribution: layer_info.attribution
                     });
                     if (layer_info.visible) {
                         layer_info.layer_ref.addTo(map);

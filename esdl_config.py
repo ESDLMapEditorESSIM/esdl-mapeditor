@@ -11,105 +11,120 @@ esdl_config = {
             "multiplier": 1,
             "measurement": "solar_relative_2011-2016",
             "field": "value",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/u4uAX3PZk/solar?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Electricity households (E1A)",
             "multiplier": 1,
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E1A",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/INOZu3PWz/elektriciteit-huishoudens-2015-nedu-e1a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Electricity shops, office, education (E3A)",
             "multiplier": 1,
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3A",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/wEXMX3EWk/electricity-shops-office-education-e3a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Electricity prison (E3B)",
             "multiplier": 1,
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3B",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/44-vX3EZk/electricity-prison-e3b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Electricity hotel, hospital (E3C)",
             "multiplier": 1,
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3C",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/iRXduqEZz/electricity-hotel-hospital-e3c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Electricity greenhouses (E3D)",
             "multiplier": 1,
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3D",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/G4HpXqEWz/electricity-greenhouses-e3d?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Heating households (G1A)",
             "multiplier": 1,
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G1A",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/Dw5-u3EWz/heating-households-g1a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Heating ... (G2A)",
             "multiplier": 1,
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2A",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/6IQBuqPWz/heating-g2a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Heating ... (G2C)",
             "multiplier": 1,
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2C",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/GI_Yu3PZz/heating-g2c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Constant",
             "multiplier": 1,
             "measurement": "constant",
             "field": "value",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/ZJn5rqPWk/constant?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Wind op land",
             "multiplier": 1,
             "measurement": "wind-2015",
             "field": "Wind-op-land",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/eeD2r3PWk/wind-op-land?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Wind op zee",
             "multiplier": 1,
             "measurement": "wind-2015",
             "field": "Wind-op-zee",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/2C-A93EWk/wind-op-zee?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Biomassa",
             "multiplier": 1,
             "measurement": "biomassa-2015",
             "field": "value",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/dyab9qPWz/biomassa?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Elektriciteit Curacao",
             "multiplier": 1,
             "measurement": "elektr-curacao-2015",
             "field": "elektr",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/r8oLrqPWz/elektriciteit-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Wind Curacao",
             "multiplier": 1,
             "measurement": "wind-curacao-2015",
             "field": "value",
-            "profileType": "ENERGY_IN_TJ"
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/KM5U93EZz/wind-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         }
     ],
     "energy_carriers": [

@@ -89,6 +89,15 @@ function select_profile_class() {
     } else {
         document.getElementById('mult_value').innerHTML = 'Multiplier';
 
+    for (let p=0; p<profile_array.length; p++) {
+        pi = profile_array[p];
+        if (pi['profile_uiname'] === profile_class && pi['embedUrl'] !== '') {
+            console.log('embedURL is there');
+            div_for_graph_panel = document.getElementById('div_for_graph_panel');
+            div_for_graph_panel.innerHTML = '<iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme>';
+        }
+    }
+
 //        document.getElementById('type_row').style.display = 'none';
 //        document.getElementById('qau_row').style.display = 'none';
 //        document.getElementById('cqau_row1').style.display = 'none';
@@ -165,6 +174,15 @@ function port_profile_info_window(port_profile_info) {
             table += '<tr><td><button onclick="document.getElementById(\'profiles_table\').deleteRow('+(p+1)+');remove_profile_from_port(\'' + port_id + '\', \''+ profile_id +
                 '\');">Del</button></td><td><p title="'+profile_class+'">'+profile_name+'</p></td><td>'+profile_value_or_multiplier+'</td><td>' +
                 profile_type +'</td></tr>';
+
+            if (profile_class == 'InfluxDBProfile') {
+                for (let p=0; p<profile_array.length; p++) {
+                    pi = profile_array[p];
+                    if (pi['profile_uiname'] === profile_name && pi['embedUrl'] !== '') {
+                        table += '<tr><td colspan="4"><iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme></td></tr>';
+                    }
+                }
+            }
         }
         table += '</table>';
         sidebar_ctr.innerHTML += table;
@@ -248,6 +266,8 @@ function port_profile_info_window(port_profile_info) {
     table += '</table>'
     sidebar_ctr.innerHTML += table;
     sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
+
+    sidebar_ctr.innerHTML += '<p><div id="div_for_graph_panel"></div></p>';
 
     sidebar.show();
 }
