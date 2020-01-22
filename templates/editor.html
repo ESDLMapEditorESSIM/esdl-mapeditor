@@ -45,7 +45,7 @@
     <link href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js" type="text/javascript"></script>
 
-    <script type="text/javascript" src='http://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
+    <script type="text/javascript" src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
 {% if 'table' in role %}
     <link href=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
@@ -471,12 +471,14 @@
                     layer.type = 'ElectricityCable';
                 }
                 layer.setStyle({
-                    color: colors[layer.type + '_hoover'],
+                    color: layer.color,
                     opacity: 1,
                     weight: 4
                 });
                 let lineType = layer.type;
-                let lineColorHoover = colors[lineType + '_hoover']
+                let lineColor = layer.color;
+                // let lineColorHoover = colors[lineType + '_hoover']
+                let lineColorHoover = lineColor;
                 let arrowHead = L.polylineDecorator(layer, {
                             patterns: [
                                 {
@@ -492,7 +494,7 @@
             line.on('mouseout', function(e) {
                 var layer = e.target;
                 layer.setStyle({
-                    color: colors[layer.type],
+                    color: layer.color,
                     opacity: 1,
                     weight: 3
                 });
@@ -1213,6 +1215,7 @@
                 // console.log(options);
                 list = options['asset_pot_list'];
                 es_id = options['es_id'];
+                carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 for (let i = 0; i<list.length; i++) {
                     $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
@@ -1294,10 +1297,16 @@
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
                         var lineType = list[i][4];
-                        //if (list[i][4] == 'ElectricityCable') linecolor = linecolor_cable
-                        //if (list[i][4] == 'Pipe') linecolor = linecolor_pipe
+                        var port_list = list[i][6];
+                        var line_color = colors[lineType];
+                        for (let p=0; p<port_list.length; p++) {
+                            let port_carrier_id = port_list[p]['carrier'];
+                            if (port_carrier_id) {
+                                line_color = carrier_info_mapping[port_carrier_id]['color'];
+                            }
+                        }
 
-                        var line = L.polyline(coords, {color: colors[lineType], weight: 3, draggable:true, title: title});
+                        var line = L.polyline(coords, {color: line_color, weight: 3, draggable:true, title: title});
 
                         // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
@@ -1306,6 +1315,7 @@
                         line.ports = list[i][6];
                         line.type = list[i][4];
                         line.name = "";
+                        line.color = line_color;    // TODO: improve?
 
                         set_line_handlers(line);
                         // esdl_layer.addLayer(line);

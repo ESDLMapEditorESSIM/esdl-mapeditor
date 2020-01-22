@@ -1983,6 +1983,7 @@ def update_coordinates(message):
 
     if message['asspot'] == 'asset':
         # fixme pyEcore: use get_by_id here (faster)
+        # TODO: apparently assets are not always found when importing GEIS data
         asset = ESDLAsset.find_asset(area, obj_id)
 
         if asset:
@@ -3276,6 +3277,10 @@ def process_command(message):
         emit('clear_connections')  # clear current active layer connections
         emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
 
+        asset_list = get_session_for_esid(active_es_id, 'asset_list')
+        emit('clear_ui', {'layer': 'assets'})  # clear current active layer assets
+        emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': asset_list, 'zoom': True})
+
     set_handler(esh)
     session.modified = True
 
@@ -3354,6 +3359,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
 
             set_session_for_esid(es.id, 'port_to_asset_mapping', mapping)
             set_session_for_esid(es.id, 'conn_list', conn_list)
+            set_session_for_esid(es.id, 'asset_list', asset_list)
+            # TODO: update asset_list???
 
             es_info_list[es.id] = {
                 "processed": True
