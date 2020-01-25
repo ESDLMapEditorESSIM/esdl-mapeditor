@@ -1,3 +1,23 @@
+// -------------------------------------------------------------------------------------------------------------------
+//  Sizes of edit boxes in the tables
+// -------------------------------------------------------------------------------------------------------------------
+let edit_size_small_number = '6';
+let edit_size_large_number = '14';
+let edit_size_string = '40';
+
+let edit_size = {
+    'name': edit_size_string,
+    'power': edit_size_large_number,
+    'capacity': edit_size_large_number,
+    'efficiency': edit_size_small_number,
+    'COP': edit_size_small_number,
+    'heatEfficiency': edit_size_small_number,
+    'electricalEfficiency': edit_size_small_number
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+//  Some helper functions
+// -------------------------------------------------------------------------------------------------------------------
 function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -32,6 +52,9 @@ function break_capital(s) {
     return r;
 }
 
+// -------------------------------------------------------------------------------------------------------------------
+//  Marginal Costs
+// -------------------------------------------------------------------------------------------------------------------
 function set_marginal_costs_value(asset_id, mc) {
     socket.emit('command', {cmd: 'set_marg_costs', asset_id: asset_id, marg_costs: mc});
 }
@@ -42,6 +65,15 @@ function change_mc(obj) {
     set_marginal_costs_value(asset_id, mc);
 }
 
+function generate_table_row_info_for_mc(asset_id, asset_mc) {
+    let idgen = uuidv4();
+    if (asset_mc == null) { asset_mc = ''; } else { asset_mc = asset_mc.toString(); }
+    return '<td><input type="text" size="'+edit_size_small_number+'" id="marg_costs_'+idgen.toString()+'" assetid="' + asset_id +
+        '" value="' + asset_mc + '" onchange="change_mc(this);"></td>';
+}
+// -------------------------------------------------------------------------------------------------------------------
+//  Control Strategies
+// -------------------------------------------------------------------------------------------------------------------
 function change_cs(obj, asset_id) {
     opt_value = obj.options[obj.selectedIndex].value;
     opt_value_parts = opt_value.split('_');
@@ -60,22 +92,8 @@ function change_cs(obj, asset_id) {
     }
 }
 
-let edit_size_small_number = '6';
-let edit_size_large_number = '14';
-let edit_size_string = '40';
-
-let edit_size = {
-    'name': edit_size_string,
-    'power': edit_size_large_number,
-    'capacity': edit_size_large_number,
-    'efficiency': edit_size_small_number,
-    'COP': edit_size_small_number,
-    'heatEfficiency': edit_size_small_number,
-    'electricalEfficiency': edit_size_small_number
-}
-
 function generate_table_row_info_for_cs(cap_type, asset_id, asset_ct, asset_cs) {
-    console.log(asset_cs.type);
+    // console.log(asset_cs.type);
 
     let select = '<td><select id="selcsfor_'+asset_id+'" onchange="change_cs(this, \''+asset_id+'\');">';
 
@@ -121,19 +139,69 @@ function generate_table_row_info_for_cs(cap_type, asset_id, asset_ct, asset_cs) 
 
             select += '<option value="'+cs_value+'"'+selected+'>'+cs_title+'</option>'
         }
+        console.log(asset_cs);
+        if (asset_cs['type'] == 'DrivenByProfile') {
+            select += '<option value="DrivenByProfile" selected>DrivenByProfile</option>';
+        }
     }
 
     select += '</select></td>';
     return select;
 }
 
-function generate_table_row_info_for_mc(asset_id, asset_mc) {
-    let idgen = uuidv4();
-    if (asset_mc == null) { asset_mc = ''; } else { asset_mc = asset_mc.toString(); }
-    return '<td><input type="text" size="'+edit_size_small_number+'" id="marg_costs_'+idgen.toString()+'" assetid="' + asset_id +
-        '" value="' + asset_mc + '" onchange="change_mc(this);"></td>';
+// -------------------------------------------------------------------------------------------------------------------
+//  Profiles
+// -------------------------------------------------------------------------------------------------------------------
+function change_prof(obj, asset_id) {
+    let value = obj.value;
+
+    if (value.substring(0,10) == 'setproffor') {
+        let parts = value.split('_');
+        let port_id = parts[2];
+        setPortProfile(null, asset_id, port_id);
+    }
 }
 
+function generate_table_row_info_for_profile(asset_id, asset_prof) {
+    let select = '<td><select id="selproffor_'+asset_id+'" onchange="change_prof(this, \''+asset_id+'\');">';
+
+    num_profs = 0;
+    for (let p=0; p<asset_prof.length; p++) {
+        prof = asset_prof[p];
+        if (!isEmpty(prof['profiles'])) { num_profs += 1; }
+    }
+
+    if (num_profs == 0) {
+        select += '<option value="noproffor_'+asset_id+'" selected>No profiles</option>';
+
+        for (let p=0; p<asset_prof.length; p++) {
+            prof = asset_prof[p];
+            port_id = prof['port_id']
+            port_name = prof['port_name']
+            select += '<option value="setproffor_'+asset_id+'_'+port_id+'">'+
+                'Set profile for '+port_name+'</option>';
+        }
+    } else if (num_profs == 1) {
+        for (let p=0; p<asset_prof.length; p++) {
+            prof = asset_prof[p];
+            if (!isEmpty(prof['profiles'])) {
+                // console.log(prof['profiles']);
+                select += '<option value="proffor_'+asset_id+'_'+prof['port_id']+'" selected>'+prof['port_name']+
+                    ': '+ prof['profiles'][0]['uiname'] + ': ' + prof['profiles'][0]['multiplier'] + ' (' +
+                    prof['profiles'][0]['type'] + ')</option>';
+            }
+        }
+    } else {
+        select += '<option value="multproffor_'+asset_id+'" selected>Multiple profiles</option>';
+    }
+
+    select += '</select></td>';
+    return select;
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+//  Generate a row for a table
+// -------------------------------------------------------------------------------------------------------------------
 function generate_table_row_for_asset(cap_type, asset, field_list) {
     let asset_type = asset['type'];
     let asset_attrs = asset['attrs'];
@@ -141,6 +209,7 @@ function generate_table_row_for_asset(cap_type, asset, field_list) {
     let asset_cs = asset['control_strategy'];
     let asset_mc = asset['marginal_costs'];
     let asset_ct = asset['connected_to_info'];
+    let asset_prof = asset['profile_info'];
 
 //    let mc_available = false;
 //    if (cap_type != 'storage' && cap_type != 'transport') {
@@ -218,8 +287,12 @@ function generate_table_row_for_asset(cap_type, asset, field_list) {
     if (cap_type != 'storage' && cap_type != 'transport') {
         tr += generate_table_row_info_for_mc(asset_id, asset_mc);
     }
-    tr += '</tr>';
+    // Profiles
+    if (cap_type == 'consumer' || cap_type == 'producer') {
+        tr += generate_table_row_info_for_profile(asset_id, asset_prof);
+    }
 
+    tr += '</tr>';
     return tr;
 }
 
@@ -319,6 +392,9 @@ function open_es_table_editor(dialog, asset_info_list) {
             }
             if (capabilities[c] != 'transport' && capabilities[c] != 'storage') {
                 table += '<th>Marginal<br>Costs</th>';
+            }
+            if (capabilities[c] == 'consumer' || capabilities[c] == 'producer') {
+                table += '<th>Profiles</th>';
             }
 
             table += '</tr></thead><tbody>';

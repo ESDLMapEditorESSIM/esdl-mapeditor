@@ -1240,6 +1240,21 @@ def get_control_strategy_info(asset):
         return {}
 
 
+def get_port_profile_info(asset):
+    ports = asset.port
+
+    port_profile_list = []
+    for p in ports:
+        prof = p.profile
+        profile_info_list = []
+        if prof:
+            profile_info_list = generate_profile_info(prof)
+
+        port_profile_list.append({'port_id': p.id, 'port_name': p.name, 'profiles': profile_info_list})
+
+    return port_profile_list
+
+
 def process_building(asset_list, area_bld_list, conn_list, port_asset_mapping, building, level):
     area_bld_list.append(['Building', building.id, building.name, level])
 
@@ -2823,6 +2838,7 @@ def process_command(message):
             attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
             connected_to_info = get_connected_to_info(asset)
             strategy_info = get_control_strategy_info(asset)
+            profile_info = get_port_profile_info(asset)
             mc_info = None
             ci = asset.costInformation
             if ci:
@@ -2841,6 +2857,7 @@ def process_command(message):
                 'connected_to_info': connected_to_info,
                 'control_strategy': strategy_info,
                 'marginal_costs': mc_info,
+                'profile_info': profile_info,
                 'asset_doc': asset_doc
             }
             if isinstance(asset, esdl.Producer):
@@ -2855,6 +2872,15 @@ def process_command(message):
                 if not strategy_info:
                     print("================== NO CONTROL STRATEGY ===================")
                 conversion_info_list.append(asset_info)
+
+        # Sort arrays on asset_type
+        # attrs_sorted = sorted(attributes, key=lambda a: a['name'])
+        producer_info_list = sorted(producer_info_list, key=lambda a: (a['type'], a['name']))
+        consumer_info_list = sorted(consumer_info_list, key=lambda a: (a['type'], a['name']))
+        transport_info_list = sorted(transport_info_list, key=lambda a: (a['type'], a['name']))
+        storage_info_list = sorted(storage_info_list, key=lambda a: (a['type'], a['name']))
+        conversion_info_list = sorted(conversion_info_list, key=lambda a: (a['type'], a['name']))
+
         emit('table_editor', {
             'producer': producer_info_list,
             'consumer': consumer_info_list,
