@@ -264,7 +264,7 @@ class EnergySystemHandler:
     # returns a generator of all assets of a specific type. Not only the ones defined in  the main Instance's Area
     # e.g. QuantityAndUnits can be defined in the KPI of an Area or in the EnergySystemInformation object
     # this function returns all of them at once
-    @staticmethod
+    # @staticmethod
     def get_all_assets_of_type(self, esdl_type):
         return esdl_type.allInstances()
 
@@ -359,7 +359,7 @@ class EnergySystemHandler:
                     attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
 
                 attributes.append(attr)
-        print(attributes)
+        # print(attributes)
         attrs_sorted = sorted(attributes, key=lambda a: a['name'])
         return attrs_sorted
 

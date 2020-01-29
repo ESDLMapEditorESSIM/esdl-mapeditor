@@ -32,6 +32,7 @@ from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
+from extensions.ibis import IBISBedrijventerreinen
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
 from esdl_helper import generate_profile_info
@@ -579,7 +580,7 @@ login_manager.init_app(app)
 #extensions
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
-
+IBISBedrijventerreinen(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -1231,8 +1232,54 @@ def update_asset_geometries3(area, boundary):
                 asset.geometry = geom
 
 
-def generate_ctrl_strategy_info(asset):
-    pass
+def get_control_strategy_info(asset):
+    control_strategy = asset.controlStrategy
+    if control_strategy:
+        cs_info = {
+            'id': control_strategy.id,
+            'name': control_strategy.name,
+            'type': type(control_strategy).__name__
+        }
+        if isinstance(control_strategy, esdl.DrivenByDemand):
+            if control_strategy.outPort:
+                cs_info['out_port_id'] = control_strategy.outPort.id
+        if isinstance(control_strategy, esdl.DrivenBySupply):
+            if control_strategy.inPort:
+                cs_info['in_port_id'] = control_strategy.inPort.id
+        if isinstance(control_strategy, esdl.DrivenByProfile):
+            if control_strategy.port:
+                cs_info['port_id'] = control_strategy.port.id
+            if control_strategy.profile:
+                cs_info['profile_id'] = control_strategy.profile.id
+        if isinstance(control_strategy, esdl.StorageStrategy):
+            mcc, mdc = get_storage_marginal_costs(asset.id)
+            cs_info['marginal_charge_costs'] = mcc
+            cs_info['marginal_discharge_costs'] = mdc
+        if isinstance(control_strategy, esdl.CurtailmentStrategy):
+            cs_info['max_power'] = control_strategy.maxPower
+        if isinstance(control_strategy, esdl.PIDController):
+            cs_info['kp'] = control_strategy.Kp
+            cs_info['ki'] = control_strategy.Ki
+            cs_info['kd'] = control_strategy.Kd
+
+        return cs_info
+    else:
+        return {}
+
+
+def get_port_profile_info(asset):
+    ports = asset.port
+
+    port_profile_list = []
+    for p in ports:
+        prof = p.profile
+        profile_info_list = []
+        if prof:
+            profile_info_list = generate_profile_info(prof)
+
+        port_profile_list.append({'port_id': p.id, 'port_name': p.name, 'profiles': profile_info_list})
+
+    return port_profile_list
 
 
 def process_building(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, level):
@@ -2846,6 +2893,70 @@ def process_command(message):
         asset_doc = asset.__doc__
         emit('asset_info', {'id': asset_id, 'name': name, 'class': 'EnergyAsset', 'latlng': latlng, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'asset_doc': asset_doc})
 
+    if message['cmd'] == 'get_table_editor_info':
+        producer_info_list = []
+        consumer_info_list = []
+        transport_info_list = []
+        storage_info_list = []
+        conversion_info_list = []
+
+        energy_assets = esh.get_all_assets_of_type(esdl.EnergyAsset)
+
+        for asset in energy_assets:
+            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+            connected_to_info = get_connected_to_info(asset)
+            strategy_info = get_control_strategy_info(asset)
+            profile_info = get_port_profile_info(asset)
+            mc_info = None
+            ci = asset.costInformation
+            if ci:
+                mc = ci.marginalCosts
+                if mc:
+                    mc_info = mc.value
+            name = asset.name
+            if name is None: name = ''
+            asset_doc = asset.__doc__
+            asset_type = type(asset).__name__
+            asset_info = {
+                'id': asset.id,
+                'name': name,
+                'type': asset_type,
+                'attrs': attrs_sorted,
+                'connected_to_info': connected_to_info,
+                'control_strategy': strategy_info,
+                'marginal_costs': mc_info,
+                'profile_info': profile_info,
+                'asset_doc': asset_doc
+            }
+            if isinstance(asset, esdl.Producer):
+                producer_info_list.append(asset_info)
+            if isinstance(asset, esdl.Consumer):
+                consumer_info_list.append(asset_info)
+            if isinstance(asset, esdl.Transport):
+                transport_info_list.append(asset_info)
+            if isinstance(asset, esdl.Storage):
+                storage_info_list.append(asset_info)
+            if isinstance(asset, esdl.Conversion):
+                if not strategy_info:
+                    print("================== NO CONTROL STRATEGY ===================")
+                conversion_info_list.append(asset_info)
+
+        # Sort arrays on asset_type
+        # attrs_sorted = sorted(attributes, key=lambda a: a['name'])
+        producer_info_list = sorted(producer_info_list, key=lambda a: (a['type'], a['name']))
+        consumer_info_list = sorted(consumer_info_list, key=lambda a: (a['type'], a['name']))
+        transport_info_list = sorted(transport_info_list, key=lambda a: (a['type'], a['name']))
+        storage_info_list = sorted(storage_info_list, key=lambda a: (a['type'], a['name']))
+        conversion_info_list = sorted(conversion_info_list, key=lambda a: (a['type'], a['name']))
+
+        emit('table_editor', {
+            'producer': producer_info_list,
+            'consumer': consumer_info_list,
+            'transport': transport_info_list,
+            'storage': storage_info_list,
+            'conversion': conversion_info_list
+        })
+
     if message['cmd'] == 'set_asset_param':
         asset_id = message['id']
         param_name = message['param_name']
@@ -3216,6 +3327,10 @@ def process_command(message):
         else:
             port_id = message['port_id']
             add_drivenby_control_strategy_for_asset(asset_id, strategy, port_id)
+
+    if message['cmd'] == 'remove_control_strategy':
+        asset_id = message['asset_id']
+        remove_control_strategy_for_asset(asset_id)
 
     if message['cmd'] == 'set_marginal_costs_get_info':
         asset_id = message['asset_id']

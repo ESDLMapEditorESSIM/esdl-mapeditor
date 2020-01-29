@@ -356,6 +356,7 @@ esdl_config = {
             "required_role": "businessparks",
             "name": "Business Parks Information",
             "explanation": "This service queries the IBIS database for Business Parks Information",
+            "type": "workflow",
             "workflow": [
                 {
                     "nr": 1,
