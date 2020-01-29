@@ -63,6 +63,9 @@ class ESDLBrowser:
                     eOrderedSet.append(new_object)
                 else:
                     parent_object.eSet(reference_name, new_object)
+            else:
+                print("Error: Can't find reference {} of {}", reference_name, parent_object.name)
+                return
             if hasattr(new_object, 'id'):
                 new_object.id = esh.generate_uuid()
                 esh.add_object_to_dict(active_es_id, new_object)
@@ -70,6 +73,28 @@ class ESDLBrowser:
                 new_object.name = 'New' + new_object.eClass.name
             browse_data = self.get_browse_to_data(new_object)
             self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+
+        @self.socketio.on('esdl_browse_delete_ref', namespace='/esdl')
+        def socket_io_delete_ref(message):
+            print(message)
+            # esdl_browse_delete_ref
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            #object_id = message['parent']['id']
+            #reference_name = message['name']
+            ref_id = message['ref_id']
+            if ref_id is not None:
+                ref_object = esh.get_by_id(active_es_id, ref_id)
+                esh.remove_object_from_dict(active_es_id, ref_object)
+                ref_object.delete(recursive=True)
+                object_id = message['parent']['id']
+                parent_object = esh.get_by_id(active_es_id, object_id)
+                browse_data = self.get_browse_to_data(parent_object)
+                self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+
+
+
+
 
     def get_browse_to_data(self, esdl_object):
         active_es_id = get_session('active_es_id')
@@ -97,6 +122,8 @@ class ESDLBrowser:
             c_dict['fragment'] = container.eURIFragment()
         else:
             c_dict['id'] = container.id
+        if container.eContainer() is not None:
+            c_dict['container'] = self.get_container_dict(container.eContainer())
         return c_dict
 
     def get_object_dict(self, esdl_object):

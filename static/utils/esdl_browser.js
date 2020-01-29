@@ -39,7 +39,6 @@ class ESDLBrowser {
                 .css('font-style', 'italic')
                 .append($('<a>').text(linktext).attr('href','#').click(
                     function(e) {
-                        e.preventDefault();
                         if (data.container.id == null) {
                             console.log('navigating to fragment '+data.container.fragment);
                             esdl_browser.open_browser_fragment(data.container.fragment);
@@ -52,6 +51,38 @@ class ESDLBrowser {
                 );
             $div.append($parent);
         }
+
+        //path
+        let $pathSpan = $('<span>')
+        let $pathDiv = $('<div>').append($('<span>').text('Location: ')).append($pathSpan);
+        var currentContainer = data.container;
+        while(currentContainer != null) {
+            let containerName = currentContainer.name;
+            if (containerName == null) containerName = currentContainer.type;
+            let $cA = $('<a>').text(containerName)
+                .attr('href','#')
+                .attr('title', currentContainer.type)
+                .css('text-decoration', 'none')
+                .click(
+                    function(container) {
+                        return function() {
+                            $(".ui-tooltip-content").parents('div').remove();
+                            if (container.id == null) {
+                                console.log('navigating to fragment '+container.fragment);
+                                esdl_browser.open_browser_fragment(container.fragment);
+                            } else {
+                                console.log('navigating to '+container.id);
+                                esdl_browser.open_browser(container.id);
+                            }
+                            return false;
+                        }
+                    }(currentContainer));
+            $pathSpan.prepend($cA);
+            $pathSpan.prepend($('<span>').text('/').css('font-face', 'bold'));
+            currentContainer = currentContainer.container;
+        }
+        $div.append($pathDiv);
+
         let $table = $('<table>').addClass('pure-table pure-table-striped');
         $div.append($table);
         let $thead = $('<thead>').append($('<tr>').append(  $('<th>').text('Name')   ).append(  $('<th>').text('Value') ).append(  $('<th>').text('Action') )  );
@@ -112,21 +143,37 @@ class ESDLBrowser {
             let name = data.references[i].name;
             let value = data.references[i].value;
             let doc = data.references[i].doc;
+            let $addButton = null;
             var $repr = $('<div>');
+            var $actions = $('<div>');
             if (data.references[i].many) {
                 for (let j = 0; j< data.references[i].value.length; j++) {
                     let $sub = $('<div>');
                     let v = data.references[i].value[j];
                     let $a = $('<a>').text(v.repr).attr('href', "#");
-                    $a.click( function(e) { e.preventDefault(); console.log('navigating to '+v.id);esdl_browser.open_browser(v.id); return false; });
+                    $a.click( function(e) { esdl_browser.open_browser(v.id); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
-                    $sub.append($a)
-                    $sub.append($span)
+                    let $spanSpacer = $('<span>').html('&nbsp;');
+                    let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+                    let parent = {'parent': {'id': data.object.id, 'fragment': data.object.fragment}};
+                    let $delButton = $('<span>').append($('<i>').addClass('fa fa-trash').css('color', 'dark-gray'));
+
+                    $delSpan.append($delButton);
+                    $sub.append($a);
+                    $sub.append($span);
+                    $sub.append($spanSpacer);
+                    $sub.append($delSpan);
                     $repr.append($sub);
+
+                    $delSpan.click( function(e) { esdl_browser.del(v.repr, v.id, parent, true); });
+
+                    // actions
+
                 }
+                let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); })
+                $actions.append($('<div>').append($addButton))
+
             } else {
-
-
                 if (value.repr == null) {
                     value.repr = '';
                 }
@@ -153,10 +200,10 @@ class ESDLBrowser {
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);;
             let $td_value = $("<td>").append($repr);
-            let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); })
+
             $tr.append($td_key)
             $tr.append($td_value)
-            $tr.append($("<td>").append($addButton))
+            $tr.append($("<td>").append($actions))
             $tbody.append($tr)
         }
 
@@ -173,6 +220,43 @@ class ESDLBrowser {
         } else if (types.length > 1) {
             // select type
             this.select_asset_type(parent_object, reference_data);
+        }
+    }
+
+    // delete a reference (recursively!)
+    del(ref_repr, ref_id, parent_object, show_dialog) {
+        if (show_dialog == false) {
+            socket.emit('esdl_browse_delete_ref', {'ref_id': ref_id, 'parent': parent_object.parent});
+        } else {
+            console.log("YEAH");
+            let $div = $('<div>');
+            let $h1 = $('<h1>').text(`Are you sure to delete ${ref_repr} and all content contained in it?`);
+
+            let $ok_button = $('<button>').addClass('btn').append($('<span>').text('Ok')).append($('<i>').addClass('fa fa-check'));
+            let $back_button = $('<button>').addClass('btn').append($('<span>').text('Back')).append($('<i>').addClass('fa fa-arrow-left'));
+            let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($ok_button);
+            $ok_button.click(function (e) {
+                esdl_browser.del(ref_repr, ref_id, parent_object, false);
+            });
+            $back_button.click(function (e) {
+                esdl_browser.browse_to(parent_object.id);
+            });
+
+            $div.append($h1);
+            $div.append($div3)
+
+
+            if (dialog === undefined) {
+                console.log("ERROR: dialog not defined")
+                // create dialog
+                return;
+            }
+            dialog.setContent($div.get(0));
+            dialog.setSize([800,500]);
+            let width = map.getSize();
+            dialog.setLocation([10, (width.x/2)-(800/2)]);
+            $('.leaflet-control-dialog-contents').scrollTop(0);
+            dialog.open();
         }
     }
 
@@ -206,15 +290,16 @@ class ESDLBrowser {
         $div.append($div3);
 
         if (dialog === undefined) {
-                console.log("ERROR: dialog not defined")
-                // create dialog
-                return;
-            }
-            dialog.setContent($div.get(0));
-            dialog.setSize([800,500]);
-            let width = map.getSize()
-            dialog.setLocation([10, (width.x/2)-(800/2)]);
-            dialog.open();
+            console.log("ERROR: dialog not defined")
+            // create dialog
+            return;
+        }
+        dialog.setContent($div.get(0));
+        dialog.setSize([800,500]);
+        let width = map.getSize()
+        dialog.setLocation([10, (width.x/2)-(800/2)]);
+        $('.leaflet-control-dialog-contents').scrollTop(0);
+        dialog.open();
     }
 
 
@@ -237,6 +322,7 @@ class ESDLBrowser {
             dialog.setSize([800,500]);
             let width = map.getSize()
             dialog.setLocation([10, (width.x/2)-(800/2)]);
+            $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
 
         });
