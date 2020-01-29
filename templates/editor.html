@@ -398,6 +398,65 @@
             }
         }
 
+        function edit_building_contents(e, asset_id) {
+            console.log('edit building contents for building with ID: '+asset_id);
+        }
+
+        function set_building_handlers(marker) {
+            let asset_id = marker.id
+            marker.bindContextMenu({
+                contextmenu: true,
+                contextmenuWidth: 140,
+                contextmenuItems: [],
+                contextmenuInheritItems: false
+            });
+
+            marker.options.contextmenuItems.push({
+                icon: '{{dir_settings.resource_prefix}}icons/BuildingContents.png',
+                text: 'Building ESDL contents',
+                callback: function(e) { edit_building_contents(e, asset_id); }
+            });
+            marker.options.contextmenuItems.push('-');
+
+            marker.on('dragend', function(e) {
+                var marker = e.target;
+                var pos = marker.getLatLng();
+                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+            });
+
+            marker.on('remove', function(e) {
+                // console.log('remove marker');
+                // marker.options.icon.tooltip('destroy');
+                $(".ui-tooltip-content").parents('div').remove();
+
+                if (deleting_objects == true) {
+                    // Remove polygon that belongs to marker, if one is present
+                    if (marker.polygon) {
+                       // all_layers = esdl_layer.getLayers();
+                       all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+                       for (let i=0; i<all_layers.length; i++) {
+                            layer = all_layers[i];
+                            if (layer.id == asset_id && layer instanceof L.Polygon) {
+                                // esdl_layer.removeLayer(layer);
+                                remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                            }
+                       }
+                    }
+                    socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: 'asset'});
+                }
+            });
+
+            marker.on('click', function(e) {
+                var marker = e.target;
+                if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
+                    var marker = e.target;
+                    var id = marker.id;
+
+                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                }
+            });
+        }
+
         // ------------------------------------------------------------------------------------------------------------
         //  Handlers for clicking on a pipe or cable
         // ------------------------------------------------------------------------------------------------------------
@@ -1050,7 +1109,7 @@
                 table += '<tr><td><input type="checkbox" id="cb_'+ key +'" name="' +value.description+ '" onclick="click_layer(\''+key+'\');"';
                 if (value.visible) { table += ' checked'; }
                 table +='>';
-                table += '<label for="'+value.id+'">'+value.description+'</label></td>';
+                table += '<label for="'+value.id+'" title="' +value.url+' - '+value.layer_name + '">'+value.description+'</label></td>';
                 table += '<td><button onclick="remove_layer(\'' + key + '\');">Del</button></td></tr>';
             }
             table += '</table>';
@@ -1151,10 +1210,6 @@
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
             });
 
-            socket.on('log', function(msg) {
-                $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
-            });
-
             socket.on('clear_ui', function(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
@@ -1218,7 +1273,6 @@
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 for (let i = 0; i<list.length; i++) {
-                    $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
 
                     if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
@@ -1327,6 +1381,70 @@
                     // var bounds = esdl_layer.getBounds();
                     var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
+                }
+            });
+
+            socket.on('add_building_objects', function(options) {
+                // Format of list items
+                // 0         1           2         3                    4
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]]
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords
+
+                // hide_loader();
+                // console.log(options);
+                list = options['building_list'];
+                es_id = options['es_id'];
+
+                for (let i = 0; i<list.length; i++) {
+                    classname = 'circle Building';
+                    imgsrc = '{{dir_settings.resource_prefix}}images/' + list[i][3] + '.png';
+
+                    var divicon = L.divIcon({
+                        className: classname,
+                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>',
+
+                        iconSize:     [30, 30], // size of the icon
+                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+                    });
+
+					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
+                    if (list[i][0] == 'point') {
+                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
+
+                        marker.title = title;
+                        marker.id = list[i][2];
+                        marker.esid = es_id;
+                        marker.name = list[i][1];
+                        marker.type = list[i][3];
+
+                        set_building_handlers(marker);
+                        add_object_to_layer(es_id, 'bld_layer', marker);
+                    }
+                    if (list[i][0] == 'polygon') {
+                        var coords = list[i][4];
+                        var polygon = L.polygon(coords, {color: 'black', weight: 3, draggable:true, title: title});
+
+                        polygon.title = title;
+                        polygon.id = list[i][2];
+                        polygon.esid = es_id;
+                        polygon.name = list[i][1];
+                        polygon.type = list[i][3];
+                        add_object_to_layer(es_id, 'bld_layer', polygon);
+
+                        var polygon_center = calculate_array_polygon_center(coords);
+                        var marker = L.marker(polygon_center, {icon: divicon, title: title});
+
+                        marker.title = title;
+                        marker.id = list[i][2];
+                        marker.esid = es_id;
+                        marker.name = list[i][1];
+                        marker.type = list[i][3];
+                        marker.polygon = true;
+
+                        set_building_handlers(marker);
+                        add_object_to_layer(es_id, 'bld_layer', marker);
+                    }
                 }
             });
 
@@ -1458,6 +1576,7 @@
             socket.on('asset_info', function(asset_info) {
                 asset_id = asset_info['id'];
                 asset_name = asset_info['name'];
+                asset_class = asset_info['class'];
                 asset_attrs = asset_info['attrs'];
                 asset_doc = asset_info['asset_doc']
                 connected_to_info = asset_info['connected_to_info'];
@@ -1469,7 +1588,6 @@
                 sidebar_ctr = sidebar.getContainer();
 
                 sidebar_ctr.innerHTML = '<h1 title="' + asset_doc + '">' + asset_name + '</h1>';
-                //sidebar_ctr.innerHTML += 'PS. Not all parameters can be set already!';
 
                 let idgen = 0; // generate Unique ID's otherwise jquery-ui will err
                 let table = '<table>';
@@ -1520,67 +1638,69 @@
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
-                table = '<table>';
-                table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
-                table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
-                    '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
-                    asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+                if (asset_class == 'EnergyAsset') {
+                    sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
+                    table = '<table>';
+                    table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
+                    table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
+                        '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
+                        asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
-                table = '<table>';
-                for (i=0; i<connected_to_info.length; i++) {
-                    pname = connected_to_info[i]['pname'];
-                    if (pname == '') {
-                        pname = 'No name';
-                    }
-                    pcarr = connected_to_info[i]['pcarr'];
-                    if (pcarr == '') {
-                        pcarr = 'No carrier';
-                    }
-                    table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
-                    table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
-                        + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
-                }
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
-
-                if (ctrl_strategy) {
-                    sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
-                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
-                }
-
-                sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
-                table = '<table>';
-                for (i=0; i<connected_to_info.length; i++) {
-                    pname = connected_to_info[i]['pname'];
-                    if (pname == '') {
-                        pname = 'No name';
-                    }
-                    table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
-                        + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
-                    for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
-                        aname = connected_to_info[i]['ct_list'][j]['aname'];
-                        if (aname == '') {
-                            aname = 'No name';
+                    sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
+                    table = '<table>';
+                    for (i=0; i<connected_to_info.length; i++) {
+                        pname = connected_to_info[i]['pname'];
+                        if (pname == '') {
+                            pname = 'No name';
                         }
-                        table += '<tr>';
-                        // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
-                        let from_asset_id = asset_id;
-                        let from_port_id = connected_to_info[i]['pid'];
-                        let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
-                        let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
-                        table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
-                        table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
-                            + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
-                            + aname + '</td>';
-                        table += '</tr>';
+                        pcarr = connected_to_info[i]['pcarr'];
+                        if (pcarr == '') {
+                            pcarr = 'No carrier';
+                        }
+                        table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
+                        table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
+                            + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
                     }
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+                    if (ctrl_strategy) {
+                        sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
+                        sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
+                    }
+
+                    sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
+                    table = '<table>';
+                    for (i=0; i<connected_to_info.length; i++) {
+                        pname = connected_to_info[i]['pname'];
+                        if (pname == '') {
+                            pname = 'No name';
+                        }
+                        table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
+                            + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
+                        for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
+                            aname = connected_to_info[i]['ct_list'][j]['aname'];
+                            if (aname == '') {
+                                aname = 'No name';
+                            }
+                            table += '<tr>';
+                            // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
+                            let from_asset_id = asset_id;
+                            let from_port_id = connected_to_info[i]['pid'];
+                            let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
+                            let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
+                            table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
+                            table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
+                                + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
+                                + aname + '</td>';
+                            table += '</tr>';
+                        }
+                    }
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
                 }
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
                 // add date picker to date input fields
                 $( ":input[edate*='true']" ).datepicker({
@@ -1804,7 +1924,7 @@
 
                     layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
                         layers: layer_info.layer_name,
-                        format:'image/png',
+                        format: 'image/png',
                         transparent: true,
                         attribution: layer_info.attribution
                     });
@@ -1841,6 +1961,19 @@
             // populate the asset menu grouped by capability
             socket.on('capability_list', function(capabilities) {
                 $('#asset_menu').empty();
+
+                var optgroup = $('<optgroup>');
+                optgroup.attr('label', 'Non EnergyAssets');
+                optgroup.style = 'font-face: bold; font-size: 10px'
+                let non_energyassets = ['Area', 'Building', 'AggregatedBuilding']
+                for (let nea in non_energyassets) {
+                    let option = $("<option></option>");
+                    option.val(non_energyassets[nea]);
+                    option.text(non_energyassets[nea]);
+                    optgroup.append(option)
+                }
+                $("#asset_menu").append(optgroup);
+
                 for (let key in capabilities) {
                     //console.log(key + ' --> ' + capabilities[key])
                     var optgroup = $('<optgroup>');
@@ -2165,7 +2298,7 @@
 <!--    ).addTo(map);-->
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["Battery", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
+    var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
         "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
         "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",

@@ -31,6 +31,14 @@ default_wms_layers = {
         "visible": False,
         "attribution": ''
     },
+    "PICO Hoogspanningsnet 2018": {
+        "description": "PICO Hoogspanningsnet 2018",
+        "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
+        "layer_name": "Hoogspanningsnet_2018",
+        "layer_ref": None,
+        "visible": False,
+        "attribution": 'PICO'
+    },
     "LT_WarmteBronnen_ECW": {
         "description": "LT_WarmteBronnen_ECW",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",

@@ -72,7 +72,10 @@ html, body
     background: #ffcb00;
     border: 3px solid #bc9500;
 }
-
+.Building {
+    background: #bfbfbf;
+    border: 3px solid #000000;
+}
 .Overload_marker {
     border: 5px solid red;
     border-radius: 50%;
