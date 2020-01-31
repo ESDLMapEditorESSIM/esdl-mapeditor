@@ -153,12 +153,34 @@ html, body
 }
 
 
-// ESDL browser
+/* ESDL browser*/
 
+/*
 .btn {
   background-color: white;
   border: 1px solid black;
-  //padding: 16px 16px;
+  padding: 16px 16px;
   font-size: 16px;
   cursor: pointer;
+}
+*/
+
+.browse-btn-small {
+  /*background-color: white;*/
+  /*border: 1px solid black;*/
+  font-size: 10px;
+  cursor: pointer;
+  width: 24px;
+  height: 18px;
+  padding: 0px;
+  /*
+  border-radius: 1px;
+  -moz-border-radius: 1px;
+  -webkit-border-radius: 1px;
+  */
+}
+
+.small-icon {
+    font-size: 10px;
+    padding: 0px;
 }

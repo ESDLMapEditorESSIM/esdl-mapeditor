@@ -82,15 +82,30 @@ class ESDLBrowser:
             esh = get_handler()
             #object_id = message['parent']['id']
             #reference_name = message['name']
-            ref_id = message['ref_id']
+            reference_name = message['name']
+            ref_id = message['ref_id']['id']
+            resource = esh.get_resource(active_es_id)
             if ref_id is not None:
                 ref_object = esh.get_by_id(active_es_id, ref_id)
-                esh.remove_object_from_dict(active_es_id, ref_object)
-                ref_object.delete(recursive=True)
-                object_id = message['parent']['id']
+            else:
+                fragment = message['ref_id']['fragment']
+                ref_object = resource.resolve(fragment)
+                # todo: add reference name, to check if it is a containment relation
+            object_id = message['parent']['id']
+            if ref_id is not None:
                 parent_object = esh.get_by_id(active_es_id, object_id)
-                browse_data = self.get_browse_to_data(parent_object)
-                self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+            else:
+                fragment = message['parent']['fragment']
+                parent_object = resource.resolve(fragment)
+            reference = parent_object.eClass.findEStructuralFeature(reference_name)
+            if reference.containment:
+                esh.remove_object_from_dict(active_es_id, ref_object)
+                ref_object.delete(recursive=True) # will automatically remove the reference from the list
+            else:
+                reference.delete() # delete only the reference
+
+            browse_data = self.get_browse_to_data(parent_object)
+            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
 
 
 
@@ -158,6 +173,6 @@ class ESDLBrowser:
             return qau_to_string(item)
         if hasattr(item, 'name') and item.name is not None:
             return item.name
-        if hasattr(item, 'id') and item.id is not None:
-            return item.eClass.name + ' (id=' + item.id + ')'
+        #if hasattr(item, 'id') and item.id is not None:
+        #    return item.eClass.name + ' (id=' + item.id + ')'
         return item.eClass.name

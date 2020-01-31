@@ -16,7 +16,7 @@ def get_asset_attributes(asset, esdl_doc=None):
             attr = dict()
             attr['name'] = x.name
             attr['type'] = x.eType.name
-            if not x.required and x.lowerBound == 1:
+            if not x.required and x.lowerBound > 0:
                 attr['required'] = True
             else:
                 attr['required'] = x.required
@@ -88,6 +88,7 @@ def get_asset_references(asset, esdl_doc=None, repr_function=string_repr):
             ref['type'] = x.eType.eClass.name
             ref['many'] = x.many
             ref['required'] = x.required
+            ref['containment'] = x.containment
             ref['types'] = find_types(x)
             value = asset.eGet(x)
             if value is None:

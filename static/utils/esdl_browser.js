@@ -5,6 +5,7 @@
 class ESDLBrowser {
     constructor() {
         this.initSocketIO();
+        this.history = [];
     }
 
     open_browser(esdl_object_id) {
@@ -14,6 +15,14 @@ class ESDLBrowser {
     // browse based on a fragment instead of an id
     open_browser_fragment(esdl_object_fragment) {
         socket.emit('esdl_browse_get_objectinfo_fragment', {'fragment': esdl_object_fragment});
+    }
+
+    open_browser_identifier(esdl_object_identifier) {
+        if (esdl_object_identifier.id != null) {
+            socket.emit('esdl_browse_get_objectinfo', {'id': esdl_object_identifier.id});
+        } else {
+            socket.emit('esdl_browse_get_objectinfo_fragment', {'fragment': esdl_object_identifier.fragment});
+        }
     }
 
     open_browser_with_event(e, id) {
@@ -26,8 +35,18 @@ class ESDLBrowser {
         if (object_name == null) {
             object_name = 'Unnamed';
         }
-        let $h1 = $('<h1>').text(`${data.object.type} - ${object_name}`).attr('title',data.object.doc);
-        $div.append($h1);
+
+        let $back_button = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
+        if (esdl_browser.history.length == 0) {
+            $back_button.attr("disabled", true);
+        }
+        $back_button.click(function (e) {
+            esdl_browser.open_browser_identifier(esdl_browser.history.pop());
+        });
+        $div.append($back_button);
+
+        let $h2 = $('<h2>').text(`${data.object.type} - ${object_name}`).attr('title',data.object.doc);
+        $div.append($h2);
         if (data.container != null) {
             let intro = 'Part of container ';
             let linktext = data.container.type;
@@ -35,10 +54,11 @@ class ESDLBrowser {
                 intro += data.container.type + " ";
                 linktext = data.container.name;
             }
-            let $parent = $('<h3>').append('<span>').text(intro)
+            let $parent = $('<h4>').append('<span>').text(intro)
                 .css('font-style', 'italic')
                 .append($('<a>').text(linktext).attr('href','#').click(
                     function(e) {
+                        esdl_browser.history.push(ESDLBrowser.identifier(data.object));
                         if (data.container.id == null) {
                             console.log('navigating to fragment '+data.container.fragment);
                             esdl_browser.open_browser_fragment(data.container.fragment);
@@ -66,7 +86,8 @@ class ESDLBrowser {
                 .click(
                     function(container) {
                         return function() {
-                            $(".ui-tooltip-content").parents('div').remove();
+                            $(".ui-tooltip-content").parents('div').remove(); // remove tooltip as it is shown when clicking
+                            esdl_browser.history.push(ESDLBrowser.identifier(data.object));
                             if (container.id == null) {
                                 console.log('navigating to fragment '+container.fragment);
                                 esdl_browser.open_browser_fragment(container.fragment);
@@ -129,6 +150,7 @@ class ESDLBrowser {
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);
             if (data.attributes[i].required == true) {
+                console.log(data.attributes[i].name + " is required");
                 $td_key = $td_key.css("text-decoration", "underline dotted red");
             }
             let $td_value = $("<td>").append($repr);
@@ -151,12 +173,11 @@ class ESDLBrowser {
                     let $sub = $('<div>');
                     let v = data.references[i].value[j];
                     let $a = $('<a>').text(v.repr).attr('href', "#");
-                    $a.click( function(e) { esdl_browser.open_browser(v.id); return false; });
+                    $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser(v.id); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
                     let $spanSpacer = $('<span>').html('&nbsp;');
                     let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
-                    let parent = {'parent': {'id': data.object.id, 'fragment': data.object.fragment}};
-                    let $delButton = $('<span>').append($('<i>').addClass('fa fa-trash').css('color', 'dark-gray'));
+                    let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
 
                     $delSpan.append($delButton);
                     $sub.append($a);
@@ -164,38 +185,64 @@ class ESDLBrowser {
                     $sub.append($spanSpacer);
                     $sub.append($delSpan);
                     $repr.append($sub);
-
-                    $delSpan.click( function(e) { esdl_browser.del(v.repr, v.id, parent, true); });
+                    var self = this;
+                    $delButton.click( function(e) { esdl_browser.del(v.repr, name, ESDLBrowser.identifier(v), ESDLBrowser.identifier(data.object), true); });
 
                     // actions
 
                 }
-                let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); })
-                $actions.append($('<div>').append($addButton))
+                if (data.references[i].containment == true) {
+                    let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle')
+                        .css('color', 'green'))
+                        .click( function(e) {
+                            esdl_browser.add(data.object, data.references[i], data.references[i].types);
+                        });
+                    $actions.append($('<div>').append($addButton));
+                } else {
+                    let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
+                    $actions.append($('<div>').append($browseButton));
+                }
+
 
             } else {
                 if (value.repr == null) {
                     value.repr = '';
-                }
-                if (value.hasOwnProperty('id') && value.id != null) {
-                    let $a = $('<a>').text(value.repr).attr('href', "#");
-                    //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
-                    $a.click( function(e) { e.preventDefault(); console.log('navigating to '+value.id);esdl_browser.open_browser(value.id); return false; });
-                    $repr.append($a);
-                    //let $span = $('<span>').text(' (' + value.type + ')');
-                    //$repr.append($span)
+                    if (data.references[i].containment == true) {
+                        let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); });
+                        $actions.append($addButton);
+                    } else {
+                        let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
+                        $actions.append($('<div>').append($browseButton));
+                    }
                 } else {
-                    // try browsing using a URI fragment //instance.0/area/asset.0/
-                    if (data.references[i].fragment !== undefined) {
+                    if (value.hasOwnProperty('id') && value.id != null) {
                         let $a = $('<a>').text(value.repr).attr('href', "#");
                         //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
-                        $a.click( function(e) { e.preventDefault(); console.log('navigating to fragment '+data.references[i].fragment);esdl_browser.open_browser_fragment(data.references[i].fragment); return false; });
+                        $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser(value.id); return false; });
                         $repr.append($a);
+                        //let $span = $('<span>').text(' (' + value.type + ')');
+                        //$repr.append($span)
                     } else {
-                        $repr.text(value.repr);
+                        // try browsing using a URI fragment //instance.0/area/asset.0/
+                        if (data.references[i].fragment !== undefined) {
+                            let $a = $('<a>').text(value.repr).attr('href', "#");
+                            //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
+                            $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_fragment(data.references[i].fragment); return false; });
+                            $repr.append($a);
+                        } else {
+                            $repr.text(value.repr);
+                        }
                     }
-                    //let $span = $('<span>').text(' (' + value.type + ')');
-                    //p$repr.append($span)
+                    let $spanSpacer = $('<span>').html('&nbsp;');
+                    let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+                    let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
+
+                    $delSpan.append($delButton);
+                    var self = this;
+                    $delButton.click( function(e) { esdl_browser.del(value.repr, name, ESDLBrowser.identifier(value), ESDLBrowser.identifier(data.object), true); });
+                    $repr.append($spanSpacer);
+                    $repr.append($delSpan);
+
                 }
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);;
@@ -211,38 +258,48 @@ class ESDLBrowser {
 
     }
 
+    static identifier(esdl_object) {
+        return {'id': esdl_object.id, 'fragment': esdl_object.fragment};
+    }
 
-    add(parent_object, reference_data, types) {
-        console.log(parent_object, reference_data)
+    add(parent_object_identifier, reference_data, types) {
+        console.log(parent_object_identifier, reference_data);
+        let last = esdl_browser.history[history.length - 1];
+        // only add if it is not in the history already
+        if (JSON.stringify(last) !== JSON.stringify(parent_object_identifier)) {
+            esdl_browser.history.push(parent_object_identifier);
+        }
         //let types = reference_data.types;
         if (types.length == 1) {
-             socket.emit('esdl_browse_create_object', {'parent': {'id': parent_object.id, 'fragment': parent_object.fragment}, 'name': reference_data.name, 'type': types[0]});
+             socket.emit('esdl_browse_create_object', {'parent': parent_object_identifier, 'name': reference_data.name, 'type': types[0]});
         } else if (types.length > 1) {
             // select type
-            this.select_asset_type(parent_object, reference_data);
+            this.select_asset_type(parent_object_identifier, reference_data);
         }
     }
 
     // delete a reference (recursively!)
-    del(ref_repr, ref_id, parent_object, show_dialog) {
+    del(ref_repr, ref_name, ref_identifier, parent_identifier, show_dialog) {
         if (show_dialog == false) {
-            socket.emit('esdl_browse_delete_ref', {'ref_id': ref_id, 'parent': parent_object.parent});
+            socket.emit('esdl_browse_delete_ref', {'name': ref_name, 'ref_id': ref_identifier, 'parent': parent_identifier});
         } else {
-            console.log("YEAH");
             let $div = $('<div>');
-            let $h1 = $('<h1>').text(`Are you sure to delete ${ref_repr} and all content contained in it?`);
+            let $h1 = $('<h1>').text(`Delete ${ref_repr}`);
+            let $h4 = $('<h4>').text(`Are you sure to delete ${ref_repr} and all content contained in it?`);
 
-            let $ok_button = $('<button>').addClass('btn').append($('<span>').text('Ok')).append($('<i>').addClass('fa fa-check'));
-            let $back_button = $('<button>').addClass('btn').append($('<span>').text('Back')).append($('<i>').addClass('fa fa-arrow-left'));
+            let $ok_button = $('<button>').addClass('btn').append($('<span>').text('Ok ')).append($('<i>').addClass('fa fa-check'));
+            let $back_button = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
             let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($ok_button);
             $ok_button.click(function (e) {
-                esdl_browser.del(ref_repr, ref_id, parent_object, false);
+                esdl_browser.del(ref_repr, ref_name, ref_identifier, parent_identifier, false);
             });
             $back_button.click(function (e) {
-                esdl_browser.browse_to(parent_object.id);
+                console.log(parent_identifier);
+                esdl_browser.open_browser_identifier(parent_identifier);
             });
 
             $div.append($h1);
+            $div.append($h4);
             $div.append($div3)
 
 
@@ -260,10 +317,10 @@ class ESDLBrowser {
         }
     }
 
-    select_asset_type(parent_object, reference_data) {
+    select_asset_type(parent_object_identifier, reference_data) {
         let $div = $('<div>');
         let $h1 = $('<h1>').text(`Select type for ${reference_data.name}`).attr('title',reference_data.doc);
-        let $h4 = $('<h4>').html(`The <i>${reference_data.name}</i> reference supports different types of content. Please select one of the list.`);
+        let $h4 = $('<h4>').html(`The <i>${reference_data.name}</i> reference supports different types of content. Please select one from the list.`);
         let $select = $("<select>").attr('id', 'type_select');
 
         for (let i = 0; i < reference_data.types.length; i++) {
@@ -275,11 +332,15 @@ class ESDLBrowser {
                 .append($("<span>").text('Select type: '))
                 .append($("<span>").text(' '))
                 .append($select);
+        let $back_button = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
         let $button = $('<button>').addClass('btn').append($('<span>').text('Next ')).append($('<i>').addClass('fa fa-arrow-right'));
-        let $div3 = $('<div>').append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($button);
+        let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($button);
         $button.click(function (e) {
                 let selected_type = [$('#type_select').val()];
-                esdl_browser.add(parent_object, reference_data, selected_type);
+                esdl_browser.add(parent_object_identifier, reference_data, selected_type);
+            });
+        $back_button.click(function (e) {
+                esdl_browser.open_browser_identifier(parent_object_identifier);
             });
 
 
