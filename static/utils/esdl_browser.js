@@ -173,7 +173,7 @@ class ESDLBrowser {
                     let $sub = $('<div>');
                     let v = data.references[i].value[j];
                     let $a = $('<a>').text(v.repr).attr('href', "#");
-                    $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser(v.id); return false; });
+                    $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(ESDLBrowser.identifier(v)); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
                     let $spanSpacer = $('<span>').html('&nbsp;');
                     let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
@@ -361,6 +361,18 @@ class ESDLBrowser {
         dialog.setLocation([10, (width.x/2)-(800/2)]);
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
+    }
+
+    select_ref(object, reference, types) {
+        // 1 ask backend for possible references ( in types all possible subtypes are listed)
+        // 2 show a select-box list
+        // 3 add reference value to reference
+        // 4 back to view of current id/fragment
+
+        // (data.object, data.references[i], data.references[i].types)
+
+        socket.emit('esdl_browse_list_references', {'parent': ESDLBrowser.identifier(object), 'name': reference.name});
+
     }
 
 

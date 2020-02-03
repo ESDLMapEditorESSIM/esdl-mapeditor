@@ -76,7 +76,6 @@ class ESDLBrowser:
 
         @self.socketio.on('esdl_browse_delete_ref', namespace='/esdl')
         def socket_io_delete_ref(message):
-            print(message)
             # esdl_browse_delete_ref
             active_es_id = get_session('active_es_id')
             esh = get_handler()
@@ -108,8 +107,25 @@ class ESDLBrowser:
             self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
 
 
-
-
+        #'esdl_browse_list_references'
+        @self.socketio.on('esdl_browse_list_references', namespace='/esdl')
+        def socket_io_delete_ref(message):
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            object_id = message['parent']['id']
+            reference_name = message['name']
+            if object_id is None:
+                resource = esh.get_resource(active_es_id)
+                parent_object = resource.resolve(message['parent']['fragment'])
+            else:
+                parent_object = esh.get_by_id(active_es_id, object_id)
+            reference = parent_object.eClass.findEStructuralFeature(reference_name)
+            if reference is not None:
+                reference_list = []
+                types = ESDLEcore.find_types(reference)
+                print("Creating list of references")
+                #for type in types:
+                #    reference_list.append()
 
     def get_browse_to_data(self, esdl_object):
         active_es_id = get_session('active_es_id')

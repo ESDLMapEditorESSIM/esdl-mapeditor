@@ -159,3 +159,20 @@ This is used for objects that have no ID attribute
 """
 def resolve_fragment(resource: Resource, fragment: str):
     return resource.resolve(fragment)
+
+"""
+Calculates a list of all possible reference values for a specific reference
+"""
+
+def get_reachable_references():
+    itemQueue = list()
+    visited = dict()
+    result = list()
+
+    return result
+
+"""
+Calculates a list of all possible reference values for a specific reference
+"""
+def collect_reachable_objects_of_type():
+    pass
