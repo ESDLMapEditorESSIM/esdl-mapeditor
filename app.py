@@ -2889,7 +2889,7 @@ def process_command(message):
         asset = ESDLAsset.find_asset(area, asset_id)
         connected_to_info = get_connected_to_info(asset)
         print('Get info for conductor ' + asset.id)
-        attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+        attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
         name = asset.name
         if name is None: name = ''
         asset_doc = asset.__doc__
@@ -2905,7 +2905,7 @@ def process_command(message):
         energy_assets = esh.get_all_assets_of_type(esdl.EnergyAsset)
 
         for asset in energy_assets:
-            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
             connected_to_info = get_connected_to_info(asset)
             strategy_info = get_control_strategy_info(asset)
             profile_info = get_port_profile_info(asset)
