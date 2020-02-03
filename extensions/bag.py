@@ -42,7 +42,7 @@ class BAG:
                         if r.status_code == 200:
                             esdl_string = r.text
                             esh.add_from_string('BAG buildings', r.text)
-
+                            # self.flask_app.process_energy_system.submit(esh)
                             # bag_es = ESDLAsset.load_asset_from_string(esdl_string)
                             # if bag_es:
                                 # bag_inst = bag_es.instance[0]
@@ -54,12 +54,14 @@ class BAG:
                                 #
 
                     except Exception as e:
-                        print('ERROR in accessing BAG service')
+                        print('ERROR in accessing BAG service: '+str(e))
                         return None
 
+                    # @EWOUD: Deze 'mogelijkheid' kunnen we ook gebruiken om geometries te renderen in de frontend
                     # self.emit_geometries_to_client(esh, active_es_id, bld_list)
                 else:
                     print("ERROR in finding area in ESDL for BAG service")
+                    # self.flask_app.send_alert("ERROR in finding area in ESDL for BAG service")
                     return  None
 
         # @self.flask_app.route('/building_list')

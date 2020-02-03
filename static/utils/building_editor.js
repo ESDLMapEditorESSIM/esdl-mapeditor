@@ -112,6 +112,10 @@ function open_building_editor(dialog, building_info) {
         bld_esdl_layer.addLayer(layer);
     });
 
+    bld_map.on('dialog:destroyed', function (event) {
+        console.log('close');
+    });
+
     $(function() {
         $("#bld_asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
         $("#bld_line_select").selectmenu({ width:200 });
