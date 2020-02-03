@@ -36,8 +36,8 @@ IDM_PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AM
 ASYNC_MODE = None # default for non uWGSI deployments
 
 ibis_config = {
-    "host": "localhost",
-    "port": "5000",
+    "host": "10.30.2.1",
+    "port": "4500",
     "path_list": "/api/v1/BusinessParks/",
     "path_contour": "/api/v1/BusinessParks/contour/"
 }

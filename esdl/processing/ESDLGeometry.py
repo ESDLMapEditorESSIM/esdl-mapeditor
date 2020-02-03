@@ -222,7 +222,7 @@ def remove_duplicates_in_polyline(array_of_points):
         coord = array_of_points[i]
 
         # Don't understand why, but sometimes coordinates come in twice
-        if prev_lat != coord['lat'] and prev_lng != coord['lng']:
+        if prev_lat != coord['lat'] or prev_lng != coord['lng']:
             coords.append({'lat': coord['lat'], 'lng': coord['lng']})
 
             prev_lat = coord['lat']

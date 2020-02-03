@@ -10,6 +10,7 @@ flask-restplus==0.12.1
 #Flask-SocketIO==3.3.2       # 4.1.0
 Flask-SocketIO==4.0.0
 Flask-Session==0.3.1
+geomet==0.2.1.post1
 idna==2.7
 itsdangerous==1.1.0
 Jinja2==2.10

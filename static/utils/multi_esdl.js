@@ -163,12 +163,36 @@ function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
 }
 
+// Copied colors from building_type_colors in area_building_layer.js
+// var conn_line_colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+var conn_line_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+
 function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
+
+    carrier_info_mapping = {};
+    carrier_info_mapping[0] = { color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[1] = { color: '#FF0000', name: 'Conflicting carriers specified'}
+
+    for (i=0; i<carrier_list.length; i++) {
+        carrier_info_mapping[carrier_list[i].id] = {
+            color: conn_line_colors[i],
+            name: carrier_list[i].name
+        }
+    }
+    esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
 }
 
 function get_carrier_list(es_id) {
     return esdl_list[es_id].carrier_list;
+}
+
+function get_carrier_info_mapping(es_id) {
+    return esdl_list[es_id].carrier_info_mapping;
+}
+
+function set_carrier_color(es_id, carrier_id, color) {
+    esdl_list[es_id].carrier_info_mapping[carrier_id]['color'] = color
 }
 
 function set_area_bld_list(es_id, area_bld_list) {

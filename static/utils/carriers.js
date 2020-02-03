@@ -109,19 +109,31 @@ function select_other_carrier() {
     }
 }
 
+function change_color(obj, carrier_id) {
+    color = obj.value;
+//    console.log(value);
+//    console.log(carrier_id);
+    set_carrier_color(active_layer_id, carrier_id, color);
+    socket.emit('command', {cmd: 'redraw_connections'});
+}
+
 function energy_carrier_info() {
     sidebar_ctr = sidebar.getContainer();
     sidebar_ctr.innerHTML = '<h1>Energy Carriers and Commodities:</h1>';
 
     carrier_list = get_carrier_list(active_layer_id);
+    carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
+
     if (carrier_list) {
         table = '<table>';
-        table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td></tr>';
+        table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td><td><b>Color</b></td></tr>';
         for (i=0; i<carrier_list.length; i++) {
             // type, id, name
             table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +
                 '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
-                carrier_list[i]['type'] + '</td></tr>';
+                carrier_list[i]['type'] + '</td><td><input type="color" value="'+carrier_info_mapping[carrier_list[i]['id']]['color'] +'" onchange="change_color(this, \''+carrier_list[i]['id']+'\')"></td></tr>';
+
+         //       <i class="color_select" style="background:' + carrier_info_mapping[carrier_list[i]['id']]['color'] + '"></i></td></tr>';
         }
         table += '</table>';
         sidebar_ctr.innerHTML += table;
