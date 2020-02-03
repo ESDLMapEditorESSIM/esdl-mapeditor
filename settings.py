@@ -42,6 +42,11 @@ ibis_config = {
     "path_contour": "/api/v1/BusinessParks/contour/"
 }
 
+bag_config = {
+    "host": "10.30.2.1",
+    "port": "4012",
+    "path_contour": "/polygon"
+}
 
 edr_config = {
     "EDR_host": "https://edr.hesi.energy",

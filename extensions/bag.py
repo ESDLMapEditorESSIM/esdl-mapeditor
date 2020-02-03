@@ -1,0 +1,100 @@
+from flask import Flask, session
+from flask_socketio import SocketIO, emit
+from extensions.session_manager import get_handler, get_session
+import settings
+import requests
+import urllib
+from esdl.processing import ESDLAsset
+import esdl
+
+
+class BAG:
+    def __init__(self, flask_app: Flask, socket: SocketIO):
+        self.flask_app = flask_app
+        self.socketio = socket
+        self.register()
+
+    def register(self):
+        print('Registering BAG extension')
+
+        @self.socketio.on('get_bag_contours', namespace='/esdl')
+        def get_bag_contours(info):
+            with self.flask_app.app_context():
+                print("getting bag request")
+                esh = get_handler()
+                active_es_id = get_session('active_es_id')
+
+                area_id = info["id"]
+                area_polygon = info["polygon"]
+                wkt_string = 'POLYGON ((4.359093904495239 52.012174264626445, 4.357388019561768 52.01154692445308, 4.357978105545044 52.01078750089633, 4.360188245773315 52.01160635705717, 4.362355470657349 52.012478026181434, 4.360767602920532 52.012847820073766, 4.359093904495239 52.012174264626445))'
+                wkt_quoted = urllib.parse.quote(wkt_string)
+
+                es_edit = esh.get_energy_system(es_id=active_es_id)
+                instance = es_edit.instance
+                top_area = instance[0].area
+                if ESDLAsset.find_area(top_area, area_id):
+
+                    try:
+                        url = 'http://' + settings.bag_config["host"] + ':' + settings.bag_config["port"] + \
+                               settings.bag_config["path_contour"] + '?wkt=' + wkt_quoted + '&format=xml'
+                        print(url)
+                        r = requests.get(url)
+                        if r.status_code == 200:
+                            esdl_string = r.text
+                            esh.add_from_string('BAG buildings', r.text)
+
+                            # bag_es = ESDLAsset.load_asset_from_string(esdl_string)
+                            # if bag_es:
+                                # bag_inst = bag_es.instance[0]
+                                # if bag_inst:
+                                #     bag_area = bag_inst.area
+                                #     if bag_area:
+                                #         for bld in bag_area.asset:
+                                #             if isinstance(bld, esdl.Building):
+                                #
+
+                    except Exception as e:
+                        print('ERROR in accessing BAG service')
+                        return None
+
+                    # self.emit_geometries_to_client(esh, active_es_id, bld_list)
+                else:
+                    print("ERROR in finding area in ESDL for BAG service")
+                    return  None
+
+        # @self.flask_app.route('/building_list')
+        # def get_building_list():
+        #     try:
+        #         url = 'http://' + settings.bag_config["host"] + ':' + settings.bag_config["port"] + \
+        #               settings.bag_config["path_list"]
+        #         print(url)
+        #         r = requests.get(url)
+        #         if len(r.text) > 0:
+        #             building_list = json.loads(r.text)
+        #     except Exception as e:
+        #         print('ERROR in accessing BAG service')
+        #         return None
+        #
+        #     return { "buildings": building_list }
+
+    def emit_geometries_to_client(self, esh, es_id, building_list):
+        with self.flask_app.app_context():
+            # print(area_list)
+
+            emit_bld_list = []
+            for bld in building_list:
+                emit_bld_list.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": bld['geom']['coordinates']
+                    },
+                    "properties": {
+                        "id": bld['code'],
+                        "name": bld['name'],
+                    }
+                })
+
+            # print(emit_area_list)
+            # emit('geojson', {"layer": "area_layer", "geojson": emit_area_list})
+            self.socketio.emit('geojson', {"layer": "building_layer", "geojson": emit_bld_list}, namespace='/esdl')

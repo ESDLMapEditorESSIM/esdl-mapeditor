@@ -33,6 +33,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
+from extensions.bag import BAG
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
 from esdl_helper import generate_profile_info
@@ -581,6 +582,7 @@ login_manager.init_app(app)
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
+BAG(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -1283,8 +1285,10 @@ def get_port_profile_info(asset):
 
 
 def process_building(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, level):
+    # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
+    # Generate information for drawing building (as a point or a polygon)
     if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
         geometry = building.geometry
         if geometry:
@@ -1305,49 +1309,52 @@ def process_building(asset_list, building_list, area_bld_list, conn_list, port_a
             elif isinstance(bld_geom, esdl.Polygon):
                 bld_coord = ESDLGeometry.calculate_polygon_center(bld_geom)
 
+    # Iterate over all assets in building
     for basset in building.asset:
-        port_list = []
-        ports = basset.port
-        for p in ports:
-            conn_to = p.connectedTo
-            conn_to_id_list = [ct.id for ct in conn_to]
-            # TODO: add profile_info and carrier
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
-
-        geom = basset.geometry
-        coord = ()
-        if geom:    # Individual asset in Building has its own geometry information
-            if isinstance(geom, esdl.Point):
-                lat = geom.lat
-                lon = geom.lon
-                coord = (lat, lon)
-
-                capability_type = ESDLAsset.get_asset_capability_type(basset)
-                asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
-            else:
-                send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
-        else:       # Inherit geometry from containing building
-            coord = bld_coord
-
-        ports = basset.port
-        for p in ports:
-            p_carr_id = None
-            if p.carrier:
-                p_carr_id = p.carrier.id
-            conn_to = p.connectedTo
-            if conn_to:
-                for pc in conn_to:
-                    pc_asset = port_asset_mapping[pc.id]
-                    pc_asset_coord = pc_asset['coord']
-
-                    pc_carr_id = None
-                    if pc.carrier:
-                        pc_carr_id = pc.carrier.id
-                    conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
-                        'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
-
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, level+1)
+            process_building(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, level + 1)
+        else:
+            port_list = []
+            ports = basset.port
+            for p in ports:
+                conn_to = p.connectedTo
+                conn_to_id_list = [ct.id for ct in conn_to]
+                # TODO: add profile_info and carrier
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
+
+            geom = basset.geometry
+            coord = ()
+            if geom:    # Individual asset in Building has its own geometry information
+                if isinstance(geom, esdl.Point):
+                    lat = geom.lat
+                    lon = geom.lon
+                    coord = (lat, lon)
+
+                    capability_type = ESDLAsset.get_asset_capability_type(basset)
+                    asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
+                else:
+                    send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
+            else:       # Inherit geometry from containing building
+                coord = bld_coord
+
+            ports = basset.port
+            for p in ports:
+                p_carr_id = None
+                if p.carrier:
+                    p_carr_id = p.carrier.id
+                conn_to = p.connectedTo
+                if conn_to:
+                    for pc in conn_to:
+                        pc_asset = port_asset_mapping[pc.id]
+                        pc_asset_coord = pc_asset['coord']
+
+                        pc_carr_id = None
+                        if pc.carrier:
+                            pc_carr_id = pc.carrier.id
+                        conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
+                            'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
+
+
 
 
 def process_area(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, area, level):
@@ -1423,6 +1430,23 @@ def process_area(asset_list, building_list, area_bld_list, conn_list, port_asset
             #         coords.append([point.lat, point.lon])
             #     asset_list.append(['line', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
+
+def get_building_information(building):
+    asset_list = []
+    building_list = []
+    bld_list = []
+    conn_list = []
+
+    active_es_id = get_session('active_es_id')
+    port_to_asset_mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
+
+    process_building(asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, 0)
+    return {
+        "asset_list": asset_list,
+        "building_list": building_list,
+        "aera_bld_list": bld_list,
+        "conn_list": conn_list
+    }
 
 # TODO: Not used now, should we keep the conn_list updated?
 # 13-1-2020: Commented out: energycarrier info for port not added yet because function is not used at the moment.
@@ -2583,7 +2607,29 @@ def process_command(message):
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
             else:
-                print('TODO: Add area')
+                if isinstance(geometry, esdl.Polygon):
+                    new_area = esdl.Area(id=asset_id, name=asset_name)
+                    new_area.geometry = geometry
+                    if not ESDLAsset.add_area_to_area(es_edit, new_area, area_bld_id):
+                        send_alert('Can not add area to building')
+                    area_list = []
+                    boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
+                    area_list.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": boundary_wgs['coordinates']
+                        },
+                        "properties": {
+                            "id": new_area.id,
+                            "name": new_area.name,
+                            "KPIs": []
+                        }
+                    })
+
+                    emit('geojson', {"layer": "area_layer", "geojson": area_list})
+                else:
+                    send_alert('Can not add an area with another shap than a Polygon')
         else:
             edr_asset_str = get_session('adding_edr_assets')
             if edr_asset_str:
@@ -3476,6 +3522,12 @@ def process_command(message):
         asset_list = get_session_for_esid(active_es_id, 'asset_list')
         emit('clear_ui', {'layer': 'assets'})  # clear current active layer assets
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': asset_list, 'zoom': True})
+
+    if message['cmd'] == 'building_editor':
+        bld_id = message['id']
+        building = esh.get_by_id(active_es_id, bld_id)
+        bld_info = get_building_information(building)
+        emit('building_information', bld_info)
 
     set_handler(esh)
     session.modified = True

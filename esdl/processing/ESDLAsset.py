@@ -105,6 +105,20 @@ def add_asset_to_area(es, asset, area_id):
         return 0
 
 
+def add_area_to_area(es, new_area, area_id):
+    # find area with area_id
+    instance = es.instance[0]
+    area = instance.area
+    ar = find_area(area, area_id)
+
+    if ar:
+        ar.area.append(new_area)
+        return 1
+    else:
+        return 0
+
+
+
 def add_asset_to_building(es, asset, building_id):
     # find area with area_id
     instance = es.instance[0]

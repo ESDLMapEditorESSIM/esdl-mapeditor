@@ -281,9 +281,54 @@ function resetHighlightBuilding(e) {
     layer.closePopup();
 }
 
+
+//
+function request_bag_info(e, area_id) {
+    area_polygon = e.relatedTarget;
+    latlngs = area_polygon.getLatLngs();
+    socket.emit('get_bag_contours', {id: area_polygon.id, polygon: latlngs});
+}
+
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in area_data to the area map layer
 // ------------------------------------------------------------------------------------------------------------
+function set_area_handlers(area) {
+    let area_id = area.id
+    area.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+
+    area.options.contextmenuItems.push({
+        icon: '{{dir_settings.resource_prefix}}icons/BuildingContents.png',
+        text: 'request BAG building',
+        callback: function(e) { request_bag_info(e, area_id); }
+    });
+    area.options.contextmenuItems.push('-');
+
+    area.on('dragend', function(e) {
+        var area = e.target;
+        // var pos = area.getLatLng();
+        // socket.emit('update-coord', {id: area.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+    });
+
+    // area.on('remove', function(e) {
+    //     $(".ui-tooltip-content").parents('div').remove();
+    // });
+
+    area.on('click', function(e) {
+        var area = e.target;
+        if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
+            var area = e.target;
+            var id = area.id;
+
+            socket.emit('command', {cmd: 'get_area_info', id: id});
+        }
+    });
+}
+
 function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
@@ -292,18 +337,20 @@ function add_area_layer(area_data) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
             if (feature.properties && feature.properties.id) {
-                let text = "ID: " + feature.properties.id;
-                if (feature.properties.name) {
-                    text = feature.properties.name + " (" + text + ")";
-                }
-
-                for (let key in feature.properties.KPIs) {
-                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
-                }
-
-                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
+                layer.id = feature.properties.id;
+//                let text = "ID: " + feature.properties.id;
+//                if (feature.properties.name) {
+//                    text = feature.properties.name + " (" + text + ")";
+//                }
+//
+//                for (let key in feature.properties.KPIs) {
+//                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
+//                }
+//
+//                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightArea);
+                set_area_handlers(layer);
             }
         }
     }).addTo(get_layers(active_layer_id, 'area_layer'));

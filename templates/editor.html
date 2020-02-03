@@ -24,6 +24,9 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.MousePosition.css" type="text/css"/>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.MousePosition.js"></script>
+
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
 
@@ -74,6 +77,8 @@
 {% if 'table' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
 {% endif %}
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
+
 
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
@@ -403,6 +408,7 @@
 
         function edit_building_contents(e, asset_id) {
             console.log('edit building contents for building with ID: '+asset_id);
+            socket.emit('command', {cmd: 'building_editor', id: asset_id});
         }
 
         function set_building_handlers(marker) {
@@ -2042,6 +2048,10 @@
             });
 {% endif %}
 
+            socket.on('building_information', function(bld_info) {
+                open_building_editor(dialog, bld_info);
+            });
+
         });
     </script>
 
@@ -2060,7 +2070,7 @@
             });
 
             var line_assets = ["ElectricityCable", "Pipe"];
-            var area_assets = ["PVParc", "PVPark", "WindParc", "WindPark"];
+            var area_assets = ["Area", "PVParc", "PVPark", "WindParc", "WindPark"];
             if (line_assets.includes(selected_asset)) {
                 draw_control._toolbars.draw._modes.polyline.handler.enable();
             } else if (area_assets.includes(selected_asset)) {
@@ -2230,6 +2240,7 @@
 
     var map = new L.Map('mapid', {
         center: new L.LatLng(52.1, 5.8),
+        zoomSnap: 0.1,
         zoom: 8,
         timeDimensionControl: true,
         timeDimensionControlOptions: {
@@ -2312,6 +2323,7 @@
     };
 
     layer_ctrl_tree = L.control.layers.tree(baseTree, overlaysTree, { position: 'topright', collapsed: false }).addTo(map);
+    L.control.mousePosition().addTo(map);
 
 <!--    L.control.layers(-->
 <!--        {-->
