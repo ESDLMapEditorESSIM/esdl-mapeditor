@@ -1,5 +1,9 @@
 
 var camelCaseToWords = function(str){
+    // checkif this works
+    if (str.match(/^[^a-z]+$/g)) {
+        return str;
+    } // if no lowercase characters found, just use the word as given, e.g. COP
     return str.match(/^[a-z]+|[A-Z][a-z]*/g).map(function(x){
         return x[0].toUpperCase() + x.substr(1).toLowerCase();
     }).join(' ');

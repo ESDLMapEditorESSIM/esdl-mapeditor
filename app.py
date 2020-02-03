@@ -28,11 +28,12 @@ from essim_validation import validate_ESSIM
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
+from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
 from esdl_helper import generate_profile_info
@@ -581,6 +582,8 @@ login_manager.init_app(app)
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
+ESDLBrowser(app, socketio, esdl_doc)
+
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -2854,7 +2857,7 @@ def process_command(message):
             # asset = ESDLAsset.find_asset(area, object_id)
             asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for asset ' + asset.id)
-            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
             name = asset.name
             if isinstance(asset, esdl.EnergyAsset):
                 connected_to_info = get_connected_to_info(asset)
@@ -2870,8 +2873,7 @@ def process_command(message):
             pot = ESDLAsset.find_potential(area, object_id)
             #asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for potential ' + pot.id)
-            #attrs_sorted = get_potential_attributes(pot)
-            attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
             name = pot.name
             connected_to_info = []
             ctrl_strategy = None
@@ -2964,7 +2966,8 @@ def process_command(message):
 
         area = es_edit.instance[0].area
 
-        asset = ESDLAsset.find_asset(area, asset_id)
+        #asset = ESDLAsset.find_asset(area, asset_id)
+        asset = esh.get_by_id(active_es_id, asset_id)
         print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
 
         try:
@@ -2980,7 +2983,13 @@ def process_command(message):
                     eOrderedSet.append(parsed_value)
                     asset.eSet(param_name, eOrderedSet)
                 else:
-                    asset.eSet(param_name, parsed_value)
+                    if attribute.name == 'id':
+                        esh.remove_object_from_dict(active_es_id, asset)
+                        asset.eSet(param_name, parsed_value)
+                        esh.add_object_to_dict(active_es_id, asset)
+                    else:
+                        asset.eSet(param_name, parsed_value)
+
             else:
                 send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
         except Exception as e:
@@ -3144,6 +3153,7 @@ def process_command(message):
             coord = (lat, lon)
             mapping[port.id] = {'asset_id': asset.id, 'coord': coord}
             asset.port.append(port)
+            esh.add_object_to_dict(active_es_id, port)
             port_list = []
             for p in asset.port:
                 port_list.append(
