@@ -9,7 +9,6 @@
     <script type="text/javascript" src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
     <!--link rel="stylesheet" href="./plugins/leaflet.css" crossorigin=""/-->
     <!--script src="./plugins/leaflet.js" crossorigin=""></script-->
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css" type="text/css"/>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script>
     <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
@@ -20,10 +19,7 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
 
-    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/pure-table.css" type="text/css"/>
-    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" type="text/css"/>
-    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"/>
+
 
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
@@ -46,11 +42,18 @@
     <link href=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.js" type="text/javascript"></script>
 
-    <script type="text/javascript" src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"/>
+    <link href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" rel="stylesheet" type="text/css" />
+    <script src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js" type="text/javascript"></script>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/pure-table.css" type="text/css"/>
 
+    <script type="text/javascript" src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.5.0/lodash.min.js" crossorigin=""></script>
+
+{% if 'table-do-not-include-this' in role %}
     <link href=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/multi-dropdown-with-search.js" type="text/javascript"></script>
+{% endif %}
 
 
     <!-- <script src='https://unpkg.com/shpjs@latest/dist/shp.js'></script> -->
@@ -70,7 +73,11 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_browser.js"></script>
+
+{% if 'table' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
+{% endif %}
+
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
 {% endif %}
@@ -94,7 +101,7 @@
         var wms_layer_list;
         var leaflet_layers = {};
 
-        var connecting_assets = false;
+        //var connecting_assets = false;
         var first_clicked = false;
         var first_clicked_id;
 
@@ -118,6 +125,12 @@
         colors['ElectricityCable_hoover'] = '#906060';
         colors['Pipe'] = 'blue';
         colors['Pipe_hoover'] = '#9999ff';
+
+        colors['Consumer'] = 'blue';
+        colors['Producer'] = 'green';
+        colors['Storage'] = 'red';
+        colors['Transport'] = 'yellow';
+        colors['Conversion'] = 'purple';
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -371,15 +384,15 @@
                     var marker = e.target;
                     var id = marker.id;
 
-                    if (connecting_assets) {
-                        if (marker.asspot == 'asset') {
-                            connectAssets(marker);
-                        } else {
-                            alert('Cannot connect to potential');
-                        }
-                    } else {
+                    //if (connecting_assets) {
+                    //    if (marker.asspot == 'asset') {
+                    //        connectAssets(marker);
+                    //    } else {
+                    //        alert('Cannot connect to potential');
+                    //    }
+                    //} else {
                         socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
-                    }
+                    //}
                 }
             });
 
@@ -389,6 +402,65 @@
                 updatefun = extensions[i];
                 updatefun({type: 'add_contextmenu', layer: marker});
             }
+        }
+
+        function edit_building_contents(e, asset_id) {
+            console.log('edit building contents for building with ID: '+asset_id);
+        }
+
+        function set_building_handlers(marker) {
+            let asset_id = marker.id
+            marker.bindContextMenu({
+                contextmenu: true,
+                contextmenuWidth: 140,
+                contextmenuItems: [],
+                contextmenuInheritItems: false
+            });
+
+            marker.options.contextmenuItems.push({
+                icon: '{{dir_settings.resource_prefix}}icons/BuildingContents.png',
+                text: 'Building ESDL contents',
+                callback: function(e) { edit_building_contents(e, asset_id); }
+            });
+            marker.options.contextmenuItems.push('-');
+
+            marker.on('dragend', function(e) {
+                var marker = e.target;
+                var pos = marker.getLatLng();
+                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+            });
+
+            marker.on('remove', function(e) {
+                // console.log('remove marker');
+                // marker.options.icon.tooltip('destroy');
+                $(".ui-tooltip-content").parents('div').remove();
+
+                if (deleting_objects == true) {
+                    // Remove polygon that belongs to marker, if one is present
+                    if (marker.polygon) {
+                       // all_layers = esdl_layer.getLayers();
+                       all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+                       for (let i=0; i<all_layers.length; i++) {
+                            layer = all_layers[i];
+                            if (layer.id == asset_id && layer instanceof L.Polygon) {
+                                // esdl_layer.removeLayer(layer);
+                                remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                            }
+                       }
+                    }
+                    socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: 'asset'});
+                }
+            });
+
+            marker.on('click', function(e) {
+                var marker = e.target;
+                if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
+                    var marker = e.target;
+                    var id = marker.id;
+
+                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                }
+            });
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -445,15 +517,15 @@
             line.on('click', function(e) {
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
-                    var id = line.id;
+                    //var id = line.id;
                     // console.log('line clicked: ' + line.title + '(' + line.type + ')');
 
-                    if (connecting_assets) {
-                        connectAssets(line);
-                    } else {
+                    //if (connecting_assets) {
+                    //    connectAssets(line);
+                    //} else {
                         // show popup after getting conductor info
                         socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
-                    }
+                    //}
                 }
             });
 
@@ -464,12 +536,14 @@
                     layer.type = 'ElectricityCable';
                 }
                 layer.setStyle({
-                    color: colors[layer.type + '_hoover'],
+                    color: layer.color,
                     opacity: 1,
                     weight: 4
                 });
                 let lineType = layer.type;
-                let lineColorHoover = colors[lineType + '_hoover']
+                let lineColor = layer.color;
+                // let lineColorHoover = colors[lineType + '_hoover']
+                let lineColorHoover = lineColor;
                 let arrowHead = L.polylineDecorator(layer, {
                             patterns: [
                                 {
@@ -485,7 +559,7 @@
             line.on('mouseout', function(e) {
                 var layer = e.target;
                 layer.setStyle({
-                    color: colors[layer.type],
+                    color: layer.color,
                     opacity: 1,
                     weight: 3
                 });
@@ -507,39 +581,39 @@
         // ------------------------------------------------------------------------------------------------------------
         //  Connecting assets (This way of connecting is not used now and button currently disabled)
         // ------------------------------------------------------------------------------------------------------------
-        function connectAssets(object) {
-            // console.log('this object is either a line or a marker: ');
-            // console.log(object);
-            if (first_clicked) {
-                first_clicked = false;
-                if (first_clicked_id == object.id) {       // clicked same asset twice
-                    // console.log('first clicked cancelled');
-                } else {                            // connect two assets
-                    document.getElementById('conn_asset_id2').innerHTML = object.id;
-                    document.getElementById('conn_asset_name2').innerHTML = object.name;
-                    document.getElementById('conn_asset_type2').innerHTML = object.type;
-                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
-                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
-
-                    // console.log('second clicked' + object.id + ', connecting...');
-                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
-
-                    // TODO: timer to clear sidebar?
-                }
-                first_clicked_id = 0;
-            } else {
-                first_clicked = true;
-                first_clicked_id = object.id;
-
-                document.getElementById('conn_asset_id1').innerHTML = object.id;
-                document.getElementById('conn_asset_name1').innerHTML = object.name;
-                document.getElementById('conn_asset_type1').innerHTML = object.type;
-                document.getElementById('conn_asset_result').innerHTML = '';
-                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
-
-                // console.log('first clicked ' + first_clicked_id);
-            }
-        }
+//        function connectAssets(object) {
+//            // console.log('this object is either a line or a marker: ');
+//            // console.log(object);
+//            if (first_clicked) {
+//                first_clicked = false;
+//                if (first_clicked_id == object.id) {       // clicked same asset twice
+//                    // console.log('first clicked cancelled');
+//                } else {                            // connect two assets
+//                    document.getElementById('conn_asset_id2').innerHTML = object.id;
+//                    document.getElementById('conn_asset_name2').innerHTML = object.name;
+//                    document.getElementById('conn_asset_type2').innerHTML = object.type;
+//                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
+//                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
+//
+//                    // console.log('second clicked' + object.id + ', connecting...');
+//                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
+//
+//                    // TODO: timer to clear sidebar?
+//                }
+//                first_clicked_id = 0;
+//            } else {
+//                first_clicked = true;
+//                first_clicked_id = object.id;
+//
+//                document.getElementById('conn_asset_id1').innerHTML = object.id;
+//                document.getElementById('conn_asset_name1').innerHTML = object.name;
+//                document.getElementById('conn_asset_type1').innerHTML = object.type;
+//                document.getElementById('conn_asset_result').innerHTML = '';
+//                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
+//
+//                // console.log('first clicked ' + first_clicked_id);
+//            }
+//        }
 
         function conn_assets_window() {
             sidebar_ctr = sidebar.getContainer();
@@ -566,19 +640,19 @@
             sidebar.show();
         }
 
-        function conn_disconn_assets() {
-            var button = document.getElementById('conn-disconn-assets');
-            first_clicked = false;
-            if (connecting_assets) {
-                connecting_assets = false;
-                button.innerHTML = 'Connect assets';
-                sidebar.hide();
-            } else {
-                conn_assets_window();
-                connecting_assets = true;
-                button.innerHTML = 'Stop connecting assets';
-            }
-        }
+        //function conn_disconn_assets() {
+        //    var button = document.getElementById('conn-disconn-assets');
+        //    first_clicked = false;
+        //    if (connecting_assets) {
+        //        connecting_assets = false;
+        //        button.innerHTML = 'Connect assets';
+        //        sidebar.hide();
+        //    } else {
+        //        conn_assets_window();
+        //        connecting_assets = true;
+        //        button.innerHTML = 'Stop connecting assets';
+        //    }
+        //}
 
         // ------------------------------------------------------------------------------------------------------------
         //  Boundary information from GEIS boundary service
@@ -624,6 +698,20 @@
 
             sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();get_boundary_info(this);">Request</button></p>';
 
+{% if 'ibis' in role %}
+            sidebar_ctr.innerHTML += '<h1>IBIS bedrijventerreien Information:</h1>';
+            table = '<table>';
+            table = table + '<tr><td width=180>RIN List</td>';
+            table = table + '<td><input type="text" width="60" id="rin_list" value="777,779"></td></tr>';
+            table = table + '<tr><td width=180>Initialize energysystem</td>';
+            table = table + '<td><input type="checkbox" id="initialize_ES2" checked></td></tr>';
+            table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
+            table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL2" checked></td></tr>';
+            table = table + '</table>';
+            sidebar_ctr.innerHTML += table;
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();get_ibis_info(this);">Request</button></p>';
+{% endif %}
+
             sidebar.show();
         }
 
@@ -636,6 +724,16 @@
 
             show_loader();
             socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope: subscope,
+                initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
+        }
+
+        function get_ibis_info(obj) {
+            initialize_ES = document.getElementById('initialize_ES2').checked;
+            add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL2').checked;
+            rin_list = document.getElementById('rin_list').value;
+
+            show_loader();
+            socket.emit('ibis_bedrijventerreinen', {rin_list: rin_list,
                 initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
         }
 
@@ -1041,7 +1139,7 @@
                 table += '<tr><td><input type="checkbox" id="cb_'+ key +'" name="' +value.description+ '" onclick="click_layer(\''+key+'\');"';
                 if (value.visible) { table += ' checked'; }
                 table +='>';
-                table += '<label for="'+value.id+'">'+value.description+'</label></td>';
+                table += '<label for="'+value.id+'" title="' +value.url+' - '+value.layer_name + '">'+value.description+'</label></td>';
                 table += '<td><button onclick="remove_layer(\'' + key + '\');">Del</button></td></tr>';
             }
             table += '</table>';
@@ -1149,10 +1247,6 @@
 
             });
 
-            socket.on('log', function(msg) {
-                $('#log').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
-            });
-
             socket.on('clear_ui', function(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
@@ -1213,9 +1307,9 @@
                 // console.log(options);
                 list = options['asset_pot_list'];
                 es_id = options['es_id'];
+                carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 for (let i = 0; i<list.length; i++) {
-                    $('#log').append('<br>' + list[i][0]+ ', ' + list[i][2] + ': ' + list[i][3] + ' - ' + list[i][4]);
 
                     if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
@@ -1260,7 +1354,7 @@
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
-                        var polygon = L.polygon(coords, {color: 'green', weight: 3, draggable:true, title: title});
+                        var polygon = L.polygon(coords, {color: colors[list[i][7]], weight: 3, draggable:true, title: title});
 
                         polygon.title = title;
                         polygon.id = list[i][3];
@@ -1294,10 +1388,16 @@
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
                         var lineType = list[i][4];
-                        //if (list[i][4] == 'ElectricityCable') linecolor = linecolor_cable
-                        //if (list[i][4] == 'Pipe') linecolor = linecolor_pipe
+                        var port_list = list[i][6];
+                        var line_color = colors[lineType];
+                        for (let p=0; p<port_list.length; p++) {
+                            let port_carrier_id = port_list[p]['carrier'];
+                            if (port_carrier_id) {
+                                line_color = carrier_info_mapping[port_carrier_id]['color'];
+                            }
+                        }
 
-                        var line = L.polyline(coords, {color: colors[lineType], weight: 3, draggable:true, title: title});
+                        var line = L.polyline(coords, {color: line_color, weight: 3, draggable:true, title: title});
 
                         // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
@@ -1306,6 +1406,7 @@
                         line.ports = list[i][6];
                         line.type = list[i][4];
                         line.name = "";
+                        line.color = line_color;    // TODO: improve?
 
                         set_line_handlers(line);
                         // esdl_layer.addLayer(line);
@@ -1317,6 +1418,70 @@
                     // var bounds = esdl_layer.getBounds();
                     var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
+                }
+            });
+
+            socket.on('add_building_objects', function(options) {
+                // Format of list items
+                // 0         1           2         3                    4
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]]
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords
+
+                // hide_loader();
+                // console.log(options);
+                list = options['building_list'];
+                es_id = options['es_id'];
+
+                for (let i = 0; i<list.length; i++) {
+                    classname = 'circle Building';
+                    imgsrc = '{{dir_settings.resource_prefix}}images/' + list[i][3] + '.png';
+
+                    var divicon = L.divIcon({
+                        className: classname,
+                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>',
+
+                        iconSize:     [30, 30], // size of the icon
+                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
+                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+                    });
+
+					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
+                    if (list[i][0] == 'point') {
+                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
+
+                        marker.title = title;
+                        marker.id = list[i][2];
+                        marker.esid = es_id;
+                        marker.name = list[i][1];
+                        marker.type = list[i][3];
+
+                        set_building_handlers(marker);
+                        add_object_to_layer(es_id, 'bld_layer', marker);
+                    }
+                    if (list[i][0] == 'polygon') {
+                        var coords = list[i][4];
+                        var polygon = L.polygon(coords, {color: 'black', weight: 3, draggable:true, title: title});
+
+                        polygon.title = title;
+                        polygon.id = list[i][2];
+                        polygon.esid = es_id;
+                        polygon.name = list[i][1];
+                        polygon.type = list[i][3];
+                        add_object_to_layer(es_id, 'bld_layer', polygon);
+
+                        var polygon_center = calculate_array_polygon_center(coords);
+                        var marker = L.marker(polygon_center, {icon: divicon, title: title});
+
+                        marker.title = title;
+                        marker.id = list[i][2];
+                        marker.esid = es_id;
+                        marker.name = list[i][1];
+                        marker.type = list[i][3];
+                        marker.polygon = true;
+
+                        set_building_handlers(marker);
+                        add_object_to_layer(es_id, 'bld_layer', marker);
+                    }
                 }
             });
 
@@ -1357,11 +1522,52 @@
             socket.on('add_connections', function(connections) {
                 conn_list = connections['conn_list']
                 es_id = connections['es_id'];
+                carrier_info_mapping = get_carrier_info_mapping(es_id);
+
+                var linecolor = 0;
+                var linewidth = 2;
+
                 for (i = 0; i<conn_list.length; i++) {
                     var con = conn_list[i];
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
+                    var title = '';
 
-                    var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
+                    if (con['from-port-carrier'] == con['to-port-carrier']) {
+                        linewidth = 2;
+                        if (con['from-port-carrier']) {          // same carrier specified
+                            linecolor = carrier_info_mapping[con['from-port-carrier']]['color'];
+                            title = carrier_info_mapping[con['from-port-carrier']]['name'];
+                        } else {                                 // no carrier specified
+                            linecolor = carrier_info_mapping[0]['color'];
+                            title = carrier_info_mapping[0]['name'];
+                        }
+                    } else {                                    // conflicting carriers
+                        linewidth = 4;
+                        linecolor = carrier_info_mapping[1]['color'];
+                        title = carrier_info_mapping[1]['name'];
+                    }
+
+                    let line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title});
+                    if (title) {
+                        let popup = L.popup();
+                        popup.setContent(title);
+                        line.bindPopup(popup);
+
+                        line.on('mouseover', function (e) {
+                            var popup = e.target.getPopup();
+                            popup.setLatLng(e.latlng).openOn(map);
+                        });
+
+                        line.on('mouseout', function(e) {
+                            e.target.closePopup();
+                        });
+
+                        line.on('mousemove', function (e) {
+                            e.target.closePopup();
+                            var popup = e.target.getPopup();
+                            popup.setLatLng(e.latlng).openOn(map);
+                        });
+                    }
                     line.es_id = es_id;
                     // connection_layer.addLayer(line);
                     add_object_to_layer(es_id, 'connection_layer', line);
@@ -1407,6 +1613,7 @@
             socket.on('asset_info', function(asset_info) {
                 asset_id = asset_info['id'];
                 asset_name = asset_info['name'];
+                asset_class = asset_info['class'];
                 asset_attrs = asset_info['attrs'];
                 asset_doc = asset_info['asset_doc']
                 connected_to_info = asset_info['connected_to_info'];
@@ -1418,7 +1625,6 @@
                 sidebar_ctr = sidebar.getContainer();
 
                 sidebar_ctr.innerHTML = '<h1 title="' + asset_doc + '">' + asset_name + '</h1>';
-                //sidebar_ctr.innerHTML += 'PS. Not all parameters can be set already!';
 
                 let idgen = 0; // generate Unique ID's otherwise jquery-ui will err
                 let table = '<table>';
@@ -1469,67 +1675,69 @@
                 table += '</table>';
                 sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
-                table = '<table>';
-                table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
-                table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
-                    '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
-                    asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+                if (asset_class == 'EnergyAsset') {
+                    sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
+                    table = '<table>';
+                    table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
+                    table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
+                        '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
+                        asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
-                table = '<table>';
-                for (i=0; i<connected_to_info.length; i++) {
-                    pname = connected_to_info[i]['pname'];
-                    if (pname == '') {
-                        pname = 'No name';
-                    }
-                    pcarr = connected_to_info[i]['pcarr'];
-                    if (pcarr == '') {
-                        pcarr = 'No carrier';
-                    }
-                    table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
-                    table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
-                        + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
-                }
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
-
-                if (ctrl_strategy) {
-                    sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
-                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
-                }
-
-                sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
-                table = '<table>';
-                for (i=0; i<connected_to_info.length; i++) {
-                    pname = connected_to_info[i]['pname'];
-                    if (pname == '') {
-                        pname = 'No name';
-                    }
-                    table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
-                        + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
-                    for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
-                        aname = connected_to_info[i]['ct_list'][j]['aname'];
-                        if (aname == '') {
-                            aname = 'No name';
+                    sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
+                    table = '<table>';
+                    for (i=0; i<connected_to_info.length; i++) {
+                        pname = connected_to_info[i]['pname'];
+                        if (pname == '') {
+                            pname = 'No name';
                         }
-                        table += '<tr>';
-                        // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
-                        let from_asset_id = asset_id;
-                        let from_port_id = connected_to_info[i]['pid'];
-                        let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
-                        let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
-                        table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
-                        table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
-                            + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
-                            + aname + '</td>';
-                        table += '</tr>';
+                        pcarr = connected_to_info[i]['pcarr'];
+                        if (pcarr == '') {
+                            pcarr = 'No carrier';
+                        }
+                        table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
+                        table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
+                            + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
                     }
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+
+                    if (ctrl_strategy) {
+                        sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
+                        sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
+                    }
+
+                    sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
+                    table = '<table>';
+                    for (i=0; i<connected_to_info.length; i++) {
+                        pname = connected_to_info[i]['pname'];
+                        if (pname == '') {
+                            pname = 'No name';
+                        }
+                        table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
+                            + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
+                        for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
+                            aname = connected_to_info[i]['ct_list'][j]['aname'];
+                            if (aname == '') {
+                                aname = 'No name';
+                            }
+                            table += '<tr>';
+                            // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
+                            let from_asset_id = asset_id;
+                            let from_port_id = connected_to_info[i]['pid'];
+                            let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
+                            let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
+                            table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
+                            table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
+                                + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
+                                + aname + '</td>';
+                            table += '</tr>';
+                        }
+                    }
+                    table += '</table>';
+                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
                 }
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
                 // add date picker to date input fields
                 $( ":input[edate*='true']" ).datepicker({
@@ -1753,8 +1961,9 @@
 
                     layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
                         layers: layer_info.layer_name,
-                        format:'image/png',
-                        transparent: true
+                        format: 'image/png',
+                        transparent: true,
+                        attribution: layer_info.attribution
                     });
                     if (layer_info.visible) {
                         layer_info.layer_ref.addTo(map);
@@ -1790,6 +1999,19 @@
             // populate the asset menu grouped by capability
             socket.on('capability_list', function(capabilities) {
                 $('#asset_menu').empty();
+
+                var optgroup = $('<optgroup>');
+                optgroup.attr('label', 'Non EnergyAssets');
+                optgroup.style = 'font-face: bold; font-size: 10px'
+                let non_energyassets = ['Area', 'Building', 'AggregatedBuilding']
+                for (let nea in non_energyassets) {
+                    let option = $("<option></option>");
+                    option.val(non_energyassets[nea]);
+                    option.text(non_energyassets[nea]);
+                    optgroup.append(option)
+                }
+                $("#asset_menu").append(optgroup);
+
                 for (let key in capabilities) {
                     //console.log(key + ' --> ' + capabilities[key])
                     var optgroup = $('<optgroup>');
@@ -1825,6 +2047,11 @@
             });
 
             addGeoJSONListener(socket, map);
+{% if 'table' in role %}
+            socket.on('table_editor', function(asset_info_list) {
+                open_es_table_editor(dialog, asset_info_list);
+            });
+{% endif %}
 
         });
     </script>
@@ -1991,7 +2218,9 @@
             <button id="ESSIMkpis" onclick="calculate_ESSIM_KPIs();" title="KPIs" class="ui-button ui-widget ui-corner-all">K</button>
             <button id="ESSIM_load_animation" onclick="animate_ESSIM_load();" title="Animate load" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-video"></span></button>
 {% endif %}
-            <button id="Table editor" onclick="open_es_table_editor(dialog);" title="Table editor" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-calculator"></span></button>
+{% if 'table' in role %}
+            <button id="Table editor" onclick="send_table_editor_request();" title="Table editor" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-calculator"></span></button>
+{% endif %}
 
             <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
         </div>
@@ -2115,7 +2344,7 @@
 <!--    ).addTo(map);-->
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["Battery", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
+    var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
         "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
         "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",
@@ -2156,7 +2385,8 @@
             if (layer instanceof L.Polygon) {
 
                 // Find marker belonging to Polygon and recalculate center
-                esdl_objects = esdl_layer.getLayers();
+                // esdl_objects = esdl_layer.getLayers();
+                esdl_objects = get_layers(active_layer_id, 'esdl_layer').getLayers();
                 for (let i=0; i<esdl_objects.length; i++) {
                     esdl_object = esdl_objects[i];
                     if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
@@ -2254,7 +2484,13 @@
             // console.log('selected asset: ' + selected_asset);
 
             layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng});
+            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
+                shape: {
+                    type: 'point',
+                    lat: layer.getLatLng().lat,
+                    lng: layer.getLatLng().lng
+                }
+            });
         }
         if (type === 'polyline') {
             line_type = document.getElementById("line_select").value;
@@ -2263,7 +2499,13 @@
             layer.name = line_type + '_' + layer.id.substring(0,4);
             layer.title = layer.name;
             polyline_length = calculate_length(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id,
+                shape: {
+                    type: 'polyline',
+                    coordinates: layer.getLatLngs(),
+                    length: polyline_length
+                }
+            });
         }
         if (type === 'polygon' || type === 'rectangle') {
             // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
@@ -2278,7 +2520,13 @@
 
             layer.name = selected_asset + '_' + layer.id.substring(0,4);
             polygon_area = calculate_area(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
+            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
+                shape: {
+                    type: type,
+                    coordinates: layer.getLatLngs(),
+                    polygon_area: polygon_area
+                }
+            });
         }
     });
 

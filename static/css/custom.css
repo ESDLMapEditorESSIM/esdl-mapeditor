@@ -72,7 +72,10 @@ html, body
     background: #ffcb00;
     border: 3px solid #bc9500;
 }
-
+.Building {
+    background: #bfbfbf;
+    border: 3px solid #000000;
+}
 .Overload_marker {
     border: 5px solid red;
     border-radius: 50%;
@@ -117,6 +120,14 @@ html, body
     color: #555;
 }
 .legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+.color_select {
     width: 18px;
     height: 18px;
     float: left;
