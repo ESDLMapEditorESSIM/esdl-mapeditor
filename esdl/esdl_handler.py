@@ -106,20 +106,26 @@ class EnergySystemHandler:
                             if orig_value is None:
                                 continue
                             if not ref.containment:
+                                opposite = ref.eOpposite
+                                if opposite and opposite.containment:
+                                    # do not handle eOpposite relations, they are handled automatically in pyEcore
+                                    continue
                                 if x.many:
                                     eOrderedSet = v.eGet(ref.name)
                                     for orig_ref_value in orig_value:
                                         try:
                                             copy_ref_value = memo[orig_ref_value]
                                         except KeyError:
-                                            log.warning(f'Cannot find reference {orig_ref_value} in deepcopy memo, using original')
+                                            log.warning(f'Cannot find reference of type {orig_ref_value.eClass.Name} \
+                                                for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                             copy_ref_value = orig_ref_value
                                         eOrderedSet.append(copy_ref_value)
                                 else:
                                     try:
                                         copy_value = memo[orig_value]
                                     except KeyError:
-                                        log.warning(f'Cannot find reference {orig_ref_value} in deepcopy memo, using original')
+                                        log.warning(f'Cannot find reference of type {orig_value.eClass.name} of \
+                                            reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                         copy_value = orig_value
                                     v.eSet(ref.name, copy_value)
             return copy
