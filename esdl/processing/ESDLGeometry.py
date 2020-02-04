@@ -84,6 +84,18 @@ def create_boundary_from_geometry(geometry):
     return geom
 
 
+def create_geojson(id, name, KPIs, boundary_wgs):
+    return {
+        "type": "Feature",
+        "geometry": boundary_wgs,
+        "properties": {
+            "id": id,
+            "name": name,
+            "KPIs": KPIs
+        }
+    }
+
+
 def parse_esdl_subpolygon(subpol, close=True):
     ar = []
     points = subpol.point
@@ -237,3 +249,46 @@ def remove_duplicates_in_polygon(array_of_array_of_points):
         array_of_array_of_points[i] = remove_duplicates_in_polyline(array_of_array_of_points[i])
 
     return array_of_array_of_points
+
+
+def create_ESDL_geometry(shape):
+
+    if shape['type'] == 'point':
+        geometry = esdl.Point(lon=shape['lng'], lat=shape['lat'])
+
+    elif shape['type'] == 'polyline':
+        polyline_data = shape['coordinates']
+        geometry = esdl.Line()
+
+        i = 0
+        prev_lat = 0
+        prev_lng = 0
+        while i < len(polyline_data):
+            coord = polyline_data[i]
+
+            # Don't understand why, but sometimes coordinates come in twice
+            if prev_lat != coord['lat'] or prev_lng != coord['lng']:
+                point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
+                geometry.point.append(point)
+                prev_lat = coord['lat']
+                prev_lng = coord['lng']
+            i += 1
+
+    elif shape['type'] == 'polygon' or shape['type'] == 'rectangle':
+        polygon_data = shape['coordinates']  # [lat, lon]
+        print(polygon_data)
+        polygon_data = remove_duplicates_in_polygon(polygon_data)
+        polygon_data = remove_latlng_annotation_in_array_of_arrays(polygon_data)
+        polygon_data = exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+
+        geometry = convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+
+    # elif shape['type'] == 'rectangle':
+    #     rect_data = shape['coordinates']
+    #     print(rect_data)
+    #     #polygon_data = [[rect_data[0], [rect_data[0][0],rect_data[1][1]], rect_data[1], [rect_data[1][0],rect_data[0][1]]]]
+    #
+    #     geometry = ESDLGeometry.convert_pcoordinates_into_polygon(rect_data)  # expects [lon, lat]
+
+
+    return geometry

@@ -2506,52 +2506,6 @@ def str2float(string):
         return 0.0
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-#  Helper functions for command 'add_asset' - Create ESDL geometry from info from browser
-# ---------------------------------------------------------------------------------------------------------------------
-def create_ESDL_geometry(shape):
-
-    if shape['type'] == 'point':
-        geometry = esdl.Point(lon=shape['lng'], lat=shape['lat'])
-
-    elif shape['type'] == 'polyline':
-        polyline_data = shape['coordinates']
-        geometry = esdl.Line()
-
-        i = 0
-        prev_lat = 0
-        prev_lng = 0
-        while i < len(polyline_data):
-            coord = polyline_data[i]
-
-            # Don't understand why, but sometimes coordinates come in twice
-            if prev_lat != coord['lat'] or prev_lng != coord['lng']:
-                point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
-                geometry.point.append(point)
-                prev_lat = coord['lat']
-                prev_lng = coord['lng']
-            i += 1
-
-    elif shape['type'] == 'polygon' or shape['type'] == 'rectangle':
-        polygon_data = shape['coordinates']  # [lat, lon]
-        print(polygon_data)
-        polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-        polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-        polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-
-        geometry = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-
-    # elif shape['type'] == 'rectangle':
-    #     rect_data = shape['coordinates']
-    #     print(rect_data)
-    #     #polygon_data = [[rect_data[0], [rect_data[0][0],rect_data[1][1]], rect_data[1], [rect_data[1][0],rect_data[0][1]]]]
-    #
-    #     geometry = ESDLGeometry.convert_pcoordinates_into_polygon(rect_data)  # expects [lon, lat]
-
-
-    return geometry
-
-
 def get_first_last_of_line(line):
     first = ()
     last = ()
@@ -2601,7 +2555,7 @@ def process_command(message):
         asset = None
 
         shape = message['shape']
-        geometry = create_ESDL_geometry(shape)
+        geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
         if assettype == 'Area':
             if not isinstance(geometry, esdl.Polygon):
@@ -2614,18 +2568,7 @@ def process_command(message):
                         send_alert('Can not add area to building')
                     area_list = []
                     boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                    area_list.append({
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": boundary_wgs['coordinates']
-                        },
-                        "properties": {
-                            "id": new_area.id,
-                            "name": new_area.name,
-                            "KPIs": []
-                        }
-                    })
+                    area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
 
                     emit('geojson', {"layer": "area_layer", "geojson": area_list})
                 else:

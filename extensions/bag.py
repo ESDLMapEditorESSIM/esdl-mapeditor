@@ -4,8 +4,9 @@ from extensions.session_manager import get_handler, get_session
 import settings
 import requests
 import urllib
-from esdl.processing import ESDLAsset
+from esdl.processing import ESDLAsset, ESDLGeometry
 import esdl
+from geomet import wkt
 
 
 class BAG:
@@ -20,20 +21,24 @@ class BAG:
         @self.socketio.on('get_bag_contours', namespace='/esdl')
         def get_bag_contours(info):
             with self.flask_app.app_context():
-                print("getting bag request")
+                print("getting bag information")
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
 
                 area_id = info["id"]
-                area_polygon = info["polygon"]
-                wkt_string = 'POLYGON ((4.359093904495239 52.012174264626445, 4.357388019561768 52.01154692445308, 4.357978105545044 52.01078750089633, 4.360188245773315 52.01160635705717, 4.362355470657349 52.012478026181434, 4.360767602920532 52.012847820073766, 4.359093904495239 52.012174264626445))'
+                area_polygon = { 'type': 'polygon', 'coordinates': info["polygon"] }
+                geometry = ESDLGeometry.create_ESDL_geometry(area_polygon)
+                boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
+                # boundary_geojson = ESDLGeometry.create_geojson(area_id, '', [], boundary_wgs)
+                wkt_string = wkt.dumps(boundary_wgs)
+                # wkt_string = 'POLYGON ((4.359093904495239 52.012174264626445, 4.357388019561768 52.01154692445308, 4.357978105545044 52.01078750089633, 4.360188245773315 52.01160635705717, 4.362355470657349 52.012478026181434, 4.360767602920532 52.012847820073766, 4.359093904495239 52.012174264626445))'
                 wkt_quoted = urllib.parse.quote(wkt_string)
 
                 es_edit = esh.get_energy_system(es_id=active_es_id)
                 instance = es_edit.instance
                 top_area = instance[0].area
-                if ESDLAsset.find_area(top_area, area_id):
-
+                target_area = ESDLAsset.find_area(top_area, area_id)
+                if target_area:
                     try:
                         url = 'http://' + settings.bag_config["host"] + ':' + settings.bag_config["port"] + \
                                settings.bag_config["path_contour"] + '?wkt=' + wkt_quoted + '&format=xml'
@@ -41,17 +46,23 @@ class BAG:
                         r = requests.get(url)
                         if r.status_code == 200:
                             esdl_string = r.text
-                            esh.add_from_string('BAG buildings', r.text)
-                            # self.flask_app.process_energy_system.submit(esh)
-                            # bag_es = ESDLAsset.load_asset_from_string(esdl_string)
-                            # if bag_es:
-                                # bag_inst = bag_es.instance[0]
-                                # if bag_inst:
-                                #     bag_area = bag_inst.area
-                                #     if bag_area:
-                                #         for bld in bag_area.asset:
-                                #             if isinstance(bld, esdl.Building):
-                                #
+                            bag_es = ESDLAsset.load_asset_from_string(esdl_string)
+                            if bag_es:
+                                bag_inst = bag_es.instance[0]
+                                if bag_inst:
+                                    bag_area = bag_inst.area
+                                    if bag_area:
+                                        bld_list = []
+                                        for bld in bag_area.asset:
+                                            if isinstance(bld, esdl.Building):
+                                                target_area.asset.append(bld.deepcopy())
+                                                geometry = bld.geometry
+                                                boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
+                                                bld_list.append(ESDLGeometry.create_geojson(bld.id, bld.name, [], boundary_wgs))
+
+                                        if bld_list:
+                                            emit('geojson', {"layer": "bld_layer", "geojson": bld_list})
+
 
                     except Exception as e:
                         print('ERROR in accessing BAG service: '+str(e))
