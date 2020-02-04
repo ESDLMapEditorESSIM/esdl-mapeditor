@@ -54,6 +54,10 @@ class EnergySystemHandler:
         setattr(EObject, '__copy__', clone)
         setattr(EObject, 'clone', clone)
 
+        """
+        Deep copying an EObject.
+        Does not work yet for copying references from other resources than this one.
+        """
         def deepcopy(self, memo=None):
             log.debug("deepcopy: processing {}".format(self))
             first_call = False
@@ -105,10 +109,18 @@ class EnergySystemHandler:
                                 if x.many:
                                     eOrderedSet = v.eGet(ref.name)
                                     for orig_ref_value in orig_value:
-                                        copy_ref_value = memo[orig_ref_value]
+                                        try:
+                                            copy_ref_value = memo[orig_ref_value]
+                                        except KeyError:
+                                            log.warning(f'Cannot find reference {orig_ref_value} in deepcopy memo, using original')
+                                            copy_ref_value = orig_ref_value
                                         eOrderedSet.append(copy_ref_value)
                                 else:
-                                    copy_value = memo[orig_value]
+                                    try:
+                                        copy_value = memo[orig_value]
+                                    except KeyError:
+                                        log.warning(f'Cannot find reference {orig_ref_value} in deepcopy memo, using original')
+                                        copy_value = orig_value
                                     v.eSet(ref.name, copy_value)
             return copy
         setattr(EObject, '__deepcopy__', deepcopy)
