@@ -181,36 +181,42 @@
             return L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
         }
 
-        function calculate_array_polygon_center(coords) {
-            let lat_min = Infinity;
-            let lon_min = Infinity;
-            let lat_max = -Infinity;
-            let lon_max = -Infinity;
-
-            for (let i=0; i<coords.length; i++) {
-                if (coords[i][0] < lat_min) { lat_min = coords[i][0]; }
-                if (coords[i][0] > lat_max) { lat_max = coords[i][0]; }
-                if (coords[i][1] < lon_min) { lon_min = coords[i][1]; }
-                if (coords[i][1] > lon_max) { lon_max = coords[i][1]; }
+        // Calculates the centeriod of a polygon
+        function calculate_array_polygon_center(pts) {
+            var first = pts[0], last = pts[pts.length-1];
+            if (first[0] != last[0] || first[1] != last[1]) pts.push(first);
+            var twicearea=0,
+            x=0, y=0,
+            nPts = pts.length,
+            p1, p2, f;
+            for ( var i=0, j=nPts-1 ; i<nPts ; j=i++ ) {
+                p1 = pts[i]; p2 = pts[j];
+                f = (p1[1] - first[1]) * (p2[0] - first[0]) - (p2[1] - first[1]) * (p1[0] - first[0]);
+                twicearea += f;
+                x += (p1[0] + p2[0] - 2 * first[0]) * f;
+                y += (p1[1] + p2[1] - 2 * first[1]) * f;
             }
-
-            return [(lat_min + lat_max) / 2, (lon_min + lon_max) / 2];
+            f = twicearea * 3;
+            return [ x/f + first[0], y/f + first[1]];
         }
 
-        function calculate_leaflet_polygon_center(coords) {
-            let lat_min = Infinity;
-            let lon_min = Infinity;
-            let lat_max = 0;
-            let lon_max = 0;
-
-            for (let i=0; i<coords.length; i++) {
-                if (coords[i]['lat'] < lat_min) { lat_min = coords[i]['lat']; }
-                if (coords[i]['lat'] > lat_max) { lat_max = coords[i]['lat']; }
-                if (coords[i]['lng'] < lon_min) { lon_min = coords[i]['lng']; }
-                if (coords[i]['lng'] > lon_max) { lon_max = coords[i]['lng']; }
-            }
-
-            return [(lat_min + lat_max) / 2, (lon_min + lon_max) / 2];
+        // calculates the centeriod of a polygon
+        function calculate_leaflet_polygon_center(pts) {
+           var first = pts[0], last = pts[pts.length-1];
+           if (first[0] != last.lat || first.lon != last.lon) pts.push(first);
+           var twicearea=0,
+           x=0, y=0,
+           nPts = pts.length,
+           p1, p2, f;
+           for ( var i=0, j=nPts-1 ; i<nPts ; j=i++ ) {
+              p1 = pts[i]; p2 = pts[j];
+              f = (p1.lon - first.lon) * (p2.lat - first.lat) - (p2.lon - first.lon) * (p1.lat - first.lat);
+              twicearea += f;
+              x += (p1.lat + p2.lat - 2 * first.lat) * f;
+              y += (p1.lon + p2.lon - 2 * first.lon) * f;
+           }
+           f = twicearea * 3;
+           return [ x/f + first.lat, y/f + first.lon];
         }
 
         // ------------------------------------------------------------------------------------------------------------
