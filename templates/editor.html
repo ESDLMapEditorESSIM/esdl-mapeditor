@@ -14,8 +14,8 @@
 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.5.0/lodash.min.js" crossorigin=""></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css" type="text/css"/>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" type="text/css"/>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
     <!--script src="./plugins/leaflet.draw.js"></script-->
 
@@ -203,20 +203,20 @@
         // calculates the centeriod of a polygon
         function calculate_leaflet_polygon_center(pts) {
            var first = pts[0], last = pts[pts.length-1];
-           if (first[0] != last.lat || first.lon != last.lon) pts.push(first);
+           if (first.lat != last.lat || first.lng != last.lng) pts.push(first);
            var twicearea=0,
            x=0, y=0,
            nPts = pts.length,
            p1, p2, f;
            for ( var i=0, j=nPts-1 ; i<nPts ; j=i++ ) {
               p1 = pts[i]; p2 = pts[j];
-              f = (p1.lon - first.lon) * (p2.lat - first.lat) - (p2.lon - first.lon) * (p1.lat - first.lat);
+              f = (p1.lng - first.lng) * (p2.lat - first.lat) - (p2.lng - first.lng) * (p1.lat - first.lat);
               twicearea += f;
               x += (p1.lat + p2.lat - 2 * first.lat) * f;
-              y += (p1.lon + p2.lon - 2 * first.lon) * f;
+              y += (p1.lng + p2.lng - 2 * first.lng) * f;
            }
            f = twicearea * 3;
-           return [ x/f + first.lat, y/f + first.lon];
+           return [ x/f + first.lat, y/f + first.lng];
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -2010,6 +2010,9 @@
                     option.val(non_energyassets[nea]);
                     option.text(non_energyassets[nea]);
                     optgroup.append(option)
+                    genIconDataURL = drawTextImage(getAbbrevation(non_energyassets[nea]));
+                            window[non_energyassets[nea] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
                 }
                 $("#asset_menu").append(optgroup);
 
