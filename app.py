@@ -41,6 +41,9 @@ import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
 
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#logging.getLogger("werkzeug")
+
 if os.environ.get('GEIS'):
     import gevent.monkey
     gevent.monkey.patch_all()
