@@ -1,11 +1,15 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject
+from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject, EReference, EClass, EStructuralFeature
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
 from esdl import esdl
 from uuid import uuid4
 from io import BytesIO
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
 
 class EnergySystemHandler:
@@ -38,11 +42,78 @@ class EnergySystemHandler:
             eclass = self.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EAttribute):
-                    newone.eSet(x.name, self.eGet(x.name))
+                    log.debug("clone: processing attribute {}".format(x.name))
+                    if x.many:
+                        eOrderedSet = newone.eGet(x.name)
+                        for v in self.eGet(x.name):
+                            eOrderedSet.append(v)
+                    else:
+                        newone.eSet(x.name, self.eGet(x.name))
             return newone
 
         setattr(EObject, '__copy__', clone)
         setattr(EObject, 'clone', clone)
+
+        def deepcopy(self, memo=None):
+            log.debug("deepcopy: processing {}".format(self))
+            first_call = False
+            if memo is None:
+                memo = dict()
+                first_call = True
+            if self in memo:
+                return memo[self]
+
+            copy: EObject = self.clone()
+            log.debug("Shallow copy: {}".format(copy))
+            eclass: EClass = self.eClass
+            for x in eclass.eAllStructuralFeatures():
+                if isinstance(x, EReference):
+                    log.debug("deepcopy: processing reference {}".format(x.name))
+                    ref: EReference = x
+                    value: EStructuralFeature = self.eGet(ref)
+                    if value is None:
+                        continue
+                    if ref.containment:
+                        if ref.many and isinstance(value, EOrderedSet):
+                            #clone all containment elements
+                            eOrderedSet = copy.eGet(ref.name)
+                            for ref_value in value:
+                                duplicate = ref_value.__deepcopy__(memo)
+                                eOrderedSet.append(duplicate)
+                        else:
+                            copy.eSet(ref.name, value.__deepcopy__(memo))
+                    #else:
+                    #    # no containment relation, but a reference
+                    #    # this can only be done after a full copy
+                    #    pass
+            # now copy should a full copy, but without cross references
+
+            memo[self] = copy
+
+            if first_call:
+                log.debug("copying references")
+                for k, v in memo.items():
+                    eclass: EClass = k.eClass
+                    for x in eclass.eAllStructuralFeatures():
+                        if isinstance(x, EReference):
+                            log.debug("deepcopy: processing x-reference {}".format(x.name))
+                            ref: EReference = x
+                            orig_value: EStructuralFeature = k.eGet(ref)
+                            if orig_value is None:
+                                continue
+                            if not ref.containment:
+                                if x.many:
+                                    eOrderedSet = v.eGet(ref.name)
+                                    for orig_ref_value in orig_value:
+                                        copy_ref_value = memo[orig_ref_value]
+                                        eOrderedSet.append(copy_ref_value)
+                                else:
+                                    copy_value = memo[orig_value]
+                                    v.eSet(ref.name, copy_value)
+            return copy
+        setattr(EObject, '__deepcopy__', deepcopy)
+        setattr(EObject, 'deepcopy', deepcopy)
+
 
         # def toJSON(self):
         #     return json.dumps(self, default=lambda o: list(o),
