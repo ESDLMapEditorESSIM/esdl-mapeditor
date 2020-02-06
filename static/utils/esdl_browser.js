@@ -29,6 +29,46 @@ class ESDLBrowser {
         this.open_browser(id);
     }
 
+    static generateXRefSelection(data) {
+        //returnmsg = {'parent': message['parent'],
+        //             'ref': {'name': reference_name, 'type': reference.eType.name},
+        //             'xreferences': reference_list}
+        let parent_object_identifier = data['parent']
+        let $div = $('<div>');
+        let $h1 = $('<h1>').text(`Select a cross-reference for ${data.ref.name} relation`);
+        let $h4 = $('<h4>').html(`The following options of type ${data.ref.type} are available for the <i>${data.ref.name}</i> cross-reference. Please select one from the list.`);
+        let $select = $("<select>").attr('id', 'ref_select');
+
+        for (let i = 0; i < data.xreferences.length; i++) {
+            let $option = $('<option>').attr('value', i).text(data.xreferences[i].repr);
+            $select.append($option);
+        }
+
+        let $div2 = $('<div>')
+                .append($("<span>").text(`Select cross-reference for ${data.ref.name}: `))
+                .append($("<span>").text(' '))
+                .append($select);
+        let $back_button = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
+        let $button = $('<button>').addClass('btn').append($('<span>').text('Next ')).append($('<i>').addClass('fa fa-arrow-right'));
+        let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($button);
+        $button.click(function (e) {
+                let selected_ref = [$('#ref_select').val()];
+                socket.emit('esdl_browse_set_reference', {'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
+            });
+        $back_button.click(function (e) {
+                esdl_browser.open_browser_identifier(parent_object_identifier);
+            });
+
+
+        $div.append($h1);
+        $div.append($h4);
+        $div.append($div2);
+        $div.append($('<div>').css('height', '40px'))
+        $div.append($div3);
+
+        return $div;
+    }
+
     static generateTable(data) {
         let $div = $('<div>');
         let object_name = data.object.name;
@@ -175,19 +215,21 @@ class ESDLBrowser {
                     let $a = $('<a>').text(v.repr).attr('href', "#");
                     $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(ESDLBrowser.identifier(v)); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
-                    let $spanSpacer = $('<span>').html('&nbsp;');
-                    let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
-                    let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
 
-                    $delSpan.append($delButton);
+
                     $sub.append($a);
                     $sub.append($span);
-                    $sub.append($spanSpacer);
-                    $sub.append($delSpan);
-                    $repr.append($sub);
-                    var self = this;
-                    $delButton.click( function(e) { esdl_browser.del(v.repr, name, ESDLBrowser.identifier(v), ESDLBrowser.identifier(data.object), true); });
 
+                    if (!data.references[i].eopposite) {
+                        let $spanSpacer = $('<span>').html('&nbsp;');
+                        let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+                        let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
+                        $delSpan.append($delButton);
+                        $sub.append($spanSpacer);
+                        $sub.append($delSpan);
+                        $delButton.click( function(e) { esdl_browser.del(v.repr, name, ESDLBrowser.identifier(v), ESDLBrowser.identifier(data.object), true); });
+                    }
+                    $repr.append($sub);
                     // actions
 
                 }
@@ -199,10 +241,11 @@ class ESDLBrowser {
                         });
                     $actions.append($('<div>').append($addButton));
                 } else {
-                    let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
-                    $actions.append($('<div>').append($browseButton));
+                    if (!data.references[i].eopposite) {
+                        let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
+                        $actions.append($('<div>').append($browseButton));
+                    }
                 }
-
 
             } else {
                 if (value.repr == null) {
@@ -211,8 +254,10 @@ class ESDLBrowser {
                         let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); });
                         $actions.append($addButton);
                     } else {
-                        let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
-                        $actions.append($('<div>').append($browseButton));
+                        if (!data.references[i].eopposite) {
+                            let $browseButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-ellipsis-h').css('color', 'blue')).click( function(e) { esdl_browser.select_ref(data.object, data.references[i], data.references[i].types); })
+                            $actions.append($('<div>').append($browseButton));
+                        }
                     }
                 } else {
                     if (value.hasOwnProperty('id') && value.id != null) {
@@ -233,15 +278,16 @@ class ESDLBrowser {
                             $repr.text(value.repr);
                         }
                     }
-                    let $spanSpacer = $('<span>').html('&nbsp;');
-                    let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
-                    let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
 
-                    $delSpan.append($delButton);
-                    var self = this;
-                    $delButton.click( function(e) { esdl_browser.del(value.repr, name, ESDLBrowser.identifier(value), ESDLBrowser.identifier(data.object), true); });
-                    $repr.append($spanSpacer);
-                    $repr.append($delSpan);
+                    if (!data.references[i].eopposite) {
+                        let $spanSpacer = $('<span>').html('&nbsp;');
+                        let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+                        let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
+                        $delSpan.append($delButton);
+                        $delButton.click( function(e) { esdl_browser.del(value.repr, name, ESDLBrowser.identifier(value), ESDLBrowser.identifier(data.object), true); });
+                        $repr.append($spanSpacer);
+                        $repr.append($delSpan);
+                    }
 
                 }
             }
@@ -277,6 +323,8 @@ class ESDLBrowser {
             this.select_asset_type(parent_object_identifier, reference_data);
         }
     }
+
+
 
     // delete a reference (recursively!)
     del(ref_repr, ref_name, ref_identifier, parent_identifier, show_dialog) {
@@ -385,6 +433,26 @@ class ESDLBrowser {
             console.log(data);
 
             let jqueryNode = ESDLBrowser.generateTable(data);
+
+            if (dialog === undefined) {
+                console.log("ERROR: dialog not defined")
+                // create dialog
+                return;
+            }
+            dialog.setContent(jqueryNode.get(0));
+            dialog.setSize([800,500]);
+            let width = map.getSize()
+            dialog.setLocation([10, (width.x/2)-(800/2)]);
+            $('.leaflet-control-dialog-contents').scrollTop(0);
+            dialog.open();
+
+        });
+
+        //esdl_browse_select_cross_reference
+        socket.on('esdl_browse_select_cross_reference', function(data) {
+            console.log(data);
+
+            let jqueryNode = ESDLBrowser.generateXRefSelection(data);
 
             if (dialog === undefined) {
                 console.log("ERROR: dialog not defined")

@@ -89,6 +89,9 @@ def get_asset_references(asset, esdl_doc=None, repr_function=string_repr):
             ref['many'] = x.many
             ref['required'] = x.required
             ref['containment'] = x.containment
+            # do not handle eOpposite relations that are contained, they are handled automatically in pyEcore
+            # e.g. Port.energyasset and Area.containingArea
+            ref['eopposite'] = x.eOpposite and x.eOpposite.containment
             ref['types'] = find_types(x)
             value = asset.eGet(x)
             if value is None:
@@ -162,17 +165,22 @@ def resolve_fragment(resource: Resource, fragment: str):
 
 """
 Calculates a list of all possible reference values for a specific reference
+Based on allInstances() of each possible subtype in the types list
 """
-
-def get_reachable_references():
-    itemQueue = list()
-    visited = dict()
+def get_reachable_references(types: list, repr_function=string_repr):
+    #itemQueue = list()
+    #visited = dict()
     result = list()
+    for type in types:
+        eclass: EClass = esdl.getEClassifier(type)
+        all_instances = eclass.allInstances()
+        for instance in all_instances:
+            ref = {'repr': repr_function(instance)}
+            if hasattr(instance, 'id'):
+                ref['id'] = instance.id
+            ref['fragment'] = instance.eURIFragment()
+            result.append(ref)
 
     return result
 
-"""
-Calculates a list of all possible reference values for a specific reference
-"""
-def collect_reachable_objects_of_type():
-    pass
+

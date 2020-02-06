@@ -10,6 +10,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLQuantityAndUnits import qau_to_string
 from esdl import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
+from pyecore.ecore import EObject
 
 
 class ESDLBrowser:
@@ -69,6 +70,7 @@ class ESDLBrowser:
             if hasattr(new_object, 'id'):
                 new_object.id = esh.generate_uuid()
                 esh.add_object_to_dict(active_es_id, new_object)
+                print('adding to uuid dict ' + new_object.id)
             if hasattr(new_object, 'name'):
                 new_object.name = 'New' + new_object.eClass.name
             browse_data = self.get_browse_to_data(new_object)
@@ -109,7 +111,7 @@ class ESDLBrowser:
 
         #'esdl_browse_list_references'
         @self.socketio.on('esdl_browse_list_references', namespace='/esdl')
-        def socket_io_delete_ref(message):
+        def socket_io_list_references(message):
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             object_id = message['parent']['id']
@@ -121,11 +123,44 @@ class ESDLBrowser:
                 parent_object = esh.get_by_id(active_es_id, object_id)
             reference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference is not None:
-                reference_list = []
                 types = ESDLEcore.find_types(reference)
                 print("Creating list of references")
-                #for type in types:
-                #    reference_list.append()
+                reference_list = ESDLEcore.get_reachable_references(types, repr_function=ESDLBrowser.generate_repr)
+                returnmsg = {'parent': message['parent'],
+                             'ref': {'name': reference_name, 'type': reference.eType.eClass.name},
+                             'xreferences': reference_list}
+                print (returnmsg)
+                self.socketio.emit('esdl_browse_select_cross_reference', returnmsg, namespace='/esdl')
+
+
+        #esdl_browse_set_reference
+        @self.socketio.on('esdl_browse_set_reference', namespace='/esdl')
+        def socket_io_set_xreference(message):
+            #{'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
+            parent_object: EObject = self.get_object_from_identifier(message['parent'])
+            reference = parent_object.eClass.findEStructuralFeature(message['name'])
+            print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
+            xref = self.get_object_from_identifier(message['xref'])
+            if not reference.many:
+                parent_object.eSet(reference, xref)
+            else:
+                eOrderedSet = parent_object.eGet(reference)
+                eOrderedSet.append(xref)
+            browse_data = self.get_browse_to_data(parent_object)
+            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+
+
+
+    def get_object_from_identifier(self, identifier):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+        object_id = identifier['id']
+        if object_id is None:
+            resource = esh.get_resource(active_es_id)
+            the_object = resource.resolve(identifier['fragment'])
+        else:
+            the_object = esh.get_by_id(active_es_id, object_id)
+        return the_object
 
     def get_browse_to_data(self, esdl_object):
         active_es_id = get_session('active_es_id')
@@ -184,7 +219,10 @@ class ESDLBrowser:
         if item is None:
             return item
         if isinstance(item, esdl.Port):
-            return item.name + ' of ' + ESDLBrowser.generate_repr(item.energyasset)
+            name = item.name
+            if name is None:
+                name = item.eClass.name
+            return name + ' of ' + item.energyasset.eClass.name + " " + ESDLBrowser.generate_repr(item.energyasset)
         if isinstance(item, esdl.QuantityAndUnitType):
             return qau_to_string(item)
         if hasattr(item, 'name') and item.name is not None:

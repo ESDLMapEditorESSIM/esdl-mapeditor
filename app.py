@@ -2721,6 +2721,8 @@ def process_command(message):
                 emit('add_esdl_objects', {'es_id': es_edit.id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
             esh.add_object_to_dict(es_edit.id, asset)
+            for added_port in asset.port:
+                esh.add_object_to_dict(es_edit.id, added_port)
             set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
