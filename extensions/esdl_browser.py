@@ -10,7 +10,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLQuantityAndUnits import qau_to_string
 from esdl import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
-from pyecore.ecore import EObject
+from pyecore.ecore import EObject, EReference
 
 
 class ESDLBrowser:
@@ -91,19 +91,22 @@ class ESDLBrowser:
             else:
                 fragment = message['ref_id']['fragment']
                 ref_object = resource.resolve(fragment)
-                # todo: add reference name, to check if it is a containment relation
             object_id = message['parent']['id']
             if ref_id is not None:
                 parent_object = esh.get_by_id(active_es_id, object_id)
             else:
                 fragment = message['parent']['fragment']
                 parent_object = resource.resolve(fragment)
-            reference = parent_object.eClass.findEStructuralFeature(reference_name)
+            reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
                 esh.remove_object_from_dict(active_es_id, ref_object)
                 ref_object.delete(recursive=True) # will automatically remove the reference from the list
             else:
-                reference.delete() # delete only the reference
+                if reference.many:
+                    eOrderedSet = parent_object.eGet(reference)
+                    eOrderedSet.remove(ref_object)
+                else:
+                    parent_object.eSet(reference, reference.get_default_value())
 
             browse_data = self.get_browse_to_data(parent_object)
             self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
