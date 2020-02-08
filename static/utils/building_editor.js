@@ -1,6 +1,7 @@
-function open_building_editor(dialog, building_info) {
 
+function open_building_editor(dialog, building_info) {
     console.log(building_info);
+    let bld_id = building_info['id'];
 
     var contents = [
         "<div class=\"building-info\" id=\"building-info\">",
@@ -64,21 +65,23 @@ function open_building_editor(dialog, building_info) {
     var bld_background = L.imageOverlay('', bounds);
     bld_map.fitBounds(bounds);
 
-    var bld_esdl_layer = L.featureGroup().addTo(bld_map);
-
+    create_new_bld_layer(bld_id, 'Building', bld_map)
     L.control.layers(
         {
             'Building': bld_background.addTo(bld_map)
         },
         {
-            'Assets': bld_esdl_layer
+            'Assets': get_layers(bld_id, 'esdl_layer'),
+            'BuildingUnits': get_layers(bld_id, 'bld_layer'),
+            'Connections': get_layers(bld_id, 'connection_layer'),
+            'Potentials': get_layers(bld_id, 'pot_layer')
         },
         { position: 'topright', collapsed: false }
     ).addTo(bld_map);
 
     var bld_draw_control = new L.Control.Draw({
         edit: {
-            featureGroup: bld_esdl_layer,
+            featureGroup: get_layers(bld_id, 'esdl_layer'),
             poly: {
                 allowIntersection: true
             }
@@ -109,12 +112,16 @@ function open_building_editor(dialog, building_info) {
     bld_map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
 
-        bld_esdl_layer.addLayer(layer);
+        get_layers(bld_id, 'esdl_layer').addLayer(layer);
     });
 
-    bld_map.on('dialog:destroyed', function (event) {
-        console.log('close');
-    });
+    map.off('dialog:closed'); // previous event handler must be removed
+    function on_dialog_close(event) {
+        console.log('close - remove bld layer with id: '+bld_id);
+        remove_bld_layer(bld_id);
+        //close_dialog(event, bld_id)
+    }
+    map.on('dialog:closed', on_dialog_close);
 
     $(function() {
         $("#bld_asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
@@ -123,4 +130,11 @@ function open_building_editor(dialog, building_info) {
     });
 
     dialog.open();
+}
+
+function add_handler() {
+socket.on('add_esdl_objects', function(data) {
+    console.log('add_esdl_objects (bld)');
+    console.log(data);
+});
 }

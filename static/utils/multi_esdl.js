@@ -126,6 +126,30 @@ function create_new_esdl_layer(es_id, title) {
     update_layer_control_tree();
 }
 
+
+function create_new_bld_layer(bld_id, title, bld_map) {
+    esdl_list_item = {
+        id: bld_id,
+        title: title,
+        layers: {
+            esdl_layer: L.featureGroup().addTo(bld_map),
+            bld_layer: L.featureGroup().addTo(bld_map),
+            pot_layer: L.featureGroup().addTo(bld_map),
+            connection_layer: L.featureGroup().addTo(bld_map)
+        },
+        sector_list: null,
+        carrier_list: null,
+        area_bld_list: null
+    };
+
+    esdl_list[bld_id] = esdl_list_item;
+}
+
+
+function remove_bld_layer(bld_id) {
+    delete esdl_list[bld_id];
+}
+
 function clear_esdl_layer_list() {
     // TODO: remove layers from map
     for (let id in esdl_list) {

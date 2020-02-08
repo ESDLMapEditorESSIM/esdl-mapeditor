@@ -92,6 +92,8 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/animate.js"></script>
 
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.min.js"></script>
+
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
@@ -1238,6 +1240,8 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
+            add_handler();
+
             // tell server we are ready to receive
             socket.emit('initialize');
 
@@ -1298,6 +1302,7 @@
             });
 
             socket.on('add_esdl_objects', function(options) {
+                console.log('add_esdl_objects (main)');
                 // Format of list items
                 // 0         1          2       3           4       5          6       7
                 // 'point'   asset      name    id      class_name  [lat,lon]  [ports] capability
@@ -2333,6 +2338,12 @@
 
     layer_ctrl_tree = L.control.layers.tree(baseTree, overlaysTree, { position: 'topright', collapsed: false }).addTo(map);
     L.control.mousePosition().addTo(map);
+
+    L.easyPrint({
+        title: 'Export',
+        exportOnly: true,
+        filename: 'ESDL_map'
+    }).addTo(map);
 
 <!--    L.control.layers(-->
 <!--        {-->

@@ -1442,6 +1442,7 @@ def get_building_information(building):
 
     process_building(asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, 0)
     return {
+        "id": building.id,
         "asset_list": asset_list,
         "building_list": building_list,
         "aera_bld_list": bld_list,
