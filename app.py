@@ -361,6 +361,33 @@ def start_ESSIM(sim_description):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------
+def create_building_KPIs(building):
+    # Assume this is a building, see if there are buildingUnits to find usage ('gebruiksdoel')
+    # For now, use first BuildingUnit ...
+    # TODO: Improve to use most 'dominant' (based on area?) Or introduce 'mixed' category?
+    KPIs = {}
+    for basset in building.asset:
+        if isinstance(basset, esdl.BuildingUnit):
+            try:
+                KPIs["buildingType"] = basset.type.name
+            except:
+                pass
+
+    try:
+        if building.buildingYear > 0:
+            KPIs["buildingYear"] = building.buildingYear
+    except:
+        pass
+
+    try:
+        if building.floorArea > 0:
+            KPIs["floorArea"] = building.floorArea
+    except:
+        pass
+
+    return KPIs
+
+
 def find_area_info_geojson(building_list, area_list, this_area):
     area_id = this_area.id
     area_name = this_area.name
@@ -454,53 +481,54 @@ def find_area_info_geojson(building_list, area_list, this_area):
     assets = this_area.asset
     for asset in assets:
         if isinstance(asset, esdl.AbstractBuilding):
-            name = asset.name
-            if not name:
-                name = ''
-            id = asset.id
-            if not id:
-                id = ''
-            asset_geometry = asset.geometry
-            if asset_geometry:
-                if isinstance(asset_geometry, esdl.Polygon):
-
-                    # Assume this is a building, see if there are buildingUnits to find usage ('gebruiksdoel')
-                    # For now, use first BuildingUnit ...
-                    # TODO: Improve to use most 'dominant' (based on area?) Or introduce 'mixed' category?
-                    KPIs = {}
-                    for basset in asset.asset:
-                        if isinstance(basset, esdl.BuildingUnit):
-                            try:
-                                KPIs["buildingType"] = basset.type.name
-                            except:
-                                pass
-
-                    try:
-                        if asset.buildingYear > 0:
-                            KPIs["buildingYear"] = asset.buildingYear
-                    except:
-                        pass
-
-                    try:
-                        if asset.floorArea > 0:
-                            KPIs["floorArea"] = asset.floorArea
-                    except:
-                        pass
-
-
-                    bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
-                    building_list.append({
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": bld_boundary['coordinates']
-                        },
-                        "properties": {
-                            "id": id,
-                            "name": name,
-                            "KPIs": KPIs
-                        }
-                    })
+            pass
+            # name = asset.name
+            # if not name:
+            #     name = ''
+            # id = asset.id
+            # if not id:
+            #     id = ''
+            # asset_geometry = asset.geometry
+            # if asset_geometry:
+            #     if isinstance(asset_geometry, esdl.Polygon):
+            #
+            #         # Assume this is a building, see if there are buildingUnits to find usage ('gebruiksdoel')
+            #         # For now, use first BuildingUnit ...
+            #         # TODO: Improve to use most 'dominant' (based on area?) Or introduce 'mixed' category?
+            #         KPIs = {}
+            #         for basset in asset.asset:
+            #             if isinstance(basset, esdl.BuildingUnit):
+            #                 try:
+            #                     KPIs["buildingType"] = basset.type.name
+            #                 except:
+            #                     pass
+            #
+            #         try:
+            #             if asset.buildingYear > 0:
+            #                 KPIs["buildingYear"] = asset.buildingYear
+            #         except:
+            #             pass
+            #
+            #         try:
+            #             if asset.floorArea > 0:
+            #                 KPIs["floorArea"] = asset.floorArea
+            #         except:
+            #             pass
+            #
+            #
+            #         bld_boundary = ESDLGeometry.create_boundary_from_contour(asset_geometry)
+            #         building_list.append({
+            #             "type": "Feature",
+            #             "geometry": {
+            #                 "type": "Polygon",
+            #                 "coordinates": bld_boundary['coordinates']
+            #             },
+            #             "properties": {
+            #                 "id": id,
+            #                 "name": name,
+            #                 "KPIs": KPIs
+            #             }
+            #         })
         else: # No AbstractBuilding
             asset_geometry = asset.geometry
             name = asset.name
@@ -1293,18 +1321,28 @@ def process_building(asset_list, building_list, area_bld_list, conn_list, port_a
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
+    building_has_assets = False
+    if building.asset:
+        for basset in building.asset:
+            if isinstance(basset, esdl.EnergyAsset):
+                building_has_assets = True
+                break
+
     # Generate information for drawing building (as a point or a polygon)
     if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
         geometry = building.geometry
+        bld_KPIs = create_building_KPIs(building)
         if geometry:
             if isinstance(geometry, esdl.Point):
                 building_list.append(
-                    ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon]])
+                    ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon], building_has_assets, bld_KPIs])
                 bld_coord = (geometry.lat, geometry.lon)
             elif isinstance(geometry, esdl.Polygon):
                 coords = ESDLGeometry.parse_esdl_subpolygon(building.geometry.exterior, False)  # [lon, lat]
                 coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
-                building_list.append(['polygon', building.name, building.id, type(building).__name__, coords])
+                # building_list.append(['polygon', building.name, building.id, type(building).__name__, coords, building_has_assets])
+                boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
+                building_list.append(['polygon', building.name, building.id, type(building).__name__, boundary['coordinates'], building_has_assets, bld_KPIs])
                 bld_coord = coords
     elif building.containingBuilding:       # BuildingUnit
         bld_geom = building.containingBuilding.geometry
@@ -1358,8 +1396,6 @@ def process_building(asset_list, building_list, area_bld_list, conn_list, port_a
                             pc_carr_id = pc.carrier.id
                         conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
                             'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
-
-
 
 
 def process_area(asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, area, level):

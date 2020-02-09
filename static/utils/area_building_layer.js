@@ -176,7 +176,6 @@ function get_floorArea_colors(value) {
     return color_grades[get_range_color_index(value, building_area_categories, num_building_area_categories)];
 }
 
-
 var area_legend_ranges;
 var num_area_range_colors;
 function get_area_range_colors(value) {
@@ -270,17 +269,18 @@ function highlightAreaOrBuilding(e) {
 
     layer.openPopup();
 }
+
 function resetHighlightArea(e) {
     let layer = e.target;
     geojson_area_layer.resetStyle(layer);
     layer.closePopup();
 }
+
 function resetHighlightBuilding(e) {
     let layer = e.target;
     geojson_building_layer.resetStyle(layer);
     layer.closePopup();
 }
-
 
 //
 function request_bag_info(e, area_id) {
@@ -465,7 +465,11 @@ function createBuildingLegendDiv() {
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this);">';
     for (bkpi in building_KPIs) {
-        selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
+        if (bkpi == 'buildingYear') {
+            selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
+        } else {
+            selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
+        }
     }
     selectText += '</select>';
     selectorDiv.innerHTML = selectText;
@@ -507,48 +511,55 @@ function removeAreaLegend() {
     }
 }
 
+function add_area_geojson_layer_with_legend(geojson_area_data) {
+    area_KPIs = {};
+    preprocess_layer_data("area", geojson_area_data, area_KPIs);
+
+    removeAreaLegend();
+    if (!jQuery.isEmptyObject(area_KPIs)) {
+        areaLegend = L.control({position: 'bottomright'});
+        areaLegend.onAdd = function (map) {
+            return createAreaLegendDiv();
+        };
+        areaLegend.addTo(map);
+    }
+
+    add_area_layer(geojson_area_data);
+}
+
+function add_building_geojson_layer_with_legend(geojson_building_data) {
+    building_KPIs = {};
+    preprocess_layer_data("building", geojson_building_data, building_KPIs);
+
+    buildingLegendChoice = "buildingYear";
+    color_grades = grades[num_building_year_categories];
+    get_building_color = get_buildingYear_colors;
+
+    removeBuildingLegend();
+    if (!jQuery.isEmptyObject(building_KPIs)) {
+        buildingLegend = L.control({position: 'bottomright'});
+        buildingLegend.onAdd = function (map) {
+            return createBuildingLegendDiv();
+        };
+        buildingLegend.addTo(map);
+    }
+
+    add_building_layer(geojson_building_data);
+}
+
 function add_geojson_listener(socket, map) {
     socket.on('geojson', function(message) {
         let layer = message['layer'];
         hide_loader();
 
         if (layer == 'area_layer') {
-            area_KPIs = {};
             geojson_area_data = message['geojson'];     // store for redraw based on other KPI
-            preprocess_layer_data("area", geojson_area_data, area_KPIs);
-
-            removeAreaLegend();
-            if (!jQuery.isEmptyObject(area_KPIs)) {
-                areaLegend = L.control({position: 'bottomright'});
-                areaLegend.onAdd = function (map) {
-                    return createAreaLegendDiv();
-                };
-                areaLegend.addTo(map);
-            }
-
-            add_area_layer(geojson_area_data);
+            add_area_geojson_layer_with_legend(geojson_area_data);
         }
 
         if (layer == 'bld_layer') {
-            building_KPIs = {};
             geojson_building_data = message['geojson']; // store for redraw based on other property
-
-            preprocess_layer_data("building", geojson_building_data, building_KPIs);
-
-            buildingLegendChoice = "buildingYear";
-            color_grades = grades[num_building_year_categories];
-            get_building_color = get_buildingYear_colors;
-
-            removeBuildingLegend();
-            if (!jQuery.isEmptyObject(building_KPIs)) {
-                buildingLegend = L.control({position: 'bottomright'});
-                buildingLegend.onAdd = function (map) {
-                    return createBuildingLegendDiv();
-                };
-                buildingLegend.addTo(map);
-            }
-
-            add_building_layer(geojson_building_data);
+            add_building_geojson_layer_with_legend(geojson_building_data);
         }
     });
 }
