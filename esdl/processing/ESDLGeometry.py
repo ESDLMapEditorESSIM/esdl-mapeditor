@@ -14,10 +14,9 @@ def convert_coordinates_into_subpolygon(coord_list):
     subpolygon = esdl.SubPolygon()
     for coord_pairs in coord_list:
         point = esdl.Point()
-        point.lat = coord_pairs[1]
-        point.lon = coord_pairs[0]
+        point.lat = float(coord_pairs[1])
+        point.lon = float(coord_pairs[0])
         subpolygon.point.append(point)
-
     return subpolygon
 
 
@@ -254,7 +253,7 @@ def remove_duplicates_in_polygon(array_of_array_of_points):
 def create_ESDL_geometry(shape):
 
     if shape['type'] == 'point':
-        geometry = esdl.Point(lon=shape['lng'], lat=shape['lat'])
+        geometry = esdl.Point(lon=float(shape['lng']), lat=float(shape['lat']))
 
     elif shape['type'] == 'polyline':
         polyline_data = shape['coordinates']
@@ -268,7 +267,7 @@ def create_ESDL_geometry(shape):
 
             # Don't understand why, but sometimes coordinates come in twice
             if prev_lat != coord['lat'] or prev_lng != coord['lng']:
-                point = esdl.Point(lat=coord['lat'], lon=coord['lng'])
+                point = esdl.Point(lat=float(coord['lat']), lon=float(coord['lng']))
                 geometry.point.append(point)
                 prev_lat = coord['lat']
                 prev_lng = coord['lng']
@@ -290,5 +289,7 @@ def create_ESDL_geometry(shape):
     #
     #     geometry = ESDLGeometry.convert_pcoordinates_into_polygon(rect_data)  # expects [lon, lat]
 
+    if 'crs' in shape:
+        geometry.CRS = shape['crs']
 
     return geometry

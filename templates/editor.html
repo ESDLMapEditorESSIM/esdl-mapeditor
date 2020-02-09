@@ -81,7 +81,6 @@
 {% if 'table' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
 {% endif %}
-    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
 
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
@@ -104,6 +103,8 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/boundary_service.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wms_layers.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shapefiles.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_map_utils.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -115,6 +116,7 @@
         var control_strategy_config;
         var wms_layer_list;
         var leaflet_layers = {};
+        var capabilities;
 
         //var connecting_assets = false;
         var first_clicked = false;
@@ -351,8 +353,15 @@
             }
         }
 
+        function select_area_bld_list(id) {
+            var select = document.getElementById('area_bld_select');
+            select.value = id;
+            $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
+        }
+
         function edit_building_contents(e, asset_id) {
             console.log('edit building contents for building with ID: '+asset_id);
+            select_area_bld_list(asset_id);
             socket.emit('command', {cmd: 'building_editor', id: asset_id});
         }
 
@@ -704,7 +713,6 @@
             add_handler();
             add_geojson_listener(socket, map);
             add_area_map_handlers(socket, map);
-            add_building_map_handlers(socket, map);
 
             // tell server we are ready to receive
             socket.emit('initialize');
@@ -763,50 +771,9 @@
             });
 
             // populate the asset menu grouped by capability
-            socket.on('capability_list', function(capabilities) {
-                $('#asset_menu').empty();
-
-                var optgroup = $('<optgroup>');
-                optgroup.attr('label', 'Non EnergyAssets');
-                optgroup.style = 'font-face: bold; font-size: 10px'
-                let non_energyassets = ['Area', 'Building', 'AggregatedBuilding']
-                for (let nea in non_energyassets) {
-                    let option = $("<option></option>");
-                    option.val(non_energyassets[nea]);
-                    option.text(non_energyassets[nea]);
-                    optgroup.append(option);
-                    // TODO EWOUD: I've generated icons for both buildings. Why have you added this code?
-                    //  genIconDataURL = drawTextImage(getAbbrevation(non_energyassets[nea]));
-                    //          window[non_energyassets[nea] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                    //              iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
-                }
-                $("#asset_menu").append(optgroup);
-
-                for (let key in capabilities) {
-                    //console.log(key + ' --> ' + capabilities[key])
-                    var optgroup = $('<optgroup>');
-                    optgroup.attr('label', key);
-                    optgroup.style = 'font-face: bold; font-size: 10px'
-                    for (let i in capabilities[key]) {
-                         let option = $("<option></option>");
-                         option.val(capabilities[key][i]);
-                         option.text(capabilities[key][i]);
-                         optgroup.append(option)
-                         // generate icons for markers that do not have an static image png
-                         if (!assets_for_icons.includes(capabilities[key][i])){
-                            //console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
-                            genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
-                            window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
-                         }
-                    }
-                    $("#asset_menu").append(optgroup);
-                }
-                $("#asset_menu").attr("size", "15");
-                $("#asset_menu-menu").css({'max-height': '600px' });
-                $("#asset_menu").selectmenu("refresh");
-
-                //$( "#asset_menu" ).addClass( "overflow" );
+            socket.on('capability_list', function(cap_list) {
+                capabilities = cap_list;
+                build_asset_menu('asset_menu', true, cap_list);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -861,9 +828,11 @@
             });
 
             socket.on('set_active_layer_id', function(id) {
+                console.log('add_draw_control');
                 active_layer_id = id;
-                update_area_bld_list_select();      // update the list of areas and buildings to add assets to
-                add_draw_control();                 // couple draw_control to active layer
+                update_area_bld_list_select();            // update the list of areas and buildings to add assets to
+                draw_control = add_draw_control(draw_control, map);                 // couple draw_control to active layer
+                console.log(draw_control);
 
                 update_title(esdl_list[active_layer_id].title);
             });
@@ -883,8 +852,15 @@
                 // hide_loader();
                 // console.log(options);
                 list = options['asset_pot_list'];
+                add_to_building = options['add_to_building'];
+                console.log(add_to_building);
                 es_id = options['es_id'];
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
+
+                es_bld_id = es_id;
+                if (add_to_building) {
+                   es_bld_id = bld_edit_id;
+                }
 
                 for (let i = 0; i<list.length; i++) {
 
@@ -927,7 +903,7 @@
 
                         set_marker_handlers(marker);
                         // esdl_layer.addLayer(marker);
-                        add_object_to_layer(es_id, 'esdl_layer', marker);
+                        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
@@ -941,7 +917,7 @@
                         polygon.asspot = list[i][1];
 
                         // esdl_layer.addLayer(polygon);
-                        add_object_to_layer(es_id, 'esdl_layer', polygon);
+                        add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
 
                         var polygon_center = calculate_array_polygon_center(coords);
                         var marker = L.marker(polygon_center, {icon: divicon, title: title});
@@ -960,7 +936,7 @@
 
                         set_marker_handlers(marker);
                         // esdl_layer.addLayer(marker);
-                        add_object_to_layer(es_id, 'esdl_layer', marker);
+                        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
                     }
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
@@ -987,11 +963,11 @@
 
                         set_line_handlers(line);
                         // esdl_layer.addLayer(line);
-                        add_object_to_layer(es_id, 'esdl_layer', line);
+                        add_object_to_layer(es_bld_id, 'esdl_layer', line);
                     }
                 }
 
-                if (list.length > 0 && options['zoom']) {
+                if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
                     var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
@@ -1466,7 +1442,7 @@
                 $('#asset_menu').val(asset_type);
                 $("#asset_menu").selectmenu("refresh");
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
-                initiate_draw_asset();
+                initiate_draw_asset(draw_control, 'asset_menu');
             });
 
             socket.on('port_profile_info', function(port_profile_info) {
@@ -1579,12 +1555,12 @@
 
     <script>
 
-        function initiate_draw_asset() {
-            var select_box = document.getElementById('asset_menu');
+        function initiate_draw_asset(dc, menu_id) {
+            var select_box = document.getElementById(menu_id);
             var selected_asset = select_box.options[select_box.selectedIndex].value;
             var marker_class_name = window[selected_asset + "Marker"];
 
-            draw_control.setDrawingOptions({
+            dc.setDrawingOptions({
                 marker: {
                     icon: new marker_class_name()
                 }
@@ -1593,12 +1569,12 @@
             var line_assets = ["ElectricityCable", "Pipe"];
             var area_assets = ["Area", "PVParc", "PVPark", "WindParc", "WindPark"];
             if (line_assets.includes(selected_asset)) {
-                draw_control._toolbars.draw._modes.polyline.handler.enable();
+                dc._toolbars.draw._modes.polyline.handler.enable();
             } else if (area_assets.includes(selected_asset)) {
                 socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
-                draw_control._toolbars.draw._modes.polygon.handler.enable();
+                dc._toolbars.draw._modes.polygon.handler.enable();
             } else {
-                draw_control._toolbars.draw._modes.marker.handler.enable();
+                dc._toolbars.draw._modes.marker.handler.enable();
             }
         }
 
@@ -1615,7 +1591,9 @@
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
-                initiate_draw_asset();
+                console.log('selectmenuchange');
+                console.log(draw_control);
+                initiate_draw_asset(draw_control, 'asset_menu');
             });
 
 {% if not 'essim' in role %}
@@ -1676,7 +1654,7 @@
             <button id="import-esdl" onclick="document.querySelector('.inputImportFile').click();" title="Import ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only">Import</button>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
 
-            <button id="save-esdl" onclick="save_ESDL(this);" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
+            <button id="save-esdl" onclick="save_ESDL(this, '.{{dir_settings.download_prefix}}');" title="Save ESDL to file" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-disk"></span>Save</button>
 {% if 'mondaine' in role %}
             <button id="load-esdl" onclick="send_cmd_load_ESDL();" title="Load from Mondaine Hub" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-folder-open"></span>Hub</button>
             <button id="store-esdl" onclick="send_cmd_store_ESDL();" title="Save to Mondaine Hub" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-disk"></span>Hub</button>

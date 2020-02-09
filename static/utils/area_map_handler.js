@@ -73,6 +73,7 @@ function add_area_map_handlers(socket, map) {
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: 'point',
+                    crs: 'WGS84',
                     lat: layer.getLatLng().lat,
                     lng: layer.getLatLng().lng
                 }
@@ -88,6 +89,7 @@ function add_area_map_handlers(socket, map) {
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: 'polyline',
+                    crs: 'WGS84',
                     coordinates: layer.getLatLngs(),
                     length: polyline_length
                 }
@@ -109,6 +111,7 @@ function add_area_map_handlers(socket, map) {
             socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: type,
+                    crs: 'WGS84',
                     coordinates: layer.getLatLngs(),
                     polygon_area: polygon_area
                 }

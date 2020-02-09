@@ -1,6 +1,7 @@
 var esdl_list = {};         // Dictionairy to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
+var bld_draw_control = null;
 var select_esdl_control = null;
 
 // -----------------------------------------------------------------------------------------------------------
@@ -39,7 +40,7 @@ function select_active_layer() {
 
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
-    add_draw_control();         // connect draw control to new active layer
+    add_draw_control(draw_control, map);         // connect draw control to new active layer
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
     var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
@@ -71,12 +72,12 @@ function add_select_esdl() {
 }
 
 
-function add_draw_control() {
-    if (draw_control) {
-        map.removeControl(draw_control);
+function add_draw_control(dc, mp) {
+    if (dc) {
+        mp.removeControl(dc);
     }
 
-    draw_control = new L.Control.Draw({
+    dc = new L.Control.Draw({
         edit: {
             featureGroup: get_layers(active_layer_id, 'esdl_layer'),
             poly: {
@@ -98,7 +99,8 @@ function add_draw_control() {
             }
         }
     })
-    map.addControl(draw_control);
+    mp.addControl(dc);
+    return dc;
 }
 
 // -----------------------------------------------------------------------------------------------------------

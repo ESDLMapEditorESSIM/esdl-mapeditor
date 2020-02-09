@@ -88,8 +88,8 @@ function click_load_ESDL_button(obj) {
 // Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
 // if we set the window.location.href directly...
 var $idown;  // Keep it outside of the function, so it's initialized once.
-function save_ESDL(e) {
-    let url = '.{{dir_settings.download_prefix}}/esdl'
+function save_ESDL(e, prefix) {
+    let url = prefix+'/esdl'
     //if ($idown) {
     //    $idown.attr('src',url);
     //} else {

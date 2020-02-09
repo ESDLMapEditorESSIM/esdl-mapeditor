@@ -126,7 +126,7 @@ def add_asset_to_building(es, asset, building_id):
     ar = find_asset(area, building_id)
 
     if ar:
-        ar.add_asset_with_type(asset)
+        ar.asset.append(asset)
         return 1
     else:
         return 0

@@ -1,7 +1,9 @@
+var bld_map;
+var bld_edit_id;
 
 function open_building_editor(dialog, building_info) {
     console.log(building_info);
-    let bld_id = building_info['id'];
+    bld_edit_id = building_info['id'];
 
     var contents = [
         "<div class=\"building-info\" id=\"building-info\">",
@@ -56,32 +58,39 @@ function open_building_editor(dialog, building_info) {
     dialog.setContent(contents);
     // document.getElementById('building-info').innerHTML = 'Test';
 
-    var bld_map = new L.Map('bldmapid', {
+    if (bld_map && bld_map.remove) {
+        bld_map.off();
+        bld_map.remove();
+    }
+
+    bld_map = new L.Map('bldmapid', {
         crs: L.CRS.Simple,
         maxBounds: [[0,0],[500,500]]
     });
+
+    bld_map = add_building_map_handlers(bld_map);
 
     var bounds = [[0,0], [500,500]];
     var bld_background = L.imageOverlay('', bounds);
     bld_map.fitBounds(bounds);
 
-    create_new_bld_layer(bld_id, 'Building', bld_map)
+    create_new_bld_layer(bld_edit_id, 'Building', bld_map)
     L.control.layers(
         {
             'Building': bld_background.addTo(bld_map)
         },
         {
-            'Assets': get_layers(bld_id, 'esdl_layer'),
-            'BuildingUnits': get_layers(bld_id, 'bld_layer'),
-            'Connections': get_layers(bld_id, 'connection_layer'),
-            'Potentials': get_layers(bld_id, 'pot_layer')
+            'Assets': get_layers(bld_edit_id, 'esdl_layer'),
+            'BuildingUnits': get_layers(bld_edit_id, 'bld_layer'),
+            'Connections': get_layers(bld_edit_id, 'connection_layer'),
+            'Potentials': get_layers(bld_edit_id, 'pot_layer')
         },
         { position: 'topright', collapsed: false }
     ).addTo(bld_map);
 
     var bld_draw_control = new L.Control.Draw({
         edit: {
-            featureGroup: get_layers(bld_id, 'esdl_layer'),
+            featureGroup: get_layers(bld_edit_id, 'esdl_layer'),
             poly: {
                 allowIntersection: true
             }
@@ -112,14 +121,14 @@ function open_building_editor(dialog, building_info) {
     bld_map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
 
-        get_layers(bld_id, 'esdl_layer').addLayer(layer);
+        get_layers(bld_edit_id, 'esdl_layer').addLayer(layer);
     });
 
     map.off('dialog:closed'); // previous event handler must be removed
     function on_dialog_close(event) {
-        console.log('close - remove bld layer with id: '+bld_id);
-        remove_bld_layer(bld_id);
-        //close_dialog(event, bld_id)
+        console.log('close - remove bld layer with id: '+bld_edit_id);
+        remove_bld_layer(bld_edit_id);
+        //close_dialog(event, bld_edit_id)
     }
     map.on('dialog:closed', on_dialog_close);
 
@@ -128,6 +137,15 @@ function open_building_editor(dialog, building_info) {
         $("#bld_line_select").selectmenu({ width:200 });
         $("#bld_select").selectmenu({ width:500 });
     });
+
+    // changes the icon for the new marker command
+    $('#bld_asset_menu').on('selectmenuchange', function (e) {
+        socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
+        initiate_draw_asset(bld_draw_control, 'bld_asset_menu');
+    });
+
+    build_asset_menu('bld_asset_menu', false, capabilities);
+    bld_draw_control = add_draw_control(bld_draw_control, bld_map);                 // couple draw_control to active layer
 
     dialog.open();
 }

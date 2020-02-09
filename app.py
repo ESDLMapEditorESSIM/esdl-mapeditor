@@ -1374,10 +1374,14 @@ def process_building(asset_list, building_list, area_bld_list, conn_list, port_a
                     coord = (lat, lon)
 
                     capability_type = ESDLAsset.get_asset_capability_type(basset)
-                    asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
+                    # TODO: Find proper implementation....
+                    if level == 0:
+                        asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
                 else:
                     send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
-            else:       # Inherit geometry from containing building
+
+            # Inherit geometry from containing building
+            if level > 0:
                 coord = bld_coord
 
             ports = basset.port
@@ -2698,8 +2702,10 @@ def process_command(message):
             asset.id = asset_id
             asset.name = asset_name
 
+            add_to_building = False
             if not ESDLAsset.add_asset_to_area(es_edit, asset, area_bld_id):
                 ESDLAsset.add_asset_to_building(es_edit, asset, area_bld_id)
+                add_to_building = True
 
             asset_to_be_added_list = []
             buildings_to_be_added_list = []
@@ -2743,7 +2749,7 @@ def process_command(message):
                     asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
 
                 #print(asset_to_be_added_list)
-                emit('add_esdl_objects', {'es_id': es_edit.id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
+                emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
             esh.add_object_to_dict(es_edit.id, asset)
             for added_port in asset.port:
@@ -3522,6 +3528,9 @@ def process_command(message):
         building = esh.get_by_id(active_es_id, bld_id)
         bld_info = get_building_information(building)
         emit('building_information', bld_info)
+        emit('add_esdl_objects',
+             {'es_id': active_es_id, 'add_to_building': True, 'asset_pot_list': bld_info["asset_list"],
+              'zoom': False})
 
     set_handler(esh)
     session.modified = True
