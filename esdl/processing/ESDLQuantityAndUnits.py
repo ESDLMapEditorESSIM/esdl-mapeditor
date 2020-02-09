@@ -149,7 +149,10 @@ def qau_to_string(qau):
         s += '/'
         if pmult != 'NONE' and pmult != 'UNDEFINED':
             s += multiplierdict[pmult]
-        s += unitdict[punit]
+        try:
+            s += unitdict[punit]
+        except KeyError: # SECOND etc is not in the dict
+            s += punit
     if ptunit != 'NONE' and ptunit != 'UNDEFINED':
         s += '/' + timeunitdict[ptunit]
 

@@ -28,18 +28,22 @@ from essim_validation import validate_ESSIM
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.bag import BAG
+from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
 from esdl_helper import generate_profile_info
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
+
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#logging.getLogger("werkzeug")
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -582,6 +586,7 @@ login_manager.init_app(app)
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
+ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -641,7 +646,7 @@ def editor():
         print("whole_token: ", whole_token)
         if whole_token:
             try:
-                jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account')
+                jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account', verify=False)
                 print("JWT: ", jwt_tkn)
             except Exception as e:
                 print("error in decoding token: ", str(e))
@@ -2705,6 +2710,8 @@ def process_command(message):
                 emit('add_esdl_objects', {'es_id': es_edit.id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
             esh.add_object_to_dict(es_edit.id, asset)
+            for added_port in asset.port:
+                esh.add_object_to_dict(es_edit.id, added_port)
             set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
@@ -2844,7 +2851,7 @@ def process_command(message):
             # asset = ESDLAsset.find_asset(area, object_id)
             asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for asset ' + asset.id)
-            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
             name = asset.name
             if isinstance(asset, esdl.EnergyAsset):
                 connected_to_info = get_connected_to_info(asset)
@@ -2860,8 +2867,7 @@ def process_command(message):
             pot = ESDLAsset.find_potential(area, object_id)
             #asset = esh.get_by_id(es_edit.id, object_id)
             print('Get info for potential ' + pot.id)
-            #attrs_sorted = get_potential_attributes(pot)
-            attrs_sorted = esh.get_asset_attributes(pot, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
             name = pot.name
             connected_to_info = []
             ctrl_strategy = None
@@ -2877,7 +2883,7 @@ def process_command(message):
         asset = ESDLAsset.find_asset(area, asset_id)
         connected_to_info = get_connected_to_info(asset)
         print('Get info for conductor ' + asset.id)
-        attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+        attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
         name = asset.name
         if name is None: name = ''
         asset_doc = asset.__doc__
@@ -2893,7 +2899,7 @@ def process_command(message):
         energy_assets = esh.get_all_assets_of_type(esdl.EnergyAsset)
 
         for asset in energy_assets:
-            attrs_sorted = esh.get_asset_attributes(asset, esdl_doc)
+            attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
             connected_to_info = get_connected_to_info(asset)
             strategy_info = get_control_strategy_info(asset)
             profile_info = get_port_profile_info(asset)
@@ -2954,7 +2960,8 @@ def process_command(message):
 
         area = es_edit.instance[0].area
 
-        asset = ESDLAsset.find_asset(area, asset_id)
+        #asset = ESDLAsset.find_asset(area, asset_id)
+        asset = esh.get_by_id(active_es_id, asset_id)
         print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
 
         try:
@@ -2970,7 +2977,13 @@ def process_command(message):
                     eOrderedSet.append(parsed_value)
                     asset.eSet(param_name, eOrderedSet)
                 else:
-                    asset.eSet(param_name, parsed_value)
+                    if attribute.name == 'id':
+                        esh.remove_object_from_dict(active_es_id, asset)
+                        asset.eSet(param_name, parsed_value)
+                        esh.add_object_to_dict(active_es_id, asset)
+                    else:
+                        asset.eSet(param_name, parsed_value)
+
             else:
                 send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
         except Exception as e:
@@ -3134,6 +3147,7 @@ def process_command(message):
             coord = (lat, lon)
             mapping[port.id] = {'asset_id': asset.id, 'coord': coord}
             asset.port.append(port)
+            esh.add_object_to_dict(active_es_id, port)
             port_list = []
             for p in asset.port:
                 port_list.append(

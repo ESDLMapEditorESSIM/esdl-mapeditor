@@ -507,7 +507,7 @@ function removeAreaLegend() {
     }
 }
 
-function addGeoJSONListener(socket, map) {
+function add_geojson_listener(socket, map) {
     socket.on('geojson', function(message) {
         let layer = message['layer'];
         hide_loader();

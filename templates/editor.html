@@ -38,7 +38,7 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script>
 
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
@@ -47,6 +47,7 @@
 
     <link href=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.contextmenu.js" type="text/javascript"></script>
+
     <link href=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.css" rel="stylesheet" type="text/css" />
     <script src=".{{dir_settings.plugin_prefix}}/plugins/Leaflet.Dialog.js" type="text/javascript"></script>
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/pure-table.css" type="text/css"/>
@@ -62,6 +63,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/shp.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/rainbowvis.js"></script>
 
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shape_util.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/multi_esdl.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/utils.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/heatnetwork.js"></script>
@@ -74,11 +76,12 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_browser.js"></script>
+
 {% if 'table' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
 {% endif %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
-
 
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
@@ -93,6 +96,14 @@
 
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.min.js"></script>
+
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/file_command.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/area_map_handler.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_map_handler.js"></script>
+
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/boundary_service.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/wms_layers.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shapefiles.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -139,16 +150,6 @@
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
-        function uuidv4() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
-        //
-        // ------------------------------------------------------------------------------------------------------------
         function update_title(title) {
             title_div = document.getElementById('es_title');
             title_div.innerHTML = '<b>' + title + '<b>';
@@ -163,69 +164,14 @@
         }
 
         // ------------------------------------------------------------------------------------------------------------
-        //
-        // ------------------------------------------------------------------------------------------------------------
-        function calculate_length(layer) {
-            var previousPoint;
-            var polyline_length = 0;
-
-            // http://leafletjs.com/reference.html#polyline-getlatlngs
-            layer.getLatLngs().forEach(function (latLng) {
-                 // http://leafletjs.com/reference.html#latlng-distanceto
-                if (previousPoint) polyline_length += previousPoint.distanceTo(latLng);
-                previousPoint = latLng;
-            });
-
-            return polyline_length;
-        }
-
-        function calculate_area(layer) {
-            return L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
-        }
-
-        // Calculates the centeriod of a polygon
-        function calculate_array_polygon_center(pts) {
-            var first = pts[0], last = pts[pts.length-1];
-            if (first[0] != last[0] || first[1] != last[1]) pts.push(first);
-            var twicearea=0,
-            x=0, y=0,
-            nPts = pts.length,
-            p1, p2, f;
-            for ( var i=0, j=nPts-1 ; i<nPts ; j=i++ ) {
-                p1 = pts[i]; p2 = pts[j];
-                f = (p1[1] - first[1]) * (p2[0] - first[0]) - (p2[1] - first[1]) * (p1[0] - first[0]);
-                twicearea += f;
-                x += (p1[0] + p2[0] - 2 * first[0]) * f;
-                y += (p1[1] + p2[1] - 2 * first[1]) * f;
-            }
-            f = twicearea * 3;
-            return [ x/f + first[0], y/f + first[1]];
-        }
-
-        // calculates the centeriod of a polygon
-        function calculate_leaflet_polygon_center(pts) {
-           var first = pts[0], last = pts[pts.length-1];
-           if (first.lat != last.lat || first.lng != last.lng) pts.push(first);
-           var twicearea=0,
-           x=0, y=0,
-           nPts = pts.length,
-           p1, p2, f;
-           for ( var i=0, j=nPts-1 ; i<nPts ; j=i++ ) {
-              p1 = pts[i]; p2 = pts[j];
-              f = (p1.lng - first.lng) * (p2.lat - first.lat) - (p2.lng - first.lng) * (p1.lat - first.lat);
-              twicearea += f;
-              x += (p1.lat + p2.lat - 2 * first.lat) * f;
-              y += (p1.lng + p2.lng - 2 * first.lng) * f;
-           }
-           f = twicearea * 3;
-           return [ x/f + first.lat, y/f + first.lng];
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
         //  Splitting conductors (cables or pipes)
         // ------------------------------------------------------------------------------------------------------------
-        splitConductorCallback = function(e, id) {
-            splitConductor(id, e.latlng, 'no_connect');
+        function emit_split_conductor(id, location, mode) {
+            socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
+        }
+
+        function split_conductor(e, id) {
+            emit_split_conductor(id, e.latlng, 'no_connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             //esdl_layer.removeLayer(e.relatedTarget);
@@ -233,8 +179,8 @@
             clear_layer = false;
         }
 
-        splitConductorConnectCallback = function(e, id) {
-            splitConductor(id, e.latlng, 'connect');
+        function split_conductor_connect(e, id) {
+            emit_split_conductor(id, e.latlng, 'connect');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             //esdl_layer.removeLayer(e.relatedTarget);
@@ -242,8 +188,8 @@
             clear_layer = false;
         }
 
-        splitConductorAddJointCallback = function(e, id) {
-            splitConductor(id, e.latlng, 'add_joint');
+        function split_conductor_add_joint(e, id) {
+            emit_split_conductor(id, e.latlng, 'add_joint');
             // only remove conductor from UI, let server side remove conductor in ESDL
             clear_layer = true;
             //esdl_layer.removeLayer(e.relatedTarget);
@@ -271,7 +217,7 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                             text: 'Connect ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) { connectAsset(e, asset_id, port_id); }
+                            callback: function(e) { connect_asset(e, asset_id, port_id); }
                         });
                     }
                     marker.options.contextmenuItems.push('-');
@@ -281,7 +227,7 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
                             text: 'Set profile of ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) { setPortProfile(e, asset_id, port_id); }
+                            callback: function(e) { set_port_profile(e, asset_id, port_id); }
                         });
                     }
 
@@ -393,16 +339,7 @@
                     // console.log('marker clicked');
                     var marker = e.target;
                     var id = marker.id;
-
-                    //if (connecting_assets) {
-                    //    if (marker.asspot == 'asset') {
-                    //        connectAssets(marker);
-                    //    } else {
-                    //        alert('Cannot connect to potential');
-                    //    }
-                    //} else {
-                        socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
-                    //}
+                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
                 }
             });
 
@@ -486,20 +423,19 @@
                 contextmenuInheritItems: false
             });
             line.options.contextmenuItems.push(
-                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorCallback(e, line_id); } });
+                { text: 'Split', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { split_conductor(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorConnectCallback(e, line_id); } });
+                { text: 'Split and connect', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { split_conductor_connect(e, line_id); } });
             line.options.contextmenuItems.push(
-                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { splitConductorAddJointCallback(e, line_id); } });
+                { text: 'Split and add joint', icon: '{{dir_settings.resource_prefix}}icons/SplitLine.png', callback: function(e) { split_conductor_add_joint(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
-            //{ text: 'Connect', icon: '{{dir_settings.resource_prefix}}icons/Connect.png', disabled: true, callback: connectConductor },
             for (let p=0; p<line.ports.length; p++) {
                 let port_id = ''+line.ports[p].id;
                 line.options.contextmenuItems.push({
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) { connectAsset(e, line_id, port_id); }
+                    callback: function (e) { connect_asset(e, line_id, port_id); }
                 });
             }
 
@@ -511,8 +447,6 @@
                     select_carrier_menu(line_id);
                 }
             });
-            //line.options.contextmenuItems.push('-');
-            //line.options.contextmenuItems.push({ text: 'Cancel' });
 
             line.on('remove', function(e) {
                 var layer = e.target;
@@ -528,20 +462,11 @@
             line.on('click', function(e) {
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
-                    //var id = line.id;
-                    // console.log('line clicked: ' + line.title + '(' + line.type + ')');
-
-                    //if (connecting_assets) {
-                    //    connectAssets(line);
-                    //} else {
-                        // show popup after getting conductor info
-                        socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
-                    //}
+                    socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
                 }
             });
 
             line.on('mouseover', function(e) {
-
                 var layer = e.target;
                 if (layer.type === undefined) {
                     layer.type = 'ElectricityCable';
@@ -587,165 +512,6 @@
                 updatefun({type: 'add_contextmenu', layer: line});
             }
 
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
-        //  Connecting assets (This way of connecting is not used now and button currently disabled)
-        // ------------------------------------------------------------------------------------------------------------
-//        function connectAssets(object) {
-//            // console.log('this object is either a line or a marker: ');
-//            // console.log(object);
-//            if (first_clicked) {
-//                first_clicked = false;
-//                if (first_clicked_id == object.id) {       // clicked same asset twice
-//                    // console.log('first clicked cancelled');
-//                } else {                            // connect two assets
-//                    document.getElementById('conn_asset_id2').innerHTML = object.id;
-//                    document.getElementById('conn_asset_name2').innerHTML = object.name;
-//                    document.getElementById('conn_asset_type2').innerHTML = object.type;
-//                    document.getElementById('conn_asset_result').innerHTML = first_clicked_id + ' and ' + object.id + ' are now connected.';
-//                    document.getElementById('conn_asset_action').innerHTML = 'Click first asset...!';
-//
-//                    // console.log('second clicked' + object.id + ', connecting...');
-//                    socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});
-//
-//                    // TODO: timer to clear sidebar?
-//                }
-//                first_clicked_id = 0;
-//            } else {
-//                first_clicked = true;
-//                first_clicked_id = object.id;
-//
-//                document.getElementById('conn_asset_id1').innerHTML = object.id;
-//                document.getElementById('conn_asset_name1').innerHTML = object.name;
-//                document.getElementById('conn_asset_type1').innerHTML = object.type;
-//                document.getElementById('conn_asset_result').innerHTML = '';
-//                document.getElementById('conn_asset_action').innerHTML = 'Click second asset...!';
-//
-//                // console.log('first clicked ' + first_clicked_id);
-//            }
-//        }
-
-        function conn_assets_window() {
-            sidebar_ctr = sidebar.getContainer();
-            sidebar_ctr.innerHTML = '<h1>Connect assets</h1>';
-
-            par = '<p id="conn_asset_result"></p>';
-            par += '<p><h2 style="color:blue;" id="conn_asset_action">Click first asset!</h2></p>';
-            sidebar_ctr.innerHTML += par;
-
-            table = '<table>';
-            table += '<tr><td width=180><b>First asset:</b></td><td>&nbsp;</td></tr>';
-            table += '<tr><td width=180>Id:</td><td id="conn_asset_id1">&nbsp;</td></tr>';
-            table += '<tr><td width=180>Name:</td><td id="conn_asset_name1">&nbsp;</td></tr>';
-            table += '<tr><td width=180>Type:</td><td id="conn_asset_type1">&nbsp</td></tr>';
-            table += '<tr><td>&nbsp;</td><td>&nbsp;</td></tr>';
-            table += '<tr><td width=180><b>Second asset:</b></td><td>&nbsp;</td></tr>';
-            table += '<tr><td width=180>Id:</td><td id="conn_asset_id2">&nbsp;</td></tr>';
-            table += '<tr><td width=180>Name:</td><td id="conn_asset_name2">&nbsp;</td></tr>';
-            table += '<tr><td width=180>Type:</td><td id="conn_asset_type2">&nbsp</td></tr>';
-            table += '</table>';
-
-            sidebar_ctr.innerHTML += table;
-
-            sidebar.show();
-        }
-
-        //function conn_disconn_assets() {
-        //    var button = document.getElementById('conn-disconn-assets');
-        //    first_clicked = false;
-        //    if (connecting_assets) {
-        //        connecting_assets = false;
-        //        button.innerHTML = 'Connect assets';
-        //        sidebar.hide();
-        //    } else {
-        //        conn_assets_window();
-        //        connecting_assets = true;
-        //        button.innerHTML = 'Stop connecting assets';
-        //    }
-        //}
-
-        // ------------------------------------------------------------------------------------------------------------
-        //  Boundary information from GEIS boundary service
-        // ------------------------------------------------------------------------------------------------------------
-        function boundary_info_window() {
-            sidebar_ctr = sidebar.getContainer();
-
-            sidebar_ctr.innerHTML = '<h1>Boundary Information:</h1>';
-
-            table = '<table>';
-            table = table + '<tr><td width=180>Scope</td>';
-            <!-- table = table + '<td><input type="text" width="60" id="scope" value="district"></td></tr>'; -->
-
-            table = table + '<td><select id="scope">';
-            table = table + '<option value="country">country</option>';
-            table = table + '<option value="province">province</option>';
-            table = table + '<option value="region">region</option>';
-            table = table + '<option value="municipality" selected>municipality</option>';
-            table = table + '<option value="district">district</option>';
-            table = table + '<option value="neighbourhood">neighbourhood</option>';
-            table = table + '</select></td></tr>';
-
-            table = table + '<tr><td width=180>Subscope</td>';
-            <!-- table = table + '<td><input type="text" width="60" id="subscope" value="neighbourhood"></td></tr>'; -->
-
-            table = table + '<td><select id="subscope">';
-            table = table + '<option value="country">country</option>';
-            table = table + '<option value="province">province</option>';
-            table = table + '<option value="region">region</option>';
-            table = table + '<option value="municipality">municipality</option>';
-            table = table + '<option value="district">district</option>';
-            table = table + '<option value="neighbourhood" selected>neighbourhood</option>';
-            table = table + '</select></td></tr>';
-
-            table = table + '<tr><td width=180>Identifier</td>';
-            table = table + '<td><input type="text" width="60" id="identifier" value="GM0060"></td></tr>';
-            table = table + '<tr><td width=180>Initialize energysystem</td>';
-            table = table + '<td><input type="checkbox" id="initialize_ES" checked></td></tr>';
-            table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
-            table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL" disabled></td></tr>';
-            table = table + '</table>';
-            sidebar_ctr.innerHTML += table;
-
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();get_boundary_info(this);">Request</button></p>';
-
-{% if 'ibis' in role %}
-            sidebar_ctr.innerHTML += '<h1>IBIS bedrijventerreien Information:</h1>';
-            table = '<table>';
-            table = table + '<tr><td width=180>RIN List</td>';
-            table = table + '<td><input type="text" width="60" id="rin_list" value="777,779"></td></tr>';
-            table = table + '<tr><td width=180>Initialize energysystem</td>';
-            table = table + '<td><input type="checkbox" id="initialize_ES2" checked></td></tr>';
-            table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
-            table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL2" checked></td></tr>';
-            table = table + '</table>';
-            sidebar_ctr.innerHTML += table;
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();get_ibis_info(this);">Request</button></p>';
-{% endif %}
-
-            sidebar.show();
-        }
-
-        function get_boundary_info(obj) {
-            identifier = document.getElementById('identifier').value;
-            scope = document.getElementById('scope').value;
-            subscope = document.getElementById('subscope').value;
-            initialize_ES = document.getElementById('initialize_ES').checked;
-            add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
-
-            show_loader();
-            socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope: subscope,
-                initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
-        }
-
-        function get_ibis_info(obj) {
-            initialize_ES = document.getElementById('initialize_ES2').checked;
-            add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL2').checked;
-            rin_list = document.getElementById('rin_list').value;
-
-            show_loader();
-            socket.emit('ibis_bedrijventerreinen', {rin_list: rin_list,
-                initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -811,174 +577,9 @@
         }
 
         // ------------------------------------------------------------------------------------------------------------
-        //  Functions for starting a new ESDL file, loading and saving an ESDL file
-        // ------------------------------------------------------------------------------------------------------------
-        function new_ESDL() {
-            sidebar_ctr = sidebar.getContainer();
-            sidebar_ctr.innerHTML = '<h1>New ESDL energysystem</h1>';
-
-            table = '<table>';
-            table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="new_name"></td></tr>';
-            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
-            table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
-            table += '<tr><td width=180></td><td></td></tr>';
-            table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
-            table += '</table>';
-
-            sidebar_ctr.innerHTML += table;
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();click_new_ESDL_button(this);">Create</button></p>';
-
-            sidebar.show();
-        }
-
-        function click_new_ESDL_button(obj) {
-            new_name = document.getElementById('new_name').value;
-            new_description = document.getElementById('new_description').value;
-            new_email = document.getElementById('new_email').value;
-            new_top_area_name = document.getElementById('new_area_name').value;
-
-            socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
-                email: new_email, top_area_name: new_top_area_name});
-        }
-
-        function open_ESDL(event) {
-            // getting a hold of the file reference
-            var file = event.target.files[0];
-
-            // setting up the reader
-            var reader = new FileReader();
-            reader.readAsText(file); // this is reading as data url
-
-            // here we tell the reader what to do when it's done reading...
-            reader.onload = readerEvent => {
-                var content = readerEvent.target.result; // this is the content!
-                socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
-            }
-
-            // show loader
-            show_loader();
-        }
-
-        function import_ESDL(event) {
-            // getting a hold of the file reference
-            var file = event.target.files[0];
-
-            // setting up the reader
-            var reader = new FileReader();
-            reader.readAsText(file); // this is reading as data url
-
-            // here we tell the reader what to do when it's done reading...
-            reader.onload = readerEvent => {
-                var content = readerEvent.target.result; // this is the content!
-                socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
-            }
-
-            // show loader
-            show_loader();
-        }
-
-        function send_cmd_load_ESDL() {
-            socket.emit('file_command', {cmd: 'get_list_from_store'});
-        }
-
-        function click_load_ESDL_button(obj) {
-            select = document.getElementById('load_es_selection');
-            es_id = select.options[select.selectedIndex].value;
-            es_title = select.options[select.selectedIndex].innerHTML;
-            // console.log(es_id);
-
-            // title_div = document.getElementById('es_title');
-            // title_div.innerHTML = '<h1>' + es_title + '</h1>';
-
-            socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
-
-            // show loader
-            show_loader();
-        }
-
-
-        // Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
-        // if we set the window.location.href directly...
-        var $idown;  // Keep it outside of the function, so it's initialized once.
-        function save_ESDL(e) {
-            let url = '.{{dir_settings.download_prefix}}/esdl'
-            //if ($idown) {
-            //    $idown.attr('src',url);
-            //} else {
-            //    $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
-            //}
-            // The following code does a HTML5 download request.
-            // From stackoverflow:
-            // simply setting the window.url to the download url does not work as it navigates away from the current
-            // page, releasing the websocket connection.
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, true);
-            xhr.responseType = 'arraybuffer';
-            xhr.onload = function () {
-                if (this.status === 200) {
-                    var filename = "";
-                    var disposition = xhr.getResponseHeader('Content-Disposition');
-                    if (disposition && disposition.indexOf('attachment') !== -1) {
-                        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                        var matches = filenameRegex.exec(disposition);
-                        if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
-                    }
-                    var type = xhr.getResponseHeader('Content-Type');
-
-                    var blob;
-                    if (typeof File === 'function') {
-                        try {
-                            blob = new File([this.response], filename, { type: type });
-                        } catch (e) { /* Edge */ }
-                    }
-                    if (typeof blob === 'undefined') {
-                        blob = new Blob([this.response], { type: type });
-                    }
-
-                    if (typeof window.navigator.msSaveBlob !== 'undefined') {
-                        // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
-                        window.navigator.msSaveBlob(blob, filename);
-                    } else {
-                        var URL = window.URL || window.webkitURL;
-                        var downloadUrl = URL.createObjectURL(blob);
-
-                        if (filename) {
-                            // use HTML5 a[download] attribute to specify filename
-                            var a = document.createElement("a");
-                            // safari doesn't support this yet
-                            if (typeof a.download === 'undefined') {
-                                window.location = downloadUrl;
-                            } else {
-                                a.href = downloadUrl;
-                                a.download = filename;
-                                document.body.appendChild(a);
-                                a.click();
-                            }
-                        } else {
-                            window.location = downloadUrl;
-                        }
-
-                        setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
-                    }
-                }
-            };
-            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-            xhr.send();
-        }
-
-        function send_cmd_store_ESDL() {
-            // socket.emit('file_command', {cmd: 'store_esdl'});
-            esdl_store_save_window();
-        }
-
-        function send_download_ESDL() {
-            socket.emit('file_command', {cmd: 'download_esdl'});
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
-        setPortProfile = function(e, marker_id, port_id) {
+        function set_port_profile(e, marker_id, port_id) {
             // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
             socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
         }
@@ -1017,12 +618,8 @@
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
         }
 
-        function ClickMarker(e) {
-            // alert (e.latlng);
-        }
-
-        function connectAsset(e, feature_id, port_id) {
-            // console.log('connectAsset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
+        function connect_asset(e, feature_id, port_id) {
+            // console.log('connect_asset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
             // console.log(e);
             if (connect_ports != null) {
                 socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
@@ -1030,142 +627,6 @@
             } else {
                 connect_ports = port_id;
             }
-        }
-
-        function connectConductor(e) {
-            // alert (e.latlng);
-        }
-
-        function splitConductor(id, location, mode) {
-            socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
-        //  Shapefile functions - Not working at the moment
-        // ------------------------------------------------------------------------------------------------------------
-        function load_shapefile() {
-        	var files = document.getElementById('shapefile').files;
-            if (files.length == 0) {
-                console.log('filelength is zero');
-                return; //do nothing if no file given yet
-            }
-
-            var file = files[0];
-
-            if (file.name.slice(-3) != 'zip') {             // Only accept .zip. All others, return.
-                document.getElementById('warning').innerHTML = 'Select .zip file';
-                return;
-            } else {
-                document.getElementById('warning').innerHTML = ''; //clear warning message.
-                handleZipFile(file);
-            }
-        };
-
-        //More info: https://developer.mozilla.org/en-US/docs/Web/API/FileReader
-        function handleZipFile(file){
-            console.log('handle zip file');
-            var reader = new FileReader();
-            reader.onload = function() {
-                if (reader.readyState != 2 || reader.error){
-                    console.log("error");
-                    return;
-                } else {
-                    console.log("no error");
-                    convertShapefileToLayer(reader.result);
-                }
-            }
-            reader.readAsArrayBuffer(file);
-        }
-
-        function convertShapefileToLayer(buffer) {
-            shp(buffer).then(function(geojson) {	            //More info: https://github.com/calvinmetcalf/shapefile-js
-                console.log('shapefile addto map');
-                var layer = L.shapefile(geojson).addTo(map);       //More info: https://github.com/calvinmetcalf/leaflet.shapefile
-                console.log(layer);
-            });
-        }
-
-        function show_add_shapefile() {
-            sidebar_ctr = sidebar.getContainer();
-
-            sidebar_ctr.innerHTML = '<h1>Add shapefile</h1>';
-            sidebar_ctr.innerHTML += '<p><label for="input">Select a zipped shapefile:</label><input type="file" id="shapefile"></p>';
-            sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();load_shapefile();">Load shapefile</button></p>';
-            sidebar_ctr.innerHTML += '<span id="warning"></span>';
-
-            sidebar.show();
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
-        //  WMS Layer functionality
-        // ------------------------------------------------------------------------------------------------------------
-        function add_layer() {
-            layer_descr = document.getElementById('layer_descr').value;
-            layer_url = document.getElementById('layer_url').value;
-            layer_name = document.getElementById('layer_name').value;
-            layer_id = uuidv4();
-
-            socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, visible: true});
-            wms_layer_list[layer_id] = { description: layer_descr, url: layer_url, layer_name: layer_name }
-
-            wms_layer_list[layer_id].layer_ref = L.tileLayer.wms(layer_url, {
-                layers: layer_name,
-                format:'image/png',
-                transparent: true
-            });
-            wms_layer_list[layer_id].layer_ref.addTo(map);
-            wms_layer_list[layer_id].layer_ref.bringToFront();
-            wms_layer_list[id].visible = true;
-        }
-
-        function remove_layer(id) {
-            socket.emit('command', {cmd: 'remove_layer', id: id});
-            // console.log('remove layer: '+id);
-            map.removeLayer(wms_layer_list[id].layer_ref);
-            delete wms_layer_list[id];
-        }
-
-        function click_layer(id) {
-            checkbox = document.getElementById('cb_'+id);
-            if (checkbox.checked) {
-                // console.log('add layer to map: '+id);
-                wms_layer_list[id].layer_ref.addTo(map);
-                wms_layer_list[id].layer_ref.bringToFront();
-                wms_layer_list[id].visible = true;
-            } else {
-                // console.log('remove layer from map: '+id);
-                map.removeLayer(wms_layer_list[id].layer_ref);
-                wms_layer_list[id].visible = false;
-            }
-        }
-
-        function show_layers() {
-            sidebar_ctr = sidebar.getContainer();
-
-            sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
-            table = '<table>';
-            for (var key in wms_layer_list) {
-                let value = wms_layer_list[key];
-
-                table += '<tr><td><input type="checkbox" id="cb_'+ key +'" name="' +value.description+ '" onclick="click_layer(\''+key+'\');"';
-                if (value.visible) { table += ' checked'; }
-                table +='>';
-                table += '<label for="'+value.id+'" title="' +value.url+' - '+value.layer_name + '">'+value.description+'</label></td>';
-                table += '<td><button onclick="remove_layer(\'' + key + '\');">Del</button></td></tr>';
-            }
-            table += '</table>';
-            sidebar_ctr.innerHTML += table;
-
-            sidebar_ctr.innerHTML += '<h2>Add layers:</h2>';
-            table = '<table>';
-            table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="layer_descr"></td></tr>';
-            table += '<tr><td width=180>URL</td><td><input type="text" width="60" id="layer_url"></td></tr>';
-            table += '<tr><td width=180>Layer name</td><td><input type="text" width="60" id="layer_name"></td></tr>';
-            table += '<tr><td><button onclick="add_layer();">Add layer</button></td><td>&nbsp;</td>';
-            table += '</table>';
-            sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
-
-            sidebar.show();
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1241,6 +702,9 @@
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
             add_handler();
+            add_geojson_listener(socket, map);
+            add_area_map_handlers(socket, map);
+            add_building_map_handlers(socket, map);
 
             // tell server we are ready to receive
             socket.emit('initialize');
@@ -1248,11 +712,114 @@
             // request the list of assets in the EDR
             get_edr_assets('{{dir_settings.resource_prefix}}edr_assets');
 
+            // ------------------------------------------------------------------------------------------------------------
+            //  Initialization
+            // ------------------------------------------------------------------------------------------------------------
             socket.on('connect', function() {
                 console.log('connected');
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
+                // let extensions know client is connected
+                // and socket variable is available
+                for (let i=0; i<extensions.length; i++) {
+                    updatefun = extensions[i];
+                    updatefun({type: 'client_connected'});
+                }
             });
 
+            socket.on('profile_info', function(pa) {
+                profile_array = pa;
+            });
+
+            socket.on('qau_information', function(qau_info) {
+                quantity_and_units_info = qau_info;
+            });
+
+            socket.on('control_strategy_config', function(csc) {
+                control_strategy_config = csc
+            });
+
+            socket.on('esdl_services', function(list) {
+                set_esdl_services_information(list);
+            });
+
+            socket.on('wms_layer_list', function(wms_layer_lst) {
+                wms_layer_list = wms_layer_lst;
+                // console.log(wms_layer_list);
+
+                for (var key in wms_layer_list) {
+                    var layer_info = wms_layer_list[key];
+
+                    layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+                        layers: layer_info.layer_name,
+                        format: 'image/png',
+                        transparent: true,
+                        attribution: layer_info.attribution
+                    });
+                    if (layer_info.visible) {
+                        layer_info.layer_ref.addTo(map);
+                        layer_info.layer_ref.bringToFront();
+                    }
+                }
+            });
+
+            // populate the asset menu grouped by capability
+            socket.on('capability_list', function(capabilities) {
+                $('#asset_menu').empty();
+
+                var optgroup = $('<optgroup>');
+                optgroup.attr('label', 'Non EnergyAssets');
+                optgroup.style = 'font-face: bold; font-size: 10px'
+                let non_energyassets = ['Area', 'Building', 'AggregatedBuilding']
+                for (let nea in non_energyassets) {
+                    let option = $("<option></option>");
+                    option.val(non_energyassets[nea]);
+                    option.text(non_energyassets[nea]);
+                    optgroup.append(option);
+                    // TODO EWOUD: I've generated icons for both buildings. Why have you added this code?
+                    //  genIconDataURL = drawTextImage(getAbbrevation(non_energyassets[nea]));
+                    //          window[non_energyassets[nea] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+                    //              iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+                }
+                $("#asset_menu").append(optgroup);
+
+                for (let key in capabilities) {
+                    //console.log(key + ' --> ' + capabilities[key])
+                    var optgroup = $('<optgroup>');
+                    optgroup.attr('label', key);
+                    optgroup.style = 'font-face: bold; font-size: 10px'
+                    for (let i in capabilities[key]) {
+                         let option = $("<option></option>");
+                         option.val(capabilities[key][i]);
+                         option.text(capabilities[key][i]);
+                         optgroup.append(option)
+                         // generate icons for markers that do not have an static image png
+                         if (!assets_for_icons.includes(capabilities[key][i])){
+                            //console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
+                            genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
+                            window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
+                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+                         }
+                    }
+                    $("#asset_menu").append(optgroup);
+                }
+                $("#asset_menu").attr("size", "15");
+                $("#asset_menu-menu").css({'max-height': '600px' });
+                $("#asset_menu").selectmenu("refresh");
+
+                //$( "#asset_menu" ).addClass( "overflow" );
+            });
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  Generic functions
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('alert', function(message) {
+                hide_loader();      // when backend sends error message, stop displaying loader
+                alert(message);
+            });
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  Map functions
+            // ------------------------------------------------------------------------------------------------------------
             socket.on('clear_ui', function(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
@@ -1301,6 +868,9 @@
                 update_title(esdl_list[active_layer_id].title);
             });
 
+            // ------------------------------------------------------------------------------------------------------------
+            //  ESDL object functions
+            // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
                 console.log('add_esdl_objects (main)');
                 // Format of list items
@@ -1492,25 +1062,125 @@
                 }
             });
 
-            // update an asset.
-            // currently only updates the ports for the context menu
-            socket.on('update_asset', function(asset_update) {
-                asset_id = asset_update['asset_id'];
-                ports = asset_update['ports'];
-                layer = find_layer(asset_id);
-                layer.ports = ports;
-                if (layer instanceof L.Marker) {
-                    set_marker_handlers(layer);
+            socket.on('area_boundary', function(area_boundary) {
+                geometry = area_boundary['boundary'];
+                color = area_boundary['color'];
+                fillcolor = area_boundary['fillcolor'];
+                info_type = area_boundary['info-type'];
+                name = area_boundary['name'];
+                boundary_type = area_boundary['boundary_type'];
+                crs = area_boundary['crs'];
+                // console.log(color)
+
+                if (info_type == 'MP-RD') {
+                    // console.log('received MP-RD')
+                    var RD = new L.Proj.CRS( 'EPSG:28992','+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +units=m +towgs84=565.2369,50.0087,465.658,-0.406857330322398,0.350732676542563,-1.8703473836068,4.0812 +no_defs', {
+                        resolutions: [3440.640, 1720.320, 860.160, 430.080, 215.040, 107.520, 53.760, 26.880, 13.440, 6.720, 3.360, 1.680, 0.840, 0.420, 0.210],
+                        bounds: L.bounds([-285401.92, 22598.08], [595401.9199999999, 903401.9199999999]),
+                        origin: [-285401.92, 22598.08]
+                    });
+
+                    var mp = geometry['coordinates'];
+                    // console.log(mp.length);
+                    for (i=0; i<mp.length; i++) {
+                        polygon = mp[i];
+
+                        var areaBoundary = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Polygon",
+                                coordinates: polygon
+                            },
+                            crs: {
+                                type: "name",
+                                properties: {
+                                    name: "EPSG:28992"
+                                }
+                            }
+                        };
+                        // L.Proj.geoJson(areaBoundary).addTo(map);
+                        L.Proj.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
+                    }
                 }
-                if (layer instanceof L.Polyline) {
-                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
+
+                // assume coordinates are in CRS WGS84 (Lat/Lon); default for ESDL
+                if (info_type == 'P-WGS84') {
+                    // console.log('received P-WGS84')
+                    var polygon = geometry['coordinates'];
+                    // console.log(polygon);
+                    var areaBoundary = {
+                        type: "Feature",
+                        geometry: {
+                            type: "Polygon",
+                            coordinates: polygon
+                        }
+                    };
+                    // console.log(areaBoundary);
+                    if (boundary_type == 'building') {
+                        L.geoJson(areaBoundary, {
+                            color: color, fillcolor: fillcolor, weight: 1, name: name
+                        }).bindPopup(function (layer) {
+                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'bld_layer'));
+                    } else {
+                        L.geoJson(areaBoundary, {
+                            color: color, fillcolor: fillcolor, weight: 1, name: name
+                        }).bindPopup(function (layer) {
+                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'area_layer'));
+                    }
+                }
+
+                // coordinates are in CRS WGS84 (Lat/Lon)
+                if (info_type == 'MP-WGS84') {
+                    // console.log('received MP-WGS84')
+                    var mp = geometry['coordinates'];
+                    // console.log(mp);
+
+                    for (i=0; i<mp.length; i++) {
+                        polygon = mp[i];
+
+                        var areaBoundary = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Polygon",
+                                coordinates: polygon
+                            }
+                        };
+                        // console.log(areaBoundary);
+                        L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
+                    }
+                }
+
+                if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
+                    layer = omnivore.wkt.parse(geometry);
+                    layer.setStyle({color: color, weight: 2, name: name});
+                    layer.bindPopup(function (layer) {
+                            return 'name:'+layer.options.name});
+                    layer.addTo(get_layers(active_layer_id, 'area_layer'));
                 }
             });
 
-            // TODO: does not work
-            socket.on('esdltxt', function(esdl_text) {
-                var div = document.getElementById('esdltxt');
-                div.innerHTML = esdl_text;
+            socket.on('pot_boundary', function(pot_boundary) {
+                geometry = pot_boundary['boundary'];
+                info_type = pot_boundary['info-type'];
+                name = pot_boundary['name'];
+                color = pot_boundary['color'];
+                crs = pot_boundary['crs'];
+
+                if (info_type == 'WKT') {
+                    console.log(geometry);
+                    if (crs == 'EPSG:28992') {
+                        geometry = wkt_rd2wgs(geometry);
+                    }
+                    layer = omnivore.wkt.parse(geometry);
+                    layer.setStyle({color: color, weight: 2, name: name});
+                    layer.bindPopup(function (layer) {
+                            return 'name:'+layer.options.name});
+                    layer.addTo(get_layers(active_layer_id, 'pot_layer'));
+                }
             });
 
             socket.on('area_bld_list', function(areas_buildings) {
@@ -1592,31 +1262,17 @@
                 add_object_to_layer(es_id, 'connection_layer', line);
             });
 
-            socket.on('store_list', function(store_items) {
-                sidebar_ctr = sidebar.getContainer();
-
-{% if 'mondaine' in role %}
-                sidebar_ctr.innerHTML = '<h1>Load ESDL from Mondaine Hub</h1>';
-{% else %}
-                sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
-{% endif %}
-                select = '<select id="load_es_selection">';
-                for (i = 0; i<store_items.length; i++) {
-                    select += '<option value="'+store_items[i]['id']+'"';
-                    if (i==0) { select += ' selected="true" '; }
-                    select += '>'+store_items[i]['title']+'</option>';
-                }
-                select += '</select>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + select;
-                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_load_ESDL_button(this);">Load</button>';
-
-                sidebar.show();
+            socket.on('carrier_list', function(carr_list) {
+                set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
             });
 
-            socket.on('store_item_metadata', function(data) {
-                process_store_item_metadata(data);
+            socket.on('sector_list', function(list) {
+                set_sector_list(list['es_id'], list['sector_list']);
             });
 
+            // ------------------------------------------------------------------------------------------------------------
+            //  User ESDL actions
+            // ------------------------------------------------------------------------------------------------------------
             socket.on('asset_info', function(asset_info) {
                 asset_id = asset_info['id'];
                 asset_name = asset_info['name'];
@@ -1764,167 +1420,50 @@
                 sidebar.show();
             });
 
-			socket.on('conductor_info', function(asset_info) {
+			// socket.on('conductor_info', function(asset_info) {
 				// console.log('Conductor info: ')
 				// console.log(asset_info);
-				asset_id = asset_info['id'];
-                asset_name = asset_info['name'];
-				latlng = asset_info['latlng']; // location of popup send in messagage
-                asset_attrs = asset_info['attrs'];
+				// asset_id = asset_info['id'];
+                // asset_name = asset_info['name'];
+				// latlng = asset_info['latlng']; // location of popup send in messagage
+                // asset_attrs = asset_info['attrs'];
 
-				length = 0;
-				for (i=0; i<asset_attrs.length; i++) {
-					if (asset_attrs[i][0]=='length') {
-						length=asset_attrs[i][1];
-					}
-				}
+				// length = 0;
+				// for (i=0; i<asset_attrs.length; i++) {
+				// 	if (asset_attrs[i][0]=='length') {
+				// 		length=asset_attrs[i][1];
+				// 	}
+				// }
 
-				var popup = L.popup().setLatLng(latlng)
-						.setContent('<p><b>'+asset_name+'</b><br>Length: '+length+'m<br>id: '+asset_id+'</p>')
-						.openOn(map);
+				// var popup = L.popup().setLatLng(latlng)
+				// 		.setContent('<p><b>'+asset_name+'</b><br>Length: '+length+'m<br>id: '+asset_id+'</p>')
+				// 		.openOn(map);
+			// });
 
-			});
+            socket.on('place_edr_asset', function(asset_type) {
+                $('#asset_menu').val(asset_type);
+                $("#asset_menu").selectmenu("refresh");
+                socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
+                initiate_draw_asset();
+            });
 
             socket.on('port_profile_info', function(port_profile_info) {
                 port_profile_info_window(port_profile_info);
             });
 
-            socket.on('alert', function(message) {
-                hide_loader();      // when backend sends error message, stop displaying loader
-                alert(message);
-            });
-
-            socket.on('area_boundary', function(area_boundary) {
-                geometry = area_boundary['boundary'];
-                color = area_boundary['color'];
-                fillcolor = area_boundary['fillcolor'];
-                info_type = area_boundary['info-type'];
-                name = area_boundary['name'];
-                boundary_type = area_boundary['boundary_type'];
-                crs = area_boundary['crs'];
-                // console.log(color)
-
-                if (info_type == 'MP-RD') {
-                    // console.log('received MP-RD')
-                    var RD = new L.Proj.CRS( 'EPSG:28992','+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +units=m +towgs84=565.2369,50.0087,465.658,-0.406857330322398,0.350732676542563,-1.8703473836068,4.0812 +no_defs', {
-                        resolutions: [3440.640, 1720.320, 860.160, 430.080, 215.040, 107.520, 53.760, 26.880, 13.440, 6.720, 3.360, 1.680, 0.840, 0.420, 0.210],
-                        bounds: L.bounds([-285401.92, 22598.08], [595401.9199999999, 903401.9199999999]),
-                        origin: [-285401.92, 22598.08]
-                    });
-
-                    var mp = geometry['coordinates'];
-                    // console.log(mp.length);
-                    for (i=0; i<mp.length; i++) {
-                        polygon = mp[i];
-
-                        var areaBoundary = {
-                            type: "Feature",
-                            geometry: {
-                                type: "Polygon",
-                                coordinates: polygon
-                            },
-                            crs: {
-                                type: "name",
-                                properties: {
-                                    name: "EPSG:28992"
-                                }
-                            }
-                        };
-                        // L.Proj.geoJson(areaBoundary).addTo(map);
-                        L.Proj.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
-                    }
+            // update an asset - called after adding and removing ports
+            // currently only updates the ports for the context menu
+            socket.on('update_asset', function(asset_update) {
+                asset_id = asset_update['asset_id'];
+                ports = asset_update['ports'];
+                layer = find_layer(asset_id);
+                layer.ports = ports;
+                if (layer instanceof L.Marker) {
+                    set_marker_handlers(layer);
                 }
-
-                // assume coordinates are in CRS WGS84 (Lat/Lon); default for ESDL
-                if (info_type == 'P-WGS84') {
-                    // console.log('received P-WGS84')
-                    var polygon = geometry['coordinates'];
-                    // console.log(polygon);
-                    var areaBoundary = {
-                        type: "Feature",
-                        geometry: {
-                            type: "Polygon",
-                            coordinates: polygon
-                        }
-                    };
-                    // console.log(areaBoundary);
-                    if (boundary_type == 'building') {
-                        L.geoJson(areaBoundary, {
-                            color: color, fillcolor: fillcolor, weight: 1, name: name
-                        }).bindPopup(function (layer) {
-                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'bld_layer'));
-                    } else {
-                        L.geoJson(areaBoundary, {
-                            color: color, fillcolor: fillcolor, weight: 1, name: name
-                        }).bindPopup(function (layer) {
-                            return 'name:'+layer.options.name}).addTo(get_layers(active_layer_id, 'area_layer'));
-                    }
+                if (layer instanceof L.Polyline) {
+                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
                 }
-
-                // coordinates are in CRS WGS84 (Lat/Lon)
-                if (info_type == 'MP-WGS84') {
-                    // console.log('received MP-WGS84')
-                    var mp = geometry['coordinates'];
-                    // console.log(mp);
-
-                    for (i=0; i<mp.length; i++) {
-                        polygon = mp[i];
-
-                        var areaBoundary = {
-                            type: "Feature",
-                            geometry: {
-                                type: "Polygon",
-                                coordinates: polygon
-                            }
-                        };
-                        // console.log(areaBoundary);
-                        L.geoJson(areaBoundary, {color: color, fillcolor: fillcolor, weight: 1}).addTo(get_layers(active_layer_id, 'area_layer'));
-                    }
-                }
-
-                if (info_type == 'WKT') {
-                    console.log(geometry);
-                    if (crs == 'EPSG:28992') {
-                        geometry = wkt_rd2wgs(geometry);
-                    }
-                    layer = omnivore.wkt.parse(geometry);
-                    layer.setStyle({color: color, weight: 2, name: name});
-                    layer.bindPopup(function (layer) {
-                            return 'name:'+layer.options.name});
-                    layer.addTo(get_layers(active_layer_id, 'area_layer'));
-                }
-            });
-
-            socket.on('pot_boundary', function(pot_boundary) {
-                geometry = pot_boundary['boundary'];
-                info_type = pot_boundary['info-type'];
-                name = pot_boundary['name'];
-                color = pot_boundary['color'];
-                crs = pot_boundary['crs'];
-
-                if (info_type == 'WKT') {
-                    console.log(geometry);
-                    if (crs == 'EPSG:28992') {
-                        geometry = wkt_rd2wgs(geometry);
-                    }
-                    layer = omnivore.wkt.parse(geometry);
-                    layer.setStyle({color: color, weight: 2, name: name});
-                    layer.bindPopup(function (layer) {
-                            return 'name:'+layer.options.name});
-                    layer.addTo(get_layers(active_layer_id, 'pot_layer'));
-                }
-            });
-
-            socket.on('profile_info', function(pa) {
-                profile_array = pa;
-            });
-
-            socket.on('qau_information', function(qau_info) {
-                quantity_and_units_info = qau_info;
-            });
-
-            socket.on('control_strategy_config', function(csc) {
-                control_strategy_config = csc
             });
 
             socket.on('storage_strategy_window', function(params) {
@@ -1942,46 +1481,54 @@
                 marginal_costs_window(asset_id, mc)
             });
 
-            socket.on('carrier_list', function(carr_list) {
-                set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
-            });
+            // ------------------------------------------------------------------------------------------------------------
+            //  User Menu actions
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('store_list', function(store_items) {
+                sidebar_ctr = sidebar.getContainer();
 
-            socket.on('sector_list', function(list) {
-                set_sector_list(list['es_id'], list['sector_list']);
-            });
-
-            socket.on('esdl_services', function(list) {
-                set_esdl_services_information(list);
-            });
-
-            socket.on('esdl_service_result', function(results) {
-                hide_loader();
-                process_service_results(results)
-            });
-
-            socket.on('wms_layer_list', function(wms_layer_lst) {
-                wms_layer_list = wms_layer_lst;
-                // console.log(wms_layer_list);
-
-                for (var key in wms_layer_list) {
-                    var layer_info = wms_layer_list[key];
-
-                    layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
-                        layers: layer_info.layer_name,
-                        format: 'image/png',
-                        transparent: true,
-                        attribution: layer_info.attribution
-                    });
-                    if (layer_info.visible) {
-                        layer_info.layer_ref.addTo(map);
-                        layer_info.layer_ref.bringToFront();
-                    }
+{% if 'mondaine' in role %}
+                sidebar_ctr.innerHTML = '<h1>Load ESDL from Mondaine Hub</h1>';
+{% else %}
+                sidebar_ctr.innerHTML = '<h1>Load ESDL from store</h1>';
+{% endif %}
+                select = '<select id="load_es_selection">';
+                for (i = 0; i<store_items.length; i++) {
+                    select += '<option value="'+store_items[i]['id']+'"';
+                    if (i==0) { select += ' selected="true" '; }
+                    select += '>'+store_items[i]['title']+'</option>';
                 }
+                select += '</select>';
+                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + select;
+                sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();click_load_ESDL_button(this);">Load</button>';
+
+                sidebar.show();
             });
 
-            socket.on('and_now_press_download_file', function() {
-                $("#download-esdl").click();
+            socket.on('store_item_metadata', function(data) {
+                process_store_item_metadata(data);
             });
+
+            socket.on('show_es_info', function(es_attrs) {
+                // console.log('show es info received');
+                // console.log(es_attrs);
+                //show_es_info(es_attrs);
+                esdl_browser.open_browser(active_layer_id);
+            });
+
+{% if 'table' in role %}
+            socket.on('table_editor', function(asset_info_list) {
+                open_es_table_editor(dialog, asset_info_list);
+            });
+{% endif %}
+
+            socket.on('building_information', function(bld_info) {
+                open_building_editor(dialog, bld_info);
+            });
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  ESSIM functions
+            // ------------------------------------------------------------------------------------------------------------
 {% if 'essim' in role %}
             socket.on('simulation_not_started', function() {
                 simulation_not_started();
@@ -1996,76 +1543,14 @@
                 show_ESSIM_KPIs(results);
             });
 {% endif %}
-            socket.on('show_es_info', function(es_attrs) {
-                // console.log('show es info received');
-                // console.log(es_attrs);
-                show_es_info(es_attrs);
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  ESDL services functions
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('esdl_service_result', function(results) {
+                hide_loader();
+                process_service_results(results)
             });
-
-            // populate the asset menu grouped by capability
-            socket.on('capability_list', function(capabilities) {
-                $('#asset_menu').empty();
-
-                var optgroup = $('<optgroup>');
-                optgroup.attr('label', 'Non EnergyAssets');
-                optgroup.style = 'font-face: bold; font-size: 10px'
-                let non_energyassets = ['Area', 'Building', 'AggregatedBuilding']
-                for (let nea in non_energyassets) {
-                    let option = $("<option></option>");
-                    option.val(non_energyassets[nea]);
-                    option.text(non_energyassets[nea]);
-                    optgroup.append(option)
-                    genIconDataURL = drawTextImage(getAbbrevation(non_energyassets[nea]));
-                            window[non_energyassets[nea] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
-                }
-                $("#asset_menu").append(optgroup);
-
-                for (let key in capabilities) {
-                    //console.log(key + ' --> ' + capabilities[key])
-                    var optgroup = $('<optgroup>');
-                    optgroup.attr('label', key);
-                    optgroup.style = 'font-face: bold; font-size: 10px'
-                    for (let i in capabilities[key]) {
-                         let option = $("<option></option>");
-                         option.val(capabilities[key][i]);
-                         option.text(capabilities[key][i]);
-                         optgroup.append(option)
-                         // generate icons for markers that do not have an static image png
-                         if (!assets_for_icons.includes(capabilities[key][i])){
-                            //console.log("Generating marker for" + capabilities[key][i] + ", abbr = " + getAbbrevation(capabilities[key][i]));
-                            genIconDataURL = drawTextImage(getAbbrevation(capabilities[key][i]));
-                            window[capabilities[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
-                         }
-                    }
-                    $("#asset_menu").append(optgroup);
-                }
-                $("#asset_menu").attr("size", "15");
-                $("#asset_menu-menu").css({'max-height': '600px' });
-                $("#asset_menu").selectmenu("refresh");
-
-                //$( "#asset_menu" ).addClass( "overflow" );
-            });
-
-            socket.on('place_edr_asset', function(asset_type) {
-                $('#asset_menu').val(asset_type);
-                $("#asset_menu").selectmenu("refresh");
-                socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
-                initiate_draw_asset();
-            });
-
-            addGeoJSONListener(socket, map);
-{% if 'table' in role %}
-            socket.on('table_editor', function(asset_info_list) {
-                open_es_table_editor(dialog, asset_info_list);
-            });
-{% endif %}
-
-            socket.on('building_information', function(bld_info) {
-                open_building_editor(dialog, bld_info);
-            });
-
         });
     </script>
 
@@ -2185,32 +1670,6 @@
 
             <button id="edr-asset-btn" onclick="select_edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
             <select id="asset_menu" style='position:relative;z-index:100'>
-                <option value="Battery">Battery</option>
-                <option value="CHP">Combined Heat and Power</option>
-                <option value="EConnection">EConnection</option>
-                <option value="ElectricityDemand">ElectricityDemand</option>
-                <option value="ElectricityNetwork">ElectricityNetwork</option>
-                <option value="Electrolyzer">Electrolyzer</option>
-                <option value="FuelCell">FuelCell</option>
-                <option value="GConnection">GConnection</option>
-                <option value="GasHeater">GasHeater</option>
-                <option value="GasNetwork">GasNetwork</option>
-                <option value="GenericConsumer">GenericConsumer</option>
-                <option value="GenericConversion">GenericConversion</option>
-                <option value="GenericProducer">GenericProducer</option>
-                <option value="GeothermalSource">GeothermalSource</option>
-                <option value="HeatingDemand">HeatingDemand</option>
-                <option value="HeatNetwork">HeatNetwork</option>
-                <option value="HeatPump">HeatPump</option>
-                <option value="Joint">Joint</option>
-                <option value="MobilityDemand">MobilityDemand</option>
-                <option value="PowerPlant">PowerPlant</option>
-                <option value="PVInstallation">PVInstallation</option>
-                <option value="PVParc">PVParc</option>
-                <option value="Transformer">Transformer</option>
-                <option value="UTES">UTES</option>
-                <option value="WindTurbine">WindTurbine</option>
-                <!-- option value="ResidualHeatSourcePotential">ResidualHeatSourcePotential</option-->
             </select>
 
             <select id="line_select">
@@ -2254,7 +1713,6 @@
 
     var map = new L.Map('mapid', {
         center: new L.LatLng(52.1, 5.8),
-        zoomSnap: 0.1,
         zoom: 8,
         timeDimensionControl: true,
         timeDimensionControlOptions: {
@@ -2266,33 +1724,6 @@
             period: "PT1H"
         }
     });
-
-    //var esdl_layer = L.featureGroup().addTo(map),
-    //        area_layer = L.featureGroup().addTo(map),
-    //        bld_layer = L.featureGroup().addTo(map),
-    //        pot_layer = L.featureGroup().addTo(map),
-    //        connection_layer = L.featureGroup().addTo(map),
-    //        sim_layer = L.featureGroup().addTo(map);
-
-    // TODO: Check how this should be handled
-    // get_layers(active_layer_id, 'connection_layer').bringToFront();
-
-    // var geo = L.geoJson({features:[]},{onEachFeature:function popUp(f,l){
-    // 		var out = [];
-    // 		if (f.properties){
-    //    		for(var key in f.properties){
-    //        	out.push(key+": "+f.properties[key]);
-    //        }
-    //        l.bindPopup(out.join("<br />"));
-    //    }
-    // }}).addTo(map);
-
-	// shp('http://localhost:8111/prov.zip').then(function(data){
-	//    geo.addData(data);
-	// }, function(a){
-	//    console.log(a)
-	// });
-
 
     baseTree = {
         label: 'Base layers',
@@ -2314,23 +1745,6 @@
         ]
     };
 
-    //overlaysTree = {
-    //    label: 'ESDL',
-    //    children: [
-    //        {
-    //            label: 'Untitled EnergySystem',
-    //            children: [
-    //                { label: 'Area', layer: area_layer },
-    //                { label: 'Assets', layer: esdl_layer },
-    //                { label: 'Connections', layer: connection_layer },
-    //                { label: 'Buildings', layer: bld_layer },
-    //                { label: 'Potentials', layer: pot_layer },
-    //                { label: 'Simulation results', layer: sim_layer }
-    //            ]
-    //        }
-    //    ]
-    //};
-
     overlaysTree = {
         label: 'ESDL',
         children: []
@@ -2345,24 +1759,6 @@
         filename: 'ESDL_map'
     }).addTo(map);
 
-<!--    L.control.layers(-->
-<!--        {-->
-<!--            'OpenStreetMap': osm.addTo(map),-->
-<!--            "Google": L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {-->
-<!--                attribution: 'Google'-->
-<!--            })-->
-<!--        },-->
-<!--        {-->
-<!--            'Assets': esdl_layer,-->
-<!--            'Area boundaries': area_layer,-->
-<!--            'Building boundaries': bld_layer,-->
-<!--            'Potential boundaries': pot_layer,-->
-<!--            'Connections': connection_layer,-->
-<!--            'Simulation results': sim_layer-->
-<!--        },-->
-<!--        //, 'wms': wms_layer, 'wms2': wms_layer2 },-->
-<!--        { position: 'topleft', collapsed: false }-->
-<!--    ).addTo(map);-->
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
@@ -2384,7 +1780,7 @@
     });
     map.addControl(sidebar);
 
-    let options = {
+    let dialog_options = {
         size: [ 1600, 700 ],
         minSize: [ 100, 100 ],
         maxSize: [ 2000, 800 ],
@@ -2392,168 +1788,7 @@
         initOpen: false
     };
 
-    dialog = L.control.dialog(options);
+    dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
-
-    // the 'dragend' event of Polyline does not work, this is an alternative solution
-    map.on('draw:edited', function (e) {
-        var layers = e.layers;
-        layers.eachLayer(function (layer) {
-            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-                polyline_length = calculate_length(layer);
-                socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-            }
-            if (layer instanceof L.Polygon) {
-
-                // Find marker belonging to Polygon and recalculate center
-                // esdl_objects = esdl_layer.getLayers();
-                esdl_objects = get_layers(active_layer_id, 'esdl_layer').getLayers();
-                for (let i=0; i<esdl_objects.length; i++) {
-                    esdl_object = esdl_objects[i];
-                    if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
-                        polygon_center = calculate_leaflet_polygon_center(layer.getLatLngs()[0]);
-                        var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
-                        esdl_object.setLatLng(newLatLng);
-
-                        // send updated coordinates to backend to update port_to_asset_mapping and update connections
-                        socket.emit('update-coord', {id: layer.id, lat: polygon_center[0], lng: polygon_center[1], asspot: layer.asspot});
-                    }
-                }
-
-                // recalculate area
-                polygon_area = calculate_area(layer);
-                socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
-            }
-        });
-    });
-
-    // To prevent the onclick functionality when removing objects
-	map.on(L.Draw.Event.DELETESTART, function (event) {
-        deleting_objects = true;
-	});
-
-	map.on(L.Draw.Event.DELETESTOP, function (event) {
-        deleting_objects = false;
-	});
-
-    // To prevent the onclick functionality when editing objects
-	map.on(L.Draw.Event.EDITSTART, function (event) {
-        editing_objects = true;
-	});
-
-	map.on(L.Draw.Event.EDITSTOP, function (event) {
-        editing_objects = false;
-	});
-
-    map.on('contextmenu.select', function(e) {
-        // this event is fired for all contextmenu clicks
-        // TODO: how to filter add profile in a better way???
-        menu_item_text = e.el.innerText;
-        // console.log(e);
-
-//        if (menu_item_text.substring(0, 11) == 'Set profile') {
-//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-//            // console.log(port_id);
-//            socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
-//        }
-
-//        if (menu_item_text.substring(0, 8) ==  'Connect ') {
-//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-//            // console.log('In contextmenu select eventhandler:');
-//            // console.log(port_id);
-//            if (connect_ports != null) {
-//                socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
-//                connect_ports = null;
-//            } else {
-//                connect_ports = port_id;
-//            }
-//        }
-
-//        if (menu_item_text.substring(0, 10) ==  'Set Driven') {
-//            port_id = menu_item_text.substring(menu_item_text.indexOf('(')+1, menu_item_text.indexOf(')'));
-//            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
-//
-//            if (menu_item_text.substring(4, 14) ==  'DrivenByDemand') {
-//                set_driven_by_demand(asset_id, port_id);
-//            }
-//            if (menu_item_text.substring(4, 14) ==  'DrivenBySupply') {
-//                set_driven_by_supply(asset_id, port_id);
-//            }
-//        }
-
-//        if (menu_item_text.substring(0, 11) ==  'Set Storage') {
-//            asset_id = menu_item_text.substring(menu_item_text.indexOf('[')+1, menu_item_text.indexOf(']'));
-//            socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
-//        }
-    });
-
-    map.on(L.Draw.Event.CREATED, function (event) {
-        let layer = event.layer;
-        let type = event.layerType;
-        layer.id = uuidv4();
-
-        selected_area_bld_index = document.getElementById("area_bld_select").selectedIndex;
-        selected_area_bld_options = document.getElementById("area_bld_select").options;
-        selected_area_bld_id = selected_area_bld_options[selected_area_bld_index].value;
-        // console.log('selected area/building id: ' + selected_area_bld_id);
-
-        if (type === 'marker') {
-            selection = document.getElementById("asset_menu").selectedIndex;
-            asset_options = document.getElementById("asset_menu").options;
-            selected_asset = asset_options[selection].value;
-            // console.log('selected option: ' + selection);
-            // console.log('selected asset: ' + selected_asset);
-
-            layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: 'point',
-                    lat: layer.getLatLng().lat,
-                    lng: layer.getLatLng().lng
-                }
-            });
-        }
-        if (type === 'polyline') {
-            line_type = document.getElementById("line_select").value;
-            //console.log('selected line type: ' + line_type);
-            layer.type = line_type;
-            layer.name = line_type + '_' + layer.id.substring(0,4);
-            layer.title = layer.name;
-            polyline_length = calculate_length(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: line_type, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: 'polyline',
-                    coordinates: layer.getLatLngs(),
-                    length: polyline_length
-                }
-            });
-        }
-        if (type === 'polygon' || type === 'rectangle') {
-            // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
-            // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
-            // area_layer.addLayer(layer, true);
-
-            selection = document.getElementById("asset_menu").selectedIndex;
-            asset_options = document.getElementById("asset_menu").options;
-            selected_asset = asset_options[selection].value;
-            // console.log('selected option: ' + selection);
-            // console.log('selected asset: ' + selected_asset);
-
-            layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            polygon_area = calculate_area(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: selected_area_bld_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: type,
-                    coordinates: layer.getLatLngs(),
-                    polygon_area: polygon_area
-                }
-            });
-        }
-    });
-
-    map.on('click', function(e) {
-        map.contextmenu.hide();
-    });
-
 
 </script>

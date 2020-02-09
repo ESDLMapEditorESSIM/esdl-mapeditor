@@ -176,6 +176,7 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
         self.esid_uri_dict[self.energy_system.id] = uri
+        self.add_object_to_dict(self.energy_system.id, self.energy_system)
         return self.energy_system
 
     def add_uri(self, uri):
@@ -184,6 +185,7 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
         self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
         return tmp_resource.contents[0]
 
     def load_from_string(self, esdl_string):
@@ -196,6 +198,7 @@ class EnergySystemHandler:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
             self.esid_uri_dict[self.energy_system.id] = uri
+            self.add_object_to_dict(self.energy_system.id, self.energy_system)
             return self.energy_system
         except Exception as e:
             return e            # TODO: how is this done nicely?
@@ -218,6 +221,8 @@ class EnergySystemHandler:
             if tmp_resource.contents[0].id is None:
                 tmp_resource.contents[0].id = self.generate_uuid()
             self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+            # hack to add energySystem id to uuid_dict
+            self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
             return tmp_resource.contents[0]
         except Exception as e:
             return e            # TODO: how is this done nicely?
@@ -332,23 +337,24 @@ class EnergySystemHandler:
             return self.get_resource(es_id).uuid_dict[object_id]
         else:
             print('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
+            print(self.get_resource(es_id).uuid_dict)
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
-    def add_object_to_dict(self, es_id, asset):
-        if hasattr(asset, 'id'):
-            if asset.id is not None:
-                self.get_resource(es_id).uuid_dict[asset.id] = asset
+    def add_object_to_dict(self, es_id, esdl_object):
+        if hasattr(esdl_object, 'id'):
+            if esdl_object.id is not None:
+                self.get_resource(es_id).uuid_dict[esdl_object.id] = esdl_object
             else:
-                print('Id has not been set for asset {}({})', asset.eClass.name, asset)
+                print('Id has not been set for object {}({})', esdl_object.eClass.name, esdl_object)
 
-    def remove_object_from_dict(self, es_id, asset):
-        if hasattr(asset, 'id'):
-            if asset.id is not None:
-                del self.get_resource(es_id).uuid_dict[asset.id]
+    def remove_object_from_dict(self, es_id, esdl_object):
+        if hasattr(esdl_object, 'id'):
+            if esdl_object.id is not None:
+                del self.get_resource(es_id).uuid_dict[esdl_object.id]
 
-    def remove_object_from_dict_by_id(self, es_id, asset_id):
-        del self.get_resource(es_id).uuid_dict[asset_id]
+    def remove_object_from_dict_by_id(self, es_id, object_id):
+        del self.get_resource(es_id).uuid_dict[object_id]
 
     # returns a generator of all assets of a specific type. Not only the ones defined in  the main Instance's Area
     # e.g. QuantityAndUnits can be defined in the KPI of an Area or in the EnergySystemInformation object
@@ -389,6 +395,11 @@ class EnergySystemHandler:
         # add the current energy system
         self.resource.append(self.energy_system)
         self.esid_uri_dict[self.energy_system.id] = uri
+
+        # add generated id's to uuid dict
+        self.add_object_to_dict(es_id, self.energy_system)
+        self.add_object_to_dict(es_id, instance)
+        self.add_object_to_dict(es_id, area)
 
         return self.energy_system
 
