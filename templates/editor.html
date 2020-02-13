@@ -1010,7 +1010,7 @@
                         marker.name = list[i][1];
                         marker.type = list[i][3];
 
-                        set_building_handlers(marker);
+                        // set_building_handlers(marker);
                         add_object_to_layer(es_id, 'bld_layer', marker);
                     }
                     if (list[i][0] == 'polygon') {
@@ -1051,7 +1051,7 @@
                             marker.type = list[i][3];
                             marker.polygon = true;
 
-                            set_building_handlers(marker);
+                            // set_building_handlers(marker);
                             add_object_to_layer(es_id, 'bld_layer', marker);
                         }
                     }
@@ -1197,6 +1197,15 @@
             socket.on('add_connections', function(connections) {
                 conn_list = connections['conn_list']
                 es_id = connections['es_id'];
+
+                add_to_building = connections['add_to_building'];
+                console.log(add_to_building);
+
+                es_bld_id = es_id;
+                if (add_to_building) {
+                   es_bld_id = bld_edit_id;
+                }
+
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 var linecolor = 0;
@@ -1245,7 +1254,7 @@
                     }
                     line.es_id = es_id;
                     // connection_layer.addLayer(line);
-                    add_object_to_layer(es_id, 'connection_layer', line);
+                    add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
             });
 

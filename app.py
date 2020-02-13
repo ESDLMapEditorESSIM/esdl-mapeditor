@@ -2752,8 +2752,9 @@ def process_command(message):
                 emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
             esh.add_object_to_dict(es_edit.id, asset)
-            for added_port in asset.port:
-                esh.add_object_to_dict(es_edit.id, added_port)
+            if hasattr(asset, 'port'):
+                for added_port in asset.port:
+                    esh.add_object_to_dict(es_edit.id, added_port)
             set_handler(esh)
 
     if message['cmd'] == 'remove_object':        # TODO: remove form asset_dict
@@ -3531,6 +3532,7 @@ def process_command(message):
         emit('add_esdl_objects',
              {'es_id': active_es_id, 'add_to_building': True, 'asset_pot_list': bld_info["asset_list"],
               'zoom': False})
+        emit('add_connections', {'es_id': active_es_id, 'add_to_building': True, 'conn_list': bld_info["conn_list"]})
 
     set_handler(esh)
     session.modified = True
@@ -3607,7 +3609,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
-            emit('add_connections', {'es_id': es.id, 'conn_list': conn_list})
+            emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
 
             set_session_for_esid(es.id, 'port_to_asset_mapping', mapping)
             set_session_for_esid(es.id, 'conn_list', conn_list)
