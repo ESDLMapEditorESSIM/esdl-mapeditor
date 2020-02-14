@@ -21,7 +21,7 @@ class ESDLBrowser:
         self.register()
 
     def register(self):
-        print('Registering HeatNetwork extension')
+        print('Registering ESDL Browser extension')
 
         @self.socketio.on('esdl_browse_get_objectinfo', namespace='/esdl')
         def socketio_get_objectinfo(message):
