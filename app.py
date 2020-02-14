@@ -385,6 +385,10 @@ def create_building_KPIs(building):
     except:
         pass
 
+    if building.KPIs:
+        for kpi in building.KPIs.kpi:
+            KPIs[kpi.name] = kpi.value
+
     return KPIs
 
 

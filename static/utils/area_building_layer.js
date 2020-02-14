@@ -11,7 +11,7 @@ var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
 
 var areaLegendChoice;       // will be initialized with the first KPI
-var buildingLegendChoice = "buildingYear";
+var buildingLegendChoice;
 
 var get_area_color;         // function to get color of an area
 var get_building_color = get_buildingYear_colors;     // function to get color of a building
@@ -26,8 +26,12 @@ function isNumeric(val) { return !isNaN(val); }
 
 function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "area") {
-        get_area_color = get_area_default_color;
+        get_area_color = null;
         areaLegendChoice = null;
+    }
+    if (layer_type === "building") {
+        get_building_color = null;
+        buildingLegendChoice = null;
     }
     for (l_index in layer_data) {
         let layer = layer_data[l_index];
@@ -37,12 +41,15 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
             if (KPI_value != "") {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
+                    if (layer_type === "building" && !buildingLegendChoice) { buildingLegendChoice = kpi; }
                     if (isNumeric(KPI_value)) {
                         if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
+                        if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
                         value = parseFloat(KPI_value);
                         kpi_list[kpi] = { "min": value, "max": value };
                     } else {
                         if (layer_type === "area" && !get_area_color) { get_area_color = get_area_array_colors; }
+                        if (layer_type === "building" && !get_building_color) { get_building_color = get_building_array_colors; }
                         kpi_list[kpi] = [KPI_value];
                     }
                 } else {
@@ -62,7 +69,12 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
             }
         }
     };
-
+    if (layer_type === "area") {
+        if (!get_area_color) { get_area_color = get_area_default_color; }
+    }
+    if (layer_type === "building") {
+        if (!get_building_color ) { get_building_color = get_building_default_color; }
+    }
     // console.log(kpi_list);
 }
 
@@ -191,6 +203,43 @@ function get_area_array_colors(value) {
 function get_area_default_color(value) {
     return "blue";
 }
+
+var building_legend_ranges;
+var num_building_range_colors;
+function get_building_range_colors(value) {
+    return grades[num_building_range_colors.toString()][get_range_color_index(value, building_legend_ranges, num_building_range_colors)];
+}
+
+var building_legend_array;
+var num_building_array_colors;
+function get_building_array_colors(value) {
+    return color_grades[building_legend_array.indexOf(value)];
+}
+
+function get_building_default_color(value) {
+    return "blue";
+}
+
+
+stdKPIs = {
+    "buildingYear": {
+        "get_colors": get_buildingYear_colors,
+        "color_grades": grades[num_building_year_categories],
+        "create_legendClassesDiv": create_buildingYear_legendClassesDiv
+    },
+    "floorArea": {
+        "get_colors": get_floorArea_colors,
+        "color_grades": grades[num_building_area_categories],
+        "create_legendClassesDiv": create_floorArea_legendClassesDiv
+    },
+    "buildingType": {
+        "get_colors": get_buildingType_colors,
+        "color_grades": building_type_colors,
+        "create_legendClassesDiv": create_buildingType_legendClassesDiv
+    }
+}
+
+
 // ------------------------------------------------------------------------------------------------------------
 //  Functions to create the proper legends
 // ------------------------------------------------------------------------------------------------------------
@@ -198,47 +247,72 @@ var buildingLegendClassesDiv;
 var areaLegendClassesDiv;
 
 function create_floorArea_legendClassesDiv() {
-    buildingLegendClassesDiv.innerHTML = '';
+    let result = '';
     for (var i = 0; i < building_area_categories.length; i++) {
-        buildingLegendClassesDiv.innerHTML +=
+        result +=
             '<i style="background:' + get_floorArea_colors(building_area_categories[i] + 1) + '"></i> ' +
             building_area_categories[i] + (building_area_categories[i + 1] ? ' <b>&ndash;</b> ' + building_area_categories[i + 1] + '<br>' : '+');
     }
+    return result;
 }
 
 function create_buildingYear_legendClassesDiv() {
-    buildingLegendClassesDiv.innerHTML = '';
+    let result = '';
     for (var i = 0; i < building_year_categories.length; i++) {
-        buildingLegendClassesDiv.innerHTML +=
+        result +=
             '<i style="background:' + get_buildingYear_colors(building_year_categories[i] + 1) + '"></i> ' +
             building_year_categories[i] + ((i != building_year_categories.length-1)  ? ' <b>&ndash;</b> ' + building_year_categories[i + 1] + '<br>' : '+');
     }
+    return result;
 }
 
 function create_buildingType_legendClassesDiv() {
-    buildingLegendClassesDiv.innerHTML = '';
+    let result = '';
     for (key in building_type_colors) {
         color = building_type_colors[key];
-        buildingLegendClassesDiv.innerHTML += '<i style="background:' + color + '"></i> ' + key + '<br>';
+        result += '<i style="background:' + color + '"></i> ' + key + '<br>';
     }
+    return result;
 }
 
 function create_range_area_legendClassesDiv(kpi) {
-    areaLegendClassesDiv.innerHTML = '';
+    let result = '';
     for (var i = 0; i < area_legend_ranges.length; i++) {
-        areaLegendClassesDiv.innerHTML +=
+        result +=
             '<i style="background:' + get_area_range_colors(area_legend_ranges[i]) + '"></i> ' +
             area_legend_ranges[i] + ((i != area_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + area_legend_ranges[i + 1] + '<br>' : '+');
     }
+    return result;
 }
 
 function create_array_area_legendClassesDiv(kpi) {
-    areaLegendClassesDiv.innerHTML = '';
+    let result = '';
     for (i=0; i<kpi.length; i++) {
         color = grades[kpi.length][i];
-        areaLegendClassesDiv.innerHTML += '<i style="background:' + color + '"></i> ' + kpi[i] + '<br>';
+        result += '<i style="background:' + color + '"></i> ' + kpi[i] + '<br>';
     }
+    return result;
 }
+
+function create_range_building_legendClassesDiv(kpi) {
+    let result = '';
+    for (var i = 0; i < building_legend_ranges.length; i++) {
+        result +=
+            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i> ' +
+            building_legend_ranges[i] + ((i != building_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + building_legend_ranges[i + 1] + '<br>' : '+');
+    }
+    return result;
+}
+
+function create_array_building_legendClassesDiv(kpi) {
+    let result = '';
+    for (i=0; i<kpi.length; i++) {
+        color = grades[kpi.length][i];
+        result += '<i style="background:' + color + '"></i> ' + kpi[i] + '<br>';
+    }
+    return result;
+}
+
 
 // ------------------------------------------------------------------------------------------------------------
 //
@@ -381,39 +455,33 @@ function add_building_layer(building_data) {
 // ------------------------------------------------------------------------------------------------------------
 //  Function that deals with selecting another parameter in the Legend
 // ------------------------------------------------------------------------------------------------------------
-function selectBuildingKPI(selectObject) {
-    buildingLegendChoice = selectObject.value;
-
-    switch (buildingLegendChoice) {
-        case "buildingYear":
-            color_grades = grades[num_building_year_categories];
-            get_building_color = get_buildingYear_colors;
-            create_buildingYear_legendClassesDiv();
-            break;
-        case "floorArea":
-            color_grades = grades[num_building_area_categories];
-            get_building_color = get_floorArea_colors;
-            create_floorArea_legendClassesDiv();
-            break;
-        case "buildingType":
-            color_grades = building_type_colors;
-            get_building_color = get_buildingType_colors;
-            create_buildingType_legendClassesDiv();
-            break;
+function create_building_legendClassesDiv(legendChoice) {
+    let kpi = building_KPIs[legendChoice];
+    if (legendChoice in stdKPIs) {
+        color_grades = stdKPIs[legendChoice]["color_grades"];
+        get_building_color = stdKPIs[legendChoice]["get_colors"];
+        return stdKPIs[legendChoice]["create_legendClassesDiv"]();
+    } else {
+        return create_building_array_or_range_legendClassesDiv(kpi);
     }
+}
+
+function selectBuildingKPI(selectObject) {
+    let legendChoice = selectObject.value;
+    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(legendChoice);
 
     geojson_building_layer.eachLayer(function (layer) {
         layer.setStyle({
-            fillColor: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice]),
-            color: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice])
+            fillColor: get_building_color(layer.feature.properties.KPIs[legendChoice]),
+            color: get_building_color(layer.feature.properties.KPIs[legendChoice])
         });
     });
 }
 
-function create_area_array_or_range_legendClassesDiv(kpi) {
+function create_building_array_or_range_legendClassesDiv(kpi) {
     if (Array.isArray(kpi)) {
         if (kpi.length > 9) {
-            alert("More than 9 labels ("+kpi.length+") in KPI "+areaLegendChoice);
+            alert("More than 9 labels ("+kpi.length+") in KPI "+buildingLegendChoice);
             rb = new Rainbow();
             rb.setNumberRange(0, kpi.length-1);
             color_grades = [];
@@ -423,18 +491,18 @@ function create_area_array_or_range_legendClassesDiv(kpi) {
         } else {
             color_grades = grades[kpi.length]
         }
-        area_legend_array = area_KPIs[areaLegendChoice];
-        num_area_array_colors = kpi.length;
-        get_area_color = get_area_array_colors;
-        create_array_area_legendClassesDiv(kpi);
+        building_legend_array = building_KPIs[buildingLegendChoice];
+        num_building_array_colors = kpi.length;
+        get_building_color = get_building_array_colors;
+        return create_array_building_legendClassesDiv(kpi);
     } else {
         // kpi is number with min and max
         var min = kpi["min"];
         var max = kpi["max"];
-        area_legend_ranges = create_ranges(min, max);
-        num_area_range_colors = area_legend_ranges.length;
-        get_area_color = get_area_range_colors;
-        create_range_area_legendClassesDiv();
+        building_legend_ranges = create_ranges(min, max);
+        num_building_range_colors = building_legend_ranges.length;
+        get_building_color = get_building_range_colors;
+        return create_range_building_legendClassesDiv(kpi);
     }
 }
 
@@ -442,7 +510,7 @@ function selectAreaKPI(selectObject) {
     areaLegendChoice = selectObject.value;
     kpi = area_KPIs[areaLegendChoice];
 
-    create_area_array_or_range_legendClassesDiv(kpi);
+    areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(kpi);
 
     geojson_area_layer.eachLayer(function (layer) {
         layer.setStyle({
@@ -465,19 +533,42 @@ function createBuildingLegendDiv() {
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this);">';
     for (bkpi in building_KPIs) {
-        if (bkpi == 'buildingYear') {
-            selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
-        } else {
+//        if (bkpi == 'buildingYear') {
+//            selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
+//        } else {
             selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-        }
+//        }
     }
     selectText += '</select>';
     selectorDiv.innerHTML = selectText;
 
     buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
-    create_buildingYear_legendClassesDiv();     // assume buildingYear is first category
+
+    first_kpi_name = Object.keys(building_KPIs)[0];
+    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(first_kpi_name);
     return legendDiv;
 };
+
+//function createBuildingLegendDiv() {
+//    var legendDiv = L.DomUtil.create('div', 'info legend');
+//    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
+//    legendTitleDiv.innerHTML += 'Building Legend';
+//
+//    var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
+//    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this);">';
+//    for (bkpi in building_KPIs) {
+//        selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
+//    }
+//    selectText += '</select>';
+//    selectorDiv.innerHTML = selectText;
+//
+//    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
+//
+//    first_kpi_name = Object.keys(building_KPIs)[0];
+//    buildingLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(building_KPIs[first_kpi_name]);
+//    return legendDiv;
+//};
+
 
 
 function createAreaLegendDiv() {
@@ -496,7 +587,7 @@ function createAreaLegendDiv() {
     areaLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
 
     first_kpi_name = Object.keys(area_KPIs)[0];
-    create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
+    areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
     return legendDiv;
 };
 
@@ -531,9 +622,9 @@ function add_building_geojson_layer_with_legend(geojson_building_data) {
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
 
-    buildingLegendChoice = "buildingYear";
-    color_grades = grades[num_building_year_categories];
-    get_building_color = get_buildingYear_colors;
+//    buildingLegendChoice = "buildingYear";
+//    color_grades = grades[num_building_year_categories];
+//    get_building_color = get_buildingYear_colors;
 
     removeBuildingLegend();
     if (!jQuery.isEmptyObject(building_KPIs)) {
