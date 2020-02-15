@@ -19,6 +19,7 @@ default_wms_layers = {
         "description": "Liander hoogspanningskabels",
         "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
         "layer_name": "hoogspanningskabels",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": ''
@@ -27,6 +28,7 @@ default_wms_layers = {
         "description": "Liander middenspanningskabels",
         "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
         "layer_name": "middenspanningskabels",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": ''
@@ -35,6 +37,7 @@ default_wms_layers = {
         "description": "PICO Hoogspanningsnet 2018",
         "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
         "layer_name": "Hoogspanningsnet_2018",
+        "legend_url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=8&format=png&layertitle=false&layer=Hoogspanningsnet_2018",
         "layer_ref": None,
         "visible": False,
         "attribution": 'PICO'
@@ -43,6 +46,7 @@ default_wms_layers = {
         "description": "LT_WarmteBronnen_ECW",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "LT_WarmteBronnen_ECW",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -51,6 +55,7 @@ default_wms_layers = {
         "description": "WarmteNetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "WarmteNetten",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -59,6 +64,7 @@ default_wms_layers = {
         "description": "GasLeidingenEnexis",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "GasLeidingenEnexis",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -67,6 +73,7 @@ default_wms_layers = {
         "description": "GasLeidingenStedin",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "GasLeidingenStedin",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -75,6 +82,7 @@ default_wms_layers = {
         "description": "CO2EmissieBedrijven",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "CO2EmissieBedrijven",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -83,6 +91,7 @@ default_wms_layers = {
         "description": "AardwarmteKrijtJura",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "AardwarmteKrijtJura",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -91,6 +100,7 @@ default_wms_layers = {
     #     "description": "AardwarmteTriasMap",
     #     "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
     #     "layer_name": "AardwarmteTriasMap",
+    #     "legend_url": "",
     #     "layer_ref": None,
     #     "visible": False,
     #     "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -99,6 +109,7 @@ default_wms_layers = {
         "description": "AardwarmteRotliegend",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "AardwarmteRotliegend",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -107,6 +118,7 @@ default_wms_layers = {
         "description": "Potentieel Restwarmte uit koelinstallaties voor MT warmtenetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "CondensWarmte",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -115,6 +127,7 @@ default_wms_layers = {
         "description": "Potentieel Restwarmte uit DataCentra voor LT warmtenetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "DataCentraWarmte",
+        "legend_url": "",
         "layer_ref": None,
         "visible": False,
         "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -123,6 +136,7 @@ default_wms_layers = {
     #     "description": "Potentieel warmte uit vertikale gesloten WKO (warmte koude opslag)",
     #     "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
     #     "layer_name": "gs_warm",
+    #     "legend_url": "",
     #     "layer_ref": None,
     #     "visible": False,
     #     "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
@@ -131,6 +145,7 @@ default_wms_layers = {
     #     "description": "Potentieel koude uit vertikale gesloten WKO (warmte koude opslag)",
     #     "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
     #     "layer_name": "gs_koud",
+    #     "legend_url": "",
     #     "layer_ref": None,
     #     "visible": False,
     #     "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'

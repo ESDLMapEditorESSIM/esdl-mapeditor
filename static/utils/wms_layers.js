@@ -34,10 +34,16 @@ function click_layer(id) {
         wms_layer_list[id].layer_ref.addTo(map);
         wms_layer_list[id].layer_ref.bringToFront();
         wms_layer_list[id].visible = true;
+        if (wms_layer_list[id].legend_url !== "") {
+            show_wms_legend(wms_layer_list[id].legend_url);
+        }
     } else {
         // console.log('remove layer from map: '+id);
         map.removeLayer(wms_layer_list[id].layer_ref);
         wms_layer_list[id].visible = false;
+        if (wms_layer_list[id].legend_url !== "") {
+            remove_wms_legend();
+        }
     }
 }
 
@@ -68,4 +74,32 @@ function show_layers() {
     sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
     sidebar.show();
+}
+
+function create_wms_layer_legend(url) {
+    var legend_div = L.DomUtil.create('div', 'info legend');
+    var legend_title_div = L.DomUtil.create('div', 'legend_title', legend_div);
+    legend_title_div.innerHTML += 'Legend';
+
+    LegendPicture_div = L.DomUtil.create('div', 'info legend', legend_div);
+    LegendPicture_div.innerHTML = '<img src="'+url+'">'
+    return legend_div;
+}
+
+var wms_legend = null;
+function show_wms_legend(url) {
+    if (wms_legend) {
+        map.removeControl(wms_legend);
+    }
+    wms_legend = L.control({position: 'bottomright'});
+    wms_legend.onAdd = function (map) {
+        return create_wms_layer_legend(url);
+    };
+    wms_legend.addTo(map);
+}
+
+function remove_wms_legend() {
+    if (wms_legend) {
+        map.removeControl(wms_legend);
+    }
 }
