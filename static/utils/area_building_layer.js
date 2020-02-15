@@ -412,6 +412,7 @@ function add_area_layer(area_data) {
             }
             if (feature.properties && feature.properties.id) {
                 layer.id = feature.properties.id;
+// if we uncomment the following lines, the area context menu doesn't work
 //                let text = "ID: " + feature.properties.id;
 //                if (feature.properties.name) {
 //                    text = feature.properties.name + " (" + text + ")";

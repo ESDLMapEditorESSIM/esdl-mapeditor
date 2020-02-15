@@ -2271,6 +2271,7 @@ def get_boundary_info(info):
     print(info)
     identifier = info["identifier"]
     scope = info["scope"]
+    subscope_enabled = info["subscope_enabled"]
     subscope = info["subscope"]
     initialize_ES = info["initialize_ES"]
     add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
@@ -2285,67 +2286,17 @@ def get_boundary_info(info):
     instance = es_edit.instance
     area = instance[0].area
 
-    preload_subboundaries_in_cache(esdl.AreaScopeEnum.from_string(str.upper(scope)),
-                                   esdl.AreaScopeEnum.from_string(str.upper(subscope)),
-                                   str.upper(identifier))
-
-    if initialize_ES:
-        # change ID, name and scope of ES
-        area.id = identifier
-        area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
-        if add_boundary_to_ESDL:
-            # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
-            boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
-            if boundary:
-                geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
-                area.geometry = geometry
-
-            # boundary = get_boundary_from_service(area_scope, area_id)
-            # if boundary:
-            #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
-
-    boundaries = get_subboundaries_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)),
-                                                esdl.AreaScopeEnum.from_string(str.upper(subscope)),
-                                                str.upper(identifier))
-    # result (boundaries) is an ARRAY of:
-    # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
-    # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
-
-    if not boundaries:
-        send_alert('Error processing boundary information or no boundary information returned')
-
     area_list = []
-
-    for boundary in boundaries:
-        geom = None
-        try:
-#            geom = json.loads(boundary["geom"])
-            geom = boundary["geom"]
-        except Exception as e:
-            print('Error parsing JSON from GEIS boundary service: '+ str(e))
-
-        if geom:
-            # print('boundary["geom"]: ')
-            # print(boundary["geom"])
-            # print(boundary)
-
-            if initialize_ES:
-                sub_area = esdl.Area()
-                sub_area.id = boundary["code"]
-                sub_area.name = boundary["name"]
-                sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
-
-                if add_boundary_to_ESDL:
-                    geometry = ESDLGeometry.create_geometry_from_geom(geom)
-                    sub_area.geometry = geometry
-
-                area.area.append(sub_area)
-
-            # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
-            # boundary = create_boundary_from_contour(area_contour)
-            # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
-
-            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+    boundary = None
+    if subscope_enabled:
+        preload_subboundaries_in_cache(esdl.AreaScopeEnum.from_string(str.upper(scope)),
+                                       esdl.AreaScopeEnum.from_string(str.upper(subscope)),
+                                       str.upper(identifier))
+    else:
+        boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+        if boundary:
+            geom = boundary['geom']
+            # geometry = ESDLGeometry.create_geometry_from_geom()
 
             for i in range(0, len(geom['coordinates'])):
                 if len(geom['coordinates']) > 1:
@@ -2359,11 +2310,87 @@ def get_boundary_info(info):
                         "coordinates": geom['coordinates'][i]
                     },
                     "properties": {
-                        "id": sub_area.id + area_id_number,
-                        "name": sub_area.name,
+                        "id": area.id + area_id_number,
+                        "name": area.name,
                         "KPIs": []
                     }
                 })
+
+    if initialize_ES:
+        # change ID, name and scope of ES
+        area.id = identifier
+        area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
+        if add_boundary_to_ESDL:
+            # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
+            if not boundary:    # check if already requested
+                boundary = get_boundary_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+            if boundary:
+                geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
+                area.geometry = geometry
+
+            # boundary = get_boundary_from_service(area_scope, area_id)
+            # if boundary:
+            #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
+
+    if subscope_enabled:
+        boundaries = get_subboundaries_from_service(esdl.AreaScopeEnum.from_string(str.upper(scope)),
+                                                esdl.AreaScopeEnum.from_string(str.upper(subscope)),
+                                                str.upper(identifier))
+        # result (boundaries) is an ARRAY of:
+        # {'code': 'BU00140500', 'geom': '{"type":"MultiPolygon","bbox":[...],"coordinates":[[[[6.583651,53.209594],
+        # [6.58477,...,53.208816],[6.583651,53.209594]]]]}'}
+
+        if not boundaries:
+            send_alert('Error processing boundary information or no boundary information returned')
+
+        for boundary in boundaries:
+            geom = None
+            try:
+                # geom = json.loads(boundary["geom"])
+                geom = boundary["geom"]
+            except Exception as e:
+                print('Error parsing JSON from GEIS boundary service: '+ str(e))
+
+            if geom:
+                # print('boundary["geom"]: ')
+                # print(boundary["geom"])
+                # print(boundary)
+
+                if initialize_ES:
+                    sub_area = esdl.Area()
+                    sub_area.id = boundary["code"]
+                    sub_area.name = boundary["name"]
+                    sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
+
+                    if add_boundary_to_ESDL:
+                        geometry = ESDLGeometry.create_geometry_from_geom(geom)
+                        sub_area.geometry = geometry
+
+                    area.area.append(sub_area)
+
+                # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+                # boundary = create_boundary_from_contour(area_contour)
+                # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+
+                # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
+                for i in range(0, len(geom['coordinates'])):
+                    if len(geom['coordinates']) > 1:
+                        area_id_number = " ({} of {})".format(i + 1, len(geom['coordinates']))
+                    else:
+                        area_id_number = ""
+                    area_list.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": geom['coordinates'][i]
+                        },
+                        "properties": {
+                            "id": sub_area.id + area_id_number,
+                            "name": sub_area.name,
+                            "KPIs": []
+                        }
+                    })
 
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
 

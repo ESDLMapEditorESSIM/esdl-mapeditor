@@ -18,7 +18,11 @@ function boundary_info_window() {
     table = table + '<option value="district">district</option>';
     table = table + '<option value="neighbourhood">neighbourhood</option>';
     table = table + '</select></td></tr>';
+    table = table + '<tr><td width=180>Identifier</td>';
+    table = table + '<td><input type="text" width="60" id="identifier" value="GM0060"></td></tr>';
 
+    table = table + '<tr><td width=180>Divide into subareas</td>';
+    table = table + '<td><input type="checkbox" id="cb_subareas" checked></td></tr>';
     table = table + '<tr><td width=180>Subscope</td>';
     <!-- table = table + '<td><input type="text" width="60" id="subscope" value="neighbourhood"></td></tr>'; -->
 
@@ -31,8 +35,6 @@ function boundary_info_window() {
     table = table + '<option value="neighbourhood" selected>neighbourhood</option>';
     table = table + '</select></td></tr>';
 
-    table = table + '<tr><td width=180>Identifier</td>';
-    table = table + '<td><input type="text" width="60" id="identifier" value="GM0060"></td></tr>';
     table = table + '<tr><td width=180>Initialize energysystem</td>';
     table = table + '<td><input type="checkbox" id="initialize_ES" checked></td></tr>';
     table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
@@ -60,13 +62,14 @@ function boundary_info_window() {
 function get_boundary_info(obj) {
     identifier = document.getElementById('identifier').value;
     scope = document.getElementById('scope').value;
+    subscope_enabled = document.getElementById('cb_subareas').checked;
     subscope = document.getElementById('subscope').value;
     initialize_ES = document.getElementById('initialize_ES').checked;
     add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
 
     show_loader();
-    socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope: subscope,
-        initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
+    socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope_enabled: subscope_enabled,
+        subscope: subscope, initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
 }
 
 function get_ibis_info(obj) {
