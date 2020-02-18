@@ -3461,12 +3461,16 @@ def process_command(message):
         descr = message['descr']
         url = message['url']
         name = message['name']
+        group_id = message['group_id']
+        legend_url = message['legend_url']
         visible = message['visible']
 
         layer = {
             "description": descr,
             "url": url,
             "layer_name": name,
+            "group_id": group_id,
+            "legend_url": legend_url,
             "layer_ref": None,
             "visible": visible
         }
