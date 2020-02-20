@@ -2492,6 +2492,23 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     add_control_strategy_for_asset(asset_id, cs)
 
 
+def add_curtailment_control_strategy_for_asset(asset_id, max_power):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
+    asset = esh.get_by_id(active_es_id, asset_id)
+    if not asset.name:
+        asset.name = 'Unknown Asset'
+
+    cs = esdl.CurtailmentStrategy()
+    cs.id = str(uuid.uuid4())
+    cs.name = 'CurtailmentStrategy for ' + asset.name
+    cs.energyAsset = asset
+
+    cs.maxPower = str2float(max_power)
+
+    add_control_strategy_for_asset(asset_id, cs)
+
+
 def get_storage_marginal_costs(asset_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -2517,6 +2534,23 @@ def get_storage_marginal_costs(asset_id):
                     return mcc, mdc
 
     return 0, 0
+
+
+def get_curtailment_max_power(asset_id):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
+    asset = esh.get_by_id(active_es_id, asset_id)
+    es = esh.get_energy_system(es_id=active_es_id)
+
+    services = es.services
+    if services:
+        services_list = services.service
+        for service in services_list:
+            if isinstance(service, esdl.CurtailmentStrategy):
+                if service.energyAsset == asset:
+                    return service.maxPower
+
+    return 0
 
 
 def remove_control_strategy_for_asset(asset_id):
@@ -3393,6 +3427,12 @@ def process_command(message):
         mcc, mdc = get_storage_marginal_costs(asset_id)
         emit('storage_strategy_window', {'asset_id': asset_id, 'mcc': mcc, 'mdc': mdc})
 
+    if message['cmd'] == 'get_curtailment_strategy_info':
+        asset_id = message['asset_id']
+
+        max_power = get_curtailment_max_power(asset_id)
+        emit('curtailment_strategy_window', {'asset_id': asset_id, 'max_power': max_power})
+
     if message['cmd'] == 'set_control_strategy':
         # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
         strategy = message['strategy']
@@ -3402,6 +3442,9 @@ def process_command(message):
             mcc = message['marg_ch_costs']
             mdc = message['marg_disch_costs']
             add_storage_control_strategy_for_asset(asset_id, mcc, mdc)
+        elif strategy == 'CurtailmentStrategy':
+            max_power = message['max_power']
+            add_curtailment_control_strategy_for_asset(asset_id, max_power)
         else:
             port_id = message['port_id']
             add_drivenby_control_strategy_for_asset(asset_id, strategy, port_id)

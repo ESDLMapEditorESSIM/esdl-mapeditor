@@ -278,6 +278,17 @@
                         });
                     }
 
+                    if (marker.capability == 'Consumer' || marker.capability == 'Producer') {
+                        marker.options.contextmenuItems.push('-');
+                        marker.options.contextmenuItems.push({
+                            icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
+                            text: 'Set Curtailment BLAA strategy for [' + asset_id + ']',
+                            callback: function(e) {
+                                socket.emit('command', {cmd: 'get_curtailment_strategy_info', asset_id: asset_id})
+                            }
+                        });
+                    }
+
                     if (marker.capability == 'Consumer' || marker.capability == 'Producer' ||
                             marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
@@ -582,6 +593,26 @@
             sidebar_ctr.innerHTML += table;
 
             sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
+            sidebar.show();
+        }
+
+        function set_curtailment_strategy(asset_id) {
+            max_power = document.getElementById('curt_max_power').value;
+            socket.emit('command', {cmd: 'set_control_strategy', asset_id: asset_id, strategy: 'CurtailmentStrategy', max_power: max_power});
+        }
+
+        function curtailment_strategy_window(asset_id, max_power) {
+            sidebar_ctr = sidebar.getContainer();
+
+            sidebar_ctr.innerHTML = '<h1>Curtailment Strategy:</h1>';
+
+            table = '<table>';
+            table = table + '<tr><td width=180>Maximum power (in Watt)</td>';
+            table = table + '<td><input type="text" width="60" id="curt_max_power" value="' + max_power + '"></td></tr>';
+            table += '</table>';
+            sidebar_ctr.innerHTML += table;
+
+            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_curtailment_strategy(\''+ asset_id + '\');">Set strategy</button></p>';
             sidebar.show();
         }
 
@@ -1479,6 +1510,13 @@
                 var mdc = params['mdc'];
 
                 storage_strategy_window(asset_id, mcc, mdc)
+            });
+
+            socket.on('curtailment_strategy_window', function(params) {
+                var asset_id = params['asset_id'];
+                var max_power = params['max_power'];
+
+                curtailment_strategy_window(asset_id, max_power);
             });
 
             socket.on('marginal_costs', function(params) {
