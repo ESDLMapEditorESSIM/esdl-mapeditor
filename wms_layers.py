@@ -1,7 +1,8 @@
 default_wms_layers = {
     "groups": [
         {"id": "std", "name": "Standard Layers"},
-        {"id": "project", "name": "Project Layers"}
+        {"id": "project", "name": "Project Layers"},
+        {"id": "user", "name": "User Layers"}
     ],
     "layers": {
         "AHN2_5m": {
@@ -164,7 +165,7 @@ default_wms_layers = {
             "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
             "layer_name": "Hoogspanningsnet_2018",
             "group_id": "project",
-            "legend_url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=8&format=png&layertitle=false&layer=Hoogspanningsnet_2018",
+            "legend_url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=96&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=7&format=png&layertitle=false&layer=Hoogspanningsnet_2018",
             "layer_ref": None,
             "visible": False,
             "attribution": 'PICO'
@@ -176,7 +177,7 @@ default_wms_layers = {
 PICO Hoogspanningsnet 2018
 https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs
 Hoogspanningsnet_2018
-https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=8&format=png&layertitle=false&layer=Hoogspanningsnet_2018
+https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=96&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=7&format=png&layertitle=false&layer=Hoogspanningsnet_2018
 """
 
 

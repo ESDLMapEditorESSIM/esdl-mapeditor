@@ -196,7 +196,9 @@ html, body
     padding: 0px;
 }
 
-// z-index for jstree context menu, sidebar has 2000
-// .vakata-context {
-//    z-index: 20000 !important;
-// }
+/*
+z-index for jstree context menu, sidebar has 2000
+.vakata-context {
+   z-index: 20000 !important;
+}
+*/

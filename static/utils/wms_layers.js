@@ -22,11 +22,10 @@ function add_layer() {
     wms_layer_list['layers'][layer_id].layer_ref.bringToFront();
     wms_layer_list['layers'][layer_id].visible = true;
 
-    let ul_ref = document.getElementById('ul_group_wms_layers_'+group_id);
-    let new_li = document.createElement('li');
-    new_li.setAttribute('id', 'li_'+layer_id);
-    new_li.appendChild(document.createTextNode(layer_descr));
-    ul_ref.appendChild(new_li);
+    var parent = $('#layer_tree li#li_wms_layer_list_'+group_id+' ul');
+    var new_node = { "id":'li_'+layer_id, "text":layer_descr }; // , "state":{"checked":true} };
+    $('#layer_tree').jstree("create_node", parent, new_node, "last", false, false);
+    $('#layer_tree').jstree("check_node", '#li_'+layer_id);
 }
 
 function remove_layer(id) {
@@ -34,15 +33,6 @@ function remove_layer(id) {
     // console.log('remove layer: '+id);
     map.removeLayer(wms_layer_list['layers'][id].layer_ref);
     delete wms_layer_list['layers'][id];
-}
-
-function click_layer(id) {
-    checkbox = document.getElementById('cb_'+id);
-    if (checkbox.checked) {
-        show_wms_layer(id);
-    } else {
-        hide_wms_layer(id);
-    }
 }
 
 function show_wms_layer(id) {
@@ -71,54 +61,40 @@ function wmsLayerContextMenu(node)
             'label' : 'Delete layer',
             'action' : function () {
                 let id = node.id.substring(3);
-                remove_layer(id);
                 console.log('removing '+id);
-                $('#layer_tree').jstree("remove", id);
+                remove_layer(id);
+                $('#layer_tree').jstree("delete_node", '#'+node.id);
             }
         }
     }
     return items;
 }
 
+var tree_data = [];
 function show_layers() {
     sidebar_ctr = sidebar.getContainer();
 
     sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
-//    table = '<table>';
-//    for (var key in wms_layer_list) {
-//        let value = wms_layer_list[key];
-//
-//        table += '<tr><td><input type="checkbox" id="cb_'+ key +'" name="' +value.description+ '" onclick="click_layer(\''+key+'\');"';
-//        if (value.visible) { table += ' checked'; }
-//        table +='>';
-//        table += '<label for="'+value.id+'" title="' +value.url+' - '+value.layer_name + '">'+value.description+'</label></td>';
-//        table += '<td><button onclick="remove_layer(\'' + key + '\');">Del</button></td></tr>';
-//    }
-//    table += '</table>';
-//    sidebar_ctr.innerHTML += table;
+    tree = '<p><div id="layer_tree"></div></p>';
+    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + tree;
 
-    tree = '<p><div id="layer_tree">';
-    tree += '<ul id="ul_wms_layer_list">';
+    tree_data = [];
     for (var idx in wms_layer_list['groups']) {
         let group = wms_layer_list['groups'][idx];
         let group_id = group.id;
         let group_name = group.name;
-        tree += '<li id="li_wms_layer_list_'+group_id+'"><b>'+group_name+'</b>';
-        tree += '<ul id="ul_group_wms_layers_'+group_id+'">';
+        let tree_children = []
         for (var key in wms_layer_list['layers']) {
             let layer = wms_layer_list['layers'][key];
             let layer_group = layer.group_id;
             if (layer_group == group_id) {
                 let value = wms_layer_list['layers'][key];
-                tree += '<li id="li_'+ key +'">' +value.description+ '</li>';
+                tree_children.push({"id":"li_"+key, "text":value.description, "parent":"li_wms_layer_list_"+group_id});
             }
         }
-        tree += '</ul>';
-        tree += '</li>';
+        let tree_obj = {"id":"li_wms_layer_list_"+group_id, "text":group_name, "children":tree_children};
+        tree_data.push(tree_obj);
     }
-    tree += '</ul>';
-    tree += '</div></p>';
-    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + tree;
 
     sidebar_ctr.innerHTML += '<h2>Add layers:</h2>';
     table = '<table>';
@@ -147,19 +123,26 @@ function show_layers() {
             $('#layer_tree')
                 .on('select_node.jstree', function(e, data) {
                     console.log(data);
-                    console.log('adding '+data.node.id.substring(3));
-                    show_wms_layer(data.node.id.substring(3));
+                    let id = data.node.id.substring(3);
+                    if (!(id.startsWith("wms_layer_list"))) {
+                        console.log('adding '+id);
+                        show_wms_layer(id);
+                    }
                 })
                 .on('deselect_node.jstree', function(e, data) {
-                    console.log('removing '+data.node.id.substring(3));
-                    hide_wms_layer(data.node.id.substring(3));
+                    let id = data.node.id.substring(3);
+                    if (!(id.startsWith("wms_layer_list"))) {
+                        console.log('removing '+id);
+                        hide_wms_layer(id);
+                    }
                 })
                 .jstree({
                     "core" : {
+                        "data": tree_data,
                         // so that create works for contextmenu plugin
                         "check_callback" : true
                     },
-                    "plugins": ["checkbox", "state", "contextmenu"],
+                    "plugins": ["checkbox", "state", "contextmenu"], // , "ui", "crrm", "dnd"],
                     "contextmenu": {
                         "items": wmsLayerContextMenu
                     }
