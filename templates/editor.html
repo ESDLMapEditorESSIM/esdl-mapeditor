@@ -42,6 +42,9 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+
     <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
 
@@ -785,8 +788,8 @@
                 wms_layer_list = wms_layer_lst;
                 // console.log(wms_layer_list);
 
-                for (var key in wms_layer_list) {
-                    var layer_info = wms_layer_list[key];
+                for (var key in wms_layer_list['layers']) {
+                    var layer_info = wms_layer_list['layers'][key];
 
                     layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
                         layers: layer_info.layer_name,
@@ -1682,7 +1685,12 @@
         width: 25;
         height: 25;
     }
+    ul { z-index:20000 !important; }
     </style>
+    <!--    // z-index for jstree context menu, sidebar has 2000-->
+    <!--    .vakata-context { z-index:20000 !important; }-->
+    <!--    .jstree ul { z-index:20000 !important; }-->
+    <!--    .jstree li > a > .jstree-icon {  display:none !important; }-->
 
 
 </head>
