@@ -2161,7 +2161,7 @@ def update_coordinates(message):
         if asset:
             geom = asset.geometry
             if isinstance(geom, esdl.Point):
-                point = esdl.Point(lon=message['lng'], lat=message['lat'])
+                point = esdl.Point(lon=float(message['lng']), lat=float(message['lat']))
                 asset.geometry = point
             # elif isinstance(geom, esdl.Polygon):
                 # Do nothing in case of a polygon
@@ -2176,7 +2176,7 @@ def update_coordinates(message):
     else:
         potential = ESDLAsset.find_potential(area, obj_id)
         if potential:
-            point = esdl.Point(lon=message['lng'], lat=message['lat'])
+            point = esdl.Point(lon=float(message['lng']), lat=float(message['lat']))
             potential.geometry = point
 
     set_handler(esh)

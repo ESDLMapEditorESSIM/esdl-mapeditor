@@ -1044,7 +1044,7 @@
                         marker.name = list[i][1];
                         marker.type = list[i][3];
 
-                        // set_building_handlers(marker);
+                        set_building_handlers(marker);
                         add_object_to_layer(es_id, 'bld_layer', marker);
                     }
                     if (list[i][0] == 'polygon') {
@@ -1085,7 +1085,7 @@
                             marker.type = list[i][3];
                             marker.polygon = true;
 
-                            // set_building_handlers(marker);
+                            set_building_handlers(marker);
                             add_object_to_layer(es_id, 'bld_layer', marker);
                         }
                     }
