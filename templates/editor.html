@@ -125,6 +125,8 @@
         var first_clicked = false;
         var first_clicked_id;
 
+        var area_before_building_edit;  // to store the active area/building when the building_editor is opened
+
         var connect_ports;
 
         var clear_layer = false;        // to indicate if esdl items need to be removed too (or only UI clear)
@@ -373,8 +375,14 @@
             $("#area_bld_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
         }
 
+        function get_area_bld_list_selection() {
+            var select = document.getElementById('area_bld_select');
+            return select.value;
+        }
+
         function edit_building_contents(e, asset_id) {
             console.log('edit building contents for building with ID: '+asset_id);
+            area_before_building_edit = get_area_bld_list_selection();
             select_area_bld_list(asset_id);
             socket.emit('command', {cmd: 'building_editor', id: asset_id});
         }
@@ -664,6 +672,9 @@
         function connect_asset(e, feature_id, port_id) {
             // console.log('connect_asset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
             // console.log(e);
+            if (bld_edit_id) {
+                console.log('Asset in building');
+            }
             if (connect_ports != null) {
                 socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
                 connect_ports = null;
@@ -1286,8 +1297,8 @@
                             popup.setLatLng(e.latlng).openOn(map);
                         });
                     }
+                    // TODO: Should this be es_bld_is instead of es_id
                     line.es_id = es_id;
-                    // connection_layer.addLayer(line);
                     add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
             });
@@ -1295,12 +1306,19 @@
             socket.on('add_new_conn', function(connection) {
                 var new_conn = connection['new_conn'];
                 var es_id = connection['es_id'];
+                add_to_building = connection['add_to_building'];
+                console.log(add_to_building);
+
+                es_bld_id = es_id;
+                if (add_to_building) {
+                   es_bld_id = bld_edit_id;
+                }
+
                 var coords = [new_conn[0], new_conn[1]];
                 // console.log(coords);
                 var line = L.polyline(coords, {color: 'gray', weight: 1, dashArray: '3,10', draggable: true});
                 line.es_id = es_id
-                // connection_layer.addLayer(line);
-                add_object_to_layer(es_id, 'connection_layer', line);
+                add_object_to_layer(es_bld_id, 'connection_layer', line);
             });
 
             socket.on('carrier_list', function(carr_list) {

@@ -1,5 +1,5 @@
 var bld_map;
-var bld_edit_id;
+var bld_edit_id = null;        // stores the ID of the building while editing building
 
 function open_building_editor(dialog, building_info) {
     console.log(building_info);
@@ -13,31 +13,6 @@ function open_building_editor(dialog, building_info) {
                     "<div id=\"bld_ctrl\" style=\"clear: left; position: relative; padding:3px;\">",
                     "    <button id=\"bld_edr-asset-btn\" onclick=\"select_edr_asset_window();\" title=\"EDR assets\" class=\"ui-button ui-widget ui-corner-all\">EDR assets</button>",
                     "    <select id=\"bld_asset_menu\" style='position:relative;z-index:100'>",
-                    "        <option value=\"Battery\">Battery</option>",
-                    "        <option value=\"CHP\">Combined Heat and Power</option>",
-                    "        <option value=\"EConnection\">EConnection</option>",
-                    "        <option value=\"ElectricityDemand\">ElectricityDemand</option>",
-                    "        <option value=\"ElectricityNetwork\">ElectricityNetwork</option>",
-                    "        <option value=\"Electrolyzer\">Electrolyzer</option>",
-                    "        <option value=\"FuelCell\">FuelCell</option>",
-                    "        <option value=\"GConnection\">GConnection</option>",
-                    "        <option value=\"GasHeater\">GasHeater</option>",
-                    "        <option value=\"GasNetwork\">GasNetwork</option>",
-                    "        <option value=\"GenericConsumer\">GenericConsumer</option>",
-                    "        <option value=\"GenericConversion\">GenericConversion</option>",
-                    "        <option value=\"GenericProducer\">GenericProducer</option>",
-                    "        <option value=\"GeothermalSource\">GeothermalSource</option>",
-                    "        <option value=\"HeatingDemand\">HeatingDemand</option>",
-                    "        <option value=\"HeatNetwork\">HeatNetwork</option>",
-                    "        <option value=\"HeatPump\">HeatPump</option>",
-                    "        <option value=\"Joint\">Joint</option>",
-                    "        <option value=\"MobilityDemand\">MobilityDemand</option>",
-                    "        <option value=\"PowerPlant\">PowerPlant</option>",
-                    "        <option value=\"PVInstallation\">PVInstallation</option>",
-                    "        <option value=\"PVParc\">PVParc</option>",
-                    "        <option value=\"Transformer\">Transformer</option>",
-                    "        <option value=\"UTES\">UTES</option>",
-                    "        <option value=\"WindTurbine\">WindTurbine</option>",
                     "    </select>",
 
                     "    <select id=\"bld_line_select\">",
@@ -78,6 +53,7 @@ function open_building_editor(dialog, building_info) {
 
     create_new_bld_layer(bld_edit_id, 'Building', bld_map);
     active_layer_id_backup = active_layer_id;
+    // TODO: check if this is handy!!
     active_layer_id = bld_edit_id;
 
     L.control.layers(
@@ -115,19 +91,7 @@ function open_building_editor(dialog, building_info) {
         }
     });
     bld_map.addControl(bld_draw_control);
-
-//    L.marker(L.latLng([  0,  0])).addTo(bld_map);
-//    L.marker(L.latLng([500,  0])).addTo(bld_map);
-//    L.marker(L.latLng([  0,500])).addTo(bld_map);
-//    L.marker(L.latLng([500,500])).addTo(bld_map);
-
     L.control.mousePosition().addTo(bld_map);
-
-    bld_map.on(L.Draw.Event.CREATED, function (event) {
-        var layer = event.layer;
-
-        get_layers(bld_edit_id, 'esdl_layer').addLayer(layer);
-    });
 
     map.off('dialog:closed'); // previous event handler must be removed
     function on_dialog_close(event) {
@@ -135,6 +99,8 @@ function open_building_editor(dialog, building_info) {
         remove_bld_layer(bld_edit_id);
         //close_dialog(event, bld_edit_id)
         active_layer_id = active_layer_id_backup;
+        select_area_bld_list(area_before_building_edit);
+        bld_edit_id = null;
     }
     map.on('dialog:closed', on_dialog_close);
 
