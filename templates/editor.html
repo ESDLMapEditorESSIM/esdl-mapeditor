@@ -1056,7 +1056,7 @@
                         marker.type = list[i][3];
 
                         set_building_handlers(marker);
-                        add_object_to_layer(es_id, 'bld_layer', marker);
+                        add_object_to_layer(es_id, 'esdl_layer', marker);
                     }
                     if (list[i][0] == 'polygon') {
                         // var coords = list[i][4];
@@ -1085,8 +1085,11 @@
                         });
 
                         // only add building icon, if building contains assets
-                        if (list[i][5]) {
-                            var polygon_center = calculate_array_polygon_center(coords);
+                        // if (list[i][5]) {
+                            var coords = list[i][4];
+                            var polygon_center = calculate_array_polygon_center(coords[0]);
+                            // exchange coordinates, geojson and leaflet use different order
+                            polygon_center = [polygon_center[1], polygon_center[0]];
                             var marker = L.marker(polygon_center, {icon: divicon, title: title});
 
                             marker.title = title;
@@ -1097,8 +1100,8 @@
                             marker.polygon = true;
 
                             set_building_handlers(marker);
-                            add_object_to_layer(es_id, 'bld_layer', marker);
-                        }
+                            add_object_to_layer(es_id, 'esdl_layer', marker);
+                        // }
                     }
                 }
 

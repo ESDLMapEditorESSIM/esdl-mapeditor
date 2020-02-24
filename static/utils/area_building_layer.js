@@ -433,7 +433,6 @@ function add_area_layer(area_data) {
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
-
 function add_building_layer(building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
@@ -452,6 +451,8 @@ function add_building_layer(building_data) {
     }).addTo(get_layers(active_layer_id, 'bld_layer'));
 }
 
+// Ewoud's attempts to get context menus working with GeoJSON layers:
+// https://jsfiddle.net/ykjh6w4r/ and http://jsfiddle.net/jdembdr/y97k2n2z/
 
 // ------------------------------------------------------------------------------------------------------------
 //  Function that deals with selecting another parameter in the Legend
