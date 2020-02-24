@@ -1321,12 +1321,13 @@ def get_port_profile_info(asset):
     return port_profile_list
 
 
-def process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, level):
+def process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, bld_editor, level):
     esh = get_handler()
 
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
+    # Determine if building has assets
     building_has_assets = False
     if building.asset:
         for basset in building.asset:
@@ -1359,11 +1360,12 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
             elif isinstance(bld_geom, esdl.Polygon):
                 bld_coord = ESDLGeometry.calculate_polygon_center(bld_geom)
 
-    # Iterate over all assets in building
+    # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, level + 1)
+            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, bld_editor, level + 1)
         else:
+            # Create a list of ports for this asset
             port_list = []
             ports = basset.port
             for p in ports:
@@ -1371,6 +1373,7 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                 conn_to_id_list = [ct.id for ct in conn_to]
                 # TODO: add profile_info and carrier
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
+
 
             geom = basset.geometry
             coord = ()
@@ -1381,15 +1384,14 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                     coord = (lat, lon)
 
                     capability_type = ESDLAsset.get_asset_capability_type(basset)
-                    # TODO: Find proper implementation....
-                    if level == 0:
+                    if bld_editor:
                         asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
                 else:
                     send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
 
             # Inherit geometry from containing building
-            if level > 0:
-                coord = bld_coord
+            # if level > 0:
+            #     coord = bld_coord
 
             ports = basset.port
             for p in ports:
@@ -1399,29 +1401,52 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                 conn_to = p.connectedTo
                 if conn_to:
                     for pc in conn_to:
+                        in_different_buildings = False
                         pc_asset = port_asset_mapping[pc.id]
                         pc_asset_real = esh.get_by_id(es_id, pc_asset['asset_id'])
+                        # If the asset the current asset connects to, is in a building...
                         if pc_asset_real.containingBuilding:
                             bld_pc_asset = pc_asset_real.containingBuilding
                             bld_basset = basset.containingBuilding
-                            if not bld_pc_asset == bld_basset:  # Only replace coordinates if in different buildings
+                            # If the asset is in a different building ...
+                            if not bld_pc_asset == bld_basset:
+                                in_different_buildings = True
                                 if bld_pc_asset.geometry:
-                                    if isinstance(bld_pc_asset.geometry, esdl.Point):
-                                        pc_asset_coord = (bld_pc_asset.geometry.lat, bld_pc_asset.geometry.lon)
-                                    elif isinstance(bld_pc_asset.geometry, esdl.Polygon):
-                                        pc_asset_coord = ESDLGeometry.calculate_polygon_center(bld_pc_asset.geometry)
+                                    if bld_editor:
+                                        # ... connect to the left border
+                                        pc_asset_coord = (coord[0], 0)
+                                    else:
+                                        # ... use the building coordinate instead of the asset coordinate
+                                        if isinstance(bld_pc_asset.geometry, esdl.Point):
+                                            pc_asset_coord = (bld_pc_asset.geometry.lat, bld_pc_asset.geometry.lon)
+                                        elif isinstance(bld_pc_asset.geometry, esdl.Polygon):
+                                            pc_asset_coord = ESDLGeometry.calculate_polygon_center(bld_pc_asset.geometry)
 
                                     # If connecting to a building outside of the current, replace current asset
                                     # coordinates with building coordinates too
-                                    coord = bld_coord
+                                    if not bld_editor:
+                                        coord = bld_coord
+                            else:
+                                # asset is in the same building, use asset's own coordinates
+                                pc_asset_coord = pc_asset['coord']
                         else:
-                            pc_asset_coord = pc_asset['coord']
+                            # other asset is not in a building
+                            if bld_editor:
+                                # ... connect to the left border
+                                pc_asset_coord = (coord[0], 0)
+                            else:
+                                # ... just use asset's location
+                                pc_asset_coord = pc_asset['coord']
 
                         pc_carr_id = None
                         if pc.carrier:
                             pc_carr_id = pc.carrier.id
-                        conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
-                            'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
+                        # Add connections if we're editing a building or if the connection is between two different buildings
+                        # ( The case of an asset in an area that is connected with an asset in a building is handled
+                        #   in process_area (now all connections are added twice, from both sides) )
+                        if bld_editor or in_different_buildings:
+                            conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
+                                'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset_id'], 'to-asset-coord': pc_asset_coord})
 
 
 def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, area, level):
@@ -1436,7 +1461,7 @@ def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, por
     # process assets in area
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
-            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, asset, level+1)
+            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, asset, False, level+1)
         if isinstance(asset, esdl.EnergyAsset):
             port_list = []
             ports = asset.port
@@ -1539,7 +1564,7 @@ def get_building_information(building):
     active_es_id = get_session('active_es_id')
     port_to_asset_mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
 
-    process_building(active_es_id, asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, 0)
+    process_building(active_es_id, asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, True, 0)
     return {
         "id": building.id,
         "asset_list": asset_list,
