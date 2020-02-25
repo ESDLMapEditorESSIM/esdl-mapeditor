@@ -4,7 +4,7 @@ Handles the messages belonging to utils/esdl_browser.js
 """
 
 from flask import Flask, session
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLQuantityAndUnits import qau_to_string
@@ -31,7 +31,7 @@ class ESDLBrowser:
                 active_es_id = get_session('active_es_id')
                 esdl_object = esh.get_by_id(active_es_id, esdl_object_id);
                 browse_data = self.get_browse_to_data(esdl_object)
-                self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+                emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_get_objectinfo_fragment', namespace='/esdl')
         def socketio_get_objectinfo_fragment(message):
@@ -41,7 +41,7 @@ class ESDLBrowser:
             resource = esh.get_resource(active_es_id)
             esdl_object = resource.resolve(fragment)
             browse_data = self.get_browse_to_data(esdl_object)
-            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+            emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_create_object', namespace='/esdl')
         def socketio_create_object(message):
@@ -74,7 +74,7 @@ class ESDLBrowser:
             if hasattr(new_object, 'name'):
                 new_object.name = 'New' + new_object.eClass.name
             browse_data = self.get_browse_to_data(new_object)
-            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+            emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_delete_ref', namespace='/esdl')
         def socket_io_delete_ref(message):
@@ -109,7 +109,7 @@ class ESDLBrowser:
                     parent_object.eSet(reference, reference.get_default_value())
 
             browse_data = self.get_browse_to_data(parent_object)
-            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+            emit('esdl_browse_to', browse_data, namespace='/esdl')
 
 
         #'esdl_browse_list_references'
@@ -133,7 +133,7 @@ class ESDLBrowser:
                              'ref': {'name': reference_name, 'type': reference.eType.eClass.name},
                              'xreferences': reference_list}
                 print (returnmsg)
-                self.socketio.emit('esdl_browse_select_cross_reference', returnmsg, namespace='/esdl')
+                emit('esdl_browse_select_cross_reference', returnmsg, namespace='/esdl')
 
 
         #esdl_browse_set_reference
@@ -150,7 +150,7 @@ class ESDLBrowser:
                 eOrderedSet = parent_object.eGet(reference)
                 eOrderedSet.append(xref)
             browse_data = self.get_browse_to_data(parent_object)
-            self.socketio.emit('esdl_browse_to', browse_data, namespace='/esdl')
+            emit('esdl_browse_to', browse_data, namespace='/esdl')
 
 
 
