@@ -5,7 +5,6 @@ from datetime import datetime
 import threading
 import time
 # module that handles the ESDL
-# TODO: remove old sessions
 
 managed_sessions = dict()
 ESH_KEY = 'esh'

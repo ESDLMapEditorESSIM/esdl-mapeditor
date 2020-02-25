@@ -79,4 +79,4 @@ class IBISBedrijventerreinen:
 
             # print(emit_area_list)
             # emit('geojson', {"layer": "area_layer", "geojson": emit_area_list})
-            self.socketio.emit('geojson', {"layer": "area_layer", "geojson": emit_area_list}, namespace='/esdl')
+            emit('geojson', {"layer": "area_layer", "geojson": emit_area_list}, namespace='/esdl')
