@@ -350,7 +350,6 @@ function restoreStyle(layer) {
 
 function highlightAreaOrBuilding(e) {
     let layer = e.target;
-    console.log('highlight');
 
     saveStyle(layer);
     layer.setStyle({
@@ -376,7 +375,6 @@ function resetHighlightArea(e) {
 
 function resetHighlightBuilding(e) {
     let layer = e.target;
-    console.log('reset highlight');
     // geojson_building_layer.resetStyle(layer);
     restoreStyle(layer);
     layer.closePopup();
