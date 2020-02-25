@@ -287,7 +287,7 @@
                         marker.options.contextmenuItems.push('-');
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Graph.png',
-                            text: 'Set Curtailment BLAA strategy for [' + asset_id + ']',
+                            text: 'Set Curtailment strategy for [' + asset_id + ']',
                             callback: function(e) {
                                 socket.emit('command', {cmd: 'get_curtailment_strategy_info', asset_id: asset_id})
                             }
