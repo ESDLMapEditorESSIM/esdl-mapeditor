@@ -112,6 +112,7 @@ esdl_config = {
         },
         {
             "profile_uiname": "Elektriciteit Curacao",
+            "required_role": "curacao",
             "multiplier": 1,
             "measurement": "elektr-curacao-2015",
             "field": "elektr",
@@ -120,6 +121,7 @@ esdl_config = {
         },
         {
             "profile_uiname": "Wind Curacao",
+            "required_role": "curacao",
             "multiplier": 1,
             "measurement": "wind-curacao-2015",
             "field": "value",

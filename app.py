@@ -41,6 +41,7 @@ from esdl_helper import generate_profile_info
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
+from esdl_profiles import ESDLProfiles
 
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 #logging.getLogger("werkzeug")
@@ -55,6 +56,7 @@ if os.environ.get('GEIS'):
 
 wms_layers = WMSLayers()
 esdl_services = ESDLServices()
+esdl_profiles = ESDLProfiles()
 
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
@@ -4047,7 +4049,7 @@ def browser_initialize():
     role = get_session('user-role')
 
     print('Send initial information to client')
-    emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
+    emit('profile_info', esdl_profiles.get_profiles_list(role))
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('wms_layer_list', wms_layers.get_layers())
     emit('capability_list', ESDLAsset.get_capabilities_list())
