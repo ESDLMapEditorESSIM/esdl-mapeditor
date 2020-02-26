@@ -327,9 +327,31 @@ var building_colors = {
 // ------------------------------------------------------------------------------------------------------------
 //  Handling mouse over, mouse out events
 // ------------------------------------------------------------------------------------------------------------
+function saveStyle(layer) {
+    layer.oldStyle = {
+        weight: layer.options.weight,
+        color: layer.options.color,
+        dashArray: layer.options.dashArray,
+        fillOpacity: layer.options.fillOpacity
+    }
+}
+
+function restoreStyle(layer) {
+    if (layer.oldStyle) {
+        layer.setStyle({
+            weight: layer.oldStyle.weight,
+            color: layer.oldStyle.color,
+            dashArray: layer.oldStyle.dashArray,
+            fillOpacity: layer.oldStyle.fillOpacity
+        });
+        layer.oldStyle = null;
+    }
+}
+
 function highlightAreaOrBuilding(e) {
     let layer = e.target;
 
+    saveStyle(layer);
     layer.setStyle({
         weight: 3,
         color: 'white',
@@ -346,13 +368,15 @@ function highlightAreaOrBuilding(e) {
 
 function resetHighlightArea(e) {
     let layer = e.target;
-    geojson_area_layer.resetStyle(layer);
+    restoreStyle(layer);
+//    geojson_area_layer.resetStyle(layer);         // Interferes with the contextmenu
     layer.closePopup();
 }
 
 function resetHighlightBuilding(e) {
     let layer = e.target;
-    geojson_building_layer.resetStyle(layer);
+    // geojson_building_layer.resetStyle(layer);    // Interferes with the contextmenu
+    restoreStyle(layer);
     layer.closePopup();
 }
 
@@ -434,6 +458,10 @@ function add_area_layer(area_data) {
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
 
+function test(n){
+    var name = n;
+    return function(e){alert(name)}
+}
 function add_building_layer(building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
@@ -448,10 +476,25 @@ function add_building_layer(building_data) {
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }
+            if (feature.properties && feature.properties.name) {
+               var fn = test(feature.properties.name);
+
+        		var contextMenuItems = [{
+                	text: 'dock '+feature.properties.name,
+        	        callback: function(e){alert(feature.properties.name)},
+    	        },];
+
+                layer.bindContextMenu({
+                    contextmenu: true,
+                    contextmenuItems: contextMenuItems
+                });
+            }
         }
     }).addTo(get_layers(active_layer_id, 'bld_layer'));
 }
 
+// Ewoud's attempts to get context menus working with GeoJSON layers:
+// https://jsfiddle.net/ykjh6w4r/ and http://jsfiddle.net/jdembdr/y97k2n2z/
 
 // ------------------------------------------------------------------------------------------------------------
 //  Function that deals with selecting another parameter in the Legend
@@ -504,6 +547,34 @@ function create_building_array_or_range_legendClassesDiv(kpi) {
         num_building_range_colors = building_legend_ranges.length;
         get_building_color = get_building_range_colors;
         return create_range_building_legendClassesDiv(kpi);
+    }
+}
+
+function create_area_array_or_range_legendClassesDiv(kpi) {
+    if (Array.isArray(kpi)) {
+        if (kpi.length > 9) {
+            alert("More than 9 labels ("+kpi.length+") in KPI "+areaLegendChoice);
+            rb = new Rainbow();
+            rb.setNumberRange(0, kpi.length-1);
+            color_grades = [];
+            for (i=0; i<kpi.length; i++) {
+                color_grades.push('#' + rb.colourAt(i));
+            }
+        } else {
+            color_grades = grades[kpi.length]
+        }
+        area_legend_array = area_KPIs[areaLegendChoice];
+        num_area_array_colors = kpi.length;
+        get_area_color = get_area_array_colors;
+        return create_array_area_legendClassesDiv(kpi);
+    } else {
+        // kpi is number with min and max
+        var min = kpi["min"];
+        var max = kpi["max"];
+        area_legend_ranges = create_ranges(min, max);
+        num_area_range_colors = area_legend_ranges.length;
+        get_area_color = get_area_range_colors;
+        return create_range_area_legendClassesDiv();
     }
 }
 

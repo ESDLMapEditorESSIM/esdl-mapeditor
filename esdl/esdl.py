@@ -1404,6 +1404,60 @@ class CompoundMaterialComponent(EObject, metaclass=MetaEClass):
             self.material = material
 
 
+class IntAmbition(EObject, metaclass=MetaEClass):
+
+    value = EAttribute(eType=EInt, derived=False, changeable=True)
+    year = EAttribute(eType=EInt, derived=False, changeable=True)
+
+    def __init__(self, *, value=None, year=None, **kwargs):
+        if kwargs:
+            raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if value is not None:
+            self.value = value
+
+        if year is not None:
+            self.year = year
+
+
+class DoubleAmbition(EObject, metaclass=MetaEClass):
+
+    value = EAttribute(eType=EDouble, derived=False, changeable=True)
+    year = EAttribute(eType=EInt, derived=False, changeable=True)
+
+    def __init__(self, *, value=None, year=None, **kwargs):
+        if kwargs:
+            raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if value is not None:
+            self.value = value
+
+        if year is not None:
+            self.year = year
+
+
+class StringAmbition(EObject, metaclass=MetaEClass):
+
+    value = EAttribute(eType=EString, derived=False, changeable=True)
+    year = EAttribute(eType=EInt, derived=False, changeable=True)
+
+    def __init__(self, *, value=None, year=None, **kwargs):
+        if kwargs:
+            raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if value is not None:
+            self.value = value
+
+        if year is not None:
+            self.year = year
+
+
 class InPort(Port):
     """Represents a port with a positive energy direction into the asset, e.g. for a Consumer. See Port for more details"""
     connectedTo = EReference(ordered=True, unique=True, containment=False, upper=-1)
@@ -1581,13 +1635,21 @@ class ExternalProfile(GenericProfile):
     """ExternalProfile allows to refer to an externally defined profile. Common uses are a profile defined in a (timeseries) database such as InfluxDB.
 It allows you to specify a multiplier to scale the supplied external profile by a certain factor (e.g. when using NEDU profiles). Default the multiplier is '1'."""
     multiplier = EAttribute(eType=EDouble, derived=False, changeable=True, default_value=1.0)
+    startDate = EAttribute(eType=EDate, derived=False, changeable=True)
+    endDate = EAttribute(eType=EDate, derived=False, changeable=True)
 
-    def __init__(self, *, multiplier=None, **kwargs):
+    def __init__(self, *, multiplier=None, startDate=None, endDate=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if multiplier is not None:
             self.multiplier = multiplier
+
+        if startDate is not None:
+            self.startDate = startDate
+
+        if endDate is not None:
+            self.endDate = endDate
 
 
 class PercentileDistribution(GenericDistribution):
@@ -1951,37 +2013,49 @@ class BuildingUsageReference(AbstractBuildingUsage):
 class DoubleKPI(KPI):
     """Specifies a KPI value as a double"""
     value = EAttribute(eType=EDouble, derived=False, changeable=True)
+    ambition = EReference(ordered=True, unique=True, containment=True, upper=-1)
 
-    def __init__(self, *, value=None, **kwargs):
+    def __init__(self, *, value=None, ambition=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
+
+        if ambition:
+            self.ambition.extend(ambition)
 
 
 class StringKPI(KPI):
     """Specifies a KPI value as a string"""
     value = EAttribute(eType=EString, derived=False, changeable=True)
+    ambition = EReference(ordered=True, unique=True, containment=True, upper=-1)
 
-    def __init__(self, *, value=None, **kwargs):
+    def __init__(self, *, value=None, ambition=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
+
+        if ambition:
+            self.ambition.extend(ambition)
 
 
 class IntKPI(KPI):
     """Specifies a KPI value as an integer"""
     value = EAttribute(eType=EInt, derived=False, changeable=True)
+    ambition = EReference(ordered=True, unique=True, containment=True, upper=-1)
 
-    def __init__(self, *, value=None, **kwargs):
+    def __init__(self, *, value=None, ambition=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
+
+        if ambition:
+            self.ambition.extend(ambition)
 
 
 class FromToIntPerc(FromToPerc):
@@ -2109,16 +2183,24 @@ class AbstractBuilding(Asset):
 
 
 class WindPotential(Potential):
-    """Represents wind potential"""
+    """Defines the potential for wind energy. This class can be used instead of 'SearchAreaWind' in case there is more information available."""
     value = EAttribute(eType=EDouble, derived=False, changeable=True)
-    height = EAttribute(eType=EInt, derived=False, changeable=True)
+    fullLoadHours = EAttribute(eType=EInt, derived=False, changeable=True)
+    area = EAttribute(eType=EDouble, derived=False, changeable=True)
+    height = EAttribute(eType=EDouble, derived=False, changeable=True)
 
-    def __init__(self, *, value=None, height=None, **kwargs):
+    def __init__(self, *, value=None, fullLoadHours=None, area=None, height=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
+
+        if area is not None:
+            self.area = area
 
         if height is not None:
             self.height = height
@@ -2307,27 +2389,36 @@ class Range(StaticProfile):
 
 
 class SolarPotential(Potential):
-    """Defines the potential for solar energy"""
+    """Defines the potential for solar energy. This class can be used instead of 'SearchAreaSolar' in case there is more information available."""
     value = EAttribute(eType=EDouble, derived=False, changeable=True, default_value=0.0)
-    SolarPotentialType = EAttribute(eType=PVInstallationTypeEnum, derived=False, changeable=True)
+    solarPotentialType = EAttribute(eType=PVInstallationTypeEnum, derived=False,
+                                    changeable=True, default_value=PVInstallationTypeEnum.UNDEFINED)
     fullLoadHours = EAttribute(eType=EInt, derived=False, changeable=True)
     area = EAttribute(eType=EDouble, derived=False, changeable=True)
+    angle = EAttribute(eType=EInt, derived=False, changeable=True)
+    orientation = EAttribute(eType=EInt, derived=False, changeable=True)
 
-    def __init__(self, *, value=None, SolarPotentialType=None, fullLoadHours=None, area=None, **kwargs):
+    def __init__(self, *, value=None, solarPotentialType=None, fullLoadHours=None, area=None, angle=None, orientation=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
 
-        if SolarPotentialType is not None:
-            self.SolarPotentialType = SolarPotentialType
+        if solarPotentialType is not None:
+            self.solarPotentialType = solarPotentialType
 
         if fullLoadHours is not None:
             self.fullLoadHours = fullLoadHours
 
         if area is not None:
             self.area = area
+
+        if angle is not None:
+            self.angle = angle
+
+        if orientation is not None:
+            self.orientation = orientation
 
 
 class ProfileReference(StaticProfile):
@@ -2441,11 +2532,12 @@ class Glass(Asset):
 
 
 class SearchAreaWind(Potential):
-    """Specifies search areas for wind turbines"""
+    """Specifies search areas for wind turbines. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for wind installations. Further research should give insight in the real potential (in terms of energy)."""
     fullLoadHours = EAttribute(eType=EInt, derived=False, changeable=True)
     area = EAttribute(eType=EDouble, derived=False, changeable=True)
+    height = EAttribute(eType=EDouble, derived=False, changeable=True)
 
-    def __init__(self, *, fullLoadHours=None, area=None, **kwargs):
+    def __init__(self, *, fullLoadHours=None, area=None, height=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -2455,9 +2547,12 @@ class SearchAreaWind(Potential):
         if area is not None:
             self.area = area
 
+        if height is not None:
+            self.height = height
+
 
 class SearchAreaSolar(Potential):
-    """Specifies search areas for solar installations"""
+    """Specifies search areas for solar installations. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for solar installations. Further research should give insight in the real potential (in terms of energy)."""
     fullLoadHours = EAttribute(eType=EInt, derived=False, changeable=True)
     area = EAttribute(eType=EDouble, derived=False, changeable=True)
 
@@ -2655,7 +2750,7 @@ class Transport(EnergyAsset):
 
 class BuildingUnit(AbstractBuilding):
     """Describes a physical part of a building. In dutch 'verblijfsobject' in the BAG national building and address registry. This can be used e.g. to model appartments in appartment complexes"""
-    type = EAttribute(eType=BuildingTypeEnum, derived=False, changeable=True)
+    type = EAttribute(eType=BuildingTypeEnum, derived=False, changeable=True, upper=-1)
     housingType = EAttribute(eType=HousingTypeEnum, derived=False, changeable=True)
     numberOfInhabitants = EAttribute(eType=EInt, derived=False, changeable=True)
     inhabitantsType = EAttribute(eType=InhabitantsTypeEnum, derived=False, changeable=True)
@@ -2679,8 +2774,8 @@ class BuildingUnit(AbstractBuilding):
 
         super().__init__(**kwargs)
 
-        if type is not None:
-            self.type = type
+        if type:
+            self.type.extend(type)
 
         if housingType is not None:
             self.housingType = housingType

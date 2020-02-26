@@ -169,9 +169,21 @@ default_wms_layers = {
             "layer_ref": None,
             "visible": False,
             "attribution": 'PICO'
+        },
+        "TEO": {
+            "description": "Thermische energie uit oppervlaktewater",
+            "url": "https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02a.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?",
+            "layer_name": "a3643e0e53fa4174a4ead41f56659a6e",
+            "group_id": "project",
+            "legend_url": "",
+            "layer_ref": None,
+            "visible": False,
+            "attribution": 'Stowa'
         }
     }
 }
+
+# zie https://stowa.geoapps.nl/Overzichtskaart voor meer TEO/TEA kaartlagen
 
 """
 PICO Hoogspanningsnet 2018
