@@ -34,10 +34,20 @@ function set_simulation_URL_prefix(url_prefix) {
 function run_ESSIM_simulation_window() {
     sidebar_ctr = sidebar.getContainer();
 
-    sidebar_ctr.innerHTML = '<h1>Run ESSIM simulation</h1>';
+    sidebar_ctr.innerHTML = '<div id="essim_title"><h1>Run ESSIM simulation</h1></div>';
 
-    sidebar_ctr.innerHTML += 'Please enter a description for this simulation. This description will be shown in the simulation results.';
-    sidebar_ctr.innerHTML += '<p><input id="sim_description" type="text" width="600"/></p>';
+    essim_settings = '<div id="essim_settings">';
+    essim_settings += 'Please enter a description for this simulation. This description will be shown in the simulation results.';
+    essim_settings += '<p><input id="sim_description" type="text" width="600"/></p>';
+    essim_settings += 'The following settings should only be changed if you know exactly what you\'re doing';
+    table = '<table>';
+    table += '<tr><td width=180>Start datetime</td><td><input type="text" width="60" id="sim_start_datetime" value="2015-01-01T00:00:00+0100"></td></tr>';
+    table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" value="2016-01-01T00:00:00+0100"></td></tr>';
+    table += '</table>';
+    essim_settings += table;
+    essim_settings += '</div>';
+    sidebar_ctr.innerHTML += essim_settings;
+
     sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
 
     sidebar_ctr.innerHTML += '<div id="simulation_progress_div"></div>';
@@ -46,13 +56,15 @@ function run_ESSIM_simulation_window() {
 }
 
 function run_ESSIM_simulation() {
+    document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation started</h1>';
+    document.getElementById('essim_settings').style.display = 'none';
     document.getElementById('run_essim_simulation_button').style.display = 'none';
     simulation_progress_div = document.getElementById('simulation_progress_div');
 
-    table = '<table>';
+    table = '<div id="simulation_progress"><table>';
     table = table + '<tr><td width=180>Progress</td>';
     table = table + '<td id="progress_percentage">0%</td></tr>';
-    table += '</table>';
+    table += '</table></div>';
     simulation_progress_div.innerHTML = table;
 
     simulation_progress_div.innerHTML += '<p id="dashboard_url"></p>';
@@ -62,7 +74,10 @@ function run_ESSIM_simulation() {
     simulation_progress_div.innerHTML += '<p id="button_close_simulation_dialog" hidden><button onclick="sidebar.hide();">Close</button></p>';
 
     sim_description = document.getElementById('sim_description').value;
-    socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description});
+    sim_start_datetime = document.getElementById('sim_start_datetime').value;
+    sim_end_datetime = document.getElementById('sim_end_datetime').value;
+    socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
+        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime});
     setTimeout(poll_simulation_progress, 1000);
 }
 
@@ -84,17 +99,17 @@ function poll_simulation_progress() {
                 let dashboardURL = data["url"];
                 let simulationRun = data["simulationRun"];
                 // console.log(dashboardURL);
-                let progress = document.getElementById('progress_percentage');
-                progress.innerHTML = 'Simulation finsihed';
+
+                document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation finished</h1>';
+                document.getElementById('simulation_progress').style.display = 'none';
+
                 let dbURL_location = document.getElementById('dashboard_url');
                 dbURL_location.innerHTML = 'Go to <a href="' + dashboardURL + '" target="#">dashboard</a>';
                 let simRun_location = document.getElementById('simulationRun');
                 simRun_location.innerHTML = simulationRun;
 
-                let button_show = document.getElementById('button_close_simulation_dialog');
-                button_show.style.display = "block";
-                let button_hide = document.getElementById('button_cancel_simulation');
-                button_hide.style.display = "none";
+                document.getElementById('button_close_simulation_dialog').style.display = "block";
+                document.getElementById('button_cancel_simulation').style.display = "none";
 
             } else {
                 let percentage = Math.round(parseFloat(data["percentage"]) * 100);

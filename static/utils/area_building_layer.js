@@ -369,13 +369,13 @@ function highlightAreaOrBuilding(e) {
 function resetHighlightArea(e) {
     let layer = e.target;
     restoreStyle(layer);
-//    geojson_area_layer.resetStyle(layer);
+//    geojson_area_layer.resetStyle(layer);         // Interferes with the contextmenu
     layer.closePopup();
 }
 
 function resetHighlightBuilding(e) {
     let layer = e.target;
-    // geojson_building_layer.resetStyle(layer);
+    // geojson_building_layer.resetStyle(layer);    // Interferes with the contextmenu
     restoreStyle(layer);
     layer.closePopup();
 }

@@ -300,7 +300,7 @@ def preload_area_subboundaries_in_cache(top_area):
 # ---------------------------------------------------------------------------------------------------------------------
 #  ESSIM interfacing
 # ---------------------------------------------------------------------------------------------------------------------
-def start_ESSIM(sim_description):
+def start_ESSIM(sim_description, sim_start_datetime, sim_end_datetime):
     esh = get_handler()
     active_es_id = get_session('active_es_id')
     es_simid = None
@@ -317,8 +317,8 @@ def start_ESSIM(sim_description):
         'user': ESSIM_config['user'],
         'scenarioID': active_es_id,
         'simulationDescription': sim_description,
-        'startDate': ESSIM_config['start_datetime'],
-        'endDate': ESSIM_config['end_datetime'],
+        'startDate': sim_start_datetime,
+        'endDate': sim_end_datetime,
         'influxURL': ESSIM_config['influxURL'],
         'grafanaURL': ESSIM_config['grafanaURL'],
         'esdlContents': urllib.parse.quote(esdlstr)
@@ -3595,8 +3595,10 @@ def process_command(message):
     if message['cmd'] == 'run_ESSIM_simulation':
         print('ESSIM simulation command received')
         sim_descr = message['sim_description']
+        sim_start_datetime = message['sim_start_datetime']
+        sim_end_datetime = message['sim_end_datetime']
         # Create the HTTP POST to start the simulation
-        if not start_ESSIM(sim_descr):
+        if not start_ESSIM(sim_descr, sim_start_datetime, sim_end_datetime):
             emit('simulation_not_started')
         # start_checking_ESSIM_progress()
         # check_ESSIM_progress()
