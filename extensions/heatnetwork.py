@@ -8,7 +8,7 @@ from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor
 from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask, session
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 
 DEFAULT_SHIFT_LAT = 0.000080
@@ -73,7 +73,7 @@ class HeatNetwork:
             if not ESDLAsset.add_asset_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
                 ESDLAsset.add_asset_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
 
-            self.socketio.emit('add_esdl_objects', {'es_id': es_id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
+            emit('add_esdl_objects', {'es_id': es_id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
 
 ######

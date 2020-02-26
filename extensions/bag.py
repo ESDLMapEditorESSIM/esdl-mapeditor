@@ -63,7 +63,6 @@ class BAG:
                                         if bld_list:
                                             emit('geojson', {"layer": "bld_layer", "geojson": bld_list})
 
-
                     except Exception as e:
                         print('ERROR in accessing BAG service: '+str(e))
                         return None
@@ -73,7 +72,7 @@ class BAG:
                 else:
                     print("ERROR in finding area in ESDL for BAG service")
                     # self.flask_app.send_alert("ERROR in finding area in ESDL for BAG service")
-                    return  None
+                    return None
 
         # @self.flask_app.route('/building_list')
         # def get_building_list():
@@ -110,4 +109,4 @@ class BAG:
 
             # print(emit_area_list)
             # emit('geojson', {"layer": "area_layer", "geojson": emit_area_list})
-            self.socketio.emit('geojson', {"layer": "building_layer", "geojson": emit_bld_list}, namespace='/esdl')
+            emit('geojson', {"layer": "building_layer", "geojson": emit_bld_list}, namespace='/esdl')
