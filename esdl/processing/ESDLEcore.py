@@ -1,6 +1,7 @@
 from pyecore.ecore import EAttribute, EOrderedSet, EEnum, EReference, EClass
 from pyecore.resources import Resource
 import esdl
+import gc
 
 """
 ESDL Ecore library
@@ -168,8 +169,8 @@ Calculates a list of all possible reference values for a specific reference
 Based on allInstances() of each possible subtype in the types list
 """
 def get_reachable_references(types: list, repr_function=string_repr):
-    #itemQueue = list()
-    #visited = dict()
+    # make sure the WeakSet containing allInstances() is updated
+    gc.collect()
     result = list()
     for type in types:
         eclass: EClass = esdl.getEClassifier(type)

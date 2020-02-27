@@ -72,7 +72,7 @@ class ESDLBrowser {
     static generateTable(data) {
         let $div = $('<div>');
         let object_name = data.object.name;
-        if (object_name == null) {
+        if (object_name == null || object_name === '') {
             object_name = 'Unnamed';
         }
 
@@ -118,7 +118,7 @@ class ESDLBrowser {
         var currentContainer = data.container;
         while(currentContainer != null) {
             let containerName = currentContainer.name;
-            if (containerName == null) containerName = currentContainer.type;
+            if (containerName == null || containerName==='') containerName = currentContainer.type;
             let $cA = $('<a>').text(containerName)
                 .attr('href','#')
                 .attr('title', currentContainer.type)

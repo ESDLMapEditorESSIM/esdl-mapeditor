@@ -8,7 +8,7 @@ from uuid import uuid4
 from io import BytesIO
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 
@@ -131,6 +131,9 @@ class EnergySystemHandler:
             return copy
         setattr(EObject, '__deepcopy__', deepcopy)
         setattr(EObject, 'deepcopy', deepcopy)
+        # show deleted object from memory
+        # setattr(EObject, '__del__', lambda x: print('Deleted {}'.format(x.eClass.name)))
+
 
 
         # def toJSON(self):

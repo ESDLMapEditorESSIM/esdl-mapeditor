@@ -42,7 +42,8 @@ import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
 
-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 #logging.getLogger("werkzeug")
 
 if os.environ.get('GEIS'):
@@ -607,6 +608,7 @@ print("Socket.IO Async mode: ", settings.ASYNC_MODE)
 print('Running inside uWSGI: ', is_running_in_uwsgi())
 
 socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
+logging.getLogger('engineio').setLevel(logging.WARNING) # don't print all the messages
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
 executor = Executor(app)
