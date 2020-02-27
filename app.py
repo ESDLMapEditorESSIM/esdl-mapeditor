@@ -1558,7 +1558,7 @@ def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, por
                         except:
                             print("Exception occurred")
                             print("es_id: {}".format(es_id))
-                            print("current building asset id: {}".format(basset.id))
+                            print("current asset id: {}".format(asset.id))
                             print("connected-to-asset info: {}".format(pc_asset))
                             print("connected-to-asset ID: {}".format(pc_asset['asset_id']))
                             continue
