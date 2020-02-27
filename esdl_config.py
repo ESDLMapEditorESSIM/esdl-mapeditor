@@ -142,6 +142,86 @@ esdl_config = {
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/KM5U93EZz/wind-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "GM - Betap_Elektra_Sisalstraat66",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Betap_Elektra_Sisalstraat66",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Betap_Elektra_Sisalstraat87",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Betap_Elektra_Sisalstraat87",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Hamat_Elektra_Spoelstraat16",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Hamat_Elektra_Spoelstraat16",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Hamat_Elektra_Jutestraat7",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Hamat_Elektra_Jutestraat7",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Avimat_Elektra_Sisalstraat36",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Avimat_Elektra_Sisalstraat36",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Cotap_Elektra_Biezenstraat2",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Cotap_Elektra_Biezenstraat2",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Cotap_Elektra_Oosterburgstr27",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Cotap_Elektra_Oosterburgstr27",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Cotap_Elektra_Oosterburgstr38",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Cotap_Elektra_Oosterburgstr38",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
         }
     ],
     "energy_carriers": [
