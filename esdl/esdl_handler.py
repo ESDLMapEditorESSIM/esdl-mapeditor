@@ -191,11 +191,11 @@ class EnergySystemHandler:
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
         return tmp_resource.contents[0]
 
-    def load_from_string(self, esdl_string):
-        """Loads an energy system from a string and adds it to the resourceSet
+    def load_from_string(self, esdl_string, name='from_string'):
+        """Loads an energy system from a string and adds it to a *new* resourceSet
         :returns the loaded EnergySystem """
-        uri = StringURI('from_string.esdl', esdl_string)
-        #self._new_resource_set()
+        uri = StringURI(name+'.esdl', esdl_string)
+        self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
         try:
             self.resource.load()
@@ -206,10 +206,10 @@ class EnergySystemHandler:
         except Exception as e:
             return e            # TODO: how is this done nicely?
 
-    def load_external_string(self, esdl_string):
+    def load_external_string(self, esdl_string, name='from_string'):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
         It returns an Energy System, but it is not part of a resource in the ResourceSet """
-        uri = StringURI('from_string.esdl', esdl_string)
+        uri = StringURI(name+'.esdl', esdl_string)
         external_rset = ResourceSet()
         external_resource = external_rset.create_resource(uri)
         external_resource.load()
@@ -217,6 +217,7 @@ class EnergySystemHandler:
         return external_energy_system
 
     def add_from_string(self, name, esdl_string):
+        """Loads an energy system from a string and adds it to the *existing* resourceSet"""
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
         tmp_resource = self.rset.get_resource(uri)
@@ -233,7 +234,7 @@ class EnergySystemHandler:
 
     def to_string(self, es_id=None):
         # to use strings as resources, we simulate a string as being a URI
-        uri = StringURI('to_string.esdl')
+        uri = StringURI('to_string_'+str(uuid4())+'.esdl')
         if es_id is None:
             self.resource.save(uri)
         else:
@@ -249,7 +250,7 @@ class EnergySystemHandler:
 
     def to_bytesio(self):
         """Returns a BytesIO stream for the energy system"""
-        uri = StringURI('to_string.esdl')
+        uri = StringURI('bytes_io_to_string.esdl')
         self.resource.save(uri)
         return uri.get_stream()
 

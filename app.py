@@ -108,8 +108,8 @@ def load_ESDL_EnergySystem(store_id):
         emit('store_item_metadata', store_item)
 
         try:
-            esh = EnergySystemHandler()
-            esh.load_from_string(esdl_string=esdlstr)
+            esh = get_handler()
+            esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
             return esh
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
@@ -140,7 +140,7 @@ def load_store_item(store_id):
             return None
     else:
         print('Accessing store return status: '+str(r.status_code))
-        send_alert('Error accessing ESDL store:' + str(e))
+        send_alert('Error accessing ESDL store:' + str(r))
         return None
 
 
@@ -3965,7 +3965,7 @@ def process_file_command(message):
         filename = message['filename']
         esh = EnergySystemHandler()
 
-        result = esh.load_from_string(esdl_string=file_content)
+        result = esh.load_from_string(esdl_string=file_content, name=filename)
         es = esh.get_energy_system()
 
         if isinstance(result, Exception):
