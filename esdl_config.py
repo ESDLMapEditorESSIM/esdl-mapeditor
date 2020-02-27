@@ -9,6 +9,7 @@ esdl_config = {
         {
             "profile_uiname": "Solar",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "solar_relative_2011-2016",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
@@ -17,6 +18,7 @@ esdl_config = {
         {
             "profile_uiname": "Electricity households (E1A)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E1A",
             "profileType": "ENERGY_IN_TJ",
@@ -25,6 +27,7 @@ esdl_config = {
         {
             "profile_uiname": "Electricity shops, office, education (E3A)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3A",
             "profileType": "ENERGY_IN_TJ",
@@ -33,6 +36,7 @@ esdl_config = {
         {
             "profile_uiname": "Electricity prison (E3B)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3B",
             "profileType": "ENERGY_IN_TJ",
@@ -41,6 +45,7 @@ esdl_config = {
         {
             "profile_uiname": "Electricity hotel, hospital (E3C)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3C",
             "profileType": "ENERGY_IN_TJ",
@@ -49,6 +54,7 @@ esdl_config = {
         {
             "profile_uiname": "Electricity greenhouses (E3D)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3D",
             "profileType": "ENERGY_IN_TJ",
@@ -57,6 +63,7 @@ esdl_config = {
         {
             "profile_uiname": "Heating households (G1A)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G1A",
             "profileType": "ENERGY_IN_TJ",
@@ -65,6 +72,7 @@ esdl_config = {
         {
             "profile_uiname": "Heating ... (G2A)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2A",
             "profileType": "ENERGY_IN_TJ",
@@ -73,6 +81,7 @@ esdl_config = {
         {
             "profile_uiname": "Heating ... (G2C)",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2C",
             "profileType": "ENERGY_IN_TJ",
@@ -81,6 +90,7 @@ esdl_config = {
         {
             "profile_uiname": "Constant",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "constant",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
@@ -89,6 +99,7 @@ esdl_config = {
         {
             "profile_uiname": "Wind op land",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "wind-2015",
             "field": "Wind-op-land",
             "profileType": "ENERGY_IN_TJ",
@@ -97,6 +108,7 @@ esdl_config = {
         {
             "profile_uiname": "Wind op zee",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "wind-2015",
             "field": "Wind-op-zee",
             "profileType": "ENERGY_IN_TJ",
@@ -105,6 +117,7 @@ esdl_config = {
         {
             "profile_uiname": "Biomassa",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "biomassa-2015",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
@@ -114,6 +127,7 @@ esdl_config = {
             "profile_uiname": "Elektriciteit Curacao",
             "required_role": "curacao",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "elektr-curacao-2015",
             "field": "elektr",
             "profileType": "ENERGY_IN_TJ",
@@ -123,6 +137,7 @@ esdl_config = {
             "profile_uiname": "Wind Curacao",
             "required_role": "curacao",
             "multiplier": 1,
+            "database": "energy_profiles",
             "measurement": "wind-curacao-2015",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",

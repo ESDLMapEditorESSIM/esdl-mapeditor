@@ -3395,7 +3395,7 @@ def process_command(message):
                     esdl_profile.field = p['field']
                     esdl_profile.host = esdl_config.esdl_config['profile_database']['host']
                     esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
-                    esdl_profile.database = esdl_config.esdl_config['profile_database']['database']
+                    esdl_profile.database = p['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
 
         if quap_type == 'predefined_qau':
