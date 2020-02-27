@@ -1219,6 +1219,89 @@ def calc_center_and_size(coords):
     return [(min_x + max_x) / 2, (min_y + max_y) / 2], delta_x, delta_y
 
 
+def calc_random_location_around_center(center, delta_x, delta_y, convert_RD_to_WGS):
+    geom = esdl.Point()
+    x = center[0] + ((-0.5 + random.random()) * delta_x / 2)
+    y = center[1] + ((-0.5 + random.random()) * delta_y / 2)
+    if convert_RD_to_WGS and (x > 180 or y > 180):  # Assume RD
+        rdwgs = RDWGSConverter()
+        wgs = rdwgs.fromRdToWgs([x, y])
+        geom.lat = wgs[0]
+        geom.lon = wgs[1]
+    else:
+        geom.lat = y
+        geom.lon = x
+    return geom
+
+
+def calc_building_assets_location(building):
+    """
+    Calculate the locations of assets in buildings when they are not given
+    The building editor uses a 500x500 pixel canvas
+    Rules:
+    - Assets of type AbstractConnection are placed in the left-most column
+    - Other transport assets in the second column
+    - Then production, conversion and storage
+    - And finally demand
+    """
+    num_conns = 0
+    num_transp = 0
+    num_prod_conv_stor = 0
+    num_cons = 0
+    for basset in building.asset:
+        if isinstance(basset, esdl.AbstractConnection):
+            num_conns = num_conns + 1
+        elif isinstance(basset, esdl.Transport):
+            num_transp = num_transp + 1
+        if isinstance(basset, esdl.Producer) or isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+            num_prod_conv_stor = num_prod_conv_stor + 1
+        if isinstance(basset, esdl.Consumer):
+            num_cons = num_cons + 1
+
+    num_cols = 0
+    if num_conns > 0: num_cols = num_cols + 1
+    if num_transp > 0: num_cols = num_cols + 1
+    if num_prod_conv_stor > 0: num_cols = num_cols + 1
+    if num_cons > 0: num_cols = num_cols + 1
+
+    if num_cols > 0:
+        column_width = 500 / (num_cols + 1)
+        column_idx = 1
+        column_conns_x = int(num_conns > 0) * column_idx * column_width
+        column_idx += (num_conns > 0)
+        column_transp_x = int(num_transp> 0) * column_idx * column_width
+        column_idx += (num_transp > 0)
+        column_pcs_x = int(num_prod_conv_stor > 0) * column_idx * column_width
+        column_idx += (num_prod_conv_stor > 0)
+        column_cons_x = int(num_cons > 0) * column_idx * column_width
+        column_idx += (num_cons > 0)
+
+        row_conns_height = 500 / (num_conns + 1)
+        row_transp_height = 500 / (num_transp + 1)
+        row_pcs_height = 500 / (num_prod_conv_stor + 1)
+        row_cons_height = 500 / (num_cons + 1)
+
+        row_conns_idx = 1
+        row_transp_idx = 1
+        row_pcs_idx = 1
+        row_cons_idx = 1
+
+        for basset in building.asset:
+            if not basset.geometry:
+                if isinstance(basset, esdl.AbstractConnection):
+                    basset.geometry = esdl.Point(lon=column_conns_x , lat=row_conns_idx * row_conns_height, CRS="Simple")
+                    row_conns_idx = row_conns_idx + 1
+                elif isinstance(basset, esdl.Transport):
+                    basset.geometry = esdl.Point(lon=column_transp_x , lat=row_transp_idx * row_transp_height, CRS="Simple")
+                    row_transp_idx = row_transp_idx + 1
+                if isinstance(basset, esdl.Producer) or isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+                    basset.geometry = esdl.Point(lon=column_pcs_x , lat=row_pcs_idx * row_pcs_height, CRS="Simple")
+                    row_pcs_idx = row_pcs_idx + 1
+                if isinstance(basset, esdl.Consumer):
+                    basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
+                    row_cons_idx = row_cons_idx + 1
+
+
 def update_asset_geometries3(area, boundary):
     coords = boundary['coordinates']
     type = boundary['type']
@@ -1236,41 +1319,20 @@ def update_asset_geometries3(area, boundary):
     # print(center)
 
 
-    # TODO: An area with a building, with buildingunits with assets is not supported yet
+    # TODO: An area with a building, with buildingunits (!) with assets is not supported yet
     for asset in area.asset:
+        geom = asset.geometry
+        if not geom:
+            asset.geometry = calc_random_location_around_center(center, delta_x, delta_y, True)
+
         if isinstance(asset, esdl.AbstractBuilding):
-            for asset2 in asset.asset:
-                geom = asset2.geometry
+            calc_building_assets_location(asset)
 
-                if not geom:
-                    geom = esdl.Point()
-                    x = center[0] + ((-0.5 + random.random()) * delta_x / 2)
-                    y = center[1] + ((-0.5 + random.random()) * delta_y / 2)
-                    if x > 180 or y > 180:  # Assume RD
-                        rdwgs = RDWGSConverter()
-                        wgs = rdwgs.fromRdToWgs([x, y])
-                        geom.lat = wgs[0]
-                        geom.lon = wgs[1]
-                    else:
-                        geom.lat = y
-                        geom.lon = x
-                    asset2.geometry = geom
-        else:
-            geom = asset.geometry
-
-            if not geom:
-                geom = esdl.Point()
-                x = center[0] + ((-0.5 + random.random()) * delta_x / 2)
-                y = center[1] + ((-0.5 + random.random()) * delta_y / 2)
-                if x > 180 or y > 180:  # Assume RD
-                    rdwgs = RDWGSConverter()
-                    wgs = rdwgs.fromRdToWgs([x, y])
-                    geom.lat = wgs[0]
-                    geom.lon = wgs[1]
-                else:
-                    geom.lat = y
-                    geom.lon = x
-                asset.geometry = geom
+            # for asset2 in asset.asset:
+            #     geom = asset2.geometry
+            #     if not geom:
+            #         # Building editor uses a 500x500 canvas
+            #         asset2.geometry = calc_random_location_around_center([250,250], 500, 500, False)
 
 
 def get_control_strategy_info(asset):
@@ -1405,7 +1467,16 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                     for pc in conn_to:
                         in_different_buildings = False
                         pc_asset = port_asset_mapping[pc.id]
-                        pc_asset_real = esh.get_by_id(es_id, pc_asset['asset_id'])
+                        try:
+                            pc_asset_real = esh.get_by_id(es_id, pc_asset['asset_id'])
+                        except:
+                            print("Exception occurred")
+                            print("es_id: {}".format(es_id))
+                            print("current building asset id: {}".format(basset.id))
+                            print("connected-to-asset info: {}".format(pc_asset))
+                            print("connected-to-asset ID: {}".format(pc_asset['asset_id']))
+                            continue
+
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset_real.containingBuilding:
                             bld_pc_asset = pc_asset_real.containingBuilding
@@ -1482,7 +1553,15 @@ def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, por
                 if conn_to_ids:
                     for pc in p.connectedTo:
                         pc_asset = port_asset_mapping[pc.id]
-                        pc_asset_real = esh.get_by_id(es_id, pc_asset['asset_id'])
+                        try:
+                            pc_asset_real = esh.get_by_id(es_id, pc_asset['asset_id'])
+                        except:
+                            print("Exception occurred")
+                            print("es_id: {}".format(es_id))
+                            print("current building asset id: {}".format(basset.id))
+                            print("connected-to-asset info: {}".format(pc_asset))
+                            print("connected-to-asset ID: {}".format(pc_asset['asset_id']))
+                            continue
                         if pc_asset_real.containingBuilding:
                             bld_pc_asset = pc_asset_real.containingBuilding
                             if bld_pc_asset.geometry:
