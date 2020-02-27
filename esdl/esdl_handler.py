@@ -426,47 +426,6 @@ class EnergySystemHandler:
         self.load_from_string(state['energySystem'])
         print('done')
 
-    @staticmethod
-    def get_asset_attributes(asset, esdl_doc=None):
-        attributes = list()
-        for x in asset.eClass.eAllStructuralFeatures():
-            #print('{} is of type {}'.format(x.name, x.eClass.name))
-            if isinstance(x, EAttribute):
-                attr = dict()
-                attr['name'] = x.name
-                attr['type'] = x.eType.name
-                # if isinstance(x., EEnum):
-                #    attr['value'] = list(es.eGet(x))
-                attr['value'] = asset.eGet(x)
-                if attr['value'] is not None:
-                    if x.many:
-                        if isinstance(attr['value'], EOrderedSet):
-                            attr['value'] = [x.name for x in attr['value']]
-                            attr['many'] = True
-                        else:
-                            attr['value'] = list(x.eType.to_string(attr['value']))
-                    else:
-                        attr['value'] = x.eType.to_string(attr['value'])
-                if isinstance(x.eType, EEnum):
-                    attr['type'] = 'EEnum'
-                    attr['enum_type'] = x.eType.name
-                    attr['options'] = list(lit.name for lit in x.eType.eLiterals)
-                    attr['default'] = x.eType.default_value.name
-                else:
-                    attr['default'] = x.eType.default_value
-                    if x.eType.default_value is not None:
-                        attr['default'] = x.eType.to_string(x.eType.default_value)
-                if x.eType.name == 'EBoolean':
-                    attr['options'] = ['true', 'false']
-                attr['doc'] = x.__doc__
-                if x.__doc__ is None and esdl_doc is not None:
-                    attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
-
-                attributes.append(attr)
-        # print(attributes)
-        attrs_sorted = sorted(attributes, key=lambda a: a['name'])
-        return attrs_sorted
-
 
 class StringURI(URI):
     def __init__(self, uri, text=None):
