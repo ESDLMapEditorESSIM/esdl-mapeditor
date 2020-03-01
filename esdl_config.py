@@ -151,7 +151,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Betap_Elektra_Sisalstraat66",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/XDQhsH_Zk/betap_elektra_sisalstraat66?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Betap_Elektra_Sisalstraat87",
@@ -161,7 +161,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Betap_Elektra_Sisalstraat87",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/bDBoyN_Zz/betap_elektra_sisalstraat87?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Hamat_Elektra_Spoelstraat16",
@@ -171,7 +171,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Hamat_Elektra_Spoelstraat16",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/yQgtsNlWz/hamat_elektra_spoelstraat16?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Hamat_Elektra_Jutestraat7",
@@ -181,7 +181,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Hamat_Elektra_Jutestraat7",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/sOUpyHlZz/hamat_elektra_jutestraat7?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Avimat_Elektra_Sisalstraat36",
@@ -191,7 +191,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Avimat_Elektra_Sisalstraat36",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/VdN5yNlWk/avimat_elektra_sisalstraat36?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Cotap_Elektra_Biezenstraat2",
@@ -201,7 +201,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Biezenstraat2",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IRcFsNlZk/cotap_elektra_biezenstraat2?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Cotap_Elektra_Oosterburgstr27",
@@ -211,7 +211,7 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Oosterburgstr27",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/tZ1OyHlWz/cotap_elektra_oosterburgstr27?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Cotap_Elektra_Oosterburgstr38",
@@ -221,7 +221,27 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Oosterburgstr38",
             "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/kLdNyH_Zz/cotap_elektra_oosterburgstr38?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr11",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Rinos_Elektra_KlaasFuitestr11",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr12",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Rinos_Elektra_KlaasFuitestr12",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         }
     ],
     "energy_carriers": [
