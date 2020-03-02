@@ -242,6 +242,56 @@ esdl_config = {
             "field": "Rinos_Elektra_KlaasFuitestr12",
             "profileType": "ENERGY_IN_TJ",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr11",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Rinos_Elektra_KlaasFuitestr11",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr12",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Rinos_Elektra_KlaasFuitestr12",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Condor_Elektra_Sasdijk17",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Condor_Elektra_Sasdijk17",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Condor_Elektra_Sisalstraat30",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Condor_Elektra_Sisalstraat30",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "GM - Condor_Elektra_Spoelstraat1",
+            "required_role": "genemuiden",
+            "multiplier": 1,
+            "database": "genemuiden",
+            "measurement": "genemuiden-GV-2019",
+            "field": "Condor_Elektra_Spoelstraat1",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": ""
         }
     ],
     "energy_carriers": [
