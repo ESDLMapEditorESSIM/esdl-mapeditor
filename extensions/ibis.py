@@ -4,6 +4,9 @@ from extensions.session_manager import get_handler, get_session, get_session_for
 import settings
 import requests
 import json
+from uuid import uuid4
+from esdl import esdl
+from esdl.processing import ESDLGeometry
 
 
 class IBISBedrijventerreinen:
@@ -41,6 +44,8 @@ class IBISBedrijventerreinen:
                     print('ERROR in accessing IBIS boundary service for {}'.format(rin_list))
                     return None
 
+                if add_boundary_to_ESDL:
+                    self.add_geometries_to_esdl(esh, active_es_id, area_list)
                 self.emit_geometries_to_client(esh, active_es_id, area_list)
 
         @self.flask_app.route('/bedrijventerreinen_list')
@@ -80,3 +85,22 @@ class IBISBedrijventerreinen:
             # print(emit_area_list)
             # emit('geojson', {"layer": "area_layer", "geojson": emit_area_list})
             emit('geojson', {"layer": "area_layer", "geojson": emit_area_list}, namespace='/esdl')
+
+    def add_geometries_to_esdl(self, esh, es_id, area_list):
+        with self.flask_app.app_context():
+
+            es_edit = esh.get_energy_system(es_id)
+            instance = es_edit.instance
+            area = instance[0].area
+
+            for ibis_area in area_list:
+                new_area = esdl.Area(id=str(uuid4()), name=ibis_area['name'])
+                new_area.scope = esdl.AreaScopeEnum.from_string("UNDEFINED")
+
+                boundary = ibis_area
+
+                if boundary:
+                    geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
+                    new_area.geometry = geometry
+
+                area.area.append(new_area)

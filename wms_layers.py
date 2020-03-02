@@ -183,7 +183,15 @@ default_wms_layers = {
     }
 }
 
+
 # zie https://stowa.geoapps.nl/Overzichtskaart voor meer TEO/TEA kaartlagen
+# TEA - economische potentie - direct - RWZI: https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02c.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?
+# LAYERS=2bd449fcb6e74f81af1ccdba770c1b0a
+# TEA - economische potentie - direct - Leidingen: https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02c.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?
+# LAYERS=d21caa0e2cfb4d638aa74b23f5b2b34f
+# TEA - economische potentie - direct - Gemalen: https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02e.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?
+# LAYERS=88c739dc2cac4ab2a0740af5b5513965
+
 
 """
 PICO Hoogspanningsnet 2018

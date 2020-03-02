@@ -482,8 +482,9 @@ def find_area_info_geojson(building_list, area_list, this_area):
                     # get_boundary_from_service returns different struct than create_boundary_from_geometry
                     boundary_wgs = boundary_wgs['geom']
 
-    if boundary_wgs:
-        update_asset_geometries3(this_area, boundary_wgs)
+    # assign random coordinates if boundary is given and area contains assets without coordinates
+    # and gives assets within buildings a proper coordinate
+    update_asset_geometries3(this_area, boundary_wgs)
 
     assets = this_area.asset
     for asset in assets:
@@ -581,6 +582,36 @@ def find_boundaries_in_ESDL(top_area):
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
     print('- Sending asset information to client, size={}'.format(getsizeof(building_list)))
     emit('geojson', {"layer": "bld_layer", "geojson": building_list})
+
+
+def add_missing_coordinates(area):
+    min_lat = float("inf")
+    max_lat = -float("inf")
+    min_lon = float("inf")
+    max_lon = -float("inf")
+
+    for child in area.eAllContents():
+        point = None
+        if isinstance(child, esdl.Polygon):
+            if child.CRS != "Simple": point = child.exterior.point[0]     # take first coordinate of exterior of polygon
+        if isinstance(child, esdl.Point):
+            if child.CRS != "Simple": point = child
+        if point:
+            if point.lat < min_lat: min_lat = point.lat
+            if point.lat > max_lat: max_lat = point.lat
+            if point.lon < min_lon: min_lon = point.lon
+            if point.lon > max_lon: max_lon = point.lon
+            point = None
+
+    delta_x = max_lon - min_lon
+    delta_y = max_lat - min_lat
+    center = [(min_lon + max_lon)/2, (min_lat + max_lat)/2]
+    RD_coords = (max_lat > 180 and max_lon > 180)
+
+    for child in area.eAllContents():
+        if isinstance(child, esdl.EnergyAsset):
+            if not child.geometry:
+                child.geometry = calc_random_location_around_center(center, delta_x / 10, delta_y / 10, RD_coords)
 
 
 def is_running_in_uwsgi():
@@ -1204,10 +1235,10 @@ def update_asset_geometries2(area, boundary):
 
 
 def calc_center_and_size(coords):
-    min_x = float('inf')
-    min_y = float('inf')
-    max_x = 0
-    max_y = 0
+    min_x = float("inf")
+    min_y = float("inf")
+    max_x = -float("inf")
+    max_y = -float("inf")
 
     for c in coords:
         if c[0] < min_x: min_x = c[0]
@@ -1305,26 +1336,26 @@ def calc_building_assets_location(building):
 
 
 def update_asset_geometries3(area, boundary):
-    coords = boundary['coordinates']
-    type = boundary['type']
-    # print(coords)
-    # print(type)
+    if boundary:
+        coords = boundary['coordinates']
+        type = boundary['type']
+        # print(coords)
+        # print(type)
 
-    if type == 'Polygon':
-        outer_polygon = coords[0]       # Take exterior polygon
-    elif type == 'MultiPolygon':
-        outer_polygon = coords[0][0]    # Assume first polygon is most relevant and then take exterior polygon
-    else:
-        send_alert('Non supported polygon')
+        if type == 'Polygon':
+            outer_polygon = coords[0]       # Take exterior polygon
+        elif type == 'MultiPolygon':
+            outer_polygon = coords[0][0]    # Assume first polygon is most relevant and then take exterior polygon
+        else:
+            send_alert('Non supported polygon')
 
-    center, delta_x, delta_y = calc_center_and_size(outer_polygon)
-    # print(center)
-
+        center, delta_x, delta_y = calc_center_and_size(outer_polygon)
+        # print(center)
 
     # TODO: An area with a building, with buildingunits (!) with assets is not supported yet
     for asset in area.asset:
         geom = asset.geometry
-        if not geom:
+        if not geom and boundary:
             asset.geometry = calc_random_location_around_center(center, delta_x, delta_y, True)
 
         if isinstance(asset, esdl.AbstractBuilding):
@@ -3395,7 +3426,7 @@ def process_command(message):
                     esdl_profile.field = p['field']
                     esdl_profile.host = esdl_config.esdl_config['profile_database']['host']
                     esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
-                    esdl_profile.database = esdl_config.esdl_config['profile_database']['database']
+                    esdl_profile.database = p['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
 
         if quap_type == 'predefined_qau':
@@ -3890,6 +3921,9 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             if sector_list:
                 emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
+            # give all assets without geometry a random location around the center of the current energysystem
+            # else create_port_to_asset_mapping won't work
+            add_missing_coordinates(area)
             create_port_to_asset_mapping(area, mapping)
             process_area(es.id, asset_list, building_list, area_bld_list, conn_list, mapping, area, 0)
 
