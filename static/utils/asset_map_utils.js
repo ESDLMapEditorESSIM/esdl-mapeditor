@@ -41,7 +41,7 @@ function build_asset_menu(asset_menu_id, add_nea, cap_list) {
         $('#'+asset_menu_id).append(optgroup);
     }
     $('#'+asset_menu_id).attr("size", "15");
-    $('#'+asset_menu_id).css({'max-height': '600px' });
+    //$('#'+asset_menu_id+'-menu').css({'max-height': '600px' });
     $('#'+asset_menu_id).selectmenu("refresh");
 
     //$( "#asset_menu" ).addClass( "overflow" );

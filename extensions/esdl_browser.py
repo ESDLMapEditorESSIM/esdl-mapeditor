@@ -26,38 +26,32 @@ class ESDLBrowser:
         @self.socketio.on('esdl_browse_get_objectinfo', namespace='/esdl')
         def socketio_get_objectinfo(message):
             with self.flask_app.app_context():
-                esdl_object_id = message['id']
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                esdl_object = esh.get_by_id(active_es_id, esdl_object_id)
+                esdl_object = self.get_object_from_identifier(message)
                 browse_data = self.get_browse_to_data(esdl_object)
                 emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_get_objectinfo_fragment', namespace='/esdl')
         def socketio_get_objectinfo_fragment(message):
-            fragment = message['fragment']
-            esh = get_handler()
-            active_es_id = get_session('active_es_id')
-            resource = esh.get_resource(active_es_id)
-            esdl_object = resource.resolve(fragment)
+            esdl_object = self.get_object_from_identifier(message)
             browse_data = self.get_browse_to_data(esdl_object)
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_create_object', namespace='/esdl')
         def socketio_create_object(message):
             # {'parent': {'id': parent_object.id, 'fragment': parent_object.fragment}, 'name': reference_data.name, 'type': types[0]}
-            active_es_id = get_session('active_es_id')
             esh = get_handler()
-            object_id = message['parent']['id']
-            object_type = message['type']
+            active_es_id = get_session('active_es_id')
+            # object_id = message['parent']['id']
+            # if object_id is None:
+            #     resource = esh.get_resource(active_es_id)
+            #     parent_object = resource.resolve(message['parent']['fragment'])
+            # else:
+            #     parent_object = esh.get_by_id(active_es_id, object_id)
+            parent_object = self.get_object_from_identifier(message)
             reference_name = message['name']
-            if object_id is None:
-                resource = esh.get_resource(active_es_id)
-                parent_object = resource.resolve(message['parent']['fragment'])
-            else:
-                parent_object = esh.get_by_id(active_es_id, object_id)
-            attribute = parent_object.eClass.findEStructuralFeature(reference_name)
+            attribute = parent_object.eClass.findEStructuralFeature(reference_name['parent'])
             if attribute is not None:
+                object_type = message['type']
                 new_object = ESDLEcore.instantiate_type(object_type)
                 if attribute.many:
                     eOrderedSet = parent_object.eGet(reference_name)
@@ -82,21 +76,22 @@ class ESDLBrowser:
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             #object_id = message['parent']['id']
-            #reference_name = message['name']
             reference_name = message['name']
-            ref_id = message['ref_id']['id']
-            resource = esh.get_resource(active_es_id)
-            if ref_id is not None:
-                ref_object = esh.get_by_id(active_es_id, ref_id)
-            else:
-                fragment = message['ref_id']['fragment']
-                ref_object = resource.resolve(fragment)
-            object_id = message['parent']['id']
-            if ref_id is not None:
-                parent_object = esh.get_by_id(active_es_id, object_id)
-            else:
-                fragment = message['parent']['fragment']
-                parent_object = resource.resolve(fragment)
+            ref_object = self.get_object_from_identifier(message['ref_id'])
+            # ref_id = message['ref_id']['id']
+            # resource = esh.get_resource(active_es_id)
+            # if ref_id is not None:
+            #     ref_object = esh.get_by_id(active_es_id, ref_id)
+            # else:
+            #     fragment = message['ref_id']['fragment']
+            #     ref_object = resource.resolve(fragment)
+            #object_id = message['parent']['id']
+            #if ref_id is not None:
+            #    parent_object = esh.get_by_id(active_es_id, object_id)
+            #else:
+            #    fragment = message['parent']['fragment']
+            #    parent_object = resource.resolve(fragment)
+            parent_object = self.get_object_from_identifier(message['parent'])
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
                 esh.remove_object_from_dict(active_es_id, ref_object)
@@ -117,13 +112,14 @@ class ESDLBrowser:
         def socket_io_list_references(message):
             active_es_id = get_session('active_es_id')
             esh = get_handler()
-            object_id = message['parent']['id']
             reference_name = message['name']
-            if object_id is None:
-                resource = esh.get_resource(active_es_id)
-                parent_object = resource.resolve(message['parent']['fragment'])
-            else:
-                parent_object = esh.get_by_id(active_es_id, object_id)
+            parent_object = self.get_object_from_identifier(message['parent'])
+            # object_id = message['parent']['id']
+            # if object_id is None:
+            #     resource = esh.get_resource(active_es_id)
+            #     parent_object = resource.resolve(message['parent']['fragment'])
+            # else:
+            #     parent_object = esh.get_by_id(active_es_id, object_id)
             reference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference is not None:
                 types = ESDLEcore.find_types(reference)
@@ -157,12 +153,19 @@ class ESDLBrowser:
     def get_object_from_identifier(self, identifier):
         active_es_id = get_session('active_es_id')
         esh = get_handler()
-        object_id = identifier['id']
-        if object_id is None:
+        if hasattr(identifier, 'id'):
+            object_id = identifier['id']
+            #object_id is not None:
+            try:
+                the_object = esh.get_by_id(active_es_id, object_id)
+            except KeyError:
+                print('KeyError for getting id {} in uuid_dict. Trying fragment.', object_id)
+                resource = esh.get_resource(active_es_id)
+                the_object = resource.resolve(identifier['fragment'])
+        else:
             resource = esh.get_resource(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
-        else:
-            the_object = esh.get_by_id(active_es_id, object_id)
+
         return the_object
 
     def get_browse_to_data(self, esdl_object):

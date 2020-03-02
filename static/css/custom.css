@@ -196,6 +196,9 @@ html, body
     padding: 0px;
 }
 
+/* Fix max-height in all jquery-ui drop down menus to 600px*/
+.ui-selectmenu-menu .ui-menu {max-height: 600px;}
+
 /*
 z-index for jstree context menu, sidebar has 2000
 .vakata-context {
