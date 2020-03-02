@@ -1,3 +1,24 @@
+
+"""
+    "ESSIM": {
+        "ESSIM_host": "http://geis.hesi.energy:8112",
+        "ESSIM_path": "/essim/simulation",
+        "influxURL": "http://geis.hesi.energy:8086",
+        "grafanaURL": "http://geis.hesi.energy:3000",
+        "user": "essim",
+        "start_datetime": "2015-01-01T00:00:00+0100",
+        "end_datetime": "2016-01-01T00:00:00+0100"
+    }
+}
+"""
+
+
+
+
+
+
+
+
 esdl_config = {
     "profile_database": {
         "host": "http://10.30.2.1",
@@ -220,7 +241,7 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Oosterburgstr38",
-            "profileType": "ENERGY_IN_TJ",
+            "profileType": "ENERGY_IN_KWH",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/kLdNyH_Zz/cotap_elektra_oosterburgstr38?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -230,7 +251,7 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr11",
-            "profileType": "ENERGY_IN_TJ",
+            "profileType": "ENERGY_IN_KWH",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -240,7 +261,7 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr12",
-            "profileType": "ENERGY_IN_TJ",
+            "profileType": "ENERGY_IN_KWH",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -250,8 +271,8 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr11",
-            "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "profileType": "ENERGY_IN_KWH",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr12",
@@ -260,8 +281,8 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr12",
-            "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "profileType": "ENERGY_IN_KWH",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Condor_Elektra_Sasdijk17",
@@ -270,8 +291,8 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Sasdijk17",
-            "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "profileType": "ENERGY_IN_KWH",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/sdZSW1lZk/condor_elektra_sasdijk17?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Condor_Elektra_Sisalstraat30",
@@ -280,8 +301,8 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Sisalstraat30",
-            "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "profileType": "ENERGY_IN_KWH",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/KczGW1lWk/condor_elektra_sisalstraat30?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
             "profile_uiname": "GM - Condor_Elektra_Spoelstraat1",
@@ -290,8 +311,8 @@ esdl_config = {
             "database": "genemuiden",
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Spoelstraat1",
-            "profileType": "ENERGY_IN_TJ",
-            "embedUrl": ""
+            "profileType": "ENERGY_IN_KWH",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/61IiW1_Wk/condor_elektra_spoelstraat1?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         }
     ],
     "energy_carriers": [
@@ -612,16 +633,3 @@ esdl_config = {
         }
     ]
 }
-
-"""
-    "ESSIM": {
-        "ESSIM_host": "http://geis.hesi.energy:8112",
-        "ESSIM_path": "/essim/simulation",
-        "influxURL": "http://geis.hesi.energy:8086",
-        "grafanaURL": "http://geis.hesi.energy:3000",
-        "user": "essim",
-        "start_datetime": "2015-01-01T00:00:00+0100",
-        "end_datetime": "2016-01-01T00:00:00+0100"
-    }
-}
-"""
