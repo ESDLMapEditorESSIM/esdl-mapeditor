@@ -95,6 +95,10 @@ html, body
 	font-size: 1.2em  !important;
 }
 
+/* Fix max-height in all jquery-ui drop down menus to 600px*/
+.ui-selectmenu-menu .ui-menu {max-height: 600px;}
+
+
 /*
     Legend Control box
 */
@@ -196,8 +200,6 @@ html, body
     padding: 0px;
 }
 
-/* Fix max-height in all jquery-ui drop down menus to 600px*/
-.ui-selectmenu-menu .ui-menu {max-height: 600px;}
 
 /*
 z-index for jstree context menu, sidebar has 2000

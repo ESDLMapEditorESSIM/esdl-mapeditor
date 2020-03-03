@@ -6,9 +6,16 @@ class ESDLBrowser {
     constructor() {
         this.initSocketIO();
         this.history = [];
+
+        let width = map.getSize()
+        this.width = 800;
+        this.height = 500;
+        this.x = 10;
+        this.y = (width.x/2)-(this.width/2);
     }
 
     open_browser(esdl_object_id) {
+        console.log(this.x, this.y, this.width, this.height);
         socket.emit('esdl_browse_get_objectinfo', {'id': esdl_object_id});
     }
 
@@ -357,9 +364,8 @@ class ESDLBrowser {
                 return;
             }
             dialog.setContent($div.get(0));
-            dialog.setSize([800,500]);
-            let width = map.getSize();
-            dialog.setLocation([10, (width.x/2)-(800/2)]);
+            dialog.setSize([esdl_browser.width,esdl_browser.height]);
+            dialog.setLocation([esdl_browser.x, esdl_browser.y]);
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
         }
@@ -404,9 +410,8 @@ class ESDLBrowser {
             return;
         }
         dialog.setContent($div.get(0));
-        dialog.setSize([800,500]);
-        let width = map.getSize()
-        dialog.setLocation([10, (width.x/2)-(800/2)]);
+        dialog.setSize([esdl_browser.width,esdl_browser.height]);
+        dialog.setLocation([esdl_browser.x, esdl_browser.y]);
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
     }
@@ -439,10 +444,12 @@ class ESDLBrowser {
                 // create dialog
                 return;
             }
+            //dialog.setSize([800,500]);
+            //let width = map.getSize();
+            //dialog.setLocation([10, (width.x/2)-(800/2)]);
             dialog.setContent(jqueryNode.get(0));
-            dialog.setSize([800,500]);
-            let width = map.getSize()
-            dialog.setLocation([10, (width.x/2)-(800/2)]);
+            dialog.setSize([esdl_browser.width, esdl_browser.height]);
+            dialog.setLocation([esdl_browser.x, esdl_browser.y]);
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
 
@@ -460,18 +467,31 @@ class ESDLBrowser {
                 return;
             }
             dialog.setContent(jqueryNode.get(0));
-            dialog.setSize([800,500]);
-            let width = map.getSize()
-            dialog.setLocation([10, (width.x/2)-(800/2)]);
+            dialog.setSize([esdl_browser.width,esdl_browser.height]);
+            dialog.setLocation([esdl_browser.x, esdl_browser.y]);
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
 
         });
     }
 
+    // all globals in here
+    static handle_dialog_resize_move() {
+        esdl_browser.width = dialog.options.size[0];
+        esdl_browser.height = dialog.options.size[1];
+        esdl_browser.x = dialog.options.anchor[0];
+        esdl_browser.y = dialog.options.anchor[1];
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
             esdl_browser = new ESDLBrowser();
+            map.on('dialog:resizeend', ESDLBrowser.handle_dialog_resize_move);
+            map.on('dialog:moving', ESDLBrowser.handle_dialog_resize_move);
+            map.on('dialog:closed', function(e) {
+                console.log(e);
+                socket.emit('esdl_browse_closed');
+            });
             return esdl_browser;
         }
         if (event.type === 'add_contextmenu') {

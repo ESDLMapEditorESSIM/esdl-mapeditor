@@ -56,6 +56,34 @@
 
 .leaflet-control-dialog
   .leaflet-control-dialog-inner
+   .leaflet-control-dialog-title-text {
+    margin-left: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: default;
+    user-select: none;
+    color: white;
+
+}
+
+
+.leaflet-control-dialog
+  .leaflet-control-dialog-inner
+  .leaflet-control-dialog-title {
+  position: absolute;
+  box-sizing: border-box;
+  width: 100%;
+  height: 20px;
+  top: 0px;
+  left: 0px;
+  padding: 2px;
+  font-size: 13px;
+  line-height: 16px;
+  background-color: #27ae60;
+}
+
+.leaflet-control-dialog
+  .leaflet-control-dialog-inner
   .leaflet-control-dialog-close:hover {
   cursor: pointer;
 }
@@ -72,6 +100,7 @@
   min-height: 50px;
   overflow: auto;
   box-sizing: border-box;
+  margin-top: 2px;
 }
 
 .leaflet-control-dialog
@@ -92,9 +121,9 @@
 .leaflet-control-dialog
   .leaflet-control-dialog-inner
   .leaflet-control-dialog-resizer:hover {
-  cursor: grab;
+  cursor: nwse-resize;
   cursor: -webkit-grab;
-  cursor: -moz-grab;
+  cursor: -moz-nwse-resize;
 }
 
 .fa-rotate-45 {

@@ -1,6 +1,6 @@
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject, EReference, EClass, EStructuralFeature
-from pyecore.notification import EObserver, Notification
+from pyecore.valuecontainer import EAbstractSet
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -135,26 +135,62 @@ class EnergySystemHandler:
         # show deleted object from memory
         # setattr(EObject, '__del__', lambda x: print('Deleted {}'.format(x.eClass.name)))
 
-        def update_id(n: Notification):
-            if isinstance(n.feature, EAttribute):
-                #print(n)
-                if n.feature.name == 'id':
-                    resource = n.notifier.eResource
-                    if resource is not None:
-                        print('ADDING to UUID dict {}#{}, notification type {}'.format(n.notifier.eClass.name, n.feature.name, n.kind.name))
-                        resource.uuid_dict[n.new] = n.notifier
-                        if n.old is not None and n.old is not '':
-                            del resource.uuid_dict[n.old]
-        observer = EObserver()
-        observer.notifyChanged = update_id
+        # def update_id(n: Notification):
+        #     if isinstance(n.feature, EAttribute):
+        #         #print(n)
+        #         if n.feature.name == 'id':
+        #             resource = n.notifier.eResource
+        #             if resource is not None and (n.kind != Kind.UNSET and n.kind != Kind.REMOVE):
+        #                 print('ADDING to UUID dict {}#{}, notification type {}'.format(n.notifier.eClass.name, n.feature.name, n.kind.name))
+        #                 resource.uuid_dict[n.new] = n.notifier
+        #                 if n.old is not None and n.old is not '':
+        #                     del resource.uuid_dict[n.old]
+        # observer = EObserver()
+        # observer.notifyChanged = update_id
+        #
+        # old_init = EObject.__init__
+        # def new_init(self, **kwargs):
+        #     observer.observe(self)
+        #     old_init(self, **kwargs)
+        #
+        # setattr(EObject, '__init__', new_init)
 
-        old_init = EObject.__init__
-        def new_init(self, **kwargs):
-            observer.observe(self)
-            old_init(self, **kwargs)
+        # Methods to automatically update the uuid_dict.
+        # Currently disabled, because it does not work in all circumstances
+        # This only works when the object which id is to be added to the dict is already part
+        # of the energysystem xml tree, otherwise there is no way of knowing to which uuid_dict it should be added.
+        # E.g.
+        # > asset = esdl.Asset(id='uuid)
+        # > asset.port.append(esdl.InPort(id='uuid)) # this does not work because asset is not part of the energy system yet
+        # > area.asset.append(asset) #works for asset, but not for port. In order to have port working too, this statement
+        # should be executed bofore adding the port...
 
-        setattr(EObject, '__init__', new_init)
-
+        # old_set = EObject.__setattr__
+        # def updated_set(self, feature, value):
+        #     old_set(self, feature, value)
+        #     #if feature == 'id':
+        #     #print('Feature :{}#{}, value={}, resource={}'.format(self.eClass.name, feature, value, '?'))
+        #     #if isinstance(feature, EReference):
+        #     if hasattr(value, 'id') and feature[0] != '_':
+        #         print('*****Update uuid_dict {}#{} for {}#id'.format(self.eClass.name, feature, value.eClass.name))
+        #         self.eResource.uuid_dict[value.id] = value
+        # setattr(EObject, '__setattr__', updated_set)
+        #
+        #
+        #
+        # old_append = EAbstractSet.append
+        # def updated_append(self, value, update_opposite=True):
+        #     old_append(self, value, update_opposite)
+        #     print('EAbstractSet :{}, value={}, resource={}, featureEr={}'.format(self, value, value.eResource, self.feature.eResource))
+        #     if hasattr(value, 'id'):
+        #         if self.feature.eResource:
+        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
+        #             self.feature.eResource.uuid_dict[value.id] = value
+        #         elif value.eResource:
+        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
+        #             value.eResource.uuid_dict[value.id] = value
+        #
+        # setattr(EAbstractSet, 'append', updated_append)
 
 
 

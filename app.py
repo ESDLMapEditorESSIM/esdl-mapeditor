@@ -4191,7 +4191,7 @@ def default_error_handler(e):
     print('Error in SocketIO handler: %s' % e)
     import traceback
     print('\tSocket IO message: %s' % request.event["message"]) # "my error event"
-    print('\tSocket IO arguments: %s' % request.event["args"])
+    print('\tSocket IO arguments: {}'.format(request.event["args"]))
     traceback.print_exc()
 
 # ---------------------------------------------------------------------------------------------------------------------

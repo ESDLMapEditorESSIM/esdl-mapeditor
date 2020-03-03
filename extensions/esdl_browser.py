@@ -41,15 +41,9 @@ class ESDLBrowser:
             # {'parent': {'id': parent_object.id, 'fragment': parent_object.fragment}, 'name': reference_data.name, 'type': types[0]}
             esh = get_handler()
             active_es_id = get_session('active_es_id')
-            # object_id = message['parent']['id']
-            # if object_id is None:
-            #     resource = esh.get_resource(active_es_id)
-            #     parent_object = resource.resolve(message['parent']['fragment'])
-            # else:
-            #     parent_object = esh.get_by_id(active_es_id, object_id)
-            parent_object = self.get_object_from_identifier(message)
+            parent_object = self.get_object_from_identifier(message['parent'])
             reference_name = message['name']
-            attribute = parent_object.eClass.findEStructuralFeature(reference_name['parent'])
+            attribute = parent_object.eClass.findEStructuralFeature(reference_name)
             if attribute is not None:
                 object_type = message['type']
                 new_object = ESDLEcore.instantiate_type(object_type)
@@ -75,22 +69,8 @@ class ESDLBrowser:
             # esdl_browse_delete_ref
             active_es_id = get_session('active_es_id')
             esh = get_handler()
-            #object_id = message['parent']['id']
             reference_name = message['name']
             ref_object = self.get_object_from_identifier(message['ref_id'])
-            # ref_id = message['ref_id']['id']
-            # resource = esh.get_resource(active_es_id)
-            # if ref_id is not None:
-            #     ref_object = esh.get_by_id(active_es_id, ref_id)
-            # else:
-            #     fragment = message['ref_id']['fragment']
-            #     ref_object = resource.resolve(fragment)
-            #object_id = message['parent']['id']
-            #if ref_id is not None:
-            #    parent_object = esh.get_by_id(active_es_id, object_id)
-            #else:
-            #    fragment = message['parent']['fragment']
-            #    parent_object = resource.resolve(fragment)
             parent_object = self.get_object_from_identifier(message['parent'])
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
@@ -110,16 +90,8 @@ class ESDLBrowser:
         #'esdl_browse_list_references'
         @self.socketio.on('esdl_browse_list_references', namespace='/esdl')
         def socket_io_list_references(message):
-            active_es_id = get_session('active_es_id')
-            esh = get_handler()
             reference_name = message['name']
             parent_object = self.get_object_from_identifier(message['parent'])
-            # object_id = message['parent']['id']
-            # if object_id is None:
-            #     resource = esh.get_resource(active_es_id)
-            #     parent_object = resource.resolve(message['parent']['fragment'])
-            # else:
-            #     parent_object = esh.get_by_id(active_es_id, object_id)
             reference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference is not None:
                 types = ESDLEcore.find_types(reference)
@@ -148,12 +120,10 @@ class ESDLBrowser:
             browse_data = self.get_browse_to_data(parent_object)
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
-
-
     def get_object_from_identifier(self, identifier):
         active_es_id = get_session('active_es_id')
         esh = get_handler()
-        if hasattr(identifier, 'id'):
+        if 'id' in identifier:
             object_id = identifier['id']
             #object_id is not None:
             try:
@@ -214,8 +184,6 @@ class ESDLBrowser:
         else:
             object_dict['id'] = esdl_object.id
         return object_dict
-
-
 
     @staticmethod
     def generate_repr(item):
