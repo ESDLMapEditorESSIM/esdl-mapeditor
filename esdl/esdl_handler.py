@@ -181,7 +181,7 @@ class EnergySystemHandler:
         # old_append = EAbstractSet.append
         # def updated_append(self, value, update_opposite=True):
         #     old_append(self, value, update_opposite)
-        #     print('EAbstractSet :{}, value={}, resource={}, featureEr={}'.format(self, value, value.eResource, self.feature.eResource))
+        #     #print('EAbstractSet :{}, value={}, resource={}, featureEr={}'.format(self, value, value.eResource, self.feature.eResource))
         #     if hasattr(value, 'id'):
         #         if self.feature.eResource:
         #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))

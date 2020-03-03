@@ -104,3 +104,4 @@ class IBISBedrijventerreinen:
                     new_area.geometry = geometry
 
                 area.area.append(new_area)
+                esh.add_object_to_dict(es_id, new_area)

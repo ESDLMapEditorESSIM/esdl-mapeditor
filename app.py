@@ -2556,6 +2556,7 @@ def get_boundary_info(info):
                         sub_area.geometry = geometry
 
                     area.area.append(sub_area)
+                    esh.add_object_to_dict(active_es_id, sub_area)
 
                 # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
                 # boundary = create_boundary_from_contour(area_contour)

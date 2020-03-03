@@ -74,7 +74,10 @@ class ESDLBrowser:
             parent_object = self.get_object_from_identifier(message['parent'])
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
-                esh.remove_object_from_dict(active_es_id, ref_object)
+                try:
+                    esh.remove_object_from_dict(active_es_id, ref_object)
+                except KeyError as e:
+                    print('ESDL Browser: can\'t delete id from uuid_dict')
                 ref_object.delete(recursive=True) # will automatically remove the reference from the list
             else:
                 if reference.many:
@@ -129,7 +132,7 @@ class ESDLBrowser:
             try:
                 the_object = esh.get_by_id(active_es_id, object_id)
             except KeyError:
-                print('KeyError for getting id {} in uuid_dict. Trying fragment.', object_id)
+                print('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
                 resource = esh.get_resource(active_es_id)
                 the_object = resource.resolve(identifier['fragment'])
         else:
