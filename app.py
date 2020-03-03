@@ -42,6 +42,7 @@ import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
 from esdl_profiles import ESDLProfiles
+from pyecore.ecore import EDate
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -3431,6 +3432,11 @@ def process_command(message):
                     esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
                     esdl_profile.database = p['database']
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
+
+                    if 'start_datetime' in p:
+                        esdl_profile.startDate = EDate.from_string(p['start_datetime'])
+                    if 'end_datetime' in p:
+                        esdl_profile.endDate = EDate.from_string(p['end_datetime'])
 
         if quap_type == 'predefined_qau':
             # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
