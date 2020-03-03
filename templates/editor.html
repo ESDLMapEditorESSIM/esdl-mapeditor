@@ -817,7 +817,6 @@
 
             // populate the asset menu grouped by capability
             socket.on('capability_list', function(cap_list) {
-                capabilities = cap_list;
                 build_asset_menu('asset_menu', true, cap_list);
             });
 
@@ -1649,9 +1648,10 @@
         }
 
         $(function() {
-            $("#asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
+            $("#asset_menu").selectmenu({ 'width': '200px', 'max-height': '500px' }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
             $("#area_bld_select").selectmenu({ width:500 });
+            //$("#area_bld_select-menu").css({ 'max-height': '600px' });
             $("#carrier_select").selectmenu({ width:150 });
             $("#profile_menu").selectmenu({ width:150 });
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});

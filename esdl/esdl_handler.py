@@ -1,5 +1,6 @@
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject, EReference, EClass, EStructuralFeature
+from pyecore.valuecontainer import EAbstractSet
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -134,6 +135,64 @@ class EnergySystemHandler:
         # show deleted object from memory
         # setattr(EObject, '__del__', lambda x: print('Deleted {}'.format(x.eClass.name)))
 
+        # def update_id(n: Notification):
+        #     if isinstance(n.feature, EAttribute):
+        #         #print(n)
+        #         if n.feature.name == 'id':
+        #             resource = n.notifier.eResource
+        #             if resource is not None and (n.kind != Kind.UNSET and n.kind != Kind.REMOVE):
+        #                 print('ADDING to UUID dict {}#{}, notification type {}'.format(n.notifier.eClass.name, n.feature.name, n.kind.name))
+        #                 resource.uuid_dict[n.new] = n.notifier
+        #                 if n.old is not None and n.old is not '':
+        #                     del resource.uuid_dict[n.old]
+        # observer = EObserver()
+        # observer.notifyChanged = update_id
+        #
+        # old_init = EObject.__init__
+        # def new_init(self, **kwargs):
+        #     observer.observe(self)
+        #     old_init(self, **kwargs)
+        #
+        # setattr(EObject, '__init__', new_init)
+
+        # Methods to automatically update the uuid_dict.
+        # Currently disabled, because it does not work in all circumstances
+        # This only works when the object which id is to be added to the dict is already part
+        # of the energysystem xml tree, otherwise there is no way of knowing to which uuid_dict it should be added.
+        # E.g.
+        # > asset = esdl.Asset(id='uuid)
+        # > asset.port.append(esdl.InPort(id='uuid)) # this does not work because asset is not part of the energy system yet
+        # > area.asset.append(asset) #works for asset, but not for port. In order to have port working too, this statement
+        # should be executed bofore adding the port...
+
+        # old_set = EObject.__setattr__
+        # def updated_set(self, feature, value):
+        #     old_set(self, feature, value)
+        #     #if feature == 'id':
+        #     #print('Feature :{}#{}, value={}, resource={}'.format(self.eClass.name, feature, value, '?'))
+        #     #if isinstance(feature, EReference):
+        #     if hasattr(value, 'id') and feature[0] != '_':
+        #         print('*****Update uuid_dict {}#{} for {}#id'.format(self.eClass.name, feature, value.eClass.name))
+        #         self.eResource.uuid_dict[value.id] = value
+        # setattr(EObject, '__setattr__', updated_set)
+        #
+        #
+        #
+        # old_append = EAbstractSet.append
+        # def updated_append(self, value, update_opposite=True):
+        #     old_append(self, value, update_opposite)
+        #     print('EAbstractSet :{}, value={}, resource={}, featureEr={}'.format(self, value, value.eResource, self.feature.eResource))
+        #     if hasattr(value, 'id'):
+        #         if self.feature.eResource:
+        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
+        #             self.feature.eResource.uuid_dict[value.id] = value
+        #         elif value.eResource:
+        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
+        #             value.eResource.uuid_dict[value.id] = value
+        #
+        # setattr(EAbstractSet, 'append', updated_append)
+
+
 
 
         # def toJSON(self):
@@ -187,6 +246,7 @@ class EnergySystemHandler:
         tmp_resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
+        self.validate(es=tmp_resource.contents[0])
         self.esid_uri_dict[tmp_resource.contents[0].id] = uri
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
         return tmp_resource.contents[0]
@@ -200,6 +260,7 @@ class EnergySystemHandler:
         try:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
+            self.validate()
             self.esid_uri_dict[self.energy_system.id] = uri
             self.add_object_to_dict(self.energy_system.id, self.energy_system)
             return self.energy_system
@@ -214,6 +275,7 @@ class EnergySystemHandler:
         external_resource = external_rset.create_resource(uri)
         external_resource.load()
         external_energy_system = external_resource.contents[0]
+        self.validate(es=external_energy_system)
         return external_energy_system
 
     def add_from_string(self, name, esdl_string):
@@ -221,15 +283,14 @@ class EnergySystemHandler:
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
         tmp_resource = self.rset.get_resource(uri)
+        tmp_es = tmp_resource.contents[0]
         try:
-            if tmp_resource.contents[0].id is None:
-                tmp_resource.contents[0].id = self.generate_uuid()
-            self.esid_uri_dict[tmp_resource.contents[0].id] = uri
-            # hack to add energySystem id to uuid_dict
-            self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
+            self.validate(es=tmp_es)
+            self.esid_uri_dict[tmp_es.id] = uri
+            self.add_object_to_dict(tmp_es.id, tmp_es)
             return tmp_resource.contents[0]
         except Exception as e:
-            return e            # TODO: how is this done nicely?
+            return e            # TODO: how is this done nicely? --> send error message to browser
 
 
     def to_string(self, es_id=None):
@@ -332,6 +393,17 @@ class EnergySystemHandler:
             es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
+    def validate(self, es=None):
+        if self.energy_system is not None:
+            es = self.energy_system
+        if es is not None:
+            if es.id is None:
+                es.id = str(uuid4())
+                log.warning("Energysystem has no id, generating one: {}".format(es))
+        else:
+            log.warning("Can't validate EnergySystem {}".format(es))
+
+
     # Using this function you can query for objects by ID
     # After loading an ESDL-file, all objects that have an ID defines are stored in resource.uuid_dict automatically
     # Note: If you add things later to the resource, it won't be added automatically to this dictionary though.
@@ -387,18 +459,18 @@ class EnergySystemHandler:
         es_id = str(uuid4())
         self.energy_system = esdl.EnergySystem(id=es_id, name=name, description=es_description)
 
+        uri = StringURI('empty_energysystem.esdl')
+        self.resource = self.rset.create_resource(uri)
+        # add the current energy system
+        self.resource.append(self.energy_system)
+        self.esid_uri_dict[self.energy_system.id] = uri
+
         instance = esdl.Instance(id=str(uuid4()), name=inst_title)
         self.energy_system.instance.append(instance)
 
         # TODO: check if this (adding scope) solves error????
         area = esdl.Area(id=str(uuid4()), name=area_title, scope=esdl.AreaScopeEnum.from_string('UNDEFINED'))
         instance.area = area
-
-        uri = StringURI('empty_energysystem.esdl')
-        self.resource = self.rset.create_resource(uri)
-        # add the current energy system
-        self.resource.append(self.energy_system)
-        self.esid_uri_dict[self.energy_system.id] = uri
 
         # add generated id's to uuid dict
         self.add_object_to_dict(es_id, self.energy_system)

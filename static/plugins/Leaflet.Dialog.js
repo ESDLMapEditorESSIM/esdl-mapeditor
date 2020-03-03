@@ -177,6 +177,10 @@ L.Control.Dialog = L.Control.extend({
     this._map.fire("dialog:updated", this);
   },
 
+  setTitle: function(title) {
+    this._titleTextNode.innerHTML = title;
+  },
+
   _initLayout: function() {
     var className = "leaflet-control-dialog",
       container = (this._container = L.DomUtil.create("div", className));
@@ -232,12 +236,27 @@ L.Control.Dialog = L.Control.extend({
       className + "-contents"
     ));
 
+    var titleNode = (this._titleNode = L.DomUtil.create(
+      "div",
+      className + "-title"
+    ));
+
+    L.DomEvent.on(titleNode, "mousedown", this._handleMoveStart, this);
+
+    var titleTextNode = (this._titleTextNode = L.DomUtil.create(
+      "span",
+      className + "-title-text"
+    ));
+
     container.appendChild(innerContainer);
 
     innerContainer.appendChild(contentNode);
+    innerContainer.appendChild(titleNode)
     innerContainer.appendChild(grabberNode);
     innerContainer.appendChild(closeNode);
     innerContainer.appendChild(resizerNode);
+
+    titleNode.appendChild(titleTextNode);
 
     this._oldMousePos = { x: 0, y: 0 };
   },
