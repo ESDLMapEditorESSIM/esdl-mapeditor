@@ -135,8 +135,10 @@ def add_asset_to_building(es, asset, building_id):
 def remove_object_from_building(building, object_id):
     for ass in set(building.asset):
         if ass.id == object_id:
-            for p in ass.port:
-                p.connectedTo.clear()
+            # Remove port connections for EnergyAssets (and not for buildingunits)
+            if isinstance(ass, esdl.EnergyAsset):
+                for p in ass.port:
+                    p.connectedTo.clear()
 
             building.asset.remove(ass)
             print('Asset with id ' + object_id + ' removed from building with id: ', + building.id)
@@ -145,8 +147,10 @@ def remove_object_from_building(building, object_id):
 def recursively_remove_object_from_area(area, object_id):
     for ass in set(area.asset):
         if ass.id == object_id:
-            for p in ass.port:
-                p.connectedTo.clear()
+            # Only remove port connections for EnergyAssets (and not for buildings)
+            if isinstance(ass, esdl.EnergyAsset):
+                for p in ass.port:
+                    p.connectedTo.clear()
             area.asset.remove(ass)
             print('Asset with id ' + object_id + ' removed from area with id: ' + area.id)
         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
