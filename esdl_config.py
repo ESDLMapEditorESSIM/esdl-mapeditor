@@ -46,6 +46,42 @@ esdl_config = {
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/INOZu3PWz/elektriciteit-huishoudens-2015-nedu-e1a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
+            "profile_uiname": "Electricity NEDU (E1B)",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E1B",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/yCTWWalZz/nedu-electricity-e1b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "Electricity NEDU (E1C)",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E1C",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/lsiMW-_Zz/nedu-electricity-e1c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "Electricity NEDU (E2A)",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E2A",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/quVnZa_Zk/nedu-electricity-e2a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "Electricity NEDU (E2B)",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E2B",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/BkC7Z-_Wz/nedu-electricity-e2b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
             "profile_uiname": "Electricity shops, office, education (E3A)",
             "multiplier": 1,
             "database": "energy_profiles",
@@ -80,6 +116,15 @@ esdl_config = {
             "field": "E3D",
             "profileType": "ENERGY_IN_TJ",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/G4HpXqEWz/electricity-greenhouses-e3d?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "Electricity NEDU (E4A)",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "nedu_elektriciteit_2015-2018",
+            "field": "E4A",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/EU5iZ-lWk/nedu-electricity-e4a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "Heating households (G1A)",
@@ -163,6 +208,46 @@ esdl_config = {
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/KM5U93EZz/wind-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "NZKG - Industrie (cont)",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "nzkg_profiles",
+            "measurement": "tno_industrie_2015",
+            "field": "INDUSTRY_CONT",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/VYfbZ-_Wk/nzkg-industrie-cont?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "NZKG - Industrie (day)",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "nzkg_profiles",
+            "measurement": "tno_industrie_2015",
+            "field": "INDUSTRY_DAY",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/AbIaW-_Zk/nzkg-industrie-day?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "NZKG - Industrie (datacenter)",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "nzkg_profiles",
+            "measurement": "tno_industrie_2015",
+            "field": "INDUSTRY_DATACENTER",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/u4q-Z-lWk/nzkg-industrie-datacenter?panelId=1&from=1420066800000&to=1451606400000&theme=light"
+        },
+        {
+            "profile_uiname": "NZKG - Industrie (total)",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "nzkg_profiles",
+            "measurement": "tno_industrie_2015",
+            "field": "INDUSTRY_TOTAL",
+            "profileType": "ENERGY_IN_TJ",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/DiAfZalWz/nzkg-industrie-total?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
             "profile_uiname": "GM - Betap_Elektra_Sisalstraat66",
