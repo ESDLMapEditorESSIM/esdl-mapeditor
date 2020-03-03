@@ -15,7 +15,6 @@ class ESDLBrowser {
     }
 
     open_browser(esdl_object_id) {
-        console.log(this.x, this.y, this.width, this.height);
         socket.emit('esdl_browse_get_objectinfo', {'id': esdl_object_id});
     }
 
@@ -316,7 +315,7 @@ class ESDLBrowser {
     }
 
     add(parent_object_identifier, reference_data, types) {
-        console.log(parent_object_identifier, reference_data);
+        //console.log(parent_object_identifier, reference_data);
         let last = esdl_browser.history[history.length - 1];
         // only add if it is not in the history already
         if (JSON.stringify(last) !== JSON.stringify(parent_object_identifier)) {
@@ -349,7 +348,7 @@ class ESDLBrowser {
                 esdl_browser.del(ref_repr, ref_name, ref_identifier, parent_identifier, false);
             });
             $back_button.click(function (e) {
-                console.log(parent_identifier);
+                //console.log(parent_identifier);
                 esdl_browser.open_browser_identifier(parent_identifier);
             });
 
@@ -366,6 +365,7 @@ class ESDLBrowser {
             dialog.setContent($div.get(0));
             dialog.setSize([esdl_browser.width,esdl_browser.height]);
             dialog.setLocation([esdl_browser.x, esdl_browser.y]);
+            dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
         }
@@ -412,6 +412,7 @@ class ESDLBrowser {
         dialog.setContent($div.get(0));
         dialog.setSize([esdl_browser.width,esdl_browser.height]);
         dialog.setLocation([esdl_browser.x, esdl_browser.y]);
+        dialog.setTitle('ESDL browser - Edit EnergySystem');
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
     }
@@ -450,6 +451,7 @@ class ESDLBrowser {
             dialog.setContent(jqueryNode.get(0));
             dialog.setSize([esdl_browser.width, esdl_browser.height]);
             dialog.setLocation([esdl_browser.x, esdl_browser.y]);
+            dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
 
@@ -469,6 +471,7 @@ class ESDLBrowser {
             dialog.setContent(jqueryNode.get(0));
             dialog.setSize([esdl_browser.width,esdl_browser.height]);
             dialog.setLocation([esdl_browser.x, esdl_browser.y]);
+            dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
 
@@ -489,7 +492,6 @@ class ESDLBrowser {
             map.on('dialog:resizeend', ESDLBrowser.handle_dialog_resize_move);
             map.on('dialog:moving', ESDLBrowser.handle_dialog_resize_move);
             map.on('dialog:closed', function(e) {
-                console.log(e);
                 socket.emit('esdl_browse_closed');
             });
             return esdl_browser;
