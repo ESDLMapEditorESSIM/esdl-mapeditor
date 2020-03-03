@@ -3033,7 +3033,9 @@ def process_command(message):
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
                 emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
             if asset:
-                remove_control_strategy_for_asset(asset.id)
+                # Try to remove control strategy for EnergyAssets (and not for buildings)
+                if isinstance(asset, esdl.EnergyAsset):
+                    remove_control_strategy_for_asset(asset.id)
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
             esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
