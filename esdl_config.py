@@ -6,8 +6,8 @@
         "influxURL": "http://geis.hesi.energy:8086",
         "grafanaURL": "http://geis.hesi.energy:3000",
         "user": "essim",
-        "start_datetime": "2015-01-01T00:00:00+0100",
-        "end_datetime": "2016-01-01T00:00:00+0100"
+        "start_datetime": "2015-01-01T00:00:00.000000+0100",
+        "end_datetime": "2016-01-01T00:00:00.000000+0100"
     }
 }
 """
@@ -34,6 +34,8 @@ esdl_config = {
             "measurement": "solar_relative_2011-2016",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/u4uAX3PZk/solar?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -43,6 +45,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E1A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/INOZu3PWz/elektriciteit-huishoudens-2015-nedu-e1a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -52,6 +56,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E1B",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/yCTWWalZz/nedu-electricity-e1b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -61,6 +67,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E1C",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/lsiMW-_Zz/nedu-electricity-e1c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -70,6 +78,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E2A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/quVnZa_Zk/nedu-electricity-e2a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -79,6 +89,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E2B",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/BkC7Z-_Wz/nedu-electricity-e2b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -88,6 +100,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/wEXMX3EWk/electricity-shops-office-education-e3a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -97,6 +111,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3B",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/44-vX3EZk/electricity-prison-e3b?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -106,6 +122,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3C",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/iRXduqEZz/electricity-hotel-hospital-e3c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -115,6 +133,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E3D",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/G4HpXqEWz/electricity-greenhouses-e3d?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -124,6 +144,8 @@ esdl_config = {
             "measurement": "nedu_elektriciteit_2015-2018",
             "field": "E4A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/EU5iZ-lWk/nedu-electricity-e4a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -133,6 +155,8 @@ esdl_config = {
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G1A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/Dw5-u3EWz/heating-households-g1a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -142,6 +166,8 @@ esdl_config = {
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2A",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/6IQBuqPWz/heating-g2a?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -151,6 +177,8 @@ esdl_config = {
             "measurement": "nedu_aardgas_2015-2018",
             "field": "G2C",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/GI_Yu3PZz/heating-g2c?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -160,6 +188,8 @@ esdl_config = {
             "measurement": "constant",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/ZJn5rqPWk/constant?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -169,6 +199,8 @@ esdl_config = {
             "measurement": "wind-2015",
             "field": "Wind-op-land",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/eeD2r3PWk/wind-op-land?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -178,6 +210,8 @@ esdl_config = {
             "measurement": "wind-2015",
             "field": "Wind-op-zee",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/2C-A93EWk/wind-op-zee?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -187,6 +221,8 @@ esdl_config = {
             "measurement": "biomassa-2015",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/dyab9qPWz/biomassa?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -197,6 +233,8 @@ esdl_config = {
             "measurement": "elektr-curacao-2015",
             "field": "elektr",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/r8oLrqPWz/elektriciteit-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -207,6 +245,8 @@ esdl_config = {
             "measurement": "wind-curacao-2015",
             "field": "value",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/grafana/d-solo/KM5U93EZz/wind-curacao?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -217,6 +257,8 @@ esdl_config = {
             "measurement": "tno_industrie_2015",
             "field": "INDUSTRY_CONT",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/VYfbZ-_Wk/nzkg-industrie-cont?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -227,6 +269,8 @@ esdl_config = {
             "measurement": "tno_industrie_2015",
             "field": "INDUSTRY_DAY",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/AbIaW-_Zk/nzkg-industrie-day?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -237,6 +281,8 @@ esdl_config = {
             "measurement": "tno_industrie_2015",
             "field": "INDUSTRY_DATACENTER",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/u4q-Z-lWk/nzkg-industrie-datacenter?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -247,6 +293,8 @@ esdl_config = {
             "measurement": "tno_industrie_2015",
             "field": "INDUSTRY_TOTAL",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/DiAfZalWz/nzkg-industrie-total?panelId=1&from=1420066800000&to=1451606400000&theme=light"
         },
         {
@@ -257,6 +305,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Betap_Elektra_Sisalstraat66",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/XDQhsH_Zk/betap_elektra_sisalstraat66?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -267,6 +317,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Betap_Elektra_Sisalstraat87",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/bDBoyN_Zz/betap_elektra_sisalstraat87?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -277,6 +329,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Hamat_Elektra_Spoelstraat16",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/yQgtsNlWz/hamat_elektra_spoelstraat16?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -287,6 +341,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Hamat_Elektra_Jutestraat7",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/sOUpyHlZz/hamat_elektra_jutestraat7?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -297,6 +353,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Avimat_Elektra_Sisalstraat36",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/VdN5yNlWk/avimat_elektra_sisalstraat36?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -307,6 +365,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Biezenstraat2",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IRcFsNlZk/cotap_elektra_biezenstraat2?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -317,6 +377,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Oosterburgstr27",
             "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/tZ1OyHlWz/cotap_elektra_oosterburgstr27?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -327,6 +389,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Cotap_Elektra_Oosterburgstr38",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/kLdNyH_Zz/cotap_elektra_oosterburgstr38?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -337,6 +401,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr11",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -347,6 +413,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr12",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -357,6 +425,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr11",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -367,6 +437,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Rinos_Elektra_KlaasFuitestr12",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -377,6 +449,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Sasdijk17",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/sdZSW1lZk/condor_elektra_sasdijk17?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -387,6 +461,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Sisalstraat30",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/KczGW1lWk/condor_elektra_sisalstraat30?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
@@ -397,6 +473,8 @@ esdl_config = {
             "measurement": "genemuiden-GV-2019",
             "field": "Condor_Elektra_Spoelstraat1",
             "profileType": "ENERGY_IN_KWH",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/61IiW1_Wk/condor_elektra_spoelstraat1?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         }
     ],
@@ -462,6 +540,61 @@ esdl_config = {
             "name": "Get PICO wind potential",
             "explanation": "This queries the Geodan wind potential service for a certain area",
             "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/windturbinegebied",
+            "http_method": "get",
+            "headers": {
+                "Accept": "application/esdl+xml",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "geo_query",
+            "result": [
+                {
+                    "code": 200,
+                    "action": "esdl"
+                }
+            ],
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "PROVINCE", "url_value": "provincies"},
+                    {"scope": "REGION", "url_value": "resgebieden"},
+                    {"scope": "MUNICIPALITY", "url_value": "gemeenten"}
+                ]
+            },
+            "query_parameters": [
+                {
+                    "name": "Distance to buildings",
+                    "description": "Minimum distance to the built environment (in meters)",
+                    "parameter_name": "bebouwingsafstand",
+                    "type": "integer"
+                },
+                {
+                    "name": "Restriction",
+                    "description": "",
+                    "parameter_name": "restrictie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Preference",
+                    "description": "",
+                    "parameter_name": "preferentie",
+                    "type": "multi-selection",
+                    "possible_values": ["natuur", "vliegveld", "infrastructuur", "agrarisch", "turbines"]
+                },
+                {
+                    "name": "Include geometry in ESDL",
+                    "description": "",
+                    "parameter_name": "geometrie",
+                    "type": "boolean"
+                }
+            ]
+        },
+        {
+            "id": "50fa716f-f3b0-464c-bf9f-1acffb24f76a",
+            "name": "Get PICO solar field potential",
+            "explanation": "This queries the Geodan solar field potential service for a certain area",
+            "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/zonneveldgebied",
             "http_method": "get",
             "headers": {
                 "Accept": "application/esdl+xml",
