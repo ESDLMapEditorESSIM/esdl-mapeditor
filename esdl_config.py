@@ -17,8 +17,6 @@
 
 
 
-
-
 esdl_config = {
     "profile_database": {
         "host": "http://10.30.2.1",
@@ -476,6 +474,28 @@ esdl_config = {
             "start_datetime": "2019-01-01T00:00:00.000000+0100",
             "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/61IiW1_Wk/condor_elektra_spoelstraat1?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "Zon - de Bilt 2019",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "zon-wind-debilt-2019",
+            "field": "zonprofiel_procenten",
+            "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/BZJwZX_Zz/zon-de-bilt-2019?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "Wind - de Bilt 2019",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "zon-wind-debilt-2019",
+            "field": "windprofiel_procenten",
+            "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/-DS_WX_Zk/wind-de-bilt-2019?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         }
     ],
     "energy_carriers": [
@@ -851,3 +871,5 @@ esdl_config = {
         }
     ]
 }
+
+

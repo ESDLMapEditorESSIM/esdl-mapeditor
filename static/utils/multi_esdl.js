@@ -40,7 +40,7 @@ function select_active_layer() {
 
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
-    add_draw_control(draw_control, map);         // connect draw control to new active layer
+    draw_control = add_draw_control(draw_control, map);         // connect draw control to new active layer
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
     var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();

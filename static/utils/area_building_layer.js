@@ -425,6 +425,13 @@ function set_area_handlers(area) {
             socket.emit('command', {cmd: 'get_area_info', id: id});
         }
     });
+
+    // let extensions know they can update this layer.
+    // e.g. add a context menu item
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: area});
+    }
 }
 
 function add_area_layer(area_data) {
