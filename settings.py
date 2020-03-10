@@ -53,6 +53,12 @@ edr_config = {
     "EDR_path": "/store/esdl/",
 }
 
+user_logging_config = {
+    "host": "10.30.2.1",
+    "port": "8086",
+    "database": "user_logging"
+}
+
 if os.environ.get('GEIS'):
     # Settings for in GEIS cloud behind redbird reverse proxy
     print('Starting application with GEIS settings (hosting at geis.hesi.energy/webeditor)')

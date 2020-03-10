@@ -43,6 +43,7 @@ from edr_assets import EDR_assets
 from esdl_services import ESDLServices
 from esdl_profiles import ESDLProfiles
 from pyecore.ecore import EDate
+from user_logging import UserLogging
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ if os.environ.get('GEIS'):
 wms_layers = WMSLayers()
 esdl_services = ESDLServices()
 esdl_profiles = ESDLProfiles()
+user_actions_logging = UserLogging()
 
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
@@ -708,7 +710,10 @@ def editor():
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
 
-        print("************* USER LOGIN (" + oidc.user_getfield('email') + ") at " + str(datetime.now()))
+        user_email = oidc.user_getfield('email')
+
+        print("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
+        user_actions_logging.store_logging(user_email, "login", "", "", "", {})
 
         whole_token = oidc.get_access_token()
         print("whole_token: ", whole_token)
@@ -727,6 +732,7 @@ def editor():
             role = []
         # print("role:" + role)
         set_session('user-role', role)
+        set_session('user-email', user_email)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         return render_template('index.html', dir_settings=settings.dir_settings)
@@ -739,6 +745,9 @@ def editor():
 
 @app.route('/logout')
 def logout():
+    user_email = get_session('user-email')
+    user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
+
     """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     oidc.logout()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
@@ -765,6 +774,10 @@ def download_esdl():
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         print('Sending file %s' % name)
+
+        user_email = get_session('user-email')
+        user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
+
         #wrapped_io = FileWrapper(stream)
         #print(content)
         headers = dict()
@@ -2834,6 +2847,9 @@ def process_command(message):
     #print (message)
     #print (session)
 
+    user_email = get_session('user-email')
+    user_actions_logging.store_logging(user_email, "command", message['cmd'], json.dumps(message), "", {})
+
     active_es_id = get_session('active_es_id')
     if active_es_id is None:
         send_alert('Serious error: no active es id found. Please report')
@@ -3982,6 +3998,9 @@ def process_file_command(message):
     print ('received: ' + message['cmd'])
     es_info_list = get_session("es_info_list")
 
+    user_email = get_session('user-email')
+    user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
+
     if message['cmd'] == 'new_esdl':
         name = message['name']
         description = message['description']
@@ -4209,5 +4228,7 @@ def default_error_handler(e):
 if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
+
+    user_actions_logging.store_logging("", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
