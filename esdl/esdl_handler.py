@@ -394,7 +394,7 @@ class EnergySystemHandler:
         return es_list
 
     def validate(self, es=None):
-        if self.energy_system is not None:
+        if es is None and self.energy_system is not None:
             es = self.energy_system
         if es is not None:
             if es.id is None:
