@@ -17,7 +17,7 @@ class UserLogging:
 
     def store_logging(self, user, action=None, command=None, parameters=None, description=None, tags={}):
         if action is not None:
-            tags["action"] = action
+            tags["action"] = action.replace(' ', '_')
 
         json_body = []
         json_body.append({

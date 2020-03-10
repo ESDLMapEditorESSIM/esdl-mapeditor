@@ -4229,6 +4229,6 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
 
-    user_actions_logging.store_logging("", "application start", "", "", "", {})
+    user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
