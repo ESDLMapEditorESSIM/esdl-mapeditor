@@ -13,7 +13,7 @@ class UserLogging:
         self.database_client = self.connect_to_database()
 
     def connect_to_database(self):
-        print("Connecting for user_login {}:{} Database:PP{}".format(self.config['host'],
+        print("Connecting for user_login {}:{} Database: {}".format(self.config['host'],
               self.config['port'], self.config['database']))
         client = InfluxDBClient(host=self.config['host'],
               port=self.config['port'], database=self.config['database'])
@@ -41,4 +41,4 @@ class UserLogging:
         try:
             self.database_client.write_points(points = json_body, database = self.config['database'], batch_size=100)
         except Exception as e:
-            logger.error("Error connection to user logging database")
+            logger.error("Error connecting to user logging database. NOT LOGGING ANYTHING!")

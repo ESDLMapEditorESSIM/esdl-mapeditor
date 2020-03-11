@@ -10,7 +10,6 @@ from flask import Flask, render_template, session, request, send_from_directory,
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 from werkzeug.wsgi import FileWrapper
-import flask_login
 from flask_oidc import OpenIDConnect
 import jwt
 import requests
@@ -649,9 +648,6 @@ logging.getLogger('engineio').setLevel(logging.WARNING) # don't print all the me
 Session(app)
 executor = Executor(app)
 
-login_manager = flask_login.LoginManager()
-login_manager.init_app(app)
-
 #extensions
 schedule_session_clean_up()
 HeatNetwork(app, socketio)
@@ -668,7 +664,7 @@ app.config.update({
     'OIDC_REQUIRE_VERIFIED_EMAIL': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': ['openid', 'email', 'profile'],
+    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups'],
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
