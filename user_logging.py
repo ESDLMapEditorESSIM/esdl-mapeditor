@@ -1,6 +1,10 @@
 import settings
 from influxdb import InfluxDBClient
 from datetime import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserLogging:
@@ -34,4 +38,7 @@ class UserLogging:
             }
         })
 
-        self.database_client.write_points(points = json_body, database = self.config['database'], batch_size=100)
+        try:
+            self.database_client.write_points(points = json_body, database = self.config['database'], batch_size=100)
+        except Exception as e:
+            logger.error("Error connection to user logging database")
