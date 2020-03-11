@@ -3998,9 +3998,6 @@ def process_file_command(message):
     print ('received: ' + message['cmd'])
     es_info_list = get_session("es_info_list")
 
-    user_email = get_session('user-email')
-    user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
-
     if message['cmd'] == 'new_esdl':
         name = message['name']
         description = message['description']
@@ -4117,6 +4114,11 @@ def process_file_command(message):
             store_id = get_session('active_es_id')
             create_new_store_item(store_id, title, descr, email, tags, esh)
 
+    # Do not store file_content in logging database
+    if 'file_content' in message:
+        del message['file_content']
+    user_email = get_session('user-email')
+    user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
 
 #    if message['cmd'] == 'save_esdl':
 #        esh = get_handler()

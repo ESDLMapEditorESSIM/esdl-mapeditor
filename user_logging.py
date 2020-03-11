@@ -9,6 +9,8 @@ class UserLogging:
         self.database_client = self.connect_to_database()
 
     def connect_to_database(self):
+        print("Connecting for user_login {}:{} Database:PP{}".format(self.config['host'],
+              self.config['port'], self.config['database']))
         client = InfluxDBClient(host=self.config['host'],
               port=self.config['port'], database=self.config['database'])
         # client.drop_database(self.config['database'])
