@@ -608,12 +608,12 @@ def add_missing_coordinates(area):
     delta_x = max_lon - min_lon
     delta_y = max_lat - min_lat
     center = [(min_lon + max_lon)/2, (min_lat + max_lat)/2]
-    RD_coords = (max_lat > 180 and max_lon > 180)
+    RD_coords = (max_lat > 180 and max_lon > 180)               # boolean indicating if RD CRS is used
 
     for child in area.eAllContents():
-        if isinstance(child, esdl.EnergyAsset):
+        if isinstance(child, esdl.EnergyAsset) or isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
             if not child.geometry:
-                child.geometry = calc_random_location_around_center(center, delta_x / 10, delta_y / 10, RD_coords)
+                child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
 
 
 def is_running_in_uwsgi():
@@ -3948,8 +3948,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             create_port_to_asset_mapping(area, mapping)
             process_area(es.id, asset_list, building_list, area_bld_list, conn_list, mapping, area, 0)
 
-            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
+            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
 

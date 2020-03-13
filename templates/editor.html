@@ -1014,7 +1014,10 @@
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
-                    var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
+                    var bounds = L.latLngBounds();
+                    bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
+                    bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
+                    bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
                     map.flyToBounds(bounds, {padding: [50,50], animate: true});
                 }
             });
@@ -1857,7 +1860,7 @@
     map.addControl(sidebar);
 
     let dialog_options = {
-        size: [ 1600, 700 ],
+        size: [ 1100, 700 ],
         minSize: [ 100, 100 ],
         maxSize: [ 2000, 800 ],
         anchor: [ 10, 50 ],
