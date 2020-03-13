@@ -416,30 +416,6 @@ esdl_config = {
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
-            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr11",
-            "required_role": "genemuiden",
-            "multiplier": 1,
-            "database": "genemuiden",
-            "measurement": "genemuiden-GV-2019",
-            "field": "Rinos_Elektra_KlaasFuitestr11",
-            "profileType": "ENERGY_IN_KWH",
-            "start_datetime": "2019-01-01T00:00:00.000000+0100",
-            "end_datetime": "2020-01-01T00:00:00.000000+0100",
-            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/X1xAsNlZz/rinos_elektra_klaasfuitestr11?panelId=1&from=1546297200000&to=1577836800000&theme=light"
-        },
-        {
-            "profile_uiname": "GM - Rinos_Elektra_KlaasFuitestr12",
-            "required_role": "genemuiden",
-            "multiplier": 1,
-            "database": "genemuiden",
-            "measurement": "genemuiden-GV-2019",
-            "field": "Rinos_Elektra_KlaasFuitestr12",
-            "profileType": "ENERGY_IN_KWH",
-            "start_datetime": "2019-01-01T00:00:00.000000+0100",
-            "end_datetime": "2020-01-01T00:00:00.000000+0100",
-            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/IJ51sNlZk/rinos_elektra_klaasfuitestr12?panelId=1&from=1546297200000&to=1577836800000&theme=light"
-        },
-        {
             "profile_uiname": "GM - Condor_Elektra_Sasdijk17",
             "required_role": "genemuiden",
             "multiplier": 1,
