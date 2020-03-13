@@ -4,9 +4,7 @@ autopep8==1.4.4
 certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
-defusedxml==0.6.0
 Flask==1.1.1
-Flask-Login==0.4.1
 flask-oidc==1.4.0
 Flask-Session==0.3.1
 Flask-SocketIO==4.0.0
