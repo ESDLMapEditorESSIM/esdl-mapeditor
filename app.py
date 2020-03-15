@@ -3754,9 +3754,10 @@ def process_command(message):
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-            res = kpi_results.calculate_kpis()
-            emit('show_ESSIM_KPIs', res)
+            calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+            # kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+            # res = kpi_results.calculate_kpis()
+            # emit('show_ESSIM_KPIs', res)
         else:
             send_alert('No simulation id defined - run an ESSIM simulation first')
 
@@ -3875,6 +3876,13 @@ def process_command(message):
 
     set_handler(esh)
     session.modified = True
+
+
+@executor.job
+def calc_ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate):
+    kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+    res = kpi_results.calculate_kpis()
+    emit('show_ESSIM_KPIs', res)
 
 
 @executor.job
