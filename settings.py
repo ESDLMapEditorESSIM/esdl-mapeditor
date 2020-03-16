@@ -117,7 +117,7 @@ else:
     }
     #FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
-    USER_LOGGING_ENABLED = True
+    USER_LOGGING_ENABLED = False
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
 

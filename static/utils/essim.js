@@ -31,6 +31,16 @@ function set_simulation_URL_prefix(url_prefix) {
     ESSIM_simulation_URL_prefix = url_prefix;
 }
 
+function enable_disable_custom_year(id) {
+    if (id === 'sim_custom_year') {
+        document.getElementById('sim_start_datetime').disabled = false;
+        document.getElementById('sim_end_datetime').disabled = false;
+    } else {
+        document.getElementById('sim_start_datetime').disabled = true;
+        document.getElementById('sim_end_datetime').disabled = true;
+    }
+}
+
 function run_ESSIM_simulation_window() {
     sidebar_ctr = sidebar.getContainer();
 
@@ -40,11 +50,20 @@ function run_ESSIM_simulation_window() {
     essim_settings += 'Please enter a description for this simulation. This description will be shown in the simulation results.';
     essim_settings += '<p><input id="sim_description" type="text" width="600"/></p>';
     essim_settings += 'The following settings should only be changed if you know exactly what you\'re doing';
+    essim_settings += '<p>';
+    essim_settings += '<input type="radio" id="sim_y2015" name="sim_period" value="y2015" checked onclick="enable_disable_custom_year(id);">';
+    essim_settings += '<label for="y2015">Year 2015</label><br>';
+    essim_settings += '<input type="radio" id="sim_y2019" name="sim_period" value="y2019" onclick="enable_disable_custom_year(id);">';
+    essim_settings += '<label for="y2015">Year 2019</label><br>';
+    essim_settings += '<input type="radio" id="sim_custom_year" name="sim_period" value="custom_year" onclick="enable_disable_custom_year(id);">';
+    essim_settings += '<label for="y2015">Custom year</label><br>';
+
     table = '<table>';
-    table += '<tr><td width=180>Start datetime</td><td><input type="text" width="60" id="sim_start_datetime" value="2015-01-01T00:00:00+0100"></td></tr>';
-    table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" value="2016-01-01T00:00:00+0100"></td></tr>';
+    table += '<tr><td width=180>Start datetime</td><td><input type="text" width="60" id="sim_start_datetime" disabled value="2015-01-01T00:00:00+0100"></td></tr>';
+    table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" disabled value="2016-01-01T00:00:00+0100"></td></tr>';
     table += '</table>';
     essim_settings += table;
+    essim_settings += '</p>';
     essim_settings += '</div>';
     sidebar_ctr.innerHTML += essim_settings;
 
@@ -74,8 +93,17 @@ function run_ESSIM_simulation() {
     simulation_progress_div.innerHTML += '<p id="button_close_simulation_dialog" hidden><button onclick="sidebar.hide();">Close</button></p>';
 
     sim_description = document.getElementById('sim_description').value;
-    sim_start_datetime = document.getElementById('sim_start_datetime').value;
-    sim_end_datetime = document.getElementById('sim_end_datetime').value;
+
+    if (document.getElementById('sim_y2015').checked) {
+        sim_start_datetime = '2015-01-01T00:00:00+0100';
+        sim_end_datetime = '2016-01-01T00:00:00+0100';
+    } else if (document.getElementById('sim_y2019').checked) {
+        sim_start_datetime = '2019-01-01T00:00:00+0100';
+        sim_end_datetime = '2020-01-01T00:00:00+0100';
+    } else {
+        sim_start_datetime = document.getElementById('sim_start_datetime').value;
+        sim_end_datetime = document.getElementById('sim_end_datetime').value;
+    }
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
         sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime});
     setTimeout(poll_simulation_progress, 1000);

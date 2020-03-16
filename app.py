@@ -608,12 +608,12 @@ def add_missing_coordinates(area):
     delta_x = max_lon - min_lon
     delta_y = max_lat - min_lat
     center = [(min_lon + max_lon)/2, (min_lat + max_lat)/2]
-    RD_coords = (max_lat > 180 and max_lon > 180)
+    RD_coords = (max_lat > 180 and max_lon > 180)               # boolean indicating if RD CRS is used
 
     for child in area.eAllContents():
-        if isinstance(child, esdl.EnergyAsset):
+        if isinstance(child, esdl.EnergyAsset) or isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
             if not child.geometry:
-                child.geometry = calc_random_location_around_center(center, delta_x / 10, delta_y / 10, RD_coords)
+                child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
 
 
 def is_running_in_uwsgi():
@@ -764,7 +764,7 @@ def editor():
 @app.route('/logout')
 def logout():
     user_email = get_session('user-email')
-    #user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
+    user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
     """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     oidc.logout()
@@ -3776,9 +3776,10 @@ def process_command(message):
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-            kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-            res = kpi_results.calculate_kpis()
-            emit('show_ESSIM_KPIs', res)
+            calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+            # kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+            # res = kpi_results.calculate_kpis()
+            # emit('show_ESSIM_KPIs', res)
         else:
             send_alert('No simulation id defined - run an ESSIM simulation first')
 
@@ -3900,6 +3901,13 @@ def process_command(message):
 
 
 @executor.job
+def calc_ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate):
+    kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+    res = kpi_results.calculate_kpis()
+    emit('show_ESSIM_KPIs', res)
+
+
+@executor.job
 def query_esdl_services(params):
     esh = get_handler()
     print('calling service')
@@ -3970,8 +3978,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             create_port_to_asset_mapping(area, mapping)
             process_area(es.id, asset_list, building_list, area_bld_list, conn_list, mapping, area, 0)
 
-            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
+            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
 
@@ -4249,6 +4257,6 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
 
-    #user_actions_logging.store_logging("System", "application start", "", "", "", {})
+    user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 
