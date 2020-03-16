@@ -200,6 +200,22 @@ html, body
     padding: 0px;
 }
 
+/* align table in the center of the centertable div */
+.centertable {
+    text-align: center;
+	padding: 5px;
+}
+.centertable table {
+	margin: 0 auto;
+}
+.centertable table thead {
+	text-align: left;
+}
+.centertable table tbody {
+	text-align: left;
+}
+
+
 
 /*
 z-index for jstree context menu, sidebar has 2000

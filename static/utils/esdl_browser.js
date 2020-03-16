@@ -8,8 +8,8 @@ class ESDLBrowser {
         this.history = [];
 
         let width = map.getSize()
-        this.width = 800;
-        this.height = 500;
+        this.width = 1200;
+        this.height = 750;
         this.x = 10;
         this.y = (width.x/2)-(this.width/2);
     }
@@ -151,7 +151,8 @@ class ESDLBrowser {
         $div.append($pathDiv);
 
         let $table = $('<table>').addClass('pure-table pure-table-striped');
-        $div.append($table);
+        let $tableDiv = $('<div>').addClass('centertable').append($table);
+        $div.append($tableDiv);
         let $thead = $('<thead>').append($('<tr>').append(  $('<th>').text('Name')   ).append(  $('<th>').text('Value') ).append(  $('<th>').text('Action') )  );
         let $tbody = $('<tbody>')
         $table.append($thead)

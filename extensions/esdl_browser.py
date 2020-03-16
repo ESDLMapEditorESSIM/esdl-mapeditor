@@ -94,12 +94,13 @@ class ESDLBrowser:
         @self.socketio.on('esdl_browse_list_references', namespace='/esdl')
         def socket_io_list_references(message):
             reference_name = message['name']
-            parent_object = self.get_object_from_identifier(message['parent'])
+            parent_object: EObject = self.get_object_from_identifier(message['parent'])
+            root = parent_object.eRoot()
             reference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference is not None:
                 types = ESDLEcore.find_types(reference)
                 print("Creating list of references")
-                reference_list = ESDLEcore.get_reachable_references(types, repr_function=ESDLBrowser.generate_repr)
+                reference_list = ESDLEcore.get_reachable_references(root, types, repr_function=ESDLBrowser.generate_repr)
                 returnmsg = {'parent': message['parent'],
                              'ref': {'name': reference_name, 'type': reference.eType.eClass.name},
                              'xreferences': reference_list}

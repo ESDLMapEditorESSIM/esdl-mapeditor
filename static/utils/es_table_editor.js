@@ -331,6 +331,7 @@ function open_es_table_editor(dialog, asset_info_list) {
     ].join('');
 
     dialog.setContent(contents);
+    dialog.setTitle('ESDL Table editor')
 
    // Events
 //    $('.dropdown-container')

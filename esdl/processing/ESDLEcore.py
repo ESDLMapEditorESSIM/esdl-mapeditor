@@ -1,4 +1,4 @@
-from pyecore.ecore import EAttribute, EOrderedSet, EEnum, EReference, EClass
+from pyecore.ecore import EAttribute, EOrderedSet, EEnum, EReference, EClass, EObject
 from pyecore.resources import Resource
 import esdl
 import gc
@@ -166,16 +166,15 @@ def resolve_fragment(resource: Resource, fragment: str):
 
 """
 Calculates a list of all possible reference values for a specific reference
-Based on allInstances() of each possible subtype in the types list
+Was based on allInstances() for each possible subtype in the types list, but this WeakSet is shared among all loggedin
+users... so now a slow version to find it by iterating through all nodes of the XML graph.
+TODO: find a more efficient way then by iterating through all the elements 
 """
-def get_reachable_references(types: list, repr_function=string_repr):
-    # make sure the WeakSet containing allInstances() is updated
-    gc.collect()
+def get_reachable_references(root: EObject, types: list, repr_function=string_repr):
     result = list()
-    for type in types:
-        eclass: EClass = esdl.getEClassifier(type)
-        all_instances = eclass.allInstances()
-        for instance in all_instances:
+    for instance in root.eAllContents():
+        # search through all objects to find instances of type in types
+        if instance.eClass.name in types:
             ref = {'repr': repr_function(instance)}
             if hasattr(instance, 'id'):
                 ref['id'] = instance.id

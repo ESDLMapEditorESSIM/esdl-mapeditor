@@ -44,7 +44,7 @@ from esdl_profiles import ESDLProfiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
 
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 #logging.getLogger("werkzeug")
 
@@ -664,7 +664,7 @@ app.config.update({
     'OIDC_REQUIRE_VERIFIED_EMAIL': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups'],
+    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'],
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
@@ -694,6 +694,28 @@ def before_request():
 @app.route('/')
 def index():
     return render_template('index.html', dir_settings=settings.dir_settings)
+
+
+
+import pprint
+@app.route('/test')
+@oidc.require_login
+def test():
+    if oidc.user_loggedin:
+        user_email = oidc.user_getfield('email')
+        groups = oidc.user_getfield('groups')
+        print('user: {}, groups: {}'.format(user_email, groups))
+        whole_token = oidc.get_access_token()
+        if whole_token:
+            jwt_tkn = jwt.decode(whole_token, key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account',
+                                 verify=False)
+            pprint.pprint(jwt_tkn)
+            return jwt_tkn
+        else:
+            return "Hello world!"
+
+    else:
+        return "Not logged in"
 
 
 @app.route('/editor')
@@ -742,7 +764,7 @@ def editor():
 @app.route('/logout')
 def logout():
     user_email = get_session('user-email')
-    user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
+    #user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
     """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     oidc.logout()
@@ -3258,7 +3280,7 @@ def process_command(message):
         storage_info_list = []
         conversion_info_list = []
 
-        energy_assets = esh.get_all_assets_of_type(esdl.EnergyAsset)
+        energy_assets = esh.get_all_instances_of_type(esdl.EnergyAsset, active_es_id)
 
         for asset in energy_assets:
             attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
@@ -4227,6 +4249,6 @@ if __name__ == '__main__':
     parse_esdl_config()
     print("Starting App")
 
-    user_actions_logging.store_logging("System", "application start", "", "", "", {})
+    #user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
 

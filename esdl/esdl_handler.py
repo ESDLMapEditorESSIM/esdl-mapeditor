@@ -436,8 +436,15 @@ class EnergySystemHandler:
     # e.g. QuantityAndUnits can be defined in the KPI of an Area or in the EnergySystemInformation object
     # this function returns all of them at once
     # @staticmethod
-    def get_all_assets_of_type(self, esdl_type):
-        return esdl_type.allInstances()
+    def get_all_instances_of_type(self, esdl_type, es_id):
+        all_instances = list()
+        for esdl_element in self.get_energy_system(es_id=es_id).eAllContents():
+            if isinstance(esdl_element, esdl_type):
+                all_instances.append(esdl_element)
+        return all_instances
+        #return esdl_type.allInstances()
+
+
 
     # Creates a dict of all the attributes of an ESDL object, useful for printing/debugging
     @staticmethod

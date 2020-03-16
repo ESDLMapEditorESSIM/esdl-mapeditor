@@ -15,6 +15,7 @@ GEIS_CLOUD_HOSTNAME = '10.30.2.1'
 ESDL_STORE_PORT = '3003'
 MONDAINE_HUB_PORT = '3002'
 BOUNDARY_SERVICE_PORT = '4002'
+USER_LOGGING_ENABLED = True
 
 essim_config = {
     "ESSIM_host": "http://geis.hesi.energy:8112",
@@ -116,6 +117,7 @@ else:
     }
     #FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
+    USER_LOGGING_ENABLED = True
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
 
