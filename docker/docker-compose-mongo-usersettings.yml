@@ -1,0 +1,15 @@
+version: "3"
+#networks:
+#  management:
+#    driver: overlay
+services:
+  mongo_usersettings:
+    image: mvertes/alpine-mongo
+    ports:
+      - 0.0.0.0:27017:27017
+    volumes:
+      - usersettings_data:/data/db
+#    networks:
+#      - management
+volumes:
+  usersettings_data:

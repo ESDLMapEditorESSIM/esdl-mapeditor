@@ -60,6 +60,12 @@ user_logging_config = {
     "database": "user_logging"
 }
 
+user_settings_config = {
+    "host": "10.30.2.1",
+    "port": "27017",
+    "database": "esdl_mapeditor_settings"
+}
+
 if os.environ.get('GEIS'):
     # Settings for in GEIS cloud behind redbird reverse proxy
     print('Starting application with GEIS settings (hosting at geis.hesi.energy/webeditor)')
@@ -118,6 +124,8 @@ else:
     #FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
     USER_LOGGING_ENABLED = False
+    FLASK_DEBUG = True
+    user_settings_config["host"] = 'localhost'
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
 

@@ -43,9 +43,12 @@ from esdl_services import ESDLServices
 from esdl_profiles import ESDLProfiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
+from extensions.user_settings import UserSettings
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+if settings.FLASK_DEBUG:
+    logging.getLogger().setLevel(logging.DEBUG)
 #logging.getLogger("werkzeug")
 
 if os.environ.get('GEIS'):
@@ -56,10 +59,11 @@ if os.environ.get('GEIS'):
 # debugging with pycharm:
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
-wms_layers = WMSLayers()
 esdl_services = ESDLServices()
 esdl_profiles = ESDLProfiles()
 user_actions_logging = UserLogging()
+user_settings = UserSettings(database_uri='mongodb://'+settings.user_settings_config["host"] + ':' + settings.user_settings_config["port"])
+wms_layers = WMSLayers(user_settings)
 
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
