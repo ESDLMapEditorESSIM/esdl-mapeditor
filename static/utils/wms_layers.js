@@ -7,11 +7,12 @@ function add_layer() {
     layer_name = document.getElementById('layer_name').value;
     legend_url = document.getElementById('legend_url').value;
     select_layer_group = document.getElementById('add_to_group');
-    group_id = select_layer_group[select_layer_group.selectedIndex].value;
+    project_name = select_layer_group[select_layer_group.selectedIndex].value;
+    setting_type = select_layer_group[select_layer_group.selectedIndex].getAttribute('setting_type');
     layer_id = uuidv4();
 
-    socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, group_id: group_id, legend_url: legend_url, visible: true});
-    wms_layer_list['layers'][layer_id] = { description: layer_descr, url: layer_url, legend_url: legend_url, layer_name: layer_name, group_id: group_id };
+    socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, setting_type: setting_type, project_name: project_name, legend_url: legend_url, visible: true});
+    wms_layer_list['layers'][layer_id] = { description: layer_descr, url: layer_url, legend_url: legend_url, layer_name: layer_name, setting_type: setting_type, project_name: project_name };
 
     wms_layer_list['layers'][layer_id].layer_ref = L.tileLayer.wms(layer_url, {
         layers: layer_name,
@@ -22,10 +23,11 @@ function add_layer() {
     wms_layer_list['layers'][layer_id].layer_ref.bringToFront();
     wms_layer_list['layers'][layer_id].visible = true;
 
-    var parent = $('#layer_tree li#li_wms_layer_list_'+group_id+' ul');
-    var new_node = { "id":'li_'+layer_id, "text":layer_descr }; // , "state":{"checked":true} };
+    var parent = $('#layer_tree li#li_wms_layer_list_'+project_name);
+    var new_node = { "id":'li_'+layer_id, "text":layer_descr, "type": "layer" }; // , "state":{"checked":true} };
     $('#layer_tree').jstree("create_node", parent, new_node, "last", false, false);
     $('#layer_tree').jstree("check_node", '#li_'+layer_id);
+    $('#layer_tree').jstree("open_node", parent);
 }
 
 function remove_layer(id) {
@@ -59,11 +61,13 @@ function wmsLayerContextMenu(node)
     var items = {
         'delete' : {
             'label' : 'Delete layer',
+            'icon': 'fa fa-trash-o',
             'action' : function () {
                 let id = node.id.substring(3);
                 console.log('removing '+id);
                 remove_layer(id);
                 $('#layer_tree').jstree("delete_node", '#'+node.id);
+
             }
         }
     }
@@ -81,18 +85,39 @@ function show_layers() {
     tree_data = [];
     for (var idx in wms_layer_list['groups']) {
         let group = wms_layer_list['groups'][idx];
-        let group_id = group.id;
-        let group_name = group.name;
+        let setting_type = group.setting_type; // SettingType in UserSettings: user, system, project
+        let group_name = group.name; // User friendly string
+        let group_project_name = group.project_name; // project name if available e.g. MCS
         let tree_children = []
         for (var key in wms_layer_list['layers']) {
             let layer = wms_layer_list['layers'][key];
-            let layer_group = layer.group_id;
-            if (layer_group == group_id) {
+            let layer_group = layer.setting_type;
+            if (layer_group === "project")
+                layer_group = layer.project_name; // add to project with specific project_name
+            if (layer_group == group_project_name) {
                 let value = wms_layer_list['layers'][key];
-                tree_children.push({"id":"li_"+key, "text":value.description, "parent":"li_wms_layer_list_"+group_id});
+                tree_children.push({
+                    "id":"li_"+key,
+                    "text":value.description,
+                    "parent":"li_wms_layer_list_"+group_project_name,
+                    "type": "layer",
+                    "project_name": group_project_name,
+                    "a_attr": {
+                          'project_name': group_project_name
+                      }
+                    });
             }
         }
-        let tree_obj = {"id":"li_wms_layer_list_"+group_id, "text":group_name, "children":tree_children};
+        let tree_obj = {"id":"li_wms_layer_list_"+group_project_name,
+                        "text":group_name,
+                        "children":tree_children,
+                        "type": "folder",
+                        "setting_type": setting_type,
+                        "a_attr": {
+                          "class": "no_checkbox",
+                          'setting_type': setting_type,
+                          'project_name': group_project_name
+                        }};
         tree_data.push(tree_obj);
     }
 
@@ -105,7 +130,9 @@ function show_layers() {
     table += '<tr><td width=180>Add to group</td><td><select id="add_to_group">';
     for (var idx in wms_layer_list['groups']) {
         let group = wms_layer_list['groups'][idx];
-        table += '<option value="'+group.id+'">'+group.name+'</value>';
+        if (!group.readonly) {
+            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</value>';
+        }
     }
     table += '</select></td></tr>';
 
@@ -142,9 +169,23 @@ function show_layers() {
                         // so that create works for contextmenu plugin
                         "check_callback" : true
                     },
-                    "plugins": ["checkbox", "state", "contextmenu"], // , "ui", "crrm", "dnd"],
+                    "plugins": ["checkbox", "state", "contextmenu", "types"], // , "ui", "crrm", "dnd"],
                     "contextmenu": {
-                        "items": wmsLayerContextMenu
+                        "items": wmsLayerContextMenu,
+                        "select_node": false
+                    },
+                    "checkbox": {
+                        "three_state": false
+                    },
+                    "types" : {
+                        "folder" : {
+                            "a_attr": {
+                                "class": "no_checkbox"
+                            }
+                        },
+                        "layer" : {
+                            "icon" : "fa fa-file-image-o layer-node"
+                        }
                     }
                 });
             $('.vakata-context').css('z-index', 20000);

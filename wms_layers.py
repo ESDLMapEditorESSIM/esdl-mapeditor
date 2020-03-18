@@ -1,5 +1,6 @@
 from extensions.user_settings import SettingType, UserSettings
 from extensions.session_manager import get_session
+import copy
 
 LAYERS_SETTING = 'layers'
 
@@ -13,8 +14,9 @@ class WMSLayers:
             print('No need to update default list, already in User Settings')
 
     def add_wms_layer(self, layer_id, layer):
-        setting_type = SettingType[layer['group_id']]
-        identifier = self._get_identifier(setting_type)
+        setting_type = SettingType(layer['setting_type'])
+        project_name = layer['project_name']
+        identifier = self._get_identifier(setting_type, project_name)
         if identifier is not None and self.settings.has(setting_type, identifier, LAYERS_SETTING):
             layers = self.settings.get(setting_type, identifier, LAYERS_SETTING)
         else:
@@ -24,10 +26,10 @@ class WMSLayers:
 
     def remove_wms_layer(self, layer_id):
         # as we only have an ID, we don't know if it is a user, project or system layer
-        # get the whole list, so we can find out the group_id
+        # get the whole list, so we can find out the setting_type
         layer = self.get_layers()[LAYERS_SETTING][layer_id]
-        setting_type = SettingType[layer['group_id']]
-        identifier = self._get_identifier(setting_type)
+        setting_type = SettingType(layer['setting_type'])
+        identifier = self._get_identifier(setting_type, layer['project_name'])
         if identifier is None:
             return
         if self.settings.has(setting_type, identifier, LAYERS_SETTING):
@@ -39,13 +41,16 @@ class WMSLayers:
 
 
 
-    def _get_identifier(self, setting_type: SettingType):
+    def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
             return
         elif setting_type == SettingType.USER:
-            identifier = get_session('email')
+            identifier = get_session('user-email')
         elif setting_type == SettingType.PROJECT:
-            identifier = 'unnamed project'
+            if project_name is not None:
+                identifier = project_name.replace(' ', '_')
+            else:
+                identifier = 'unnamed project'
         elif setting_type == SettingType.SYSTEM:
             identifier = UserSettings.SYSTEM_NAME_IDENTIFIER
         else:
@@ -58,35 +63,65 @@ class WMSLayers:
         if self.settings.has_system(LAYERS_SETTING):
             all_layers.update(self.settings.get_system(LAYERS_SETTING))
 
-        user = get_session('email')
+        user = get_session('user-email')
+        user_group = get_session('user-group')
+        role = get_session('user-role')
+        mapeditor_role = get_session('user-mapeditor-role')
+        print('User: ', user)
+        print('Groups: ', user_group)
+        print('Roles: ', role)
+        print('Mapeditor roles: ', mapeditor_role)
         if user is not None and self.settings.has_user(user, LAYERS_SETTING):
             # add user layers if available
             all_layers.update(self.settings.get_user(user, LAYERS_SETTING))
-            print('Adding user layer list {}'.format(all_layers))
 
-        # TODO: add project layers
+        if user_group is not None:
+            for group in user_group:
+                identifier = self._get_identifier(SettingType.PROJECT, group)
+                if self.settings.has_project(identifier, LAYERS_SETTING):
+                    # add project layers if available
+                    all_layers.update(self.settings.get_project(identifier, LAYERS_SETTING))
 
         # generate message
-        # TODO: remove System group if not enough rights
-        message = default_wms_layer_groups.copy()
+        message = copy.deepcopy(default_wms_layer_groups)
+        possible_groups = message["groups"]
+        # if enough rights, mark Standard layers editable
+        if 'mapeditor-admin' in mapeditor_role:
+            for g in possible_groups:
+                if g['setting_type'] == SettingType.SYSTEM.value:
+                    g['readonly'] = False
+        possible_groups.extend(self._create_group_layers_for_projects(user_group))
         message[LAYERS_SETTING] = all_layers
+        print(message)
         return message
+
+    def _create_group_layers_for_projects(self, groups):
+        project_list = list()
+        if groups is not None:
+            for group in groups:
+                identifier = self._get_identifier(SettingType.PROJECT, group)
+                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier, "name": "Project Layers for " + group, "readonly": False}
+                project_list.append(json)
+        return project_list
+
+
 
 
 default_wms_layer_groups = {
     "groups": [
-        {"id": SettingType.USER.value, "name": "Personal Layers"},
-        {"id": SettingType.PROJECT.value, "name": "Project Layers"},
-        {"id": SettingType.SYSTEM.value,  "name": "Standard Layers"}
+        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal Layers", "readonly": False},
+        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard Layers", "readonly": True}
     ]
 }
+
+#{"id": SettingType.PROJECT.value, "name": "Project Layers"},
 
 default_wms_layers = {
     "AHN2_5m": {
         "description": "AHN2 5 meter",
         "url": "http://geodata.nationaalgeoregister.nl/ahn2/wms?",
         "layer_name": "ahn2_5m",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "layer_ref": None,
         "visible": False,
         "attribution": ''
@@ -95,7 +130,7 @@ default_wms_layers = {
         "description": "Restwarmte (RVO: ligging industrie)",
         "url": "https://geodata.nationaalgeoregister.nl/restwarmte/wms?",
         "layer_name": "liggingindustrieco2",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "layer_ref": None,
         "visible": False,
         "attribution": ''
@@ -104,7 +139,7 @@ default_wms_layers = {
         "description": "Liander hoogspanningskabels",
         "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
         "layer_name": "hoogspanningskabels",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -114,7 +149,7 @@ default_wms_layers = {
         "description": "Liander middenspanningskabels",
         "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
         "layer_name": "middenspanningskabels",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -124,7 +159,7 @@ default_wms_layers = {
         "description": "LT_WarmteBronnen_ECW",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "LT_WarmteBronnen_ECW",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -134,7 +169,7 @@ default_wms_layers = {
         "description": "WarmteNetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "WarmteNetten",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -144,7 +179,7 @@ default_wms_layers = {
         "description": "GasLeidingenEnexis",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "GasLeidingenEnexis",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -154,7 +189,7 @@ default_wms_layers = {
         "description": "GasLeidingenStedin",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "GasLeidingenStedin",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -164,7 +199,7 @@ default_wms_layers = {
         "description": "CO2EmissieBedrijven",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "CO2EmissieBedrijven",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -174,7 +209,7 @@ default_wms_layers = {
         "description": "AardwarmteKrijtJura",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "AardwarmteKrijtJura",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -193,7 +228,7 @@ default_wms_layers = {
         "description": "AardwarmteRotliegend",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "AardwarmteRotliegend",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -203,7 +238,7 @@ default_wms_layers = {
         "description": "Potentieel Restwarmte uit koelinstallaties voor MT warmtenetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "CondensWarmte",
-        "group_id": SettingType.SYSTEM.value,
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -213,7 +248,7 @@ default_wms_layers = {
         "description": "Potentieel Restwarmte uit DataCentra voor LT warmtenetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "DataCentraWarmte",
-        "group_id": "std",
+        "setting_type": "std",
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
@@ -241,7 +276,8 @@ default_wms_layers = {
         "description": "PICO Hoogspanningsnet 2018",
         "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
         "layer_name": "Hoogspanningsnet_2018",
-        "group_id": SettingType.PROJECT.value,
+        "setting_type": SettingType.PROJECT.value,
+        "project_name": "MCS",
         "legend_url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=96&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=7&format=png&layertitle=false&layer=Hoogspanningsnet_2018",
         "layer_ref": None,
         "visible": False,
@@ -251,7 +287,8 @@ default_wms_layers = {
         "description": "Thermische energie uit oppervlaktewater",
         "url": "https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02a.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?",
         "layer_name": "a3643e0e53fa4174a4ead41f56659a6e",
-        "group_id": SettingType.PROJECT.value,
+        "setting_type": SettingType.PROJECT.value,
+        "project_name": "MCS",
         "legend_url": "",
         "layer_ref": None,
         "visible": False,

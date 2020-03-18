@@ -668,7 +668,7 @@ app.config.update({
     'OIDC_REQUIRE_VERIFIED_EMAIL': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'],
+    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt', 'resource_access'],
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
@@ -700,19 +700,20 @@ def index():
     return render_template('index.html', dir_settings=settings.dir_settings)
 
 
-
+"""
+# test for OpenID connect authentication against KeyCloak
 import pprint
 @app.route('/test')
 @oidc.require_login
-def test():
+def test_authentication():
     if oidc.user_loggedin:
         user_email = oidc.user_getfield('email')
-        groups = oidc.user_getfield('groups')
-        print('user: {}, groups: {}'.format(user_email, groups))
+        user_groups = oidc.user_getfield('user_group')
+        print('user: {}, user groups: {}'.format(user_email, user_groups))
         whole_token = oidc.get_access_token()
         if whole_token:
             jwt_tkn = jwt.decode(whole_token, key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account',
-                                 verify=False)
+                                 verify=True)
             pprint.pprint(jwt_tkn)
             return jwt_tkn
         else:
@@ -720,7 +721,7 @@ def test():
 
     else:
         return "Not logged in"
-
+"""
 
 @app.route('/editor')
 @oidc.require_login
@@ -742,19 +743,28 @@ def editor():
         if whole_token:
             try:
                 jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account', verify=False)
-                print("JWT: ", jwt_tkn)
+                import pprint
+                pprint.pprint(jwt_tkn)
             except Exception as e:
                 print("error in decoding token: ", str(e))
         # if role in access_token['resource_access'][client]['roles']:
 
         userinfo = oidc.user_getinfo(['role'])
+        role = []
         if 'role' in userinfo:
             role = userinfo['role'].split(',')
-        else:
-            role = []
-        # print("role:" + role)
+
+        # find roles in for the mapeditor client
+        mapeditor_role = []
+        client = oidc.client_secrets.get('client_id')
+        resource_access = oidc.user_getfield('resource_access')
+        if resource_access is not None and client in resource_access:
+            if 'roles' in resource_access[client]:
+                mapeditor_role = resource_access[client]['roles']
+        set_session('user-group', oidc.user_getfield('user_group'))
         set_session('user-role', role)
         set_session('user-email', user_email)
+        set_session('user-mapeditor-role', mapeditor_role)
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         return render_template('index.html', dir_settings=settings.dir_settings)
@@ -3792,7 +3802,8 @@ def process_command(message):
         descr = message['descr']
         url = message['url']
         name = message['name']
-        group_id = message['group_id']
+        setting_type = message['setting_type']
+        project_name = message['project_name']
         legend_url = message['legend_url']
         visible = message['visible']
 
@@ -3800,7 +3811,8 @@ def process_command(message):
             "description": descr,
             "url": url,
             "layer_name": name,
-            "group_id": group_id,
+            "setting_type": setting_type,
+            "project_name": project_name,
             "legend_url": legend_url,
             "layer_ref": None,
             "visible": visible

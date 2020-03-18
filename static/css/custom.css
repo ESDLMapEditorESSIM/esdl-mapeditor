@@ -215,6 +215,25 @@ html, body
 	text-align: left;
 }
 
+/* jstree icon colors */
+
+.layer-node{
+    color:black;
+}
+
+.group-node{
+    color:dark-yellow;
+}
+
+.no_checkbox>i.jstree-checkbox {
+    display: none;
+}
+
+.jstree-contextmenu {
+    font-family: sans-serif;
+    font-size: 10px;
+}
+
 
 
 /*

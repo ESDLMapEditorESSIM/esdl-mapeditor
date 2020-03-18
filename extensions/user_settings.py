@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-from pymongo.cursor import Cursor
 from pymongo.database import Database, Collection
 from pprint import pprint
 import logging
