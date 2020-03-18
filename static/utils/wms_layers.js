@@ -58,16 +58,19 @@ function hide_wms_layer(id) {
 
 function wmsLayerContextMenu(node)
 {
-    var items = {
-        'delete' : {
-            'label' : 'Delete layer',
-            'icon': 'fa fa-trash-o',
-            'action' : function () {
-                let id = node.id.substring(3);
-                console.log('removing '+id);
-                remove_layer(id);
-                $('#layer_tree').jstree("delete_node", '#'+node.id);
+    var items = {}
+    if (!node.data.readonly) {
+        items = {
+            'delete' : {
+                'label' : 'Delete layer',
+                'icon': 'fa fa-trash-o',
+                'action' : function () {
+                    let id = node.id.substring(3);
+                    console.log('removing '+id);
+                    remove_layer(id);
+                    $('#layer_tree').jstree("delete_node", '#'+node.id);
 
+                }
             }
         }
     }
@@ -85,6 +88,7 @@ function show_layers() {
     tree_data = [];
     for (var idx in wms_layer_list['groups']) {
         let group = wms_layer_list['groups'][idx];
+        let readonly = group.readonly
         let setting_type = group.setting_type; // SettingType in UserSettings: user, system, project
         let group_name = group.name; // User friendly string
         let group_project_name = group.project_name; // project name if available e.g. MCS
@@ -102,6 +106,7 @@ function show_layers() {
                     "parent":"li_wms_layer_list_"+group_project_name,
                     "type": "layer",
                     "project_name": group_project_name,
+                    "data": { "readonly": readonly},
                     "a_attr": {
                           'project_name': group_project_name
                       }
@@ -113,10 +118,9 @@ function show_layers() {
                         "children":tree_children,
                         "type": "folder",
                         "setting_type": setting_type,
+                        "data": { "readonly":true},
                         "a_attr": {
-                          "class": "no_checkbox",
-                          'setting_type': setting_type,
-                          'project_name': group_project_name
+                          "class": "no_checkbox"
                         }};
         tree_data.push(tree_obj);
     }
