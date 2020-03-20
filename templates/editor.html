@@ -108,6 +108,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shapefiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_map_utils.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_api.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -1332,6 +1333,13 @@
 
             socket.on('sector_list', function(list) {
                 set_sector_list(list['es_id'], list['sector_list']);
+            });
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  Received ESDL via API
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('received_esdl', function(message) {
+                received_esdl_window(message);
             });
 
             // ------------------------------------------------------------------------------------------------------------

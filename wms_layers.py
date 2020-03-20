@@ -39,8 +39,6 @@ class WMSLayers:
             del(layers[layer_id])
             self.settings.set(setting_type, identifier, LAYERS_SETTING, layers)
 
-
-
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
             return
@@ -103,8 +101,6 @@ class WMSLayers:
                 json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier, "name": "Project Layers for " + group, "readonly": False}
                 project_list.append(json)
         return project_list
-
-
 
 
 default_wms_layer_groups = {
