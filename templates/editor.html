@@ -1290,7 +1290,8 @@
 
                         line.on('mouseover', function (e) {
                             var popup = e.target.getPopup();
-                            popup.setLatLng(e.latlng).openOn(map);
+                            var this_map = e.sourceTarget._map;     // can be area map and building map
+                            popup.setLatLng(e.latlng).openOn(this_map);
                         });
 
                         line.on('mouseout', function(e) {
@@ -1299,8 +1300,9 @@
 
                         line.on('mousemove', function (e) {
                             e.target.closePopup();
+                            var this_map = e.sourceTarget._map;     // can be area map and building map
                             var popup = e.target.getPopup();
-                            popup.setLatLng(e.latlng).openOn(map);
+                            popup.setLatLng(e.latlng).openOn(this_map);
                         });
                     }
                     // TODO: Should this be es_bld_is instead of es_id
