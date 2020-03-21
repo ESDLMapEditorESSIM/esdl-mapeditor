@@ -1671,6 +1671,7 @@
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
             $('#layer-info').button({text: false, icons: {primary: "layers"}});
             $('#import-esdl').button({text: false, icons: {primary: "import"}});
+            $('#compare-esdl').button({text: false, icons: {primary: "compare"}});
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
@@ -1716,6 +1717,11 @@
     }
     .ui-button .ui-icon.import{
         background-image: url({{dir_settings.resource_prefix}}icons/Import.png);
+        width: 25;
+        height: 25;
+    }
+    .ui-button .ui-icon.compare{
+        background-image: url({{dir_settings.resource_prefix}}icons/Compare.png);
         width: 25;
         height: 25;
     }
@@ -1771,6 +1777,7 @@
 
             <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all">ESDL Services</button>
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+            <button id="compare-esdl" onclick="compare_esdl_window();" title="ESDL compare" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Compare</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
 {% if 'essim' in role %}

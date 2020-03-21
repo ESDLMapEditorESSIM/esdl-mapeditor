@@ -45,6 +45,7 @@ from pyecore.ecore import EDate
 from user_logging import UserLogging
 from extensions.user_settings import UserSettings
 from extensions.esdl_api import ESDL_API
+from extensions.esdl_compare import ESDLCompare
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -660,6 +661,7 @@ IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
 esdl_api = ESDL_API(app, socketio)
+ESDLCompare(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
