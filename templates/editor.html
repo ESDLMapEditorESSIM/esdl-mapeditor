@@ -108,6 +108,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shapefiles.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/asset_map_utils.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/building_editor.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_api.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
@@ -1290,7 +1291,8 @@
 
                         line.on('mouseover', function (e) {
                             var popup = e.target.getPopup();
-                            popup.setLatLng(e.latlng).openOn(map);
+                            var this_map = e.sourceTarget._map;     // can be area map and building map
+                            popup.setLatLng(e.latlng).openOn(this_map);
                         });
 
                         line.on('mouseout', function(e) {
@@ -1299,8 +1301,9 @@
 
                         line.on('mousemove', function (e) {
                             e.target.closePopup();
+                            var this_map = e.sourceTarget._map;     // can be area map and building map
                             var popup = e.target.getPopup();
-                            popup.setLatLng(e.latlng).openOn(map);
+                            popup.setLatLng(e.latlng).openOn(this_map);
                         });
                     }
                     // TODO: Should this be es_bld_is instead of es_id
@@ -1333,6 +1336,13 @@
 
             socket.on('sector_list', function(list) {
                 set_sector_list(list['es_id'], list['sector_list']);
+            });
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  Received ESDL via API
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('received_esdl', function(message) {
+                received_esdl_window(message);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -1662,6 +1672,7 @@
             $('#boundary-info').button({text: false, icons: {primary: "geometry"}});
             $('#layer-info').button({text: false, icons: {primary: "layers"}});
             $('#import-esdl').button({text: false, icons: {primary: "import"}});
+            $('#compare-esdl').button({text: false, icons: {primary: "compare"}});
 
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
@@ -1707,6 +1718,11 @@
     }
     .ui-button .ui-icon.import{
         background-image: url({{dir_settings.resource_prefix}}icons/Import.png);
+        width: 25;
+        height: 25;
+    }
+    .ui-button .ui-icon.compare{
+        background-image: url({{dir_settings.resource_prefix}}icons/Compare.png);
         width: 25;
         height: 25;
     }
@@ -1762,6 +1778,7 @@
 
             <button id="esdl_services" onclick="esdl_services_info();" title="ESDL Services" class="ui-button ui-widget ui-corner-all">ESDL Services</button>
             <button id="layer-info" onclick="show_layers();" title="Show layers" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Layers</button>
+            <button id="compare-esdl" onclick="compare_esdl_window();" title="ESDL compare" class="ui-button ui-widget ui-corner-all"><span class="ui-button ui-widget ui-corner-all ui-button-icon-only"></span>Compare</button>
             <!-- <button id="button_shapefile" onclick="show_add_shapefile();" title="Add a shapefile" class="ui-button ui-widget ui-corner-all">SHP</button> -->
 
 {% if 'essim' in role %}

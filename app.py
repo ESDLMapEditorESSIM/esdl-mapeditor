@@ -44,6 +44,8 @@ from esdl_profiles import ESDLProfiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
 from extensions.user_settings import UserSettings
+from extensions.esdl_api import ESDL_API
+from extensions.esdl_compare import ESDLCompare
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -658,6 +660,8 @@ HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
+esdl_api = ESDL_API(app, socketio)
+ESDLCompare(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -3856,6 +3860,22 @@ def process_command(message):
               'zoom': False})
         emit('add_connections', {'es_id': active_es_id, 'add_to_building': True, 'conn_list': bld_info["conn_list"]})
 
+    if message['cmd'] == 'accept_received_esdl':
+        user_email = get_session('user-email')
+        received_esdls = esdl_api.get_esdl_for_user(user_email)
+        if received_esdls:
+            for received_esdl in received_esdls:
+                filename = 'ESDL from '+received_esdl['sender']
+                esh = get_handler()
+
+                result = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+
+                if isinstance(result, Exception):
+                    send_alert('Error interpreting ESDL from file - Exception: ' + str(result))
+                else:
+                    process_energy_system.submit(esh, filename)  # run in seperate thread
+        esdl_api.remove_esdls_for_user(user_email)
+
     set_handler(esh)
     session.modified = True
 
@@ -4160,6 +4180,7 @@ def connect():
     else:
         print('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
+    set_session('socketio_sid', request.sid)
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
