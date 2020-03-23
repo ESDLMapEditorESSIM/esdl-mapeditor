@@ -1812,45 +1812,6 @@ def update_polygon_asset_connection_locations(ass_id, coords):
 # mapping[ports[1].id] = {'asset_id': asset.id, 'coord': last, 'pos': 'last'}
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-#  Calculate distance between two points (for cable and pipe lengths)
-# ---------------------------------------------------------------------------------------------------------------------
-def distance(origin, destination):
-    """
-    source: https://stackoverflow.com/questions/19412462/getting-distance-between-two-points-based-on-latitude-longitude
-    Calculate the Haversine distance.
-
-    Parameters
-    ----------
-    origin : tuple of float
-        (lat, long)
-    destination : tuple of float
-        (lat, long)
-
-    Returns
-    -------
-    distance_in_km : float
-
-    Examples
-    --------
-    >>> origin = (48.1372, 11.5756)  # Munich
-    >>> destination = (52.5186, 13.4083)  # Berlin
-    >>> round(distance(origin, destination), 1)
-    504.2
-    """
-    lat1, lon1 = origin
-    lat2, lon2 = destination
-    radius = 6371  # km
-
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) * math.sin(dlat / 2) +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) * math.sin(dlon / 2))
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    d = radius * c
-
-    return d
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2120,33 +2081,7 @@ def connect_ports(port1, port2):
 #     return attrs_sorted
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-#  Split a conductor into two pieces
-# ---------------------------------------------------------------------------------------------------------------------
-def distance_point_to_line(p, p1, p2):
-    x = p1['x']
-    y = p1['y']
-    dx = p2['x'] - x
-    dy = p2['y'] - y
-    dot = dx * dx + dy * dy
-    
-    if dot > 0:
-        t = ((p['x'] - x) * dx + (p['y'] - y) * dy) / dot
-    
-        if t > 1:
-            x = p2['x']
-            y = p2['y']
-        else:
-            if t > 0:
-                x += dx * t
-                y += dy * t
-                
-    dx = p['x'] - x
-    dy = p['y'] - y
-    
-    return dx * dx + dy * dy
 
-# TODO: FIXME: pyEcore
 def split_conductor(conductor, location, mode, conductor_container):
     active_es_id = get_session('active_es_id')
     mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
@@ -2186,7 +2121,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             p1 = {'x': begin_point.lat, 'y': begin_point.lon}
             p2 = {'x': point.lat, 'y': point.lon}
             p =  {'x': location['lat'], 'y': location['lng']}
-            dist = distance_point_to_line(p, p1, p2)
+            dist = ESDLGeometry.distance_point_to_line(p, p1, p2)
             if dist < min_dist:
                 min_dist = dist
                 min_dist_segm = segm_ctr
@@ -2258,14 +2193,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         start = line1.point[0]
         length = 0
         for i in range(1, len(line1.point)):
-            length += distance((start.lat, start.lon), (line1.point[i].lat, line1.point[i].lon)) * 1000
+            length += ESDLGeometry.distance((start.lat, start.lon), (line1.point[i].lat, line1.point[i].lon)) * 1000
             start = line1.point[i]
         new_cond1.length = length
 
         start = line2.point[0]
         length = 0
         for i in range(1, len(line2.point)):
-            length += distance((start.lat, start.lon), (line2.point[i].lat, line2.point[i].lon)) * 1000
+            length += ESDLGeometry.distance((start.lat, start.lon), (line2.point[i].lat, line2.point[i].lon)) * 1000
             start = line2.point[i]
         new_cond2.length = length
 
@@ -3352,15 +3287,24 @@ def process_command(message):
         })
 
     if message['cmd'] == 'set_asset_param':
-        asset_id = message['id']
+        if not 'id' in message:
+            fragment = message['fragment']
+            asset_id = None
+        else:
+            fragment = None
+            asset_id = message['id']
         param_name = message['param_name']
         param_value = message['param_value']
 
         area = es_edit.instance[0].area
 
         #asset = ESDLAsset.find_asset(area, asset_id)
-        asset = esh.get_by_id(active_es_id, asset_id)
-        print('Set param '+ param_name +' for asset ' + asset_id + ' to value '+ param_value)
+        if asset_id is None:
+            resource = esh.get_resource(active_es_id)
+            asset = resource.resolve(fragment)
+        else:
+            asset = esh.get_by_id(active_es_id, asset_id)
+        print('Set param '+ param_name +' for class ' + asset.eClass.name + ' to value '+ param_value)
 
         try:
             attribute = asset.eClass.findEStructuralFeature(param_name)
@@ -4066,25 +4010,27 @@ def process_file_command(message):
         filename = message['filename']
         esh = EnergySystemHandler()
 
-        result = esh.load_from_string(esdl_string=file_content, name=filename)
-        es = esh.get_energy_system()
-
-        if isinstance(result, Exception):
-            send_alert('Error interpreting ESDL from file - Exception: '+str(result))
-        else:
-            set_handler(esh)
-            es_info_list = {}
-            set_session("es_info_list", es_info_list)
+        try:
+            result = esh.load_from_string(esdl_string=file_content, name=filename)
+        except Exception as e:
+            send_alert("Error opening {}. Exception is: {}".format(filename, e))
             emit('clear_ui')
-            emit('clear_esdl_layer_list')
-            process_energy_system.submit(esh, filename) # run in seperate thread
-            #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
-            #thread.start()
+            return
 
-            del_session('store_item_metadata')
-            emit('store_item_metadata', {})
-            set_session('active_es_id', es.id)
-            set_session('es_filename', filename)
+        es = esh.get_energy_system()
+        set_handler(esh)
+        es_info_list = {}
+        set_session("es_info_list", es_info_list)
+        emit('clear_ui')
+        emit('clear_esdl_layer_list')
+        process_energy_system.submit(esh, filename) # run in seperate thread
+        #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
+        #thread.start()
+
+        del_session('store_item_metadata')
+        emit('store_item_metadata', {})
+        set_session('active_es_id', es.id)
+        set_session('es_filename', filename)
 
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']

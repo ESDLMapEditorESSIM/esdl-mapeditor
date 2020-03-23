@@ -664,9 +664,10 @@
 
         function change_param(obj) {
             asset_id = $(obj).attr('assetid');
+            asset_fragment = $(obj).attr('fragment'); // in case there is no id present
             asset_param_name = obj.name;
             asset_param_value = obj.value;
-            socket.emit('command', {cmd: 'set_asset_param', id: asset_id, param_name: asset_param_name, param_value: asset_param_value});
+            socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
         }
 
         function connect_asset(e, feature_id, port_id) {

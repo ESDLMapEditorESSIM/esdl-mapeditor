@@ -1,5 +1,5 @@
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EOrderedSet, EObject, EReference, EClass, EStructuralFeature
+from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
 from pyecore.valuecontainer import EAbstractSet
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
@@ -27,6 +27,8 @@ class EnergySystemHandler:
         # fix python builtin 'from' that is also used in ProfileElement as attribute
         # use 'start' instead of 'from' when using a ProfileElement
         # alias('start', esdl.ProfileElement.findEStructuralFeature('from'))
+        esdl.ProfileElement.from_.name = 'from'
+        setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
         alias('start', esdl.ProfileElement.from_)
 
         # add support for shallow copying or cloning an object
@@ -43,7 +45,7 @@ class EnergySystemHandler:
             eclass = self.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EAttribute):
-                    log.debug("clone: processing attribute {}".format(x.name))
+                    #log.trace("clone: processing attribute {}".format(x.name))
                     if x.many:
                         eOrderedSet = newone.eGet(x.name)
                         for v in self.eGet(x.name):
@@ -73,18 +75,18 @@ class EnergySystemHandler:
             eclass: EClass = self.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EReference):
-                    log.debug("deepcopy: processing reference {}".format(x.name))
+                    #log.debug("deepcopy: processing reference {}".format(x.name))
                     ref: EReference = x
                     value: EStructuralFeature = self.eGet(ref)
                     if value is None:
                         continue
                     if ref.containment:
-                        if ref.many and isinstance(value, EOrderedSet):
+                        if ref.many and isinstance(value, EAbstractSet):
                             #clone all containment elements
-                            eOrderedSet = copy.eGet(ref.name)
+                            eAbstractSet = copy.eGet(ref.name)
                             for ref_value in value:
                                 duplicate = ref_value.__deepcopy__(memo)
-                                eOrderedSet.append(duplicate)
+                                eAbstractSet.append(duplicate)
                         else:
                             copy.eSet(ref.name, value.__deepcopy__(memo))
                     #else:
@@ -101,7 +103,7 @@ class EnergySystemHandler:
                     eclass: EClass = k.eClass
                     for x in eclass.eAllStructuralFeatures():
                         if isinstance(x, EReference):
-                            log.debug("deepcopy: processing x-reference {}".format(x.name))
+                            #log.debug("deepcopy: processing x-reference {}".format(x.name))
                             ref: EReference = x
                             orig_value: EStructuralFeature = k.eGet(ref)
                             if orig_value is None:
@@ -112,7 +114,7 @@ class EnergySystemHandler:
                                     # do not handle eOpposite relations, they are handled automatically in pyEcore
                                     continue
                                 if x.many:
-                                    eOrderedSet = v.eGet(ref.name)
+                                    eAbstractSet = v.eGet(ref.name)
                                     for orig_ref_value in orig_value:
                                         try:
                                             copy_ref_value = memo[orig_ref_value]
@@ -120,7 +122,7 @@ class EnergySystemHandler:
                                             log.warning(f'Cannot find reference of type {orig_ref_value.eClass.Name} \
                                                 for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                             copy_ref_value = orig_ref_value
-                                        eOrderedSet.append(copy_ref_value)
+                                        eAbstractSet.append(copy_ref_value)
                                 else:
                                     try:
                                         copy_value = memo[orig_value]
@@ -265,7 +267,8 @@ class EnergySystemHandler:
             self.add_object_to_dict(self.energy_system.id, self.energy_system)
             return self.energy_system
         except Exception as e:
-            return e            # TODO: how is this done nicely?
+            log.error("Exception when loading resource: {}: {}".format(name, e))
+            raise
 
     def load_external_string(self, esdl_string, name='from_string'):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)

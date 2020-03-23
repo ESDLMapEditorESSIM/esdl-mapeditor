@@ -172,6 +172,7 @@ class ESDLBrowser {
                     .attr("id", data.attributes[i].name + i)
                     .attr('assetid', data.object.id)
                     .attr('name', data.attributes[i].name)
+                    .attr('fragment', data.object.fragment)
                     .change(function (e) { change_param(this);});
 
                 for (let j = 0; j< data.attributes[i].options.length; j++) {
@@ -190,6 +191,7 @@ class ESDLBrowser {
                     .attr('assetid', data.object.id)
                     .attr('name', data.attributes[i].name)
                     .attr('value', data.attributes[i].value)
+                    .attr('fragment', data.object.fragment)
                     .change(function(e) { change_param(this); });
                     // edate
 
@@ -212,7 +214,6 @@ class ESDLBrowser {
             let name = data.references[i].name;
             let value = data.references[i].value;
             let doc = data.references[i].doc;
-            let $addButton = null;
             var $repr = $('<div>');
             var $actions = $('<div>');
             if (data.references[i].many) {
@@ -256,7 +257,7 @@ class ESDLBrowser {
 
             } else {
                 if (value.repr == null) {
-                    value.repr = '';
+                    //value.repr = '';
                     if (data.references[i].containment == true) {
                         let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); });
                         $actions.append($addButton);

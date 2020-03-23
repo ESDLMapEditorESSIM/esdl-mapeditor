@@ -11,8 +11,8 @@ from flask import Flask, session
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 
-DEFAULT_SHIFT_LAT = 0.000080
-DEFAULT_SHIFT_LON = 0.000080
+DEFAULT_SHIFT_LAT = 0.000020
+DEFAULT_SHIFT_LON = 0.000020
 
 
 class HeatNetwork:
@@ -35,7 +35,7 @@ class HeatNetwork:
 
     def add_asset_and_emit(self, esh: EnergySystemHandler, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():
-            print(session)
+            #print(session)
             asset_to_be_added_list = list()
 
             # add port mappings to session
@@ -46,14 +46,20 @@ class HeatNetwork:
             for i in range(len(asset.port)):
                 port = asset.port[i]
                 coord = ()
-                if isinstance(asset.geometry, Point):
-                    coord = (asset.geometry.lat, asset.geometry.lon)
-                elif isinstance(asset.geometry, Line):
-                    coord = (asset.geometry.point[i].lat, asset.geometry.point[i].lon)
                 if i == 0:
+                    if isinstance(asset.geometry, Point):
+                        coord = (asset.geometry.lat, asset.geometry.lon)
+                    elif isinstance(asset.geometry, Line):
+                        coord = (asset.geometry.point[0].lat, asset.geometry.point[0].lon)
                     mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'first'}
+                    print('mapping', mapping[port.id])
                 elif i == len(asset.port) - 1:
+                    if isinstance(asset.geometry, Point):
+                        coord = (asset.geometry.lat, asset.geometry.lon)
+                    elif isinstance(asset.geometry, Line):
+                        coord = (asset.geometry.point[-1].lat, asset.geometry.point[-1].lon)
                     mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'last'}
+                    print('mapping', mapping[port.id])
                 connTo_ids = list(o.id for o in port.connectedTo)
                 port_list.append(
                     {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})
@@ -93,7 +99,7 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
     if original_asset.name.endswith('_sup'):
         name = original_asset.name[:-4] + '_ret'
     if not isinstance(duplicate_asset, Pipe): # do different naming for other pipes
-        name = '{}_{}'.format(original_asset.name, '_copy')
+        name = '{}_{}'.format(original_asset.name, 'copy')
     duplicate_asset.name = name
 
     geometry = original_asset.geometry
