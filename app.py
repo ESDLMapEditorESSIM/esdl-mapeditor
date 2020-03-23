@@ -3868,13 +3868,16 @@ def process_command(message):
                 filename = 'ESDL from '+received_esdl['sender']
                 esh = get_handler()
 
-                result = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
-
-                if isinstance(result, Exception):
-                    send_alert('Error interpreting ESDL from file - Exception: ' + str(result))
-                else:
+                try:
+                    result = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
                     process_energy_system.submit(esh, filename)  # run in seperate thread
-        esdl_api.remove_esdls_for_user(user_email)
+                    esdl_api.remove_esdls_for_user(user_email)
+                except Exception as e:
+                    logger.error("Error loading {}: {}".format(filename, e))
+                    send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+
+
+
 
     set_handler(esh)
     session.modified = True
@@ -4057,12 +4060,13 @@ def process_file_command(message):
         filename = message['filename']
         esh = get_handler()
 
-        result = esh.add_from_string(name=filename, esdl_string=file_content)
+        try:
+            result = esh.add_from_string(name=filename, esdl_string=file_content)
+            process_energy_system.submit(esh, filename)  # run in seperate thread
+        except Exception as e:
+            logger.error("Error loading {}: {}".format(filename, e))
+            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
-        if isinstance(result, Exception):
-            send_alert('Error interpreting ESDL from file - Exception: ' + str(result))
-        else:
-            process_energy_system.submit(esh, filename) # run in seperate thread
 
     if message['cmd'] == 'get_list_from_store':
         role = get_session('user-role')

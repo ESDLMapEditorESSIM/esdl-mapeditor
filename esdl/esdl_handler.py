@@ -293,7 +293,8 @@ class EnergySystemHandler:
             self.add_object_to_dict(tmp_es.id, tmp_es)
             return tmp_resource.contents[0]
         except Exception as e:
-            return e            # TODO: how is this done nicely? --> send error message to browser
+            log.error("Exception when loading resource: {}: {}".format(name, e))
+            raise
 
 
     def to_string(self, es_id=None):
