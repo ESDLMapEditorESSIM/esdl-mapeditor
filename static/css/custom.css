@@ -234,7 +234,42 @@ html, body
     font-size: 10px;
 }
 
+.group_es_layers_anchor {
+    font-size: 10px;
+}
 
+/* Smaller fonts */
+.jstree-anchor, .jstree-anchor:link, .jstree-anchor:visited, .jstree-anchor:hover, .jstree-anchor:active {
+    font-size: 12px;
+    padding: 0 0px 0 0px;
+}
+
+.jstree-default .jstree-node {
+    margin-left: 12px
+}
+
+/* Minimizing height of lines */
+.jstree-default .jstree-anchor {
+    line-height: 18px;
+    height: 18px;
+}
+.jstree-default .jstree-node {
+    min-height: 18px;
+    line-height: 18px;
+    margin-left: 24px;
+    min-width: 24px;
+}
+
+/* Smaller icons */
+.jstree-default .jstree-icon {
+    background-image: url(/icons/32px.png);
+}
+
+.jstree-default .jstree-icon:empty {
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+}
 
 /*
 z-index for jstree context menu, sidebar has 2000
