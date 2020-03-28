@@ -33,18 +33,22 @@ function update_layer_control_tree() {
     layer_ctrl_tree.setOverlayTree(overlaysTree);
 }
 
-function select_active_layer() {
-    active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
-    active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
-    active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
+function select_active_layer_old() {
+    let active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
+    let active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
+    let active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
+    select_active_layer(active_esdl_layer);
+}
 
+function select_active_layer(active_esdl_layer) {
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
     draw_control = add_draw_control(draw_control, map);         // connect draw control to new active layer
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
-    var bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
-    map.flyToBounds(bounds, {padding: [50,50], animate: true});     // zoom te layer
+    let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
+    if (Object.keys(bounds).length !== 0)
+        map.flyToBounds(bounds, {padding: [50,50], animate: true});     // zoom to layer
 }
 
 function add_select_esdl() {
@@ -56,7 +60,7 @@ function add_select_esdl() {
     select_esdl_control.onAdd = function (map) {
         var div = L.DomUtil.create('div', 'info legend');
 
-        var select = '<select id="esdl_layer_select" onchange="select_active_layer();">';
+        var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
         for (let id in esdl_list) {
             es = esdl_list[id]
             select += '<option id="'+es.id+'"';
@@ -128,6 +132,9 @@ function create_new_esdl_layer(es_id, title) {
     update_layer_control_tree();
 }
 
+function remove_esdl_layer(es_id) {
+    delete esdl_list[es_id];
+}
 
 function create_new_bld_layer(bld_id, title, bld_map) {
     esdl_list_item = {
@@ -152,8 +159,17 @@ function remove_bld_layer(bld_id) {
     delete esdl_list[bld_id];
 }
 
+function show_esdl_layer_on_map(es_id, layer_name) {
+    if (!map.hasLayer(esdl_list[es_id].layers[layer_name]))
+        esdl_list[es_id].layers[layer_name].addTo(map);
+}
+
+function hide_esdl_layer_from_map(es_id, layer_name) {
+    if (map.hasLayer(esdl_list[es_id].layers[layer_name]))
+        esdl_list[es_id].layers[layer_name].removeFrom(map);
+}
+
 function clear_esdl_layer_list() {
-    // TODO: remove layers from map
     for (let id in esdl_list) {
         for (let l in esdl_list[id].layers) {
             esdl_list[id].layers[l].removeFrom(map);
@@ -161,7 +177,6 @@ function clear_esdl_layer_list() {
     }
     esdl_list = {};
 }
-
 
 function add_object_to_layer(es_id, layer_name, object) {
     esdl_list[es_id].layers[layer_name].addLayer(object);
