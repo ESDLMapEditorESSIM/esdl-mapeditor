@@ -383,6 +383,14 @@ class EnergySystemHandler:
             else:
                 return None
 
+    def remove_energy_system(self, es_id=None):
+        if es_id is None:
+            return
+        else:
+            my_uri = self.esid_uri_dict[es_id]
+            del self.rset.resources[my_uri.normalize()]
+            del self.esid_uri_dict[es_id]
+
     def get_energy_systems(self):
         es_list = []
         # for esid in self.esid_uri_dict:

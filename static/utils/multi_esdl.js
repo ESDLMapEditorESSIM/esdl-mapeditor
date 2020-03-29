@@ -133,7 +133,22 @@ function create_new_esdl_layer(es_id, title) {
 }
 
 function remove_esdl_layer(es_id) {
+    esdl_list_item = esdl_list[es_id]
+    for (let lyr in esdl_list_item.layers) {
+        if (map.hasLayer(esdl_list_item.layers[lyr]))
+            map.removeLayer(esdl_list_item.layers[lyr])
+    }
     delete esdl_list[es_id];
+
+    socket.emit('command', {cmd: 'remove_energysystem', remove_es_id: es_id});
+}
+
+function rename_esdl_energy_system(es_id, name) {
+    esdl_list[es_id].title = name
+    socket.emit('command', {cmd: 'rename_energysystem', remame_es_id: es_id, name: name});
+    if (es_id === active_layer_id) {
+        update_title(name);
+    }
 }
 
 function create_new_bld_layer(bld_id, title, bld_map) {

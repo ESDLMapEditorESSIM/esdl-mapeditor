@@ -3932,6 +3932,17 @@ def process_command(message):
                     process_energy_system.submit(esh, filename)  # run in seperate thread
         esdl_api.remove_esdls_for_user(user_email)
 
+    if message['cmd'] == 'rename_energysystem':
+        name = message['name']
+        rename_es_id = message['remame_es_id']
+
+        es_rename = esh.get_energy_system(es_id=rename_es_id)
+        es_rename.name = name
+
+    if message['cmd'] == 'remove_energysystem':
+        remove_es_id = message['remove_es_id']
+        esh.remove_energy_system(es_id=remove_es_id)
+
     set_handler(esh)
     session.modified = True
 
@@ -3993,9 +4004,9 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             print("- Processing energysystem with id {}".format(es.id))
             name = es.name
             if not name:
-                title = 'ID: ' + es.id
+                title = 'Untitled Energysystem'
             else:
-                title = 'Name: ' + name
+                title = name
 
             emit('create_new_esdl_layer', {'es_id': es.id, 'title': title})
             emit('set_active_layer_id', es.id)

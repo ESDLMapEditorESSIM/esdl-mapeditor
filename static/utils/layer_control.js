@@ -9,20 +9,20 @@ function getESDLFileContextMenu(node, tree)
             'label' : 'Remove EnergySystem',
             'icon': 'fa fa-trash-o',
             'action' : function () {
-                let id = node.id.substring(3);
-                console.log('removing '+id);
-                remove_layer(id);
+                let id = node.id;
+//                console.log('removing '+id);
+                remove_esdl_layer(id);
 //                $('#esdl_layer_control_tree').jstree("delete_node", '#'+node.id);
-                tree.jstree("delete_node", '#'+node.id);
+//                tree.jstree("delete_node", '#'+node.id);
+                tree.delete_node(node.id);
             }
         },
         'rename' : {
             'label' : 'Rename EnergySystem',
             'icon': 'far fa-edit',
             'action': function () {
-                node.text = node.text.substring(5);   // remove 'Name: ' from the text
                 tree.edit(node);
-                console.log(node.text);
+//                console.log(node.text);
             }
         }
     }
@@ -45,17 +45,17 @@ function add_layer_control() {
         $base_layer_control_tree
             .on('ready.jstree', function() {
                 let tree = $('#blct').jstree(true);
-                console.log(baseTree.children[0].label);
+//                console.log(baseTree.children[0].label);
                 tree.select_node([baseTree.children[0].label]);
             })
             .on('select_node.jstree', function(e, data) {
                 let node = data.node;
                 base_layer_group = $("#blct").jstree("get_node", 'group_es_layers');
-                console.log(base_layer_group);
+//                console.log(base_layer_group);
                 if (base_layer_group)
                     for (let bl=0; bl<base_layer_group.children.length; bl++) {
                         base_layer = base_layer_group.children[bl];
-                        console.log(base_layer);
+//                        console.log(base_layer);
                         bl_node = $("#blct").jstree("get_node", base_layer);
                         if ($("#blct").jstree(true).is_selected(bl_node)) {
                             if (!map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
@@ -184,7 +184,8 @@ function add_layer_control() {
                 let tree = $("#esdl_lct").jstree(true);
                 node = data.obj;
                 new_title = data.text;
-                console.log('Set EnergySystem name');
+//                console.log('Set EnergySystem name');
+                rename_esdl_energy_system(node.id, node.text);
             })
             .jstree({
                 "core" : {
