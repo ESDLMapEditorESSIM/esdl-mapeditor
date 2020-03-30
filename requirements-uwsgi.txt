@@ -44,3 +44,4 @@ Werkzeug==0.15.5
 pyjwt==1.7.1
 cryptography==2.7
 pymongo==3.10.1
+xmldiff==2.4

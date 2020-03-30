@@ -1,7 +1,75 @@
 from esdl import esdl
 from utils.RDWGSConverter import RDWGSConverter
-   
-   
+import math
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Calculate distance between two points (for cable and pipe lengths)
+# ---------------------------------------------------------------------------------------------------------------------
+def distance(origin, destination):
+    """
+    source: https://stackoverflow.com/questions/19412462/getting-distance-between-two-points-based-on-latitude-longitude
+    Calculate the Haversine distance.
+
+    Parameters
+    ----------
+    origin : tuple of float
+        (lat, long)
+    destination : tuple of float
+        (lat, long)
+
+    Returns
+    -------
+    distance_in_km : float
+
+    Examples
+    --------
+    >>> origin = (48.1372, 11.5756)  # Munich
+    >>> destination = (52.5186, 13.4083)  # Berlin
+    >>> round(distance(origin, destination), 1)
+    504.2
+    """
+    lat1, lon1 = origin
+    lat2, lon2 = destination
+    radius = 6371  # km
+
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) * math.sin(dlat / 2) +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlon / 2) * math.sin(dlon / 2))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    d = radius * c
+
+    return d
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Split a conductor into two pieces
+# ---------------------------------------------------------------------------------------------------------------------
+def distance_point_to_line(p, p1, p2):
+    x = p1['x']
+    y = p1['y']
+    dx = p2['x'] - x
+    dy = p2['y'] - y
+    dot = dx * dx + dy * dy
+
+    if dot > 0:
+        t = ((p['x'] - x) * dx + (p['y'] - y) * dy) / dot
+
+        if t > 1:
+            x = p2['x']
+            y = p2['y']
+        else:
+            if t > 0:
+                x += dx * t
+                y += dy * t
+
+    dx = p['x'] - x
+    dy = p['y'] - y
+
+    return dx * dx + dy * dy
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------

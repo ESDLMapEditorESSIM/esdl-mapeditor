@@ -65,6 +65,8 @@ class ESDL_API:
                     else:
                         incoming_esdls_via_api[email] = [{"sender": sender, "descr": descr, "esdl": esdl}]
 
+                    # TODO: use room=sid to send a message to a specific user, as each user has its own room.
+                    # See: https://stackoverflow.com/questions/39423646/flask-socketio-emit-to-specific-user
                     self.socketio.emit('received_esdl', {"sender": sender, "descr": descr}, skip_sid=exclude_sessions, namespace='/esdl')
                     return "Success", 201
                 else:

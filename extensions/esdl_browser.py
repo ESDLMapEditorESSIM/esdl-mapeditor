@@ -201,8 +201,20 @@ class ESDLBrowser:
             if name is None:
                 name = item.eClass.name
             return name + ' of ' + item.energyasset.eClass.name + " " + ESDLBrowser.generate_repr(item.energyasset)
+
+        if isinstance(item, esdl.ProfileElement):
+            element: esdl.ProfileElement = item
+            if element.to is not None:
+                return '{}-{}, value: {}'.format(element.from_, element.to, element.value)
+            else:
+                return '{}, value: {}'.format(element.from_, element.value)
+
         if isinstance(item, esdl.QuantityAndUnitType):
             return qau_to_string(item)
+        if isinstance(item, esdl.QuantityAndUnitReference):
+            ref: esdl.QuantityAndUnitReference = item
+            if ref.reference is not None:
+                return '{} ({})'.format(qau_to_string(ref.reference), item.eClass.name)
         if hasattr(item, 'name') and item.name is not None:
             return item.name
         #if hasattr(item, 'id') and item.id is not None:

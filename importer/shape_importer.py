@@ -1,34 +1,109 @@
 import shapefile
-import model.esdl_sup as esdl
+import esdl.esdl as esdl
+from pyecore.ecore import EClass, EObject, EStructuralFeature
 from uuid import uuid4
-from app import distance
+from esdl.processing.ESDLGeometry import distance
 from pyproj import Proj, Transformer
+from esdl.esdl_handler import EnergySystemHandler
+
+
+inner_diameter_keys = ('inner diam', 'diameter', 'inner diameter', 'innerdiameter')
+outer_diameter_keys = ('outer diam', 'diameter', 'outer diameter', 'outerdiameter')
+name_keys = ('name', 'naam')
+
+
 
 def read_shapefile(filename):
     sf = shapefile.Reader(filename)
     return sf
 
-def to_esdl_pipes(area, sf, transformer):
+def to_esdl(area, sf, transformer):
     i = 0
     for shapeRecord in sf.shapeRecords():
         i += 1
         if shapeRecord.shape.shapeType == shapefile.POLYLINE:
-            #print('{} {}m = {}'.format(shapeRecord.shape.shapeTypeName, shapeRecord.record[0], shapeRecord.shape.points))
-            pipe = esdl.Pipe(name=area.get_name()+'-Pipe'+str(i), id=uuid4())
+            print('{} {} = {}'.format(shapeRecord.shape.shapeTypeName, shapeRecord.record[0], shapeRecord.shape.points))
+            pipe = esdl.Pipe(name=area.name+'-Pipe'+str(i), id=str(uuid4()))
             line = esdl.Line()
             d = 0.0
             prevlat, prevlon = None, None
             for point in shapeRecord.shape.points:
                 lon, lat = transformer.transform(point[0], point[1])
                 p = esdl.Point(lat=lat, lon=lon)
-                line.add_point(p)
+                line.point.append(p)
                 if prevlat is not None:
                     d = d + distance((prevlat, prevlon),(lat, lon))
                 prevlat, prevlon = lat, lon
-            pipe.set_length(d * 1000) # in m instead of km
-            pipe.set_geometry_with_type(line)
-            area.add_asset_with_type(pipe)
+            pipe.length = d * 1000 # in m instead of km
 
+            # diameter was put in mm!
+            pipe.innerDiameter = float(get_recordproperty(shapeRecord.record, inner_diameter_keys, 0.0))/1000
+            pipe.outerDiameter = float(get_recordproperty(shapeRecord.record, outer_diameter_keys, 0.0))/1000
+
+            pipe.geometry = line
+            inport = esdl.InPort(id=str(uuid4()), name='InPort')
+            outport = esdl.OutPort(id=str(uuid4()), name='OutPort')
+            pipe.port.extend((inport, outport))
+            area.asset.append(pipe)
+
+        if shapeRecord.shape.shapeType == shapefile.POINT:
+            # probably an asset
+            esdl_type = get_type(shapeRecord.record)
+            esdl_instance = esdl_type(name=get_name(shapeRecord.record), id=str(uuid4()))
+            #instance = esdl.GenericProducer(name=get_name(shapeRecord.record), id=str(uuid4()))
+            point = shapeRecord.shape.points[0]
+            lon, lat = transformer.transform(point[0], point[1])
+            p = esdl.Point(lat=lat, lon=lon)
+            esdl_instance.geometry = p
+            area.asset.append(esdl_instance)
+            inport = esdl.InPort(id=str(uuid4()), name='InPort')
+            outport = esdl.OutPort(id=str(uuid4()), name='OutPort')
+            esdl_instance.port.extend((inport,outport))
+
+
+"""
+if the shape record contains the type field, use that to find 
+the appropriate ESDL class
+"""
+def get_type(record: shapefile._Record):
+    record_dict = record.as_dict()
+    for key, value in record_dict.items():
+        if 'type' == key.lower():
+            for esdl_type in esdl.eClassifiers:
+                t: EClass = esdl.getEClassifier(esdl_type).eClass
+                if esdl.EnergyAsset.eClass in t.eAllSuperTypes():
+                    #print('checking', esdl_type)
+                    if value.lower() in esdl_type.lower():
+                        print('Using {} as type for this shape'.format(esdl_type))
+                        return esdl.getEClassifier(esdl_type)
+    return esdl.GenericProducer
+
+def get_name(record: shapefile._Record):
+    record_dict = record.as_dict()
+
+    for key, value in record_dict.items():
+        if key.lower() in name_keys:
+            return value
+    return "unnamed"
+
+def get_recordproperty(record: shapefile._Record, possible_names: list, default_value=None):
+    record_dict = record.as_dict()
+    for key, value in record_dict.items():
+        if key.lower() in possible_names:
+            return value
+    return default_value
+
+# TODO: generic approach for properties
+# def set_recordproperty(eobject:EObject, attribute: str, record: shapefile._Record, possible_names: list=None, default_value=None):
+#     feature: EStructuralFeature = eobject.eClass.findEStructuralFeature(attribute)
+#
+#     if possible_names is None:
+#
+#     record_dict = record.as_dict()
+#     for key, value in record_dict.items():
+#         if key.lower() in possible_names:
+#             return value
+#     return default_value
 
 '''
 Returns a transformer to transform coodinate systems
@@ -53,51 +128,59 @@ def get_coordinate_transformer(wkt=None, epsg_in="epsg:28992", epsg_out="epsg:43
 def create_energy_system():
     es = esdl.EnergySystem(name="Imported Shapefile EnergySystem", id=uuid4())
     instance = esdl.Instance(name="Instance", id=uuid4())
-    es.add_instance(instance)
-    area = esdl.Area(name='Main Area')
-    instance.set_area(area)
+    es.instance.append(instance)
+    area = esdl.Area(name='Main Area', id=str(uuid4()))
+    instance.area = area
     return es, area
 
 
 def read_multiple_shapefiles(files, main_area, transformer) :
     for file in files:
         sf = read_shapefile(file)
+        with open(file+'.prj', 'r') as project_file:
+            data = project_file.read()
+            transformer = get_coordinate_transformer(wkt=data)
+
         area_name = file[file.rfind('/') + 1:]
-        print(file)
-        print(sf)
-        print(sf.fields)
-        # print(sf.shapeRecords())
+        print("File: ", file)
+        print("- Shapefile: ", sf)
+        print("- Fields: ", sf.fields)
+        print("- Shaperecords: ", sf.shapeRecords())
 
-        shape_area = esdl.Area(name=area_name, id=uuid4())
-        main_area.add_area(shape_area)
+        shape_area = esdl.Area(name=area_name, id=str(uuid4()))
+        main_area.area.append(shape_area)
 
-        to_esdl_pipes(shape_area, sf, transformer)
+        to_esdl(shape_area, sf, transformer)
 
+
+# fileNames = [
+#     "C:/temp/Shapefiles_180419 Update WSW/Bestaande_infrastructuur",
+#     "C:/temp/Shapefiles_180419 Update WSW/Cluster_grens",
+#     "C:/temp/Shapefiles_180419 Update WSW/Cluster_Noordwest_geplande_concept",
+#     "C:/temp/Shapefiles_180419 Update WSW/Gemeentegrens",
+#     "C:/temp/Shapefiles_180419 Update WSW/Koppeling_Trias",
+#     "C:/temp/Shapefiles_180419 Update WSW/Primair_net",
+#     "C:/temp/Shapefiles_180419 Update WSW/Regionaalnet",
+#     "C:/temp/Shapefiles_180419 Update WSW/Trias_gepland_definitief"
+# ]
 
 fileNames = [
-    "C:/temp/Shapefiles_180419 Update WSW/Bestaande_infrastructuur",
-    "C:/temp/Shapefiles_180419 Update WSW/Cluster_grens",
-    "C:/temp/Shapefiles_180419 Update WSW/Cluster_Noordwest_geplande_concept",
-    "C:/temp/Shapefiles_180419 Update WSW/Gemeentegrens",
-    "C:/temp/Shapefiles_180419 Update WSW/Koppeling_Trias",
-    "C:/temp/Shapefiles_180419 Update WSW/Primair_net",
-    "C:/temp/Shapefiles_180419 Update WSW/Regionaalnet",
-    "C:/temp/Shapefiles_180419 Update WSW/Trias_gepland_definitief"
+    "C:/temp/test_systeem/pipelines",
+    "C:/temp/test_systeem/sources",
+    "C:/temp/test_systeem/sources2",
 ]
+
+
 def main():
-
-
-    es, main_area = create_energy_system()
+    esh = EnergySystemHandler()
+    es = esh.create_empty_energy_system("Imported EnergySystem", "", "Instance", "Main Area")
+    main_area = es.instance[0].area
     transformer = get_coordinate_transformer()
 
     read_multiple_shapefiles(fileNames, main_area, transformer)
-
-
-    exportFile = 'westland.esdl'
-    f = open(exportFile, 'w+', encoding='UTF-8')
-    # f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    xml_namespace = ('xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\nxmlns:esdl="http://www.tno.nl/esdl"\n')
-    es.export(f, 0, namespaceprefix_='esdl:', name_='esdl:EnergySystem', namespacedef_=xml_namespace, pretty_print=True)
+    print(esh.to_string())
+    exportFile = 'exported_es.esdl'
+    esh.save_as(exportFile)
 
 
 if __name__ == '__main__':
