@@ -262,7 +262,7 @@ html, body
 
 /* Smaller icons */
 .jstree-default .jstree-icon {
-    background-image: url(/icons/32px.png);
+    background-image: url(../icons/32px.png);
 }
 
 .jstree-default .jstree-icon:empty {
