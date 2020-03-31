@@ -129,7 +129,7 @@ function create_new_esdl_layer(es_id, title) {
 
     esdl_list[es_id] = esdl_list_item;
     active_layer_id = es_id;
-    update_layer_control_tree();
+    // update_layer_control_tree();
 }
 
 function remove_esdl_layer(es_id) {

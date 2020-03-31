@@ -871,20 +871,21 @@
                 es_id = message['es_id'];
 
                 create_new_esdl_layer(es_id, title);
-                add_select_esdl();      // update list with esdl layers
-                add_layer_control();
+                // add_select_esdl();      // update list with esdl layers
+                add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
             });
 
             socket.on('set_active_layer_id', function(id) {
-                console.log('add_draw_control');
+                // console.log('add_draw_control');
                 active_layer_id = id;
                 update_area_bld_list_select();            // update the list of areas and buildings to add assets to
                 draw_control = add_draw_control(draw_control, map);                 // couple draw_control to active layer
-                console.log(draw_control);
+                // console.log(draw_control);
 
                 update_title(esdl_list[active_layer_id].title);
+                // set_selected_layer(active_layer_id);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -1855,7 +1856,7 @@
         children: []
     };
 
-    layer_ctrl_tree = L.control.layers.tree(baseTree, overlaysTree, { position: 'topright', collapsed: false }).addTo(map);
+    // layer_ctrl_tree = L.control.layers.tree(baseTree, overlaysTree, { position: 'topright', collapsed: false }).addTo(map);
     L.control.mousePosition().addTo(map);
 
     L.easyPrint({

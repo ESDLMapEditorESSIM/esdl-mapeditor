@@ -115,6 +115,10 @@ function add_layer_control() {
 //                console.log('select_node event');
 //                console.log(data);
 //            })
+            .on('ready.jstree', function() {
+                let tree = $('#esdl_lct').jstree(true);
+                tree.select_node(active_layer_id);
+            })
             .on('load_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
                 let root_node = data.node;
@@ -247,6 +251,17 @@ function add_layer_control() {
     layer_control.addTo(map);
 }
 
+// Following function does not work because jstree is not loaded yet when it is called
+//function set_selected_layer(layer_id) {
+//    let tree = $('#esdl_lct').jstree(true);
+//    to_be_activated_node = tree.get_node(layer_id);
+//    console.log('found layer: ');
+//    console.log(to_be_activated_node);
+//    console.log('selecting node with id: '+layer_id);
+//    tree.select_node(layer_id);
+//}
+
+
 function get_base_layers_control_tree_data() {
     let children = [];
 
@@ -303,6 +318,8 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Potentials', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'pot_layer'}},
             { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}}
         ];
+
+        console.log('adding layer with id: '+ key);
 
         let esdl_layer = {
             id: key,
