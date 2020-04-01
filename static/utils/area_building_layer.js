@@ -465,6 +465,27 @@ function add_area_layer(area_data) {
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
 
+function set_building_contextmenu(layer, id) {
+    layer.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+
+    layer.options.contextmenuItems.push({
+        text: 'Building ESDL contents',
+        icon: 'icons/BuildingContents.png',
+        callback: function(e) { edit_building_contents(e, id); }
+    });
+    layer.options.contextmenuItems.push('-');
+    layer.options.contextmenuItems.push({
+        text: 'Edit building properties',
+        icon: resource_uri + 'icons/Edit.png',
+        callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
+    });
+}
+
 function test(n){
     var name = n;
     return function(e){alert(name)}
@@ -483,18 +504,8 @@ function add_building_layer(building_data) {
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }
-            if (feature.properties && feature.properties.name) {
-               var fn = test(feature.properties.name);
-
-        		var contextMenuItems = [{
-                	text: 'dock '+feature.properties.name,
-        	        callback: function(e){alert(feature.properties.name)},
-    	        },];
-
-                layer.bindContextMenu({
-                    contextmenu: true,
-                    contextmenuItems: contextMenuItems
-                });
+            if (feature.properties && feature.properties.id) {
+                set_building_contextmenu(layer, feature.properties.id);
             }
         }
     }).addTo(get_layers(active_layer_id, 'bld_layer'));

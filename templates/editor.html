@@ -392,19 +392,7 @@
 
         function set_building_handlers(marker) {
             let asset_id = marker.id
-            marker.bindContextMenu({
-                contextmenu: true,
-                contextmenuWidth: 140,
-                contextmenuItems: [],
-                contextmenuInheritItems: false
-            });
-
-            marker.options.contextmenuItems.push({
-                icon: '{{dir_settings.resource_prefix}}icons/BuildingContents.png',
-                text: 'Building ESDL contents',
-                callback: function(e) { edit_building_contents(e, asset_id); }
-            });
-            marker.options.contextmenuItems.push('-');
+            set_building_contextmenu(marker, asset_id);
 
             marker.on('dragend', function(e) {
                 var marker = e.target;
@@ -1009,6 +997,7 @@
                         line.esid = es_id;
                         line.ports = list[i][6];
                         line.type = list[i][4];
+                        line.asspot = list[i][1];
                         line.name = "";
                         line.color = line_color;    // TODO: improve?
 
@@ -1094,7 +1083,7 @@
                         });
 
                         // only add building icon, if building contains assets
-                        // if (list[i][5]) {
+                        if (list[i][5]) {
                             var coords = list[i][4];
                             var polygon_center = calculate_array_polygon_center(coords[0]);
                             // exchange coordinates, geojson and leaflet use different order
@@ -1110,7 +1099,7 @@
 
                             set_building_handlers(marker);
                             add_object_to_layer(es_id, 'esdl_layer', marker);
-                        // }
+                        }
                     }
                 }
 

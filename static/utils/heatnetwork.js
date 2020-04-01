@@ -15,8 +15,16 @@ function update(event) {
         let layer = event.layer;
         let id = layer.id;
         // console.log('Extension HeatNetwork add_contextmenu for id=' + id)
-        layer.options.contextmenuItems.push(
-                { text: 'Duplicate', icon: resource_uri + 'icons/Duplicate.png', callback: function(e) { duplicate(e, id); } });
+        // Only add 'duplicate' context menu for EnergyAssets (not for Areas and Buildings)
+        if (layer.hasOwnProperty("asspot")) {
+            if (layer.asspot === 'asset') {
+                layer.options.contextmenuItems.push({
+                    text: 'Duplicate',
+                    icon: resource_uri + 'icons/Duplicate.png',
+                    callback: function(e) { duplicate(e, id); }
+                });
+            }
+        }
     }
 
 }
