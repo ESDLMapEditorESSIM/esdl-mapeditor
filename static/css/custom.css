@@ -277,3 +277,35 @@ z-index for jstree context menu, sidebar has 2000
    z-index: 20000 !important;
 }
 */
+
+
+/*
+    SmartMenu
+*/
+.navbar-nav>li>a {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+.navbar {
+    min-height: 20px;
+    margin-bottom: 0px;
+}
+
+.navbar .container {
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
+.menu-icon {
+    width: 18px;
+    diplay: inline-block;
+    float: left;
+}
+
+.navbar-nav>li>.dropdown-menu {
+    padding-right: 10px;
+}
+

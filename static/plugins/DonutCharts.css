@@ -1,0 +1,107 @@
+.tiny-chartbox {
+  display: -ms-inline-flexbox;
+  display: -webkit-inline-flexbox;
+  display: inline-flex;
+  margin-bottom: 24px;
+}
+.tiny-chartbox div[chart-type*="donut"] {
+  width: 60px;
+  height: 60px;
+  display: block;
+  position: relative;
+  margin-right: 10px;
+}
+.tiny-chartbox div[chart-type*="donut"]:last-of-type {
+  margin-right: 0;
+}
+.tiny-chartbox div.donut-hole {
+  height: 46.8px;
+  width: 46.8px;
+  background-color: #fff;
+  z-index: 20;
+  position: absolute;
+  top: 6.6px;
+  left: 6.6px;
+  border-radius: 46.8px;
+  line-height: 15px;
+}
+.tiny-chartbox span.donut-filling {
+  position: absolute;
+  display: block;
+  vertical-align: middle;
+  font-family: "Open Sans";
+  font-weight: 300;
+  color: #616161;
+  font-size: 14.6664px;
+  top: 50%;
+  margin-top: -7.5px;
+  width: 46.8px;
+  height: 15px;
+  text-align: center;
+  cursor: default;
+  overflow: none;
+}
+.tiny-chartbox div.donut-caption-wrapper {
+  width: 60px;
+  align-content: center;
+  position: relative;
+  top: 73.33333333px;
+}
+.tiny-chartbox span.donut-caption {
+  display: block;
+  text-align: center;
+  font-family: "Arial";
+  color: #616161;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  margin: 0 auto;
+}
+.tiny-chartbox .donut-bite {
+  position: absolute;
+  width: 30px;
+  height: 60px;
+  overflow: hidden;
+  top: 0;
+  left: 30.5px;
+  -moz-transform-origin: left center;
+  -ms-transform-origin: left center;
+  -o-transform-origin: left center;
+  -webkit-transform-origin: left center;
+  transform-origin: left center;
+}
+.tiny-chartbox .donut-bite.large {
+  width: 60px;
+  height: 60px;
+  left: 0;
+  -moz-transform-origin: center center;
+  -ms-transform-origin: center center;
+  -o-transform-origin: center center;
+  -webkit-transform-origin: center center;
+  transform-origin: center center;
+}
+.tiny-chartbox .donut-bite:BEFORE {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 60px;
+  top: 0;
+  left: -30px;
+  border-radius: 30px 0 0 30px;
+  -moz-transform-origin: right center;
+  -ms-transform-origin: right center;
+  -o-transform-origin: right center;
+  -webkit-transform-origin: right center;
+  transform-origin: right center;
+}
+.tiny-chartbox .donut-bite.large:BEFORE {
+  left: 0;
+}
+.tiny-chartbox .donut-bite.large:AFTER {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 60px;
+  left: 30px;
+  border-radius: 0 30px 30px 0;
+}
