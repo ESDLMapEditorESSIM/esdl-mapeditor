@@ -12,6 +12,7 @@ html, body
   background-color: grey;
   color: white;
   padding: 4px;
+  height: 33px;
 }
 
 /*
@@ -293,19 +294,73 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 .navbar .container {
-    padding-right: 15px;
-    padding-left: 15px;
+    padding-right: 0px;
+    padding-left: 0px;
     margin-right: 0px;
     margin-left: 0px;
+    width: auto;
 }
 
 .menu-icon {
-    width: 18px;
-    diplay: inline-block;
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    left: -20px;
+    float: left;
+    margin-top: 3px;
+    margin-right: 3px;
+}
+
+.dropdown-menu {
+    padding-right: 20px;
+}
+
+.dropdown-menu>li {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.dropdown-menu>li>a {
+    padding: 3px 0px;
+/*    display: inline-block; */
+    position: relative;
+    left: 20px;
     float: left;
 }
-
-.navbar-nav>li>.dropdown-menu {
-    padding-right: 10px;
+/*
+.dropdown-menu>li>a:focus {
+    padding: 3px 0px;
+    left: 20px;
 }
+.dropdown-menu>li>a:hover {
+    padding: 3px 0px;
+    left: 20px;
+}
+*/
+/*
+.dropdown-menu>li>div {
+    float: left;
+    display: inline-block;
+}
+*/
 
+
+.menu-icon#menu_compare {
+    background-image: url(/icons/Compare.png);
+    width: 16;
+    height: 16;
+}
+.menu-icon#menu_layers {
+    background-image: url(/icons/Layers.png);
+    width: 16;
+    height: 16;
+}
+.menu-icon#menu_import {
+    background-image: url(/icons/Import.png);
+    width: 16;
+    height: 16;
+}
+.menu-icon#menu_areageometry {
+    background-image: url(/icons/AreaGeometry.png);
+    width: 16;
+    height: 16;
+}

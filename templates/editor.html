@@ -1783,11 +1783,7 @@
         width: 25;
         height: 25;
     }
-    menu-icon.ui-icon.compare{
-        background-image: url({{dir_settings.resource_prefix}}icons/Compare.png);
-        width: 25;
-        height: 25;
-    }
+
     ul { z-index:20000 !important; }
     </style>
     <!--    // z-index for jstree context menu, sidebar has 2000-->
@@ -1799,13 +1795,14 @@
 </head>
 <body class="flexbox-parent">
     <div class="flexbox-item">
-        <div class="header" style="height: 25px">
+        <div class="header">
             <div style="float: left; padding:2px;"><img src="{{dir_settings.resource_prefix}}favicon.ico" height="20"></div>
             <div style="float: left; padding:2px;"><b>ESDL Map Editor - </b></div>
             <div style="float: left; padding:2px;" id="es_title"></div>
+            <div style="float: right; padding:2px;"><a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a></div>
         </div>
 
-        <div id="menu" style="clear: left; position: relative; padding:3px;">
+        <div id="menu" style="float: left; position: relative; padding:3px;">
 
             <!-- Navbar -->
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
@@ -1817,20 +1814,20 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="new_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-document">&nbsp;</div>
+                                        <span class="menu-icon ui-icon ui-icon-document"></span>
                                         New ESDL</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputFile').click();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
+                                        <span class="menu-icon ui-icon ui-icon-folder-open"></span>
                                         Load ESDL</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportFile').click();">
-                                        <div class="menu-icon">&nbsp;</div>
+                                        <div class="menu-icon" id="menu_import"></div>
                                         Import ESDL</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.{{dir_settings.download_prefix}}');">
-                                        <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
+                                        <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL</a></li>
 {% if 'mondaine' in role %}
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Load ESDL from Mondaine Hub</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_store_ESDL();">
                                         <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
@@ -1844,7 +1841,7 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon">&nbsp;</div>ESDL browser</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors</a></li>
                                 </ul>
@@ -1853,9 +1850,9 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Services</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon">&nbsp;</div>Get boundary information</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information</a></li>
 
-                                    <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon">&nbsp;</div>ESSIM
+                                    <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>ESSIM
                                         simulation</a>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="#" onclick="send_table_editor_request();"><div class="menu-icon ui-icon ui-icon-calculator">&nbsp;</div>ESDL table editor</a></li>
@@ -1865,12 +1862,12 @@
                                             <li><a class="dropdown-item" href="#" onclick="animate_ESSIM_load();"><div class="menu-icon ui-icon ui-icon-video">&nbsp;</div>ESSIM animate load</a></li>
                                         </ul>
                                     </li>
-                                    <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon ui-icon compare">&nbsp;</div>ESDL compare</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon">&nbsp;</div>WMS layers</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);"><div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>Show/hide animation bar</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);"><div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>Show/hide KPIs</a></li>
@@ -1883,7 +1880,7 @@
             </nav>
         </div>
 
-        <div id="ctrl" style="clear: left; position: relative; padding:3px;">
+        <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--
             <button id="new-esdl" onclick="new_ESDL();" title="New energysystem" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-document"></span>New</button>
             <button onclick="document.querySelector('.inputFile').click();" title="Load ESDL File" class="ui-button ui-widget ui-corner-all ui-button-icon-only"><span class="ui-icon ui-icon-folder-open"></span>Open</button>
@@ -1937,7 +1934,7 @@
             <button id="Table editor" onclick="send_table_editor_request();" title="Table editor" class="ui-button ui-widget ui-corner-all"><span class="ui-icon ui-icon-calculator"></span></button>
 {% endif %}
 -->
-            <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>
+<!--            <a href="/logout"><button id="logout" class="ui-button ui-widget ui-corner-all">Logout</button></a>-->
         </div>
     </div>
     <!--div id="mapid" style="float: left; width: 100%; height: 100%; position:relative; z-index:10"></div-->
