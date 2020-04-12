@@ -1,3 +1,7 @@
+from flask import Flask
+from flask_socketio import SocketIO, emit
+from extensions.session_manager import get_handler
+
 #from esdl import esdl
 from esdl.processing import ESDLAsset
 import settings
@@ -18,8 +22,21 @@ def send_alert(msg):
 
 
 class ESSIM_KPIs:
+    def __init__(self, flask_app: Flask, socket: SocketIO):
+        self.flask_app = flask_app
+        self.socketio = socket
+        self.register()
 
-    def __init__(self, es=None, simulationRun=None, start_date=None, end_date=None):
+    def register(self):
+        print('Registering ESSIM KPIs extension')
+
+        @self.socketio.on('calculate_load_duration_curve', namespace='/esdl')
+        def calculate_ldc(asset_id):
+            with self.flask_app.app_context():
+                # esh = get_handler()
+                self.calculate_load_duration_curve(asset_id)
+
+    def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
         self.kpis_results = {}
         self.carrier_list = []
         self.es = es
@@ -295,6 +312,36 @@ class ESSIM_KPIs:
                 results.append({"name": "Shortage-" + carrier, "value": sum_sh[tn_name], "unit": "J"})
 
         return results
+
+    def calculate_load_duration_curve(self, asset_id):
+        print("--- calculate_load_duration_curve ---")
+        try:
+            query = 'SELECT "allocationEnergy" FROM /' + self.es.name + '.*/ WHERE (time >= \'' + self.start_date + '\' AND time < \'' + self.end_date + '\' AND "simulationRun" = \'' + self.simulationRun + '\' AND "assetId" = \''+asset_id+'\')'
+            print(query)
+            allocation_energy = self.database_client.query(query)
+        except Exception as e:
+            print('error with query: ', str(e))
+
+        if allocation_energy:
+            # print(allocation_energy)
+            first_key = list(allocation_energy.keys())[0]
+            series = allocation_energy[first_key]
+
+            ldc_series = []
+            for item in series:
+                ldc_series.append(item['allocationEnergy'])
+            ldc_series.sort(reverse=True)
+
+            ldc_series_decimate = []
+            for idx, item in enumerate(ldc_series):
+                if idx % 40 == 0:
+                    ldc_series_decimate.append(item)
+
+            # print(ldc_series_decimate)
+            emit('ldc-data', ldc_series_decimate)
+
+        else:
+            print('query returned no results')
 
     # -----------------------------------------------------------------------------------------------------------------
     #

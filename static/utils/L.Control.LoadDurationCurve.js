@@ -1,4 +1,4 @@
-L.Control.KPICharts = L.Control.extend({
+L.Control.LoadDurationCurve = L.Control.extend({
     options: {
         closeButton: true,
         position: 'bottomright',
@@ -7,13 +7,13 @@ L.Control.KPICharts = L.Control.extend({
 
     initialize: function(placeholder, options) {
         L.setOptions(this, options);
-//        console.log(options);
+        console.log(options);
         return this;
     },
 
     onAdd: function(map) {
-        console.log('KPICharts.onAdd()')
-        var container = this._container = L.DomUtil.create('div', 'leaflet-kpicharts my-control');
+        console.log('LoadDurationCurve.onAdd()')
+        var container = this._container = L.DomUtil.create('div', 'leaflet-ldc my-control');
         this._map = map;
 
         // Create close button and attach it if configured
@@ -26,23 +26,12 @@ L.Control.KPICharts = L.Control.extend({
         }
 
         var title = L.DomUtil.create('div', 'title', container);
-        title.innerHTML = 'KPIs';
+        title.innerHTML = 'Load Duration Curve';
 
-        var chart_box = L.DomUtil.create('div', 'tiny-chartbox', container);
-        chart_box.setAttribute('style', "margin-right: 10px;");
-
-        for (let i=0; i<this.options.data.length; i++) {
-            this.createChart(this.options.data[i], chart_box);
-        }
-
-        var chart = L.DomUtil.create('div', '', chart_box);
-        chart.id = 'EnergyNeutral';
-        chart.setAttribute('chart-type', 'donut');
-        chart.setAttribute('data-chart-max', "100");
-        chart.setAttribute('data-chart-segments', '{ "0":["0","23","#55DB2E"], "1":["23","77","#CCCCCC"] }');
-        chart.setAttribute('data-chart-text', "23%");
-        chart.setAttribute('data-chart-caption', "Energy Neutral");
-        makeDonutCharts(chart);
+        var chart_div = L.DomUtil.create('div', 'content', container);
+        var chart_canvas = L.DomUtil.create('canvas', '', chart_div);
+        chart_canvas.setAttribute('id', 'chart-ldc-canvas');
+        this.create_ldc_chart(this.options.data, chart_canvas);
 
         // Make sure we don't drag the map when we interact with the content
         var stop = L.DomEvent.stopPropagation;
@@ -60,7 +49,7 @@ L.Control.KPICharts = L.Control.extend({
     },
 
     onRemove: function(map) {
-        console.log('KPICharts.onRemove()')
+        console.log('LoadDurationCurve.onRemove()')
         var container = this._container;
 
         // If the control is visible, hide it before removing it.
@@ -94,18 +83,37 @@ L.Control.KPICharts = L.Control.extend({
     hide: function() {
         this._container.style.visibility = 'hidden';
     },
-    set_data: function(data) {
-        self.data = data;
-    },
-    createChart: function(kpi_item, chart_box) {
-        var chart = L.DomUtil.create('div', '', chart_box);
-        for (let key in kpi_item) {
-            chart.setAttribute(key, kpi_item[key]);
+    create_ldc_chart: function(data, canvas) {
+        let labels = [];
+        for (let i=0; i<data.length; i++) {
+            labels.push(i*40);
         }
-        makeDonutCharts(chart);
+
+        console.log(data);
+        console.log(labels);
+        console.log(data.length);
+        console.log(labels.length);
+
+        var ldc_chart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    label: "ldc",
+                    borderColor: "#3e95cd",
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Load Duration Curve'
+                }
+            }
+        });
     },
 });
 
-L.control.kpicharts = function (placeholder, options) {
-    return new L.Control.KPICharts(placeholder, options);
+L.control.load_duration_curve = function (placeholder, options) {
+    return new L.Control.LoadDurationCurve(placeholder, options);
 };

@@ -662,6 +662,8 @@ ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
+essim_kpis = ESSIM_KPIs(app, socketio)
+
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -897,8 +899,8 @@ def animate_load():
         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-        animation = kpi_results.animate_load_geojson()
+        essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+        animation = essim_kpis.animate_load_geojson()
         print(animation)
         return animation, 200
     else:
@@ -3727,7 +3729,6 @@ def process_command(message):
 
     if message['cmd'] == 'calculate_ESSIM_KPIs':
         # session['simulationRun'] = '5d10f273783bac5eff4575e8'
-
         ESSIM_config = settings.essim_config
 
         simulation_run = get_session('simulationRun')
@@ -3739,9 +3740,6 @@ def process_command(message):
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
             calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-            # kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-            # res = kpi_results.calculate_kpis()
-            # emit('show_ESSIM_KPIs', res)
         else:
             send_alert('No simulation id defined - run an ESSIM simulation first')
 
@@ -3896,8 +3894,8 @@ def process_command(message):
 
 @executor.job
 def calc_ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate):
-    kpi_results = ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-    res = kpi_results.calculate_kpis()
+    essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+    res = essim_kpis.calculate_kpis()
     emit('show_ESSIM_KPIs', res)
 
 

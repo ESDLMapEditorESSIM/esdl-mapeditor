@@ -133,11 +133,17 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.KPICharts.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.LoadDurationCurve.css" type="text/css"/>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.LoadDurationCurve.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/ldc.js"></script>
+
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
         var dialog;
         var kpicharts;
+        var ldc_control;            // load duration curve
 
         var profile_array;
         var quantity_and_units_info;
@@ -1747,7 +1753,20 @@
         };
 
         function show_kpis() {
-            kpicharts = L.control.kpicharts('kpicharts', { position: 'bottomright'});
+            var kpi_data = [
+                {
+                    'id': 'windturbines',
+                    'chart-type': 'donut',
+                    'data-chart-max': "37",
+                    'data-chart-segments': '{ "0":["0","12","#55DB2E"], "1":["12","25","#19A7F5"] }',
+                    'data-chart-text': "1200/\n3700",
+                    'data-chart-caption': "Wind Turbines"
+                }
+            ];
+
+            console.log(kpi_data);
+
+            kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
             kpicharts.addTo(map);
         }
 
@@ -1943,6 +1962,7 @@
     <div id="sidebar"></div>
     <div id="loader"></div>
     <div id="kpicharts"></div>
+    <div id="ldccontrol"></div>
 </body>
 </html>
 
