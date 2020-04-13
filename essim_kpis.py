@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler
 
 #from esdl import esdl
-from esdl.processing import ESDLAsset
+from esdl.processing import ESDLEnergySystem
 import settings
 from influxdb import InfluxDBClient
 #import pandas as pd
@@ -315,6 +315,7 @@ class ESSIM_KPIs:
 
     def calculate_load_duration_curve(self, asset_id):
         print("--- calculate_load_duration_curve ---")
+        allocation_energy = None
         try:
             query = 'SELECT "allocationEnergy" FROM /' + self.es.name + '.*/ WHERE (time >= \'' + self.start_date + '\' AND time < \'' + self.end_date + '\' AND "simulationRun" = \'' + self.simulationRun + '\' AND "assetId" = \''+asset_id+'\')'
             print(query)
@@ -393,7 +394,7 @@ class ESSIM_KPIs:
 
         results = []
 
-        self.carrier_list = ESDLAsset.get_carrier_list(self.es)
+        self.carrier_list = ESDLEnergySystem.get_carrier_list(self.es)
 
         for car in self.carrier_list:
             car_name = car['name']

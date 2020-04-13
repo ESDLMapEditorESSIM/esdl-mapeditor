@@ -27,7 +27,7 @@ from essim_validation import validate_ESSIM
 from essim_kpis import ESSIM_KPIs
 from wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
 from extensions.heatnetwork import HeatNetwork
@@ -2862,7 +2862,7 @@ def process_command(message):
                     emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
 
                     # Add area to the indicated area
-                    if not ESDLAsset.add_area_to_area(es_edit, new_area, area_bld_id):
+                    if not ESDLEnergySystem.add_area_to_area(es_edit, new_area, area_bld_id):
                         send_alert('Can not add area to building')
 
                     # Send new area shapes to the browser
@@ -3366,7 +3366,7 @@ def process_command(message):
             i += 1
 
         area = es_edit.instance[0].area
-        area_selected = ESDLAsset.find_area(area, area_bld_id)
+        area_selected = ESDLEnergySystem.find_area(area, area_bld_id)
         if area_selected:
             area_selected.geometry = polygon
         else:
@@ -3663,7 +3663,7 @@ def process_command(message):
         esh.add_object_to_dict(es_edit.id, ecs)
         ecs.carrier.append(carrier)
 
-        carrier_list = ESDLAsset.get_carrier_list(es_edit)
+        carrier_list = ESDLEnergySystem.get_carrier_list(es_edit)
         emit('carrier_list', {'es_id': es_edit.id, 'carrier_list': carrier_list})
 
     if message['cmd'] == 'get_storage_strategy_info':
@@ -3791,15 +3791,15 @@ def process_command(message):
         name = message['name']
         descr = message['descr']
         code = message['code']
-        ESDLAsset.add_sector(es_edit, name, code, descr)
-        sector_list = ESDLAsset.get_sector_list(es_edit)
+        ESDLEnergySystem.add_sector(es_edit, name, code, descr)
+        sector_list = ESDLEnergySystem.get_sector_list(es_edit)
         emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
         esh = get_handler()
-        ESDLAsset.remove_sector(es_edit, id)
-        sector_list = ESDLAsset.get_sector_list(es_edit)
+        ESDLEnergySystem.remove_sector(es_edit, id)
+        sector_list = ESDLEnergySystem.get_sector_list(es_edit)
         emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'set_sector':
@@ -3958,11 +3958,18 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
 
             area = es.instance[0].area
             find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-            carrier_list = ESDLAsset.get_carrier_list(es)
+            carrier_list = ESDLEnergySystem.get_carrier_list(es)
             emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-            sector_list = ESDLAsset.get_sector_list(es)
+            sector_list = ESDLEnergySystem.get_sector_list(es)
             if sector_list:
                 emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+
+            area_kpis = ESDLEnergySystem.process_area_KPIs(area)
+            area_name = area.name
+            if not area_name:
+                area_name = title
+            if area_kpis:
+                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
 
             # give all assets without geometry a random location around the center of the current energysystem
             # else create_port_to_asset_mapping won't work

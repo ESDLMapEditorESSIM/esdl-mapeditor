@@ -1,5 +1,5 @@
 from esdl import esdl
-from esdl.processing import ESDLAsset
+from esdl.processing import ESDLEnergySystem
 # from essim_config import essim_config
 import settings
 from influxdb import DataFrameClient
@@ -94,7 +94,7 @@ class ESSIM_KPIs:
 
         results = []
 
-        self.carrier_list = ESDLAsset.get_carrier_list(self.es)
+        self.carrier_list = ESDLEnergySystem.get_carrier_list(self.es)
 
         for car in self.carrier_list:
             car_name = car['name']

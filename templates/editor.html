@@ -45,12 +45,18 @@
 
     <!-- Bootstrap core CSS -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+<!--    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">-->
+
     <!-- SmartMenus jQuery Bootstrap 4 Addon CSS -->
     <link href=".{{dir_settings.plugin_prefix}}/vendor/smartmenus/addons/bootstrap-4/jquery.smartmenus.bootstrap-4.css" rel="stylesheet">
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <!-- EDWIN: the v3.2.1 version is not compatible with jquery-ui, smartmenus is compatible with jquery v1.7+ -->
 <!--    <script src="http://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+
+<!--    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js" integrity="sha384-6khuMg9gaYr5AxOqhkVIODVIvm9ynTT5J4V1cfthmT+emCG6yVmEZsRHdxlotUnm" crossorigin="anonymous"></script>-->
+<!--    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>-->
 
     <!-- SmartMenus jQuery plugin -->
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/vendor/smartmenus/jquery.smartmenus.js"></script>
@@ -132,6 +138,7 @@
 
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.KPICharts.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/kpis.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.LoadDurationCurve.css" type="text/css"/>
@@ -1751,25 +1758,6 @@
                 object.childNodes[0].classList.add("ui-icon");
             }
         };
-
-        function show_kpis() {
-            var kpi_data = [
-                {
-                    'id': 'windturbines',
-                    'chart-type': 'donut',
-                    'data-chart-max': "37",
-                    'data-chart-segments': '{ "0":["0","12","#55DB2E"], "1":["12","25","#19A7F5"] }',
-                    'data-chart-text': "1200/\n3700",
-                    'data-chart-caption': "Wind Turbines"
-                }
-            ];
-
-            console.log(kpi_data);
-
-            kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
-            kpicharts.addTo(map);
-        }
-
     </script>
 
     <style>
@@ -1890,7 +1878,7 @@
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);"><div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>Show/hide animation bar</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);"><div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>Show/hide KPIs</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>
+<!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                 </ul>
                             </li>
                         </ul>
@@ -2040,9 +2028,6 @@
         closeButton: true
     });
     map.addControl(sidebar);
-
-    // kpicharts = L.control.kpicharts('kpicharts', { position: 'bottomright'});
-    // kpicharts.addTo(map);
 
     let dialog_options = {
         size: [ 1100, 700 ],

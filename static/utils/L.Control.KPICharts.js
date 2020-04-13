@@ -35,15 +35,6 @@ L.Control.KPICharts = L.Control.extend({
             this.createChart(this.options.data[i], chart_box);
         }
 
-        var chart = L.DomUtil.create('div', '', chart_box);
-        chart.id = 'EnergyNeutral';
-        chart.setAttribute('chart-type', 'donut');
-        chart.setAttribute('data-chart-max', "100");
-        chart.setAttribute('data-chart-segments', '{ "0":["0","23","#55DB2E"], "1":["23","77","#CCCCCC"] }');
-        chart.setAttribute('data-chart-text', "23%");
-        chart.setAttribute('data-chart-caption', "Energy Neutral");
-        makeDonutCharts(chart);
-
         // Make sure we don't drag the map when we interact with the content
         var stop = L.DomEvent.stopPropagation;
         var fakeStop = L.DomEvent._fakeStop || stop;

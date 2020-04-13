@@ -4,7 +4,7 @@ from extensions.session_manager import get_handler, get_session
 import settings
 import requests
 import urllib
-from esdl.processing import ESDLAsset, ESDLGeometry
+from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 import esdl
 from geomet import wkt
 
@@ -37,7 +37,7 @@ class BAG:
                 es_edit = esh.get_energy_system(es_id=active_es_id)
                 instance = es_edit.instance
                 top_area = instance[0].area
-                target_area = ESDLAsset.find_area(top_area, area_id)
+                target_area = ESDLEnergySystem.find_area(top_area, area_id)
                 if target_area:
                     try:
                         # url = 'http://' + settings.bag_config["host"] + ':' + settings.bag_config["port"] + \
