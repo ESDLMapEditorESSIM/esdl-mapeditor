@@ -290,7 +290,20 @@ z-index for jstree context menu, sidebar has 2000
 
 .navbar {
     min-height: 20px;
-    margin-bottom: 0px;
+    margin-bottom: 0px !important;
+/*
+    background-color: white !important;
+*/
+}
+
+.navlink {
+/*
+    color: black !important;
+*/
+}
+
+.topmenu {
+    background-color: #343a40;
 }
 
 .navbar .container {
