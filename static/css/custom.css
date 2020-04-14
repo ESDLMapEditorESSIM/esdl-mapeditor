@@ -7,12 +7,31 @@ html, body
     height: 100%;
     padding: 0;
     margin: 0;
+    font-size: 14px;
 }
 .header, .footer {
-  background-color: grey;
-  color: white;
-  padding: 4px;
-  height: 33px;
+    background-color: grey;
+    color: white;
+    float:
+    padding: 4px;
+    height: 30px;
+}
+
+.header-title, .header-logo {
+    float: left;
+    padding: 2px;
+    font-size: 16px;
+}
+
+.header-logout {
+    float: right;
+    padding-top: 2px;
+    padding-right: 3px;
+}
+
+.h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
+    font-size: 1.5rem;
+    margin-top: 8px;
 }
 
 /*
