@@ -1,8 +1,8 @@
-# ESDL-WebEditor
+# ESD Map Editor
 
 ## Introduction
 
-Web-based ESDL editor, allows loading, editing and saving ESDL EnergySystem files
+Map-based ESDL editor, allows loading, editing and saving ESDL EnergySystem files
 
 ## Installation
 
