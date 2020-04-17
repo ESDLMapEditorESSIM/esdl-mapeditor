@@ -1,4 +1,4 @@
-# ESD Map Editor
+# ESDL MapEditor
 
 ## Introduction
 
