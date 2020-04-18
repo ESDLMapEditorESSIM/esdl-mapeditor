@@ -443,19 +443,46 @@ function add_area_layer(area_data) {
             }
             if (feature.properties && feature.properties.id) {
                 layer.id = feature.properties.id;
+
+                let text = "ID: " + feature.properties.id;
+                if (feature.properties.name) {
+                    text = feature.properties.name + " (" + text + ")";
+                }
+
+                for (let key in feature.properties.KPIs) {
+                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
+                }
+
 // if we uncomment the following lines, the area context menu doesn't work
-//                let text = "ID: " + feature.properties.id;
-//                if (feature.properties.name) {
-//                    text = feature.properties.name + " (" + text + ")";
-//                }
-//
-//                for (let key in feature.properties.KPIs) {
-//                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
-//                }
-//
 //                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
-                layer.on('mouseover', highlightAreaOrBuilding);
-                layer.on('mouseout', resetHighlightArea);
+
+                let popup = L.popup();
+                popup.setContent(title);
+                layer.bindPopup(popup);
+
+                layer.on('mouseover', function (e) {
+                    var popup = e.target.getPopup();
+                    var this_map = e.sourceTarget._map;     // can be area map and building map
+                    popup.setLatLng(e.latlng).openOn(this_map);
+
+                    highlightAreaOrBuilding(e);
+                });
+
+                layer.on('mouseout', function(e) {
+                    e.target.closePopup();
+
+                    resetHighlightArea(e);
+                });
+
+                layer.on('mousemove', function (e) {
+                    e.target.closePopup();
+                    var this_map = e.sourceTarget._map;     // can be area map and building map
+                    var popup = e.target.getPopup();
+                    popup.setLatLng(e.latlng).openOn(this_map);
+                });
+
+//                layer.on('mouseover', highlightAreaOrBuilding);
+//                layer.on('mouseout', resetHighlightArea);
                 set_area_handlers(layer);
             }
         }
