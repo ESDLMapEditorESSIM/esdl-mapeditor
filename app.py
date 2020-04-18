@@ -377,12 +377,24 @@ def create_building_KPIs(building):
     # For now, use first BuildingUnit ...
     # TODO: Improve to use most 'dominant' (based on area?) Or introduce 'mixed' category?
     KPIs = {}
-    for basset in building.asset:
-        if isinstance(basset, esdl.BuildingUnit):
-            try:
-                KPIs["buildingType"] = basset.type.name
-            except:
-                pass
+
+    try:
+        largest_bunit_floorArea = 0
+        largest_bunit_type = None
+
+        for basset in building.asset:
+            if isinstance(basset, esdl.BuildingUnit):
+                if basset.floorArea > largest_bunit_floorArea:
+                    largest_bunit_floorArea = basset.floorArea
+                    btypes = []
+                    for gd in basset.type:
+                        btypes.append(gd.name)
+                    largest_bunit_type = ", ".join(btypes)
+
+        if largest_bunit_type:
+            KPIs["buildingType"] = largest_bunit_type
+    except:
+        pass
 
     try:
         if building.buildingYear > 0:

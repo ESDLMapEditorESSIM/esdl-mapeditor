@@ -495,12 +495,22 @@ function add_building_layer(building_data) {
         style: style_building,
         onEachFeature: function(feature, layer) {
             if (feature.properties) {
-                let text = "";
+                let text = "<table>";
                 for (let key in feature.properties.KPIs) {
-                    text += key + ": " + feature.properties.KPIs[key] + "<br>";
+                    kpi = feature.properties.KPIs[key]
+                    if (typeof kpi === "number") {
+                        if (Math.floor(kpi) === kpi)
+                            kpi_string = feature.properties.KPIs[key].toFixed(0);
+                        else
+                            kpi_string = feature.properties.KPIs[key].toFixed(2);
+                    } else {
+                        kpi_string = feature.properties.KPIs[key];
+                    }
+                    text += "<tr><td>" + key + "</td><td style=\"float:right\">" + kpi_string + "</td></tr>";
                 }
+                text += "</table>";
 
-                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
+                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, offset: L.point(0, -20)});
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }
