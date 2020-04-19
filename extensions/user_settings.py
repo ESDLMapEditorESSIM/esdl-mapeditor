@@ -135,9 +135,6 @@ class UserSettings:
     def has_system(self, setting_name: str):
         return self.has(SettingType.SYSTEM, UserSettings.SYSTEM_NAME_IDENTIFIER, setting_name)
 
-
-
-
     def size(self):
         return self.settings.count_documents({})
 

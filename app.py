@@ -46,6 +46,7 @@ from user_logging import UserLogging
 from extensions.user_settings import UserSettings
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
+from extensions.essim import ESSIM
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -304,69 +305,6 @@ def preload_area_subboundaries_in_cache(top_area):
 
         if top_area_scope and sub_area_scope and is_valid_boundary_id(top_area_id):
             preload_subboundaries_in_cache(top_area_scope, sub_area_scope, top_area_id)
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-#  ESSIM interfacing
-# ---------------------------------------------------------------------------------------------------------------------
-def start_ESSIM(sim_description, sim_start_datetime, sim_end_datetime):
-    esh = get_handler()
-    active_es_id = get_session('active_es_id')
-    es_simid = None
-    # session['es_simid'] = es_simid
-
-    esdlstr = esh.to_string(active_es_id)
-
-    ESSIM_config = settings.essim_config
-
-    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
-    # print('ESSIM url: ', url)
-
-    payload = {
-        'user': ESSIM_config['user'],
-        'scenarioID': active_es_id,
-        'simulationDescription': sim_description,
-        'startDate': sim_start_datetime,
-        'endDate': sim_end_datetime,
-        'influxURL': ESSIM_config['influxURL'],
-        'grafanaURL': ESSIM_config['grafanaURL'],
-        'esdlContents': urllib.parse.quote(esdlstr)
-    }
-    # print(payload)
-
-    headers = {
-        'Content-Type': "application/json",
-        'Accept': "application/json",
-        'User-Agent': "ESDL Mapeditor/0.1"
-        # 'Cache-Control': "no-cache",
-        # 'Host': ESSIM_config['ESSIM_host'],
-        # 'accept-encoding': "gzip, deflate",
-        # 'Connection': "keep-alive",
-        # 'cache-control': "no-cache"
-    }
-
-    try:
-        r = requests.post(url, json=payload, headers=headers)
-        #print(r)
-        #print(r.content)
-        if r.status_code == 201:
-            result = json.loads(r.text)
-            print(result)
-            id = result['id']
-            set_session('es_simid', id)
-            # emit('', {})
-        else:
-            send_alert('Error starting ESSIM simulation - response '+ str(r.status_code) + ' with reason: ' + str(r.reason))
-            print(r)
-            print(r.content)
-            # emit('', {})
-            return 0
-    except Exception as e:
-        print('Error accessing ESSIM API at starting: ' + str(e))
-        send_alert('Error accessing ESSIM API at starting: ' + str(e))
-        return 0
-
-    return 1
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -675,7 +613,7 @@ BAG(app, socketio)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
-
+essim = ESSIM(app, socketio, user_settings)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -846,77 +784,6 @@ def download_esdl():
 def serve_static(path):
     # print('in serve_static(): '+ path)
     return send_from_directory('static', path)
-
-
-@app.route('/simulation_progress')
-def get_simulation_progress():
-    es_simid = get_session('es_simid')
-    # print(es_simid)
-    if es_simid:
-        ESSIM_config = settings.essim_config
-        url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
-
-        try:
-            r = requests.get(url + '/status')
-            if r.status_code == 200:
-                result = r.text
-                # print(result)
-                # emit('update_simulation_progress', {'percentage': result, 'url': ''})
-                if float(result) >= 1:
-                    r = requests.get(url)
-                    if r.status_code == 200:
-                        del_session('es_simid')         # simulation ready
-                        result = json.loads(r.text)
-                        # print(result)
-                        dashboardURL = result['dashboardURL']
-                        # print(dashboardURL)
-                        set_session('simulationRun', es_simid)
-                        # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
-                        return (jsonify({'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
-                    else:
-                        send_alert('Error in getting the ESSIM dashboard URL')
-                        abort(r.status_code, 'Error in getting the ESSIM dashboard URL')
-                else:
-                    return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
-            else:
-                # print('code: ', r.status_code)
-                send_alert('Error in getting the ESSIM progress status')
-                abort(r.status_code, 'Error in getting the ESSIM progress status')
-        except Exception as e:
-            # print('Exception: ')
-            # print(e)
-            send_alert('Error accessing ESSIM API: '+str(e))
-            abort(500, 'Error accessing ESSIM API: '+str(e))
-    else:
-        print("No es_simid in session")
-        print(session)
-        abort(500, 'Simulation not running')
-
-
-@app.route('/load_animation')
-def animate_load():
-
-    # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
-    ESSIM_config = settings.essim_config
-    active_es_id = get_session('active_es_id')
-
-    simulation_run = get_session('simulationRun')
-    if simulation_run:
-        esh = get_handler()
-        es_edit = esh.get_energy_system(es_id=active_es_id)
-
-        sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-        edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-
-        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-        animation = essim_kpis.animate_load_geojson()
-        print(animation)
-        return animation, 200
-    else:
-        abort(500, 'No simulation results')
 
 
 @app.route('/edr_assets')
@@ -1535,7 +1402,6 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                 # TODO: add profile_info and carrier
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
 
-
             geom = basset.geometry
             coord = ()
             if geom:    # Individual asset in Building has its own geometry information
@@ -1757,6 +1623,7 @@ def get_building_information(building):
 #    conn_list.append(
 #        {'from-port-id': from_port_id, 'from-asset-id': from_asset_id, 'from-asset-coord': from_asset_coord,
 #         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
+
 
 def update_mapping(asset, coord):
     active_es_id = get_session('active_es_id')
@@ -3729,7 +3596,7 @@ def process_command(message):
         sim_start_datetime = message['sim_start_datetime']
         sim_end_datetime = message['sim_end_datetime']
         # Create the HTTP POST to start the simulation
-        if not start_ESSIM(sim_descr, sim_start_datetime, sim_end_datetime):
+        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime):
             emit('simulation_not_started')
         # start_checking_ESSIM_progress()
         # check_ESSIM_progress()
