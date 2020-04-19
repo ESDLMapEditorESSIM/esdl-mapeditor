@@ -1,4 +1,5 @@
 ESSIM_simulation_URL_prefix = '';
+var attempt = 0;                // number of retries after an error occurs with the simulation_progress query
 
 // ------------------------------------------------------------------------------------------------------------
 //   ESSIM validation
@@ -106,6 +107,7 @@ function run_ESSIM_simulation() {
     }
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
         sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime});
+    attempt = 0;
     setTimeout(poll_simulation_progress, 1000);
 }
 
@@ -146,7 +148,18 @@ function poll_simulation_progress() {
                 setTimeout(poll_simulation_progress, 1000);
             }
         },
-        dataType: "json"
+        dataType: "json",
+        error: function(xhr, ajaxOptions, thrownError) {
+            console.log(xhr.status);
+            console.log(thrownError);
+
+            if (attempt<5) {
+                attempt = attempt + 1;
+                setTimeout(poll_simulation_progress, 1000);
+            } else {
+                attempt = 0;
+            }
+        }
     });
 }
 
