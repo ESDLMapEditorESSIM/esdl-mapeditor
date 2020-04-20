@@ -20,6 +20,9 @@
     <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
     <!--script src="./plugins/leaflet.draw.js"></script-->
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css" type="text/css"/>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"></script>
+
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.1.0/leaflet.polylineDecorator.min.js"></script>
 
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
@@ -139,6 +142,9 @@
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.LoadDurationCurve.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.LoadDurationCurve.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/ldc.js"></script>
+{% if 'essim' in role %}
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.ESSIMControl.js"></script>
+{% endif %}
 
     <script type="text/javascript" charset="utf-8">
 
@@ -1853,7 +1859,7 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information</a></li>
-
+{% if 'essim' in role %}
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>ESSIM
                                         simulation</a>
                                         <ul class="dropdown-menu">
@@ -1864,6 +1870,7 @@
                                             <li><a class="dropdown-item" href="#" onclick="animate_ESSIM_load();"><div class="menu-icon ui-icon ui-icon-video">&nbsp;</div>ESSIM animate load</a></li>
                                         </ul>
                                     </li>
+{% endif %}
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                 </ul>
                             </li>
@@ -2034,5 +2041,9 @@
 
     dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
+
+{% if 'essim' in role %}
+    L.control.essim_control().addTo(map);
+{% endif %}
 
 </script>

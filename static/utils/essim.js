@@ -42,6 +42,68 @@ function enable_disable_custom_year(id) {
     }
 }
 
+function set_simulation_id(sim_id) {
+    console.log('set_simulation_id: '+sim_id);
+    socket.emit('essim_set_simulation_id', sim_id);
+}
+
+function show_simulations_list(div_id) {
+    let $sim_list_div = $('#'+div_id);
+
+    let $title = $('<h1>').text('Previous ESSIM simulations')
+    $sim_list_div.append($title)
+
+    // console.log('retreiving ESSIM simulations list');
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'simulations_list',
+        success: function(data){
+            // console.log(data);
+            if (data.length > 0) {
+                let $table = $('<table>').addClass('pure-table pure-table-striped');
+                $sim_list_div.append($table);
+                let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Date')).append($('<th>').text('Description')).append($('<th>').text('Action')));
+                let $tbody = $('<tbody>');
+                $table.append($thead);
+                $table.append($tbody);
+
+                for (let i=0; i<data.length; i++) {
+                    let simulation_id = data[i]['simulation_id']
+                    let $tr = $("<tr>");
+
+                    let es_name = data[i]['simulation_es_name'];
+                    if (es_name == null) es_name = "Untitled energysystem";
+                    let more_info = 'Energysystem name: '+ es_name + ', Simulation ID: ' + simulation_id;
+
+                    let $td_datetime = $("<td>").append(data[i]['simulation_datetime']).attr('title', more_info);
+                    $tr.append($td_datetime);
+                    let $td_descr = $("<td>").append(data[i]['simulation_descr']).attr('title', more_info);
+                    $tr.append($td_descr);
+
+                    $actions = $('<div>');
+                    let $select_scenario_button = $('<button>').addClass('btn').append($('<i>').addClass('fas fa-eye').css('color', 'black'))
+                        .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
+                    $actions.append($select_scenario_button);
+                    if (data[i]['dashboard_url'] !== '') {
+                        let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
+                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green')));
+                        $actions.append($view_dashboard_button);
+                    }
+
+                    $tr.append($("<td>").append($actions));
+                    $tbody.append($tr);
+                }
+            } else {
+                $sim_list_div.append($('<p>').text('No previous ESSIM simulations stored'));
+            }
+        },
+        dataType: "json",
+        error: function(xhr, ajaxOptions, thrownError) {
+            console.log('Error occurred in show_simulations_list: ' + xhr.status + ' - ' + thrownError);
+        }
+    });
+}
+
+
 function run_ESSIM_simulation_window() {
     sidebar_ctr = sidebar.getContainer();
 
@@ -71,6 +133,8 @@ function run_ESSIM_simulation_window() {
     sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
 
     sidebar_ctr.innerHTML += '<div id="simulation_progress_div"></div>';
+    sidebar_ctr.innerHTML += '<div id="simulations_list_div"></div>';
+    show_simulations_list('simulations_list_div');
 
     sidebar.show();
 }

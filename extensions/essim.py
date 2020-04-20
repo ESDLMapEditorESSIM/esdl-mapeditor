@@ -5,14 +5,14 @@ from extensions.session_manager import get_handler, get_session, set_session, de
 import requests
 import urllib
 import json
+from datetime import datetime
 import settings
 
 # Temporarily fix load_animation dependencies
-import datetime
-from app import essim_kpis
+# from app import essim_kpis
 
 
-ESSIM_SETTINGS = 'ESSIM'
+ESSIM_SIMULATION_LIST = 'ESSIM_simulations'
 
 
 def send_alert(message):
@@ -31,10 +31,17 @@ class ESSIM:
     def register(self):
         print("Registering ESSIM extension")
 
+        @self.socketio.on('essim_set_simulation_id', namespace='/esdl')
+        def set_simulation_id(sim_id):
+            with self.flask_app.app_context():
+                print('Set ESSIM simulation ID: '+sim_id)
+                set_session('simulationRun', sim_id)
+
         @self.flask_app.route('/simulation_progress')
         def get_simulation_progress():
             with self.flask_app.app_context():
                 es_simid = get_session('es_simid')
+                user_email = get_session('user-email')
                 # print(es_simid)
                 if es_simid:
                     ESSIM_config = settings.essim_config
@@ -55,6 +62,7 @@ class ESSIM:
                                     dashboardURL = result['dashboardURL']
                                     # print(dashboardURL)
                                     set_session('simulationRun', es_simid)
+                                    self.update_stored_simulation(user_email, es_simid, dashboardURL)
                                     # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
                                     return (jsonify(
                                         {'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
@@ -77,41 +85,83 @@ class ESSIM:
                     print(session)
                     abort(500, 'Simulation not running')
 
-        @self.flask_app.route('/load_animation')
-        def animate_load():
+        # @self.flask_app.route('/load_animation')
+        # def animate_load():
+        #     with self.flask_app.app_context():
+        #         # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
+        #         ESSIM_config = settings.essim_config
+        #         active_es_id = get_session('active_es_id')
+        #
+        #         simulation_run = get_session('simulationRun')
+        #         if simulation_run:
+        #             esh = get_handler()
+        #             es_edit = esh.get_energy_system(es_id=active_es_id)
+        #
+        #             sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #             edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #
+        #             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #
+        #             essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+        #             animation = essim_kpis.animate_load_geojson()
+        #             print(animation)
+        #             return animation, 200
+        #         else:
+        #             abort(500, 'No simulation results')
+
+        @self.flask_app.route('/simulations_list')
+        def get_simulations_list():
             with self.flask_app.app_context():
-                # session['simulationRun'] = "5d1b682f5fd62723bb6ba0f4"
-                ESSIM_config = settings.essim_config
-                active_es_id = get_session('active_es_id')
+                user_email = get_session('user-email')
+                list = []
+                if user_email is not None:
+                    if self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
+                        list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
 
-                simulation_run = get_session('simulationRun')
-                if simulation_run:
-                    esh = get_handler()
-                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                return json.dumps(list)
 
-                    sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-                    edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
 
-                    influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                    influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-                    essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-                    animation = essim_kpis.animate_load_geojson()
-                    print(animation)
-                    return animation, 200
+    def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None):
+        with self.flask_app.app_context():
+            if user_email is not None:
+                if self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
+                    list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
                 else:
-                    abort(500, 'No simulation results')
+                    list = []
 
-    def store_simulation(self, user, simulation_id):
-        pass
+                list.insert(0, {
+                    "simulation_id": simulation_id,
+                    "simulation_datetime": simulation_datetime,
+                    "simulation_descr": simulation_descr,
+                    "simulation_es_name": simulation_es_name,
+                    "dashboard_url": ""
+                })
+
+                if list.__len__ == 11:
+                    list.pop(10)
+                # print(list)
+                self.settings.set_user(user_email, ESSIM_SIMULATION_LIST, list)
+
+    def update_stored_simulation(self, user_email, simulation_id, simulation_db_url):
+        with self.flask_app.app_context():
+            if user_email is not None and self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
+                list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
+                if list[0]["simulation_id"] == simulation_id:
+                    list[0]["dashboard_url"] = simulation_db_url
+                # print(list)
+                self.settings.set_user(user_email, ESSIM_SIMULATION_LIST, list)
 
     def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime):
         with self.flask_app.app_context():
             esh = get_handler()
             active_es_id = get_session('active_es_id')
-            es_simid = None
-            # session['es_simid'] = es_simid
+            user_email = get_session('user-email')
 
+            current_es = esh.get_energy_system(es_id=active_es_id)
+            current_es_name = current_es.name
+            if current_es_name == "":
+                current_es_name = "Untitled energysystem"
             esdlstr = esh.to_string(active_es_id)
 
             ESSIM_config = settings.essim_config
@@ -148,9 +198,11 @@ class ESSIM:
                 # print(r.content)
                 if r.status_code == 201:
                     result = json.loads(r.text)
-                    print(result)
+                    # print(result)
                     id = result['id']
                     set_session('es_simid', id)
+
+                    self.store_simulation(user_email, id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
                 else:
                     send_alert(
