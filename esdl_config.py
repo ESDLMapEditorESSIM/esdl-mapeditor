@@ -677,6 +677,41 @@ esdl_config = {
                 }
             ]
         },
+{
+            "id": "42c584b1-43c1-4369-9001-c89ba80d8370",
+            "name": "Get PICO Startanalyse results",
+            "explanation": "This queries the Geodan start analyse service for a certain area",
+            "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/startanalyse",
+            "http_method": "get",
+            "headers": {
+                "Accept": "application/esdl+xml",
+                "User-Agent": "ESDL Mapeditor/0.1"
+            },
+            "type": "geo_query",
+            "result": [
+                {
+                    "code": 200,
+                    "action": "esdl"
+                }
+            ],
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "MUNICIPALITY", "url_value": "gemeenten"},
+                    {"scope": "NEIGHBOURHOUD", "url_value": "buurt"}
+                ]
+            },
+            "query_parameters": [
+                {
+                    "name": "Strategie",
+                    "description": "",
+                    "parameter_name": "strategie",
+                    "type": "selection",
+                    "possible_values": ["S1a", "S1b", "S2a", "S2b", "S2c", "S2d", "S3a", "S3b", "S3c", "S3d", "S4a", "S5a"]
+                }
+            ]
+        },
         {
             "id": "7f8722a9-669c-499d-8d75-4a1960e0429f",
             "name": "Create ETM scenario",
