@@ -85,21 +85,18 @@ L.Control.LoadDurationCurve = L.Control.extend({
     },
     create_ldc_chart: function(data, canvas) {
         let labels = [];
-        for (let i=0; i<data.length; i++) {
+        for (let i=0; i<data["ldc_series"].length; i++) {
             labels.push(i*40);
         }
-
-        console.log(data);
-        console.log(labels);
-        console.log(data.length);
-        console.log(labels.length);
+        asset_name = data["asset_name"];
+        if (asset_name == null || asset_name === "") asset_name = "Untitled asset";
 
         var ldc_chart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    data: data,
+                    data: data["ldc_series"],
                     label: "ldc",
                     borderColor: "#3e95cd",
                 }]
@@ -107,7 +104,7 @@ L.Control.LoadDurationCurve = L.Control.extend({
             options: {
                 title: {
                     display: true,
-                    text: 'Load Duration Curve'
+                    text: 'Load Duration Curve - ' + asset_name
                 }
             }
         });

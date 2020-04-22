@@ -3753,9 +3753,6 @@ def process_command(message):
                     logger.error("Error loading {}: {}".format(filename, e))
                     send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
-
-
-
     if message['cmd'] == 'rename_energysystem':
         name = message['name']
         rename_es_id = message['remame_es_id']
@@ -3775,7 +3772,9 @@ def process_command(message):
 def calc_ESSIM_KPIs(es_edit, simulation_run, influxdb_startdate, influxdb_enddate):
     essim_kpis.init_simulation(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
     res = essim_kpis.calculate_kpis()
-    emit('show_ESSIM_KPIs', res)
+    # emit('show_ESSIM_KPIs', res)
+    res_dict = essim_kpis.seperate_kpis(res)
+    emit('essim-kpi-data', res_dict)
 
 
 @executor.job

@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler
+from extensions.session_manager import get_handler, get_session
 
 #from esdl import esdl
 from esdl.processing import ESDLEnergySystem
@@ -33,8 +33,11 @@ class ESSIM_KPIs:
         @self.socketio.on('calculate_load_duration_curve', namespace='/esdl')
         def calculate_ldc(asset_id):
             with self.flask_app.app_context():
-                # esh = get_handler()
-                self.calculate_load_duration_curve(asset_id)
+                esh = get_handler()
+                active_es_id = get_session('active_es_id')
+                asset = esh.get_by_id(active_es_id, asset_id)
+
+                self.calculate_load_duration_curve(asset_id, asset.name)
 
     def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
         self.kpis_results = {}
@@ -78,6 +81,28 @@ class ESSIM_KPIs:
         results.extend(self.calculate_self_sufficiency())
 
         return results
+
+    def seperate_kpis(self, kpi_list):
+        kpi_dict = {}
+
+        for kpi in kpi_list:
+            name = kpi["name"]
+            cat_kpi = name.split('-')
+            cat = cat_kpi[0]
+            kpi_name = cat_kpi[1]
+
+            kpi_item = {
+                "name": kpi_name,
+                "value": kpi["value"],
+                "unit": kpi["unit"]
+            }
+
+            if cat in kpi_dict:
+                kpi_dict[cat].append(kpi_item)
+            else:
+                kpi_dict[cat] = [kpi_item]
+
+        return kpi_dict
 
     def get_transport_networks(self):
         print("--- get_transport_networks ---")
@@ -313,7 +338,7 @@ class ESSIM_KPIs:
 
         return results
 
-    def calculate_load_duration_curve(self, asset_id):
+    def calculate_load_duration_curve(self, asset_id, asset_name):
         print("--- calculate_load_duration_curve ---")
         allocation_energy = None
         try:
@@ -339,7 +364,7 @@ class ESSIM_KPIs:
                     ldc_series_decimate.append(item)
 
             # print(ldc_series_decimate)
-            emit('ldc-data', ldc_series_decimate)
+            emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate})
 
         else:
             print('query returned no results')

@@ -1,0 +1,44 @@
+.leaflet-essim-kpi {
+    padding: 0px;
+    z-index: 2000;
+    width: 500px;
+    height: 600px;
+    background: white;
+    position: relative;
+
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+    border-radius: 5px;
+}
+
+.leaflet-essim-kpi .close {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    width: 31px;
+    height: 31px;
+
+    color: #333;
+    font-size: 25pt;
+    line-height: 1em;
+    text-align: center;
+    background: white;
+    @include border-radius(16px);
+    cursor: pointer;
+
+    z-index: 2800;
+}
+
+.leaflet-essim-kpi .title {
+    width: 100%;
+    background-color: green;
+    color: white;
+    padding-left: 10px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+.leaflet-essim-kpi .content {
+    padding: 10px;
+    overflow: auto;
+    max-height:100%;
+}

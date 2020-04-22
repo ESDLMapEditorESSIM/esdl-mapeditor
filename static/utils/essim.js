@@ -261,6 +261,40 @@ function print_value_unit(val, unit) {
     }
 }
 
+function create_bar_chart(title, labels, values) {
+
+    console.log(title);
+    console.log(labels);
+    console.log(values);
+
+    let title_for_id = title.replace(/ /g, "_");
+
+    let bc_div = L.DomUtil.create('div');
+    bc_div.setAttribute('id', 'bc_div_'+title_for_id);
+    let bc_canvas = L.DomUtil.create('canvas', '', bc_div);
+    bc_canvas.setAttribute('id', 'bc_canvas_'+title_for_id);
+
+    var bar_chart = new Chart(bc_canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    label: "test",
+                    borderColor: "#3e95cd",
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            }
+        });
+
+    return bc_div
+}
+
 function show_ESSIM_KPIs(results) {
     sidebar_ctr = sidebar.getContainer();
 
@@ -268,6 +302,10 @@ function show_ESSIM_KPIs(results) {
 
     let category = null;
     let table = "";
+    let labels = [];
+    let values = [];
+
+    console.log(results);
 
     for (let i=0; i<results.length; i++) {
         let name = results[i]['name'];
@@ -280,7 +318,13 @@ function show_ESSIM_KPIs(results) {
                 table += '</table>';
                 sidebar_ctr.innerHTML += table;
                 table = "";
+
+                sidebar_ctr.innerHTML += '<div id="graph-'+cat+'"></div>';
+                $('#graph-'+category).append(create_bar_chart(category, labels, values));
+                labels = [];
+                values = [];
             }
+
             sidebar_ctr.innerHTML += '<h2>'+cat+'</h2>';
             table = '<table>';
             category = cat;
@@ -291,6 +335,9 @@ function show_ESSIM_KPIs(results) {
         } else {
             bold_start = "";
             bold_end = "";
+
+            labels.push(kpi);
+            values.push(results[i]['value']);
         }
         table += '<tr><td width=180>'+bold_start+kpi+bold_end+'</td>';
         table += '<td>'+bold_start+print_value_unit(results[i]['value'], results[i]['unit'])+bold_end+'</td></tr>';

@@ -144,6 +144,10 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/ldc.js"></script>
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.ESSIMControl.js"></script>
+
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/L.Control.ESSIMKPIs.css" type="text/css"/>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/L.Control.ESSIMKPIs.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim_kpis.js"></script>
 {% endif %}
 
     <script type="text/javascript" charset="utf-8">
@@ -1953,6 +1957,7 @@
     <div id="loader"></div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
+    <div id="essim_kpis_control"></div>
 </body>
 </html>
 
