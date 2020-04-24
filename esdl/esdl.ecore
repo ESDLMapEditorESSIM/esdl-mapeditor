@@ -2,7 +2,7 @@
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="esdl" nsURI="http://www.tno.nl/esdl" nsPrefix="esdl">
   <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-    <details key="documentation" value="# Energy System Description Language&#xD;&#xA;&#xD;&#xA;The Energy System Description Language (ESDL) is a modelling language created for modelling the components in an energy system and their relations towards each other. Furthermore ESDL is capable of expressing the dynamic behaviour of components in the energy system. For instance the power consumption of an neighbourhood. ESDL describes components by their basic functionality (so called Energy Capabilities), these are modelled in 5 abstract categories: Production, Consumption, Storage, Transport and Conversion. ESDL enables energy modelers to model a complex energy system in a generic way. The language is machine readable so makers of energy transition calculation tools and GIS applications can support ESDL in order to enforce the interoperability of their products.&#xD;&#xA;&#xD;&#xA;ESDL is currently developed by [TNO](https://www.tno.nl), and is open source. &#xD;&#xA;The Github repository is at [https://github.com/EnergyTransition/ESDL](https://github.com/EnergyTransition/ESDL)&#xD;&#xA;&#xD;&#xA;For more information about ESDL, see the [ESDL gitbook](https://energytransition.gitbook.io/esdl)&#xD;&#xA;A browseable version of this model is found at [https://energytransition.github.io/](https://energytransition.github.io/)&#xD;&#xA;&#xD;&#xA;ESDL version: v1910&#xD;&#xA;Git commit hash $Id$"/>
+    <details key="documentation" value="# Energy System Description Language&#xD;&#xA;&#xD;&#xA;The Energy System Description Language (ESDL) is a modelling language created for modelling the components in an energy system and their relations towards each other. Furthermore ESDL is capable of expressing the dynamic behaviour of components in the energy system. For instance the power consumption of an neighbourhood. ESDL describes components by their basic functionality (so called Energy Capabilities), these are modelled in 5 abstract categories: Production, Consumption, Storage, Transport and Conversion. ESDL enables energy modelers to model a complex energy system in a generic way. The language is machine readable so makers of energy transition calculation tools and GIS applications can support ESDL in order to enforce the interoperability of their products.&#xD;&#xA;&#xD;&#xA;ESDL is currently developed by [TNO](https://www.tno.nl), and is open source. &#xD;&#xA;The Github repository is at [https://github.com/EnergyTransition/ESDL](https://github.com/EnergyTransition/ESDL)&#xD;&#xA;&#xD;&#xA;For more information about ESDL, see the [ESDL gitbook](https://energytransition.gitbook.io/esdl)&#xD;&#xA;A browseable version of this model is found at [https://energytransition.github.io/](https://energytransition.github.io/)&#xD;&#xA;&#xD;&#xA;ESDL version: v1910-8-g14785f1&#xD;&#xA;Git commit hash $Id: b3e84d21272c281b7f538275501cc681ba1a5c33 $"/>
   </eAnnotations>
   <eClassifiers xsi:type="ecore:EClass" name="EnergyAsset" abstract="true" eSuperTypes="#//Asset">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -26,7 +26,7 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="fullLoadHours" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="An annual number of full-load hours is the time it will take a given Producer to yield its annual production if it is able to produce with its installed capacity all of the time. The capacity is defined by the 'Power' attribute"/>
+        <details key="documentation" value="An annual number of full-load hours is the time it will take a given Producer to yield its annual production if it is able to produce with its installed capacity all of the time. The capacity is defined by the 'power' attribute"/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="power" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
@@ -41,35 +41,79 @@
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consType" eType="#//ConsTypeEnum"
         defaultValueLiteral="PRIMARY"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="power" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="power" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum power / capacity in Watt"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Storage" abstract="true" eSuperTypes="#//EnergyAsset">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="An abstract class that describes EnergyAssets that can store energy. It is one of the 5 capabilities in ESDL"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="capacity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="capacity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The capacity of the storage asset in Joules&#x9;"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="chargeEfficiency" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
-        defaultValueLiteral="0.0"/>
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The efficiency with which the storage asset can be charged (in %)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="profile" eType="#//GenericProfile"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="dischargeEfficiency" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
-        defaultValueLiteral="0.0"/>
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The efficiency with which the storage asset can be discharged (in %)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="selfDischargeRate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
-        defaultValueLiteral="0.0"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fillLevel" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The self discharge rate with which the storage asset looses energy (in J/s)&#xD;&#xA;"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fillLevel" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The fill level of the storage asset as a percentage of its capacity"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxChargeRate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
-        defaultValueLiteral="0.0"/>
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The maximum charge rate at which the storage asset can be charged (in Watt)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxDischargeRate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
-        defaultValueLiteral="0.0"/>
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The maximum discharge rate at which the storage asset can be discharged (in Watt)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Conversion" abstract="true" eSuperTypes="#//EnergyAsset">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="An abstract class that describes EnergyAssets that can convert one energy carrier into another. It is one of the 5 capabilities in ESDL"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="efficiency" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="efficiency" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The efficiency of the conversion asset. Allows to specify conversion losses as a percentage"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="operationalHours" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fullLoadHours" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="power" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fullLoadHours" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="An annual number of full-load hours is the time it will take a given conversion asset to yield its annual production if it is able to produce with its installed capacity all of the time. The capacity is defined by the 'power' attribute"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="power" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum power / capacity in Watt"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="residualHeatSourcePotential"
         eType="#//ResidualHeatSourcePotential" eOpposite="#//ResidualHeatSourcePotential/associatedConversionAsset"/>
   </eClassifiers>
@@ -77,10 +121,14 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="An abstract class that describes EnergyAssets that can transport energy. It is one of the 5 capabilities in ESDL"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="capacity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="capacity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The capacity of the transport asset in Joules&#x9;"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="efficiency" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Allows to specify transmission losses as a percentage"/>
+        <details key="documentation" value="The efficiency of the transport asset. Allows to specify transmission losses as a percentage"/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -156,6 +204,12 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="templates" eType="#//Templates"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Collection of generic templates that can be used to derive specific instances from."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="WindTurbine" eSuperTypes="#//Producer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -216,7 +270,7 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Describes a physical part of a building. In dutch 'verblijfsobject' in the BAG national building and address registry. This can be used e.g. to model appartments in appartment complexes"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//BuildingTypeEnum"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" upperBound="-1" eType="#//BuildingTypeEnum"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="housingType" eType="#//HousingTypeEnum"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="numberOfInhabitants" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="inhabitantsType" eType="#//InhabitantsTypeEnum"/>
@@ -239,6 +293,8 @@
         defaultValueLiteral="UNDEFINED"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="ventilationType" eType="#//VentilationTypeEnum"
         defaultValueLiteral="UNDEFINED"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="address" eType="#//Address"
+        containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Area">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -333,6 +389,12 @@
         containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Describes the physical geometry of this area"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="measures" eType="#//Measures"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Measures collection for a specific area. Allows you to specify different possibilities in different areas."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -527,6 +589,7 @@
         <details key="documentation" value="the type (e.g. model number) of the asset"/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="state" eType="#//AssetStateEnum"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="GenericConsumer" eSuperTypes="#//Consumer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -725,14 +788,14 @@
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="thermalInsulation" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="SourceProducer" eSuperTypes="#//Producer">
+  <eClassifiers xsi:type="ecore:EClass" name="Import" eSuperTypes="#//Producer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Represents a generic source that produces a certain commodity. Used to model the rest of the energy system that is out of the current scope"/>
+      <details key="documentation" value="Represents a source that delivers imported energy into the current energy system. Used to model the rest of the energy system that is out of the current scope"/>
     </eAnnotations>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="SinkConsumer" eSuperTypes="#//Consumer">
+  <eClassifiers xsi:type="ecore:EClass" name="Export" eSuperTypes="#//Consumer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Represents a generic sink that consumes a certain commodity. Used to model the rest of the energy system that is out of the current scope"/>
+      <details key="documentation" value="Represents a consumer that consumes exported energy from the current energy system. Used to model the rest of the energy system that is out of the current scope"/>
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Pipe" eSuperTypes="#//AbstractConductor">
@@ -1117,10 +1180,12 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Collection of measures that can be applied to an energy system"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="asset" upperBound="-1"
-        eType="#//Asset" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="measuresCollection" upperBound="-1"
-        eType="#//MeasuresCombination" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="measure" upperBound="-1"
+        eType="#//Measure" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="A single measure with cost information, consisting of 1 or more assets."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EConnection" eSuperTypes="#//AbstractConnection">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1176,6 +1241,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="energyIndex" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="buildingUsage" eType="#//AbstractBuildingUsage"
         containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="potential" upperBound="-1"
+        eType="#//Potential" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Instance">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1555,19 +1622,20 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="variableOperationalAndMaintenanceCosts"
         eType="#//GenericProfile" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="LabelDistribution" abstract="true" eSuperTypes="#//GenericDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="SpecificLabelDistribution" abstract="true"
+      eSuperTypes="#//GenericDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract class to define a distribution with labels"/>
     </eAnnotations>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="StringLabelDistribution" eSuperTypes="#//LabelDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="StringLabelDistribution" eSuperTypes="#//GenericLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Defines a distribution in terms of self-defined labels"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="stringPerc" upperBound="-1"
         eType="#//StringPerc" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="EnergyLabelDistribution" eSuperTypes="#//LabelDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="EnergyLabelDistribution" eSuperTypes="#//SpecificLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Defines a distribution in terms of energy labels"/>
     </eAnnotations>
@@ -1588,7 +1656,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="energyLabel" eType="#//EnergyLabelEnum"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="percentage" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="FromToDistribution" eSuperTypes="#//LabelDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="FromToDistribution" eSuperTypes="#//GenericLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Defines a distribution in terms of 'from' and 'to'"/>
     </eAnnotations>
@@ -2143,6 +2211,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="perTimeUnit" eType="#//TimeUnitEnum"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="perScope" eType="#//QuantityAndUnitScopeEnum"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="MultiplierEnum">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -2407,9 +2476,9 @@
       <details key="documentation" value="Defines a circuit breaker in electric transmission or distribution grids"/>
     </eAnnotations>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MeasuresCombination">
+  <eClassifiers xsi:type="ecore:EClass" name="Measure">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="A combination of measures with single cost information that can be applied to an energy system. E.g. a combination of insulation and a heat pump. For a single measure (e.g. a PV installation) use Measures"/>
+      <details key="documentation" value="A single measure or a combination of measures with collective cost information that can be applied to an energy system. An example of a measure-combination would be a combination of insulation and a heat pump."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
@@ -2421,6 +2490,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="dataSource" eType="#//AbstractDataSource"
         containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="restriction" upperBound="-1"
+        eType="#//Restriction" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="WaterToPower" eSuperTypes="#//Producer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -2470,13 +2541,13 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract class to describe conductors such as cables and pipes and joining them using a joint"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="state" eType="#//StateEnum"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AbstractSwitch" abstract="true" eSuperTypes="#//Transport">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract class to describe switches such as valve and a circuit breaker"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="state" eType="#//StateEnum"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="position" eType="#//SwitchPositionEnum"
+        defaultValueLiteral="UNDEFINED"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AbstractTransformer" abstract="true"
       eSuperTypes="#//Transport">
@@ -2910,7 +2981,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="BuildingTypeDistribution" eSuperTypes="#//LabelDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="BuildingTypeDistribution" eSuperTypes="#//SpecificLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Specifies the way the building type is distributed in this area (e.g. Utility, Residential), specifing the percentage of buildings per type."/>
     </eAnnotations>
@@ -2929,7 +3000,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="percentage" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResidentialBuildingTypeDistribution"
-      eSuperTypes="#//LabelDistribution">
+      eSuperTypes="#//SpecificLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Specifies the way the residential building type is distributed in this area (e.g. Vrijstaande Woning, Hoekwoning, Flatwoning), specifing the percentage of buildings per residential type."/>
     </eAnnotations>
@@ -2952,7 +3023,7 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="percentage" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="HousingTypeDistribution" eSuperTypes="#//LabelDistribution">
+  <eClassifiers xsi:type="ecore:EClass" name="HousingTypeDistribution" eSuperTypes="#//SpecificLabelDistribution">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Specifies the way the housing type is distributed in this area (e.g. Owner occupied, Housing Association, Private Rental), specifing the percentage of buildings per housing type."/>
     </eAnnotations>
@@ -2979,8 +3050,8 @@
         <details key="documentation" value="The current value of this KPI."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="ambition" upperBound="-1"
-        eType="#//DoubleAmbition" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" upperBound="-1"
+        eType="#//DoubleTargetKPI" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Allows to define ambitions for this KPI for several years in the future."/>
       </eAnnotations>
@@ -2995,8 +3066,8 @@
         <details key="documentation" value="The current value of this KPI."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="ambition" upperBound="-1"
-        eType="#//StringAmbition" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" upperBound="-1"
+        eType="#//StringTargetKPI" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Allows to define ambitions for this KPI for several years in the future."/>
       </eAnnotations>
@@ -3011,8 +3082,8 @@
         <details key="documentation" value="The current value of this KPI."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="ambition" upperBound="-1"
-        eType="#//IntAmbition" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" upperBound="-1"
+        eType="#//IntTargetKPI" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Allows to define ambitions for this KPI for several years in the future."/>
       </eAnnotations>
@@ -3095,7 +3166,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="quantityAndUnit" lowerBound="1"
         eType="#//AbstractQuantityAndUnit" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="StateEnum">
+  <eClassifiers xsi:type="ecore:EEnum" name="SwitchPositionEnum">
     <eLiterals name="UNDEFINED"/>
     <eLiterals name="OPEN" value="1"/>
     <eLiterals name="CLOSED" value="2"/>
@@ -3163,7 +3234,7 @@
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="numberOfTurbines" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="IntAmbition">
+  <eClassifiers xsi:type="ecore:EClass" name="IntTargetKPI">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The value of the ambition for this KPI for the specified year"/>
@@ -3175,7 +3246,7 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="DoubleAmbition">
+  <eClassifiers xsi:type="ecore:EClass" name="DoubleTargetKPI">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The value of the ambition for this KPI for the specified year"/>
@@ -3187,7 +3258,7 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="StringAmbition">
+  <eClassifiers xsi:type="ecore:EClass" name="StringTargetKPI">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The value of the ambition for this KPI for the specified year"/>
@@ -3198,5 +3269,64 @@
         <details key="documentation" value="The year for which this ambition is specified."/>
       </eAnnotations>
     </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AssetStateEnum">
+    <eLiterals name="ENABLED"/>
+    <eLiterals name="DISABLED" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Restriction" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="BuildingTypeRestriction" eSuperTypes="#//Restriction">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" upperBound="-1" eType="#//BuildingTypeEnum"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AreaTypeRestriction" eSuperTypes="#//Restriction">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" upperBound="-1" eType="#//AreaTypeEnum"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Templates">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Collection of templates, e.g. asset templates.&#xD;&#xA;"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assetTemplate" upperBound="-1"
+        eType="#//AssetTemplate" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AssetTemplate" eSuperTypes="#//Item">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Template for an asset. Can be used to specify a generic asset type where specific instances can refer to and inherit properties of.&#xD;&#xA;"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="asset" lowerBound="1" eType="#//Asset"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TemplatedAsset" eSuperTypes="#//Asset">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An instantiated asset that is referring to an asset template and the specific asset. The asset template contains generic information, the specific asset contains specific information about this instance (e.g. geometry)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="asset" eType="#//Asset"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="template" lowerBound="1"
+        eType="#//AssetTemplate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Address">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The address of a building unit."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="streetName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="houseNumber" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="houseNumberLetter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="houseNumberAnnex" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="postalCode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="city" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="stateOrProvince" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="country" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="QuantityAndUnitScopeEnum">
+    <eLiterals name="UNDEFINED"/>
+    <eLiterals name="CONNECTION" value="1"/>
+    <eLiterals name="BUILDING" value="2"/>
+    <eLiterals name="HOUSEHOLD" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GenericLabelDistribution" abstract="true"
+      eSuperTypes="#//GenericDistribution"/>
+  <eClassifiers xsi:type="ecore:EClass" name="DistributionKPI" eSuperTypes="#//KPI">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="distribution" eType="#//GenericLabelDistribution"
+        containment="true"/>
   </eClassifiers>
 </ecore:EPackage>
