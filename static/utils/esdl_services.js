@@ -1,4 +1,4 @@
-var esdl_services_information
+var esdl_services_information;
 
 function set_esdl_services_information(info) {
     esdl_services_information = info;
@@ -128,7 +128,7 @@ function change_area_scope() {
 function show_area_list(scope) {
     console.log('show_area_options');
     $.ajax({
-        url: 'http://localhost:8111/boundaries_names/' + area_list_mapping[scope],
+        url: resource_uri + '/boundaries_names/' + area_list_mapping[scope],
         success: function(data){
             console.log(data);
             let area_list = data["boundaries_names"];
