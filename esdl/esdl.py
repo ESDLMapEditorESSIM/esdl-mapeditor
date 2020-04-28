@@ -3944,6 +3944,22 @@ class PIDController(ControlStrategy):
             self.setPoint = setPoint
 
 
+class SinkConsumer(Consumer):
+    """(Deprecated, will be removed in future ESDL versions) Represents a consumer that consumes exported energy from the current energy system. Used to model the rest of the energy system that is out of the current scope"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class SourceProducer(Producer):
+    """(Deprecated, will be removed in future ESDL versions) Represents a source that delivers imported energy into the current energy system. Used to model the rest of the energy system that is out of the current scope"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
 class ElectricityNetwork(EnergyNetwork):
     """Describes an complete Electricty network, without detailing the complete topology. It is a Transport capability"""
     voltage = EAttribute(eType=EDouble, derived=False, changeable=True)
