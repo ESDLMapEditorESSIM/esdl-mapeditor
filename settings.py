@@ -49,6 +49,13 @@ bag_config = {
     "path_contour": "/polygon"
 }
 
+boundaries_config = {
+    "host": "10.30.2.1",
+    "port": "4002",
+    "path_names": "/names",
+    "path_boundaries": "/boundaries"
+}
+
 edr_config = {
     "EDR_host": "https://edr.hesi.energy",
     "EDR_path": "/store/esdl/",

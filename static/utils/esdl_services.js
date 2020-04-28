@@ -10,7 +10,8 @@ function query_esdl_service(index) {
 
     if (esdl_services_information[index]['type'] == 'geo_query') {
         params['area_scope'] = document.getElementById('area_scope').options[document.getElementById('area_scope').selectedIndex].value;
-        params['area_id'] = document.getElementById('area_id').value;
+//        params['area_id'] = document.getElementById('area_id').value;
+        params['area_id'] = document.getElementById('area_list_select').options[document.getElementById('area_list_select').selectedIndex].value;
         if ("url_area_subscope" in esdl_services_information[index]['geographical_scope']) {
             params['area_subscope'] = document.getElementById('area_subscope').options[document.getElementById('area_subscope').selectedIndex].value;
         }
@@ -109,6 +110,45 @@ function process_service_results(results) {
     }
 }
 
+var area_list_mapping = {
+   "PROVINCE": "provinces",
+   "REGION": "regions",
+   "MUNICIPALITY": "municipalities",
+   "DISTRICT": "districts",
+   "NEIGHBOURHOOD": "neighbourhoods"
+}
+
+function change_area_scope() {
+    let area_scope_index = document.getElementById('area_scope').selectedIndex;
+    let area_scope_options = document.getElementById('area_scope').options;
+    let area_scope = area_scope_options[area_scope_index].text;
+    show_area_list(area_scope);
+}
+
+function show_area_list(scope) {
+    console.log('show_area_options');
+    $.ajax({
+        url: 'http://localhost:8111/boundaries_names/' + area_list_mapping[scope],
+        success: function(data){
+            console.log(data);
+            let area_list = data["boundaries_names"];
+            area_list_select = document.getElementById('area_list_select');
+
+            let list_len = area_list_select.options.length - 1;
+            for(let i = list_len; i >= 0; i--) {
+                area_list_select.remove(i);
+            }
+
+            for (let i=0; i<area_list.length; i++) {
+                let option = document.createElement("option");
+                option.text = area_list[i][1];
+                option.value = area_list[i][0];
+                area_list_select.add(option);
+            }
+        }
+    });
+}
+
 function show_service_settings(index) {
     service_settings_div = document.getElementById('service_settings_div');
 
@@ -122,7 +162,7 @@ function show_service_settings(index) {
         scopes = gs_info['area_scopes'];
 
         table = '<table>';
-        table += '<tr><td width=180>Scope</td><td><select id="area_scope">';
+        table += '<tr><td width=180>Scope</td><td><select id="area_scope" onchange="change_area_scope();">';
         for (i=0; i<scopes.length; i++) {
             table += '<option value="'+scopes[i]['url_value']+'">'+scopes[i]['scope']+'</option>';
         }
@@ -137,9 +177,12 @@ function show_service_settings(index) {
             }
             table += '</select></td></tr>';
         }
-        table += '<tr><td width=180>Area id</td><td><input id="area_id" type="text"></input></td></tr>';
+//        table += '<tr><td width=180>Area id</td><td><input id="area_id" type="text"></input></td></tr>';
+        table += '<tr><td width=180>Area select</td><td><select id="area_list_select"></select></td></tr>'
         table += '</table>';
         service_settings_div.innerHTML += table;
+
+        show_area_list(scopes[0]['scope']);
     }
 
     if (esdl_services_information[index]['type'] == 'geo_query' || esdl_services_information[index]['type'] == 'simulation') {
