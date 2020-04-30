@@ -44,7 +44,7 @@ class Boundaries:
                     r = requests.get(url)
                     if len(r.text) > 0:
                         reply = json.loads(r.text)
-                        return json.dumps(reply)
+                        return { "boundaries_names": reply }
 
                 except Exception as e:
                     print('ERROR in accessing Boundaries service: '+str(e))

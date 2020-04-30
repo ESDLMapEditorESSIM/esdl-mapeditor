@@ -677,7 +677,7 @@ esdl_config = {
                 }
             ]
         },
-{
+        {
             "id": "42c584b1-43c1-4369-9001-c89ba80d8370",
             "name": "Get PICO Startanalyse results",
             "explanation": "This queries the Geodan start analyse service for a certain area",
@@ -699,7 +699,7 @@ esdl_config = {
                 "url_area_id": "<area_id>",
                 "area_scopes": [
                     {"scope": "MUNICIPALITY", "url_value": "gemeenten"},
-                    {"scope": "NEIGHBOURHOUD", "url_value": "buurt"}
+                    {"scope": "NEIGHBOURHOOD", "url_value": "buurt"}
                 ]
             },
             "query_parameters": [

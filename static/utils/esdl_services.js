@@ -118,33 +118,46 @@ var area_list_mapping = {
    "NEIGHBOURHOOD": "neighbourhoods"
 }
 
-function change_area_scope() {
-    let area_scope_index = document.getElementById('area_scope').selectedIndex;
-    let area_scope_options = document.getElementById('area_scope').options;
+function change_area_scope(select_element_id, area_type_select_id) {
+    let area_scope_index = document.getElementById(area_type_select_id).selectedIndex;
+    let area_scope_options = document.getElementById(area_type_select_id).options;
     let area_scope = area_scope_options[area_scope_index].text;
-    show_area_list(area_scope);
+    show_area_list(document.getElementById(select_element_id), area_scope, null, null);
 }
 
-function show_area_list(scope) {
-    console.log('show_area_options');
-    $.ajax({
-        url: resource_uri + '/boundaries_names/' + area_list_mapping[scope],
-        success: function(data){
-            console.log(data);
-            let area_list = data["boundaries_names"];
-            area_list_select = document.getElementById('area_list_select');
+function show_area_list(select_element, scope, filter_type, selected_filter) {
+    let boundaries_url = "";
+    let text_index = 0;
+    let value_index = 0;
+    if (filter_type != null) {
+        boundaries_url = resource_uri + '/boundaries_names/' + area_list_mapping[filter_type.toUpperCase()] + '/'
+            + selected_filter.toUpperCase() + '/' + area_list_mapping[scope.toUpperCase()];
+        text_index = 3;
+        value_index = 2;
+    } else {
+        boundaries_url = resource_uri + '/boundaries_names/' + area_list_mapping[scope.toUpperCase()];
+        text_index = 1;
+        value_index = 0;
+    }
 
-            let list_len = area_list_select.options.length - 1;
+    $.ajax({
+        url: boundaries_url,
+        success: function(data){
+            let area_list = data["boundaries_names"];
+
+            let list_len = select_element.options.length - 1;
             for(let i = list_len; i >= 0; i--) {
-                area_list_select.remove(i);
+                select_element.remove(i);
             }
 
             for (let i=0; i<area_list.length; i++) {
                 let option = document.createElement("option");
-                option.text = area_list[i][1];
-                option.value = area_list[i][0];
-                area_list_select.add(option);
+                option.text = area_list[i][text_index];
+                option.value = area_list[i][value_index];
+                select_element.add(option);
             }
+            select_element.selectedIndex = 0;
+            if (select_element.onchange) select_element.onchange();
         }
     });
 }
@@ -162,7 +175,7 @@ function show_service_settings(index) {
         scopes = gs_info['area_scopes'];
 
         table = '<table>';
-        table += '<tr><td width=180>Scope</td><td><select id="area_scope" onchange="change_area_scope();">';
+        table += '<tr><td width=180>Scope</td><td><select id="area_scope" onchange="change_area_scope(\'area_list_select\', \'area_scope\');">';
         for (i=0; i<scopes.length; i++) {
             table += '<option value="'+scopes[i]['url_value']+'">'+scopes[i]['scope']+'</option>';
         }
@@ -182,7 +195,7 @@ function show_service_settings(index) {
         table += '</table>';
         service_settings_div.innerHTML += table;
 
-        show_area_list(scopes[0]['scope']);
+        show_area_list(document.getElementById('area_list_select'), scopes[0]['scope']);
     }
 
     if (esdl_services_information[index]['type'] == 'geo_query' || esdl_services_information[index]['type'] == 'simulation') {
