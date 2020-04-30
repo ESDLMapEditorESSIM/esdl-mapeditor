@@ -457,7 +457,7 @@ function add_area_layer(area_data) {
 //                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
 
                 let popup = L.popup();
-                popup.setContent(title);
+                popup.setContent(text);
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
