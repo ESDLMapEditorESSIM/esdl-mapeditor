@@ -13,6 +13,7 @@ import settings
 
 
 ESSIM_SIMULATION_LIST = 'ESSIM_simulations'
+ESSIM_FAVORITES_LIST = 'ESSIM_favorites'
 
 
 def send_alert(message):
@@ -110,27 +111,83 @@ class ESSIM:
         #         else:
         #             abort(500, 'No simulation results')
 
+        @self.flask_app.route('/favorites_list')
+        def get_favorites_list():
+            return self.retrieve_sim_fav_list(essim_list=ESSIM_FAVORITES_LIST)
+
         @self.flask_app.route('/simulations_list')
         def get_simulations_list():
+            return self.retrieve_sim_fav_list()
+
+        @self.flask_app.route('/<sim_fav>/<sim_id>', methods=["DELETE"])
+        def delete_simulation(sim_fav, sim_id):
+            if sim_fav == 'simulation' or sim_fav == 'favorite':
+                if sim_fav == 'simulation': essim_list = ESSIM_SIMULATION_LIST
+                if sim_fav == 'favorite': essim_list = ESSIM_FAVORITES_LIST
+
+                with self.flask_app.app_context():
+                    user_email = get_session('user-email')
+                    sim_list = []
+                    if user_email is not None:
+                        if self.settings.has_user(user_email, essim_list):
+                            sim_list = self.settings.get_user(user_email, essim_list)
+
+                            for sim in list(sim_list):
+                                if sim['simulation_id'] == sim_id:
+                                    sim_list.remove(sim)
+
+                            self.settings.set_user(user_email, essim_list, sim_list)
+                            print(sim_list)
+
+                    return json.dumps(sim_list)
+            else:
+                return "Unknown operation", 404
+
+        @self.flask_app.route('/simulation/<sim_id>/make_favorite')
+        def make_simulation_favorite(sim_id):
             with self.flask_app.app_context():
                 user_email = get_session('user-email')
-                list = []
+                last_list = []
+                fav_list = []
                 if user_email is not None:
                     if self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
-                        list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
+                        last_list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
 
-                return json.dumps(list)
+                    if self.settings.has_user(user_email, ESSIM_FAVORITES_LIST):
+                        fav_list = self.settings.get_user(user_email, ESSIM_FAVORITES_LIST)
 
+                    for sim in list(last_list):
+                        if sim['simulation_id'] == sim_id:
+                            fav_list.insert(0, sim)
+                            last_list.remove(sim)
 
-    def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None):
+                    print(fav_list)
+
+                    self.settings.set_user(user_email, ESSIM_SIMULATION_LIST, last_list)
+                    self.settings.set_user(user_email, ESSIM_FAVORITES_LIST, fav_list)
+
+                return json.dumps({'simulations': last_list, 'favorites': fav_list})
+
+    def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
+        with self.flask_app.app_context():
+            user_email = get_session('user-email')
+            sim_list = []
+            if user_email is not None:
+                if self.settings.has_user(user_email, essim_list):
+                    sim_list = self.settings.get_user(user_email, essim_list)
+
+            print(sim_list)
+            return json.dumps(sim_list)
+
+    def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None:
-                if self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
-                    list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
+                if self.settings.has_user(user_email, essim_list):
+                    sim_list = self.settings.get_user(user_email, essim_list)
                 else:
-                    list = []
+                    sim_list = []
 
-                list.insert(0, {
+                sim_list.insert(0, {
                     "simulation_id": simulation_id,
                     "simulation_datetime": simulation_datetime,
                     "simulation_descr": simulation_descr,
@@ -138,19 +195,19 @@ class ESSIM:
                     "dashboard_url": ""
                 })
 
-                if list.__len__ == 11:
-                    list.pop(10)
-                # print(list)
-                self.settings.set_user(user_email, ESSIM_SIMULATION_LIST, list)
+                if sim_list.__len__ == 11:
+                    sim_list.pop(10)
+                # print(sim_list)
+                self.settings.set_user(user_email, essim_list, sim_list)
 
-    def update_stored_simulation(self, user_email, simulation_id, simulation_db_url):
+    def update_stored_simulation(self, user_email, simulation_id, simulation_db_url, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
-            if user_email is not None and self.settings.has_user(user_email, ESSIM_SIMULATION_LIST):
-                list = self.settings.get_user(user_email, ESSIM_SIMULATION_LIST)
-                if list[0]["simulation_id"] == simulation_id:
-                    list[0]["dashboard_url"] = simulation_db_url
-                # print(list)
-                self.settings.set_user(user_email, ESSIM_SIMULATION_LIST, list)
+            if user_email is not None and self.settings.has_user(user_email, essim_list):
+                sim_list = self.settings.get_user(user_email, essim_list)
+                if sim_list[0]["simulation_id"] == simulation_id:
+                    sim_list[0]["dashboard_url"] = simulation_db_url
+                # print(sim_list)
+                self.settings.set_user(user_email, essim_list, sim_list)
 
     def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime):
         with self.flask_app.app_context():
@@ -199,10 +256,10 @@ class ESSIM:
                 if r.status_code == 201:
                     result = json.loads(r.text)
                     # print(result)
-                    id = result['id']
-                    set_session('es_simid', id)
+                    sim_id = result['id']
+                    set_session('es_simid', sim_id)
 
-                    self.store_simulation(user_email, id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
+                    self.store_simulation(user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
                 else:
                     send_alert(

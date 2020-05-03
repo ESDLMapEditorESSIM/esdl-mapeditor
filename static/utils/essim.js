@@ -47,28 +47,114 @@ function set_simulation_id(sim_id) {
     socket.emit('essim_set_simulation_id', sim_id);
 }
 
-function show_simulations_list(div_id) {
-    let $sim_list_div = $('#'+div_id);
+function remove_sim_fav(sim_fav, sim_id) {
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + sim_fav + '/' + sim_id,
+        type: 'DELETE',
+        success: function(data){
+            // Remove simulation / favorite from table
+            $('#'+sim_id).remove();
+        }
+    });
+}
 
-    let $title = $('<h1>').text('Previous ESSIM simulations')
-    $sim_list_div.append($title)
+function favorite_simulation(sim_id) {
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'simulation/' + sim_id + '/make_favorite',
+        success: function(data){
+            // Move simulation to favoritess
+            let $tr = $('#'+sim_id).remove().clone();
+            $tr.find('.favorite_button').remove();
+            $tr.find('.remove_button').off('click').click( function(e) { remove_sim_fav('favorite', sim_id); });
+            $('#fav_list tbody').append($tr);
+        }
+    });
+}
 
+function show_favorites_list(div_id) {
     // console.log('retreiving ESSIM simulations list');
     $.ajax({
-        url: ESSIM_simulation_URL_prefix + 'simulations_list',
+        url: ESSIM_simulation_URL_prefix + 'favorites_list',
         success: function(data){
-            // console.log(data);
+            let $fav_list_div = $('#'+div_id);
+            let $title = $('<h1>').text('Favorite ESSIM simulations')
+            $fav_list_div.append($title)
+
             if (data.length > 0) {
-                let $table = $('<table>').addClass('pure-table pure-table-striped');
-                $sim_list_div.append($table);
-                let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Date')).append($('<th>').text('Description')).append($('<th>').text('Action')));
+                let $table = $('<table>').addClass('pure-table pure-table-striped simulations').attr("id", "fav_list");
+                $fav_list_div.append($table);
+                let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Date')).append($('<th>')
+                    .text('Description')).append($('<th>').text('Action')));
                 let $tbody = $('<tbody>');
                 $table.append($thead);
                 $table.append($tbody);
 
                 for (let i=0; i<data.length; i++) {
                     let simulation_id = data[i]['simulation_id']
-                    let $tr = $("<tr>");
+                    let $tr = $("<tr>").attr("id", simulation_id);
+
+                    let es_name = data[i]['simulation_es_name'];
+                    if (es_name == null) es_name = "Untitled energysystem";
+                    let more_info = 'Energysystem name: '+ es_name + ', Simulation ID: ' + simulation_id;
+
+                    let $td_datetime = $("<td>").append(data[i]['simulation_datetime']).attr('title', more_info);
+                    $tr.append($td_datetime);
+                    let $td_descr = $("<td>").append(data[i]['simulation_descr']).attr('title', more_info);
+                    $tr.append($td_descr);
+
+                    let $actions = $('<div>');
+                    let $select_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
+                        .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
+                    $actions.append($select_scenario_button);
+                    let $remove_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
+                        .attr('title', 'Remove from list')
+                        .click( function(e) { remove_sim_fav('favorite', simulation_id); });
+                    $actions.append($remove_scenario_button);
+
+                    if (data[i]['dashboard_url'] !== '') {
+                        let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
+                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
+                        $actions.append($view_dashboard_button);
+                    }
+
+                    $tr.append($("<td>").append($actions));
+                    $tbody.append($tr);
+                }
+            } else {
+                $fav_list_div.append($('<p>').text('No previous ESSIM favorites stored'));
+            }
+        },
+        dataType: "json",
+        error: function(xhr, ajaxOptions, thrownError) {
+            console.log('Error occurred in show_favorites_list: ' + xhr.status + ' - ' + thrownError);
+        }
+    });
+}
+
+
+function show_simulations_list(div_id) {
+    // console.log('retreiving ESSIM simulations list');
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'simulations_list',
+        success: function(data){
+            let $sim_list_div = $('#'+div_id);
+            let $title = $('<h1>').text('Previous ESSIM simulations')
+            $sim_list_div.append($title)
+
+            if (data.length > 0) {
+                let $table = $('<table>').addClass('pure-table pure-table-striped simulations').attr("id", "sim_list");
+                $sim_list_div.append($table);
+                let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Date')).append($('<th>')
+                    .text('Description')).append($('<th>').text('Action')));
+                let $tbody = $('<tbody>');
+                $table.append($thead);
+                $table.append($tbody);
+
+                for (let i=0; i<data.length; i++) {
+                    let simulation_id = data[i]['simulation_id']
+                    let $tr = $("<tr>").attr("id", simulation_id);
 
                     let es_name = data[i]['simulation_es_name'];
                     if (es_name == null) es_name = "Untitled energysystem";
@@ -80,12 +166,24 @@ function show_simulations_list(div_id) {
                     $tr.append($td_descr);
 
                     $actions = $('<div>');
-                    let $select_scenario_button = $('<button>').addClass('btn').append($('<i>').addClass('fas fa-eye').css('color', 'black'))
+                    let $select_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
                         .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
                     $actions.append($select_scenario_button);
+                    let $remove_scenario_button = $('<button>').addClass('btn remove_button')
+                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
+                        .attr('title', 'Remove from list')
+                        .click( function(e) { remove_sim_fav('simulation', simulation_id); });
+                    $actions.append($remove_scenario_button);
+                    let $favorite_scenario_button = $('<button>').addClass('btn favorite_button')
+                        .append($('<i>').addClass('far fa-star').css('color', 'black'))
+                        .attr('title', 'Add to favorites')
+                        .click( function(e) { favorite_simulation(simulation_id); });
+                    $actions.append($favorite_scenario_button);
+
                     if (data[i]['dashboard_url'] !== '') {
                         let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
-                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green')));
+                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
                         $actions.append($view_dashboard_button);
                     }
 
@@ -132,11 +230,14 @@ function run_ESSIM_simulation_window() {
 
     sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
 
+    sidebar.show();
+
     sidebar_ctr.innerHTML += '<div id="simulation_progress_div"></div>';
+    sidebar_ctr.innerHTML += '<div id="favorites_list_div"></div>';
+    show_favorites_list('favorites_list_div');
     sidebar_ctr.innerHTML += '<div id="simulations_list_div"></div>';
     show_simulations_list('simulations_list_div');
 
-    sidebar.show();
 }
 
 function run_ESSIM_simulation() {
