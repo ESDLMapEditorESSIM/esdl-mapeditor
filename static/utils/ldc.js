@@ -24,8 +24,16 @@ class LoadDurationCurve {
         if (event.type === 'add_contextmenu') {
             let layer = event.layer;
             let id = layer.id;
-            layer.options.contextmenuItems.push(
-                    { text: 'Load Duration Curve', icon: resource_uri + 'icons/Graph.png', callback: function(e) { load_duration_curve.calculate_load_duration_curve(e, id); } });
+            let layer_type = event.layer_type;
+            if (layer_type === 'marker' || layer_type === 'line') {
+                layer.options.contextmenuItems.push({
+                    text: 'Load Duration Curve',
+                    icon: resource_uri + 'icons/Graph.png',
+                    callback: function(e) {
+                        load_duration_curve.calculate_load_duration_curve(e, id);
+                    }
+                });
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ import importlib
 import random
 import re
 from datetime import datetime
+
 from utils.RDWGSConverter import RDWGSConverter
 from essim_validation import validate_ESSIM
 from essim_kpis import ESSIM_KPIs
@@ -48,6 +49,7 @@ from extensions.user_settings import UserSettings
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
+from extensions.vesta import Vesta
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -616,6 +618,7 @@ esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, user_settings)
+Vesta(app, socketio, user_settings)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 

@@ -430,7 +430,7 @@ function set_area_handlers(area) {
     // e.g. add a context menu item
     for (let i=0; i<extensions.length; i++) {
         updatefun = extensions[i];
-        updatefun({type: 'add_contextmenu', layer: area});
+        updatefun({type: 'add_contextmenu', layer: area, layer_type: 'area'});
     }
 }
 
