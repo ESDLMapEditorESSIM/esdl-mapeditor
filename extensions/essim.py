@@ -35,8 +35,25 @@ class ESSIM:
         @self.socketio.on('essim_set_simulation_id', namespace='/esdl')
         def set_simulation_id(sim_id):
             with self.flask_app.app_context():
+                esh = get_handler()
+
                 print('Set ESSIM simulation ID: '+sim_id)
                 set_session('simulationRun', sim_id)
+                ESSIM_config = settings.essim_config
+                url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id
+
+                try:
+                    r = requests.get(url)
+                    if r.status_code == 200:
+                        result = json.loads(r.text)
+                        esdl_string = result["esdlContents"]
+                        esh.add_from_string(name='test', esdl_string=urllib.parse.unquote(esdl_string))
+                        # process_energy_system.submit(esh, 'test')  # run in seperate thread
+
+                except Exception as e:
+                    # print('Exception: ')
+                    # print(e)
+                    send_alert('Error accessing ESSIM API: ' + str(e))
 
         @self.flask_app.route('/simulation_progress')
         def get_simulation_progress():
