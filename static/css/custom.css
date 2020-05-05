@@ -401,3 +401,7 @@ z-index for jstree context menu, sidebar has 2000
 .simulations .btn {
     padding: 0rem 0.1rem
 }
+
+.sidebar-div {
+    padding: 6px 0px;
+}

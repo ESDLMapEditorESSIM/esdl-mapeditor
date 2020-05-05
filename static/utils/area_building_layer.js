@@ -400,7 +400,7 @@ function set_area_handlers(area) {
     });
 
     area.options.contextmenuItems.push({
-        icon: '{{dir_settings.resource_prefix}}icons/BuildingContents.png',
+        icon: resource_uri + '/icons/BuildingContents.png',
         text: 'request BAG building',
         callback: function(e) { request_bag_info(e, area_id); }
     });
