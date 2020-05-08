@@ -1,35 +1,38 @@
 // ------------------------------------------------------------------------------------------------------------
 //  Boundary information from GEIS boundary service
 // ------------------------------------------------------------------------------------------------------------
-var boundaries_list = ["country", "province", "region", "municipality", "district", "neighbourhood"];
+var scopes_list = ["country", "province", "region", "municipality", "district", "neighbourhood"];
 
-function get_subboundaries(scope) {
+// ------------------------------------------------------------------------------------------------------------
+//  Get a list of subscopes from a certain scope
+// ------------------------------------------------------------------------------------------------------------
+function get_subscopes(scope) {
     let result = [];
     let start_copy = false;
-    for (let i=0; i<boundaries_list.length; i++) {
+    for (let i=0; i<scopes_list.length; i++) {
         if (start_copy) {
-            result.push(boundaries_list[i]);
+            result.push(scopes_list[i]);
         } else {
-            if (scope === boundaries_list[i]) start_copy = true;
+            if (scope === scopes_list[i]) start_copy = true;
         }
     }
     return result;
 }
 
-function add_subboundaries(element_id, scope) {
+function add_subscopes(element_id, scope) {
     // update list of possible subboundaries
-    let possible_subboundaries = get_subboundaries(scope);
+    let possible_subscopes = get_subscopes(scope);
     let subscope_select = document.getElementById(element_id)
     let list_len = subscope_select.options.length - 1;
     for (let i = list_len; i >= 0; i--) {
         subscope_select.remove(i);
     }
 
-    for (let i=0; i<possible_subboundaries.length; i++) {
-        let sub_bndr = possible_subboundaries[i];
+    for (let i=0; i<possible_subscopes.length; i++) {
+        let sub_scp = possible_subscopes[i];
         let option = document.createElement("option");
-        option.text = sub_bndr;
-        option.value = sub_bndr;
+        option.text = sub_scp;
+        option.value = sub_scp;
         subscope_select.add(option);
     }
     subscope_select.selectedIndex = 0;
@@ -47,12 +50,18 @@ function show_filter_row(filter_type, filter_list) {
     } else {
         document.getElementById('tr_filter_list').style.display = 'none';
     }
+
+    if (filter_type || filter_list) {
+        document.getElementById('div-filter').style.display = 'block';
+    } else {
+        document.getElementById('div-filter').style.display = 'none';
+    }
 }
 
 function select_area_scope() {
     let selected_scope = document.getElementById('scope').options[document.getElementById('scope').selectedIndex].value;
 
-    add_subboundaries('subscope', selected_scope);
+    add_subscopes('subscope', selected_scope);
 
     // show/hide filter rows and
     if (selected_scope === 'municipality') {
@@ -110,6 +119,29 @@ function load_options_based_on_filter() {
     show_area_list(document.getElementById('boundary_identifier'), selected_scope, filter_type, selected_filter);
 }
 
+function select_area_subscope() {
+    selected_scope = document.getElementById('scope').options[document.getElementById('scope').selectedIndex].value;
+    selected_subscope = document.getElementById('subscope').options[document.getElementById('subscope').selectedIndex].value;
+    selected_area = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].value;
+    show_area_list(document.getElementById('select_subareas'), selected_subscope, selected_scope, selected_area)
+}
+
+function view_divide_subareas(el) {
+    if (el.checked) {
+        document.getElementById('div-divide-subareas').style.display = 'block';
+        view_select_subareas(document.getElementById('cb_select_subareas'));
+    } else {
+        document.getElementById('div-divide-subareas').style.display = 'none';
+    }
+}
+
+function view_select_subareas(el) {
+    if (el.checked)
+        document.getElementById('tr_select_subareas').style.display = 'table-row';
+    else
+        document.getElementById('tr_select_subareas').style.display = 'none';
+}
+
 function boundary_info_window() {
     sidebar_ctr = sidebar.getContainer();
 
@@ -117,7 +149,6 @@ function boundary_info_window() {
 
     table = '<table>';
     table = table + '<tr><td width=180>Scope</td>';
-    <!-- table = table + '<td><input type="text" width="60" id="scope" value="district"></td></tr>'; -->
 
     table = table + '<td><select id="scope" onchange="select_area_scope();">';
     table = table + '<option value="country">country</option>';
@@ -126,22 +157,27 @@ function boundary_info_window() {
     table = table + '<option value="municipality" selected>municipality</option>';
     table = table + '<option value="district">district</option>';
     table = table + '<option value="neighbourhood">neighbourhood</option>';
-    table = table + '</select></td></tr>';
+    table = table + '</select></td></tr></table>';
 
+    table = table + '<div id="div-filter" class="div-box"><table>';
     table = table + '<tr id="tr_filter_type" style="display: none;"><td width=180>Filter on:</td><td><select id="select_filter_type" width="60" onchange="change_filter_type();"></select></td></tr>';
     table = table + '<tr id="tr_filter_list" style="display: none;"><td width=180>&nbsp;</td><td><select id="select_filter_list" width="60" onchange="load_options_based_on_filter();"></select></td></tr>';
+    table = table + '</table></div>';
 
-    table = table + '<tr><td width=180>Identifier</td>';
-//    table = table + '<td><input type="text" width="60" id="identifier" value="GM0060"></td></tr>';
-    table = table + '<td><select id="boundary_identifier" width="60"></select></td></tr>';
+    table = table + '<div><table>';
+    table = table + '<tr><td width=180>Identifier</td><td><select id="boundary_identifier" width="60" onchange="select_area_subscope();"></select></td></tr>';
 
-    table = table + '<tr><td width=180>Divide into subareas</td>';
-    table = table + '<td><input type="checkbox" id="cb_subareas" checked></td></tr>';
-    table = table + '<tr><td width=180>Subscope</td>';
-    <!-- table = table + '<td><input type="text" width="60" id="subscope" value="neighbourhood"></td></tr>'; -->
+    table = table + '<tr><td width=180>Divide into sub areas</td><td><input type="checkbox" id="cb_subareas" checked onchange="view_divide_subareas(this);"></td></tr>';
+    table = table + '</table></div>';
 
-    table = table + '<td><select id="subscope"></select></td></tr>';
+    table = table + '<div id="div-divide-subareas" class="div-box"><table>';
+    table = table + '<tr id="tr_cb_include_toparea"><td width=180>Include top area</td><td><input type="checkbox" id="cb_include_toparea" checked></td></tr>';
+    table = table + '<tr id="tr_subscope"><td width=180>Sub scope</td><td><select id="subscope" onchange="select_area_subscope();"></select></td></tr>';
+    table = table + '<tr id="tr_cb_select_subareas"><td width=180>Select sub areas</td><td><input type="checkbox" id="cb_select_subareas" onchange="view_select_subareas(this);"></td></tr>';
+    table = table + '<tr id="tr_select_subareas" style="display:none;"><td width=180>Selection</td><td><select id="select_subareas" multiple></select></td></tr>';
+    table = table + '</table></div>';
 
+    table = table + '<table>';
     table = table + '<tr><td width=180>Initialize energysystem</td>';
     table = table + '<td><input type="checkbox" id="initialize_ES" checked></td></tr>';
     table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
@@ -170,15 +206,21 @@ function boundary_info_window() {
 function get_boundary_info(obj) {
 //    identifier = document.getElementById('identifier').value;
     identifier = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].value;
+    toparea_name = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].text;
     scope = document.getElementById('scope').value;
     subscope_enabled = document.getElementById('cb_subareas').checked;
+    add_toparea = document.getElementById('cb_include_toparea').checked;
     subscope = document.getElementById('subscope').value;
+    select_subareas = document.getElementById('cb_select_subareas').checked;
+    selected_subareas = $('#select_subareas').val();
     initialize_ES = document.getElementById('initialize_ES').checked;
     add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
 
     show_loader();
-    socket.emit('get_boundary_info', {identifier: identifier, scope: scope, subscope_enabled: subscope_enabled,
-        subscope: subscope, initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
+    socket.emit('get_boundary_info', {identifier: identifier, toparea_name: toparea_name, scope: scope,
+        subscope_enabled: subscope_enabled, add_toparea: add_toparea, subscope: subscope,
+        select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
+        add_boundary_to_ESDL: add_boundary_to_ESDL});
 }
 
 function get_ibis_info(obj) {

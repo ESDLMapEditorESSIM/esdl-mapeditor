@@ -405,3 +405,8 @@ z-index for jstree context menu, sidebar has 2000
 .sidebar-div {
     padding: 6px 0px;
 }
+
+.div-box {
+    border: 1px solid #cccccc;
+    padding: 3px;
+}

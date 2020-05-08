@@ -37,8 +37,6 @@ function query_esdl_service(index) {
         params['query_parameters'][parameter_name] = parameter_value;
     }
 
-    console.log(params);
-
     document.getElementById('query_service_button').style.display = 'none';
     show_loader();
     socket.emit('command', {cmd: 'query_esdl_service', params: params});
@@ -144,20 +142,25 @@ function show_area_list(select_element, scope, filter_type, selected_filter) {
         url: boundaries_url,
         success: function(data){
             let area_list = data["boundaries_names"];
+            let sel_el = select_element;
 
-            let list_len = select_element.options.length - 1;
-            for(let i = list_len; i >= 0; i--) {
-                select_element.remove(i);
+            if (sel_el.options) {
+                let list_len = sel_el.options.length - 1;
+                for (let i = list_len; i >= 0; i--) {
+                    sel_el.remove(i);
+                }
             }
 
             for (let i=0; i<area_list.length; i++) {
                 let option = document.createElement("option");
                 option.text = area_list[i][text_index];
                 option.value = area_list[i][value_index];
-                select_element.add(option);
+                sel_el.add(option);
             }
-            select_element.selectedIndex = 0;
-            if (select_element.onchange) select_element.onchange();
+            sel_el.selectedIndex = 0;
+            if (sel_el.onchange) {
+                sel_el.onchange();
+            }
         }
     });
 }

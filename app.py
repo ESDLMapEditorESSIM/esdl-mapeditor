@@ -2330,9 +2330,12 @@ def get_boundary_info(info):
     print('get_boundary_info:')
     print(info)
     identifier = info["identifier"]
+    toparea_name = info["toparea_name"]
     scope = info["scope"]
     subscope_enabled = info["subscope_enabled"]
     subscope = info["subscope"]
+    select_subareas = info["select_subareas"]
+    selected_subareas = info["selected_subareas"]
     initialize_ES = info["initialize_ES"]
     add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
 
@@ -2378,8 +2381,13 @@ def get_boundary_info(info):
 
     if initialize_ES:
         # change ID, name and scope of ES
-        area.id = identifier
+
+        if select_subareas:
+            area.id = "part of " + identifier
+        else:
+            area.id = identifier
         area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
+        area.name = toparea_name
         if add_boundary_to_ESDL:
             # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
             if not boundary:    # check if already requested
@@ -2416,42 +2424,50 @@ def get_boundary_info(info):
                 # print(boundary["geom"])
                 # print(boundary)
 
-                if initialize_ES:
-                    sub_area = esdl.Area()
-                    sub_area.id = boundary["code"]
-                    sub_area.name = boundary["name"]
-                    sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
+                skip_subarea = False
+                if select_subareas and selected_subareas and boundary["code"] not in selected_subareas:
+                    skip_subarea = True
 
-                    if add_boundary_to_ESDL:
-                        geometry = ESDLGeometry.create_geometry_from_geom(geom)
-                        sub_area.geometry = geometry
+                if not skip_subarea:
+                    sub_area_id = boundary["code"]
+                    sub_area_name = boundary["name"]
 
-                    area.area.append(sub_area)
-                    esh.add_object_to_dict(active_es_id, sub_area)
+                    if initialize_ES:
+                        sub_area = esdl.Area()
+                        sub_area.id = sub_area_id
+                        sub_area.name = sub_area_name
+                        sub_area.scope = esdl.AreaScopeEnum.from_string(str.upper(subscope))
 
-                # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
-                # boundary = create_boundary_from_contour(area_contour)
-                # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+                        if add_boundary_to_ESDL:
+                            geometry = ESDLGeometry.create_geometry_from_geom(geom)
+                            sub_area.geometry = geometry
 
-                # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+                        area.area.append(sub_area)
+                        esh.add_object_to_dict(active_es_id, sub_area)
 
-                for i in range(0, len(geom['coordinates'])):
-                    if len(geom['coordinates']) > 1:
-                        area_id_number = " ({} of {})".format(i + 1, len(geom['coordinates']))
-                    else:
-                        area_id_number = ""
-                    area_list.append({
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": geom['coordinates'][i]
-                        },
-                        "properties": {
-                            "id": sub_area.id + area_id_number,
-                            "name": sub_area.name,
-                            "KPIs": []
-                        }
-                    })
+                    # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
+                    # boundary = create_boundary_from_contour(area_contour)
+                    # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
+
+                    # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
+
+                    for i in range(0, len(geom['coordinates'])):
+                        if len(geom['coordinates']) > 1:
+                            area_id_number = " ({} of {})".format(i + 1, len(geom['coordinates']))
+                        else:
+                            area_id_number = ""
+                        area_list.append({
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": geom['coordinates'][i]
+                            },
+                            "properties": {
+                                "id": sub_area_id + area_id_number,
+                                "name": sub_area_name,
+                                "KPIs": []
+                            }
+                        })
 
     emit('geojson', {"layer": "area_layer", "geojson": area_list})
 
