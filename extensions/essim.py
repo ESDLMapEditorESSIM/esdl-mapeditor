@@ -68,27 +68,33 @@ class ESSIM:
                     try:
                         r = requests.get(url + '/status')
                         if r.status_code == 200:
-                            result = r.text
-                            # print(result)
-                            # emit('update_simulation_progress', {'percentage': result, 'url': ''})
-                            if float(result) >= 1:
+                            result = json.loads(r.text)
+                            status = result["status"]
+                            if "moreInfo" in result:
+                                more_info = result["moreInfo"]
+                            else:
+                                more_info = ""
+
+                            if status == -1:
+                                descr = result["description"]
+                                return (jsonify(
+                                    {'percentage': '-1', 'url': '', 'simulationRun': es_simid, 'description': descr, 'moreInfo': more_info})), 200
+
+                            if float(status) >= 1:
                                 r = requests.get(url)
                                 if r.status_code == 200:
                                     del_session('es_simid')  # simulation ready
                                     result = json.loads(r.text)
-                                    # print(result)
                                     dashboardURL = result['dashboardURL']
-                                    # print(dashboardURL)
                                     set_session('simulationRun', es_simid)
                                     self.update_stored_simulation(user_email, es_simid, dashboardURL)
-                                    # emit('update_simulation_progress', {'percentage': '1', 'url': dashboardURL})
                                     return (jsonify(
                                         {'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                                 else:
                                     send_alert('Error in getting the ESSIM dashboard URL')
                                     abort(r.status_code, 'Error in getting the ESSIM dashboard URL')
                             else:
-                                return (jsonify({'percentage': result, 'url': '', 'simulationRun': es_simid})), 200
+                                return (jsonify({'percentage': status, 'url': '', 'simulationRun': es_simid})), 200
                         else:
                             # print('code: ', r.status_code)
                             send_alert('Error in getting the ESSIM progress status')

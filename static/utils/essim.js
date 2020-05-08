@@ -289,8 +289,16 @@ function poll_simulation_progress() {
         url: ESSIM_simulation_URL_prefix + 'simulation_progress',
         success: function(data){
             // console.log(data);
+            if (data["percentage"] == "-1") {
+                let description = data["description"];
+                let more_info = data["moreInfo"];
 
-            if (data["percentage"] == "1") {
+                document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation error</h1>';
+                document.getElementById('simulation_progress').innerHTML = '<p style="font-size:70%;" title="'+more_info+'">'+description+'</p>';
+
+                document.getElementById('button_close_simulation_dialog').style.display = "block";
+                document.getElementById('button_cancel_simulation').style.display = "none";
+            } else if (data["percentage"] == "1") {
                 let dashboardURL = data["url"];
                 let simulationRun = data["simulationRun"];
                 // console.log(dashboardURL);
