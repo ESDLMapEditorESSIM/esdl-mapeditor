@@ -3,6 +3,9 @@ class Vesta {
         this.restrictions_list = [];
         this.measures_list = [];
 
+        this.current_measures = null;
+        this.current_area_id = null;
+
         this.initSocketIO();
     }
 
@@ -10,14 +13,17 @@ class Vesta {
         console.log("Registering socket io bindings for Vesta plugin")
 
         socket.on('vesta_restrictions_data', function(vesta_data) {
-            console.log(vesta_data);
+//            console.log(vesta_data);
+
+            vesta_plugin.current_measures = vesta_data['current_measures'];
+            vesta_plugin.current_area_id = vesta_data['area_id'];
+
             sidebar.setContent(vesta_plugin.create_vesta_sidebar_content(vesta_data).get(0));
             sidebar.show();
             vesta_plugin.load_measures();
         });
 
         this.get_vesta_restrictions_list();
-
     }
 
     get_vesta_restrictions_list() {
@@ -73,22 +79,39 @@ class Vesta {
                     let $ul = $('<ul>').css('list-style-type', 'none');
                     $('#measures_p').append($ul);
                     for (let i=0; i<data.length; i++) {
-                        console.log(data[i]);
+//                        console.log(data[i]);
 
                         let $li = $('<li>');
-                        let $cb = $('<input>').attr('type', 'checkbox').attr('value', data[i]["id"]);
+                        let $cb = $('<input>').attr('type', 'checkbox').attr('value', data[i]['id']).attr('name', 'measures');
+                        for (let j=0; j<vesta_plugin.current_measures.length; j++) {
+                            if (vesta_plugin.current_measures[j]['id'] ==  data[i]['id']) $cb.prop('checked', true);
+                        }
                         let $label = $('<label>').attr('for', data[i]["id"]).text(data[i]["name"]);
                         $li.append($cb).append($label);
                         $ul.append($li);
                     }
-                    $('#measures_button_p').append($('<button>').attr('type', 'button').attr('id', 'id_sel_restr').attr('name', 'Select restrictions').text('Select restrictions'));
+                    let $button = $('<button>').attr('type', 'button').attr('id', 'id_sel_restr').attr('name', 'Select restrictions').text('Select restrictions');
+                    $button.click(function(e){
+                        vesta_plugin.set_area_restrictions();
+                        sidebar.hide();
+                    });
+                    $('#measures_button_p').append($button);
                 }
             }
         });
     }
 
-    set_area_restrictions(event, id) {
+    area_restrictions_window(event, id) {
         socket.emit('vesta_area_restrictions', id);
+    }
+
+    set_area_restrictions(event) {
+        let selected_measures = [];
+        $.each($("input[name='measures']:checked"), function(){
+            selected_measures.push($(this).val());
+        });
+
+        socket.emit('select_area_restrictions', {area_id: this.current_area_id, selected_measures: selected_measures});
     }
 
     static create(event) {
@@ -105,7 +128,7 @@ class Vesta {
                     text: 'set VESTA restrictions',
                     icon: resource_uri + 'icons/Vesta.png',
                     callback: function(e) {
-                        vesta_plugin.set_area_restrictions(e, id);
+                        vesta_plugin.area_restrictions_window(e, id);
                     }
                 });
             }
