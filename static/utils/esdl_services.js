@@ -120,10 +120,10 @@ function change_area_scope(select_element_id, area_type_select_id) {
     let area_scope_index = document.getElementById(area_type_select_id).selectedIndex;
     let area_scope_options = document.getElementById(area_type_select_id).options;
     let area_scope = area_scope_options[area_scope_index].text;
-    show_area_list(document.getElementById(select_element_id), area_scope, null, null);
+    show_area_list(select_element_id, area_scope, null, null);
 }
 
-function show_area_list(select_element, scope, filter_type, selected_filter) {
+function show_area_list(select_element_id, scope, filter_type, selected_filter) {
     let boundaries_url = "";
     let text_index = 0;
     let value_index = 0;
@@ -142,7 +142,7 @@ function show_area_list(select_element, scope, filter_type, selected_filter) {
         url: boundaries_url,
         success: function(data){
             let area_list = data["boundaries_names"];
-            let sel_el = select_element;
+            let sel_el = $('#'+select_element_id).get(0);
 
             if (sel_el.options) {
                 let list_len = sel_el.options.length - 1;
@@ -198,7 +198,8 @@ function show_service_settings(index) {
         table += '</table>';
         service_settings_div.innerHTML += table;
 
-        show_area_list(document.getElementById('area_list_select'), scopes[0]['scope']);
+        show_area_list('area_list_select', scopes[0]['scope']);
+        // document.getElementById('area_scope').onchange();  // force loading
     }
 
     if (esdl_services_information[index]['type'] == 'geo_query' || esdl_services_information[index]['type'] == 'simulation') {

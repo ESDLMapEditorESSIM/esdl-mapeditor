@@ -83,27 +83,37 @@ def find_asset_and_container(area, asset_id):
     return None
 
 
-def add_asset_to_area(es, asset, area_id):
+def add_object_to_area(es, obj, area_id):
     # find area with area_id
     instance = es.instance[0]
     area = instance.area
     ar = ESDLEnergySystem.find_area(area, area_id)
 
     if ar:
-        ar.asset.append(asset)
+        if isinstance(obj, esdl.Asset):
+            ar.asset.append(obj)
+        elif isinstance(obj, esdl.Potential):
+            ar.potential.append(obj)
+        else:
+            print("Serious error: Cannot add anything other than an Asset or a Potential to an area")
         return 1
     else:
         return 0
 
 
-def add_asset_to_building(es, asset, building_id):
+def add_object_to_building(es, obj, building_id):
     # find area with area_id
     instance = es.instance[0]
     area = instance.area
     ar = find_asset(area, building_id)
 
     if ar:
-        ar.asset.append(asset)
+        if isinstance(obj, esdl.Asset):
+            ar.asset.append(obj)
+        elif isinstance(obj, esdl.Potential):
+            ar.potential.append(obj)
+        else:
+            print("Serious error: Cannot add anything other than an Asset or a Potential to a building")
         return 1
     else:
         return 0
@@ -157,7 +167,8 @@ def get_asset_capability_type(asset):
     return 'none'
 
 
-def get_capabilities_list():
+# creates a list of capabilities and a list of potentials
+def get_objects_list():
     capabilities = dict()
     capabilities['Producer'] = get_capability_list(esdl.Producer)
     # don't remove WindParc and PVParc until all tools are adapted
@@ -167,7 +178,10 @@ def get_capabilities_list():
     capabilities['Storage'] = get_capability_list(esdl.Storage)
     capabilities['Transport'] = get_capability_list(esdl.Transport)
     capabilities['Conversion'] = get_capability_list(esdl.Conversion)
-    return capabilities
+
+    potentials = get_potentials_list()
+
+    return {'capabilities': capabilities, 'potentials': potentials}
 
 
 def get_capability_list(capability=esdl.Producer):
@@ -181,6 +195,19 @@ def get_capability_list(capability=esdl.Producer):
                 subtype_list.append(eclassifier.name)
     subtype_list.sort()
     return subtype_list
+
+
+def get_potentials_list():
+    """Returns a list of all potentials.
+    The list is automatically generated based on the ESDL meta model"""
+    subtype_list = list()
+    for eclassifier in esdl.eClass.eClassifiers:
+        if isinstance(eclassifier, EClass):
+            if esdl.Potential.eClass in eclassifier.eAllSuperTypes() and not eclassifier.abstract:
+                subtype_list.append(eclassifier.name)
+    subtype_list.sort()
+    return subtype_list
+
 
 
 def load_asset_from_string(esdl_string):

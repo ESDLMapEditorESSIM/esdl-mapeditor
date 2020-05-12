@@ -1128,44 +1128,6 @@ class Parameters(EObject, metaclass=MetaEClass):
             self.parameterUnit = parameterUnit
 
 
-class Measure(EObject, metaclass=MetaEClass):
-    """A single measure or a combination of measures with collective cost information that can be applied to an energy system. An example of a measure-combination would be a combination of insulation and a heat pump."""
-    id = EAttribute(eType=EString, derived=False, changeable=True, iD=True)
-    name = EAttribute(eType=EString, derived=False, changeable=True)
-    description = EAttribute(eType=EString, derived=False, changeable=True)
-    asset = EReference(ordered=True, unique=True, containment=True, upper=-1)
-    costInformation = EReference(ordered=True, unique=True, containment=True)
-    dataSource = EReference(ordered=True, unique=True, containment=True)
-    restriction = EReference(ordered=True, unique=True, containment=True, upper=-1)
-
-    def __init__(self, *, id=None, name=None, asset=None, costInformation=None, description=None, dataSource=None, restriction=None, **kwargs):
-        if kwargs:
-            raise AttributeError('unexpected arguments: {}'.format(kwargs))
-
-        super().__init__()
-
-        if id is not None:
-            self.id = id
-
-        if name is not None:
-            self.name = name
-
-        if description is not None:
-            self.description = description
-
-        if asset:
-            self.asset.extend(asset)
-
-        if costInformation is not None:
-            self.costInformation = costInformation
-
-        if dataSource is not None:
-            self.dataSource = dataSource
-
-        if restriction:
-            self.restriction.extend(restriction)
-
-
 class Sectors(EObject, metaclass=MetaEClass):
     """Collection of sectors. Both Party and Item can link to a sector"""
     id = EAttribute(eType=EString, derived=False, changeable=True, iD=True)
@@ -1536,6 +1498,47 @@ class Address(EObject, metaclass=MetaEClass):
 
         if country is not None:
             self.country = country
+
+
+class LabelJump(EObject, metaclass=MetaEClass):
+
+    fromLabel = EAttribute(eType=EnergyLabelEnum, derived=False, changeable=True)
+    toLabel = EAttribute(eType=EnergyLabelEnum, derived=False, changeable=True)
+    buildingType = EAttribute(eType=ResidentialBuildingTypeEnum, derived=False, changeable=True)
+    buildingYearRange = EReference(ordered=True, unique=True, containment=True)
+
+    def __init__(self, *, fromLabel=None, toLabel=None, buildingType=None, buildingYearRange=None, **kwargs):
+        if kwargs:
+            raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if fromLabel is not None:
+            self.fromLabel = fromLabel
+
+        if toLabel is not None:
+            self.toLabel = toLabel
+
+        if buildingType is not None:
+            self.buildingType = buildingType
+
+        if buildingYearRange is not None:
+            self.buildingYearRange = buildingYearRange
+
+
+@abstract
+class AbstractMeasure(EObject, metaclass=MetaEClass):
+
+    id = EAttribute(eType=EString, derived=False, changeable=True, iD=True)
+
+    def __init__(self, *, id=None, **kwargs):
+        if kwargs:
+            raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if id is not None:
+            self.id = id
 
 
 class InPort(Port):
@@ -1994,6 +1997,38 @@ class BooleanParameter(Parameters):
             self.value = value
 
 
+class Measure(AbstractMeasure):
+    """A single measure or a combination of measures with collective cost information that can be applied to an energy system. An example of a measure-combination would be a combination of insulation and a heat pump."""
+    name = EAttribute(eType=EString, derived=False, changeable=True)
+    description = EAttribute(eType=EString, derived=False, changeable=True)
+    asset = EReference(ordered=True, unique=True, containment=True, upper=-1)
+    costInformation = EReference(ordered=True, unique=True, containment=True)
+    dataSource = EReference(ordered=True, unique=True, containment=True)
+    restriction = EReference(ordered=True, unique=True, containment=True, upper=-1)
+
+    def __init__(self, *, name=None, asset=None, costInformation=None, description=None, dataSource=None, restriction=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
+
+        if asset:
+            self.asset.extend(asset)
+
+        if costInformation is not None:
+            self.costInformation = costInformation
+
+        if dataSource is not None:
+            self.dataSource = dataSource
+
+        if restriction:
+            self.restriction.extend(restriction)
+
+
 class MultiLine(Geometry):
     """Defines a collection of lines"""
     line = EReference(ordered=True, unique=True, containment=True, upper=-1)
@@ -2250,6 +2285,30 @@ class DistributionKPI(KPI):
 
         if distribution is not None:
             self.distribution = distribution
+
+
+class MinimumLabelRestriction(Restriction):
+
+    label = EAttribute(eType=EnergyLabelEnum, derived=False, changeable=True)
+
+    def __init__(self, *, label=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if label is not None:
+            self.label = label
+
+
+class MeasureReference(AbstractMeasure):
+
+    reference = EReference(ordered=True, unique=True, containment=False)
+
+    def __init__(self, *, reference=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if reference is not None:
+            self.reference = reference
 
 
 @abstract

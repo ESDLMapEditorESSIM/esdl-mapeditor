@@ -163,7 +163,7 @@
         var control_strategy_config;
         var wms_layer_list;
         var leaflet_layers = {};
-        var energyasset_list;
+        var cap_pot_list;
 
         //var connecting_assets = false;
         var first_clicked = false;
@@ -197,6 +197,7 @@
         colors['Storage'] = 'red';
         colors['Transport'] = 'yellow';
         colors['Conversion'] = 'purple';
+        colors['Potential'] = 'grey';
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -851,9 +852,9 @@
             });
 
             // populate the asset menu grouped by capability
-            socket.on('capability_list', function(cap_list) {
-                energyasset_list = cap_list;
-                build_asset_menu('asset_menu', true, cap_list);
+            socket.on('cap_pot_list', function(obj_list) {
+                cap_pot_list = obj_list;
+                build_asset_menu('asset_menu', true, obj_list);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -930,6 +931,7 @@
                 // 'line'    asset      name    id      class_name  [...]      [ports]
                 // 'polygon' asset      name    id      class_name  [...]      [ports] capability
                 // 'point'   potential  name    id      class_name  [lat,lon]
+                // 'polygon' potential  name    id      class_name  [...]
 
                 // hide_loader();
                 // console.log(options);
@@ -950,6 +952,8 @@
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
                         capability = list[i][7];
                         classname = 'circle ' + capability;
+                    } else if (list[i][1] == 'potential') {
+                        classname = 'circle Potential';
                     } else {
                         classname = '';
                     }
@@ -989,7 +993,13 @@
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
-                        var polygon = L.polygon(coords, {color: colors[list[i][7]], weight: 3, draggable:true, title: title});
+                        let polygon_color;
+                        if (list[i][1] == 'asset') {
+                            polygon_color = colors[list[i][7]]
+                        } else {
+                            polygon_color = colors["Potential"]
+                        }
+                        var polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
 
                         polygon.title = title;
                         polygon.id = list[i][3];

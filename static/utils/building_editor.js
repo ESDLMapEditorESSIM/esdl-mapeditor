@@ -116,7 +116,7 @@ function open_building_editor(dialog, building_info) {
         initiate_draw_asset(bld_draw_control, 'bld_asset_menu');
     });
 
-    build_asset_menu('bld_asset_menu', false, energyasset_list);
+    build_asset_menu('bld_asset_menu', false, cap_pot_list);
     bld_draw_control = add_draw_control(bld_draw_control, bld_map);                 // couple draw_control to active layer
 
     dialog.open();

@@ -69,7 +69,7 @@ function add_building_map_handlers(mp) {
             // console.log('selected asset: ' + selected_asset);
 
             layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: bld_edit_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
+            socket.emit('command', {cmd: 'add_object', area_bld_id: bld_edit_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: 'point',
                     crs: 'Simple',
@@ -85,7 +85,7 @@ function add_building_map_handlers(mp) {
             layer.name = line_type + '_' + layer.id.substring(0,4);
             layer.title = layer.name;
             polyline_length = calculate_length(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: bld_edit_id, asset: line_type, asset_name: layer.name, asset_id: layer.id,
+            socket.emit('command', {cmd: 'add_object', area_bld_id: bld_edit_id, object: line_type, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: 'polyline',
                     crs: 'Simple',
@@ -107,7 +107,7 @@ function add_building_map_handlers(mp) {
 
             layer.name = selected_asset + '_' + layer.id.substring(0,4);
             polygon_area = calculate_area(layer);
-            socket.emit('command', {cmd: 'add_asset', area_bld_id: bld_edit_id, asset: selected_asset, asset_name: layer.name, asset_id: layer.id,
+            socket.emit('command', {cmd: 'add_object', area_bld_id: bld_edit_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
                 shape: {
                     type: type,
                     crs: 'Simple',

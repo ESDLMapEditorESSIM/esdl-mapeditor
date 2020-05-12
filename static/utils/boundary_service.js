@@ -108,22 +108,22 @@ function select_area_scope() {
 
 function change_filter_type() {
     filter_type = document.getElementById('select_filter_type').options[document.getElementById('select_filter_type').selectedIndex].value;
-    if (filter_type === 'province') show_area_list(document.getElementById('select_filter_list'), 'province', null, null);
-    if (filter_type === 'region') show_area_list(document.getElementById('select_filter_list'), 'region', null, null);
+    if (filter_type === 'province') show_area_list('select_filter_list', 'province', null, null);
+    if (filter_type === 'region') show_area_list('select_filter_list', 'region', null, null);
 }
 
 function load_options_based_on_filter() {
     selected_scope = document.getElementById('scope').options[document.getElementById('scope').selectedIndex].value;
     filter_type = document.getElementById('select_filter_type').options[document.getElementById('select_filter_type').selectedIndex].value;
     selected_filter = document.getElementById('select_filter_list').options[document.getElementById('select_filter_list').selectedIndex].value;
-    show_area_list(document.getElementById('boundary_identifier'), selected_scope, filter_type, selected_filter);
+    show_area_list('boundary_identifier', selected_scope, filter_type, selected_filter);
 }
 
 function select_area_subscope() {
     selected_scope = document.getElementById('scope').options[document.getElementById('scope').selectedIndex].value;
     selected_subscope = document.getElementById('subscope').options[document.getElementById('subscope').selectedIndex].value;
     selected_area = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].value;
-    show_area_list(document.getElementById('select_subareas'), selected_subscope, selected_scope, selected_area)
+    show_area_list('select_subareas', selected_subscope, selected_scope, selected_area)
 }
 
 function view_divide_subareas(el) {
