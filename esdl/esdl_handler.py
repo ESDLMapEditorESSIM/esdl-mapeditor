@@ -429,7 +429,10 @@ class EnergySystemHandler:
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
-    def add_object_to_dict(self, es_id, esdl_object):
+    def add_object_to_dict(self, es_id: str, esdl_object: EObject, recursive=False):
+        if recursive:
+            for obj in esdl_object.eAllContents():
+                self.add_object_to_dict(es_id, obj)
         if hasattr(esdl_object, 'id'):
             if esdl_object.id is not None:
                 self.get_resource(es_id).uuid_dict[esdl_object.id] = esdl_object
