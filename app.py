@@ -2791,11 +2791,11 @@ def process_command(message):
                 # TODO: deepcopy does not work.
                 # asset = copy.deepcopy(edr_asset)
                 # Quick fix: session variable adding_edr_assets now contains ESDL string
-                object_type = type(asset).__name__
+                class_ = type(asset)
+                object_type = class_.__name__
             else:
                 module = importlib.import_module('esdl.esdl')
                 class_ = getattr(module, object_type)
-                asset = class_()
 
             if issubclass(class_, esdl.Potential):
                 potential = class_()
@@ -2823,6 +2823,7 @@ def process_command(message):
 
                 esh.add_object_to_dict(active_es_id, potential)
             else:
+                asset = class_()
                 asset.id = asset_id
                 asset.name = asset_name
                 asset.geometry = geometry
