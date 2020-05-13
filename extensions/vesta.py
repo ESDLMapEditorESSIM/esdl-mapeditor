@@ -136,7 +136,7 @@ class Vesta:
                                 es_measures = esdl.Measures()
                                 es.measures = es_measures
                             es_measures.measure.append(this_m)
-                            esh.add_object_to_dict(active_es_id, this_m)
+                            esh.add_object_to_dict(active_es_id, this_m, True)
 
                             # Create reference
                             m_ref = esdl.MeasureReference()
