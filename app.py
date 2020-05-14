@@ -1592,6 +1592,12 @@ def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, por
             #     for point in geom.point:
             #         coords.append([point.lat, point.lon])
             #     asset_list.append(['line', asset.name, asset.id, type(asset).__name__, coords, port_list])
+            if isinstance(geom, esdl.Polygon):
+                coords = []
+
+                for point in geom.exterior.point:
+                    coords.append([point.lat, point.lon])
+                asset_list.append(['polygon', 'potential', potential.name, potential.id, type(potential).__name__, coords])
 
 
 def add_bld_to_area_bld_list(bld_to_add, to_area_or_bld_id, ab_list):
