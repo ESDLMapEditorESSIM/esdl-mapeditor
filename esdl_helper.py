@@ -34,6 +34,21 @@ def generate_profile_info(profile_list):
     return profile_info_list
 
 
+def get_port_profile_info(asset):
+    ports = asset.port
+
+    port_profile_list = []
+    for p in ports:
+        prof = p.profile
+        profile_info_list = []
+        if prof:
+            profile_info_list = generate_profile_info(prof)
+
+        port_profile_list.append({'port_id': p.id, 'port_name': p.name, 'profiles': profile_info_list})
+
+    return port_profile_list
+
+
 def create_port_asset_mapping(asset, mapping):
     geom = asset.geometry
     ports = asset.port

@@ -218,6 +218,17 @@ def create_geometry_from_geom(geom):
     return None
 
 
+def convert_polygon_rd_to_wgs(coords):
+    RDWGS = RDWGSConverter()
+
+    for i in range(0, len(coords)):
+        for j in range(0, len(coords[i])):
+            point = coords[i][j]
+            coords[i][j] = RDWGS.fromRdToWgs(point)
+
+    return coords
+
+
 def convert_mp_rd_to_wgs(coords):
     RDWGS = RDWGSConverter()
 
@@ -321,10 +332,10 @@ def remove_duplicates_in_polygon(array_of_array_of_points):
 
 def create_ESDL_geometry(shape):
 
-    if shape['type'] == 'point':
+    if shape['type'].upper() == 'POINT':
         geometry = esdl.Point(lon=float(shape['lng']), lat=float(shape['lat']))
 
-    elif shape['type'] == 'polyline':
+    elif shape['type'].upper() == 'POLYLINE':
         polyline_data = shape['coordinates']
         geometry = esdl.Line()
 
@@ -342,7 +353,7 @@ def create_ESDL_geometry(shape):
                 prev_lng = coord['lng']
             i += 1
 
-    elif shape['type'] == 'polygon' or shape['type'] == 'rectangle':
+    elif shape['type'].upper() == 'POLYGON' or shape['type'].upper() == 'RECTANGLE':
         polygon_data = shape['coordinates']  # [lat, lon]
         print(polygon_data)
         polygon_data = remove_duplicates_in_polygon(polygon_data)
