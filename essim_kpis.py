@@ -180,7 +180,7 @@ class ESSIM_KPIs:
         except Exception as e:
             print('error with query: ', str(e))
 
-        return []
+        return [],[]
 
     def get_total_consumption_per_carrier(self):
         print("--- get_total_consumption_per_carrier ---")
@@ -213,7 +213,7 @@ class ESSIM_KPIs:
             return tc_arr, tc_sum
         except Exception as e:
             print('error with query: ', str(e))
-        return []
+        return [],[]
 
     def get_total_system_efficiency(self, tppc, tcpc):
         try:

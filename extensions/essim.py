@@ -5,6 +5,7 @@ from extensions.session_manager import get_handler, get_session, set_session, de
 import requests
 import urllib
 import json
+import uuid
 from datetime import datetime
 import settings
 
@@ -37,7 +38,7 @@ class ESSIM:
             with self.flask_app.app_context():
                 esh = get_handler()
 
-                print('Set ESSIM simulation ID: '+sim_id)
+                print('Set ESSIM simulationRun ID: '+sim_id)
                 set_session('simulationRun', sim_id)
                 ESSIM_config = settings.essim_config
                 url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id
@@ -46,8 +47,17 @@ class ESSIM:
                     r = requests.get(url)
                     if r.status_code == 200:
                         result = json.loads(r.text)
-                        esdl_string = result["esdlContents"]
-                        esh.add_from_string(name='test', esdl_string=urllib.parse.unquote(esdl_string))
+                        active_simulation = {
+                            'scenarioID': result['scenarioID'],
+                            'simulationDescription': result['simulationDescription'],
+                            'startDate': result['startDate'],
+                            'endDate': result['endDate'],
+                            'dashboardURL': result['dashboardURL']
+                        }
+                        set_session('active_simulation', active_simulation)
+                        esdl_string = result['esdlContents']
+                        res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=urllib.parse.unquote(esdl_string))
+                        set_session('active_es_id', res_es.id)
                         # process_energy_system.submit(esh, 'test')  # run in seperate thread
 
                 except Exception as e:
@@ -86,6 +96,10 @@ class ESSIM:
                                     del_session('es_simid')  # simulation ready
                                     result = json.loads(r.text)
                                     dashboardURL = result['dashboardURL']
+
+                                    active_simulation = get_session('active_simulation')
+                                    active_simulation['dashboardURL'] = dashboardURL
+
                                     set_session('simulationRun', es_simid)
                                     self.update_stored_simulation(user_email, es_simid, dashboardURL)
                                     return (jsonify(
@@ -284,6 +298,15 @@ class ESSIM:
 
                     self.store_simulation(user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
+
+                    active_simulation = {
+                        'scenarioID': active_es_id,
+                        'simulationDescription': sim_description,
+                        'startDate': sim_start_datetime,
+                        'endDate': sim_end_datetime,
+                        'dashboardURL': ''
+                    }
+                    set_session('active_simulation', active_simulation)
                 else:
                     send_alert(
                         'Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(

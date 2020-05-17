@@ -2551,8 +2551,15 @@ def process_command(message):
 
         simulation_run = get_session('simulationRun')
         if simulation_run:
-            sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-            edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+
+            active_simulation = get_session('active_simulation')
+            if active_simulation:
+                sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+                edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+            else:
+                send_alert('No active_simulation! This should not happen, please report. However, you can continue')
+                sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+                edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
 
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
