@@ -348,6 +348,10 @@ def editor():
         set_session('user-role', role)
         set_session('user-email', user_email)
         set_session('user-mapeditor-role', mapeditor_role)
+
+        user_fullname = oidc.user_getfield('name')
+        set_session('user-fullname', user_fullname)
+
         return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
     else:
         return render_template('index.html', dir_settings=settings.dir_settings)

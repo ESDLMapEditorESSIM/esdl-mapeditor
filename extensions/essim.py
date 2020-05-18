@@ -255,6 +255,9 @@ class ESSIM:
             esh = get_handler()
             active_es_id = get_session('active_es_id')
             user_email = get_session('user-email')
+            user_fullname = get_session('user-fullname')
+            if user_fullname is None:
+                user_fullname = 'essim'
 
             current_es = esh.get_energy_system(es_id=active_es_id)
             current_es_name = current_es.name
@@ -268,7 +271,7 @@ class ESSIM:
             # print('ESSIM url: ', url)
 
             payload = {
-                'user': ESSIM_config['user'],
+                'user': user_fullname.strip(),
                 'scenarioID': active_es_id,
                 'simulationDescription': sim_description,
                 'startDate': sim_start_datetime,
