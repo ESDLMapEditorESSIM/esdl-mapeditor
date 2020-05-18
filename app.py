@@ -239,7 +239,7 @@ BoundaryService(app, socketio)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
-essim = ESSIM(app, socketio, user_settings)
+essim = ESSIM(app, socketio, executor, user_settings)
 Vesta(app, socketio, user_settings)
 
 #TODO: check secret key with itsdangerous error and testing and debug here

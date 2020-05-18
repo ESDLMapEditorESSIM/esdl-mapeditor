@@ -4,7 +4,6 @@ import random
 from sys import getsizeof
 from flask import Flask, session
 from flask_socketio import SocketIO, emit
-from flask_executor import Executor
 
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler

@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, session, abort
 from flask_socketio import SocketIO, emit
+from flask_executor import Executor
 from extensions.user_settings import SettingType, UserSettings
 from extensions.session_manager import get_handler, get_session, set_session, del_session
 import requests
@@ -8,6 +9,8 @@ import json
 import uuid
 from datetime import datetime
 import settings
+
+from process_es_area_bld import process_energy_system
 
 # Temporarily fix load_animation dependencies
 # from app import essim_kpis
@@ -23,10 +26,11 @@ def send_alert(message):
 
 
 class ESSIM:
-    def __init__(self, flask_app: Flask, socket: SocketIO, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, user_settings: UserSettings):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings = user_settings
+        self.executor = executor
 
         self.register()
 
@@ -58,7 +62,7 @@ class ESSIM:
                         esdl_string = result['esdlContents']
                         res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=urllib.parse.unquote(esdl_string))
                         set_session('active_es_id', res_es.id)
-                        # process_energy_system.submit(esh, 'test')  # run in seperate thread
+                        self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
 
                 except Exception as e:
                     # print('Exception: ')
