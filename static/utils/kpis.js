@@ -29,14 +29,37 @@ class KPIs {
         }
     }
 
+    // format-number-with-si-prefix.js
+    // https://gist.github.com/cho45/9968462
+    formatN (n) {
+        // console.log("n: ", n);
+        var nn = n.toExponential(2).split(/e/);
+        // console.log("nn: ", nn)
+        var u = Math.floor(+nn[1] / 3);
+        // console.log("u: ", u)
+        return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
+    }
+
     create_kpi_chart_data(kpi_list) {
         var kpi_data = []
 
         for (let idx in kpi_list) {
             let kpi = kpi_list[idx];
-            let kpi_donut_max = kpi.targets[0].ambition.toString();
             let kpi_donut_value = kpi.value.toString();
-            let kpi_donut_delta_to_max = (kpi.targets[0].ambition - kpi.value).toString();
+
+            let kpi_donut_max;
+            let kpi_donut_delta_to_max;
+            let kpi_text;
+            if (kpi.targets.length > 0) {
+                kpi_donut_max = kpi.targets[0].value.toString();
+                kpi_donut_delta_to_max = (kpi.targets[0].value - kpi.value).toString();
+                kpi_text = this.formatN(kpi.value) + "/" + this.formatN(kpi.targets[0].value - kpi.value);
+            } else {
+                kpi_donut_max = kpi_donut_value;
+                kpi_donut_delta_to_max = 0;
+                kpi_text = this.formatN(kpi.value);
+            }
+
             let kpi_data_id = kpi.name.replace(/ /g, "_");  // id must be unique and without spaces
             kpi_data.push(
                 {
@@ -45,7 +68,7 @@ class KPIs {
                     'data-chart-max': kpi_donut_max,
                     'data-chart-segments': '{ "0":["0","'+kpi_donut_value+'","#55DB2E"], "1":["'+kpi_donut_value+
                         '","'+kpi_donut_delta_to_max+'","#19A7F5"] }',
-                    'data-chart-text': kpi_donut_value + "/" + kpi_donut_max,
+                    'data-chart-text': kpi_text,
                     'data-chart-caption': kpi.name
                 }
             );
