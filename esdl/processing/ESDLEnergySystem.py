@@ -125,9 +125,9 @@ def process_area_KPIs(area):
                 kpi['type'] = 'String'
 
             targets = []
-            if area_kpi.ambition:
-                for ambition in area_kpi.ambition:
-                    targets.append({"year": ambition.year, "ambition": ambition.value})
+            if area_kpi.target:
+                for target in area_kpi.target:
+                    targets.append({"year": target.year, "value": target.value})
             kpi['targets'] = targets
 
             kpi_list.append(kpi)
