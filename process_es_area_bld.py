@@ -301,7 +301,8 @@ def find_area_info_geojson(building_list, area_list, this_area):
     area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
-            geojson_KPIs[kpi.name] = kpi.value
+            if not isinstance(kpi, esdl.DistributionKPI):
+                geojson_KPIs[kpi.name] = kpi.value
 
     if area_geometry:
         if isinstance(area_geometry, esdl.Polygon):

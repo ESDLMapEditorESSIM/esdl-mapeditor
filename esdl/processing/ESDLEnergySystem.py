@@ -112,23 +112,43 @@ def process_area_KPIs(area):
     if kpis:
         for area_kpi in kpis.kpi:
             kpi = {}
+            kpi['id'] = area_kpi.id
             kpi['name'] = area_kpi.name
-            kpi['value'] = area_kpi.value
+            if isinstance(area_kpi, esdl.DistributionKPI):
+                kpi['type'] = 'Distribution'
 
-            # TODO: Support for QuantityAndUnits
+                distribution = area_kpi.distribution
+                parts = []
+                if isinstance(distribution, esdl.FromToDistribution):
+                    for from_to_perc in distribution.fromToPerc:
+                       parts.append({
+                           'from': from_to_perc.start,
+                           'to': from_to_perc.to,
+                           'percentage': from_to_perc.percentage
+                       })
+                if isinstance(distribution, esdl.StringLabelDistribution):
+                    for string_perc in distribution.stringPerc:
+                        parts.append({
+                            'label': string_perc.label,
+                            'percentage': string_perc.percentage
+                        })
+                kpi['distribution'] = parts
+            else:
+                kpi['value'] = area_kpi.value
+                # TODO: Support for QuantityAndUnits
 
-            if isinstance(area_kpi, esdl.IntKPI):
-                kpi['type'] = 'Int'
-            if isinstance(area_kpi, esdl.DoubleKPI):
-                kpi['type'] = 'Double'
-            if isinstance(area_kpi, esdl.StringKPI):
-                kpi['type'] = 'String'
+                if isinstance(area_kpi, esdl.IntKPI):
+                    kpi['type'] = 'Int'
+                if isinstance(area_kpi, esdl.DoubleKPI):
+                    kpi['type'] = 'Double'
+                if isinstance(area_kpi, esdl.StringKPI):
+                    kpi['type'] = 'String'
 
-            targets = []
-            if area_kpi.target:
-                for target in area_kpi.target:
-                    targets.append({"year": target.year, "value": target.value})
-            kpi['targets'] = targets
+                targets = []
+                if area_kpi.target:
+                    for target in area_kpi.target:
+                        targets.append({"year": target.year, "value": target.value})
+                kpi['targets'] = targets
 
             kpi_list.append(kpi)
 

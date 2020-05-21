@@ -31,6 +31,14 @@ class EnergySystemHandler:
         setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
         alias('start', esdl.ProfileElement.from_)
 
+        esdl.FromToIntPerc.from_.name = 'from'
+        setattr(esdl.FromToIntPerc, 'from', esdl.FromToIntPerc.from_)
+        alias('start', esdl.FromToIntPerc.from_)
+
+        esdl.FromToDoublePerc.from_.name = 'from'
+        setattr(esdl.FromToDoublePerc, 'from', esdl.FromToDoublePerc.from_)
+        alias('start', esdl.FromToDoublePerc.from_)
+
         # add support for shallow copying or cloning an object
         # it copies the object's attributes (e.g. clone an object), does only shallow copying
         def clone(self):
@@ -240,7 +248,7 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
         self.esid_uri_dict[self.energy_system.id] = uri
-        self.add_object_to_dict(self.energy_system.id, self.energy_system)
+        self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
         return self.energy_system
 
     def add_uri(self, uri):
@@ -250,7 +258,7 @@ class EnergySystemHandler:
         # self.energy_system = self.resource.contents[0]
         self.validate(es=tmp_resource.contents[0])
         self.esid_uri_dict[tmp_resource.contents[0].id] = uri
-        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0])
+        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], True)
         return tmp_resource.contents[0]
 
     def load_from_string(self, esdl_string, name='from_string'):
@@ -264,7 +272,7 @@ class EnergySystemHandler:
             self.energy_system = self.resource.contents[0]
             self.validate()
             self.esid_uri_dict[self.energy_system.id] = uri
-            self.add_object_to_dict(self.energy_system.id, self.energy_system)
+            self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
             return self.energy_system
         except Exception as e:
             log.error("Exception when loading resource: {}: {}".format(name, e))
@@ -290,7 +298,7 @@ class EnergySystemHandler:
         try:
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri
-            self.add_object_to_dict(tmp_es.id, tmp_es)
+            self.add_object_to_dict(tmp_es.id, tmp_es, True)
             return tmp_resource.contents[0]
         except Exception as e:
             log.error("Exception when loading resource: {}: {}".format(name, e))

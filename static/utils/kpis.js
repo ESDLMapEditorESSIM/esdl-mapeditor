@@ -15,8 +15,8 @@ class KPIs {
             let kpi_list = data['kpi_list'];
             set_kpi_info(es_id, {scope: scope, kpi_list: kpi_list});
 
-            let kpi_data = kpis.create_kpi_chart_data(kpi_list);
-            console.log(kpi_data);
+            let kpi_data = kpis.create_kpi_chart_data2(kpi_list);
+//            console.log(kpi_data);
             kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
             kpicharts.addTo(map);
         });
@@ -75,6 +75,40 @@ class KPIs {
         }
 
         return kpi_data;
+    }
+
+    create_kpi_chart_data2(kpi_list) {
+        var kpi_data_list = []
+
+        for (let idx in kpi_list) {
+            let kpi = kpi_list[idx];
+            let kpi_type = kpi.type;
+
+            let kpi_data = {
+                'id': kpi.id,
+                'name': kpi.name,
+                'type': kpi_type
+            }
+
+            if (kpi_type === 'Distribution') {
+//                let distr = [];
+//                for (let i=0; i<kpi.distribution.length; i++) {
+//                    let part = {
+//                        'label':  kpi.distribution[i].label,
+//                        'percentage': kpi.distribution[i].percentage
+//                    };
+//                    distr.push(part);
+//                }
+                kpi_data['distribution'] = kpi.distribution;
+            } else {
+                kpi_data['value'] = kpi.value;
+                kpi_data['targets'] = kpi.targets;
+            }
+
+            kpi_data_list.push(kpi_data);
+        }
+
+        return kpi_data_list;
     }
 }
 

@@ -28,14 +28,18 @@ L.Control.KPICharts = L.Control.extend({
         var title = L.DomUtil.create('div', 'title', container);
         title.innerHTML = 'KPIs';
 
-        var chart_box = L.DomUtil.create('div', 'tiny-chartbox', container);
+//        var chart_box = L.DomUtil.create('div', 'tiny-chartbox', container);
+//        chart_box.setAttribute('style', "margin-right: 10px;");
+//        for (let i=0; i<this.options.data.length; i++) {
+//            this.createChart(this.options.data[i], chart_box);
+//        }
+        var chart_box = L.DomUtil.create('div', '', container);
         chart_box.setAttribute('style', "margin-right: 10px;");
-
         for (let i=0; i<this.options.data.length; i++) {
-            this.createChart(this.options.data[i], chart_box);
+            this.createChart2(this.options.data[i], chart_box);
         }
 
-        // Make sure we don't drag the map when we interact with the content
+        // Make sure w/e don't drag the map when we interact with the content
         var stop = L.DomEvent.stopPropagation;
         var fakeStop = L.DomEvent._fakeStop || stop;
         L.DomEvent
@@ -94,6 +98,93 @@ L.Control.KPICharts = L.Control.extend({
             chart.setAttribute(key, kpi_item[key]);
         }
         makeDonutCharts(chart);
+    },
+    get_bg_color: function(idx) {
+        let colors = [
+            'rgba(255, 99, 132, 0.2)',
+            'rgba(54, 162, 235, 0.2)',
+            'rgba(255, 206, 86, 0.2)',
+            'rgba(75, 192, 192, 0.2)',
+            'rgba(153, 102, 255, 0.2)',
+            'rgba(255, 159, 64, 0.2)'
+        ];
+        return colors[idx];
+    },
+    createChart2: function(kpi_item, chart_box) {
+        console.log(kpi_item);
+        var chart_div = L.DomUtil.create('div', 'chart-container', chart_box);
+        let canvas = L.DomUtil.create('canvas', '', chart_div);
+        let ctx = canvas.getContext('2d');
+
+        let type = null;
+        let labels = [];
+        let datasets = [];
+        let options = {};
+
+        if (kpi_item.type === 'Distribution') {
+            labels = ['waarde'];
+            for (let i=0; i<kpi_item.distribution.length; i++) {
+                let distr_part = kpi_item.distribution[i]
+                datasets.push({
+                    label: distr_part.label,
+                    backgroundColor: this.get_bg_color(i),
+                    data: [distr_part.percentage]
+                });
+            }
+            type = 'bar'
+            options = {
+                legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        boxWidth: 10,
+                        fontSize: 9
+                    }
+                },
+                scales: {
+                    xAxes: [{
+                        stacked: true,
+                    }],
+                    yAxes: [{
+                        stacked: true
+                    }]
+                },
+                title: {
+                    display: true,
+                    text: kpi_item.name
+                }
+            }
+        } else {
+            type = 'doughnut'
+            labels = ['Current value', 'Still to go...'];
+            let target = null
+            if (kpi_item.targets) {
+                target = kpi_item.targets[0].value;
+            }
+            datasets = [{
+                label: labels,
+                data: [kpi_item.value, target-kpi_item.value],
+                backgroundColor: [this.get_bg_color(0), this.get_bg_color(1)]
+            }];
+            options = {
+                legend: {
+                    display: false,
+                },
+                title: {
+                    display: true,
+                    text: kpi_item.name
+                }
+            }
+        }
+
+        let chart = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: options
+        });
     },
 });
 

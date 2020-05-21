@@ -414,3 +414,10 @@ z-index for jstree context menu, sidebar has 2000
     border: 1px solid #cccccc;
     padding: 3px;
 }
+
+.chart-container {
+    position: relative;
+    height: 150px;
+    width: 300px;
+    margin: 10px;
+}
