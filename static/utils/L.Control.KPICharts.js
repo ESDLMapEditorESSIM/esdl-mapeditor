@@ -158,7 +158,7 @@ L.Control.KPICharts = L.Control.extend({
             type = 'doughnut'
             labels = ['Current value', 'Still to go...'];
             let target = null
-            if (kpi_item.targets) {
+            if (kpi_item.targets.length > 0) {
                 target = kpi_item.targets[0].value;
             }
             datasets = [{
