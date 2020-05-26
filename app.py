@@ -14,12 +14,8 @@ import jwt
 import requests
 import urllib
 import uuid
-import math
-import copy
 import json
 import importlib
-import random
-import re
 from datetime import datetime
 
 from essim_validation import validate_ESSIM
@@ -29,13 +25,12 @@ from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl import esdl
-from process_es_area_bld import process_energy_system
+from process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.bag import BAG
 from extensions.boundaries import Boundaries
 from extensions.boundary_service import BoundaryService
-from extensions.boundary_service import preload_subboundaries_in_cache, preload_area_subboundaries_in_cache, get_subboundaries_from_service, get_boundary_from_service
 from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
