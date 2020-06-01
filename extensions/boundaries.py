@@ -10,6 +10,7 @@ class Boundaries:
         self.flask_app = flask_app
         self.socketio = socket
         self.register()
+        self.year = "2018"
 
     def register(self):
         print('Registering Boundaries extension')
@@ -21,7 +22,7 @@ class Boundaries:
 
                 try:
                     url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                           settings.boundaries_config["path_names"] + '/' + scope_type
+                           settings.boundaries_config["path_names"] + '/YEAR/' + self.year + '/' + scope_type
                     print(url)
                     r = requests.get(url)
                     if len(r.text) > 0:
@@ -39,7 +40,8 @@ class Boundaries:
 
                 try:
                     url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                           settings.boundaries_config["path_names"] + '/' + select_scope_type + '/' + select_scope_id + '/' + scope_type
+                           settings.boundaries_config["path_names"] + '/YEAR/' + self.year + '/'\
+                          + select_scope_type + '/' + select_scope_id + '/' + scope_type
                     print(url)
                     r = requests.get(url)
                     if len(r.text) > 0:

@@ -109,6 +109,7 @@ function process_service_results(results) {
 }
 
 var area_list_mapping = {
+   "COUNTRY": "countries",
    "PROVINCE": "provinces",
    "REGION": "regions",
    "MUNICIPALITY": "municipalities",

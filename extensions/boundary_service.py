@@ -37,10 +37,11 @@ boundary_service_mapping = {
 
 #create a cache for the boundary service
 boundary_cache = dict()
+current_boundaries_year = "2018"
 
 
 def is_valid_boundary_id(id):
-    return re.match('PV[0-9]{2,2}|RES[0-9]{2,2}|GM[0-9]{4,4}|WK[0-9]{6,6}|BU[0-9]{8,8}', id.upper())
+    return re.match('PV[0-9]{2,2}|RES[0-9]{2,2}|GM[0-9]{4,4}|WK[0-9]{6,6}|BU[0-9]{8,8}|[0-9]{2,2}', id.upper())
 
 
 def get_boundary_from_service(scope, id):
@@ -59,8 +60,9 @@ def get_boundary_from_service(scope, id):
 
         try:
             # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
-            url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
-
+            # url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
+            url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
+                  settings.boundaries_config["path_boundaries"] + '/YEAR/' + current_boundaries_year + '/' + boundary_service_mapping[scope.name] + '/' + id
             # print('Retrieve from boundary service', id)
             r = requests.get(url)
             if len(r.text) > 0:
@@ -93,8 +95,12 @@ def get_subboundaries_from_service(scope, subscope, id):
 
     if is_valid_boundary_id(id):
         try:
-            url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
-                  + '/' + boundary_service_mapping[scope.name] + '/' + id
+            # url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
+            #       + '/' + boundary_service_mapping[scope.name] + '/' + id
+            url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] \
+                  + settings.boundaries_config["path_boundaries"] + '/YEAR/' + current_boundaries_year + '/' \
+                  + boundary_service_mapping[subscope.name] + '/' \
+                  + boundary_service_mapping[scope.name] + '/' + id
             r = requests.get(url)
             reply = json.loads(r.text)
             # print(reply)
@@ -210,6 +216,10 @@ class BoundaryService:
                     area.id = "part of " + identifier
                 else:
                     area.id = identifier
+
+                # Area ID has changed, re-add to dictionairy
+                esh.add_object_to_dict(active_es_id, area)
+
                 area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
                 area.name = toparea_name
                 if add_boundary_to_ESDL:

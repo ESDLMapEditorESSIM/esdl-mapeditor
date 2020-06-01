@@ -56,7 +56,7 @@ class ESDL_API:
                     if email in socketio_sid_list:
                         for key in socketio_sid_list:
                             if key != email:
-                                exclude_sessions += socketio_sid_list[key]
+                                exclude_sessions.extend(socketio_sid_list[key])
                     else:
                         return "User not logged in", 400
 

@@ -512,9 +512,7 @@ def add_missing_coordinates(area):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Process building and process area
 # ---------------------------------------------------------------------------------------------------------------------
-def process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, bld_editor, level):
-    esh = get_handler()
-
+def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, building, bld_editor, level):
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
@@ -554,7 +552,7 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
     # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, bld_editor, level + 1)
+            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, basset, bld_editor, level + 1)
         else:
             # Create a list of ports for this asset
             port_list = []
@@ -659,19 +657,17 @@ def process_building(es_id, asset_list, building_list, area_bld_list, conn_list,
                         ['point', 'potential', potential.name, potential.id, type(potential).__name__, [lat, lon]])
 
 
-def process_area(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, area, level):
-    esh = get_handler()
-
+def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, area, level):
     area_bld_list.append(['Area', area.id, area.name, level])
 
     # process subareas
     for ar in area.area:
-        process_area(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, ar, level+1)
+        process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, ar, level+1)
 
     # process assets in area
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
-            process_building(es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, asset, False, level+1)
+            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, port_asset_mapping, asset, False, level+1)
         if isinstance(asset, esdl.EnergyAsset):
             port_list = []
             ports = asset.port
@@ -768,9 +764,10 @@ def get_building_information(building):
     conn_list = []
 
     active_es_id = get_session('active_es_id')
+    esh = get_handler()
     port_to_asset_mapping = get_session_for_esid(active_es_id, 'port_to_asset_mapping')
 
-    process_building(active_es_id, asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, True, 0)
+    process_building(esh, active_es_id, asset_list, building_list, bld_list, conn_list, port_to_asset_mapping, building, True, 0)
     return {
         "id": building.id,
         "asset_list": asset_list,
@@ -840,7 +837,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
             # else create_port_to_asset_mapping won't work
             add_missing_coordinates(area)
             create_port_to_asset_mapping(area, mapping)
-            process_area(es.id, asset_list, building_list, area_bld_list, conn_list, mapping, area, 0)
+            process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, mapping, area, 0)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
             emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
