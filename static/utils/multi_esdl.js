@@ -268,3 +268,11 @@ function set_kpi_info(es_id, kpi_info) {
 function get_kpi_info(es_id) {
     return esdl_list[es_id].kpi_info;
 }
+
+function get_all_kpi_info() {
+    kpi_info = {};
+    for (let es_id in esdl_list) {
+        kpi_info[es_id] = esdl_list[es_id].kpi_info;
+    }
+    return kpi_info;
+}

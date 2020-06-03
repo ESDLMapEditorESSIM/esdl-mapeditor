@@ -22,7 +22,7 @@ ESSIM_FAVORITES_LIST = 'ESSIM_favorites'
 
 def send_alert(message):
     print(message)
-    emit('alert', message, namespace='/esdl')
+    # emit('alert', message, namespace='/esdl')
 
 
 class ESSIM:
@@ -97,7 +97,7 @@ class ESSIM:
                             if float(status) >= 1:
                                 r = requests.get(url)
                                 if r.status_code == 200:
-                                    del_session('es_simid')  # simulation ready
+                                    # del_session('es_simid')  # simulation ready
                                     result = json.loads(r.text)
                                     dashboardURL = result['dashboardURL']
 
@@ -209,6 +209,77 @@ class ESSIM:
 
                 return json.dumps({'simulations': last_list, 'favorites': fav_list})
 
+        @self.flask_app.route('/essim_kpis')
+        def essim_kpi_list():
+            ESSIM_config = settings.essim_config
+            url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/kpiModules'
+
+            try:
+                r = requests.get(url)
+                if r.status_code == 200:
+                    result = json.loads(r.text)
+
+                    # only communicate unique KPI-modules (because they are deployed multiple times)
+                    kpi_list = []
+                    already_added_kpi_modules = []
+                    for kpi in result:
+                        if not kpi["calculator_id"] in already_added_kpi_modules:
+                            kpi_list.append({
+                                "id": kpi["calculator_id"],
+                                "name": kpi["title"],
+                                "descr": kpi["description"]
+                            })
+                            already_added_kpi_modules.append(kpi["calculator_id"])
+
+                    # store kpi_list in session, in order to look up name/descr in a later stage
+                    set_session('kpi_list', kpi_list)
+                    return json.dumps(kpi_list), 200
+                else:
+                    send_alert('Error in getting the ESSIM KPI list')
+                    abort(r.status_code, 'Error in getting the ESSIM KPI list')
+            except Exception as e:
+                send_alert('Error accessing ESSIM API: ' + str(e))
+                abort(500, 'Error accessing ESSIM API: ' + str(e))
+
+        @self.flask_app.route('/essim_kpi_results')
+        def essim_kpi_results():
+            with self.flask_app.app_context():
+                es_simid = get_session('es_simid')
+                print('------------- getting ESSIM KPI results -----------')
+                print(es_simid)
+                if es_simid:
+                    ESSIM_config = settings.essim_config
+                    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid + '/kpi'
+
+                    try:
+                        r = requests.get(url)
+                        if r.status_code == 200:
+                            result = json.loads(r.text)
+
+                            print("result from ESSIM:")
+                            print(result)
+                            if result is None:
+                                return [], 200
+                            else:
+                                kpi_result_list = self.process_kpi_results(result)
+                                return json.dumps(kpi_result_list), 200
+                        else:
+                            send_alert('Error in getting the ESSIM KPI results')
+                            abort(r.status_code, 'Error in getting the ESSIM KPI results')
+                    except Exception as e:
+                        send_alert('Error accessing ESSIM API: ' + str(e))
+                        abort(500, 'Error accessing ESSIM API: ' + str(e))
+                else:
+                    print("No es_simid in session")
+                    print(session)
+                    abort(500, 'Simulation not running')
+
+        @self.socketio.on('kpi_visualization', namespace='/esdl')
+        def kpi_visualization():
+            with self.flask_app.app_context():
+                kpi_result_list = get_session('kpi_result_list')
+                self.emit_kpis_for_visualization(kpi_result_list)
+
     def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             user_email = get_session('user-email')
@@ -250,7 +321,7 @@ class ESSIM:
                 # print(sim_list)
                 self.settings.set_user(user_email, essim_list, sim_list)
 
-    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime):
+    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, essim_kpis):
         with self.flask_app.app_context():
             esh = get_handler()
             active_es_id = get_session('active_es_id')
@@ -280,7 +351,24 @@ class ESSIM:
                 'grafanaURL': ESSIM_config['grafanaURL'],
                 'esdlContents': urllib.parse.quote(esdlstr)
             }
-            # print(payload)
+
+            if essim_kpis:
+                kpi_module = {
+                    'kafkaURL': ESSIM_config['kafka_url'],
+                    'modules': []
+                }
+                payload['kafkaURL'] = ESSIM_config['kafka_url']
+
+                # TODO: Fix hard-coded TimeResolution = hourly
+                for kpi_id in essim_kpis:
+                    kpi_module['modules'].append({
+                        'id': kpi_id,
+                        'config': {'TimeResolution': 'yearly'}
+                        # 'config': [{'key': 'TimeResolution', 'value': 'hourly'}]
+                    })
+                payload['kpiModule'] = kpi_module
+
+            print(payload)
 
             headers = {
                 'Content-Type': "application/json",
@@ -328,3 +416,109 @@ class ESSIM:
                 return 0
 
             return 1
+
+    def process_kpi_results(self, kpi_result_array):
+        kpi_result_list = []
+        one_still_calculating = False
+        kpi_list = get_session('kpi_list')  # contains id, name and description
+
+        for kpi_result_item in kpi_result_array:
+            kpi_id = list(kpi_result_item.keys())[0]
+            kpi_result = kpi_result_item[kpi_id]
+
+            kpi_info = dict()
+            kpi_info['id'] = kpi_id
+            kpi_info['name'] = None
+            kpi_info['descr'] = None
+            for kpi in kpi_list:
+                if kpi['id'] == kpi_id:
+                    kpi_info['name'] = kpi['name']
+                    kpi_info['descr'] = kpi['descr']
+
+            kpi_info['calc_status'] = kpi_result['status']
+            if kpi_info['calc_status'] == 'Not yet started':
+                one_still_calculating = True
+            if kpi_info['calc_status'] == 'Calculating':
+                kpi_info['progress'] = kpi_result['progress']
+                one_still_calculating = True
+            if kpi_info['calc_status'] == 'Success':
+                kpi_info['kpi'] = kpi_result['kpi']
+                if 'unit' in kpi_info:
+                    kpi_info['unit'] = kpi_result['unit']
+
+            kpi_result_list.append(kpi_info)
+
+        result = {
+            'still_calculating': one_still_calculating,
+            'results': kpi_result_list
+        }
+
+        print("Processed results (sent back to client):")
+        print(result)
+        if not one_still_calculating:
+            # self.emit_kpis_for_visualization(kpi_result_list)
+            set_session('kpi_result_list', kpi_result_list)
+
+        return result
+
+    def emit_kpis_for_visualization(self, kpi_result_list):
+        kpi_list = []
+
+        for kpi_result in kpi_result_list:
+            if kpi_result['calc_status'] == 'Success':
+                kpi = dict()
+                kpi['id'] = kpi_result['id']
+                kpi['name'] = kpi_result['name']
+
+                # ... 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
+                # {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
+                # {'carrier': 'Aardgas', 'value': 0.0028286240994930267}], ...
+                sub_kpi_list = kpi_result['kpi']
+
+                kpi['sub_kpi'] = list()
+                for sub_kpi in sub_kpi_list:
+                    sub_kpi_res = dict()
+                    if 'Unit' in sub_kpi:
+                        sub_kpi_res['unit'] = sub_kpi['Unit']
+
+                    sub_kpi_res['name'] = sub_kpi['Name']
+
+                    if len(sub_kpi['Values']) > 1:
+                        sub_kpi_res['type'] = 'Distribution'
+
+                        parts = []
+                        for kpi_part in sub_kpi['Values']:
+                            print(kpi_part)
+                            parts.append({
+                                'label': kpi_part['carrier'],
+                                'value': kpi_part['value']
+                            })
+                        sub_kpi_res['distribution'] = parts
+                    else:
+                        sub_kpi_res['type'] = 'Double'
+                        sub_kpi_res['value'] = sub_kpi['Values']
+
+                    kpi['sub_kpi'].append(sub_kpi_res)
+
+                    # if len(kpi_res) > 1:
+                    #     kpi['type'] = 'Distribution'
+                    #
+                    #     parts = []
+                    #     for kpi_part in kpi_res:
+                    #         parts.append({
+                    #             'label': kpi_part['carrier'],
+                    #             'percentage': kpi_part['value']
+                    #         })
+                    #     kpi['distribution'] = parts
+                    # else:
+                    #     kpi['value'] = kpi_res[0]['value']
+                    #     kpi['type'] = 'Double'
+
+                kpi_list.append(kpi)
+
+        if kpi_list:
+            print("Emit kpi_list for visualization:")
+            print(kpi_list)
+            with self.flask_app.app_context():
+                es_id = get_session('active_es_id')
+                emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_list': kpi_list})

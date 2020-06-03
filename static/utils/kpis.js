@@ -13,12 +13,37 @@ class KPIs {
             let es_id = data['es_id'];
             let scope = data['scope'];
             let kpi_list = data['kpi_list'];
+            // Store or replace the kpi info for this energy system
             set_kpi_info(es_id, {scope: scope, kpi_list: kpi_list});
 
-            let kpi_data = kpis.create_kpi_chart_data2(kpi_list);
+            // Retrieve kpi info for all energy systems
+            let all_kpi_data = get_all_kpi_info();
+//            console.log(all_kpi_data);
+//            {926fa9a2-9f04-45a8-adfd-813d29acd6c0: {…}}
+//                926fa9a2-9f04-45a8-adfd-813d29acd6c0:
+//                    kpi_list: Array(3)
+//                        0: {id: "e95eadbd-3d41-41cc-82e1-eddf1072f490", name: "Energy neutrality", value: 23, type: "Int", targets: Array(1)}
+//                        1: {id: "573ee9ee-43fd-4d98-a444-d1c5dcbff595", name: "Number of WindTurbines", value: 7, type: "Int", targets: Array(1)}
+//                        2: {id: "08659497-f1ea-4763-91e9-d8d330449454", name: "Aandeel energiedragers", type: "Distribution", distribution: Array(3)}
+//                        length: 3
+//                    scope: "Untitled Area"
+
+            let kpi_data = kpis.preprocess_all_kpis(all_kpi_data);
 //            console.log(kpi_data);
-            kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
-            kpicharts.addTo(map);
+//            let kpi_data = kpis.create_kpi_chart_data(kpi_list);
+//            console.log(kpi_data);
+//            (3) [{…}, {…}, {…}]
+//                0: {id: "e95eadbd-3d41-41cc-82e1-eddf1072f490", name: "Energy neutrality", type: "Int", value: 23, targets: Array(1)}
+//                1: {id: "573ee9ee-43fd-4d98-a444-d1c5dcbff595", name: "Number of WindTurbines", type: "Int", value: 7, targets: Array(1)}
+//                2: {id: "08659497-f1ea-4763-91e9-d8d330449454", name: "Aandeel energiedragers", type: "Distribution", distribution: Array(3)}
+//                length: 3
+
+            if (kpicharts == null) {
+                kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
+                kpicharts.addTo(map);
+            } else {
+                kpicharts.update_data(kpi_data);
+            }
         });
     }
 
@@ -41,43 +66,6 @@ class KPIs {
     }
 
     create_kpi_chart_data(kpi_list) {
-        var kpi_data = []
-
-        for (let idx in kpi_list) {
-            let kpi = kpi_list[idx];
-            let kpi_donut_value = kpi.value.toString();
-
-            let kpi_donut_max;
-            let kpi_donut_delta_to_max;
-            let kpi_text;
-            if (kpi.targets.length > 0) {
-                kpi_donut_max = kpi.targets[0].value.toString();
-                kpi_donut_delta_to_max = (kpi.targets[0].value - kpi.value).toString();
-                kpi_text = this.formatN(kpi.value) + "/" + this.formatN(kpi.targets[0].value - kpi.value);
-            } else {
-                kpi_donut_max = kpi_donut_value;
-                kpi_donut_delta_to_max = 0;
-                kpi_text = this.formatN(kpi.value);
-            }
-
-            let kpi_data_id = kpi.name.replace(/ /g, "_");  // id must be unique and without spaces
-            kpi_data.push(
-                {
-                    'id': kpi_data_id,
-                    'chart-type': 'donut',
-                    'data-chart-max': kpi_donut_max,
-                    'data-chart-segments': '{ "0":["0","'+kpi_donut_value+'","#55DB2E"], "1":["'+kpi_donut_value+
-                        '","'+kpi_donut_delta_to_max+'","#19A7F5"] }',
-                    'data-chart-text': kpi_text,
-                    'data-chart-caption': kpi.name
-                }
-            );
-        }
-
-        return kpi_data;
-    }
-
-    create_kpi_chart_data2(kpi_list) {
         var kpi_data_list = []
 
         for (let idx in kpi_list) {
@@ -109,6 +97,33 @@ class KPIs {
         }
 
         return kpi_data_list;
+    }
+
+    // This function generates a dictionairy with the KPI names as keys
+    // Values are arrays of kpis in the different energysystems with that name
+    // Assumes for now that KPIs can be distinguished based on their names
+    preprocess_all_kpis(kpi_data) {
+        let kpi_dict = {};
+        for (let es_id in kpi_data) {
+            let kpis_per_es = kpi_data[es_id];
+            let kpi_scope = kpis_per_es['scope'];
+            let kpi_list = kpis_per_es['kpi_list'];
+            for (let i=0; i<kpi_list.length; i++) {
+                let kpi_name = kpi_list[i].name;
+
+                for (let j=0; j<kpi_list[i].sub_kpi.length; j++) {
+                    let kpi_info = kpi_list[i].sub_kpi[j];
+                    kpi_info['es_id'] = es_id;
+                    kpi_info['scope'] = kpi_scope;
+
+                    if (kpi_info['name'] in kpi_dict)
+                        kpi_dict[kpi_info['name']].push(kpi_info)
+                    else
+                        kpi_dict[kpi_info['name']] = [kpi_info];
+                }
+            }
+        }
+        return kpi_dict;
     }
 }
 

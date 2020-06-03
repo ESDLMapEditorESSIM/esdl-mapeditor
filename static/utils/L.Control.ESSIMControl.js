@@ -43,6 +43,8 @@ var ESSIM_load_animation_action = L.Toolbar2.Action.extend({
 L.control.essim_control = function () {
     return new L.Toolbar2.Control({
         position: 'topleft',
-        actions: [ESSIM_table_editor_action, ESSIM_validation_action, ESSIM_simulation_action, ESSIM_kpi_results_action, ESSIM_load_animation_action]
+        actions: [ESSIM_table_editor_action, ESSIM_validation_action, ESSIM_simulation_action,
+//            ESSIM_sensitivity_analysis_action, ESSIM_kpi_results_action,
+            ESSIM_load_animation_action]
     });
 };

@@ -26,7 +26,8 @@ essim_config = {
     "ESSIM_database_server": "geis.hesi.energy",
     "ESSIM_database_port": 8086,
     "start_datetime": "2015-01-01T00:00:00+0100",
-    "end_datetime": "2016-01-01T00:00:00+0100"
+    "end_datetime": "2016-01-01T00:00:00+0100",
+    "kafka_url": "http://kafka:9092"
 }
 
 # for JWT verification, see https://idaccessman.wordpress.com/2018/10/19/keycloak-and-signed-jwts/
@@ -117,7 +118,8 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "ESSIM_database_server": "10.30.2.1",
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
-        "end_datetime": "2016-01-01T00:00:00+0100"
+        "end_datetime": "2016-01-01T00:00:00+0100",
+        "kafka_url": "http://kafka:9092"
     }
 else:
     # Local settings

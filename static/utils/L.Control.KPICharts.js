@@ -1,3 +1,12 @@
+function formatN(n) {
+    // console.log("n: ", n);
+    var nn = n.toExponential(2).split(/e/);
+    // console.log("nn: ", nn)
+    var u = Math.floor(+nn[1] / 3);
+    // console.log("u: ", u)
+    return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
+}
+
 L.Control.KPICharts = L.Control.extend({
     options: {
         closeButton: true,
@@ -7,12 +16,10 @@ L.Control.KPICharts = L.Control.extend({
 
     initialize: function(placeholder, options) {
         L.setOptions(this, options);
-//        console.log(options);
         return this;
     },
 
     onAdd: function(map) {
-        console.log('KPICharts.onAdd()')
         var container = this._container = L.DomUtil.create('div', 'leaflet-kpicharts my-control');
         this._map = map;
 
@@ -28,16 +35,16 @@ L.Control.KPICharts = L.Control.extend({
         var title = L.DomUtil.create('div', 'title', container);
         title.innerHTML = 'KPIs';
 
-//        var chart_box = L.DomUtil.create('div', 'tiny-chartbox', container);
-//        chart_box.setAttribute('style', "margin-right: 10px;");
+        var content = L.DomUtil.create('div', 'content', container);
+        var control_div = L.DomUtil.create('div', '', content);
+        var charts_div = L.DomUtil.create('div', '', content);
+
+        this.charts_div = charts_div;
+        this.draw_KPIs();
 //        for (let i=0; i<this.options.data.length; i++) {
 //            this.createChart(this.options.data[i], chart_box);
 //        }
-        var chart_box = L.DomUtil.create('div', '', container);
-        chart_box.setAttribute('style', "margin-right: 10px;");
-        for (let i=0; i<this.options.data.length; i++) {
-            this.createChart2(this.options.data[i], chart_box);
-        }
+
 
         // Make sure w/e don't drag the map when we interact with the content
         var stop = L.DomEvent.stopPropagation;
@@ -90,14 +97,19 @@ L.Control.KPICharts = L.Control.extend({
         this._container.style.visibility = 'hidden';
     },
     set_data: function(data) {
-        self.data = data;
+        this.options.data = data;
     },
-    createChart: function(kpi_item, chart_box) {
-        var chart = L.DomUtil.create('div', '', chart_box);
-        for (let key in kpi_item) {
-            chart.setAttribute(key, kpi_item[key]);
+    update_data: function(data) {
+        this.set_data(data);
+        this.draw_KPIs();
+    },
+    draw_KPIs: function() {
+        $(this.charts_div).empty();
+
+        for (let kpi_name in this.options.data) {
+            let kpi_info = this.options.data[kpi_name];
+            this.createChart(kpi_info, this.charts_div);
         }
-        makeDonutCharts(chart);
     },
     get_bg_color: function(idx) {
         let colors = [
@@ -110,8 +122,8 @@ L.Control.KPICharts = L.Control.extend({
         ];
         return colors[idx];
     },
-    createChart2: function(kpi_item, chart_box) {
-        console.log(kpi_item);
+    createChart: function(kpi_info, chart_box) {
+        console.log(kpi_info);
         var chart_div = L.DomUtil.create('div', 'chart-container', chart_box);
         let canvas = L.DomUtil.create('canvas', '', chart_div);
         let ctx = canvas.getContext('2d');
@@ -121,16 +133,33 @@ L.Control.KPICharts = L.Control.extend({
         let datasets = [];
         let options = {};
 
-        if (kpi_item.type === 'Distribution') {
-            labels = ['waarde'];
-            for (let i=0; i<kpi_item.distribution.length; i++) {
-                let distr_part = kpi_item.distribution[i]
-                datasets.push({
-                    label: distr_part.label,
-                    backgroundColor: this.get_bg_color(i),
-                    data: [distr_part.percentage]
-                });
+        // TODO: fix more than 1 kpi_info
+        if (kpi_info[0].type === 'Distribution') {
+            let kpi_item = null;
+            let dataset_dict = {};
+            for (let i=0; i<kpi_info.length; i++) {
+                kpi_item = kpi_info[i];
+                labels.push(i.toString());      // must be es name (or something like that)
+
+                for (let i=0; i<kpi_item.distribution.length; i++) {
+                    let distr_part = kpi_item.distribution[i]
+
+                    if (distr_part.label in dataset_dict)
+                        dataset_dict[distr_part.label].data.push(distr_part.value)
+                    else {
+                        dataset_dict[distr_part.label] = {
+                            label: distr_part.label,
+                            backgroundColor: this.get_bg_color(i),
+                            data: [distr_part.value]
+                        };
+                    }
+                }
             }
+
+            for (let lbl in dataset_dict) {
+                datasets.push(dataset_dict[lbl]);
+            }
+
             type = 'bar'
             options = {
                 legend: {
@@ -146,7 +175,14 @@ L.Control.KPICharts = L.Control.extend({
                         stacked: true,
                     }],
                     yAxes: [{
-                        stacked: true
+                        stacked: true,
+                        ticks: {
+                            beginAtZero: true,
+//                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                return formatN(value).toString();
+                            }
+                        }
                     }]
                 },
                 title: {
@@ -155,17 +191,36 @@ L.Control.KPICharts = L.Control.extend({
                 }
             }
         } else {
-            type = 'doughnut'
-            labels = ['Current value', 'Still to go...'];
-            let target = null
-            if (kpi_item.targets.length > 0) {
-                target = kpi_item.targets[0].value;
+            labels = ['Current value'];
+
+            for (let i=0; i<kpi_info.length; i++) {
+                kpi_item = kpi_info[i];
+                let target = null;
+                if ('targets' in kpi_item) {
+                    if (kpi_item.targets.length > 0) {
+                        target = kpi_item.targets[0].value;
+                        type = 'doughnut';
+                    } else {
+                        type = 'bar';
+                    }
+                } else {
+                    type = 'bar';
+                }
+
+                if (type === 'bar') {
+                    data = [kpi_item.value];
+                } else {
+                    data = [kpi_item.value, target-kpi_item.value];
+                    labels.push('Still to go...');
+                }
+
+                datasets.push({
+                    label: labels,
+                    data: data,
+                    backgroundColor: [this.get_bg_color(0), this.get_bg_color(1)]
+                });
             }
-            datasets = [{
-                label: labels,
-                data: [kpi_item.value, target-kpi_item.value],
-                backgroundColor: [this.get_bg_color(0), this.get_bg_color(1)]
-            }];
+
             options = {
                 legend: {
                     display: false,
@@ -173,6 +228,17 @@ L.Control.KPICharts = L.Control.extend({
                 title: {
                     display: true,
                     text: kpi_item.name
+                },
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+//                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                return formatN(value).toString();
+                            }
+                        }
+                    }]
                 }
             }
         }

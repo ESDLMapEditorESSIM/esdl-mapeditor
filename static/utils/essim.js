@@ -201,6 +201,25 @@ function show_simulations_list(div_id) {
     });
 }
 
+function show_essim_kpi_selection(select_id) {
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'essim_kpis',
+        success: function(data){
+            let $select = $('#'+select_id);
+            $select.empty();
+
+            for (let i=0; i<data.length; i++) {
+                let $option = $('<option>').attr('value', data[i].id).text(data[i].name);
+                $select.append($option);
+            }
+        },
+        dataType: "json",
+        error: function(xhr, ajaxOptions, thrownError) {
+            console.log('Error occurred in show_essim_kpi_selection: ' + xhr.status + ' - ' + thrownError);
+        }
+    });
+
+}
 
 function run_ESSIM_simulation_window() {
     sidebar_ctr = sidebar.getContainer();
@@ -221,18 +240,26 @@ function run_ESSIM_simulation_window() {
 
     table = '<table>';
     table += '<tr><td width=180>Start datetime</td><td><input type="text" width="60" id="sim_start_datetime" disabled value="2015-01-01T00:00:00+0100"></td></tr>';
-    table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" disabled value="2016-01-01T00:00:00+0100"></td></tr>';
+    table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" disabled value="2015-02-01T00:00:00+0100"></td></tr>';
     table += '</table>';
     essim_settings += table;
     essim_settings += '</p>';
     essim_settings += '</div>';
     sidebar_ctr.innerHTML += essim_settings;
 
-    sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
-
     sidebar.show();
 
+    essim_kpi_selection = '<div id="essim_kpi_selection_div">';
+    essim_kpi_selection += 'Please select the KPIs that you want to be calculated after the simulation';
+    essim_kpi_selection += '<p><select id="essim_kpi_select" multiple size="10"></select></p>';
+    essim_kpi_selection += '</div>';
+    sidebar_ctr.innerHTML += essim_kpi_selection;
+    show_essim_kpi_selection('essim_kpi_select');
+
+    sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
+
     sidebar_ctr.innerHTML += '<div id="simulation_progress_div"></div>';
+    sidebar_ctr.innerHTML += '<div id="kpi_progress_div"></div>';
     sidebar_ctr.innerHTML += '<div id="favorites_list_div"></div>';
     show_favorites_list('favorites_list_div');
     sidebar_ctr.innerHTML += '<div id="simulations_list_div"></div>';
@@ -244,8 +271,11 @@ function run_ESSIM_simulation() {
     document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation started</h1>';
     document.getElementById('essim_settings').style.display = 'none';
     document.getElementById('run_essim_simulation_button').style.display = 'none';
-    simulation_progress_div = document.getElementById('simulation_progress_div');
+    document.getElementById('essim_kpi_selection_div').style.display = 'none';
+    document.getElementById('favorites_list_div').style.display = 'none';
+    document.getElementById('simulations_list_div').style.display = 'none';
 
+    simulation_progress_div = document.getElementById('simulation_progress_div');
     table = '<div id="simulation_progress"><table>';
     table = table + '<tr><td width=180>Progress</td>';
     table = table + '<td id="progress_percentage">0%</td></tr>';
@@ -270,8 +300,11 @@ function run_ESSIM_simulation() {
         sim_start_datetime = document.getElementById('sim_start_datetime').value;
         sim_end_datetime = document.getElementById('sim_end_datetime').value;
     }
+
+    let selected_kpis = $('#essim_kpi_select').val();
+
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
-        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime});
+        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis});
     attempt = 0;
     setTimeout(poll_simulation_progress, 1000);
 }
@@ -314,6 +347,10 @@ function poll_simulation_progress() {
                 document.getElementById('button_close_simulation_dialog').style.display = "block";
                 document.getElementById('button_cancel_simulation').style.display = "none";
 
+                attempt = 0;
+                let selected_kpis = $('#essim_kpi_select').val();
+                if (selected_kpis.length > 0)
+                    poll_kpi_progress();
             } else {
                 let percentage = Math.round(parseFloat(data["percentage"]) * 100);
                 let progress = document.getElementById('progress_percentage');
@@ -329,6 +366,82 @@ function poll_simulation_progress() {
             if (attempt<5) {
                 attempt = attempt + 1;
                 setTimeout(poll_simulation_progress, 1000);
+            } else {
+                attempt = 0;
+            }
+        }
+    });
+}
+
+function generate_table_with_kpi_calculation_status(status) {
+    let $table = $('<table>').addClass('pure-table pure-table-striped simulations').attr('id', 'kpi_results_table');
+    let $thead = $('<thead>').append($('<tr>').append($('<th>').text('KPI')).append($('<th>')
+        .text('Status')).append($('<th>').text('Progress')));
+    let $tbody = $('<tbody>');
+    $table.append($thead);
+    $table.append($tbody);
+
+    for (let i=0; i<status.length; i++) {
+        let kpi_result_status = status[i];
+        let $tr = $('<tr>').attr('id', kpi_result_status['id']);
+
+        let kpi_name = kpi_result_status['name'];
+        let kpi_descr = kpi_result_status['descr'];
+        let kpi_calc_status = kpi_result_status['calc_status'];
+
+        let $td_name = $('<td>').append(kpi_name).attr('title', kpi_descr);
+        $tr.append($td_name);
+        let $td_status = $('<td>').append(kpi_calc_status);
+        $tr.append($td_status);
+
+        let $td_progress = $('<td>');
+        if (kpi_calc_status === 'Calculating') {
+            let progr_str = kpi_result_status['progress'];
+            let progr_float = Math.round(((100*parseFloat(progr_str))+Number.EPSILON) * 100) / 100;
+            $td_progress.append((progr_float).toString() + '%');
+        }
+        $tr.append($td_progress);
+        $tbody.append($tr);
+    }
+    return $table;
+}
+
+function poll_kpi_progress() {
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'essim_kpi_results',
+        success: function(data){
+            console.log(data);
+            $('#kpi_progress_div').empty();
+            if (data['still_calculating']) {
+                let status = data['results'];
+                let $table = generate_table_with_kpi_calculation_status(status);
+
+                $('#kpi_progress_div').append($table);
+                setTimeout(poll_kpi_progress, 1000);
+            } else {
+                // TODO: Implement KPI results visualization
+                // {'still_calculating': False, 'results': [{'id': 'TotalImbalanceAggregateKPICalculatorID', 'name': 'Total Yearly Imbalance',
+                // 'descr': 'This KPI calculates the total yearly energy imbalance, per energy carrier. A negative imbalance indicates underproduction in an EnergySystem. TODO: How to best describe this KPI.',
+                // 'calc_status': 'Success',
+                // 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
+                // {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
+                // {'carrier': 'Aardgas', 'value': 0.0028286240994930267}],
+                // 'unit': 'J'}]}
+
+                sidebar.hide();
+                socket.emit('kpi_visualization');
+
+//                $('#kpi_progress_div').append('Calculation Done, KPI results processing must be implemented');
+            }
+        },
+        dataType: "json",
+        error: function(xhr, ajaxOptions, thrownError) {
+            console.log(xhr.status);
+            console.log(thrownError);
+
+            if (attempt<5) {
+                attempt = attempt + 1;
+                setTimeout(poll_kpi_progress, 1000);
             } else {
                 attempt = 0;
             }

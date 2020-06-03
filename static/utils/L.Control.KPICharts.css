@@ -1,8 +1,8 @@
 .leaflet-kpicharts {
-    padding: 10px;
+    padding: 0px;
     z-index: 2000;
     width: 350px;
-    height: 500px;
+    height: 600px;
     background: white;
     overflow: scroll;
 
@@ -30,8 +30,13 @@
 
 .leaflet-kpicharts .title {
     width: 100%;
-/*
     background-color: green;
     color: white;
-*/
+    padding-left: 10px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+.leaflet-kpicharts .content {
+    padding: 10px;
 }

@@ -114,42 +114,48 @@ def process_area_KPIs(area):
             kpi = {}
             kpi['id'] = area_kpi.id
             kpi['name'] = area_kpi.name
+
+            sub_kpi = dict()
+            sub_kpi['unit'] = 'N/A'
+            sub_kpi['name'] = area_kpi.name
+
             if isinstance(area_kpi, esdl.DistributionKPI):
-                kpi['type'] = 'Distribution'
+                sub_kpi['type'] = 'Distribution'
 
                 distribution = area_kpi.distribution
                 parts = []
                 if isinstance(distribution, esdl.FromToDistribution):
                     for from_to_perc in distribution.fromToPerc:
-                       parts.append({
-                           'from': from_to_perc.start,
-                           'to': from_to_perc.to,
-                           'percentage': from_to_perc.percentage
-                       })
+                        parts.append({
+                            'from': from_to_perc.start,
+                            'to': from_to_perc.to,
+                            'value': from_to_perc.percentage
+                        })
                 if isinstance(distribution, esdl.StringLabelDistribution):
                     for string_perc in distribution.stringPerc:
                         parts.append({
                             'label': string_perc.label,
-                            'percentage': string_perc.percentage
+                            'value': string_perc.percentage
                         })
-                kpi['distribution'] = parts
+                sub_kpi['distribution'] = parts
             else:
-                kpi['value'] = area_kpi.value
+                sub_kpi['value'] = area_kpi.value
                 # TODO: Support for QuantityAndUnits
 
                 if isinstance(area_kpi, esdl.IntKPI):
-                    kpi['type'] = 'Int'
+                    sub_kpi['type'] = 'Int'
                 if isinstance(area_kpi, esdl.DoubleKPI):
-                    kpi['type'] = 'Double'
+                    sub_kpi['type'] = 'Double'
                 if isinstance(area_kpi, esdl.StringKPI):
-                    kpi['type'] = 'String'
+                    sub_kpi['type'] = 'String'
 
                 targets = []
                 if area_kpi.target:
                     for target in area_kpi.target:
                         targets.append({"year": target.year, "value": target.value})
-                kpi['targets'] = targets
+                sub_kpi['targets'] = targets
 
+            kpi['sub_kpi'] = [sub_kpi]
             kpi_list.append(kpi)
 
     return kpi_list

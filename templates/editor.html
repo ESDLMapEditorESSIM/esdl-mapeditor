@@ -155,7 +155,7 @@
 
         var sidebar;
         var dialog;
-        var kpicharts;
+        var kpicharts = null;
         var ldc_control;            // load duration curve
 
         var profile_array;
@@ -1881,7 +1881,7 @@
                                             <li><a class="dropdown-item" href="#" onclick="send_table_editor_request();"><div class="menu-icon ui-icon ui-icon-calculator">&nbsp;</div>ESDL table editor</a></li>
                                             <li><a class="dropdown-item" href="#" onclick="validate_for_ESSIM();"><div class="menu-icon ui-icon ui-icon-help">&nbsp;</div>Validate</a></li>
                                             <li><a class="dropdown-item" href="#" onclick="run_ESSIM_simulation_window();"><div class="menu-icon ui-icon ui-icon-circle-triangle-e">&nbsp;</div>Simulate</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="calculate_ESSIM_KPIs();"><div class="menu-icon ui-icon ui-icon-lightbulb">&nbsp;</div>ESSIM KPI results</a></li>
+<!--                                            <li><a class="dropdown-item" href="#" onclick="calculate_ESSIM_KPIs();"><div class="menu-icon ui-icon ui-icon-lightbulb">&nbsp;</div>ESSIM KPI results</a></li>-->
                                             <li><a class="dropdown-item" href="#" onclick="animate_ESSIM_load();"><div class="menu-icon ui-icon ui-icon-video">&nbsp;</div>ESSIM animate load</a></li>
                                         </ul>
                                     </li>
