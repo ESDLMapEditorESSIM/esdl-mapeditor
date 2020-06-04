@@ -786,7 +786,9 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
     # emit('clear_ui')
     print("Processing energysystems in esh")
     main_es = esh.get_energy_system()
-    set_session('active_es_id', main_es.id)     # TODO: check if required here?
+
+    # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
+    # set_session('active_es_id', main_es.id)     # TODO: check if required here?
     es_list = esh.get_energy_systems()
     es_info_list = get_session("es_info_list")
 

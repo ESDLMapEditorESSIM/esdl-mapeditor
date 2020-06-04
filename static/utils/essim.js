@@ -419,19 +419,8 @@ function poll_kpi_progress() {
                 $('#kpi_progress_div').append($table);
                 setTimeout(poll_kpi_progress, 1000);
             } else {
-                // TODO: Implement KPI results visualization
-                // {'still_calculating': False, 'results': [{'id': 'TotalImbalanceAggregateKPICalculatorID', 'name': 'Total Yearly Imbalance',
-                // 'descr': 'This KPI calculates the total yearly energy imbalance, per energy carrier. A negative imbalance indicates underproduction in an EnergySystem. TODO: How to best describe this KPI.',
-                // 'calc_status': 'Success',
-                // 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
-                // {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
-                // {'carrier': 'Aardgas', 'value': 0.0028286240994930267}],
-                // 'unit': 'J'}]}
-
                 sidebar.hide();
                 socket.emit('kpi_visualization');
-
-//                $('#kpi_progress_div').append('Calculation Done, KPI results processing must be implemented');
             }
         },
         dataType: "json",

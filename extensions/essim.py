@@ -2,7 +2,8 @@ from flask import Flask, jsonify, session, abort
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.user_settings import SettingType, UserSettings
-from extensions.session_manager import get_handler, get_session, set_session, del_session
+from extensions.session_manager import get_handler, get_session, set_session
+from essim_kpis import ESSIM_KPIs
 import requests
 import urllib
 import json
@@ -26,11 +27,12 @@ def send_alert(message):
 
 
 class ESSIM:
-    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, essim_kpis: ESSIM_KPIs, user_settings: UserSettings):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings = user_settings
         self.executor = executor
+        self.essim_kpis = essim_kpis
 
         self.register()
 
@@ -62,6 +64,14 @@ class ESSIM:
                         esdl_string = result['esdlContents']
                         res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=urllib.parse.unquote(esdl_string))
                         set_session('active_es_id', res_es.id)
+
+                        sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        edt = datetime.strptime(result['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                        # Call init_simulation to enable the loadflow calculations
+                        self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
                         self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
 
                 except Exception as e:
