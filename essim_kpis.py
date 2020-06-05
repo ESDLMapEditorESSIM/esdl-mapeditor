@@ -8,6 +8,7 @@ import settings
 from influxdb import InfluxDBClient
 #import pandas as pd
 # import numpy as np
+from datetime import datetime
 import requests
 import json
 import re
@@ -40,6 +41,7 @@ class ESSIM_KPIs:
                 self.calculate_load_duration_curve(asset_id, asset.name)
 
     def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
+        # TODO: This does not work with multiple concurrent users (es, simulationRun, scenario_id, start_date, and so on)
         self.kpis_results = {}
         self.carrier_list = []
         self.es = es
@@ -340,9 +342,21 @@ class ESSIM_KPIs:
 
     def calculate_load_duration_curve(self, asset_id, asset_name):
         print("--- calculate_load_duration_curve ---")
+
+        active_simulation = get_session('active_simulation')
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+        es = esh.get_energy_system(active_es_id)
+        sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+        edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        sim_id = active_simulation['sim_id']
+
         allocation_energy = None
         try:
-            query = 'SELECT "allocationEnergy" FROM /' + self.es.name + '.*/ WHERE (time >= \'' + self.start_date + '\' AND time < \'' + self.end_date + '\' AND "simulationRun" = \'' + self.simulationRun + '\' AND "assetId" = \''+asset_id+'\')'
+            query = 'SELECT "allocationEnergy" FROM /' + es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\' AND "assetId" = \''+asset_id+'\')'
             print(query)
             allocation_energy = self.database_client.query(query)
         except Exception as e:

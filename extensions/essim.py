@@ -54,6 +54,7 @@ class ESSIM:
                     if r.status_code == 200:
                         result = json.loads(r.text)
                         active_simulation = {
+                            'sim_id': sim_id,
                             'scenarioID': result['scenarioID'],
                             'simulationDescription': result['simulationDescription'],
                             'startDate': result['startDate'],
@@ -111,11 +112,22 @@ class ESSIM:
                                     result = json.loads(r.text)
                                     dashboardURL = result['dashboardURL']
 
+                                    # Update the stored simulation with the dashboard URL
                                     active_simulation = get_session('active_simulation')
                                     active_simulation['dashboardURL'] = dashboardURL
-
                                     set_session('simulationRun', es_simid)
                                     self.update_stored_simulation(user_email, es_simid, dashboardURL)
+
+                                    # Initialize the essim kpi class instance, to be able to show load duration curves
+                                    esh = get_handler()
+                                    active_es_id = get_session('active_es_id')
+                                    current_es = esh.get_energy_system(es_id=active_es_id)
+                                    sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+                                    edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                                    influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                                    influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                                    self.essim_kpis.init_simulation(current_es, es_simid, influxdb_startdate, influxdb_enddate)
+
                                     return (jsonify(
                                         {'percentage': '1', 'url': dashboardURL, 'simulationRun': es_simid})), 200
                                 else:
@@ -405,6 +417,7 @@ class ESSIM:
                     # emit('', {})
 
                     active_simulation = {
+                        'sim_id': sim_id,
                         'scenarioID': active_es_id,
                         'simulationDescription': sim_description,
                         'startDate': sim_start_datetime,
