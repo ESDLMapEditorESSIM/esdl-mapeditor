@@ -1,0 +1,84 @@
+.leaflet-sidebar-b {
+  position: absolute;
+  height: 100%;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 10px;
+  z-index: 2000; }
+  .leaflet-sidebar-b.bottom {
+    bottom: -500px;
+    transition: bottom 0.5s, height 0.5s;
+    padding-right: 0; }
+    .leaflet-sidebar-b.bottom.visible {
+      bottom: 0; }
+  .leaflet-sidebar-b > .leaflet-control {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding: 8px 24px;
+    font-size: 1.1em;
+    background: white;
+    box-shadow: 0 1px 7px rgba(0, 0, 0, 0.65);
+    -webkit-border-radius: 4px;
+    border-radius: 4px; }
+    .leaflet-touch .leaflet-sidebar-b > .leaflet-control {
+      box-shadow: none;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      background-clip: padding-box; }
+  @media (max-height: 767px) {
+    .leaflet-sidebar-b {
+      height: 100%;
+      padding: 0; }
+      .leaflet-sidebar-b.bottom.visible ~ .leaflet-bottom {
+        bottom: 100%; }
+      .leaflet-sidebar-b.bottom {
+        bottom: -100%; }
+        .leaflet-sidebar-b.bottom.visible {
+          bottom: 0; }
+      .leaflet-sidebar-b > .leaflet-control {
+        box-shadow: none;
+        -webkit-border-radius: 0;
+        border-radius: 0; }
+        .leaflet-touch .leaflet-sidebar-b > .leaflet-control {
+          border: 0; } }
+  @media (min-height: 768px) and (max-height: 991px) {
+    .leaflet-sidebar-b {
+      height: 305px; }
+      .leaflet-sidebar-b.bottom.visible ~ .leaflet-bottom {
+        bottom: 305px; } }
+  @media (min-height: 992px) and (max-height: 1199px) {
+    .leaflet-sidebar-b {
+      height: 390px; }
+      .leaflet-sidebar-b.bottom.visible ~ .leaflet-bottom {
+        bottom: 390px; } }
+  @media (min-height: 1200px) {
+    .leaflet-sidebar-b {
+      height: 460px; }
+      .leaflet-sidebar-b.bottom.visible ~ .leaflet-bottom {
+        bottom: 460px; } }
+  .leaflet-sidebar-b .close {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    width: 31px;
+    height: 31px;
+    color: #333;
+    font-size: 25px;
+    line-height: 1em;
+    text-align: center;
+    background: white;
+    -webkit-border-radius: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    z-index: 800; }
+
+.leaflet-bottom {
+  transition: bottom 0.5s; }
+
+.leaflet-right {
+  transition: right 0.5s; }
