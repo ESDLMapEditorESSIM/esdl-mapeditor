@@ -47,6 +47,7 @@ from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
+from extensions.es_statistics import ESStatisticsService
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -238,6 +239,7 @@ ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
 Vesta(app, socketio, user_settings)
+ESStatisticsService(app, socketio)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 

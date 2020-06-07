@@ -43,6 +43,7 @@ class KPIs {
                 kpicharts.addTo(map);
             } else {
                 kpicharts.update_data(kpi_data);
+                kpicharts.addTo(map);
             }
         });
     }
@@ -52,51 +53,6 @@ class KPIs {
             kpis = new KPIs();
             return kpis;
         }
-    }
-
-    // format-number-with-si-prefix.js
-    // https://gist.github.com/cho45/9968462
-    formatN (n) {
-        // console.log("n: ", n);
-        var nn = n.toExponential(2).split(/e/);
-        // console.log("nn: ", nn)
-        var u = Math.floor(+nn[1] / 3);
-        // console.log("u: ", u)
-        return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
-    }
-
-    create_kpi_chart_data(kpi_list) {
-        var kpi_data_list = []
-
-        for (let idx in kpi_list) {
-            let kpi = kpi_list[idx];
-            let kpi_type = kpi.type;
-
-            let kpi_data = {
-                'id': kpi.id,
-                'name': kpi.name,
-                'type': kpi_type
-            }
-
-            if (kpi_type === 'Distribution') {
-//                let distr = [];
-//                for (let i=0; i<kpi.distribution.length; i++) {
-//                    let part = {
-//                        'label':  kpi.distribution[i].label,
-//                        'percentage': kpi.distribution[i].percentage
-//                    };
-//                    distr.push(part);
-//                }
-                kpi_data['distribution'] = kpi.distribution;
-            } else {
-                kpi_data['value'] = kpi.value;
-                kpi_data['targets'] = kpi.targets;
-            }
-
-            kpi_data_list.push(kpi_data);
-        }
-
-        return kpi_data_list;
     }
 
     // This function generates a dictionairy with the KPI names as keys

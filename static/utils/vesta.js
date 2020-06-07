@@ -133,11 +133,21 @@ class Vesta {
                 });
             }
         }
+        if (event.type === 'settings_menu_items') {
+            let menu_items = {
+                'value': 'vesta_plugin_settings',
+                'text': 'VESTA plugin',
+                'settings_func': function() { return $('<p>').text('VESTA plugin')},
+                'sub_menu_items': []
+            };
+
+            return menu_items;
+        }
     }
 }
 
 var vesta_plugin;   // global variable for the Vesta plugin
 
 $(document).ready(function() {
-    extensions.push(function(event) { Vesta.create(event) });
+    extensions.push(function(event) { return Vesta.create(event) });
 });

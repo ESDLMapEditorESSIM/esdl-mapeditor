@@ -58,6 +58,11 @@ function remove_sim_fav(sim_fav, sim_id) {
     });
 }
 
+function show_kpis(sim_id, sim_fav) {
+//    socket.emit('essim_set_simulation_id', sim_id);
+    socket.emit('show_previous_sim_kpis', { sim_id: sim_id, sim_fav: sim_fav });
+}
+
 function favorite_simulation(sim_id) {
     $.ajax({
         url: ESSIM_simulation_URL_prefix + 'simulation/' + sim_id + '/make_favorite',
@@ -117,6 +122,12 @@ function show_favorites_list(div_id) {
                         let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
                             .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
                         $actions.append($view_dashboard_button);
+                    }
+                    if (data[i]['kpi_result_list']) {
+                        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
+                            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
+                            .click( function(e) { show_kpis(simulation_id, 'favorite'); });
+                        $actions.append($view_kpis_button);
                     }
 
                     $tr.append($("<td>").append($actions));
@@ -186,7 +197,12 @@ function show_simulations_list(div_id) {
                             .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
                         $actions.append($view_dashboard_button);
                     }
-
+                    if (data[i]['kpi_result_list']) {
+                        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
+                            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
+                            .click( function(e) { show_kpis(simulation_id, 'simulation'); });
+                        $actions.append($view_kpis_button);
+                    }
                     $tr.append($("<td>").append($actions));
                     $tbody.append($tr);
                 }

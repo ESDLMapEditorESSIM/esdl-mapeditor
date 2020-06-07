@@ -74,6 +74,14 @@ user_settings_config = {
     "database": "esdl_mapeditor_settings"
 }
 
+statistics_settings_config = {
+    "host": "10.30.2.1",
+    # "host": "localhost",
+    "port": "6003",
+    "path": "/api/statistics/calculate"
+}
+
+
 if os.environ.get('GEIS'):
     # Settings for in GEIS cloud behind redbird reverse proxy
     print('Starting application with GEIS settings (hosting at geis.hesi.energy/webeditor)')

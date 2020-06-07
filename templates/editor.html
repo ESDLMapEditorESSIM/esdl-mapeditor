@@ -153,6 +153,7 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim_kpis.js"></script>
 {% endif %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/vesta.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_statistics.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/app_settings.js"></script>
 
     <script type="text/javascript" charset="utf-8">
@@ -794,7 +795,7 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
-            add_handler();
+            // add_handler();
             add_geojson_listener(socket, map);
             add_area_map_handlers(socket, map);
 
@@ -929,7 +930,6 @@
             //  ESDL object functions
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
-                console.log('add_esdl_objects (main)');
                 // Format of list items
                 // 0         1          2       3           4       5          6       7
                 // 'point'   asset      name    id      class_name  [lat,lon]  [ports] capability
@@ -942,7 +942,6 @@
                 // console.log(options);
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
-                console.log(add_to_building);
                 es_id = options['es_id'];
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
 
@@ -1302,7 +1301,6 @@
                 es_id = connections['es_id'];
 
                 add_to_building = connections['add_to_building'];
-                console.log(add_to_building);
 
                 es_bld_id = es_id;
                 if (add_to_building) {
@@ -1877,6 +1875,7 @@
 
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Services</a>
                                 <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="es_statistics.open_window();"><div class="menu-icon">&nbsp</div>Energy system statistics</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information</a></li>
 {% if 'essim' in role %}

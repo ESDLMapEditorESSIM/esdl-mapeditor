@@ -420,9 +420,13 @@ z-index for jstree context menu, sidebar has 2000
 */
 .chart-container {
     position: relative;
-    height: 150px;
+/*    height: 200px; */
     width: 300px;
     margin: 10px;
+}
+
+.kpi_table_title {
+    font-weight: bold;
 }
 
 /*
@@ -452,4 +456,13 @@ z-index for jstree context menu, sidebar has 2000
     border: 1px solid #cccccc;
     overflow-x: hidden;
     overflow-y: auto;
+}
+
+/*
+    Statistics window
+*/
+.statistics_window {
+    margin: 0px;
+    padding: 10px 0px 10px 0px;
+    height: 100%;
 }
