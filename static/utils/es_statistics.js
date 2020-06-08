@@ -112,7 +112,7 @@ class ESStatistics {
 
             for (let asset_cnt_idx in Object.entries(asset_cnt_info)) {
                 let asset = Object.entries(asset_cnt_info)[asset_cnt_idx];
-                $tbody.append($('<tr>').append($('<td>').text(asset[0])).append($('<td>').text(asset[1].toString())));
+                $tbody.append($('<tr>').append($('<td>').text(asset[0])).append($('<td>').css('text-align','right').text(asset[1].toString())));
             }
             $div.append($table);
         } else {
@@ -120,6 +120,15 @@ class ESStatistics {
         }
 
         return $div;
+    }
+
+    formatN(n) {
+        // console.log("n: ", n);
+        var nn = n.toExponential(2).split(/e/);
+        // console.log("nn: ", nn)
+        var u = Math.floor(+nn[1] / 3);
+        // console.log("u: ", u)
+        return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ' '+['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
     }
 
     generate_asset_power_info(info) {
@@ -137,7 +146,8 @@ class ESStatistics {
 
             for (let asset_cnt_idx in Object.entries(asset_power_info)) {
                 let asset = Object.entries(asset_power_info)[asset_cnt_idx];
-                $tbody.append($('<tr>').append($('<td>').text(asset[0])).append($('<td>').text(asset[1].toString())));
+                let power = (this.formatN(asset[1])).toString()+'W';
+                $tbody.append($('<tr>').append($('<td>').text(asset[0])).append($('<td>').css('text-align','right').text(power)));
             }
             $div.append($table);
         } else {

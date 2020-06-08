@@ -22,18 +22,6 @@ BOUNDARY_SERVICE_USER_CONFIG = 'BOUNDARY_SERVICE_USER_CONFIG'
 boundary_service = None
 
 
-# TODO: find out how to do this properly
-def initialize_boundary_service(flask_app: Flask, socket: SocketIO, user_settings: UserSettings):
-    global boundary_service
-    print('Setting boundary_service')
-    boundary_service = BoundaryService(flask_app, socket, user_settings)
-
-
-def get_boundary_service():
-    global boundary_service
-    return boundary_service
-
-
 # ---------------------------------------------------------------------------------------------------------------------
 #  Generic functions
 # ---------------------------------------------------------------------------------------------------------------------
@@ -74,6 +62,17 @@ class BoundaryService:
         self.user_settings = user_settings
         self.plugin_settings = self.get_settings()
         self.register()
+
+        global boundary_service
+        if boundary_service:
+            print("ERROR: Only one BoundaryService object can be instantiated")
+        else:
+            boundary_service = self
+
+    @staticmethod
+    def get_instance():
+        global boundary_service
+        return boundary_service
 
     # Do we want system_settings here, e.g. for the service endpoint configuration?
     def get_settings(self):
