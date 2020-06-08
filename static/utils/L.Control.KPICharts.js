@@ -52,7 +52,11 @@ function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels,
             $tr.append($('<td>').text(i.toString()));
         }
         for (let j=0; j<datasets[i].data.length; j++) {
-            $tr.append($('<td>').text(datasets[i].data[j]));
+            let value = datasets[i].data[j];
+            if (typeof value == 'number') {
+                value = formatN(value);
+            }
+            $tr.append($('<td>').css('text-align', 'right').text(value));
         }
         $tbody.append($tr);
     }
