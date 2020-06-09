@@ -128,7 +128,7 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",
-        "kafka_url": "http://kafka:9092"
+        "kafkaURL": "http://kafka:9092"
     }
 else:
     # Local settings
