@@ -46,6 +46,7 @@ from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
+from extensions.mondaine_cdo import MondaineCDO
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -237,6 +238,7 @@ essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
 Vesta(app, socketio, user_settings)
 
+
 #TODO: check secret key with itsdangerous error and testing and debug here
 
 app.config.update({
@@ -252,6 +254,7 @@ app.config.update({
 })
 
 oidc = OpenIDConnect(app)
+MondaineCDO(app, socketio, oidc, executor)
 
 
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING
@@ -343,6 +346,7 @@ def editor():
         set_session('user-role', role)
         set_session('user-email', user_email)
         set_session('user-mapeditor-role', mapeditor_role)
+        set_session('jwt-token', whole_token)
 
         user_fullname = oidc.user_getfield('name')
         set_session('user-fullname', user_fullname)
@@ -356,6 +360,40 @@ def editor():
         # - uncomment the following line:
         # return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
 
+
+"""
+Checks the OpenID connect session status
+And refreshes if necessary?
+"""
+@app.route('/auth_status')
+@oidc.require_login
+def auth_status():
+    from flask import g
+    print("Global token: {}".format(g.oidc_id_token))
+    status = oidc.authenticate_or_redirect()
+    if status is None:
+        if oidc.user_loggedin:
+            curr_token = get_session('jwt-token')
+            if oidc.get_access_token() is not None:
+                if curr_token == oidc.get_access_token():
+                    return {'valid': True, 'reason': "Unchanged"}
+                else:
+                    print("Setting access token ", oidc.get_access_token())
+                    set_session('jwt-token', oidc.get_access_token())
+                    return {'valid': True, 'reason': "Updated token"}
+            else:
+                #if g.oidc_id_token is not None:
+                    # update oidc with session info
+                    #oidc.credentials_store[g.oidc_id_token['sub']] = g.oidc_id_token
+                    #print("Setting cookie access token ", oidc.get_access_token())
+                    #set_session('jwt-token', oidc.get_access_token())
+                    #return {'valid': True, 'reason': "Updated token"}
+                g.oidc_id_token = None
+                return {'valid': False, 'reason': "Token expired or not available"}
+        else:
+            return {'valid': False, 'reason': "not logged in"}
+    else:
+        return status  # returns a redirect
 
 @app.route('/logout')
 def logout():

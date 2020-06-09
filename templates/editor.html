@@ -103,6 +103,9 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_store.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_compare.js"></script>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/esdl_browser.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/mondaine_cdo.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/check_status.js"></script>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/utils/mondaine_cdo.css" type="text/css"/>
 
 {% if 'table' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_table_editor.js"></script>
@@ -1860,6 +1863,12 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
                                         Load ESDL from ESDL Store</a></li>
 {% endif %}
+                                    <li><a class="dropdown-item" href="#" onclick="mondaineCDO.file_open_dialog();">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Load ESDL from CDO Hub</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="mondaineCDO.file_save_dialog();">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Save ESDL to CDO Hub</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>

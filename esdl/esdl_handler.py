@@ -228,17 +228,23 @@ class EnergySystemHandler:
     def load_file(self, uri_or_filename):
         """Loads a EnergySystem file or URI into a new resourceSet
         :returns EnergySystem the first item in the resourceSet"""
-        if uri_or_filename[:4] == 'http':
-            uri = HttpURI(uri_or_filename)
+        if isinstance(uri_or_filename, str):
+            if uri_or_filename[:4] == 'http':
+                uri = HttpURI(uri_or_filename)
+            else:
+                uri = URI(uri_or_filename)
         else:
-            uri = URI(uri_or_filename)
+            uri = uri_or_filename
         return self.load_uri(uri)
 
     def import_file(self, uri_or_filename):
-        if uri_or_filename[:4] == 'http':
-            uri = HttpURI(uri_or_filename)
+        if isinstance(uri_or_filename, str):
+            if uri_or_filename[:4] == 'http':
+                uri = HttpURI(uri_or_filename)
+            else:
+                uri = URI(uri_or_filename)
         else:
-            uri = URI(uri_or_filename)
+            uri = uri_or_filename
         return self.add_uri(uri)
 
     def load_uri(self, uri):
@@ -247,7 +253,10 @@ class EnergySystemHandler:
         self.resource = self.rset.get_resource(uri)
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
-        self.esid_uri_dict[self.energy_system.id] = uri
+        if isinstance(uri, str):
+            self.esid_uri_dict[self.energy_system.id] = uri
+        else:
+            self.esid_uri_dict[self.energy_system.id] = uri.normalize()
         self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
         return self.energy_system
 
@@ -257,7 +266,11 @@ class EnergySystemHandler:
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
         self.validate(es=tmp_resource.contents[0])
-        self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        if isinstance(uri, str):
+            self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+        else:
+            self.esid_uri_dict[tmp_resource.contents[0].id] = uri.normalize()
+        # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], True)
         return tmp_resource.contents[0]
 
@@ -271,7 +284,8 @@ class EnergySystemHandler:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
             self.validate()
-            self.esid_uri_dict[self.energy_system.id] = uri
+            self.esid_uri_dict[self.energy_system.id] = uri.normalize()
+            # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
             self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
             return self.energy_system
         except Exception as e:
@@ -297,7 +311,7 @@ class EnergySystemHandler:
         tmp_es = tmp_resource.contents[0]
         try:
             self.validate(es=tmp_es)
-            self.esid_uri_dict[tmp_es.id] = uri
+            self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
             return tmp_resource.contents[0]
         except Exception as e:
@@ -313,7 +327,7 @@ class EnergySystemHandler:
         else:
             if es_id in self.esid_uri_dict:
                 my_uri = self.esid_uri_dict[es_id]
-                resource = self.rset.resources[my_uri.normalize()]
+                resource = self.rset.resources[my_uri]
                 resource.save(uri)
             else:
                 # TODO: what to do? original behaviour
@@ -335,7 +349,7 @@ class EnergySystemHandler:
             else:
                 if es_id in self.esid_uri_dict:
                     my_uri = self.esid_uri_dict[es_id]
-                    resource = self.rset.resources[my_uri.normalize()]
+                    resource = self.rset.resources[my_uri]
                     resource.save()
                 else:
                     # TODO: what to do? original behaviour
@@ -349,7 +363,7 @@ class EnergySystemHandler:
             else:
                 if es_id in self.esid_uri_dict:
                     my_uri = self.esid_uri_dict[es_id]
-                    es = self.rset.resources[my_uri.normalize()].contents[0]
+                    es = self.rset.resources[my_uri].contents[0]
                     fileresource.append(es)
                 else:
                     # TODO: what to do? original behaviour
@@ -367,11 +381,8 @@ class EnergySystemHandler:
         """Saves the complete resourceSet, including additional loaded resources encountered during loading of the
         initial resource"""
         for uri, resource in self.rset.resources.items():
-            if not uri[:4] == 'http':
-                print('Saving {}'.format(uri))
-                resource.save()  # raises an Error for HTTP resources
-            else:
-                print("Not saving {}, http-based resource saving is not supported yet".format(uri))
+            print('Saving {}'.format(uri))
+            resource.save()  # raises an Error for HTTP URI, but not for CDOHttpURI
 
     def get_resource(self, es_id=None):
         if es_id is None:
@@ -379,7 +390,7 @@ class EnergySystemHandler:
         else:
             if es_id in self.esid_uri_dict:
                 my_uri = self.esid_uri_dict[es_id]
-                res = self.rset.resources[my_uri.normalize()]
+                res = self.rset.resources[my_uri]
                 return res
             else:
                 return None
@@ -390,7 +401,7 @@ class EnergySystemHandler:
         else:
             if es_id in self.esid_uri_dict:
                 my_uri = self.esid_uri_dict[es_id]
-                es = self.rset.resources[my_uri.normalize()].contents[0]
+                es = self.rset.resources[my_uri].contents[0]
                 return es
             else:
                 return None
@@ -400,7 +411,7 @@ class EnergySystemHandler:
             return
         else:
             my_uri = self.esid_uri_dict[es_id]
-            del self.rset.resources[my_uri.normalize()]
+            del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
 
     def get_energy_systems(self):
@@ -493,7 +504,7 @@ class EnergySystemHandler:
         self.resource = self.rset.create_resource(uri)
         # add the current energy system
         self.resource.append(self.energy_system)
-        self.esid_uri_dict[self.energy_system.id] = uri
+        self.esid_uri_dict[self.energy_system.id] = uri.normalize()
 
         instance = esdl.Instance(id=str(uuid4()), name=inst_title)
         self.energy_system.instance.append(instance)
