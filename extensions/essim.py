@@ -399,10 +399,11 @@ class ESSIM:
 
             if essim_kpis:
                 kpi_module = {
-                    'kafkaURL': ESSIM_config['kafka_url'],
+                    # 'kafkaURL': ESSIM_config['kafka_url'],
                     'modules': []
                 }
-                payload['kafkaURL'] = ESSIM_config['kafka_url']
+                # payload['kafkaURL'] = ESSIM_config['kafka_url']
+                payload['natsURL'] = ESSIM_config['natsURL']
 
                 # TODO: Fix hard-coded TimeResolution = hourly
                 for kpi_id in essim_kpis:
