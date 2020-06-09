@@ -365,7 +365,7 @@ function poll_simulation_progress() {
 
                 attempt = 0;
                 let selected_kpis = $('#essim_kpi_select').val();
-                if (selected_kpis.length > 0)
+                if (selected_kpis && selected_kpis.length > 0)
                     poll_kpi_progress();
             } else {
                 let percentage = Math.round(parseFloat(data["percentage"]) * 100);
