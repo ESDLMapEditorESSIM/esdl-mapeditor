@@ -508,6 +508,102 @@ esdl_config = {
             "start_datetime": "2019-01-01T00:00:00.000000+0100",
             "end_datetime": "2020-01-01T00:00:00.000000+0100",
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/-DS_WX_Zk/wind-de-bilt-2019?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
+            "profile_uiname": "EYE - NH - Diemen-34-2020",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Diemen-34-2020-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Hemweg-9-2020",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Hemweg-9-2020-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Velsen-24-2020",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Velsen-24-2020-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Velsen-25-2020",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Velsen-25-2020-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Diemen-34-2030",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Diemen-34-2030-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Hemweg-9-2030",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Hemweg-9-2030-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Velsen-24-2030",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Velsen-24-2030-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
+        },
+        {
+            "profile_uiname": "EYE - NH - Velsen-25-2030",
+            "required_role": "nzkg",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "eye_nh",
+            "field": "Velsen-25-2030-MW",
+            "profileType": "POWER_IN_MW",
+            "start_datetime": "2015-01-01T00:00:00.000000+0100",
+            "end_datetime": "2016-01-01T00:00:00.000000+0100",
+            "embedUrl": ""
         }
     ],
     "energy_carriers": [
@@ -552,6 +648,13 @@ esdl_config = {
             "physicalQuantity": "ENERGY",
             "multiplier": "TERRA",
             "unit": "JOULE"
+        },
+        {
+            "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1b",
+            "description": "Power in MW",
+            "physicalQuantity": "POWER",
+            "multiplier": "MEGA",
+            "unit": "WATT"
         },
         {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1c",
