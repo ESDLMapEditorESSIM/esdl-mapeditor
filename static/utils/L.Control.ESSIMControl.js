@@ -30,29 +30,29 @@ var ESSIM_sensitivity_analysis_action = L.Toolbar2.Action.extend({
         essim_sensitivity_plugin.show_ESSIM_sensitivity_analysis_window();
     }
 });
-var ESSIM_kpi_results_action = L.Toolbar2.Action.extend({
-    options: {
-        toolbarIcon: {html: '<div class="ui-icon ui-icon-lightbulb">&nbsp;</div>', tooltip: 'ESSIM KPI results'}
-    },
-    addHooks: function () {
-        calculate_ESSIM_KPIs();
-    }
-});
-var ESSIM_load_animation_action = L.Toolbar2.Action.extend({
-    options: {
-        toolbarIcon: {html: '<div class="ui-icon ui-icon-video">&nbsp;</div>', tooltip: 'ESSIM animate load'}
-    },
-    addHooks: function () {
-        animate_ESSIM_load();
-    }
-});
+//var ESSIM_kpi_results_action = L.Toolbar2.Action.extend({
+//    options: {
+//        toolbarIcon: {html: '<div class="ui-icon ui-icon-lightbulb">&nbsp;</div>', tooltip: 'ESSIM KPI results'}
+//    },
+//    addHooks: function () {
+//        calculate_ESSIM_KPIs();
+//    }
+//});
+//var ESSIM_load_animation_action = L.Toolbar2.Action.extend({
+//    options: {
+//        toolbarIcon: {html: '<div class="ui-icon ui-icon-video">&nbsp;</div>', tooltip: 'ESSIM animate load'}
+//    },
+//    addHooks: function () {
+//        animate_ESSIM_load();
+//    }
+//});
 
 
 L.control.essim_control = function () {
     return new L.Toolbar2.Control({
         position: 'topleft',
         actions: [ESSIM_table_editor_action, ESSIM_validation_action, ESSIM_simulation_action,
-            ESSIM_sensitivity_analysis_action, ESSIM_kpi_results_action,
-            ESSIM_load_animation_action]
+            ESSIM_sensitivity_analysis_action]
+            // , ESSIM_kpi_results_action, ESSIM_load_animation_action]
     });
 };

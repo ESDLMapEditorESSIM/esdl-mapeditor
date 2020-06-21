@@ -2322,28 +2322,28 @@ def process_command(message):
         res = validate_ESSIM(es_edit)
         emit('results_validation_for_ESSIM', res)
 
-    if message['cmd'] == 'calculate_ESSIM_KPIs':
+    # if message['cmd'] == 'calculate_ESSIM_KPIs':
         # session['simulationRun'] = '5d10f273783bac5eff4575e8'
-        ESSIM_config = settings.essim_config
-
-        simulation_run = get_session('simulationRun')
-        if simulation_run:
-
-            active_simulation = get_session('active_simulation')
-            if active_simulation:
-                sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-                edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
-            else:
-                send_alert('No active_simulation! This should not happen, please report. However, you can continue')
-                sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-                edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-
-            influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-            influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-            calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-        else:
-            send_alert('No simulation id defined - run an ESSIM simulation first')
+        # ESSIM_config = settings.essim_config
+        #
+        # simulation_run = get_session('simulationRun')
+        # if simulation_run:
+        #
+        #     active_simulation = get_session('active_simulation')
+        #     if active_simulation:
+        #         sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+        #         edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+        #     else:
+        #         send_alert('No active_simulation! This should not happen, please report. However, you can continue')
+        #         sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #         edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #
+        #     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #     influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #
+        #     calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+        # else:
+        #     send_alert('No simulation id defined - run an ESSIM simulation first')
 
     if message['cmd'] == 'add_layer':
         id = message['id']
@@ -2518,6 +2518,7 @@ def query_esdl_services(params):
 @socketio.on('set_active_es_id', namespace='/esdl')
 def set_active_es_id(id):
     set_session('active_es_id', id)
+    print("========================= Setting active es_id!!!  ============================")
 
 
 # ---------------------------------------------------------------------------------------------------------------------
