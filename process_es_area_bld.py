@@ -787,7 +787,7 @@ def get_building_information(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename=None, es_title=None, app_context=None):
+def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None):
     # emit('clear_ui')
     print("Processing energysystems in esh")
     main_es = esh.get_energy_system()
@@ -814,7 +814,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
         if es.id is None:
             es.id = str(uuid.uuid4())
 
-        if es.id not in es_info_list:
+        if es.id not in es_info_list or es.id == force_update_es_id:
             print("- Processing energysystem with id {}".format(es.id))
             name = es.name
             if not name:

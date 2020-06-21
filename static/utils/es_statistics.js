@@ -24,8 +24,11 @@ class ESStatistics {
     generate_content() {
         let $main_div = $('<div>').addClass('statistics_window').attr('id', 'es_statistics_div');
 
+        show_loader();
+
         socket.emit('get_es_statistics', function(result) {
-            console.log(result)
+//            console.log(result)
+            hide_loader();
             $main_div.append(es_statistics.generate_energysystem_info(result));
             $main_div.append(es_statistics.generate_asset_number_info(result));
             $main_div.append(es_statistics.generate_asset_power_info(result));
@@ -62,7 +65,32 @@ class ESStatistics {
         return $div;
     }
 
+    generate_bld_stats(bld_info) {
+        if (Object.keys(bld_info).length !== 0) {
+            let $table = $('<table>').addClass('pure-table pure-table-striped').attr('id', 'es_info_table');
+            let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Type')).append($('<th>')
+               .text('Number')).append($('<th>').text('Floor area')));
+            let $tbody = $('<tbody>');
+            $table.append($thead);
+            $table.append($tbody);
+
+            for (key in bld_info) {
+                let type_info = bld_info[key];
+
+                $tbody.append(
+                    $('<tr>').append($('<td>').text(key)).append($('<td>').text(type_info['number'])).append($('<td>').text(type_info['floor_area']))
+                );
+            }
+
+            return $table;
+        } else {
+            return $('<p>').text('No information');
+        }
+
+    }
+
     generate_area_tables(div, area_info, level) {
+        let $p = $('<p>');
         let $table = $('<table>').addClass('pure-table pure-table-striped').attr('id', 'es_info_table');
         let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Parameter')).append($('<th>')
            .text('Value')));
@@ -76,8 +104,9 @@ class ESStatistics {
         $tbody.append($('<tr>').append($('<td>').text('Area level')).append($('<td>').text(level.toString())));
         let sub_areas = area_info['sub_areas'];
         $tbody.append($('<tr>').append($('<td>').text('Number of sub areas')).append($('<td>').text(sub_areas.length.toString())));
+        $tbody.append($('<tr>').append($('<td>').text('Building statistics')).append($('<td>').append(es_statistics.generate_bld_stats(area_info['bld_info']))));
 
-        div.append($table);
+        div.append($p.append($table));
 
         for (let sub_area_idx in area_info.sub_areas) {
             es_statistics.generate_area_tables(div, area_info.sub_areas[sub_area_idx], level+1);

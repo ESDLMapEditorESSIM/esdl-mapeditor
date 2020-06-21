@@ -47,6 +47,8 @@ from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.es_statistics import ESStatisticsService
+from extensions.shapefile_converter import ShapefileConverter
+from extensions.essim_sensitivity import ESSIMSensitivity
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -237,8 +239,10 @@ esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
+ESSIMSensitivity(app, socketio, user_settings, essim)
 Vesta(app, socketio, user_settings)
 ESStatisticsService(app, socketio)
+ShapefileConverter(app, socketio, executor)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -1611,6 +1615,16 @@ def process_command(message):
             esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
+
+    if message['cmd'] == 'remove_area':
+        area_id = message['id']
+        if area_id:
+            top_area = es_edit.instance[0].area
+            if top_area:
+                if top_area.id == area_id:
+                    send_alert('Can not remove top level area')
+                elif not ESDLEnergySystem.remove_area(top_area, area_id):
+                    send_alert('Area could not be removed')
 
     if message['cmd'] == 'get_asset_ports':
         asset_id = message['id']
