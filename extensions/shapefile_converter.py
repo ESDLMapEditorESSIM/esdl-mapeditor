@@ -1,6 +1,6 @@
 from flask import Flask, session
 from flask_socketio import SocketIO, emit
-from flask_executor import  Executor
+from flask_executor import Executor
 from extensions.session_manager import get_handler, get_session, set_session
 import esdl.esdl as esdl
 import os

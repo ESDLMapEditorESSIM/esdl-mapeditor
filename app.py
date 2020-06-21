@@ -47,7 +47,7 @@ from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.es_statistics import ESStatisticsService
-from extensions.shapefile_converter import ShapefileConverter
+# from extensions.shapefile_converter import ShapefileConverter
 from extensions.essim_sensitivity import ESSIMSensitivity
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
@@ -242,7 +242,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
 ESSIMSensitivity(app, socketio, user_settings, essim)
 Vesta(app, socketio, user_settings)
 ESStatisticsService(app, socketio)
-ShapefileConverter(app, socketio, executor)
+# ShapefileConverter(app, socketio, executor)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
