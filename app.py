@@ -1696,6 +1696,12 @@ def process_command(message):
         port1_id = message['port1id']
         port2_id = message['port2id']
 
+        # TODO: Edwin, remove the use of mapping...
+        #
+        # port1: esdl.Port = esh.get_by_id(active_es_id, port1_id)
+        # asset1 = port1.eContainer()
+        #
+
         asset1_id = mapping[port1_id]['asset_id']
         asset2_id = mapping[port2_id]['asset_id']
         asset1_port_location = mapping[port1_id]['coord']
