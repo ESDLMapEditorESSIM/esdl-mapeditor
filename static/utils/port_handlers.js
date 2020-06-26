@@ -4,61 +4,63 @@ var connecting_line = null;
 
 function set_marker_port_handlers(marker) {
     marker.on('mouseover', function(e) {
-        let layer = e.target;
-        console.log(layer);
+        if (!editing_objects) {
+            let layer = e.target;
+            console.log(layer);
 
-        let ports = layer.ports;
-        let coords = layer._latlng;
+            let ports = layer.ports;
+            let coords = layer._latlng;
 
-        let num_ports = {
-            'OutPort': 0,
-            'InPort': 0
-        };
-        for (let p in ports) num_ports[ports[p].type]++;
-        let cnt_ports = {
-            'OutPort': 0,
-            'InPort': 0
-        };
+            let num_ports = {
+                'OutPort': 0,
+                'InPort': 0
+            };
+            for (let p in ports) num_ports[ports[p].type]++;
+            let cnt_ports = {
+                'OutPort': 0,
+                'InPort': 0
+            };
 
-        let css_joint_addition = '';
-        let marker_type = marker.type;
-        if (marker_type === 'Joint') css_joint_addition = 'Joint';
+            let css_joint_addition = '';
+            let marker_type = marker.type;
+            if (marker_type === 'Joint') css_joint_addition = 'Joint';
 
-        for (let p in ports) {
-            let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
-            cnt_ports[ports[p].type]++;
-            let port_name = ports[p].type + ' - ' + ports[p].name;
+            for (let p in ports) {
+                let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
+                cnt_ports[ports[p].type]++;
+                let port_name = ports[p].type + ' - ' + ports[p].name;
 
-            let divicon = L.divIcon({
-                className: class_name,
+                let divicon = L.divIcon({
+                    className: class_name,
 
-                iconSize:     [14, 14], // size of the icon
-                iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
-                popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
-            });
+                    iconSize:     [14, 14], // size of the icon
+                    iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
+                    popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
+                });
 
-            let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name});
-            port_marker.addTo(map);
+                let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                port_marker.addTo(map);
 
-            ports[p].active = false;
-            ports[p].marker = port_marker;
-            port_marker.parent = marker;
-            port_marker.parent_type = 'marker';
-            port_marker.port_parent = ports[p];
+                ports[p].active = false;
+                ports[p].marker = port_marker;
+                port_marker.parent = marker;
+                port_marker.parent_type = 'marker';
+                port_marker.port_parent = ports[p];
 
-            port_marker.on('mouseover', function(e) {
-                let layer = e.target;
-                layer.port_parent.active = true;
-            });
-            port_marker.on('mouseout', function(e) {
-                let layer = e.target;
-                layer.removeFrom(map);
-            });
-            port_marker.on('click', function(e) {
-                let layer = e.target;
-                if (first_port == null) first_port = port_marker;
-                click_port(layer);
-            });
+                port_marker.on('mouseover', function(e) {
+                    let layer = e.target;
+                    layer.port_parent.active = true;
+                });
+                port_marker.on('mouseout', function(e) {
+                    let layer = e.target;
+                    layer.removeFrom(map);
+                });
+                port_marker.on('click', function(e) {
+                    let layer = e.target;
+                    if (first_port == null) first_port = port_marker;
+                    click_port(layer);
+                });
+            }
         }
     });
 
@@ -133,51 +135,53 @@ function click_port(layer) {
 
 function set_line_port_handlers(line) {
     line.on('mouseover', function(e) {
-        let layer = e.target;
-        console.log(layer);
+        if (!editing_objects) {
+            let layer = e.target;
+            console.log(layer);
 
-        let ports = layer.ports;
-        let coords = layer._latlngs;
-        let coords_len = coords.length;
+            let ports = layer.ports;
+            let coords = layer._latlngs;
+            let coords_len = coords.length;
 
-        console.log(coords);
+            console.log(coords);
 
-        for (let p in ports) {
-            if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
+            for (let p in ports) {
+                if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
-            let class_name = 'Port '+ports[p].type;
-            let port_name = ports[p].type + ' - ' + ports[p].name;
+                let class_name = 'Port '+ports[p].type;
+                let port_name = ports[p].type + ' - ' + ports[p].name;
 
-            let divicon = L.divIcon({
-                className: class_name,
+                let divicon = L.divIcon({
+                    className: class_name,
 
-                iconSize:     [14, 14], // size of the icon
-                iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
-                popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
-            });
+                    iconSize:     [14, 14], // size of the icon
+                    iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
+                    popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
+                });
 
-            let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name});
-            port_marker.addTo(map);
+                let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                port_marker.addTo(map);
 
-            ports[p].active = false;
-            ports[p].marker = port_marker;
-            port_marker.parent = line;
-            port_marker.parent_type = 'line';
-            port_marker.port_parent = ports[p];
+                ports[p].active = false;
+                ports[p].marker = port_marker;
+                port_marker.parent = line;
+                port_marker.parent_type = 'line';
+                port_marker.port_parent = ports[p];
 
-            port_marker.on('mouseover', function(e) {
-                let layer = e.target;
-                layer.port_parent.active = true;
-            });
-            port_marker.on('mouseout', function(e) {
-                let layer = e.target;
-                layer.removeFrom(map);
-            });
-            port_marker.on('click', function(e) {
-                let layer = e.target;
-                if (first_port == null) first_port = port_marker;
-                click_port(layer);
-            });
+                port_marker.on('mouseover', function(e) {
+                    let layer = e.target;
+                    layer.port_parent.active = true;
+                });
+                port_marker.on('mouseout', function(e) {
+                    let layer = e.target;
+                    layer.removeFrom(map);
+                });
+                port_marker.on('click', function(e) {
+                    let layer = e.target;
+                    if (first_port == null) first_port = port_marker;
+                    click_port(layer);
+                });
+            }
         }
     });
 
