@@ -2,11 +2,49 @@ var port_drawing_connection = false;
 var first_port = null;
 var connecting_line = null;
 
+function set_port_size_and_position() {
+    let size = Math.pow(map.getZoom()/8+1,3);
+
+    let port_inner_width = 8;
+    let port_border_width = 3;
+    let port_outer_width = port_inner_width + 2 * port_border_width;
+    let port_rm_x = (size / 2); // - 3 + port_border_width;
+    let port_rt_x = (size / 3); // + port_border_width;
+    let port_rb_x = (size / 3); // + port_border_width;
+    let port_lm_x = -port_rm_x - port_outer_width;
+    let port_lt_x = -port_rt_x - port_outer_width;
+    let port_lb_x = -port_rb_x - port_outer_width;
+    let size_port = port_outer_width;
+
+    /* Ports */
+    $('#mapid .OutPort11').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rm_x+'px', 'margin-top':'-7px'});
+    $('#mapid .OutPort21').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rt_x+'px', 'margin-top':'-22px'});
+    $('#mapid .OutPort22').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rb_x+'px', 'margin-top':'8px'});
+    $('#mapid .OutPort31').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rt_x+'px', 'margin-top':'-22px'});
+    $('#mapid .OutPort32').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rm_x+'px', 'margin-top':'-7px'});
+    $('#mapid .OutPort33').css({'width':size_port, 'height':size_port, 'margin-left':''+port_rb_x+'px', 'margin-top':'8px'});
+    $('#mapid .InPort11').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lm_x+'px', 'margin-top':'-7px'});
+    $('#mapid .InPort21').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lt_x+'px', 'margin-top':'-22px'});
+    $('#mapid .InPort22').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lb_x+'px', 'margin-top':'8px'});
+    $('#mapid .InPort31').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lt_x+'px', 'margin-top':'-22px'});
+    $('#mapid .InPort32').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lm_x+'px', 'margin-top':'-7px'});
+    $('#mapid .InPort33').css({'width':size_port, 'height':size_port, 'margin-left':''+port_lb_x+'px', 'margin-top':'8px'});
+
+    /* Joint ports */
+    if (size/3 < 5) size_joint = 5; else size_joint = size/3;
+    let joint_port_rm_x = size_joint/2 - 1;
+    let joint_port_lm_x = -joint_port_rm_x - port_outer_width;
+    $('#mapid .JointOutPort11').css({'width':size_port, 'height':size_port, 'margin-left':''+joint_port_rm_x+'px', 'margin-top':'-7px'});
+    $('#mapid .JointInPort11').css({'width':size_port, 'height':size_port, 'margin-left':''+joint_port_lm_x+'px', 'margin-top':'-7px'});
+
+    /* Line ports */
+    $('#mapid .LinePort').css({'width':size_port, 'height':size_port, 'margin-left':'-7px', 'margin-top':'-7px'});
+}
+
 function set_marker_port_handlers(marker) {
     marker.on('mouseover', function(e) {
         if (!editing_objects) {
             let layer = e.target;
-            console.log(layer);
 
             let ports = layer.ports;
             let coords = layer._latlng;
@@ -32,10 +70,7 @@ function set_marker_port_handlers(marker) {
 
                 let divicon = L.divIcon({
                     className: class_name,
-
-                    iconSize:     [14, 14], // size of the icon
-                    iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
-                    popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
+                    iconSize: null
                 });
 
                 let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
@@ -61,6 +96,7 @@ function set_marker_port_handlers(marker) {
                     click_port(layer);
                 });
             }
+            set_port_size_and_position();
         }
     });
 
@@ -80,15 +116,15 @@ function set_marker_port_handlers(marker) {
 
 function move_connection(e) {
     let strt_pos;
-    console.log(first_port);
-    console.log(typeof first_port.parent);
+//    console.log(first_port);
+//    console.log(typeof first_port.parent);
     if (first_port.parent_type === 'marker') {
         strt_pos = first_port.parent.getLatLng();
     } else if (first_port.parent_type === 'line') {
         strt_pos = first_port.getLatLng();
     }
 
-    console.log(strt_pos);
+//    console.log(strt_pos);
 
     if (connecting_line == null) {
         connecting_line = L.polyline([strt_pos, e.latlng], {color: '#000000', weight: 2, dashArray: '3,10'});
@@ -137,26 +173,21 @@ function set_line_port_handlers(line) {
     line.on('mouseover', function(e) {
         if (!editing_objects) {
             let layer = e.target;
-            console.log(layer);
 
             let ports = layer.ports;
             let coords = layer._latlngs;
             let coords_len = coords.length;
 
-            console.log(coords);
 
             for (let p in ports) {
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
-                let class_name = 'Port '+ports[p].type;
+                let class_name = 'Port '+ports[p].type+' LinePort';
                 let port_name = ports[p].type + ' - ' + ports[p].name;
 
                 let divicon = L.divIcon({
                     className: class_name,
-
-                    iconSize:     [14, 14], // size of the icon
-                    iconAnchor:   [7, 7], // point of the icon which will correspond to marker's location
-                    popupAnchor:  [0, -2] // point from which the popup should open relative to the iconAnchor
+                    iconSize: null
                 });
 
                 let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
@@ -182,6 +213,7 @@ function set_line_port_handlers(line) {
                     click_port(layer);
                 });
             }
+            set_port_size_and_position();
         }
     });
 

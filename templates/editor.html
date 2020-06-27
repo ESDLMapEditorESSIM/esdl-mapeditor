@@ -812,7 +812,7 @@
             // request the list of assets in the EDR
             get_edr_assets('{{dir_settings.resource_prefix}}edr_assets');
 
-            // -----------------------------------------    -------------------------------------------------------------------
+            // ------------------------------------------------------------------------------------------------------------
             //  Initialization
             // ------------------------------------------------------------------------------------------------------------
             socket.on('connect', function() {
@@ -974,22 +974,15 @@
 
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>'
-
-<!--                        iconSize:     [30, 30], // size of the icon-->
-<!--                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location-->
-<!--                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor-->
+                        html: '<div class="image-div" style="font-size:0px"><img class="circle-img" src="' + imgsrc + '"></img></div>',
+                        iconSize: null
                     });
                     if (list[i][4] == 'Joint') {
                         divicon = L.divIcon({
                             className: 'Joint',
-                            html: '<div style="font-size:0px"><img class="circle-img" src="' + imgsrc + '"></img></div>'
-<!--                            html: '<div style="font-size:0px"><img class="circle-img" width="10" height="10" src="' + imgsrc + '"></img></div>'-->
+                            html: '<div style="font-size:0px"><img class="circle-img-joint" src="' + imgsrc + '"></img></div>',
+                            iconSize: null
                         });
-<!--                            iconSize:     [10, 10], // size of the icon-->
-<!--                            iconAnchor:   [5, 5], // point of the icon which will correspond to marker's location-->
-<!--                            popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor-->
-<!--                        });-->
                     }
 
 					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
@@ -2013,6 +2006,36 @@
             timeInterval: "2015-01-01T00:00:00Z/2016-01-01T00:00:00Z",
             period: "PT1H"
         }
+    });
+
+    map.on('zoomend', function() {
+        let size = Math.pow(map.getZoom()/8+1,3);
+
+        /* Markers */
+        let size_marker = '' + size + 'px';
+        let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
+        let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
+
+        $('#mapid .circle').css({
+            'width': size_marker,
+            'height': size_marker,
+            'line-height': size_marker,
+            'margin-left': margin_marker,
+            'margin-top': margin_marker
+        });
+        $('#mapid .image-div').css({'text-align':'center'});
+        $('#mapid .circle-img').css({'width':size_image, 'height':size_image});
+
+        /* Joints */
+        if (size/3 < 5) size_joint = 5; else size_joint = size/3;
+        let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
+        let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
+
+        $('#mapid .Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+        $('#mapid .circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+
+        /* Ports */
+        set_port_size_and_position();
     });
 
     baseTree = {
