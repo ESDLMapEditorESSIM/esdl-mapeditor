@@ -489,5 +489,7 @@ class ESSIM_sensitivity{
 var essim_sensitivity_plugin;   // global variable for the Vesta plugin
 
 $(document).ready(function() {
-    extensions.push(function(event) { ESSIM_sensitivity.create(event) });
+// Disable plugin for the time being, results are not processed properly
+// Need to differentiate between multiple simulations of the same ES
+//    extensions.push(function(event) { ESSIM_sensitivity.create(event) });
 });
