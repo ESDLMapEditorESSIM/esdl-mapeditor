@@ -64,6 +64,8 @@ html, body
     ESDL Asset styles
 */
 .circle {
+    margin-left: -18px; /* !important; */
+    margin-top: -18px; /* !important; */
     border-radius: 50%;
     width: 30px;
     height: 30px;
@@ -72,6 +74,13 @@ html, body
 }
 .circle-img {
     vertical-align: middle;
+    width: 23px;
+    height: 23px;
+}
+.circle-img-joint {
+    vertical-align: middle;
+    width: 10px;
+    height: 10px;
 }
 .Producer {
     background: #93a800;
@@ -101,6 +110,10 @@ html, body
     background: #bfbfbf;
     border: 3px solid #000000;
 }
+.Joint {
+    margin-left: -5px;
+    margin-top: -5px;
+}
 .Overload_marker {
     border: 5px solid red;
     border-radius: 50%;
@@ -108,7 +121,32 @@ html, body
     height: 40px;
     line-height: 40px;
 }
-
+/*
+    Ports
+*/
+.Port { border: 3px solid black; }
+.InPort { background: blue; }
+.OutPort { background: red; }
+/* Assets are supported with 1, 2 or 3 InPorts or OutPorts */
+/*
+.OutPort11 { margin-left: 16px; margin-top: -7px !important;}
+.OutPort21 { margin-left: 10px; margin-top: -22px !important;}
+.OutPort22 { margin-left: 10px; margin-top: 8px !important;}
+.OutPort31 { margin-left: 10px; margin-top: -22px !important;}
+.OutPort32 { margin-left: 16px; margin-top: -7px !important;}
+.OutPort33 { margin-left: 10px; margin-top: 8px !important;}
+.InPort11 { margin-left: -30px; margin-top: -7px !important;}
+.InPort21 { margin-left: -24px; margin-top: -22px !important;}
+.InPort22 { margin-left: -24px; margin-top: 8px !important;}
+.InPort31 { margin-left: -24px; margin-top: -22px !important;}
+.InPort32 { margin-left: -30px; margin-top: -7px !important;}
+.InPort33 { margin-left: -24px; margin-top: 8px !important;}
+*/
+/* Except for Joints, only one InPort and OutPort is supported */
+/*
+.JointOutPort11 { margin-left: 4px; margin-top: -7px !important;}
+.JointInPort11 { margin-left: -18px; margin-top: -7px !important;}
+*/
 /*
     Asset menu
 */
@@ -415,9 +453,54 @@ z-index for jstree context menu, sidebar has 2000
     padding: 3px;
 }
 
+/*
+    KPI window
+*/
 .chart-container {
     position: relative;
-    height: 150px;
+/*    height: 200px; */
     width: 300px;
     margin: 10px;
+}
+
+.kpi_table_title {
+    font-weight: bold;
+}
+
+/*
+    Settings window
+*/
+.settings_window {
+    margin: 0px;
+    padding: 10px 0px 10px 0px;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+}
+
+.settings_modules_list {
+    width: 250px;
+    margin: 0px 10px 0px 0px;
+    padding: 10px;
+    border: 1px solid #cccccc;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.settings_module_content {
+    flex-grow: 4;
+    margin: 0px 0px 0px 10px;
+    padding: 10px;
+    border: 1px solid #cccccc;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/*
+    Statistics window
+*/
+.statistics_window {
+    margin: 0px;
+    padding: 10px 0px 10px 0px;
+    height: 100%;
 }

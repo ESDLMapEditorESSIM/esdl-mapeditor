@@ -232,3 +232,62 @@ function get_ibis_info(obj) {
     socket.emit('ibis_bedrijventerreinen', {rin_list: rin_list,
         initialize_ES: initialize_ES, add_boundary_to_ESDL: add_boundary_to_ESDL});
 }
+
+function get_boundary_service_settings(div) {
+    socket.emit('get_boundary_service_settings', function(result) {
+        console.log(result);
+        div.append($('<h1>').text('Boundary service plugin settings'));
+
+        $table = $('<table>')
+            .append($('<tbody>')
+                .append($('<tr>')
+                    .append($('<td>').attr('width', 250).text('Boundary service year'))
+                    .append($('<td>')
+                        .append($('<input>')
+                            .attr('type', 'text')
+                            .attr('id', 'boundary_service_year_input')
+                            .attr('value', result['boundaries_year'])
+                            .change(function(e) { change_boundaries_setting_param(this); })
+                        )
+                    )
+                )
+            );
+        div.append($table);
+    });
+}
+
+function change_boundaries_setting_param(obj) {
+    if (obj.id === 'boundary_service_year_input') {
+        let year = parseInt(obj.value);
+        set_boundary_service_setting('boundaries_year', year);
+    }
+}
+
+function set_boundary_service_setting(name, value) {
+    socket.emit('set_boundary_service_setting', {name: name, value: value});
+}
+
+function settings_window_contents() {
+    let $div = $('<div>').attr('id', 'boundary_service_settings_window_div');
+    get_boundary_service_settings($div);
+    return $div;
+}
+
+function boundary_service_extension_create(event) {
+    if (event.type === 'client_connected') {
+    }
+    if (event.type === 'settings_menu_items') {
+        let menu_items = {
+            'value': 'boundary_service_plugin_settings',
+            'text': 'Boundary service plugin',
+            'settings_func': settings_window_contents,
+            'sub_menu_items': []
+        };
+
+        return menu_items;
+    }
+}
+
+$(document).ready(function() {
+    extensions.push(function(event) { return boundary_service_extension_create(event) });
+});

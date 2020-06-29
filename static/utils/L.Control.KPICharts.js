@@ -7,6 +7,63 @@ function formatN(n) {
     return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
 }
 
+function createChart(ctx, type, labels, datasets, options) {
+    return new Chart(ctx, {
+        type: type,
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: options
+    });
+}
+
+function changeChart(canvas, table_div, chart, ctx, type, labels, datasets, options) {
+    chart.destroy();
+    $(table_div).hide();
+    $(canvas).show();
+    return createChart(ctx, type, labels, datasets, options);
+}
+
+function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels, datasets) {
+    chart.destroy();
+    $(table_div).empty().show();
+    $(canvas).hide();
+
+    console.log(labels);
+    console.log(datasets);
+
+    $(table_div).append($('<p>').text(kpi_name).addClass('kpi_table_title'));
+    let $table = $('<table>').addClass('pure-table pure-table-striped');
+    let $tr = $('<tr>').append($('<th>').text('Label'));
+    for (let i=0; i<labels.length; i++) {
+        $tr.append($('<th>').text(labels[i]));
+    }
+    let $thead = $('<thead>').append($tr);
+    let $tbody = $('<tbody>');
+    $table.append($thead);
+    $table.append($tbody);
+
+    for (let i=0; i<datasets.length; i++) {
+        let $tr = $('<tr>');
+        if (distr_or_value === 'Distribution') {
+            $tr.append($('<td>').text(datasets[i].label));
+        } else {
+            $tr.append($('<td>').text(i.toString()));
+        }
+        for (let j=0; j<datasets[i].data.length; j++) {
+            let value = datasets[i].data[j];
+            if (typeof value == 'number') {
+                value = formatN(value);
+            }
+            $tr.append($('<td>').css('text-align', 'right').text(value));
+        }
+        $tbody.append($tr);
+    }
+
+    $(table_div).append($table);
+}
+
 L.Control.KPICharts = L.Control.extend({
     options: {
         closeButton: true,
@@ -108,7 +165,7 @@ L.Control.KPICharts = L.Control.extend({
 
         for (let kpi_name in this.options.data) {
             let kpi_info = this.options.data[kpi_name];
-            this.createChart(kpi_info, this.charts_div);
+            this.createKPIvis(kpi_info, this.charts_div);
         }
     },
     get_bg_color: function(idx) {
@@ -122,9 +179,38 @@ L.Control.KPICharts = L.Control.extend({
         ];
         return colors[idx];
     },
-    createChart: function(kpi_info, chart_box) {
+    createKPIvis: function(kpi_info, chart_box) {
+        // This function is being called with a parameter kpi_info that is an array with objects for each loaded
+        // energy system. It allows side-by-side comparison of different energy system scenarios. The format of the
+        // data is shown below
+
         console.log(kpi_info);
+        // Example KPI object (with just one energy system)
+        //    0:
+        //        distribution: Array(3)
+        //            0: {label: "Warmte", value: 3.3085894444545933e-13}
+        //            1: {label: "Electricity", value: 5.774796217681515e-11}
+        //            2: {label: "Aardgas", value: 1.3353686339893772e-10}
+        //        es_id: "2d8533b2-6b7e-4a70-a6e2-a9720e587d7b"
+        //        name: "Total excess production [Percentages]"
+        //        scope: "essim kpis"
+        //        type: "Distribution"
+        //        unit: "Percentages"
+
+        // Other example
+        //  0:
+        //      es_id: "926fa9a2-9f04-45a8-adfd-813d29acd6c0"
+        //      name: "Energy neutrality"
+        //      scope: "Untitled Area"
+        //      targets: Array(1)
+        //          0: {year: 2050, value: 100}
+        //      type: "Int"
+        //      unit: "N/A"
+        //      value: 23
+
         var chart_div = L.DomUtil.create('div', 'chart-container', chart_box);
+        let ctrl_div = L.DomUtil.create('div', '', chart_div);
+        let table_div = L.DomUtil.create('div', '', chart_div);
         let canvas = L.DomUtil.create('canvas', '', chart_div);
         let ctx = canvas.getContext('2d');
 
@@ -133,8 +219,10 @@ L.Control.KPICharts = L.Control.extend({
         let datasets = [];
         let options = {};
 
-        // TODO: fix more than 1 kpi_info
-        if (kpi_info[0].type === 'Distribution') {
+        // TODO: we now assume that the same KPI in different energy systems has the same type
+        let distr_or_value = kpi_info[0].type;
+
+        if (distr_or_value === 'Distribution') {
             let kpi_item = null;
             let dataset_dict = {};
             for (let i=0; i<kpi_info.length; i++) {
@@ -172,10 +260,10 @@ L.Control.KPICharts = L.Control.extend({
                 },
                 scales: {
                     xAxes: [{
-                        stacked: true,
+                        stacked: false,
                     }],
                     yAxes: [{
-                        stacked: true,
+                        stacked: false,
                         ticks: {
                             beginAtZero: true,
 //                            maxTicksLimit: 6,
@@ -211,7 +299,7 @@ L.Control.KPICharts = L.Control.extend({
                     data = [kpi_item.value];
                 } else {
                     data = [kpi_item.value, target-kpi_item.value];
-                    labels.push('Still to go...');
+                    if (labels.length < 2) { labels.push('Still to go...'); }
                 }
 
                 datasets.push({
@@ -243,14 +331,20 @@ L.Control.KPICharts = L.Control.extend({
             }
         }
 
-        let chart = new Chart(ctx, {
-            type: type,
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: options
-        });
+        let chart = createChart(ctx, type, labels, datasets, options)
+
+        $(ctrl_div).append($('<button>').addClass('btn')
+            .append($('<i>').addClass('fas fa-chart-pie').css('color', 'black'))
+            .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'doughnut', labels, datasets, options); }));
+        $(ctrl_div).append($('<button>').addClass('btn')
+            .append($('<i>').addClass('fas fa-chart-bar').css('color', 'black'))
+            .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'bar', labels, datasets, options); }));
+        $(ctrl_div).append($('<button>').addClass('btn')
+            .append($('<i>').addClass('fas fa-chart-line').css('color', 'black'))
+            .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'line', labels, datasets, options); }));
+        $(ctrl_div).append($('<button>').addClass('btn')
+            .append($('<i>').addClass('fas fa-table').css('color', 'black'))
+            .click( function(e) { changeTable(canvas, table_div, distr_or_value, kpi_info[0].name, chart, labels, datasets); }));
     },
 });
 

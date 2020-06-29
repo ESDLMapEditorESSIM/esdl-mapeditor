@@ -43,7 +43,7 @@ class MondaineCDO {
                     'data' : function (node, callback) {
                             //console.log("Getting data ", node)
                             socket.emit('cdo_browse', {'operation': 'get_node', 'id': node.id}, function(data) {
-                                console.log(data)
+                                //console.log(data)
                                 callback.call(this, data.json);
                             });
                     },
@@ -507,10 +507,7 @@ class MondaineCDO {
         console.log("Registering socket io bindings for Mondaine CDO repo")
         var self = this;
         socket.on('cdo_file_open', function(data) {
-            console.log(data);
-
             self.file_open_dialog();
-
         });
         socket.on('cdo_next_chunk', function(data) {
               //{'name': name, 'pos': self.files[name]['pos']}')

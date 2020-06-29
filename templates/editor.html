@@ -27,6 +27,8 @@
 
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar.js"></script>
+    <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar-b.css" type="text/css"/>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.Sidebar-b.js"></script>
 
     <link rel="stylesheet" href=".{{dir_settings.plugin_prefix}}/plugins/L.Control.MousePosition.css" type="text/css"/>
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/plugins/L.Control.MousePosition.js"></script>
@@ -113,6 +115,7 @@
 
 {% if 'essim' in role %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim_sensitivity.js"></script>
 {% endif %}
     <link href=".{{dir_settings.plugin_prefix}}/css/custom.css" rel="stylesheet" type="text/css" />
 
@@ -153,10 +156,17 @@
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/essim_kpis.js"></script>
 {% endif %}
     <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/vesta.js"></script>
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/es_statistics.js"></script>
+<!--    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/shapefile_converter.js"></script>-->
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/port_handlers.js"></script>
+
+    <!-- This should be the last one -->
+    <script type="text/javascript" src=".{{dir_settings.plugin_prefix}}/utils/app_settings.js"></script>
 
     <script type="text/javascript" charset="utf-8">
 
         var sidebar;
+        var sidebar_b;
         var dialog;
         var kpicharts = null;
         var ldc_control;            // load duration curve
@@ -272,7 +282,7 @@
                         marker.options.contextmenuItems.push({
                             icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                             text: 'Connect ' + marker.ports[p].type + ' (' + port_id + '): ' + marker.ports[p].name,
-                            callback: function(e) { connect_asset(e, asset_id, port_id); }
+                            callback: function(e) { connect_asset(asset_id, port_id); }
                         });
                     }
                     marker.options.contextmenuItems.push('-');
@@ -409,6 +419,8 @@
                 }
             });
 
+            set_marker_port_handlers(marker);
+
              // let extensions know they can update this layer.
             // e.g. add a context menu item
             for (let i=0; i<extensions.length; i++) {
@@ -502,7 +514,7 @@
                 line.options.contextmenuItems.push({
                     icon: '{{dir_settings.resource_prefix}}icons/Connect.png',
                     text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) { connect_asset(e, line_id, port_id); }
+                    callback: function (e) { connect_asset(line_id, port_id); }
                 });
             }
 
@@ -571,6 +583,8 @@
                     delete layer.mouseOverArrowHead;
                 }
             });
+
+            set_line_port_handlers(line);
 
             // let extensions know they can update this layer.
             // e.g. add a context menu item
@@ -706,9 +720,8 @@
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
         }
 
-        function connect_asset(e, feature_id, port_id) {
+        function connect_asset(feature_id, port_id) {
             // console.log('connect_asset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
-            // console.log(e);
             if (bld_edit_id) {
                 console.log('Asset in building');
             }
@@ -792,7 +805,7 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "{{dir_settings.socket_prefix}}/socket.io"});
 
-            add_handler();
+            // add_handler();
             add_geojson_listener(socket, map);
             add_area_map_handlers(socket, map);
 
@@ -802,7 +815,7 @@
             // request the list of assets in the EDR
             get_edr_assets('{{dir_settings.resource_prefix}}edr_assets');
 
-            // -----------------------------------------    -------------------------------------------------------------------
+            // ------------------------------------------------------------------------------------------------------------
             //  Initialization
             // ------------------------------------------------------------------------------------------------------------
             socket.on('connect', function() {
@@ -814,8 +827,6 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
-
-                // kpicharts.show();
             });
 
             socket.on('profile_info', function(pa) {
@@ -927,7 +938,6 @@
             //  ESDL object functions
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
-                console.log('add_esdl_objects (main)');
                 // Format of list items
                 // 0         1          2       3           4       5          6       7
                 // 'point'   asset      name    id      class_name  [lat,lon]  [ports] capability
@@ -940,7 +950,6 @@
                 // console.log(options);
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
-                console.log(add_to_building);
                 es_id = options['es_id'];
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
 
@@ -968,16 +977,20 @@
 
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<center><img class="circle-img" width="23" height="23" src="' + imgsrc + '"></img></center>',
-
-                        iconSize:     [30, 30], // size of the icon
-                        iconAnchor:   [15, 15], // point of the icon which will correspond to marker's location
-                        popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
+                        html: '<div class="image-div" style="font-size:0px"><img class="circle-img" src="' + imgsrc + '"></img></div>',
+                        iconSize: null
                     });
+                    if (list[i][4] == 'Joint') {
+                        divicon = L.divIcon({
+                            className: 'Joint',
+                            html: '<div style="font-size:0px"><img class="circle-img-joint" src="' + imgsrc + '"></img></div>',
+                            iconSize: null
+                        });
+                    }
 
-					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
+					var title = list[i][4]+': '+list[i][2];
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title});
+                        var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
 
                         marker.title = title;
                         marker.id = list[i][3];
@@ -1015,7 +1028,7 @@
                         add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
 
                         var polygon_center = calculate_array_polygon_center(coords);
-                        var marker = L.marker(polygon_center, {icon: divicon, title: title});
+                        var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
 
                         marker.title = title;
                         marker.id = list[i][3];
@@ -1099,7 +1112,7 @@
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
+					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
 
@@ -1300,7 +1313,6 @@
                 es_id = connections['es_id'];
 
                 add_to_building = connections['add_to_building'];
-                console.log(add_to_building);
 
                 es_bld_id = es_id;
                 if (add_to_building) {
@@ -1876,11 +1888,13 @@
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors</a></li>
+<!--                                    <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter</a></li>-->
                                 </ul>
                             </li>
 
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Services</a>
                                 <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="es_statistics.open_window();"><div class="menu-icon">&nbsp</div>Energy system statistics</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information</a></li>
 {% if 'essim' in role %}
@@ -1905,6 +1919,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);"><div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>Show/hide animation bar</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);"><div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>Show/hide KPIs</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
+                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon">&nbsp;</div>Settings</a></li>
                                 </ul>
                             </li>
                         </ul>
@@ -1974,6 +1989,7 @@
     <div id="mapid" class="flexbox-item flexbox-item-grow" style="z-index:10"></div>
 
     <div id="sidebar"></div>
+    <div id="sidebar_b"></div>
     <div id="loader"></div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
@@ -1999,6 +2015,36 @@
             timeInterval: "2015-01-01T00:00:00Z/2016-01-01T00:00:00Z",
             period: "PT1H"
         }
+    });
+
+    map.on('zoomend', function() {
+        let size = Math.pow(map.getZoom()/8+1,3);
+
+        /* Markers */
+        let size_marker = '' + size + 'px';
+        let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
+        let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
+
+        $('#mapid .circle').css({
+            'width': size_marker,
+            'height': size_marker,
+            'line-height': size_marker,
+            'margin-left': margin_marker,
+            'margin-top': margin_marker
+        });
+        $('#mapid .image-div').css({'text-align':'center'});
+        $('#mapid .circle-img').css({'width':size_image, 'height':size_image});
+
+        /* Joints */
+        if (size/3 < 5) size_joint = 5; else size_joint = size/3;
+        let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
+        let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
+
+        $('#mapid .Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+        $('#mapid .circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+
+        /* Ports */
+        set_port_size_and_position();
     });
 
     baseTree = {
@@ -2038,8 +2084,8 @@
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
-        "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
-        "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Joint", "MobilityDemand", "PowerPlant",
+        "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
+        "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "PowerPlant",
         "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",
         "UTES", "WindTurbine", "EVChargingStation"];
 
@@ -2055,6 +2101,12 @@
         closeButton: true
     });
     map.addControl(sidebar);
+
+    sidebar_b = L.control.sidebar_b('sidebar_b', {
+        position: 'bottom',
+        closeButton: true
+    });
+    map.addControl(sidebar_b);
 
     let dialog_options = {
         size: [ 1100, 700 ],
