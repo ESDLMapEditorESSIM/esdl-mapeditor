@@ -13,11 +13,13 @@ from io import BytesIO
 from process_es_area_bld import process_energy_system
 from flask_executor import Executor
 import logging
+from settings import cdo_mondaine_config
 
 
-url = "http://localhost:9080/store"
-browse_endpoint = "/browse"
-resource_endpoint = "/resource"
+#url = "http://localhost:9080/"
+url = cdo_mondaine_config['hostname']
+browse_endpoint = "/store/browse"
+resource_endpoint = "/store/resource"
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class MondaineCDO:
         self.files = dict();
 
     def register(self):
-        print('Registering Mondaine CDO extension')
+        print('Registering Mondaine CDO extension at ' + cdo_mondaine_config['hostname'])
 
         @self.socketio.on('cdo_browse', namespace='/esdl')
         def socketio_mondaine_browse(message):
@@ -77,13 +79,13 @@ class MondaineCDO:
                 active_es_id = get_session('active_es_id')
                 #esh.get_energy_system(active_es_id)
                 resource:Resource = esh.get_resource(active_es_id)
-                logger.debug('Mondaine CDO saving resource', resource.uri)
+                logger.debug('Mondaine CDO saving resource {}'.format(resource.uri))
                 if resource.uri.normalize() == uri:
                     # resource already in CDO
-                    logger.debug('Saving resource that is already loaded from CDO', resource.uri.plain)
+                    logger.debug('Saving resource that is already loaded from CDO: {}'.format(resource.uri.plain))
                     resource.save()
                 else:
-                    logger.debug('Saving to a new resource in CDO', resource.uri.plain)
+                    logger.debug('Saving to a new resource in CDO: {}'.format(resource.uri.plain))
                     resource.uri = CDOHttpURI(uri, headers_function=add_authorization_header)
                     resource.save()
                     esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
@@ -103,7 +105,7 @@ class MondaineCDO:
                     self.files[uuid] = message
                     self.files[uuid]['pos'] = 0
                     self.files[uuid]['content'] = []
-                    logger.debug('Uploading to CDO {}, size='.format(name, size))
+                    logger.debug('Uploading to CDO {}, size={}'.format(name, size))
                     emit('cdo_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos']})
 
                 if (message_type == 'next_chunk'):
@@ -126,7 +128,7 @@ class MondaineCDO:
                             response = self.save(self.files[uuid]['path'] + '/' + self.files[uuid]['name'], esdl)
                             logger.debug("Uploading done with status code {}".format(response.status_code))
                             emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
-                                                    'path': self.files[uuid]['path'], 'success': True})
+                                                     'path': self.files[uuid]['path'], 'success': True})
                         except Exception as e:
                             emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
                                                      'path': self.files[uuid]['path'], 'success': False, 'error': str(e)})
@@ -193,8 +195,8 @@ class CDOHttpURI(URI):
         super().__init__(uri)
 
     def create_instream(self):
-        if self.__stream is not None:
-            return self.__stream # in case of a text content to be saved to CDO
+        #if self.__stream:
+        #    return self.__stream  # in case of a text content to be saved to CDO
         #self.__stream = urllib.request.urlopen(self.plain)
         print('Downloading {}'.format(self.plain))
         headers = self.headers_function()
@@ -208,11 +210,9 @@ class CDOHttpURI(URI):
 
     def create_outstream(self, text_content=None):
         """
-
         Parameters
         ----------
         text_content optional, write this text content to the URI, instead of using a resource.
-
         Returns
         -------
         the BytesIO stream
@@ -233,10 +233,11 @@ class CDOHttpURI(URI):
             if response.status_code > 400:
                 logger.error("Error writing to CDO: headers={}, response={}".format(response.headers, response.content))
                 raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
-            print(response)
+            logger.debug('Saved successfully to CDO {} (HTTP status: {}) '.format(self.plain, response.status_code))
             self.writing = False
+            super().close_stream()
+            return response
         super().close_stream()
-        return response
 
     def apply_relative_from_me(self, relative_path):
         return self.plain

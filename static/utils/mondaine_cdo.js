@@ -41,7 +41,7 @@ class MondaineCDO {
                 'core' : {
                     'multiple': false,
                     'data' : function (node, callback) {
-                            console.log("Getting data ", node)
+                            //console.log("Getting data ", node)
                             socket.emit('cdo_browse', {'operation': 'get_node', 'id': node.id}, function(data) {
                                 console.log(data)
                                 callback.call(this, data.json);
@@ -131,7 +131,7 @@ class MondaineCDO {
                         if (response.status == 403) { // PermissionDenied
                             alert(response.json.error);
                         }
-                        data.instance.refresh();
+                        data.instance.refresh_node(data.node.parent);
                     });
                 }
             })
@@ -392,10 +392,16 @@ class MondaineCDO {
         function handleFiles(files) {
           files = [...files];
           files.forEach(function (file) {
-            let uuid = uuidv4();
-            self.files[uuid] = file;
-            initializeProgress(uuid);
-            uploadFile(file, uuid);
+            let extension = file.name.split('.').pop();
+            if (extension=="esdl") {
+                let uuid = uuidv4();
+                self.files[uuid] = file;
+                initializeProgress(uuid);
+                uploadFile(file, uuid);
+            } else {
+                alert("Not an esdl-file: " + file.name);
+            }
+
           });
           //self.files.forEach(uploadFile);
           //files.forEach(previewFile);
@@ -408,10 +414,12 @@ class MondaineCDO {
           reader.onload = function() {
             // reading finished
             self.blob[uuid] = reader.result;
-            socket.emit('cdo_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size, 'content': '', 'filetype': file.type, 'path': $droparea.attr('path') });
+            socket.emit('cdo_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size,
+                                        'content': '', 'filetype': file.type, 'path': $droparea.attr('path') });
           };
           reader.onerror = function() {
             console.log(reader.error);
+            alert("Uploading failed: \n" + reader.error);
           };
           reader.readAsArrayBuffer(file);
 

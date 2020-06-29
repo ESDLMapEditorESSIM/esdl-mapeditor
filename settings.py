@@ -62,6 +62,10 @@ edr_config = {
     "EDR_path": "/store/esdl/",
 }
 
+cdo_mondaine_config = {
+    "hostname": "http://localhost:9080"
+}
+
 user_logging_config = {
     "host": "10.30.2.1",
     "port": "8086",
