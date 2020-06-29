@@ -29,3 +29,38 @@
 #treebrowser .file-js { background-position: -434px -18px }
 #treebrowser .file-css { background-position: -144px -0px }
 #treebrowser .file-fla { background-position: -398px -0px }
+
+
+#drop-area {
+  border: 2px dashed #ccc;
+  border-radius: 20px;
+  width: 480px;
+  margin: 50px auto;
+  padding: 20px;
+}
+
+#drop-area.highlight {
+  border-color: purple;
+  background-color: #F2F2F2;
+}
+#drop-area p {
+  margin-top: 0;
+}
+#drop-area .upload-form {
+  margin-bottom: 10px;
+}
+#drop-area .button {
+  display: inline-block;
+  padding: 10px;
+  background: #ccc;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#drop-area .button:hover {
+  background: #ddd;
+}
+
+#fileElem {
+  display: none;
+}
