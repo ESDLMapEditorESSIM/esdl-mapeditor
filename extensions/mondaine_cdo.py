@@ -15,7 +15,6 @@ from flask_executor import Executor
 import logging
 from settings import cdo_mondaine_config
 
-
 #url = "http://localhost:9080/"
 url = cdo_mondaine_config['hostname']
 browse_endpoint = "/store/browse"
@@ -123,23 +122,27 @@ class MondaineCDO:
                         ba = bytearray(self.files[uuid]['content'])
                         esdl = ba.decode(encoding='utf-8')
                         # upload ESDL
-                        logger.debug("Uploading to CDO: ".format(name))
-                        try:
-                            response = self.save(self.files[uuid]['path'] + '/' + self.files[uuid]['name'], esdl)
-                            logger.debug("Uploading done with status code {}".format(response.status_code))
-                            emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
-                                                     'path': self.files[uuid]['path'], 'success': True})
-                        except Exception as e:
-                            emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
-                                                     'path': self.files[uuid]['path'], 'success': False, 'error': str(e)})
+                        self.executor.submit(self.threaded_save, name, uuid, esdl)
 
-
-                        #clean up
-                        del(self.files[uuid])
                     else:
                         #print("Requesting next chunk", str(bytearray(self.files[uuid]['content'])))
                         emit('cdo_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos']})
 
+    # check if putting save in a thread will not loose socketIO connection
+    def threaded_save(self, name, uuid, esdl):
+        logger.debug("Uploading to CDO (threaded): ".format(name))
+        try:
+            response = self.save(self.files[uuid]['path'] + '/' + self.files[uuid]['name'], esdl)
+            if response:
+                logger.debug("Uploading done with status code {}".format(response.status_code))
+            emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
+                                     'path': self.files[uuid]['path'], 'success': True})
+        except Exception as e:
+            emit('cdo_upload_done', {'name': name, 'uuid': uuid, 'pos': self.files[uuid]['pos'],
+                                     'path': self.files[uuid]['path'], 'success': False, 'error': str(e)})
+
+        # clean up
+        del (self.files[uuid])
 
 
     def browse_cdo(self, params):
@@ -171,14 +174,15 @@ class MondaineCDO:
         #active_es_id = get_session('active_es_id')
         # esh.get_energy_system(active_es_id)
         #resource: Resource = esh.get_resource(active_es_id)
-        logger.debug('Mondaine CDO saving resource', location)
+        logger.debug('Mondaine CDO saving resource {}'.format(location))
         try:
             uri = CDOHttpURI(location, headers_function=add_authorization_header)
             uri.create_outstream(text_content=content_as_string)
             response = uri.close_stream()  # send content to CDO
             return response
         except Exception as e:
-            logger.error("Error saving to Mondaine CDO", e)
+            logger.error("Error saving to Mondaine CDO ".format(e))
+            raise e
 
 
 def add_authorization_header():

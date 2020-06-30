@@ -64,7 +64,7 @@ edr_config = {
 }
 
 cdo_mondaine_config = {
-    "hostname": "http://localhost:9080"
+    "hostname": "http://10.30.2.1:9080"
 }
 
 user_logging_config = {

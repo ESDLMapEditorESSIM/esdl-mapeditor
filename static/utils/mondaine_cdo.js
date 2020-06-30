@@ -542,7 +542,9 @@ class MondaineCDO {
 
     static create(event) {
         if (event.type === 'client_connected') {
-            mondaineCDO = new MondaineCDO;
+            if (mondaineCDO === undefined) {
+                mondaineCDO = new MondaineCDO();
+            }
             return mondaineCDO;
         }
     }
