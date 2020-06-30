@@ -74,7 +74,7 @@ user_logging_config = {
 }
 
 user_settings_config = {
-    "host": "localhost",
+    "host": "10.30.2.1",
     "port": "27017",
     "database": "esdl_mapeditor_settings"
 }
