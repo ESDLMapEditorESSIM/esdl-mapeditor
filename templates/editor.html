@@ -564,7 +564,7 @@
                                 {
                                     offset: '1%',
                                     repeat: '49%',
-                                    symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
+                                    symbol: L.Symbol.arrowHead({pixelSize: 12, headAngle: 0, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
                                 }
                             ]
                         }).addTo(map);
@@ -988,7 +988,7 @@
                         });
                     }
 
-					var title = list[i][4]+': '+list[i][2]+ ' (id='+ list[i][3] + ')';
+					var title = list[i][4]+': '+list[i][2];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
 
@@ -1112,7 +1112,7 @@
                         popupAnchor:  [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-					var title = list[i][3]+': '+list[i][1]+ ' (id='+ list[i][2] + ')';
+					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
 

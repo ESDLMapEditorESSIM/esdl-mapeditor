@@ -373,22 +373,24 @@ Checks the OpenID connect session status
 And refreshes if necessary?
 """
 @app.route('/auth_status')
-@oidc.require_login
+#@oidc.require_login
 def auth_status():
     from flask import g
-    print("Global token: {}".format(g.oidc_id_token))
-    status = oidc.authenticate_or_redirect()
+    #print("Global token: {}".format(g.oidc_id_token))
+    status: Response = oidc.authenticate_or_redirect()
     if status is None:
         if oidc.user_loggedin:
             curr_token = get_session('jwt-token')
             if oidc.get_access_token() is not None:
-                if curr_token == oidc.get_access_token():
+                if curr_token is not None and curr_token == oidc.get_access_token():
                     return {'valid': True, 'reason': "Unchanged"}
                 else:
-                    print("Setting access token ", oidc.get_access_token())
+                    print("Refreshed access token for", oidc.user_getfield('email'))
                     set_session('jwt-token', oidc.get_access_token())
-                    return {'valid': True, 'reason': "Updated token"}
+                    return {'valid': True, 'reason': "Refreshed"}
             else:
+                # this is the case when we restarted the app, but the browser still has a valid cookie and
+                # seems still authorized, while the token has not been refreshed or is accessible via oidc.
                 #if g.oidc_id_token is not None:
                     # update oidc with session info
                     #oidc.credentials_store[g.oidc_id_token['sub']] = g.oidc_id_token
@@ -396,11 +398,18 @@ def auth_status():
                     #set_session('jwt-token', oidc.get_access_token())
                     #return {'valid': True, 'reason': "Updated token"}
                 g.oidc_id_token = None
-                return {'valid': False, 'reason': "Token expired or not available"}
+                oidc.logout()
+                status: Response = oidc.redirect_to_auth_server('/editor')
+                uri = status.headers["Location"]
+                return {'valid': False, 'reason': "Token expired or not available", 'redirect_uri': uri}
         else:
-            return {'valid': False, 'reason': "not logged in"}
+            oidc.logout()
+            return {'valid': False, 'reason': "Not logged in"}
     else:
-        return status  # returns a redirect
+        status: Response = oidc.redirect_to_auth_server('/editor') # get redirect for /editor, not /auth_status
+        uri = status.headers["Location"]
+        return {'valid': False, 'reason': "Authentication required", 'redirect_uri': uri}
+        # return status  # returns a redirect, but that is consumed by the browser because of a 302 status
 
 @app.route('/logout')
 def logout():

@@ -6,8 +6,10 @@ class MondaineCDO {
 
      constructor() {
         this.initSocketIO();
-
-
+        this.uploadForm = this.create_drag_drop();
+        this.files = {};
+        this.blob = {};
+        this.chunkSize = 100*1024; // 100kb chunks
      }
 
      getTreeBrowser() {
@@ -17,10 +19,12 @@ class MondaineCDO {
         let $content_esdl = $('<div>').addClass('content esdl').css('display','none');
         let $content_folder = $('<div>').addClass('content folder').css('display','none');
         let $content_default = $('<div>').addClass('content default').css('text-align','center').text('Select a file from the tree.');
+        let $content_loader = $('<div>').addClass('content loader').css('text-align','center').text('Loading...');
 
         $data.append($content_folder);
         $data.append($content_esdl);
         $data.append($content_default);
+        $data.append($content_loader);
         $div.append($jstree);
         $div.append($data);
 
@@ -37,9 +41,9 @@ class MondaineCDO {
                 'core' : {
                     'multiple': false,
                     'data' : function (node, callback) {
-                            console.log("Getting data ", node)
+                            //console.log("Getting data ", node)
                             socket.emit('cdo_browse', {'operation': 'get_node', 'id': node.id}, function(data) {
-                                console.log(data)
+                                //console.log(data)
                                 callback.call(this, data.json);
                             });
                     },
@@ -64,8 +68,8 @@ class MondaineCDO {
                 'contextmenu' : {
                     'items' : function(node) {
                         var tmp = $.jstree.defaults.contextmenu.items();
-                        console.log(tmp);
-                        console.log(node);
+                        //console.log(tmp);
+                        //console.log(node);
                         delete tmp.create.action;
                         tmp.create.label = "New";
                         tmp.create.submenu = {
@@ -79,7 +83,8 @@ class MondaineCDO {
                                         setTimeout(function () { inst.edit(new_node); },0);
                                     });
                                 }
-                            } /*,
+                            }
+                            /*,
                             "create_file" : {
                                 "label"				: "File",
                                 "action"			: function (data) {
@@ -91,6 +96,16 @@ class MondaineCDO {
                                 }
                             }*/
                         };
+                        tmp.refresh = {
+                                "label": "Refresh",
+                                "separator_before": true,
+                                "action": function (data) {
+                                    var inst = $.jstree.reference(data.reference),
+                                        obj = inst.get_node(data.reference);
+                                    //console.log(obj);
+                                    $('#treebrowser').jstree(true).refresh_node(obj.id);
+                                }
+                            };
                         if(this.get_type(node) !== "folder" || !node.original.writable) {
                             // don't add New menu if it is a file that is selected
                             delete tmp.create;
@@ -116,7 +131,7 @@ class MondaineCDO {
                         if (response.status == 403) { // PermissionDenied
                             alert(response.json.error);
                         }
-                        data.instance.refresh();
+                        data.instance.refresh_node(data.node.parent);
                     });
                 }
             })
@@ -177,11 +192,15 @@ class MondaineCDO {
      }
 
      tree_changed_load(data) {
+        $('#data .content').hide();
+        $('#data .loader').show();
+        let self = this;
         // get content from CDO and show in browser, for load dialog
         socket.emit('cdo_browse', {'operation': 'get_content', 'id':  data.selected.join(':')}, function(response) {
+            console.log('cdo_browse response', response);
 			var d = response.json;
+			$('#data .content').hide();
 			if(d && typeof d.type !== 'undefined') {
-                $('#data .content').hide();
                 switch(d.type) {
                     case 'esdl':
                         let $t = $('<table>');
@@ -228,8 +247,23 @@ class MondaineCDO {
                         $('#data .image img').one('load', function () { $(this).css({'marginTop':'-' + $(this).height()/2 + 'px','marginLeft':'-' + $(this).width()/2 + 'px'}); }).attr('src',d.content);
                         $('#data .image').show();
                         break;
+                    case 'folder':
+                        $('#data .folder').empty();
+                        if (d.writable) {
+                            $('#data .folder').append(self.uploadForm);
+                            self.uploadForm.attr('path', d.path);
+                            $('#progress-bar').get(0).value = 0;
+                        }
+
+                        $('#data .folder').show();
+                        break;
                     default:
-                        $('#data .default').html(d.content).show();
+                        console.log(d);
+                        if (d.content) {
+                            $('#data .default').html(d.content).show();
+                        } else {
+                            $('#data .default').text("").show();
+                        }
                         break;
                 }
             }
@@ -238,7 +272,7 @@ class MondaineCDO {
      }
 
      tree_changed_save(data) {
-        console.log(data);
+        //console.log(data);
         let path = data.node.id;
         let filename = '';
         if (data.node.type != 'folder') {
@@ -266,6 +300,161 @@ class MondaineCDO {
          $('#data .esdl').empty();
          $('#data .esdl').append($div);
          $('#data .esdl').show();
+     }
+
+     create_drag_drop() {
+        self=this;
+     /*
+     <div id="drop-area">
+      <form class="my-form">
+        <p>Upload multiple files with the file dialog or by dragging and dropping images onto the dashed region</p>
+        <input type="file" id="fileElem" multiple accept="image/*" onchange="handleFiles(this.files)">
+        <label class="button" for="fileElem">Select some files</label>
+      </form>
+      <progress id="progress-bar" max=100 value=0></progress>
+      <div id="gallery" /></div>
+    </div>
+     */
+        let $droparea = $('<div>').attr('id', 'drop-area');
+        let $form = $('<form>').addClass('upload-form');
+        let $p = $('<p>').text('To upload ESDL files in this folder use drag & drop from your file explorer or click the button below.');
+        let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
+        let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
+        let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
+        $droparea.append($form);
+        $form.append($p);
+        $form.append($input);
+        $form.append($label);
+        $droparea.append($progress);
+
+
+        // ************************ Drag and drop ***************** //
+        // Prevent default drag behaviors
+        // see https://codepen.io/joezimjs/pen/yPWQbd
+        let dropArea = $droparea.get(0);
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+          dropArea.addEventListener(eventName, preventDefaults, false);
+          document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+          dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        };
+
+        function highlight(e) {
+          dropArea.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+          dropArea.classList.remove('active');
+           dropArea.classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+          var dt = e.dataTransfer;
+          var files = dt.files;
+
+          handleFiles(files);
+        }
+
+        self.uploadProgress = [];
+        let progressBar = $progress.get(0);
+
+        function initializeProgress(uuid) {
+          progressBar.value = 0;
+          self.uploadProgress[uuid] = 0;
+        }
+
+        function updateProgress(fileUuid, percent) {
+          self.uploadProgress[fileUuid] = percent;
+          let progress = Object.values(self.uploadProgress)
+          let total = progress.reduce((tot, curr) => tot + curr, 0) / progress.length;
+          console.log(progress);
+          console.log(total)
+          console.debug('update', fileUuid, percent, total);
+          progressBar.value = total;
+        }
+        self.updateProgress = updateProgress;
+
+        function handleFiles(files) {
+          files = [...files];
+          files.forEach(function (file) {
+            let extension = file.name.split('.').pop();
+            if (extension=="esdl") {
+                let uuid = uuidv4();
+                self.files[uuid] = file;
+                initializeProgress(uuid);
+                uploadFile(file, uuid);
+            } else {
+                alert("Not an esdl-file: " + file.name);
+            }
+
+          });
+          //self.files.forEach(uploadFile);
+          //files.forEach(previewFile);
+        }
+
+        function uploadFile(file, uuid) {
+          console.log("Uploading ", file);
+
+          let reader = new FileReader();
+          reader.onload = function() {
+            // reading finished
+            self.blob[uuid] = reader.result;
+            socket.emit('cdo_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size,
+                                        'content': '', 'filetype': file.type, 'path': $droparea.attr('path') });
+          };
+          reader.onerror = function() {
+            console.log(reader.error);
+            alert("Uploading failed: \n" + reader.error);
+          };
+          reader.readAsArrayBuffer(file);
+
+
+          /*
+          var url = '/upload'
+          var xhr = new XMLHttpRequest()
+          var formData = new FormData()
+          xhr.open('POST', url, true)
+          xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
+
+          // Update progress (can be used to show progress indicator)
+          xhr.upload.addEventListener("progress", function(e) {
+            updateProgress(i, (e.loaded * 100.0 / e.total) || 100)
+          })
+
+          xhr.addEventListener('readystatechange', function(e) {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+              updateProgress(i, 100) // <- Add this
+            }
+            else if (xhr.readyState == 4 && xhr.status != 200) {
+              // Error. Inform the user
+              console.log("Error ", xhr);
+            }
+          })
+
+          //formData.append('upload_preset', 'ujpu6gyk')
+          formData.append('file', file)
+          //xhr.send(formData)
+          updateProgress(i, 100);
+          */
+        }
+
+
+        return $droparea;
      }
 
      file_open_dialog() {
@@ -318,24 +507,51 @@ class MondaineCDO {
         console.log("Registering socket io bindings for Mondaine CDO repo")
         var self = this;
         socket.on('cdo_file_open', function(data) {
-            //console.log("ESDL_Brower: browse_to SocketIO call");
-            console.log(data);
-
             self.file_open_dialog();
+        });
+        socket.on('cdo_next_chunk', function(data) {
+              //{'name': name, 'pos': self.files[name]['pos']}')
+              let uuid = data.uuid;
+              let file = self.files[uuid];
+              console.log('Next chunk for', data, file);
+              let blob = self.blob[uuid];
+              let pos = data.pos
+              let length = Math.min(self.chunkSize, file.size - pos);
+              let slice = blob.slice(pos, pos+length);
+              let percentage = pos / file.size * 100;
+              console.log("Sending chunk start", pos, "end", length);
+              socket.emit('cdo_upload', {'message_type': 'next_chunk', 'uuid': uuid, 'name':  file.name, 'size': file.size, 'content': slice, 'pos': pos});
+              self.updateProgress(uuid, percentage);
+
+        });
+        socket.on('cdo_upload_done', function(data) {
+              let uuid = data.uuid;
+              self.files[uuid] = null;
+              self.blob[uuid] = null;
+              self.updateProgress(uuid, 100);
+              if (data.success) {
+                console.log('Refreshing tree');
+                $('#treebrowser').jstree(true).refresh_node(data.path);
+              } else {
+                console.log(data.error);
+                alert("Uploading failed: \n" + data.error);
+              }
 
         });
     }
 
     static create(event) {
         if (event.type === 'client_connected') {
-            mondaineCDO = new MondaineCDO;
+            if (mondaineCDO === undefined) {
+                mondaineCDO = new MondaineCDO();
+            }
             return mondaineCDO;
         }
     }
 
 }
 
-var mondaineCDO; // global esdl_browser variable
+var mondaineCDO; // global mondaineCDO variable
 $(document).ready(function() {
     extensions.push(function(event) { MondaineCDO.create(event) });
 });

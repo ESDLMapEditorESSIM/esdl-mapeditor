@@ -1,6 +1,6 @@
-#treebrowsercontainer { min-width:320px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; }
-#treebrowser { float:left; min-width:319px; border-right:1px solid silver; overflow:auto; padding:0px 0; }
-#data { margin-left:320px; }
+#treebrowsercontainer { min-width:320px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; height:100%}
+#treebrowser { float:left; min-width:319px; border-right:1px solid silver; overflow:auto; padding:0px 0; height:100%; overflow: auto; padding-right: 20px; margin-right: 10px}
+#data { margin-left:320px; margin-top:20px;}
 #data textarea { margin:0; padding:0; height:100%; width:100%; border:0; background:white; display:block; line-height:18px; resize:none; }
 #data, #code { font: normal normal normal 12px/18px 'Consolas', monospace !important; }
 
@@ -29,3 +29,38 @@
 #treebrowser .file-js { background-position: -434px -18px }
 #treebrowser .file-css { background-position: -144px -0px }
 #treebrowser .file-fla { background-position: -398px -0px }
+
+
+#drop-area {
+  border: 2px dashed #ccc;
+  border-radius: 20px;
+  width: 480px;
+  margin: 50px auto;
+  padding: 20px;
+}
+
+#drop-area.highlight {
+  border-color: purple;
+  background-color: #F2F2F2;
+}
+#drop-area p {
+  margin-top: 0;
+}
+#drop-area .upload-form {
+  margin-bottom: 10px;
+}
+#drop-area .button {
+  display: inline-block;
+  padding: 10px;
+  background: #ccc;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#drop-area .button:hover {
+  background: #ddd;
+}
+
+#fileElem {
+  display: none;
+}
