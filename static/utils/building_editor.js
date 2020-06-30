@@ -123,8 +123,8 @@ function open_building_editor(dialog, building_info) {
 }
 
 function add_handler() {
-socket.on('add_esdl_objects', function(data) {
-    console.log('add_esdl_objects (bld)');
-    console.log(data);
-});
+//socket.on('add_esdl_objects', function(data) {
+//    console.log('add_esdl_objects (bld)');
+//    console.log(data);
+//});
 }

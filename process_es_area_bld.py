@@ -8,7 +8,8 @@ from flask_socketio import SocketIO, emit
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
-from extensions.boundary_service import preload_subboundaries_in_cache, preload_area_subboundaries_in_cache, get_subboundaries_from_service, get_boundary_from_service
+# from extensions.boundary_service import preload_subboundaries_in_cache, preload_area_subboundaries_in_cache, get_subboundaries_from_service, get_boundary_from_service
+from extensions.boundary_service import BoundaryService
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, get_session_for_esid, set_session_for_esid
 from esdl_helper import generate_profile_info
 from utils.RDWGSConverter import RDWGSConverter
@@ -297,6 +298,10 @@ def find_area_info_geojson(building_list, area_list, this_area):
     area_geometry = this_area.geometry
     boundary_wgs = None
 
+    user = get_session('user-email')
+    user_settings = BoundaryService.get_instance().get_user_settings(user)
+    boundaries_year = user_settings['boundaries_year']
+
     geojson_KPIs = {}
     area_KPIs = this_area.KPIs
     if area_KPIs:
@@ -349,7 +354,7 @@ def find_area_info_geojson(building_list, area_list, this_area):
         if area_id and area_scope.name != 'UNDEFINED':
             if len(area_id) < 20:
                 # print('Finding boundary from GEIS service')
-                boundary_wgs = get_boundary_from_service(area_scope, str.upper(area_id))
+                boundary_wgs = BoundaryService.get_instance().get_boundary_from_service(boundaries_year, area_scope, str.upper(area_id))
                 if boundary_wgs:
                     # this really prevents messing up the cache
                     # tmp = copy.deepcopy(boundary_rd)
@@ -461,7 +466,7 @@ def create_area_info_geojson(area):
     building_list = []
     area_list = []
     print("- Finding ESDL boundaries...")
-    preload_area_subboundaries_in_cache(area)
+    BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)
     find_area_info_geojson(building_list, area_list, area)
     print("- Done")
     return area_list, building_list
@@ -782,7 +787,7 @@ def get_building_information(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename=None, es_title=None, app_context=None):
+def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None):
     # emit('clear_ui')
     print("Processing energysystems in esh")
     main_es = esh.get_energy_system()
@@ -809,7 +814,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None):
         if es.id is None:
             es.id = str(uuid.uuid4())
 
-        if es.id not in es_info_list:
+        if es.id not in es_info_list or es.id == force_update_es_id:
             print("- Processing energysystem with id {}".format(es.id))
             name = es.name
             if not name:

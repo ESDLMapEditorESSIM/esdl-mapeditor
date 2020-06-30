@@ -375,7 +375,7 @@ class ESSIM_KPIs:
             ldc_series_decimate = []
             for idx, item in enumerate(ldc_series):
                 if idx % 40 == 0:
-                    ldc_series_decimate.append(item)
+                    ldc_series_decimate.append(item / 3600)
 
             # print(ldc_series_decimate)
             emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate})

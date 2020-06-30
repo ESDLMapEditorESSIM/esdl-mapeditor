@@ -116,7 +116,7 @@ class ESSIM:
                                     active_simulation = get_session('active_simulation')
                                     active_simulation['dashboardURL'] = dashboardURL
                                     set_session('simulationRun', es_simid)
-                                    self.update_stored_simulation(user_email, es_simid, dashboardURL)
+                                    self.update_stored_simulation(user_email, es_simid, 'dashboard_url', dashboardURL)
 
                                     # Initialize the essim kpi class instance, to be able to show load duration curves
                                     esh = get_handler()
@@ -302,16 +302,38 @@ class ESSIM:
                 kpi_result_list = get_session('kpi_result_list')
                 self.emit_kpis_for_visualization(kpi_result_list)
 
+        @self.socketio.on('show_previous_sim_kpis', namespace='/esdl')
+        def show_previous_sim_kpis(info):
+            sim_id = info['sim_id']
+            sim_fav = info['sim_fav']
+            with self.flask_app.app_context():
+                # user_email = get_session('user-email')
+                # self.update_stored_simulation(user_email, es_simid, 'kpis', kpi_result_list)
+                if sim_fav == 'simulation' or sim_fav == 'favorite':
+                    if sim_fav == 'simulation': essim_list = ESSIM_SIMULATION_LIST
+                    if sim_fav == 'favorite': essim_list = ESSIM_FAVORITES_LIST
+
+                    sim_fav_list = self.get_sim_fav_list(essim_list)
+                    for sf in sim_fav_list:
+                        if sf['simulation_id'] == sim_id:
+                            kpi_result_list = sf['kpi_result_list']
+                            self.emit_kpis_for_visualization(kpi_result_list)
+
     def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             user_email = get_session('user-email')
-            sim_list = []
-            if user_email is not None:
-                if self.settings.has_user(user_email, essim_list):
-                    sim_list = self.settings.get_user(user_email, essim_list)
-
+            sim_list = self.get_sim_fav_list(essim_list)
             print(sim_list)
             return json.dumps(sim_list)
+
+    def get_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
+        user_email = get_session('user-email')
+        sim_list = []
+        if user_email is not None:
+            if self.settings.has_user(user_email, essim_list):
+                sim_list = self.settings.get_user(user_email, essim_list)
+
+        return sim_list
 
     def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
@@ -326,7 +348,8 @@ class ESSIM:
                     "simulation_datetime": simulation_datetime,
                     "simulation_descr": simulation_descr,
                     "simulation_es_name": simulation_es_name,
-                    "dashboard_url": ""
+                    "dashboard_url": "",
+                    "kpi_result_list": None
                 })
 
                 if sim_list.__len__ == 11:
@@ -334,12 +357,12 @@ class ESSIM:
                 # print(sim_list)
                 self.settings.set_user(user_email, essim_list, sim_list)
 
-    def update_stored_simulation(self, user_email, simulation_id, simulation_db_url, essim_list=ESSIM_SIMULATION_LIST):
+    def update_stored_simulation(self, user_email, simulation_id, param_name, param_value, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None and self.settings.has_user(user_email, essim_list):
                 sim_list = self.settings.get_user(user_email, essim_list)
                 if sim_list[0]["simulation_id"] == simulation_id:
-                    sim_list[0]["dashboard_url"] = simulation_db_url
+                    sim_list[0][param_name] = param_value
                 # print(sim_list)
                 self.settings.set_user(user_email, essim_list, sim_list)
 
@@ -376,10 +399,11 @@ class ESSIM:
 
             if essim_kpis:
                 kpi_module = {
-                    'kafkaURL': ESSIM_config['kafka_url'],
+                    # 'kafkaURL': ESSIM_config['kafka_url'],
                     'modules': []
                 }
-                payload['kafkaURL'] = ESSIM_config['kafka_url']
+                # payload['kafkaURL'] = ESSIM_config['kafka_url']
+                payload['natsURL'] = ESSIM_config['natsURL']
 
                 # TODO: Fix hard-coded TimeResolution = hourly
                 for kpi_id in essim_kpis:
@@ -422,7 +446,8 @@ class ESSIM:
                         'simulationDescription': sim_description,
                         'startDate': sim_start_datetime,
                         'endDate': sim_end_datetime,
-                        'dashboardURL': ''
+                        'dashboardURL': '',
+                        'kpi_result_list': None
                     }
                     set_session('active_simulation', active_simulation)
                 else:
@@ -481,6 +506,10 @@ class ESSIM:
         if not one_still_calculating:
             # self.emit_kpis_for_visualization(kpi_result_list)
             set_session('kpi_result_list', kpi_result_list)
+
+            user_email = get_session('user-email')
+            es_simid = get_session('simulationRun')
+            self.update_stored_simulation(user_email, es_simid, 'kpi_result_list', kpi_result_list)
 
         return result
 

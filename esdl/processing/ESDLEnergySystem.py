@@ -24,6 +24,18 @@ def add_area_to_area(es, new_area, area_id):
         return 0
 
 
+def remove_area(area, area_id):
+    for a in set(area.area):
+        if a.id == area_id:
+            area.area.remove(a)
+            return 1
+        else:
+            result = remove_area(a, area_id)
+            if result:
+                return 1
+    return 0
+
+
 def get_carrier_list(es):
     carrier_list = []
     esi = es.energySystemInformation

@@ -1,3 +1,12 @@
+function formatN(n) {
+    // console.log("n: ", n);
+    var nn = n.toExponential(2).split(/e/);
+    // console.log("nn: ", nn)
+    var u = Math.floor(+nn[1] / 3);
+    // console.log("u: ", u)
+    return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
+}
+
 L.Control.LoadDurationCurve = L.Control.extend({
     options: {
         closeButton: true,
@@ -105,6 +114,15 @@ L.Control.LoadDurationCurve = L.Control.extend({
                 title: {
                     display: true,
                     text: 'Load Duration Curve - ' + asset_name
+                },
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            callback: function(value) {
+                                return formatN(value).toString();
+                            }
+                        }
+                    }]
                 }
             }
         });

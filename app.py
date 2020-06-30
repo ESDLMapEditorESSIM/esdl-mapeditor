@@ -47,6 +47,9 @@ from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.mondaine_cdo import MondaineCDO
+from extensions.es_statistics import ESStatisticsService
+# from extensions.shapefile_converter import ShapefileConverter
+from extensions.essim_sensitivity import ESSIMSensitivity
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -231,12 +234,16 @@ IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
 Boundaries(app, socketio)
-BoundaryService(app, socketio)
+BoundaryService(app, socketio, user_settings)
+# initialize_boundary_service(app, socketio, user_settings)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
+ESSIMSensitivity(app, socketio, user_settings, essim)
 Vesta(app, socketio, user_settings)
+ESStatisticsService(app, socketio)
+# ShapefileConverter(app, socketio, executor)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -1647,6 +1654,16 @@ def process_command(message):
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
+    if message['cmd'] == 'remove_area':
+        area_id = message['id']
+        if area_id:
+            top_area = es_edit.instance[0].area
+            if top_area:
+                if top_area.id == area_id:
+                    send_alert('Can not remove top level area')
+                elif not ESDLEnergySystem.remove_area(top_area, area_id):
+                    send_alert('Area could not be removed')
+
     if message['cmd'] == 'get_asset_ports':
         asset_id = message['id']
         port_list = []
@@ -1716,6 +1733,12 @@ def process_command(message):
     if message['cmd'] == 'connect_ports':
         port1_id = message['port1id']
         port2_id = message['port2id']
+
+        # TODO: Edwin, remove the use of mapping...
+        #
+        # port1: esdl.Port = esh.get_by_id(active_es_id, port1_id)
+        # asset1 = port1.eContainer()
+        #
 
         asset1_id = mapping[port1_id]['asset_id']
         asset2_id = mapping[port2_id]['asset_id']
@@ -2343,28 +2366,28 @@ def process_command(message):
         res = validate_ESSIM(es_edit)
         emit('results_validation_for_ESSIM', res)
 
-    if message['cmd'] == 'calculate_ESSIM_KPIs':
+    # if message['cmd'] == 'calculate_ESSIM_KPIs':
         # session['simulationRun'] = '5d10f273783bac5eff4575e8'
-        ESSIM_config = settings.essim_config
-
-        simulation_run = get_session('simulationRun')
-        if simulation_run:
-
-            active_simulation = get_session('active_simulation')
-            if active_simulation:
-                sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-                edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
-            else:
-                send_alert('No active_simulation! This should not happen, please report. However, you can continue')
-                sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-                edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
-
-            influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-            influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-            calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
-        else:
-            send_alert('No simulation id defined - run an ESSIM simulation first')
+        # ESSIM_config = settings.essim_config
+        #
+        # simulation_run = get_session('simulationRun')
+        # if simulation_run:
+        #
+        #     active_simulation = get_session('active_simulation')
+        #     if active_simulation:
+        #         sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+        #         edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+        #     else:
+        #         send_alert('No active_simulation! This should not happen, please report. However, you can continue')
+        #         sdt = datetime.strptime(ESSIM_config['start_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #         edt = datetime.strptime(ESSIM_config['end_datetime'], '%Y-%m-%dT%H:%M:%S%z')
+        #
+        #     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #     influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        #
+        #     calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
+        # else:
+        #     send_alert('No simulation id defined - run an ESSIM simulation first')
 
     if message['cmd'] == 'add_layer':
         id = message['id']
@@ -2539,6 +2562,7 @@ def query_esdl_services(params):
 @socketio.on('set_active_es_id', namespace='/esdl')
 def set_active_es_id(id):
     set_session('active_es_id', id)
+    print("========================= Setting active es_id!!!  ============================")
 
 
 # ---------------------------------------------------------------------------------------------------------------------

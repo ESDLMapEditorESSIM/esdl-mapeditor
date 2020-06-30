@@ -111,6 +111,11 @@ function add_draw_control(dc, mp) {
 //  Functions related to the list of energysystem information
 // -----------------------------------------------------------------------------------------------------------
 function create_new_esdl_layer(es_id, title) {
+    if (es_id in esdl_list) {
+        console.log('es_id exists, first remove it');
+        remove_esdl_layer_from_ui(es_id);
+    }
+
     esdl_list_item = {
         id: es_id,
         title: title,
@@ -133,14 +138,17 @@ function create_new_esdl_layer(es_id, title) {
     // update_layer_control_tree();
 }
 
-function remove_esdl_layer(es_id) {
+function remove_esdl_layer_from_ui(es_id) {
     esdl_list_item = esdl_list[es_id]
     for (let lyr in esdl_list_item.layers) {
         if (map.hasLayer(esdl_list_item.layers[lyr]))
             map.removeLayer(esdl_list_item.layers[lyr])
     }
     delete esdl_list[es_id];
+}
 
+function remove_esdl_layer(es_id) {
+    remove_esdl_layer_from_ui(es_id);
     socket.emit('command', {cmd: 'remove_energysystem', remove_es_id: es_id});
 }
 
@@ -272,7 +280,10 @@ function get_kpi_info(es_id) {
 function get_all_kpi_info() {
     kpi_info = {};
     for (let es_id in esdl_list) {
-        kpi_info[es_id] = esdl_list[es_id].kpi_info;
+        kpi_es = esdl_list[es_id].kpi_info;
+        if (kpi_es) {
+            kpi_info[es_id] = kpi_es;
+        }
     }
     return kpi_info;
 }
