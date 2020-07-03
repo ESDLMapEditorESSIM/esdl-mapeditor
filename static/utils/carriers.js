@@ -19,6 +19,12 @@
 //    $("#carrier_select").selectmenu("refresh");    // to update the selectmenu based on the selected value
 // }
 
+var carrier_color_list = [];
+
+function set_carrier_color_list(color_list) {
+    carrier_color_list = color_list;
+}
+
 setCarrier = function(e) {
     asset_id = e.relatedTarget.id;
     // console.log(asset_id);
@@ -114,6 +120,15 @@ function change_color(obj, carrier_id) {
 //    console.log(value);
 //    console.log(carrier_id);
     set_carrier_color(active_layer_id, carrier_id, color);
+    socket.emit('mapeditor_system_settings_append_list', {
+        category: 'ui_settings',
+        name: 'carrier_colors',
+        value: {
+            es_id: active_layer_id,
+            carrier_id: carrier_id,
+            color: color
+        }
+    });
     socket.emit('command', {cmd: 'redraw_connections'});
 }
 

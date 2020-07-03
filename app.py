@@ -50,6 +50,7 @@ from extensions.mondaine_cdo import MondaineCDO
 from extensions.es_statistics import ESStatisticsService
 # from extensions.shapefile_converter import ShapefileConverter
 from extensions.essim_sensitivity import ESSIMSensitivity
+from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_SYSTEM_CONFIG
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -243,6 +244,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
 ESSIMSensitivity(app, socketio, user_settings, essim)
 Vesta(app, socketio, user_settings)
 ESStatisticsService(app, socketio)
+me_settings = MapEditorSettings(app, socketio, user_settings)
 # ShapefileConverter(app, socketio, executor)
 
 
@@ -2789,6 +2791,12 @@ def get_qau_information():
     return qau_info
 
 
+def get_carrier_color_list():
+    me_system_config = me_settings.get_system_setting(MAPEDITOR_SYSTEM_CONFIG)
+    ui_settings = me_system_config['ui_settings']
+    return ui_settings['carrier_colors']
+
+
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
     role = get_session('user-role')
@@ -2796,6 +2804,7 @@ def browser_initialize():
     print('Send initial information to client')
     emit('profile_info', esdl_profiles.get_profiles_list(role))
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
+    emit('carrier_color_list', get_carrier_color_list())
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
