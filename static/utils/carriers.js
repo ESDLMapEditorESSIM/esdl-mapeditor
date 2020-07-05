@@ -117,8 +117,6 @@ function select_other_carrier() {
 
 function change_color(obj, carrier_id) {
     color = obj.value;
-//    console.log(value);
-//    console.log(carrier_id);
     set_carrier_color(active_layer_id, carrier_id, color);
     socket.emit('mapeditor_system_settings_set_dict_value', {
         category: 'ui_settings',

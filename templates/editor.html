@@ -802,13 +802,11 @@
         function set_leaflet_sizes() {
             let zoom_level = map.getZoom();
             let size = Math.pow(zoom_level/8+1,3);
-            console.log(''+map.getZoom()+' --> '+size);
 
             /* Markers */
             let marker_border = '1px';
             if (zoom_level > 12 && zoom_level <= 15) marker_border = '2px';
             if (zoom_level > 15) marker_border = '3px';
-            console.log(marker_border);
 
             let size_marker = '' + size + 'px';
             let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */

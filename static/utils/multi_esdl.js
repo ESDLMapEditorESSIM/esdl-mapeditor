@@ -235,7 +235,6 @@ var conn_line_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '
 
 function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
-    console.log('set_carrier_list');
 
     carrier_info_mapping = {};
     carrier_info_mapping[0] = { color: '#808080', name: 'No carrier specified'}
@@ -243,7 +242,6 @@ function set_carrier_list(es_id, carrier_list) {
 
     for (i=0; i<carrier_list.length; i++) {
         let color = conn_line_colors[i]; // default color if no color stored
-        // search for color in settings
 
         if (carrier_color_dict) {
             if (es_id + carrier_list[i]['id'] in carrier_color_dict) {
@@ -251,14 +249,11 @@ function set_carrier_list(es_id, carrier_list) {
                 console.log('found '+color+' in color_dict');
             }
         }
-
         carrier_info_mapping[carrier_list[i].id] = {
             color: color,
             name: carrier_list[i].name
         }
     }
-
-    console.log(carrier_info_mapping);
     esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
 }
 
