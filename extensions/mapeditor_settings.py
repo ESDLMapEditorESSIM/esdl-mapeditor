@@ -6,10 +6,11 @@ from extensions.user_settings import UserSettings
 
 MAPEDITOR_SYSTEM_CONFIG = "MAPEDITOR_SYSTEM_CONFIG"
 MAPEDITOR_USER_CONFIG = "MAPEDITOR_USER_CONFIG"
+MAPEDITOR_UI_SETTINGS = 'ui_settings'
 
 DEFAULT_SYSTEM_SETTING = {
-    'ui_settings': {
-        'carrier_colors': []
+    MAPEDITOR_UI_SETTINGS: {
+        'carrier_colors': {}
     }
 }
 
@@ -42,6 +43,20 @@ class MapEditorSettings:
             cat = sys_set[setting_category]
             name_list = cat[setting_name]
             name_list.append(setting_value)
+            self.set_system_settings(sys_set)
+            print(sys_set)
+
+        @self.socketio.on('mapeditor_system_settings_set_dict_value', namespace='/esdl')
+        def mapeditor_system_settings_set_dict_value(info):
+            setting_category = info['category']
+            setting_name = info['name']
+            setting_key = info['key']
+            setting_value = info['value']
+
+            sys_set = self.get_system_settings()
+            cat = sys_set[setting_category]
+            name_dict = cat[setting_name]
+            name_dict[setting_key] = setting_value
             self.set_system_settings(sys_set)
             print(sys_set)
 

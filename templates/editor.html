@@ -911,8 +911,8 @@
                 build_asset_menu('asset_menu', true, obj_list);
             });
 
-            socket.on('carrier_color_list', function(color_list) {
-                set_carrier_color_list(color_list);
+            socket.on('carrier_color_dict', function(color_dict) {
+                set_carrier_color_dict(color_dict);
             });
 
 

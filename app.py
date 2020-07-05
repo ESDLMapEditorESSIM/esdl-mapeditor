@@ -50,7 +50,7 @@ from extensions.mondaine_cdo import MondaineCDO
 from extensions.es_statistics import ESStatisticsService
 # from extensions.shapefile_converter import ShapefileConverter
 from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_SYSTEM_CONFIG
+from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -2791,11 +2791,12 @@ def get_qau_information():
     return qau_info
 
 
-def get_carrier_color_list():
-    me_system_config = me_settings.get_system_setting(MAPEDITOR_SYSTEM_CONFIG)
-    ui_settings = me_system_config['ui_settings']
-    return ui_settings['carrier_colors']
-
+def get_carrier_color_dict():
+    me_ui_setting = me_settings.get_system_setting(MAPEDITOR_UI_SETTINGS)
+    if me_ui_setting:
+        if 'carrier_colors' in me_ui_setting:
+            return me_ui_setting['carrier_colors']
+    return None
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
@@ -2804,7 +2805,7 @@ def browser_initialize():
     print('Send initial information to client')
     emit('profile_info', esdl_profiles.get_profiles_list(role))
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
-    emit('carrier_color_list', get_carrier_color_list())
+    emit('carrier_color_dict', get_carrier_color_dict())
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())

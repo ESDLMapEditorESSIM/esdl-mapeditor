@@ -237,32 +237,29 @@ function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
     console.log('set_carrier_list');
 
-    socket.emit('mapeditor_system_settings_get', {category:'ui_settings', name:'carrier_colors'}, function(setting) {
-        console.log('mapeditor_system_settings_get - ui_settings - carrier_colors');
-        console.log(es_id);
-        console.log(setting);
+    carrier_info_mapping = {};
+    carrier_info_mapping[0] = { color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[1] = { color: '#FF0000', name: 'Conflicting carriers specified'}
 
-        carrier_info_mapping = {};
-        carrier_info_mapping[0] = { color: '#808080', name: 'No carrier specified'}
-        carrier_info_mapping[1] = { color: '#FF0000', name: 'Conflicting carriers specified'}
+    for (i=0; i<carrier_list.length; i++) {
+        let color = conn_line_colors[i]; // default color if no color stored
+        // search for color in settings
 
-        for (i=0; i<carrier_list.length; i++) {
-            let color = conn_line_colors[i]; // default color if no color stored
-            // search for color in settings
-            for (let set_idx in setting) {
-                es_id_carr_id_color = setting[set_idx];
-                if (es_id_carr_id_color['es_id'] == es_id && es_id_carr_id_color['carrier_id'] == carrier_list[i].id)
-                    color = es_id_carr_id_color['color'];
-            }
-
-            carrier_info_mapping[carrier_list[i].id] = {
-                color: color,
-                name: carrier_list[i].name
+        if (carrier_color_dict) {
+            if (es_id + carrier_list[i]['id'] in carrier_color_dict) {
+                color = carrier_color_dict[es_id + carrier_list[i]['id']]['color'];
+                console.log('found '+color+' in color_dict');
             }
         }
-        console.log(carrier_info_mapping);
-        esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
-    });
+
+        carrier_info_mapping[carrier_list[i].id] = {
+            color: color,
+            name: carrier_list[i].name
+        }
+    }
+
+    console.log(carrier_info_mapping);
+    esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
 }
 
 function get_carrier_list(es_id) {
