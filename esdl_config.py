@@ -488,6 +488,17 @@ esdl_config = {
             "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/bUstcKuZk/robusta_elektra_sasdijk6?panelId=1&from=1546297200000&to=1577836800000&theme=light"
         },
         {
+            "profile_uiname": "GM - Wind 2019",
+            "multiplier": 1,
+            "database": "energy_profiles",
+            "measurement": "windspeed_genemuiden_100mtr",
+            "field": "windspeed",
+            "profileType": "ENERGY_IN_TJ",
+            "start_datetime": "2019-01-01T00:00:00.000000+0100",
+            "end_datetime": "2020-01-01T00:00:00.000000+0100",
+            "embedUrl": "https://panel-service.hesi.energy/grafana/d-solo/v4SBvsMMk/genemuiden-wind-2019?panelId=1&from=1546297200000&to=1577836800000&theme=light"
+        },
+        {
             "profile_uiname": "Zon - de Bilt 2019",
             "multiplier": 1,
             "database": "energy_profiles",
