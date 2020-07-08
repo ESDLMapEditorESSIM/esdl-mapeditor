@@ -34,6 +34,8 @@ class MondaineCDO {
      initTree(saveDialog) {
         // saveDialog: true: do save dialog
         // saveDialog: false -> load dialog
+        this.files = {};
+        this.blob = {};
         var self = this;
         var save = saveDialog;
         $('#treebrowser')
@@ -203,17 +205,29 @@ class MondaineCDO {
 			if(d && typeof d.type !== 'undefined') {
                 switch(d.type) {
                     case 'esdl':
-                        let $t = $('<table>');
+                        let $t = $('<table>').addClass('pure-table pure-table-striped');
+                        let $thead = $('<thead>').append(
+                            $('<tr>').append(
+                                $('<th>').text("Property"),
+                                $('<th>').text('Value')
+                            )
+                        );
+                        $t.append($thead);
+
                         for (let attr in d) {
+                            let value = d[attr];
+                            if (attr==='Last saved') {
+                                value = new Date(d[attr]).toLocaleString();
+                            }
                             let $tr = $('<tr>');
                             $tr.append($('<td>').text(attr));
-                            $tr.append($('<td>').text(d[attr]));
+                            $tr.append($('<td>').text(value));
                             $t.append($tr);
                         }
                         $('#data .esdl').empty();
                         $('#data .esdl').append($t);
                         if (d['path'] !== undefined) {
-                            let $a = $('<input type="button" value="Open">');
+                            let $a = $('<input type="button" value="Open" id="openbutton">');
                             $a.click(function () {
                                     socket.emit('cdo_open', {'path':  d.path});
                                     show_loader();
@@ -252,6 +266,8 @@ class MondaineCDO {
                         if (d.writable) {
                             $('#data .folder').append(self.uploadForm);
                             self.uploadForm.attr('path', d.path);
+                            let folderName = d.path.substring(d.path.lastIndexOf('/')+1);
+                            self.uploadForm.find('#foldername').text("Upload to folder: " + folderName);
                             $('#progress-bar').get(0).value = 0;
                         }
 
@@ -317,12 +333,14 @@ class MondaineCDO {
      */
         let $droparea = $('<div>').attr('id', 'drop-area');
         let $form = $('<form>').addClass('upload-form');
-        let $p = $('<p>').text('To upload ESDL files in this folder use drag & drop from your file explorer or click the button below.');
+        let $p1 = $('<p>').text('To upload ESDL files in this folder use drag & drop from your file explorer or click the button below.');
+        let $p2 = $('<p id="foldername">');
         let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
         let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
         $droparea.append($form);
-        $form.append($p);
+        $form.append($p1);
+        $form.append($p2);
         $form.append($input);
         $form.append($label);
         $droparea.append($progress);

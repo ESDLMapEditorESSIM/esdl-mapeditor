@@ -135,7 +135,7 @@ function show_layers() {
     for (var idx in wms_layer_list['groups']) {
         let group = wms_layer_list['groups'][idx];
         if (!group.readonly) {
-            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</value>';
+            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</option>';
         }
     }
     table += '</select></td></tr>';

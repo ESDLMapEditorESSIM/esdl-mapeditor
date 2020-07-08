@@ -10,10 +10,18 @@ UserSettings database based on MongoDB
 Settings object:
 {
     type: [user, project or system]: SettingType enum
-    identifier: <unique user name / project/name>
+    name: <unique user name / project/name>
     setting1: <value>
 }
 
+
+Example for WMS layers":
+
+{
+    type: [user, project or system]: SettingType enum
+    name: <unique user name / project name / 'mapeditor'>
+    layers: { <dict with layers}}
+}
 """
 
 

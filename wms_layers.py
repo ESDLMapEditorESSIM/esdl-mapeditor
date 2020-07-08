@@ -244,7 +244,7 @@ default_wms_layers = {
         "description": "Potentieel Restwarmte uit DataCentra voor LT warmtenetten",
         "url": "https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?",
         "layer_name": "DataCentraWarmte",
-        "setting_type": "std",
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
