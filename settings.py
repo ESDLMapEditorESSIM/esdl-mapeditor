@@ -17,20 +17,6 @@ MONDAINE_HUB_PORT = '3002'
 BOUNDARY_SERVICE_PORT = '4002'
 USER_LOGGING_ENABLED = True
 
-essim_config = {
-    "ESSIM_host": "http://geis.hesi.energy:8112",
-    "ESSIM_path": "/essim/simulation",
-    "influxURL": "http://geis.hesi.energy:8086",
-    "grafanaURL": "https://essim-dashboard.hesi.energy",
-    "user": "essim",
-    "ESSIM_database_server": "geis.hesi.energy",
-    "ESSIM_database_port": 8086,
-    "start_datetime": "2015-01-01T00:00:00+0100",
-    "end_datetime": "2016-01-01T00:00:00+0100",
-    # "kafka_url": "http://kafka:9092"
-    "natsURL": "nats://nats:4222"
-}
-
 # for JWT verification, see https://idaccessman.wordpress.com/2018/10/19/keycloak-and-signed-jwts/
 IDM_PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlPYHgu7ovAOEzL3uBoN7KJWSn9UvqNqYbEkfMTbJrJRs8E1WULtxGzCDRVLJWBdLdq05/+8BXEISiggrWOukjsd+uqLTqQMI0he2bZMBRHSD2ISIXhGp5kpUCsbb0xd2bvp/LqSAuWKZmVLRWGRba6Hi+wFjLYc48tdTJUbbShZTojIsDY/ivH+5xJ6N/z7Iwq0HqPVGMiOywPGi9xqT9g5lUxhBuXJ7crmGncpxA4LH1foSBtIXqVTjESPc+G/4Si61xtmHckf3KkaFYgM89TxDtCyiwoKSu5RVbS38+jXP6Wx25F655244V+FSNty11ApSf2VaY9t5tCfv3RQvAwIDAQAB\n-----END PUBLIC KEY-----'
 #IDM_PUBLIC_KEY = b'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlPYHgu7ovAOEzL3uBoN7KJWSn9UvqNqYbEkfMTbJrJRs8E1WULtxGzCDRVLJWBdLdq05/+8BXEISiggrWOukjsd+uqLTqQMI0he2bZMBRHSD2ISIXhGp5kpUCsbb0xd2bvp/LqSAuWKZmVLRWGRba6Hi+wFjLYc48tdTJUbbShZTojIsDY/ivH+5xJ6N/z7Iwq0HqPVGMiOywPGi9xqT9g5lUxhBuXJ7crmGncpxA4LH1foSBtIXqVTjESPc+G/4Si61xtmHckf3KkaFYgM89TxDtCyiwoKSu5RVbS38+jXP6Wx25F655244V+FSNty11ApSf2VaY9t5tCfv3RQvAwIDAQAB'
@@ -86,28 +72,7 @@ statistics_settings_config = {
 }
 
 
-if os.environ.get('GEIS'):
-    # Settings for in GEIS cloud behind redbird reverse proxy
-    print('Starting application with GEIS settings (hosting at geis.hesi.energy/webeditor)')
-    dir_settings = {
-        'plugin_prefix': '/webeditor',
-        'resource_prefix': 'webeditor',
-        'socket_prefix': '/webeditor',
-        'download_prefix': '/webeditor'
-    }
-    OIDC_CLIENT_SECRETS = 'credentials/client_secrets_geis.json'
-elif os.environ.get('MAPEDITOR-TNO'):
-    # Settings for in GEIS cloud behind traefik reverse proxy and served at /mapeditor
-    print('Starting application with MAPEDITOR-TNO settings (hosting at geis.hesi.energy/mapeditor)')
-    dir_settings = {
-        'plugin_prefix': '/mapeditor',
-        'resource_prefix': 'mapeditor/',
-        'socket_prefix': '/mapeditor',
-        'download_prefix': '/mapeditor'
-    }
-    OIDC_CLIENT_SECRETS = 'credentials/client_secrets_mapeditor.json'
-
-elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
+if os.environ.get('MAPEDITOR_HESI_ENERGY'):
     # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
     print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
     dir_settings = {
@@ -131,7 +96,8 @@ elif os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",
-        "kafkaURL": "http://kafka:9092"
+        # "kafkaURL": "http://kafka:9092"
+        "natsURL": "nats://nats:4222"
     }
 else:
     # Local settings
@@ -149,5 +115,17 @@ else:
     # user_settings_config["host"] = 'localhost'
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
-
+    essim_config = {
+        "ESSIM_host": "http://geis.hesi.energy:8112",
+        "ESSIM_path": "/essim/simulation",
+        "influxURL": "http://geis.hesi.energy:8086",
+        "grafanaURL": "https://essim-dashboard.hesi.energy",
+        "user": "essim",
+        "ESSIM_database_server": "geis.hesi.energy",
+        "ESSIM_database_port": 8086,
+        "start_datetime": "2015-01-01T00:00:00+0100",
+        "end_datetime": "2016-01-01T00:00:00+0100",
+        # "kafka_url": "http://kafka:9092"
+        "natsURL": "nats://nats:4222"
+    }
 
