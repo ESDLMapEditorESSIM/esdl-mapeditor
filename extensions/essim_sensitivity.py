@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, session, abort
 from flask_socketio import SocketIO, emit
-from extensions.user_settings import SettingType, UserSettings
+from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_handler, get_session, set_session, del_session
 from esdl.processing import ESDLAsset, ESDLEcore
 from esdl_helper import get_port_profile_info
@@ -20,10 +20,10 @@ def send_alert(message):
 
 
 class ESSIMSensitivity:
-    def __init__(self, flask_app: Flask, socket: SocketIO, user_settings: UserSettings, essim: ESSIM):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage, essim: ESSIM):
         self.flask_app = flask_app
         self.socketio = socket
-        self.user_settings = user_settings
+        self.settings_storage = settings_storage
         self.essim = essim
 
         self.essim_sensitivity_plugin_settings = self.get_config()
@@ -32,13 +32,13 @@ class ESSIMSensitivity:
         self.register()
 
     def get_config(self):
-        if self.user_settings.has_system(ESSIM_SENSITIVITY_CONFIG):
-            essim_sensitivity_plugin_settings = self.user_settings.get_system(ESSIM_SENSITIVITY_CONFIG)
+        if self.settings_storage.has_system(ESSIM_SENSITIVITY_CONFIG):
+            essim_sensitivity_plugin_settings = self.settings_storage.get_system(ESSIM_SENSITIVITY_CONFIG)
         else:
             essim_sensitivity_plugin_settings = {
                 
             }
-            self.user_settings.set_system(ESSIM_SENSITIVITY_CONFIG, essim_sensitivity_plugin_settings)
+            self.settings_storage.set_system(ESSIM_SENSITIVITY_CONFIG, essim_sensitivity_plugin_settings)
         return essim_sensitivity_plugin_settings
 
     def register(self):

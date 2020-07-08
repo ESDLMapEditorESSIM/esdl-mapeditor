@@ -94,21 +94,45 @@ L.Control.LoadDurationCurve = L.Control.extend({
     },
     create_ldc_chart: function(data, canvas) {
         let labels = [];
+        let power_pos_values = [];
+        let power_neg_values = [];
+        let power_pos = data["power_pos"]
+        let power_neg = data["power_neg"]
         for (let i=0; i<data["ldc_series"].length; i++) {
             labels.push(i*40);
+            if (power_pos) power_pos_values.push(power_pos);
+            if (power_neg) power_neg_values.push(power_neg);
         }
         asset_name = data["asset_name"];
         if (asset_name == null || asset_name === "") asset_name = "Untitled asset";
+
+        let datasets = [{
+            data: data["ldc_series"],
+            label: "ldc",
+            borderColor: "#3e95cd"
+        }]
+        if (power_pos) {
+            datasets.push({
+                data: power_pos_values,
+                label: "power",
+                borderColor: "#ff0000",
+                pointRadius: 0
+            });
+        }
+        if (power_neg) {
+            datasets.push({
+                data: power_neg_values,
+                label: "power",
+                borderColor: "#ff0000",
+                pointRadius: 0
+            });
+        }
 
         var ldc_chart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{
-                    data: data["ldc_series"],
-                    label: "ldc",
-                    borderColor: "#3e95cd",
-                }]
+                datasets: datasets
             },
             options: {
                 title: {

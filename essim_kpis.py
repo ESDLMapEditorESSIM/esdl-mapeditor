@@ -353,6 +353,14 @@ class ESSIM_KPIs:
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         sim_id = active_simulation['sim_id']
+        asset = esh.get_by_id(active_es_id, asset_id)
+        power = None
+        if hasattr(asset, 'power'):
+            power = asset.power
+        elif hasattr(asset, 'capacity'):
+            power = asset.capacity
+        power_pos = None
+        power_neg = None
 
         allocation_energy = None
         try:
@@ -376,9 +384,13 @@ class ESSIM_KPIs:
             for idx, item in enumerate(ldc_series):
                 if idx % 40 == 0:
                     ldc_series_decimate.append(item / 3600)
+                    if item > 0:
+                        power_pos = power
+                    if item < 0:
+                        power_neg = -power
 
             # print(ldc_series_decimate)
-            emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate})
+            emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos, 'power_neg': power_neg})
 
         else:
             print('query returned no results')

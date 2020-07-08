@@ -10,7 +10,7 @@ import re
 from esdl import esdl
 from esdl.processing import ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
-from extensions.user_settings import UserSettings
+from extensions.settings_storage import SettingsStorage
 
 import settings
 
@@ -56,10 +56,10 @@ def is_valid_boundary_id(id):
 #  Get boundary information
 # ---------------------------------------------------------------------------------------------------------------------
 class BoundaryService:
-    def __init__(self, flask_app: Flask, socket: SocketIO, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
-        self.user_settings = user_settings
+        self.settings_storage = settings_storage
         self.plugin_settings = self.get_settings()
         self.register()
 
@@ -77,13 +77,13 @@ class BoundaryService:
     # Do we want system_settings here, e.g. for the service endpoint configuration?
     def get_settings(self):
         boundary_service_plugin_settings = dict()
-        if self.user_settings.has_system(BOUNDARY_SERVICE_SYSTEM_CONFIG):
-            boundary_service_plugin_settings = self.user_settings.get_system(BOUNDARY_SERVICE_SYSTEM_CONFIG)
+        if self.settings_storage.has_system(BOUNDARY_SERVICE_SYSTEM_CONFIG):
+            boundary_service_plugin_settings = self.settings_storage.get_system(BOUNDARY_SERVICE_SYSTEM_CONFIG)
         else:
             boundary_service_plugin_settings = {
                 'parameter': 'value'
             }
-            self.user_settings.set_system(BOUNDARY_SERVICE_SYSTEM_CONFIG, boundary_service_plugin_settings)
+            self.settings_storage.set_system(BOUNDARY_SERVICE_SYSTEM_CONFIG, boundary_service_plugin_settings)
         return boundary_service_plugin_settings
 
     def register(self):
@@ -263,8 +263,8 @@ class BoundaryService:
             print('Ready processing boundary information')
 
     def get_user_settings(self, user):
-        if self.user_settings.has_user(user, BOUNDARY_SERVICE_USER_CONFIG):
-            return self.user_settings.get_user(user, BOUNDARY_SERVICE_USER_CONFIG)
+        if self.settings_storage.has_user(user, BOUNDARY_SERVICE_USER_CONFIG):
+            return self.settings_storage.get_user(user, BOUNDARY_SERVICE_USER_CONFIG)
         else:
             user_settings = {
                 'boundaries_year': 2018
@@ -273,7 +273,7 @@ class BoundaryService:
             return user_settings
 
     def set_user_settings(self, user, settings):
-        self.user_settings.set_user(user, BOUNDARY_SERVICE_USER_CONFIG, settings)
+        self.settings_storage.set_user(user, BOUNDARY_SERVICE_USER_CONFIG, settings)
 
     def get_user_setting(self, user, name):
         user_settings = self.get_user_settings(user)

@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_socketio import SocketIO
 from flask_executor import Executor
-from extensions.user_settings import UserSettings
+from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_handler
 
 
@@ -11,10 +11,10 @@ def send_alert(message):
 
 
 class AppSettings:
-    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
-        self.settings = user_settings
+        self.settings_storage = settings_storage
         self.executor = executor
 
         self.register()
