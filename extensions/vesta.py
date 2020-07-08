@@ -1,9 +1,10 @@
 from flask import Flask, jsonify, request, session, abort
 from flask_socketio import SocketIO, emit
-from extensions.user_settings import SettingType, UserSettings
+from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_handler, get_session, set_session, del_session
 from esdl import esdl
 from esdl.processing import ESDLAsset, ESDLEnergySystem
+import settings
 import requests
 import json
 import uuid
@@ -18,24 +19,24 @@ def send_alert(message):
 
 
 class Vesta:
-    def __init__(self, flask_app: Flask, socket: SocketIO, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
-        self.user_settings = user_settings
+        self.settings_storage = settings_storage
         self.vesta_plugin_settings = self.get_config()
         self.selected_measures = None
 
         self.register()
 
     def get_config(self):
-        if self.user_settings.has_system(VESTA_SYSTEM_CONFIG):
-            vesta_plugin_settings = self.user_settings.get_system(VESTA_SYSTEM_CONFIG)
+        if self.settings_storage.has_system(VESTA_SYSTEM_CONFIG):
+            vesta_plugin_settings = self.settings_storage.get_system(VESTA_SYSTEM_CONFIG)
         else:
             vesta_plugin_settings = {
-                "edr_url": "https://edr.hesi.energy",
+                "edr_url": settings.edr_config['EDR_host'],
                 "edr_measures_tags": "measures,vesta"
             }
-            self.user_settings.set_system(VESTA_SYSTEM_CONFIG, vesta_plugin_settings)
+            self.settings_storage.set_system(VESTA_SYSTEM_CONFIG, vesta_plugin_settings)
         return vesta_plugin_settings
 
     def register(self):

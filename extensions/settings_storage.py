@@ -26,7 +26,7 @@ class SettingType(Enum):
     SYSTEM = 'system'
 
 
-class UserSettings:
+class SettingsStorage:
 
     SYSTEM_NAME_IDENTIFIER = 'mapeditor' # only one identifier of system settings for mapeditor
 
@@ -124,16 +124,16 @@ class UserSettings:
         return self.has(SettingType.PROJECT, project_name, setting_name)
 
     def set_system(self, setting_name:str, value):
-        return self.set(SettingType.SYSTEM, UserSettings.SYSTEM_NAME_IDENTIFIER, setting_name, value)
+        return self.set(SettingType.SYSTEM, SettingsStorage.SYSTEM_NAME_IDENTIFIER, setting_name, value)
 
     def get_system(self, setting_name:str):
-        return self.get(SettingType.SYSTEM, UserSettings.SYSTEM_NAME_IDENTIFIER, setting_name)
+        return self.get(SettingType.SYSTEM, SettingsStorage.SYSTEM_NAME_IDENTIFIER, setting_name)
 
     def del_system(self, setting_name:str):
-        return self.delete(SettingType.SYSTEM, UserSettings.SYSTEM_NAME_IDENTIFIER, setting_name)
+        return self.delete(SettingType.SYSTEM, SettingsStorage.SYSTEM_NAME_IDENTIFIER, setting_name)
 
     def has_system(self, setting_name: str):
-        return self.has(SettingType.SYSTEM, UserSettings.SYSTEM_NAME_IDENTIFIER, setting_name)
+        return self.has(SettingType.SYSTEM, SettingsStorage.SYSTEM_NAME_IDENTIFIER, setting_name)
 
     def size(self):
         return self.settings.count_documents({})

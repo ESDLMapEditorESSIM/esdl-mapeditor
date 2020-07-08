@@ -41,7 +41,7 @@ from esdl_services import ESDLServices
 from esdl_profiles import ESDLProfiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
-from extensions.user_settings import UserSettings
+from extensions.settings_storage import SettingsStorage
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
@@ -69,8 +69,8 @@ if os.environ.get('GEIS'):
 esdl_services = ESDLServices()
 esdl_profiles = ESDLProfiles()
 user_actions_logging = UserLogging()
-user_settings = UserSettings(database_uri='mongodb://'+settings.user_settings_config["host"] + ':' + settings.user_settings_config["port"])
-wms_layers = WMSLayers(user_settings)
+settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
+wms_layers = WMSLayers(settings_storage)
 
 AREA_LINECOLOR = 'blue'
 AREA_FILLCOLOR = 'red'
@@ -109,7 +109,6 @@ def create_ESDL_store_item(id, esh, title, description, email):
         send_alert('Error accessing ESDL store:' + str(e))
 
 
-# TODO: move to EDR plugin (not EDR! :-))
 def load_ESDL_EnergySystem(store_id):
 
     store_item = load_store_item(store_id)
@@ -235,16 +234,15 @@ IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
 Boundaries(app, socketio)
-BoundaryService(app, socketio, user_settings)
-# initialize_boundary_service(app, socketio, user_settings)
+BoundaryService(app, socketio, settings_storage)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
 essim_kpis = ESSIM_KPIs(app, socketio)
-essim = ESSIM(app, socketio, executor, essim_kpis, user_settings)
-ESSIMSensitivity(app, socketio, user_settings, essim)
-Vesta(app, socketio, user_settings)
+essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
+ESSIMSensitivity(app, socketio, settings_storage, essim)
+Vesta(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
-me_settings = MapEditorSettings(app, socketio, user_settings)
+me_settings = MapEditorSettings(app, socketio, settings_storage)
 # ShapefileConverter(app, socketio, executor)
 
 

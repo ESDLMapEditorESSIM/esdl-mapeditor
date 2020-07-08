@@ -1,15 +1,15 @@
-from extensions.user_settings import SettingType, UserSettings
+from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 import copy
 
 LAYERS_SETTING = 'layers'
 
 class WMSLayers:
-    def __init__(self, user_settings: UserSettings):
-        self.settings = user_settings
+    def __init__(self, settings_storage: SettingsStorage):
+        self.settings_storage = settings_storage
         # add initial layers when not in the system settings
-        if not self.settings.has_system(LAYERS_SETTING):
-            self.settings.set_system(LAYERS_SETTING, default_wms_layers)
+        if not self.settings_storage.has_system(LAYERS_SETTING):
+            self.settings_storage.set_system(LAYERS_SETTING, default_wms_layers)
         else:
             print('No need to update default list, already in User Settings')
 
@@ -17,12 +17,12 @@ class WMSLayers:
         setting_type = SettingType(layer['setting_type'])
         project_name = layer['project_name']
         identifier = self._get_identifier(setting_type, project_name)
-        if identifier is not None and self.settings.has(setting_type, identifier, LAYERS_SETTING):
-            layers = self.settings.get(setting_type, identifier, LAYERS_SETTING)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
+            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
         else:
             layers = dict()
         layers[layer_id] = layer
-        self.settings.set(setting_type, identifier, LAYERS_SETTING, layers)
+        self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
     def remove_wms_layer(self, layer_id):
         # as we only have an ID, we don't know if it is a user, project or system layer
@@ -32,12 +32,12 @@ class WMSLayers:
         identifier = self._get_identifier(setting_type, layer['project_name'])
         if identifier is None:
             return
-        if self.settings.has(setting_type, identifier, LAYERS_SETTING):
+        if self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
             # update layer dict
-            layers = self.settings.get(setting_type, identifier, LAYERS_SETTING)
+            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
             print('Deleting layer {}'.format(layers[layer_id]))
             del(layers[layer_id])
-            self.settings.set(setting_type, identifier, LAYERS_SETTING, layers)
+            self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -50,7 +50,7 @@ class WMSLayers:
             else:
                 identifier = 'unnamed project'
         elif setting_type == SettingType.SYSTEM:
-            identifier = UserSettings.SYSTEM_NAME_IDENTIFIER
+            identifier = SettingsStorage.SYSTEM_NAME_IDENTIFIER
         else:
             return None
         return identifier
@@ -58,8 +58,8 @@ class WMSLayers:
     def get_layers(self):
         # gets the default list and adds the user layers
         all_layers = dict()
-        if self.settings.has_system(LAYERS_SETTING):
-            all_layers.update(self.settings.get_system(LAYERS_SETTING))
+        if self.settings_storage.has_system(LAYERS_SETTING):
+            all_layers.update(self.settings_storage.get_system(LAYERS_SETTING))
 
         user = get_session('user-email')
         user_group = get_session('user-group')
@@ -69,16 +69,16 @@ class WMSLayers:
         print('Groups: ', user_group)
         print('Roles: ', role)
         print('Mapeditor roles: ', mapeditor_role)
-        if user is not None and self.settings.has_user(user, LAYERS_SETTING):
+        if user is not None and self.settings_storage.has_user(user, LAYERS_SETTING):
             # add user layers if available
-            all_layers.update(self.settings.get_user(user, LAYERS_SETTING))
+            all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
 
         if user_group is not None:
             for group in user_group:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
-                if self.settings.has_project(identifier, LAYERS_SETTING):
+                if self.settings_storage.has_project(identifier, LAYERS_SETTING):
                     # add project layers if available
-                    all_layers.update(self.settings.get_project(identifier, LAYERS_SETTING))
+                    all_layers.update(self.settings_storage.get_project(identifier, LAYERS_SETTING))
 
         # generate message
         message = copy.deepcopy(default_wms_layer_groups)

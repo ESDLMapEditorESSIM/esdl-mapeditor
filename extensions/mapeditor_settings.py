@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, session, abort
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_session
-from extensions.user_settings import UserSettings
+from extensions.settings_storage import SettingsStorage
 
 
 MAPEDITOR_SYSTEM_CONFIG = "MAPEDITOR_SYSTEM_CONFIG"
@@ -19,10 +19,10 @@ DEFAULT_USER_SETTING = {
 }
 
 class MapEditorSettings:
-    def __init__(self, flask_app: Flask, socket: SocketIO, user_settings: UserSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
-        self.settings = user_settings
+        self.settings_storage = settings_storage
 
         self.register()
 
@@ -73,15 +73,15 @@ class MapEditorSettings:
             return cat[setting_name]
 
     def get_system_settings(self):
-        if self.settings.has_system(MAPEDITOR_SYSTEM_CONFIG):
-            return self.settings.get_system(MAPEDITOR_SYSTEM_CONFIG)
+        if self.settings_storage.has_system(MAPEDITOR_SYSTEM_CONFIG):
+            return self.settings_storage.get_system(MAPEDITOR_SYSTEM_CONFIG)
         else:
             mapeditor_settings = DEFAULT_SYSTEM_SETTING
-            self.settings.set_system(MAPEDITOR_SYSTEM_CONFIG, mapeditor_settings)
+            self.settings_storage.set_system(MAPEDITOR_SYSTEM_CONFIG, mapeditor_settings)
             return mapeditor_settings
 
     def set_system_settings(self, settings):
-        self.settings.set_system(MAPEDITOR_SYSTEM_CONFIG, settings)
+        self.settings_storage.set_system(MAPEDITOR_SYSTEM_CONFIG, settings)
 
     def get_system_setting(self, name):
         system_settings = self.get_system_settings()
@@ -96,15 +96,15 @@ class MapEditorSettings:
         self.set_system_settings(system_settings)
 
     def get_user_settings(self, user):
-        if self.settings.has_user(user, MAPEDITOR_USER_CONFIG):
-            return self.settings.get_user(user, MAPEDITOR_USER_CONFIG)
+        if self.settings_storage.has_user(user, MAPEDITOR_USER_CONFIG):
+            return self.settings_storage.get_user(user, MAPEDITOR_USER_CONFIG)
         else:
             user_settings = DEFAULT_USER_SETTING
             self.set_user_settings(user, user_settings)
             return user_settings
 
     def set_user_settings(self, user, settings):
-        self.settings.set_user(user, MAPEDITOR_USER_CONFIG, settings)
+        self.settings_storage.set_user(user, MAPEDITOR_USER_CONFIG, settings)
 
     def get_user_setting(self, user, name):
         user_settings = self.get_user_settings(user)

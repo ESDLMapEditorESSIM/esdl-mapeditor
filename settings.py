@@ -73,7 +73,7 @@ user_logging_config = {
     "database": "user_logging"
 }
 
-user_settings_config = {
+settings_storage_config = {
     "host": "10.30.2.1",
     "port": "27017",
     "database": "esdl_mapeditor_settings"
@@ -81,7 +81,6 @@ user_settings_config = {
 
 statistics_settings_config = {
     "host": "10.30.2.1",
-    # "host": "localhost",
     "port": "6003",
     "path": "/api/statistics/calculate"
 }
