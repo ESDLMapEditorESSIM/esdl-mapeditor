@@ -71,16 +71,19 @@ statistics_settings_config = {
     "path": "/api/statistics/calculate"
 }
 
-
-if os.environ.get('MAPEDITOR_HESI_ENERGY'):
-    # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
-    print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
-    dir_settings = {
+# can be removed if app.py has been updated
+# as it is not used anymore
+dir_settings = {
         'plugin_prefix': '',
         'resource_prefix': '',
         'socket_prefix': '',
         'download_prefix': ''
     }
+
+if os.environ.get('MAPEDITOR_HESI_ENERGY'):
+    # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
+    print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
+
     FLASK_DEBUG = False 
     #ASYNC_MODE = 'gevent_uwsgi'
     ASYNC_MODE = None
@@ -99,20 +102,65 @@ if os.environ.get('MAPEDITOR_HESI_ENERGY'):
         # "kafkaURL": "http://kafka:9092"
         "natsURL": "nats://nats:4222"
     }
+elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
+    # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
+    print('Starting application with MAPEDITOR_OPEN_SOURCE settings (hosting at mapeditor:8111)')
+
+    FLASK_DEBUG = False
+    # ASYNC_MODE = 'gevent_uwsgi'
+    ASYNC_MODE = None
+    OIDC_CLIENT_SECRETS = 'credentials/client_secrets_opensource.json'
+
+    essim_config = {
+        "ESSIM_host": "http://10.30.2.1:8112",
+        "ESSIM_path": "/essim/simulation",
+        "influxURL": "http://10.30.2.1:8086",
+        "grafanaURL": "https://essim-dashboard.hesi.energy",
+        "user": "essim",
+        "ESSIM_database_server": "10.30.2.1",
+        "ESSIM_database_port": 8086,
+        "start_datetime": "2015-01-01T00:00:00+0100",
+        "end_datetime": "2016-01-01T00:00:00+0100",
+        # "kafkaURL": "http://kafka:9092"
+        "natsURL": "nats://nats:4222"
+    }
+    boundaries_config = {
+        "host": "boundary-service",
+        "port": "4002",
+        "path_names": "/names",
+        "path_boundaries": "/boundaries"
+    }
+
+    edr_config = {
+        "EDR_host": "https://edr.hesi.energy",
+        "EDR_path": "/store/esdl/",
+    }
+
+    cdo_mondaine_config = {
+        "hostname": "http://hub:9080"
+    }
+
+    user_logging_config = {
+        "host": "influxdb",
+        "port": "8086",
+        "database": "user_logging"
+    }
+
+    settings_storage_config = {
+        "host": "mongo",
+        "port": "27017",
+        "database": "esdl_mapeditor_settings"
+    }
+
 else:
     # Local settings
-    print('Starting application with local settings (hosting at localhost:port/ without a subpath)')
-    dir_settings = {
-        'plugin_prefix': '',
-        'resource_prefix': '',
-        'socket_prefix': '',
-        'download_prefix': ''
-    }
+    print('Starting application with local settings')
+
     #FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
     USER_LOGGING_ENABLED = False
     FLASK_DEBUG = True
-    user_settings_config["host"] = 'localhost'
+    settings_storage_config["host"] = 'localhost'
     cdo_mondaine_config["hostname"] =  "http://localhost:9080"
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 

@@ -255,7 +255,7 @@ app.config.update({
     'OIDC_REQUIRE_VERIFIED_EMAIL': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt', 'resource_access'],
+    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'],
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
@@ -321,11 +321,6 @@ def editor():
         if session['client_id'] == None:
             warn('WARNING: No client_id in session!!')
 
-        user_email = oidc.user_getfield('email')
-
-        print("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
-        user_actions_logging.store_logging(user_email, "login", "", "", "", {})
-
         whole_token = oidc.get_access_token()
         print("whole_token: ", whole_token)
         if whole_token:
@@ -336,6 +331,13 @@ def editor():
             except Exception as e:
                 print("error in decoding token: ", str(e))
         # if role in access_token['resource_access'][client]['roles']:
+
+        user_email = oidc.user_getfield('email')
+
+        print("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
+        user_actions_logging.store_logging(user_email, "login", "", "", "", {})
+
+
 
         userinfo = oidc.user_getinfo(['role'])
         role = []
