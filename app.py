@@ -29,7 +29,6 @@ from process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.bag import BAG
-from extensions.boundaries import Boundaries
 from extensions.boundary_service import BoundaryService
 from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid

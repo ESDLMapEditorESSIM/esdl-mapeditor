@@ -89,6 +89,51 @@ class BoundaryService:
     def register(self):
         print('Registering BoundaryService extension')
 
+        @self.flask_app.route('/boundaries_names/<scope_type>')
+        def get_boundaries_names(scope_type):
+            with self.flask_app.app_context():
+                print("getting boundaries names information")
+
+                user = get_session('user-email')
+                user_settings = self.get_user_settings(user)
+                boundaries_year = str(user_settings['boundaries_year'])
+
+                try:
+                    url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
+                          settings.boundaries_config["path_names"] + '/YEAR/' + boundaries_year + '/' + scope_type
+                    print(url)
+                    r = requests.get(url)
+                    if len(r.text) > 0:
+                        reply = json.loads(r.text)
+                        return {"boundaries_names": reply}
+
+                except Exception as e:
+                    print('ERROR in accessing Boundaries service: ' + str(e))
+                    return 'ERROR in accessing Boundaries service: ' + str(e), 404
+
+        @self.flask_app.route('/boundaries_names/<select_scope_type>/<select_scope_id>/<scope_type>')
+        def get_subboundaries_names(select_scope_type, select_scope_id, scope_type):
+            with self.flask_app.app_context():
+                print("getting boundaries names information")
+
+                user = get_session('user-email')
+                user_settings = self.get_user_settings(user)
+                boundaries_year = str(user_settings['boundaries_year'])
+
+                try:
+                    url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
+                          settings.boundaries_config["path_names"] + '/YEAR/' + boundaries_year + '/' \
+                          + select_scope_type + '/' + select_scope_id + '/' + scope_type
+                    print(url)
+                    r = requests.get(url)
+                    if len(r.text) > 0:
+                        reply = json.loads(r.text)
+                        return {"boundaries_names": reply}
+
+                except Exception as e:
+                    print('ERROR in accessing Boundaries service: ' + str(e))
+                    return 'ERROR in accessing Boundaries service: ' + str(e), 404
+
         @self.socketio.on('initialize_boundary_service_extension', namespace='/esdl')
         def initialize_boundary_service_extension():
             user = get_session('user-email')
@@ -167,7 +212,6 @@ class BoundaryService:
 
             if initialize_ES:
                 # change ID, name and scope of ES
-
                 if select_subareas:
                     area.id = "part of " + identifier
                 else:
@@ -210,10 +254,6 @@ class BoundaryService:
                         print('Error parsing JSON from GEIS boundary service: '+ str(e))
 
                     if geom:
-                        # print('boundary["geom"]: ')
-                        # print(boundary["geom"])
-                        # print(boundary)
-
                         skip_subarea = False
                         if select_subareas and selected_subareas and boundary["code"] not in selected_subareas:
                             skip_subarea = True
@@ -234,12 +274,6 @@ class BoundaryService:
 
                                 area.area.append(sub_area)
                                 esh.add_object_to_dict(active_es_id, sub_area)
-
-                            # print({'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': json.loads(geom)})
-                            # boundary = create_boundary_from_contour(area_contour)
-                            # emit('area_boundary', {'crs': 'WGS84', 'boundary': boundary})
-
-                            # emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': geom, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 
                             for i in range(0, len(geom['coordinates'])):
                                 if len(geom['coordinates']) > 1:
@@ -303,8 +337,6 @@ class BoundaryService:
                 return boundary_cache[str(year)+id]
 
             try:
-                # url = 'http://' + GEIS_CLOUD_IP + ':' + BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[str.upper(scope)] + '/' + id
-                # url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[scope.name] + '/' + id
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
                       settings.boundaries_config["path_boundaries"] + '/YEAR/' + str(year) + '/' + boundary_service_mapping[scope.name] + '/' + id
                 # print('Retrieve from boundary service', id)
@@ -337,8 +369,6 @@ class BoundaryService:
 
         if is_valid_boundary_id(id):
             try:
-                # url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.BOUNDARY_SERVICE_PORT + '/boundaries/' + boundary_service_mapping[subscope.name]\
-                #       + '/' + boundary_service_mapping[scope.name] + '/' + id
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] \
                       + settings.boundaries_config["path_boundaries"] + '/YEAR/' + str(year) + '/' \
                       + boundary_service_mapping[subscope.name] + '/' \
