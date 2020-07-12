@@ -1,202 +1,264 @@
-// ------------------------------------------------------------------------------------------------------------
-//  WMS Layer functionality
-// ------------------------------------------------------------------------------------------------------------
-function add_layer() {
-    layer_descr = document.getElementById('layer_descr').value;
-    layer_url = document.getElementById('layer_url').value;
-    layer_name = document.getElementById('layer_name').value;
-    legend_url = document.getElementById('legend_url').value;
-    select_layer_group = document.getElementById('add_to_group');
-    project_name = select_layer_group[select_layer_group.selectedIndex].value;
-    setting_type = select_layer_group[select_layer_group.selectedIndex].getAttribute('setting_type');
-    layer_id = uuidv4();
+// Profiles
+// requires:
+// map and socketio as global variables
 
-    socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, setting_type: setting_type, project_name: project_name, legend_url: legend_url, visible: true});
-    wms_layer_list['layers'][layer_id] = { description: layer_descr, url: layer_url, legend_url: legend_url, layer_name: layer_name, setting_type: setting_type, project_name: project_name };
 
-    wms_layer_list['layers'][layer_id].layer_ref = L.tileLayer.wms(layer_url, {
-        layers: layer_name,
-        format:'image/png',
-        transparent: true
-    });
-    wms_layer_list['layers'][layer_id].layer_ref.addTo(map);
-    wms_layer_list['layers'][layer_id].layer_ref.bringToFront();
-    wms_layer_list['layers'][layer_id].visible = true;
-
-    var parent = $('#layer_tree li#li_wms_layer_list_'+project_name);
-    var new_node = { "id":'li_'+layer_id, "text":layer_descr, "type": "layer" }; // , "state":{"checked":true} };
-    $('#layer_tree').jstree("create_node", parent, new_node, "last", false, false);
-    $('#layer_tree').jstree("check_node", '#li_'+layer_id);
-    $('#layer_tree').jstree("open_node", parent);
-}
-
-function remove_layer(id) {
-    socket.emit('command', {cmd: 'remove_layer', id: id});
-    // console.log('remove layer: '+id);
-    map.removeLayer(wms_layer_list['layers'][id].layer_ref);
-    delete wms_layer_list['layers'][id];
-}
-
-function show_wms_layer(id) {
-    // console.log('add layer to map: '+id);
-    wms_layer_list['layers'][id].layer_ref.addTo(map);
-    wms_layer_list['layers'][id].layer_ref.bringToFront();
-    wms_layer_list['layers'][id].visible = true;
-    if (wms_layer_list['layers'][id].legend_url !== "") {
-        show_wms_legend(wms_layer_list['layers'][id].legend_url);
+class Profiles {
+    constructor() {
+        this.initSocketIO();
+        this.profiles_list = null;
     }
-}
 
-function hide_wms_layer(id) {
-    // console.log('remove layer from map: '+id);
-    map.removeLayer(wms_layer_list['layers'][id].layer_ref);
-    wms_layer_list['layers'][id].visible = false;
-    if (wms_layer_list['layers'][id].legend_url !== "") {
-        remove_wms_legend();
+    initSocketIO() {
+        console.log("Registering socket io bindings for Profiles")
+
+        socket.on('profiles_info', function(profiles_list) {
+            console.log(profiles_list);
+            this.profiles_list = profiles_list;
+        });
     }
-}
 
-function wmsLayerContextMenu(node)
-{
-    var items = {}
-    if (!node.data.readonly) {
-        items = {
-            'delete' : {
-                'label' : 'Delete layer',
-                'icon': 'fa fa-trash-o',
-                'action' : function () {
-                    let id = node.id.substring(3);
-                    console.log('removing '+id);
-                    remove_layer(id);
-                    $('#layer_tree').jstree("delete_node", '#'+node.id);
+    get_profiles_settings(div) {
+        socket.emit('get_profiles_list', function(profiles_list) {
+            console.log(profiles_list);
+            profiles_plugin.profiles_list = profiles_list;
+            div.append($('<h1>').text('Profiles plugin settings'));
 
+            let $select = $('<select>').attr('id', 'profile_select');
+            $select.append($('<option>').val('first_select_profile').text('Please select a profile'));
+            let group_list = profiles_list['groups'];
+            let profile_info = Object.entries(profiles_list['profiles']);
+            for (let gr=0; gr<group_list.length; gr++) {
+                let $optgroup = $('<optgroup>').attr('label', group_list[gr].name);
+                for (let pr=0; pr<profile_info.length; pr++) {
+                    if (group_list[gr].setting_type == profile_info[pr][1].setting_type) {
+                        if (profile_info[pr][1].setting_type == 'project' &&
+                            profile_info[pr][1].project_name != group_list[gr].project_name) continue;
+
+                        let $option = $('<option>').val(profile_info[pr][0]).text(profile_info[pr][1].profile_uiname);
+                        $optgroup.append($option);
+                    }
+                }
+                $select.append($optgroup);
+            }
+            $select.change(function() {profiles_plugin.select_profile();});
+            div.append($select);
+
+            let $remove_button = $('<button>').text('Remove').click(function() {profiles_plugin.click_remove();})
+            div.append($remove_button);
+
+            div.append($('<p>'));
+
+            let $table = $('<table>').addClass('pure-table pure-table-striped');
+            let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Parameter')).append($('<th>')
+                    .text('Value')));
+            let $tbody = $('<tbody>');
+            $table.append($thead);
+            $table.append($tbody);
+
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Profile name'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_uiname').attr('value', '').attr('size',40)))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Database'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_db').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Measurement'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_meas').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Field'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_field').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Multiplier'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_mult').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Profile Type'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_type').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Start datetime'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_startdt').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('End datetime'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_enddt').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Embed URL'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_embedurl').attr('value', '')))
+            );
+
+            let $select_group = $('<select>').attr('id', 'add_to_group_select');
+            for (let gr=0; gr<group_list.length; gr++) {
+                let $option = $('<option>').val(group_list[gr].project_name).text(group_list[gr].name);
+                $select_group.append($option);
+            }
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Group'))
+                .append($('<td>').append($select_group))
+            );
+
+            div.append($table);
+
+            let $add_button = $('<button>').text('Add profile').click(function() {profiles_plugin.click_add();})
+            let $save_button = $('<button>').text('Save profile').click(function() {profiles_plugin.click_save();})
+            let $test_button = $('<button>').text('Test').click(function() {profiles_plugin.click_test();})
+            let $clear_button = $('<button>').text('Clear').click(function() {profiles_plugin.click_clear();})
+            div.append($('<p>').append($add_button).append($save_button).append($test_button).append($clear_button));
+
+            div.append($('<div>').attr('id', 'profile_graph'));
+        });
+    }
+
+    click_remove() {
+        let selected_option = $('#profile_select').val();
+        console.log('Remove profile: '+selected_option);
+        socket.emit('remove_profile', selected_option);
+    }
+    click_add() {
+        console.log('Add profile');
+        let profile_info = {
+            profile_uiname: $('#input_prof_uiname').val(),
+            database: $('#input_prof_db').val(),
+            measurement: $('#input_prof_meas').val(),
+            field: $('#input_prof_field').val(),
+            multiplier: $('#input_prof_mult').val(),
+            profile_type: $('#input_prof_type').val(),
+            start_datetime: $('#input_prof_startdt').val(),
+            end_datetime: $('#input_prof_enddt').val(),
+            embedUrl: $('#input_prof_embedurl').val(),
+            group: $('#add_to_group_select').val()
+        };
+        socket.emit('add_profile', profile_info);
+    }
+    click_save() {
+        let selected_option = $('#profile_select').val();
+        if (selected_option !== 'first_select_profile') {
+            let profile_info = {
+                id: selected_option,
+                profile_uiname: $('#input_prof_uiname').val(),
+                database: $('#input_prof_db').val(),
+                measurement: $('#input_prof_meas').val(),
+                field: $('#input_prof_field').val(),
+                multiplier: $('#input_prof_mult').val(),
+                profile_type: $('#input_prof_type').val(),
+                start_datetime: $('#input_prof_startdt').val(),
+                end_datetime: $('#input_prof_enddt').val(),
+                embedUrl: $('#input_prof_embedurl').val(),
+                group: $('#add_to_group_select').val()
+            };
+            socket.emit('save_profile', profile_info);
+        }
+    }
+    click_test() {
+        let selected_option = $('#profile_select').val();
+        if (selected_option !== 'first_select_profile') {
+            let profile_info = {
+                id: selected_option,
+                profile_uiname: $('#input_prof_uiname').val(),
+                database: $('#input_prof_db').val(),
+                measurement: $('#input_prof_meas').val(),
+                field: $('#input_prof_field').val(),
+                multiplier: $('#input_prof_mult').val(),
+                profile_type: $('#input_prof_type').val(),
+                start_datetime: $('#input_prof_startdt').val(),
+                end_datetime: $('#input_prof_enddt').val(),
+                embedUrl: $('#input_prof_embedurl').val(),
+                group: $('#add_to_group_select').val()
+            };
+            socket.emit('test_profile', profile_info, function(embed_url) {
+                if (embed_url) {
+                    $('#profile_graph').html('<iframe width="100%" height="200px" src="'+embed_url+'"></iframme>');
+                } else {
+                    $('#profile_graph').html('');
+                }
+            });
+        }
+    }
+    click_clear() {
+        console.log('Clear profile');
+        $('#profile_select').val('first_select_profile');
+
+        $('#input_prof_uiname').attr('value', '');
+        $('#input_prof_db').attr('value', '');
+        $('#input_prof_meas').attr('value', '');
+        $('#input_prof_field').attr('value', '');
+        $('#input_prof_mult').attr('value', '');
+        $('#input_prof_type').attr('value', '');
+        $('#input_prof_startdt').attr('value', '');
+        $('#input_prof_enddt').attr('value', '');
+        $('#input_prof_embedurl').attr('value', '');
+
+        $('#profile_graph').html('');
+    }
+    select_profile() {
+        let selected_option = $('#profile_select').val();
+        let profile_info = profiles_plugin.profiles_list['profiles'][selected_option];
+
+        console.log(profile_info);
+
+        $('#input_prof_uiname').attr('value', profile_info.profile_uiname);
+        $('#input_prof_db').attr('value', profile_info.database);
+        $('#input_prof_meas').attr('value', profile_info.measurement);
+        $('#input_prof_field').attr('value', profile_info.field);
+        $('#input_prof_mult').attr('value', profile_info.multiplier);
+        $('#input_prof_type').attr('value', profile_info.profileType);
+        $('#input_prof_startdt').attr('value', profile_info.start_datetime);
+        $('#input_prof_enddt').attr('value', profile_info.end_datetime);
+        $('#input_prof_embedurl').attr('value', profile_info.embedUrl);
+
+        let $select = $('#add_to_group_select');
+        let setting_type = profile_info.setting_type;
+        let selected_group = null;
+        if (setting_type == 'project') {
+            selected_group = profile_info.project_name;
+        } else {
+            for (let i=0; i<profiles_plugin.profiles_list['groups'].length; i++) {
+                if (profiles_plugin.profiles_list['groups'][i].setting_type == setting_type) {
+                    selected_group = profiles_plugin.profiles_list['groups'][i].project_name;
                 }
             }
         }
-    }
-    return items;
-}
+        $select.val(selected_group);
 
-var tree_data = [];
-function show_layers() {
-    sidebar_ctr = sidebar.getContainer();
-
-    sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
-    tree = '<p><div id="layer_tree"></div></p>';
-    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + tree;
-
-    tree_data = [];
-    for (var idx in wms_layer_list['groups']) {
-        let group = wms_layer_list['groups'][idx];
-        let readonly = group.readonly
-        let setting_type = group.setting_type; // SettingType in UserSettings: user, system, project
-        let group_name = group.name; // User friendly string
-        let group_project_name = group.project_name; // project name if available e.g. MCS
-        let tree_children = []
-        for (var key in wms_layer_list['layers']) {
-            let layer = wms_layer_list['layers'][key];
-            let layer_group = layer.setting_type;
-            if (layer_group === "project")
-                layer_group = layer.project_name; // add to project with specific project_name
-            if (layer_group == group_project_name) {
-                let value = wms_layer_list['layers'][key];
-                tree_children.push({
-                    "id":"li_"+key,
-                    "text":value.description,
-                    "parent":"li_wms_layer_list_"+group_project_name,
-                    "type": "layer",
-                    "project_name": group_project_name,
-                    "data": { "readonly": readonly},
-                    "a_attr": {
-                          'project_name': group_project_name
-                      }
-                    });
-            }
-        }
-        let tree_obj = {"id":"li_wms_layer_list_"+group_project_name,
-                        "text":group_name,
-                        "children":tree_children,
-                        "type": "folder",
-                        "setting_type": setting_type,
-                        "data": { "readonly":true},
-                        "a_attr": {
-                          "class": "no_checkbox"
-                        }};
-        tree_data.push(tree_obj);
-    }
-
-    sidebar_ctr.innerHTML += '<h2>Add layers:</h2>';
-    table = '<table>';
-    table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="layer_descr"></td></tr>';
-    table += '<tr><td width=180>URL</td><td><input type="text" width="60" id="layer_url"></td></tr>';
-    table += '<tr><td width=180>Layer name</td><td><input type="text" width="60" id="layer_name"></td></tr>';
-    table += '<tr><td width=180>Legend URL</td><td><input type="text" width="60" id="legend_url"></td></tr>';
-    table += '<tr><td width=180>Add to group</td><td><select id="add_to_group">';
-    for (var idx in wms_layer_list['groups']) {
-        let group = wms_layer_list['groups'][idx];
-        if (!group.readonly) {
-            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</value>';
+        if (profile_info.embedUrl) {
+            $('#profile_graph').html('<iframe width="100%" height="200px" src="'+profile_info.embedUrl+'"></iframme>');
+        } else {
+            $('#profile_graph').html('');
         }
     }
-    table += '</select></td></tr>';
 
-    table += '<tr><td><button onclick="add_layer();">Add layer</button></td><td>&nbsp;</td>';
-    table += '</table>';
-    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+    settings_window_contents() {
+        let $div = $('<div>').attr('id', 'profiles_settings_window_div');
+        profiles_plugin.get_profiles_settings($div);
+        return $div;
+    }
 
-    // https://github.com/vakata/jstree/issues/593
-    // Set the z-index of the contextmenu of jstree
-//    $('.vakata-context').css('z-index', 20000);
+    static create(event) {
+        if (event.type === 'client_connected') {
+            profiles_plugin = new Profiles();
+            return profiles_plugin;
+        }
+        if (event.type === 'settings_menu_items') {
+            let menu_items = {
+                'value': 'profiles_plugin_settings',
+                'text': 'Profiles plugin',
+                'settings_func': profiles_plugin.settings_window_contents,
+                'sub_menu_items': []
+            };
 
-    // TODO: Is this the right way (using event 'shown') to attach after building the DOM??
-    sidebar.on('shown', function() {
-        $(function () {
-            $('#layer_tree')
-                .on('select_node.jstree', function(e, data) {
-                    console.log(data);
-                    let id = data.node.id.substring(3);
-                    if (!(id.startsWith("wms_layer_list"))) {
-                        console.log('adding '+id);
-                        show_wms_layer(id);
-                    }
-                })
-                .on('deselect_node.jstree', function(e, data) {
-                    let id = data.node.id.substring(3);
-                    if (!(id.startsWith("wms_layer_list"))) {
-                        console.log('removing '+id);
-                        hide_wms_layer(id);
-                    }
-                })
-                .jstree({
-                    "core" : {
-                        "data": tree_data,
-                        // so that create works for contextmenu plugin
-                        "check_callback" : true
-                    },
-                    "plugins": ["checkbox", "state", "contextmenu", "types"], // , "ui", "crrm", "dnd"],
-                    "contextmenu": {
-                        "items": wmsLayerContextMenu,
-                        "select_node": false
-                    },
-                    "checkbox": {
-                        "three_state": false
-                    },
-                    "types" : {
-                        "folder" : {
-                            "a_attr": {
-                                "class": "no_checkbox"
-                            }
-                        },
-                        "layer" : {
-                            "icon" : "fa fa-file-image-o layer-node"
-                        }
-                    }
-                });
-            $('.vakata-context').css('z-index', 20000);
-        });
-    });
-
-    sidebar.show();
-//    $('.vakata-context').css('z-index', 20000);
+            return menu_items;
+        }
+    }
 }
 
+var profiles_plugin;
+
+$(document).ready(function() {
+    extensions.push(function(event) { return Profiles.create(event) });
+});

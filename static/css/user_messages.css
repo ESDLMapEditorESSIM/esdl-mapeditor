@@ -1,0 +1,201 @@
+.userMessages {
+    position: absolute;
+    right: 64px;
+    top: 12px;
+    height: 46px;
+    display: block;
+    z-index: 999;
+    border-radius: 4px;
+    opacity: 0.7;
+    text-align: center;
+    pointer-events: none;
+}
+.userMessageError {
+    background-color: red
+}
+.userMessageOk {
+    background-color: limegreen
+}
+.userMessages p {
+    margin-left: 16px;
+    margin-right: 16px;
+    color: white;
+}
+.userMessages-hidden {
+    display: none
+}
+
+#messagesContainer {
+    width: 200px;
+    height: auto;
+    position: absolute;
+    right: 250px;
+    top: 75px;
+    z-index: 400;
+    padding: 5px 10px;
+    background-color: rgba(255, 255, 255, 0.75);
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    overflow:hidden;
+    font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+
+    -moz-transition: height .5s;
+    -ms-transition: height .5s;
+    -o-transition: height .5s;
+    -webkit-transition: height .5s;
+    transition: height .5s;
+}
+
+.messages-hidden {
+    display:none;
+}
+#introText {
+    width:100%;
+    display:block;
+    padding:10px 10px 10px 0px;
+    box-sizing: border-box;
+    font-size:12px;
+    font-weight:bold;
+}
+#deleteLogItems {
+    position: absolute;
+    right:10px;
+    width:auto;
+    top:15px;
+    cursor:pointer;
+    text-decoration: underline;
+}
+
+.message {
+    padding:5px 25px 5px 10px;
+    position: relative;
+    margin-bottom:5px;
+
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color:rgba(0,0,0,0.05);
+}
+.message > span.bl {
+    background-color:rgba(0,0,0,0.6);
+}
+
+.succes {
+    background-color:rgba(28, 173, 27,0.1);
+    text-transform: capitalize;
+}
+.succes > span.bl {
+    background-color:rgba(28, 173, 27,1);
+}
+.succes > span.logStatus {
+    color:rgba(28, 173, 27,1);
+}
+.error {
+    background-color:rgba(245, 99, 99, 0.1);
+    text-transform: capitalize;
+}
+.error > span.bl {
+    background-color:rgba(245, 99, 99, 1);
+}
+.error > span.logStatus {
+    color:rgba(245, 99, 99, 1);
+}
+.warning {
+    background-color:rgba(245, 202, 99, 0.1);
+    text-transform: capitalize;
+}
+.warning > span.bl {
+    background-color:rgba(245, 202, 99, 1);
+}
+.warning > span.logStatus {
+    color:rgba(245, 202, 99, 1);
+}
+
+.message > .delete {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 18px;
+    height:18px;
+    background-color: rgba(0,0,0,0.1);
+    text-align: center;
+    vertical-align: middle;
+    cursor:pointer;
+    color:#fff;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.message > .delete:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+.message > span.bl {
+    display:block;
+    position: absolute;
+    left:0px;
+    top:0px;
+    bottom:0px;
+    width:2px;
+    height:100%;
+    min-height:20px;
+}
+
+.remove-messages {
+    -webkit-animation: disapearUp 1s;
+    -webkit-animation-fill-mode: forwards;
+    animation: disapearUp 1s;
+    animation-fill-mode: forwards;
+}
+
+.removed {
+    -webkit-animation: disapear 1s;
+    -webkit-animation-fill-mode: forwards;
+    animation: disapear 1s;
+    animation-fill-mode: forwards;
+}
+
+@-webkit-keyframes disapearUp {
+  50% {
+    -webkit-transform: translateY(0%);
+    transform: translateY(0%);
+  }
+  100% {
+    -webkit-transform: translateY(-200%);
+    transform: translateY(-200%);
+  }
+}
+
+@keyframes disapearUp {
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@-webkit-keyframes disapear{
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes disapear{
+  50% {
+    -webkit-transform: translateX(-5%);
+    transform: translateX(-5%);
+  }
+  100% {
+    -webkit-transform: translateX(200%);
+    transform: translateX(200%);
+  }
+}

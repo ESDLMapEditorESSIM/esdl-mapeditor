@@ -38,6 +38,7 @@ import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
 from esdl_profiles import ESDLProfiles
+from extensions.profiles import Profiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
 from extensions.settings_storage import SettingsStorage
@@ -232,7 +233,6 @@ HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
 BAG(app, socketio)
-Boundaries(app, socketio)
 BoundaryService(app, socketio, settings_storage)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
@@ -242,8 +242,8 @@ ESSIMSensitivity(app, socketio, settings_storage, essim)
 Vesta(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 me_settings = MapEditorSettings(app, socketio, settings_storage)
+profiles = Profiles(app, socketio, settings_storage)
 # ShapefileConverter(app, socketio, executor)
-
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -335,8 +335,6 @@ def editor():
 
         print("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
         user_actions_logging.store_logging(user_email, "login", "", "", "", {})
-
-
 
         userinfo = oidc.user_getinfo(['role'])
         role = []
@@ -2803,6 +2801,8 @@ def browser_initialize():
 
     print('Send initial information to client')
     emit('profile_info', esdl_profiles.get_profiles_list(role))
+    emit('profiles_info', profiles.get_profiles())
+
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('carrier_color_dict', get_carrier_color_dict())
     emit('wms_layer_list', wms_layers.get_layers())

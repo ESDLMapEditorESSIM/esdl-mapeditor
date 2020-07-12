@@ -65,10 +65,10 @@ class WMSLayers:
         user_group = get_session('user-group')
         role = get_session('user-role')
         mapeditor_role = get_session('user-mapeditor-role')
-        print('User: ', user)
-        print('Groups: ', user_group)
-        print('Roles: ', role)
-        print('Mapeditor roles: ', mapeditor_role)
+        # print('User: ', user)
+        # print('Groups: ', user_group)
+        # print('Roles: ', role)
+        # print('Mapeditor roles: ', mapeditor_role)
         if user is not None and self.settings_storage.has_user(user, LAYERS_SETTING):
             # add user layers if available
             all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
@@ -90,7 +90,7 @@ class WMSLayers:
                     g['readonly'] = False
         possible_groups.extend(self._create_group_layers_for_projects(user_group))
         message[LAYERS_SETTING] = all_layers
-        print(message)
+        # print(message)
         return message
 
     def _create_group_layers_for_projects(self, groups):

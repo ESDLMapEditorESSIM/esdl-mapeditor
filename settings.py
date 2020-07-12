@@ -160,7 +160,7 @@ else:
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
     USER_LOGGING_ENABLED = False
     FLASK_DEBUG = True
-    settings_storage_config["host"] = 'localhost'
+    # settings_storage_config["host"] = 'localhost'
     cdo_mondaine_config["hostname"] =  "http://localhost:9080"
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 

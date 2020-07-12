@@ -47,7 +47,8 @@ class AppSettings {
     }
 
     generate_settings_modules_list(list_div) {
-        let $select = $('<select>').attr('id','select_module').attr('size', 10);
+        let $select = $('<select>').attr('id','select_module').attr('size', 30).width('100%').css('overflow-y', 'auto')
+            .css('border', '0px').css('outline', '0px');
         for (let i = 0; i < this.modules_settings_list.length; i++) {
             let $option = $('<option>')
                 .attr('value', this.modules_settings_list[i].value)
