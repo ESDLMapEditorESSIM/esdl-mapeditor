@@ -89,25 +89,14 @@ function select_profile_class() {
     } else {
         document.getElementById('mult_value').innerHTML = 'Multiplier';
 
-    for (let p=0; p<profile_array.length; p++) {
-        pi = profile_array[p];
-        if (pi['profile_uiname'] === profile_class && pi['embedUrl'] !== '') {
-            console.log('embedURL is there');
-            div_for_graph_panel = document.getElementById('div_for_graph_panel');
-            div_for_graph_panel.innerHTML = '<iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme>';
+        let profiles_info = Object.entries(profiles_plugin.profiles_list['profiles']);
+        for (let pr=0; pr<profiles_info.length; pr++) {
+            let pi = profiles_info[pr][1];
+            if (pi['profile_uiname'] == profile_class && pi['embedUrl'] !== '') {
+                $('#div_for_graph_panel').html('<iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme>');
+            }
         }
-    }
 
-//        document.getElementById('type_row').style.display = 'none';
-//        document.getElementById('qau_row').style.display = 'none';
-//        document.getElementById('cqau_row1').style.display = 'none';
-//        document.getElementById('cqau_row2').style.display = 'none';
-//        document.getElementById('cqau_row3').style.display = 'none';
-//        document.getElementById('cqau_row4').style.display = 'none';
-//        document.getElementById('cqau_row5').style.display = 'none';
-//        document.getElementById('cqau_row6').style.display = 'none';
-//        document.getElementById('cqau_row7').style.display = 'none';
-//        document.getElementById('pt_row').style.display = 'none';
     }
 }
 
@@ -176,9 +165,10 @@ function port_profile_info_window(port_profile_info) {
                 profile_type +'</td></tr>';
 
             if (profile_class == 'InfluxDBProfile') {
-                for (let p=0; p<profile_array.length; p++) {
-                    pi = profile_array[p];
-                    if (pi['profile_uiname'] === profile_name && pi['embedUrl'] !== '') {
+                let profiles_info = Object.entries(profiles_plugin.profiles_list['profiles']);
+                for (let pr=0; pr<profiles_info.length; pr++) {
+                    let pi = profiles_info[pr][1];
+                    if (pi['profile_uiname'] == profile_name && pi['embedUrl'] !== '') {
                         table += '<tr><td colspan="4"><iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme></td></tr>';
                     }
                 }
@@ -194,12 +184,25 @@ function port_profile_info_window(port_profile_info) {
     table = '<table>';
 
     table += '<tr><input type="hidden" id="profile_port_id" value="'+port_id+'"><td width=180>Profile class</td>';
-    table += '<td><select id="profile_class" onchange="select_profile_class();"><option value="SingleValue" selected>Single Value</option>';
-    // table += '<option value="DateTimeProfile">DateTime Profile</option>';
-    for (p=0; p<profile_array.length; p++) {
-        table += '<option value="'+profile_array[p]["profile_uiname"]+'">'+profile_array[p]["profile_uiname"]+'</option>';
+    let $select = $('<select>').attr('id', 'profile_class');
+    $select.append($('<option>').val('SingleValue').text('Single Value').attr('selected', 'selected'));
+    let group_list = profiles_plugin.profiles_list['groups'];
+    let profile_info = Object.entries(profiles_plugin.profiles_list['profiles']);
+    for (let gr=0; gr<group_list.length; gr++) {
+        let $optgroup = $('<optgroup>').attr('label', group_list[gr].name);
+        for (let pr=0; pr<profile_info.length; pr++) {
+            if (group_list[gr].setting_type == profile_info[pr][1].setting_type) {
+                if (profile_info[pr][1].setting_type == 'project' &&
+                    profile_info[pr][1].project_name != group_list[gr].project_name) continue;
+
+                let $option = $('<option>').val(profile_info[pr][1].profile_uiname).text(profile_info[pr][1].profile_uiname);
+                $optgroup.append($option);
+            }
+        }
+        $select.append($optgroup);
     }
-    table += '</select></td></tr>';
+    table += '<td>'+$select.prop('outerHTML')+'</td></tr>';
+    // table += '</select></td></tr>';
 
     table += '<tr id="mov_row"><td id="mult_value" width=180>Value</td>';
     table += '<td><input type="text" width="60" id="profile_mult_value" value=""></td></tr>';
@@ -270,4 +273,6 @@ function port_profile_info_window(port_profile_info) {
     sidebar_ctr.innerHTML += '<p><div id="div_for_graph_panel"></div></p>';
 
     sidebar.show();
+
+    $('#profile_class').change(function() {select_profile_class();});
 }

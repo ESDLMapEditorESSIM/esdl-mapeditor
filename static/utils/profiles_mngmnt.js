@@ -7,20 +7,27 @@ class Profiles {
     constructor() {
         this.initSocketIO();
         this.profiles_list = null;
+
+        socket.emit('get_profiles_list', function(profiles_list) {
+            // console.log(profiles_plugin);
+            profiles_plugin.profiles_list = profiles_list;
+        });
     }
 
     initSocketIO() {
         console.log("Registering socket io bindings for Profiles")
 
-        socket.on('profiles_info', function(profiles_list) {
-            console.log(profiles_list);
-            this.profiles_list = profiles_list;
-        });
+//        socket.on('profiles_info', function(profiles_list) {
+//            console.log('=========================================================================================');
+//            console.log(profiles_list);
+//            console.log('=========================================================================================');
+//            this.profiles_list = profiles_list;
+//        });
     }
 
     get_profiles_settings(div) {
         socket.emit('get_profiles_list', function(profiles_list) {
-            console.log(profiles_list);
+            // console.log(profiles_list);
             profiles_plugin.profiles_list = profiles_list;
             div.append($('<h1>').text('Profiles plugin settings'));
 
@@ -117,11 +124,13 @@ class Profiles {
 
     click_remove() {
         let selected_option = $('#profile_select').val();
-        console.log('Remove profile: '+selected_option);
+        $('#profile_select option[value=\''+selected_option+'\']').remove();
+        // console.log('Remove profile: '+selected_option);
         socket.emit('remove_profile', selected_option);
+        profiles_plugin.click_clear();
     }
     click_add() {
-        console.log('Add profile');
+        // console.log('Add profile');
         let profile_info = {
             profile_uiname: $('#input_prof_uiname').val(),
             database: $('#input_prof_db').val(),
@@ -181,7 +190,7 @@ class Profiles {
         }
     }
     click_clear() {
-        console.log('Clear profile');
+        // console.log('Clear profile');
         $('#profile_select').val('first_select_profile');
 
         $('#input_prof_uiname').attr('value', '');
@@ -200,7 +209,7 @@ class Profiles {
         let selected_option = $('#profile_select').val();
         let profile_info = profiles_plugin.profiles_list['profiles'][selected_option];
 
-        console.log(profile_info);
+        // console.log(profile_info);
 
         $('#input_prof_uiname').attr('value', profile_info.profile_uiname);
         $('#input_prof_db').attr('value', profile_info.database);
@@ -242,6 +251,7 @@ class Profiles {
     static create(event) {
         if (event.type === 'client_connected') {
             profiles_plugin = new Profiles();
+            console.log("profiles_plugin initiated!!")
             return profiles_plugin;
         }
         if (event.type === 'settings_menu_items') {

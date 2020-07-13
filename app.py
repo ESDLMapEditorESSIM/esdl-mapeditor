@@ -37,7 +37,6 @@ from esdl_helper import generate_profile_info, get_port_profile_info
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
-from esdl_profiles import ESDLProfiles
 from extensions.profiles import Profiles
 from pyecore.ecore import EDate
 from user_logging import UserLogging
@@ -67,7 +66,6 @@ if os.environ.get('GEIS'):
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
 esdl_services = ESDLServices()
-esdl_profiles = ESDLProfiles()
 user_actions_logging = UserLogging()
 settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
 wms_layers = WMSLayers(settings_storage)
@@ -2064,8 +2062,10 @@ def process_command(message):
             # Assume all other options are InfluxDBProfiles
             multiplier = message['multiplier']
 
-            profiles = esdl_config.esdl_config['influxdb_profile_data']
-            for p in profiles:
+            profiles = Profiles.get_instance().get_profiles()['profiles']
+            for pkey in profiles:
+                p = profiles[pkey]
+
                 if p['profile_uiname'] == profile_class:
                     esdl_profile = esdl.InfluxDBProfile()
                     esdl_profile.multiplier = str2float(multiplier)
@@ -2800,9 +2800,6 @@ def browser_initialize():
     role = get_session('user-role')
 
     print('Send initial information to client')
-    emit('profile_info', esdl_profiles.get_profiles_list(role))
-    emit('profiles_info', profiles.get_profiles())
-
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('carrier_color_dict', get_carrier_color_dict())
     emit('wms_layer_list', wms_layers.get_layers())

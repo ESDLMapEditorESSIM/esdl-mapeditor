@@ -7,6 +7,8 @@ from uuid import uuid4
 
 PROFILES_SETTING = 'PROFILES'
 
+profiles = None
+
 
 class Profiles:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -19,6 +21,17 @@ class Profiles:
         if not self.settings_storage.has_system(PROFILES_SETTING):
             self.settings_storage.set_system(PROFILES_SETTING, default_profiles)
             print('Updated default profile list in settings storage')
+
+        global profiles
+        if profiles:
+            print("ERROR: Only one Profiles object can be instantiated")
+        else:
+            profiles = self
+
+    @staticmethod
+    def get_instance():
+        global profiles
+        return profiles
 
     def register(self):
         print('Registering Profiles extension')
@@ -115,10 +128,10 @@ class Profiles:
         user_group = get_session('user-group')
         role = get_session('user-role')
         mapeditor_role = get_session('user-mapeditor-role')
-        print('User: ', user)
-        print('Groups: ', user_group)
-        print('Roles: ', role)
-        print('Mapeditor roles: ', mapeditor_role)
+        # print('User: ', user)
+        # print('Groups: ', user_group)
+        # print('Roles: ', role)
+        # print('Mapeditor roles: ', mapeditor_role)
         if user is not None and self.settings_storage.has_user(user, PROFILES_SETTING):
             # add user profiles if available
             all_profiles.update(self.settings_storage.get_user(user, PROFILES_SETTING))
@@ -140,7 +153,7 @@ class Profiles:
                     g['readonly'] = False
         possible_groups.extend(self._create_group_profiles_for_projects(user_group))
         message["profiles"] = all_profiles
-        print(message)
+        # print(message)
         return message
 
     def _create_group_profiles_for_projects(self, groups):

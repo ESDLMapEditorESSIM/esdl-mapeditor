@@ -1,6 +1,7 @@
 from esdl import esdl
 import esdl_config
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
+from extensions.profiles import Profiles
 
 
 def generate_profile_info(profile_list):
@@ -20,12 +21,16 @@ def generate_profile_info(profile_list):
             value = profile.value
             profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
+            database = profile.database
             multiplier = profile.multiplier
             measurement = profile.measurement
             field = profile.field
             # profile_name = 'UNKNOWN'
-            for p in esdl_config.esdl_config['influxdb_profile_data']:
-                if p['measurement'] == measurement and p['field'] == field:
+
+            profiles = Profiles.get_instance().get_profiles()['profiles']
+            for pkey in profiles:
+                p = profiles[pkey]
+                if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
                     profile_name = p['profile_uiname']
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
