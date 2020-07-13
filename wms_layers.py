@@ -17,6 +17,7 @@ class WMSLayers:
         setting_type = SettingType(layer['setting_type'])
         project_name = layer['project_name']
         identifier = self._get_identifier(setting_type, project_name)
+        layer['visible'] = False  # make sure we don't save the visibility
         if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
             layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
         else:
