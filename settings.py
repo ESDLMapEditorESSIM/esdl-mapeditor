@@ -112,12 +112,12 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_opensource.json'
 
     essim_config = {
-        "ESSIM_host": "http://10.30.2.1:8112",
+        "ESSIM_host": "http://essim-engine:8112",
         "ESSIM_path": "/essim/simulation",
-        "influxURL": "http://10.30.2.1:8086",
-        "grafanaURL": "https://essim-dashboard.hesi.energy",
+        "influxURL": "http://influxdb:8086",
+        "grafanaURL": "http://localhost:3000",
         "user": "essim",
-        "ESSIM_database_server": "10.30.2.1",
+        "ESSIM_database_server": "influxdb",
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",

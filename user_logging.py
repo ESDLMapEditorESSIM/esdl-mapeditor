@@ -22,8 +22,9 @@ class UserLogging:
               self.config['port'], self.config['database']))
         client = InfluxDBClient(host=self.config['host'],
               port=self.config['port'], database=self.config['database'])
-        # client.drop_database(self.config['database'])
-        # client.create_database(self.config['database'])
+        if self.config['database'] not in client.get_list_database():
+            # client.drop_database(self.config['database'])
+            client.create_database(self.config['database'])
         return client
 
     def store_logging(self, user, action=None, command=None, parameters=None, description=None, tags={}):

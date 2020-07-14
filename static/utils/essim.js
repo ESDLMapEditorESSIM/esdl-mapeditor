@@ -1,4 +1,4 @@
-ESSIM_simulation_URL_prefix = '';
+ESSIM_simulation_URL_prefix = '/';
 var attempt = 0;                // number of retries after an error occurs with the simulation_progress query
 
 // ------------------------------------------------------------------------------------------------------------
