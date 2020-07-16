@@ -1,0 +1,24 @@
+# Direct requirements
+Flask==1.1.1
+Flask-Executor==0.9.2
+Flask-SocketIO==4.0.0
+Flask-Session==0.3.1
+flask-oidc==1.4.0
+PyJWT==1.7.1
+requests==2.19.1
+pyecore==0.11.3
+ordered-set==3.1.1
+influxdb==5.2.3
+pymongo==3.10.1
+geomet==0.2.1.post1
+xmldiff==2.4
+Werkzeug==0.15.5
+
+
+
+
+
+
+
+
+

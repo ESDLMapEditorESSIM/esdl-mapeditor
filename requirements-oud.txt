@@ -1,15 +1,20 @@
+
+wheel
 aniso8601==6.0.0
 attrs==19.1.0
 certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
-Flask==1.0.2
-flask-restplus==0.10.0
-Flask-SocketIO==3.3.2
+#Flask==1.0.2                # 1.03
+Flask==1.1.1
+flask-restplus==0.12.1
+#Flask-SocketIO==3.3.2       # 4.1.0
+Flask-SocketIO==4.0.0
 Flask-Session==0.3.1
+geomet==0.2.1.post1
 idna==2.7
 itsdangerous==1.1.0
-Jinja2==2.10
+Jinja2==2.10.1
 jsonschema==3.0.1
 lxml==4.2.4
 MarkupSafe==1.1.1
@@ -24,12 +29,14 @@ six==1.12.0
 urllib3==1.23
 Werkzeug==0.15.1
 # eventlet
-# gevent
-# gevent-websocket
-pyecore==0.10.2
+pyecore==0.11.3
 influxdb
 pandas
 # uWSGI
-flask-login
 flask-oidc
+Flask-Executor==0.9.2
 pyjwt==1.7.1
+cryptography==2.7
+pymongo==3.10.1
+xmldiff==2.4
+# pyproj==2.6.0
