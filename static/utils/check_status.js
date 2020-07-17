@@ -6,7 +6,7 @@ let auth_status = function() {
             console.log(session);
             setTimeout(auth_status, 60000);
             if (!session.valid) {
-                answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
+                const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
                 if (answer) {
                     window.location = session.redirect_uri
                 }

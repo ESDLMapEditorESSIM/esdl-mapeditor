@@ -1,16 +1,11 @@
 {
-  "name": "mapeditor-tno",
-  "version": "0.0.1",
+  "name": "esdl-webeditor",
+  "version": "0.1.0",
   "description": "Map based editor to create and edit energy system descriptions in ESDL",
+  "repository": "git@ci.tno.nl:GEIS/esdl-webeditor.git",
   "author": "Edwin Matthijssen <edwin.matthijssen@tno.nl>",
-  "license": "MIT",
-  "scripts": {
-    "docker:build": "docker build -t mapeditor-tno .",
-    "docker:tag": "docker tag mapeditor-tno 127.0.0.1:5000/mapeditor-tno",
-    "docker:publish": "docker push 127.0.0.1:5000/mapeditor-tno",
-    "docker:remove": "docker service rm mapeditor-tno",
-    "docker:deploy": "docker service create --name mapeditor-tno -p 2501:8111 127.0.0.1:5000/mapeditor-tno",
-    "docker": "npm run docker:build && npm run docker:tag && npm run docker:publish && npm run docker:remove && npm run docker:deploy",
-    "docker1": "npm run docker:build && npm run docker:tag && npm run docker:publish && npm run docker:deploy"
+  "private": true,
+  "devDependencies": {
+    "eslint": "^7.0.0"
   }
 }

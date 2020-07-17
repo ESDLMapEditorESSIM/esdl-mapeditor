@@ -8,7 +8,6 @@ from flask_executor import Executor
 from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, send_file, redirect, Response, stream_with_context
 from flask_socketio import SocketIO, emit
 from flask_session import Session
-from werkzeug.wsgi import FileWrapper
 from flask_oidc import OpenIDConnect
 import jwt
 import requests
@@ -45,17 +44,15 @@ from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
+from extensions.workflow import Workflow
+from log import get_logger
 from extensions.mondaine_cdo import MondaineCDO
 from extensions.es_statistics import ESStatisticsService
 # from extensions.shapefile_converter import ShapefileConverter
 from extensions.essim_sensitivity import ESSIMSensitivity
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s [%(threadName)s] - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-if settings.FLASK_DEBUG:
-    logging.getLogger().setLevel(logging.DEBUG)
-#logging.getLogger("werkzeug")
+logger = get_logger(__name__)
 
 if os.environ.get('GEIS'):
     import gevent.monkey
@@ -238,6 +235,7 @@ essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 Vesta(app, socketio, settings_storage)
+Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 me_settings = MapEditorSettings(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, settings_storage)
@@ -319,14 +317,14 @@ def editor():
             warn('WARNING: No client_id in session!!')
 
         whole_token = oidc.get_access_token()
-        print("whole_token: ", whole_token)
+        logger.debug(f"whole_token: {whole_token}")
         if whole_token:
             try:
                 jwt_tkn = jwt.decode(whole_token,key=settings.IDM_PUBLIC_KEY, algorithms='RS256', audience='account', verify=False)
                 import pprint
                 pprint.pprint(jwt_tkn)
             except Exception as e:
-                print("error in decoding token: ", str(e))
+                logger.exception(f"error in decoding token: {str(e)}")
         # if role in access_token['resource_access'][client]['roles']:
 
         user_email = oidc.user_getfield('email')
@@ -2837,4 +2835,3 @@ if __name__ == '__main__':
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
-

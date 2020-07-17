@@ -2,34 +2,46 @@
 
 ## Introduction
 
-Map-based ESDL editor, allows loading, editing and saving ESDL EnergySystem files
+Map-based ESDL editor, allows loading, editing and saving ESDL EnergySystem files,
+as well as integration with various external services (ESSIM, Energy Data
+Repository, BAG, ...).
 
 ## Installation
 
-1. Clone this repository
+1. Clone this repository.
 
-2. Install shapely by downloaden the wheel from
-[this website](http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely)...
+2. Install the dependencies:
 
-3. ...and then install it using pip (replace filename with your chosen version):
-   ```
-   pip install Shapely‑1.6.4.post1‑cp37‑cp37m‑win_amd64.whl
-   ```
-
-4. install the other dependencies
-   ```
-   pip install -r requirements.txt
-   ```
+```shell
+pip install -r requirements.txt
+```
 
 ## Starting the application
 
-Run `app.py` and open browser on `http:\\localhost:8111`. The application serves as a simple webserver and serves index.html and the images.
-There is a websocket connection between the python application and webbrowser for bi-directional communication.
+1. Start a local MongoDB:
 
+```shell
+make mongo
+```
 
-# Documentation
+2. Run `python app.py` or `make dev` and open browser on `http://localhost:8111`.
 
-## Session variables
+The application serves as a simple webserver and serves index.html and the images.
+There is a websocket connection between the python application and browser for
+bi-directional communication.
+
+## Deployment
+
+In production the service runs in Docker and uses an external MongoDB. The
+production service uses UWSGI.
+
+The deployment scripts are docker-container.redeploy.sh and
+beta-docker-container-redeploy.sh. These should be executed from a machine in the
+GEIS cluster.
+
+## Documentation
+
+### Session variables
 
 | Variable name         | Type | Meaning
 | --------------------- | -----|-------- |
@@ -45,7 +57,7 @@ There is a websocket connection between the python application and webbrowser fo
 | es_start              | String | currently not used. Can be "new", "load_file" or "load_store"
 | port_to_asset_mapping | Dictionary | Gives the asset id and coordinate using the port id as a key
 
-## Python functions
+### Python functions
 
 write_energysystem_to_file(filename, es)
 create_ESDL_store_item(id, es, title, description, email)
@@ -127,7 +139,7 @@ on_connect()
 on_disconnect()
 
 
-### Commented out
+#### Commented out
 download_esdl(path)
 download_esdl(path)
 send_image(path)
@@ -135,9 +147,9 @@ send_plugin(path)
 send_icon(path)
 
 
-## Python sockets
+### Python sockets
 
-### Incoming
+#### Incoming
 
 @socketio.on('command', namespace='/esdl')
 @socketio.on('file_command', namespace='/esdl')
@@ -148,7 +160,7 @@ send_icon(path)
 @socketio.on('connect', namespace='/esdl')
 @socketio.on('disconnect', namespace='/esdl')
 
-### Outgoing
+#### Outgoing
 
 emit('area_boundary', {'info-type': 'P-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
 emit('area_boundary', {'info-type': 'MP-WGS84', 'crs': 'WGS84', 'boundary': boundary, 'color': AREA_LINECOLOR, 'fillcolor': AREA_FILLCOLOR})
@@ -208,7 +220,7 @@ emit('add_connections', conn_list)
 emit('carrier_list', carrier_list)
 emit('profile_info', esdl_config.esdl_config['influxdb_profile_data'])
 
-## Javascript functions
+### Javascript functions
 
 function uuidv4()
 function calculate_length(layer)
@@ -244,9 +256,9 @@ function connectAsset(e)
 function connectConductor(e)
 function splitConductor(id, location, mode)
 
-## Javascript sockets
+### Javascript sockets
 
-### Incoming
+#### Incoming
 
 socket.on('connect', function() 
 socket.on('log', function(msg) 
@@ -269,7 +281,7 @@ socket.on('profile_info', function(pa)
 socket.on('carrier_list', function(carr_list) 
 socket.on('and_now_press_download_file', function() 
 
-### Outgoing 
+#### Outgoing 
 
 socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, carrier_id: carrier_id});
 socket.emit('command', {cmd: 'connect_assets', id1: first_clicked_id, id2: object.id});

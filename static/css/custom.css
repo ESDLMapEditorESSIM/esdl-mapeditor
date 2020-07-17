@@ -1,23 +1,26 @@
 /*
     CSS for ESDL map editor
 */
-html, body
-{
+html,
+body {
     position: relative;
     height: 100%;
     padding: 0;
     margin: 0;
     font-size: 14px;
 }
-.header, .footer {
+
+.header,
+.footer {
     background-color: grey;
     color: white;
     float:
-    padding: 4px;
+        padding: 4px;
     height: 30px;
 }
 
-.header-title, .header-logo {
+.header-title,
+.header-logo {
     float: left;
     padding: 2px;
     font-size: 16px;
@@ -29,91 +32,123 @@ html, body
     padding-right: 3px;
 }
 
-.h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
+.h1,
+.h2,
+h1,
+h2 {
     font-size: 1.5rem;
     margin-top: 8px;
+}
+
+.h3,
+.h4,
+.h5,
+.h6,
+h3,
+h4,
+h5,
+h6 {
+    font-size: 1.25rem;
+    margin-top: 8px;
+    color: gray;
 }
 
 /*
     Using Flexbox to make map full screen
 */
-.flexbox-parent
-{
+.flexbox-parent {
     width: 100%;
     height: 100%;
 
     display: flex;
     flex-direction: column;
 
-    justify-content: flex-start; /* align items in Main Axis */
-    align-items: stretch; /* align items in Cross Axis */
-    align-content: stretch; /* Extra space in Cross Axis */
+    justify-content: flex-start;
+    /* align items in Main Axis */
+    align-items: stretch;
+    /* align items in Cross Axis */
+    align-content: stretch;
+    /* Extra space in Cross Axis */
 
     background: rgba(255, 255, 255, .1);
 }
-.flexbox-item
-{
+
+.flexbox-item {
     padding: 0px;
 }
-.flexbox-item-grow
-{
-    flex: 1; /* same as flex: 1 1 auto; */
+
+.flexbox-item-grow {
+    flex: 1;
+    /* same as flex: 1 1 auto; */
 }
 
 /*
     ESDL Asset styles
 */
 .circle {
-    margin-left: -18px; /* !important; */
-    margin-top: -18px; /* !important; */
+    margin-left: -18px;
+    /* !important; */
+    margin-top: -18px;
+    /* !important; */
     border-radius: 50%;
     width: 30px;
     height: 30px;
     line-height: 30px;
     box-sizing: content-box;
 }
+
 .circle-img {
     vertical-align: middle;
     width: 23px;
     height: 23px;
 }
+
 .circle-img-joint {
     vertical-align: middle;
     width: 10px;
     height: 10px;
 }
+
 .Producer {
     background: #93a800;
     border: 3px solid #6b7a00;
 }
+
 .Consumer {
     background: #649ec9;
     border: 3px solid #477393;
 }
+
 .Conversion {
     background: #b574ba;
     border: 3px solid #7030a0;
 }
+
 .Storage {
     background: #cb1325;
     border: 3px solid #950b18;
 }
+
 .Transport {
     background: #ffcb00;
     border: 3px solid #bc9500;
 }
+
 .Potential {
     background: #bfbfbf;
     border: 3px solid #808080;
 }
+
 .Building {
     background: #bfbfbf;
     border: 3px solid #000000;
 }
+
 .Joint {
     margin-left: -5px;
     margin-top: -5px;
 }
+
 .Overload_marker {
     border: 5px solid red;
     border-radius: 50%;
@@ -121,12 +156,22 @@ html, body
     height: 40px;
     line-height: 40px;
 }
+
 /*
     Ports
 */
-.Port { border: 3px solid black; }
-.InPort { background: blue; }
-.OutPort { background: red; }
+.Port {
+    border: 3px solid black;
+}
+
+.InPort {
+    background: blue;
+}
+
+.OutPort {
+    background: red;
+}
+
 /* Assets are supported with 1, 2 or 3 InPorts or OutPorts */
 /*
 .OutPort11 { margin-left: 16px; margin-top: -7px !important;}
@@ -155,11 +200,13 @@ html, body
 }
 
 #asset_menu-menu .ui-selectmenu-optgroup {
-	font-size: 1.2em  !important;
+    font-size: 1.2em !important;
 }
 
 /* Fix max-height in all jquery-ui drop down menus to 600px*/
-.ui-selectmenu-menu .ui-menu {max-height: 600px;}
+.ui-selectmenu-menu .ui-menu {
+    max-height: 600px;
+}
 
 
 /*
@@ -169,23 +216,27 @@ html, body
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
     background: white;
-    background: rgba(255,255,255,0.8);
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
     border-radius: 5px;
 }
+
 .legend_title {
     font: 14px/16px Arial, Helvetica, sans-serif;
     font-weight: bold;
 }
+
 .legend_select {
     line-height: 20px;
     color: #000080;
     padding: 6px 2px;
 }
+
 .legend {
     line-height: 18px;
     color: #555;
 }
+
 .legend i {
     width: 18px;
     height: 18px;
@@ -206,28 +257,38 @@ html, body
     Loader
 */
 #loader {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 10000;
-  width: 100px;
-  height: 100px;
-  margin: -50px 0 0 -50px;
-  border: 12px solid #f3f3f3;
-  border-radius: 50%;
-  border-top: 12px solid #3498db;
-  -webkit-animation: spin 2s linear infinite;
-  animation: spin 2s linear infinite;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 10000;
+    width: 100px;
+    height: 100px;
+    margin: -50px 0 0 -50px;
+    border: 12px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 12px solid #3498db;
+    -webkit-animation: spin 2s linear infinite;
+    animation: spin 2s linear infinite;
 }
 
 @-webkit-keyframes spin {
-  0% { -webkit-transform: rotate(0deg); }
-  100% { -webkit-transform: rotate(360deg); }
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 
@@ -244,14 +305,14 @@ html, body
 */
 
 .browse-btn-small {
-  /*background-color: white;*/
-  /*border: 1px solid black;*/
-  font-size: 10px;
-  cursor: pointer;
-  width: 24px;
-  height: 17px;
-  padding: 0px;
-  /*
+    /*background-color: white;*/
+    /*border: 1px solid black;*/
+    font-size: 10px;
+    cursor: pointer;
+    width: 24px;
+    height: 17px;
+    padding: 0px;
+    /*
   border-radius: 1px;
   -moz-border-radius: 1px;
   -webkit-border-radius: 1px;
@@ -266,26 +327,29 @@ html, body
 /* align table in the center of the centertable div */
 .centertable {
     text-align: center;
-	padding: 5px;
+    padding: 5px;
 }
+
 .centertable table {
-	margin: 0 auto;
+    margin: 0 auto;
 }
+
 .centertable table thead {
-	text-align: left;
+    text-align: left;
 }
+
 .centertable table tbody {
-	text-align: left;
+    text-align: left;
 }
 
 /* jstree icon colors */
 
-.layer-node{
-    color:black;
+.layer-node {
+    color: black;
 }
 
-.group-node{
-    color:dark-yellow;
+.group-node {
+    color: dark-yellow;
 }
 
 .no_checkbox>i.jstree-checkbox {
@@ -302,7 +366,11 @@ html, body
 }
 
 /* Smaller fonts */
-.jstree-anchor, .jstree-anchor:link, .jstree-anchor:visited, .jstree-anchor:hover, .jstree-anchor:active {
+.jstree-anchor,
+.jstree-anchor:link,
+.jstree-anchor:visited,
+.jstree-anchor:hover,
+.jstree-anchor:active {
     font-size: 12px;
     padding: 0 0px 0 0px;
 }
@@ -316,6 +384,7 @@ html, body
     line-height: 18px;
     height: 18px;
 }
+
 .jstree-default .jstree-node {
     min-height: 18px;
     line-height: 18px;
@@ -353,13 +422,13 @@ z-index for jstree context menu, sidebar has 2000
 .navbar {
     min-height: 20px;
     margin-bottom: 0px !important;
-/*
+    /*
     background-color: white !important;
 */
 }
 
 .navlink {
-/*
+    /*
     color: black !important;
 */
 }
@@ -394,13 +463,15 @@ z-index for jstree context menu, sidebar has 2000
     margin-left: 10px;
     margin-right: 10px;
 }
+
 .dropdown-menu>li>a {
     padding: 3px 0px;
-/*    display: inline-block; */
+    /*    display: inline-block; */
     position: relative;
     left: 20px;
     float: left;
 }
+
 /*
 .dropdown-menu>li>a:focus {
     padding: 3px 0px;
@@ -424,16 +495,19 @@ z-index for jstree context menu, sidebar has 2000
     width: 16;
     height: 16;
 }
+
 .menu-icon#menu_layers {
     background-image: url(/icons/Layers.png);
     width: 16;
     height: 16;
 }
+
 .menu-icon#menu_import {
     background-image: url(/icons/Import.png);
     width: 16;
     height: 16;
 }
+
 .menu-icon#menu_areageometry {
     background-image: url(/icons/AreaGeometry.png);
     width: 16;
@@ -448,6 +522,18 @@ z-index for jstree context menu, sidebar has 2000
     padding: 6px 0px;
 }
 
+#sidebar select {
+    width: 100%;
+}
+
+#sidebar select[multiple] {
+    height: 300px;
+}
+
+.hidden {
+    display: none;
+}
+
 .div-box {
     border: 1px solid #cccccc;
     padding: 3px;
@@ -458,7 +544,7 @@ z-index for jstree context menu, sidebar has 2000
 */
 .chart-container {
     position: relative;
-/*    height: 200px; */
+    /*    height: 200px; */
     width: 300px;
     margin: 10px;
 }

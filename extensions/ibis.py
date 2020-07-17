@@ -25,7 +25,6 @@ class IBISBedrijventerreinen:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
 
-                initialize_ES = info["initialize_ES"]
                 add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
                 rin_list = info["rin_list"]
 

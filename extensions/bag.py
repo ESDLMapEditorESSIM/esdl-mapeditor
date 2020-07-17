@@ -1,9 +1,8 @@
-from flask import Flask, session
+from flask import Flask
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session
 import settings
 import requests
-import urllib
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 import esdl
 from geomet import wkt

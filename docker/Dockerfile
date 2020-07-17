@@ -1,24 +1,19 @@
-FROM python:3-alpine
-MAINTAINER Edwin Matthijssen  <edwin.matthijssen@tno.nl>
+FROM python:3.7-alpine
 
-RUN apk add --update --no-cache g++ gcc libxslt-dev
-RUN pip install --upgrade pip
+RUN apk add --update --no-cache g++ gcc libxslt-dev linux-headers musl-dev pcre pcre-dev zlib zlib-dev openssl-dev mailcap libffi-dev libffi
+RUN pip3.7 install --upgrade pip
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
-# COPY Shapely-1.6.4.post1-cp37-cp37m-win_amd64.whl /usr/src/app
-# RUN pip install Shapely-1.6.4.post1-cp37-cp37m-win_amd64.whl
-# RUN apt-get install python-shapely
-
-COPY requirements-GEIS.txt /usr/src/app/
-RUN pip install --no-cache-dir -r requirements-GEIS.txt
+COPY requirements.txt /usr/src/app/
+RUN pip3.7 install -r requirements.txt
 
 COPY . /usr/src/app
+WORKDIR /usr/src/app
 
 ENV PYTHONPATH=.:/usr/src/app
-ENV GEIS 1
 
 EXPOSE 8111
 
-CMD cd /usr/src/app && python app.py
+CMD python app.py

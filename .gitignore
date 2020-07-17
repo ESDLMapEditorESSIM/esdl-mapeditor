@@ -72,3 +72,4 @@ download/
 projects/
 html/
 flask_session/
+node_modules
