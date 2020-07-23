@@ -5,17 +5,11 @@ FLASK_SERVER_HOST = '0.0.0.0'
 FLASK_SERVER_PORT = 8111
 FLASK_DEBUG = False  # Do not use debug mode in production
 
-GEIS_CLOUD_HOSTNAME = '10.30.2.1'
-ESDL_STORE_PORT = '3003'
-MONDAINE_HUB_PORT = '3002'
-BOUNDARY_SERVICE_PORT = '4002'
 USER_LOGGING_ENABLED = True
 
 # for JWT verification, see https://idaccessman.wordpress.com/2018/10/19/keycloak-and-signed-jwts/
 IDM_PUBLIC_KEY = b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlPYHgu7ovAOEzL3uBoN7KJWSn9UvqNqYbEkfMTbJrJRs8E1WULtxGzCDRVLJWBdLdq05/+8BXEISiggrWOukjsd+uqLTqQMI0he2bZMBRHSD2ISIXhGp5kpUCsbb0xd2bvp/LqSAuWKZmVLRWGRba6Hi+wFjLYc48tdTJUbbShZTojIsDY/ivH+5xJ6N/z7Iwq0HqPVGMiOywPGi9xqT9g5lUxhBuXJ7crmGncpxA4LH1foSBtIXqVTjESPc+G/4Si61xtmHckf3KkaFYgM89TxDtCyiwoKSu5RVbS38+jXP6Wx25F655244V+FSNty11ApSf2VaY9t5tCfv3RQvAwIDAQAB\n-----END PUBLIC KEY-----'
-#IDM_PUBLIC_KEY = b'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlPYHgu7ovAOEzL3uBoN7KJWSn9UvqNqYbEkfMTbJrJRs8E1WULtxGzCDRVLJWBdLdq05/+8BXEISiggrWOukjsd+uqLTqQMI0he2bZMBRHSD2ISIXhGp5kpUCsbb0xd2bvp/LqSAuWKZmVLRWGRba6Hi+wFjLYc48tdTJUbbShZTojIsDY/ivH+5xJ6N/z7Iwq0HqPVGMiOywPGi9xqT9g5lUxhBuXJ7crmGncpxA4LH1foSBtIXqVTjESPc+G/4Si61xtmHckf3KkaFYgM89TxDtCyiwoKSu5RVbS38+jXP6Wx25F655244V+FSNty11ApSf2VaY9t5tCfv3RQvAwIDAQAB'
 
-#ASYNC_MODE = 'gevent' # default for non uWGSI deployments
 ASYNC_MODE = None # default for non uWGSI deployments
 
 ibis_config = {
@@ -41,6 +35,14 @@ boundaries_config = {
 edr_config = {
     "EDR_host": "https://edr.hesi.energy",
     "EDR_path": "/store/esdl/",
+}
+
+esdl_store_config = {
+    "hostname": "http://10.30.2.1:3003"
+}
+
+mondaine_hub_config = {
+    "hostname": "http://10.30.2.1:3002"
 }
 
 cdo_mondaine_config = {
@@ -84,7 +86,6 @@ if os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",
-        # "kafkaURL": "http://kafka:9092"
         "natsURL": "nats://nats:4222"
     }
 elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
@@ -106,7 +107,6 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",
-        # "kafkaURL": "http://kafka:9092"
         "natsURL": "nats://nats:4222"
     }
     boundaries_config = {
@@ -120,6 +120,9 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "EDR_host": "https://edr.hesi.energy",
         "EDR_path": "/store/esdl/",
     }
+
+    esdl_store_config = None
+    mondaine_hub_config = None
 
     cdo_mondaine_config = {
         "hostname": "http://hub:9080"
@@ -159,7 +162,6 @@ else:
         "ESSIM_database_port": 8086,
         "start_datetime": "2015-01-01T00:00:00+0100",
         "end_datetime": "2016-01-01T00:00:00+0100",
-        # "kafka_url": "http://kafka:9092"
         "natsURL": "nats://nats:4222"
     }
 

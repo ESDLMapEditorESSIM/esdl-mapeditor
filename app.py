@@ -73,12 +73,14 @@ AREA_FILLCOLOR = 'red'
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-
-# ESDL_STORE_PORT = '3003'
-# store_url = 'http://' + GEIS_CLOUD_IP + ':' + ESDL_STORE_PORT + '/store/'
-default_store_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.ESDL_STORE_PORT + '/store/'
-mondaine_hub_url = 'http://' + settings.GEIS_CLOUD_HOSTNAME + ':' + settings.MONDAINE_HUB_PORT + '/store/'
-# mondaine_hub_url = 'https://mondaine-hub.hesi.energy'+ '/store/'
+if settings.esdl_store_config is not None:
+    default_store_url = settings.esdl_store_config['hostname'] + '/store/'
+else:
+    default_store_url = None
+if settings.mondaine_hub_config is not None:
+    mondaine_hub_url = settings.mondaine_hub_config['hostname'] + '/store/'
+else:
+    mondaine_hub_url = None
 
 # handler to retrieve E
 esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
@@ -89,23 +91,22 @@ def write_energysystem_to_file(filename, esh):
 
 
 def create_ESDL_store_item(id, esh, title, description, email):
-
     role = get_session('user-role')
     if 'mondaine' in role:
         store_url = mondaine_hub_url
     else:
         store_url = default_store_url
 
-    esdlstr = esh.to_string()
-    try:
-        payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
-        requests.post(store_url, data=payload)
-    except Exception as e:
-        send_alert('Error accessing ESDL store:' + str(e))
+    if store_url:
+        esdlstr = esh.to_string()
+        try:
+            payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
+            requests.post(store_url, data=payload)
+        except Exception as e:
+            send_alert('Error accessing ESDL store:' + str(e))
 
 
 def load_ESDL_EnergySystem(store_id):
-
     store_item = load_store_item(store_id)
     if store_item:
         esdlstr = store_item['esdl']
@@ -132,24 +133,26 @@ def load_store_item(store_id):
     else:
         store_url = default_store_url
 
-    url = store_url + store_id + '?format=xml'
-    try:
-        r = requests.get(url)
-    except Exception as e:
-        send_alert('Error accessing ESDL store:' + str(e))
-        return None
+    if store_url:
+        url = store_url + store_id + '?format=xml'
+        try:
+            r = requests.get(url)
+        except Exception as e:
+            send_alert('Error accessing ESDL store:' + str(e))
+            return None
 
-    if r.status_code == 200:
-        result = json.loads(r.text)
-        if len(result) > 0:
-            return result
+        if r.status_code == 200:
+            result = json.loads(r.text)
+            if len(result) > 0:
+                return result
+            else:
+                return None
         else:
+            print('Accessing store return status: '+str(r.status_code))
+            send_alert('Error accessing ESDL store:' + str(r))
             return None
     else:
-        print('Accessing store return status: '+str(r.status_code))
-        send_alert('Error accessing ESDL store:' + str(r))
         return None
-
 
 def update_store_item(store_id, title, descr, email, tags, esh):
     role = get_session('user-role')
@@ -158,13 +161,14 @@ def update_store_item(store_id, title, descr, email, tags, esh):
     else:
         store_url = default_store_url
 
-    esdlstr = esh.to_string()
+    if store_url:
+        esdlstr = esh.to_string()
 
-    payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
-    try:
-        requests.put(store_url + store_id, data=payload)
-    except Exception as e:
-        send_alert('Error saving ESDL file to store: ' + str(e))
+        payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
+        try:
+            requests.put(store_url + store_id, data=payload)
+        except Exception as e:
+            send_alert('Error saving ESDL file to store: ' + str(e))
 
 
 def create_new_store_item(store_id, title, descr, email, tags, esh):
@@ -174,16 +178,17 @@ def create_new_store_item(store_id, title, descr, email, tags, esh):
     else:
         store_url = default_store_url
 
-    esdlstr = esh.to_string()
+    if store_url:
+        esdlstr = esh.to_string()
 
-    payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
-    try:
-        r = requests.post(store_url, data=payload)
-    except Exception as e:
-        send_alert('Error saving ESDL file to store: ' + str(e))
+        payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
+        try:
+            r = requests.post(store_url, data=payload)
+        except Exception as e:
+            send_alert('Error saving ESDL file to store: ' + str(e))
 
-    if r.status_code != 201:
-        send_alert('Error saving ESDL file to store. Error code: ' + str(r.status_code))
+        if r.status_code != 201:
+            send_alert('Error saving ESDL file to store. Error code: ' + str(r.status_code))
 
 
 def send_ESDL_as_file(esh, name):
@@ -280,7 +285,8 @@ def before_request():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    store_enabled = settings.esdl_store_config or settings.mondaine_hub_config
+    return render_template('index.html', store_enabled=store_enabled)
 
 
 """
@@ -353,7 +359,8 @@ def editor():
         user_fullname = oidc.user_getfield('name')
         set_session('user-fullname', user_fullname)
 
-        return render_template('editor.html', async_mode=socketio.async_mode, role=role)
+        store_enabled = settings.esdl_store_config or settings.mondaine_hub_config
+        return render_template('editor.html', async_mode=socketio.async_mode, role=role, store_enabled=store_enabled)
     else:
         return render_template('index.html')
         # to enable working offline without IDM:
@@ -361,6 +368,7 @@ def editor():
         # - comment the line above: return render_template('index.html')
         # - uncomment the following line:
         # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
+
 
 
 """
@@ -2640,7 +2648,6 @@ def process_file_command(message):
         except Exception as e:
             logger.error("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
-
 
     if message['cmd'] == 'get_list_from_store':
         role = get_session('user-role')

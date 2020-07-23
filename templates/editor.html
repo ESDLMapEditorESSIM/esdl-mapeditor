@@ -1907,6 +1907,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL</a></li>
+{% if store_enabled %}
 {% if 'mondaine' in role %}
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
@@ -1919,12 +1920,13 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
                                         Load ESDL from ESDL Store</a></li>
 {% endif %}
+{% endif %}
                                     <li><a class="dropdown-item" href="#" onclick="mondaineCDO.file_open_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Load ESDL from CDO Hub</a></li>
+                                        Load from ESDL Drive</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="mondaineCDO.file_save_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Save ESDL to CDO Hub</a></li>
+                                        Save to ESDL Drive</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>

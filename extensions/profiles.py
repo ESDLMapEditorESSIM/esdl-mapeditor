@@ -236,7 +236,7 @@ class Profiles:
         message = copy.deepcopy(default_profile_groups)
         possible_groups = message["groups"]
         # if enough rights, mark Standard profiles editable
-        if 'mapeditor-admin' in mapeditor_role:
+        if mapeditor_role and 'mapeditor-admin' in mapeditor_role:
             for g in possible_groups:
                 if g['setting_type'] == SettingType.SYSTEM.value:
                     g['readonly'] = False
