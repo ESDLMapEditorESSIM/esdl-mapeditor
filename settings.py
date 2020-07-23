@@ -65,20 +65,11 @@ statistics_settings_config = {
     "path": "/api/statistics/calculate"
 }
 
-# can be removed if app.py has been updated
-# as it is not used anymore
-dir_settings = {
-        'plugin_prefix': '',
-        'resource_prefix': '',
-        'socket_prefix': '',
-        'download_prefix': ''
-    }
-
 if os.environ.get('MAPEDITOR_HESI_ENERGY'):
     # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
     print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
 
-    FLASK_DEBUG = False 
+    FLASK_DEBUG = False
     #ASYNC_MODE = 'gevent_uwsgi'
     ASYNC_MODE = None
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_mapeditor.hesi.energy.json'

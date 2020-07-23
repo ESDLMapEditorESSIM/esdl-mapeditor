@@ -280,7 +280,7 @@ def before_request():
 
 @app.route('/')
 def index():
-    return render_template('index.html', dir_settings=settings.dir_settings)
+    return render_template('index.html')
 
 
 """
@@ -353,14 +353,14 @@ def editor():
         user_fullname = oidc.user_getfield('name')
         set_session('user-fullname', user_fullname)
 
-        return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role=role)
+        return render_template('editor.html', async_mode=socketio.async_mode, role=role)
     else:
-        return render_template('index.html', dir_settings=settings.dir_settings)
+        return render_template('index.html')
         # to enable working offline without IDM:
         # - comment the @oidc.require_login above this method
-        # - comment the line above: return render_template('index.html', dir_settings=settings.dir_settings)
+        # - comment the line above: return render_template('index.html')
         # - uncomment the following line:
-        # return render_template('editor.html', async_mode=socketio.async_mode, dir_settings=settings.dir_settings, role='essim')
+        # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
 
 
 """
