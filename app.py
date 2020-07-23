@@ -238,7 +238,7 @@ Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 me_settings = MapEditorSettings(app, socketio, settings_storage)
-profiles = Profiles(app, socketio, settings_storage)
+profiles = Profiles(app, socketio, executor, settings_storage)
 # ShapefileConverter(app, socketio, executor)
 
 #TODO: check secret key with itsdangerous error and testing and debug here

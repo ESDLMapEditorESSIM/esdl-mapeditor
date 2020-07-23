@@ -155,7 +155,7 @@ else:
     USER_LOGGING_ENABLED = False
     FLASK_DEBUG = True
     # settings_storage_config["host"] = 'localhost'
-    cdo_mondaine_config["hostname"] =  "http://localhost:9080"
+    # cdo_mondaine_config["hostname"] =  "http://localhost:9080"
     # GEIS_CLOUD_HOSTNAME = 'geis.hesi.energy'
 
     essim_config = {

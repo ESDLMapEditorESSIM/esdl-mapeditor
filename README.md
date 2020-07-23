@@ -36,8 +36,7 @@ In production the service runs in Docker and uses an external MongoDB. The
 production service uses UWSGI.
 
 The deployment scripts are docker-container.redeploy.sh and
-beta-docker-container-redeploy.sh. These should be executed from a machine in the
-GEIS cluster.
+beta-docker-container-redeploy.sh. 
 
 ## Documentation
 

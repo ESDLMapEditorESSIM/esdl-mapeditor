@@ -39,41 +39,87 @@ class AppSettings {
         let $modules_list_div = $('<div>').addClass('settings_modules_list');
         let $module_content_div = $('<div>').addClass('settings_module_content').attr('id', 'settings_module_contents');
         $main_div.append($modules_list_div).append($module_content_div);
-
         this.generate_settings_modules_list($modules_list_div);
-        this.generate_settings_modules_contents($module_content_div);
-
         return $main_div;
     }
 
-    generate_settings_modules_list(list_div) {
-        let $select = $('<select>').attr('id','select_module').attr('size', 30).width('100%').css('overflow-y', 'auto')
-            .css('border', '0px').css('outline', '0px');
-        for (let i = 0; i < this.modules_settings_list.length; i++) {
-            let $option = $('<option>')
-                .attr('value', this.modules_settings_list[i].value)
-                .text(this.modules_settings_list[i].text);
-            $select.append($option);
+    construct_tree_data() {
+        let menu_item_list = [];
+
+        for (let i=0; i<this.modules_settings_list.length; i++) {
+            let item = {
+                id : this.modules_settings_list[i].value,
+                text: this.modules_settings_list[i].text,
+                icon: "",
+                type: "",
+                data: {},
+                state: {
+                    opened : true
+                },
+                children: [],
+                li_attr: {},
+                a_attr: {}
+            }
+
+            if (this.modules_settings_list[i].sub_menu_items.length > 0) {
+                for (let j=0; j<this.modules_settings_list[i].sub_menu_items.length; j++) {
+                    let sub_item = {
+                        id : this.modules_settings_list[i].sub_menu_items[j].value,
+                        text: this.modules_settings_list[i].sub_menu_items[j].text,
+                        icon: "",
+                        type: "",
+                        data: {},
+                        state: {},
+                        children: [],
+                        li_attr: {},
+                        a_attr: {}
+                    }
+                    item.children.push(sub_item);
+                }
+            }
+
+            menu_item_list.push(item);
         }
 
-        $select.change(function() {app_settings.generate_settings_modules_contents();});
-
-        list_div.append($select);
+        return menu_item_list;
     }
 
-    generate_settings_modules_contents() {
-        let $div = $('#settings_module_contents');
-        $div.empty();
-
-        let $select = $('#select_module');
-        let selected_value = $select.val();
-        console.log(selected_value);
-
-        for (let i = 0; i < this.modules_settings_list.length; i++) {
-            if (this.modules_settings_list[i].value == selected_value) {
-                $div.append(this.modules_settings_list[i].settings_func());
+    find_function_to_call(lst, id) {
+        for (let i=0; i<lst.length; i++) {
+            if (lst[i].value == id) {
+                return lst[i].settings_func;
+            }
+            if (lst[i].sub_menu_items.length > 0) {
+                let ret = this.find_function_to_call(lst[i].sub_menu_items, id);
+                if (ret) return ret;
             }
         }
+        return null
+    }
+
+    init_tree() {
+        $('#settings_list_jstree')
+            .jstree({
+                'core' : {
+                    'multiple': false,
+                    'data' : this.construct_tree_data()
+                }
+            })
+            .on('select_node.jstree', function (e, data) {
+                let $div = $('#settings_module_contents');
+                $div.empty();
+                if (data.node) {
+                    let func = app_settings.find_function_to_call(app_settings.modules_settings_list, data.node.id);
+                    if (func) {
+                        $div.append(func());
+                    }
+                }
+            });
+    }
+
+    generate_settings_modules_list(list_div) {
+        let $settings_list_jstree = $('<div>').attr("id", "settings_list_jstree");
+        list_div.append($settings_list_jstree);
     }
 
     open_window() {
@@ -85,6 +131,8 @@ class AppSettings {
             return;
         }
         dialog.setContent(jqueryNode.get(0));
+        this.init_tree();
+
         dialog.setSize([app_settings.width, app_settings.height]);
         dialog.setLocation([app_settings.x, app_settings.y]);
         dialog.setTitle('Application Settings');

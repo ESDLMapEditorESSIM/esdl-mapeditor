@@ -1,20 +1,29 @@
 from flask import Flask
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
+from flask_executor import Executor
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 import copy
+import logging
+import csv
+import locale
+from io import StringIO
 from uuid import uuid4
 
-PROFILES_SETTING = 'PROFILES'
+logger = logging.getLogger(__name__)
 
+
+PROFILES_SETTING = 'PROFILES'
 profiles = None
 
 
 class Profiles:
-    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
+        self.executor = executor
         self.settings_storage = settings_storage
+        self.csv_files = dict()
         self.register()
 
         # add initial profiles when not in the system settings
@@ -65,12 +74,92 @@ class Profiles:
 
         @self.socketio.on('save_profile', namespace='/esdl')
         def click_save_profile(profile_info):
-
             print(profile_info)
 
         @self.socketio.on('test_profile', namespace='/esdl')
         def click_test_profile(profile_info):
             print(profile_info)
+
+        @self.socketio.on('profile_csv_upload', namespace='/esdl')
+        def profile_csv_upload(message):
+            with self.flask_app.app_context():
+                message_type = message['message_type'] # start, next_chunk, done
+                if message_type == 'start':
+                    # start of upload
+                    filetype = message['filetype']
+                    name = message['name']
+                    uuid = message['uuid']
+                    size = message['size']
+
+                    self.csv_files[uuid] = message
+                    self.csv_files[uuid]['pos'] = 0
+                    self.csv_files[uuid]['content'] = []
+                    logger.debug('Uploading to CDO {}, size={}'.format(name, size))
+                    emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
+
+                elif message_type == 'next_chunk':
+                    name = message['name']
+                    uuid = message['uuid']
+                    size = message['size']
+                    content = message['content']
+                    pos = message['pos']
+                    #print(content)
+                    self.csv_files[uuid]['content'][pos:len(content)] = content
+                    self.csv_files[uuid]['pos'] = pos + len(content)
+                    if self.csv_files[uuid]['pos'] >= size:
+                        #print("Upload complete:", str(bytearray(self.csv_files[uuid]['content'])))
+
+                        ba = bytearray(self.csv_files[uuid]['content'])
+                        csv = ba.decode(encoding='utf-8-sig')
+                        self.executor.submit(self.process_csv_file, name, uuid, csv)
+                    else:
+                        #print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
+                        emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
+
+    def format_datetime(self, dt):
+        date, time = dt.split(" ")
+        day, month, year = date.split("-")
+        ndate = year + "-" + month + "-" + day
+        ntime = time + ":00+0000"
+        return ndate + "T" + ntime
+
+    def process_csv_file(self, name, uuid, content):
+        logger.debug("Processing csv file(s) (threaded): ".format(name))
+        try:
+            logger.info("process CSV")
+            measurement = name.split('.')[0]
+            print(measurement)
+
+            csv_file = StringIO(content)
+            reader = csv.reader(csv_file, delimiter=';')
+
+            column_names = next(reader)
+            print(column_names)
+
+            num_fields = len(column_names)
+            json_body = []
+
+            for row in reader:
+                fields = {}
+                for i in range(1, num_fields):
+                    if row[i]:
+                        fields[column_names[i]] = locale.atof(row[i])
+
+                json_body.append({
+                    "measurement": measurement,
+                    "time": self.format_datetime(row[0]),
+                    "fields": fields
+                })
+
+            # client.write_points(points=json_body, database=db_name, batch_size=100)
+            emit('csv_upload_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
+                                     'success': True})
+        except Exception as e:
+            emit('csv_upload_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
+                                     'success': False, 'error': str(e)})
+
+        # clean up
+        del (self.csv_files[uuid])
 
     def add_profile(self, profile_id, profile):
         setting_type = SettingType(profile['setting_type'])
