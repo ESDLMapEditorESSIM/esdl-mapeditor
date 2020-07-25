@@ -170,6 +170,8 @@ class Profiles:
                 password=settings.profile_database_config['upload_password'],
                 database=database
             )
+            if database not in client.get_list_database():
+                client.create_database(database)
 
             client.write_points(points=json_body, database=database, batch_size=100)
 
