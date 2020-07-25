@@ -3,12 +3,14 @@ from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
+from influxdb import InfluxDBClient
 import copy
 import logging
 import csv
 import locale
 from io import StringIO
 from uuid import uuid4
+import settings
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,8 @@ class Profiles:
 
                         ba = bytearray(self.csv_files[uuid]['content'])
                         csv = ba.decode(encoding='utf-8-sig')
+                        emit('csv_upload_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
+                                                 'success': True})
                         self.executor.submit(self.process_csv_file, name, uuid, csv)
                     else:
                         #print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
@@ -128,16 +132,17 @@ class Profiles:
         try:
             logger.info("process CSV")
             measurement = name.split('.')[0]
-            print(measurement)
 
             csv_file = StringIO(content)
             reader = csv.reader(csv_file, delimiter=';')
 
             column_names = next(reader)
-            print(column_names)
-
             num_fields = len(column_names)
             json_body = []
+
+            locale.setlocale(locale.LC_ALL, '')
+            start_datetime = None
+            end_datetime = ""
 
             for row in reader:
                 fields = {}
@@ -145,17 +150,39 @@ class Profiles:
                     if row[i]:
                         fields[column_names[i]] = locale.atof(row[i])
 
+                dt = self.format_datetime(row[0])
+                if not start_datetime:
+                    start_datetime = dt
+                else:
+                    end_datetime = dt
+
                 json_body.append({
                     "measurement": measurement,
-                    "time": self.format_datetime(row[0]),
+                    "time": dt,
                     "fields": fields
                 })
 
-            # client.write_points(points=json_body, database=db_name, batch_size=100)
-            emit('csv_upload_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
+            database = settings.profile_database_config['database']
+            client = InfluxDBClient(
+                host=settings.profile_database_config['host'],
+                port=settings.profile_database_config['port'],
+                username=settings.profile_database_config['upload_user'],
+                password=settings.profile_database_config['upload_password'],
+                database=database
+            )
+
+            client.write_points(points=json_body, database=database, batch_size=100)
+
+            for i in range(1, num_fields):
+                field = column_names[i]
+                profile = self.create_new_profile(SettingType.USER.value, measurement+'_'+field, 1, database, measurement,
+                                               field, "", start_datetime, end_datetime)
+                self.add_profile(str(uuid4()), profile)
+
+            emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': True})
         except Exception as e:
-            emit('csv_upload_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
+            emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': False, 'error': str(e)})
 
         # clean up
@@ -253,6 +280,22 @@ class Profiles:
                 json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier, "name": "Project profiles for " + group, "readonly": False}
                 project_list.append(json)
         return project_list
+
+    def create_new_profile(self, setting_type, uiname, multiplier, database, measurement, field, profile_type, start_datetime, end_datetime):
+        profile = {
+            "setting_type": setting_type,
+            "project_name": setting_type,
+            "profile_uiname": uiname,
+            "multiplier": multiplier,
+            "database": database,
+            "measurement": measurement,
+            "field": field,
+            "profileType": profile_type,
+            "start_datetime": start_datetime,
+            "end_datetime": end_datetime,
+            "embedUrl": None
+        }
+        return profile
 
 
 default_profile_groups = {

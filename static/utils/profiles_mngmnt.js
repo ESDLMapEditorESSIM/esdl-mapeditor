@@ -36,13 +36,20 @@ class Profiles {
             self.updateProgress(uuid, percentage);
         });
         socket.on('csv_upload_done', function(data) {
+            $('#csv-message').text('CSV uploading finished, now writing data to database');
+        });
+        socket.on('csv_processing_done', function(data) {
             let uuid = data.uuid;
             self.files[uuid] = null;
             self.blob[uuid] = null;
-            self.updateProgress(uuid, 100);
+            self.updateProgress(uuid, 0);
+
             if (!data.success) {
                 console.log(data.error);
+                $('#csv-message').text('');
                 alert("Uploading failed: \n" + data.error);
+            } else {
+                $('#csv-message').text('Profiles have been stored in the database and are available for use');
             }
         });
     }
@@ -279,11 +286,13 @@ class Profiles {
         let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
         let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
+        let $message = $('<p>').attr('id', 'csv-message');
         $droparea.append($form);
         $form.append($p1);
         $form.append($input);
         $form.append($label);
         $droparea.append($progress);
+        $droparea.append($message);
 
         let dropArea = $droparea.get(0);
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -320,6 +329,7 @@ class Profiles {
         function handleDrop(e) {
             var dt = e.dataTransfer;
             var files = dt.files;
+            $('#csv-message').text('Uploading CSV files')
 
             handleFiles(files);
         }
@@ -370,6 +380,7 @@ class Profiles {
             };
             reader.onerror = function() {
                 console.log(reader.error);
+                $('#csv-message').text('Uploading failes: '+ reader.error)
                 alert("Uploading failed: \n" + reader.error);
             };
             reader.readAsArrayBuffer(file);

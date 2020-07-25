@@ -67,6 +67,14 @@ statistics_settings_config = {
     "path": "/api/statistics/calculate"
 }
 
+profile_database_config = {
+    "host": "10.30.2.1",
+    "port": "8086",
+    "database": "energy_profiles",
+    "upload_user": "admin",
+    "upload_password": "admin"
+}
+
 if os.environ.get('MAPEDITOR_HESI_ENERGY'):
     # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
     print('Starting application with MAPEDITOR_HESI_ENERGY settings (hosting at mapeditor.hesi.energy)')
@@ -132,6 +140,14 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "host": "influxdb",
         "port": "8086",
         "database": "user_logging"
+    }
+
+    profile_database_config = {
+        "host": "influxdb",
+        "port": "8086",
+        "database": "energy_profiles",
+        "upload_user": "admin",
+        "upload_password": "admin"
     }
 
     settings_storage_config = {
