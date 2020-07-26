@@ -590,3 +590,35 @@ z-index for jstree context menu, sidebar has 2000
     padding: 10px 0px 10px 0px;
     height: 100%;
 }
+
+/*
+    Upload CSV
+*/
+#csv-upload-area {
+  border: 2px dashed #ccc;
+  width: 400px;
+  margin-top: 10px;
+  padding: 20px;
+}
+
+#csv-upload-area.highlight {
+  border-color: purple;
+  background-color: #F2F2F2;
+}
+#csv-upload-area p {
+  margin-top: 0;
+}
+#csv-upload-area .upload-form {
+  margin-bottom: 10px;
+}
+#csv-upload-area .button {
+  display: inline-block;
+  padding: 10px;
+  background: #ccc;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#csv-upload-area .button:hover {
+  background: #ddd;
+}

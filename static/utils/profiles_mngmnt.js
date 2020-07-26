@@ -280,7 +280,7 @@ class Profiles {
     create_drag_drop() {
         self = this;
 
-        let $droparea = $('<div>').attr('id', 'drop-area');
+        let $droparea = $('<div>').attr('id', 'csv-upload-area');
         let $form = $('<form>').addClass('upload-form');
         let $p1 = $('<p>').text('To upload csv files with profile information use drag & drop from your file explorer or click the button below.');
         let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
@@ -330,8 +330,9 @@ class Profiles {
             var dt = e.dataTransfer;
             var files = dt.files;
             $('#csv-message').text('Uploading CSV files')
+            let selected_group = $('#profile_group_select').val();
 
-            handleFiles(files);
+            handleFiles(files, selected_group);
         }
 
         self.uploadProgress = [];
@@ -353,7 +354,7 @@ class Profiles {
         }
         self.updateProgress = updateProgress;
 
-        function handleFiles(files) {
+        function handleFiles(files, selected_group) {
             files = [...files];
             files.forEach(function (file) {
                 let extension = file.name.split('.').pop();
@@ -361,14 +362,14 @@ class Profiles {
                     let uuid = uuidv4();
                     self.files[uuid] = file;
                     initializeProgress(uuid);
-                    uploadFile(file, uuid);
+                    uploadFile(file, uuid, selected_group);
                 } else {
                     alert("Not a csv file: " + file.name);
                 }
             });
         }
 
-        function uploadFile(file, uuid) {
+        function uploadFile(file, uuid, selected_group) {
             console.log("Uploading ", file);
 
             let reader = new FileReader();
@@ -376,7 +377,7 @@ class Profiles {
                 // reading finished
                 self.blob[uuid] = reader.result;
                 socket.emit('profile_csv_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size,
-                                        'content': '', 'filetype': file.type });
+                                        'content': '', 'filetype': file.type, 'group': selected_group });
             };
             reader.onerror = function() {
                 console.log(reader.error);
@@ -386,12 +387,86 @@ class Profiles {
             reader.readAsArrayBuffer(file);
         }
         return $droparea;
-     }
+    }
+
+    create_group_select(div) {
+        socket.emit('get_profile_group_list', function(profile_group_list) {
+            console.log(profile_group_list);
+            let $select = $('<select>').attr('id', 'profile_group_select');
+            for (let gr=0; gr<profile_group_list.length; gr++) {
+                let $option = $('<option>').val(profile_group_list[gr].name).text(profile_group_list[gr].name);
+                console.log(profile_group_list[gr]);
+                $select.append($option);
+            }
+            div.append($select);
+        });
+    }
 
     upload_profiles_window_contents() {
         let $div = $('<div>').attr('id', 'upload_profiles_window_div');
         $div.append($('<h1>').text('Upload profiles'));
+        $div.append($('<p>').text('First select in which group (or project) you want to upload the profiles. '+
+            'This determines who else can see and use these profiles'));
+        let $group_select = $('<div>');
+        $div.append($('<p>').append($group_select));
+        profiles_plugin.create_group_select($group_select);
+
+        $div.append($('<p>').text('CSV files with profile data must adhere to a certain format:'))
+        $div.append($('<ul>')
+            .append($('<li>').text('there is one row with the column headers'))
+            .append($('<li>').text('the first column must contain the datetime field (format \'DD-MM-YYYY HH:MM\')'))
+            .append($('<li>').text('dates/times must be in UTC (without daylight saving)'))
+            .append($('<li>').text('different profiles can be added using more than one column'))
+            .append($('<li>').text('profiles are uploaded to the standard database, using the csv filename and the'+
+                ' column name as identifiers (they must be unique, else data will be overwritten)'))
+            .append($('<li>').text('use a \'.\' as a decimal seperator'))
+            .append($('<li>').text('a full year profile contains 8760 profile elements (or 8784 for a leap year)'))
+        );
+
         $div.append(profiles_plugin.create_drag_drop());
+        return $div;
+    }
+
+    create_profiles_management(div) {
+        socket.emit('get_profiles_list', function(profiles_list) {
+            // console.log(profiles_list);
+            profiles_plugin.profiles_list = profiles_list;
+
+            let $select = $('<select>').attr('id', 'mult_profile_select').attr('multiple', 'multiple').attr('size', '15');
+            let group_list = profiles_list['groups'];
+            let profile_info = Object.entries(profiles_list['profiles']);
+            for (let gr=0; gr<group_list.length; gr++) {
+                let $optgroup = $('<optgroup>').attr('label', group_list[gr].name);
+                for (let pr=0; pr<profile_info.length; pr++) {
+                    if (group_list[gr].setting_type == profile_info[pr][1].setting_type) {
+                        if (profile_info[pr][1].setting_type == 'project' &&
+                            profile_info[pr][1].project_name != group_list[gr].project_name) continue;
+
+                        let $option = $('<option>').val(profile_info[pr][0]).text(profile_info[pr][1].profile_uiname);
+                        $optgroup.append($option);
+                    }
+                }
+                $select.append($optgroup);
+            }
+//        $select.change(function() {profiles_plugin.select_profile();});
+            div.append($select);
+
+            let $delete_button = $('<button>').text('Delete profiles').click(function() {profiles_plugin.click_delete_profiles();});
+            div.append($('<p>').append($delete_button));
+        });
+    }
+
+    click_delete_profiles() {
+        let selected_option = $('#mult_profile_select').val();
+        $('#mult_profile_select option:selected').remove();
+        // console.log('Remove profile: '+selected_option);
+        socket.emit('remove_profile', selected_option);
+    }
+
+    profiles_management_window_contents() {
+        let $div = $('<div>').attr('id', 'profiles_management_window_div');
+        $div.append($('<h1>').text('Profiles management'));
+        profiles_plugin.create_profiles_management($div);
         return $div;
     }
 
@@ -412,7 +487,13 @@ class Profiles {
                         'text': 'Upload profiles',
                         'settings_func': profiles_plugin.upload_profiles_window_contents,
                         'sub_menu_items': []
-                    }
+                    },
+                    {
+                        'value': 'delete_profiles',
+                        'text': 'Delete profiles',
+                        'settings_func': profiles_plugin.profiles_management_window_contents,
+                        'sub_menu_items': []
+                    },
                 ]
             };
 

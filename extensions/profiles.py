@@ -53,9 +53,18 @@ class Profiles:
                 print("getting profiles list")
                 return self.get_profiles()
 
+        @self.socketio.on('get_profile_group_list', namespace='/esdl')
+        def get_profile_group_list():
+            with self.flask_app.app_context():
+                return self.get_profile_groups()
+
         @self.socketio.on('remove_profile', namespace='/esdl')
         def click_remove_profile(profile_id):
-            self.remove_profile(profile_id)
+            if isinstance(profile_id, list):
+                for pid in profile_id:
+                    self.remove_profile(pid)
+            else:
+                self.remove_profile(profile_id)
 
         @self.socketio.on('add_profile', namespace='/esdl')
         def click_add_profile(profile_info):
@@ -92,11 +101,13 @@ class Profiles:
                     name = message['name']
                     uuid = message['uuid']
                     size = message['size']
+                    group = message['group']
 
                     self.csv_files[uuid] = message
                     self.csv_files[uuid]['pos'] = 0
                     self.csv_files[uuid]['content'] = []
-                    logger.debug('Uploading to CDO {}, size={}'.format(name, size))
+                    self.csv_files[uuid]['group'] = group
+                    logger.debug('Uploading CSV file {}, size={}'.format(name, size))
                     emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
 
                 elif message_type == 'next_chunk':
@@ -175,9 +186,10 @@ class Profiles:
 
             client.write_points(points=json_body, database=database, batch_size=100)
 
+            group = self.csv_files[uuid]['group']
             for i in range(1, num_fields):
                 field = column_names[i]
-                profile = self.create_new_profile(SettingType.USER.value, measurement+'_'+field, 1, database, measurement,
+                profile = self.create_new_profile(group, measurement+'_'+field, 1, database, measurement,
                                                field, "", start_datetime, end_datetime)
                 self.add_profile(str(uuid4()), profile)
 
@@ -274,6 +286,13 @@ class Profiles:
         # print(message)
         return message
 
+    def get_profile_groups(self):
+        user_group = get_session('user-group')
+        dpg = copy.deepcopy(default_profile_groups)
+        possible_groups = dpg["groups"]
+        possible_groups.extend(self._create_group_profiles_for_projects(user_group))
+        return possible_groups
+
     def _create_group_profiles_for_projects(self, groups):
         project_list = list()
         if groups is not None:
@@ -283,10 +302,23 @@ class Profiles:
                 project_list.append(json)
         return project_list
 
-    def create_new_profile(self, setting_type, uiname, multiplier, database, measurement, field, profile_type, start_datetime, end_datetime):
+    def get_setting_type_project_name(self, group):
+        if group.startswith("Project profiles for "):
+            group_name = group.replace("Project profiles for ", "")
+            identifier = self._get_identifier(SettingType.PROJECT, group_name)
+            return SettingType.PROJECT.value, identifier
+        elif group == "Standard profiles":
+            identifier = self._get_identifier(SettingType.SYSTEM)
+            return SettingType.SYSTEM.value, identifier
+        else:
+            identifier = self._get_identifier(SettingType.USER)
+            return SettingType.USER.value, identifier
+
+    def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime, end_datetime):
+        setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
             "setting_type": setting_type,
-            "project_name": setting_type,
+            "project_name": project_name,
             "profile_uiname": uiname,
             "multiplier": multiplier,
             "database": database,
