@@ -2078,19 +2078,23 @@ def process_command(message):
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-                    esdl_profile.host = esdl_config.esdl_config['profile_database']['host']
-                    esdl_profile.port = int(esdl_config.esdl_config['profile_database']['port'])
+                    esdl_profile.host = settings.profile_database_config['host']
+                    esdl_profile.port = int(settings.profile_database_config['port'])
                     esdl_profile.database = p['database']
-                    esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
+                    esdl_profile.filters = settings.profile_database_config['filters']
 
                     if 'start_datetime' in p:
                         dt = parse_date(p['start_datetime'])
                         if dt:
                             esdl_profile.startDate = EDate.from_string(str(dt))
+                        else:
+                            send_alert('Invalid datetime format')
                     if 'end_datetime' in p:
                         dt = parse_date(p['end_datetime'])
                         if dt:
                             esdl_profile.endDate = EDate.from_string(str(dt))
+                        else:
+                            send_alert('Invalid datetime format')
 
         if quap_type == 'predefined_qau':
             # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
