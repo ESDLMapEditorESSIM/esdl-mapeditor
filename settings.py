@@ -71,6 +71,7 @@ profile_database_config = {
     "host": "10.30.2.1",
     "port": "8086",
     "database": "energy_profiles",
+    "filters": "",
     "upload_user": "admin",
     "upload_password": "admin"
 }
@@ -146,6 +147,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "host": "influxdb",
         "port": "8086",
         "database": "energy_profiles",
+        "filters": "",
         "upload_user": "admin",
         "upload_password": "admin"
     }
