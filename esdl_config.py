@@ -1,32 +1,8 @@
-"""
-    "ESSIM": {
-        "ESSIM_host": "http://geis.hesi.energy:8112",
-        "ESSIM_path": "/essim/simulation",
-        "influxURL": "http://geis.hesi.energy:8086",
-        "grafanaURL": "http://geis.hesi.energy:3000",
-        "user": "essim",
-        "start_datetime": "2015-01-01T00:00:00.000000+0100",
-        "end_datetime": "2016-01-01T00:00:00.000000+0100"
-    }
-}
-"""
-
 # EPS_API_URL = 'http://localhost:3400'
 EPS_API_URL = 'https://eps.hesi.energy'
 
 
 esdl_config = {
-    "profile_database": {
-        "host": "http://10.30.2.1",
-        "port": "8086",
-        "database": "energy_profiles",
-        "filters": "",
-    },
-    "influxdb_profile_data": [
-    ],
-    "energy_carriers": [
-    ],
-    "energy_carriers": [],
     "control_strategies": [
         {"name": "DrivenByDemand", "applies_to": "Conversion", "connect_to": "OutPort"},
         {"name": "DrivenBySupply", "applies_to": "Conversion", "connect_to": "InPort"},
