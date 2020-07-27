@@ -32,7 +32,7 @@ from extensions.boundary_service import BoundaryService
 from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
-from esdl_helper import generate_profile_info, get_port_profile_info
+from esdl_helper import generate_profile_info, get_port_profile_info, parse_date
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
@@ -2084,9 +2084,13 @@ def process_command(message):
                     esdl_profile.filters = esdl_config.esdl_config['profile_database']['filters']
 
                     if 'start_datetime' in p:
-                        esdl_profile.startDate = EDate.from_string(p['start_datetime'])
+                        dt = parse_date(p['start_datetime'])
+                        if dt:
+                            esdl_profile.startDate = EDate.from_string(str(dt))
                     if 'end_datetime' in p:
-                        esdl_profile.endDate = EDate.from_string(p['end_datetime'])
+                        dt = parse_date(p['end_datetime'])
+                        if dt:
+                            esdl_profile.endDate = EDate.from_string(str(dt))
 
         if quap_type == 'predefined_qau':
             # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,

@@ -68,24 +68,39 @@ class Profiles:
 
         @self.socketio.on('add_profile', namespace='/esdl')
         def click_add_profile(profile_info):
-            id = str(uuid4())
-            group = profile_info['group']
-            if group == SettingType.USER.value:
-                profile_info['setting_type'] = SettingType.USER.value
-                profile_info['project_name'] = SettingType.USER.value
-            elif group == SettingType.SYSTEM.value:
-                profile_info['setting_type'] = SettingType.SYSTEM.value
-                profile_info['project_name'] = SettingType.SYSTEM.value
-            else:
-                profile_info['setting_type'] = SettingType.PROJECT.value
-                profile_info['project_name'] = group
-            del profile_info['group']
-            print(profile_info)
-            self.add_profile(id, profile_info)
+            with self.flask_app.app_context():
+                id = str(uuid4())
+                group = profile_info['group']
+                if group == SettingType.USER.value:
+                    profile_info['setting_type'] = SettingType.USER.value
+                    profile_info['project_name'] = self._get_identifier(group)
+                elif group == SettingType.SYSTEM.value:
+                    profile_info['setting_type'] = SettingType.SYSTEM.value
+                    profile_info['project_name'] = self._get_identifier(group)
+                else:
+                    profile_info['setting_type'] = SettingType.PROJECT.value
+                    profile_info['project_name'] = group
+                del profile_info['group']
+                print(profile_info)
+                self.add_profile(id, profile_info)
 
         @self.socketio.on('save_profile', namespace='/esdl')
         def click_save_profile(profile_info):
-            print(profile_info)
+            with self.flask_app.app_context():
+                id = profile_info['id']
+                group = profile_info['group']
+                if group == SettingType.USER.value:
+                    profile_info['setting_type'] = SettingType.USER.value
+                    profile_info['project_name'] = self._get_identifier(group)
+                elif group == SettingType.SYSTEM.value:
+                    profile_info['setting_type'] = SettingType.SYSTEM.value
+                    profile_info['project_name'] = self._get_identifier(group)
+                else:
+                    profile_info['setting_type'] = SettingType.PROJECT.value
+                    profile_info['project_name'] = group
+                del profile_info['group']
+                print(profile_info)
+                self.add_profile(id, profile_info)
 
         @self.socketio.on('test_profile', namespace='/esdl')
         def click_test_profile(profile_info):
