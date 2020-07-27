@@ -109,7 +109,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "ESSIM_host": "http://essim-engine:8112",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://influxdb:8086",
-        "grafanaURL": "http://localhost:3000",
+        "grafanaURL": "http://grafana:3000",
         "user": "essim",
         "ESSIM_database_server": "influxdb",
         "ESSIM_database_port": 8086,
