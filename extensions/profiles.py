@@ -3,6 +3,7 @@ from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
+from extensions.panel_service import create_panel
 from influxdb import InfluxDBClient
 import copy
 import logging
@@ -50,7 +51,7 @@ class Profiles:
         @self.socketio.on('get_profiles_list', namespace='/esdl')
         def get_profiles_list():
             with self.flask_app.app_context():
-                print("getting profiles list")
+                # print("getting profiles list")
                 return self.get_profiles()
 
         @self.socketio.on('get_profile_group_list', namespace='/esdl')
@@ -81,7 +82,7 @@ class Profiles:
                     profile_info['setting_type'] = SettingType.PROJECT.value
                     profile_info['project_name'] = group
                 del profile_info['group']
-                print(profile_info)
+                # print(profile_info)
                 self.add_profile(id, profile_info)
 
         @self.socketio.on('save_profile', namespace='/esdl')
@@ -99,12 +100,15 @@ class Profiles:
                     profile_info['setting_type'] = SettingType.PROJECT.value
                     profile_info['project_name'] = group
                 del profile_info['group']
-                print(profile_info)
+                # print(profile_info)
                 self.add_profile(id, profile_info)
 
         @self.socketio.on('test_profile', namespace='/esdl')
         def click_test_profile(profile_info):
-            print(profile_info)
+            embedUrl = create_panel(profile_info["profile_uiname"], "", profile_info["database"],
+                                    profile_info["measurement"], profile_info["field"],
+                                    profile_info["start_datetime"], profile_info["end_datetime"])
+            return embedUrl
 
         @self.socketio.on('profile_csv_upload', namespace='/esdl')
         def profile_csv_upload(message):
@@ -145,6 +149,9 @@ class Profiles:
                     else:
                         #print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
                         emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
+
+    def update_profiles_list(self):
+        emit('update_profiles_list', self.get_profiles())
 
     def format_datetime(self, dt):
         date, time = dt.split(" ")
@@ -201,11 +208,13 @@ class Profiles:
 
             client.write_points(points=json_body, database=database, batch_size=100)
 
+            # Store profile information in settings
             group = self.csv_files[uuid]['group']
             for i in range(1, num_fields):
                 field = column_names[i]
                 profile = self.create_new_profile(group, measurement+'_'+field, 1, database, measurement,
                                                field, "", start_datetime, end_datetime)
+                profile["embedUrl"] = create_panel("", "", database, measurement, field, start_datetime, end_datetime)
                 self.add_profile(str(uuid4()), profile)
 
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
@@ -227,6 +236,7 @@ class Profiles:
             profiles = dict()
         profiles[profile_id] = profile
         self.settings_storage.set(setting_type, identifier, PROFILES_SETTING, profiles)
+        self.update_profiles_list()
 
     def remove_profile(self, profile_id):
         # as we only have an ID, we don't know if it is a user, project or system profile

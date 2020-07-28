@@ -32,7 +32,8 @@ from extensions.boundary_service import BoundaryService
 from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
 import esdl_config
-from esdl_helper import generate_profile_info, get_port_profile_info, parse_date
+from esdl_helper import generate_profile_info, get_port_profile_info
+from utils.datetime_utils import parse_date
 import settings
 from edr_assets import EDR_assets
 from esdl_services import ESDLServices
@@ -2078,7 +2079,8 @@ def process_command(message):
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-                    esdl_profile.host = settings.profile_database_config['host']
+                    esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                        settings.profile_database_config['host']
                     esdl_profile.port = int(settings.profile_database_config['port'])
                     esdl_profile.database = p['database']
                     esdl_profile.filters = settings.profile_database_config['filters']
@@ -2849,4 +2851,4 @@ if __name__ == '__main__':
     print("Starting App")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)

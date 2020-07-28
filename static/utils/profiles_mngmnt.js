@@ -21,6 +21,11 @@ class Profiles {
         console.log("Registering socket io bindings for Profiles")
         var self = this;
 
+        socket.on('update_profiles_list', function(profiles_list) {
+            // console.log(profiles_list);
+            profiles_plugin.profiles_list = profiles_list;
+        });
+
         socket.on('csv_next_chunk', function(data) {
             //{'name': name, 'pos': self.files[name]['pos']}')
             let uuid = data.uuid;
@@ -211,6 +216,7 @@ class Profiles {
             };
             socket.emit('test_profile', profile_info, function(embed_url) {
                 if (embed_url) {
+                    $('#input_prof_embedurl').attr('value', embed_url);
                     $('#profile_graph').html('<iframe width="100%" height="200px" src="'+embed_url+'"></iframme>');
                 } else {
                     $('#profile_graph').html('');
@@ -391,11 +397,11 @@ class Profiles {
 
     create_group_select(div) {
         socket.emit('get_profile_group_list', function(profile_group_list) {
-            console.log(profile_group_list);
+            // console.log(profile_group_list);
             let $select = $('<select>').attr('id', 'profile_group_select');
             for (let gr=0; gr<profile_group_list.length; gr++) {
                 let $option = $('<option>').val(profile_group_list[gr].name).text(profile_group_list[gr].name);
-                console.log(profile_group_list[gr]);
+                // console.log(profile_group_list[gr]);
                 $select.append($option);
             }
             div.append($select);

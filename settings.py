@@ -68,12 +68,18 @@ statistics_settings_config = {
 }
 
 profile_database_config = {
+    "protocol": "http",
     "host": "10.30.2.1",
     "port": "8086",
     "database": "energy_profiles",
     "filters": "",
     "upload_user": "admin",
     "upload_password": "admin"
+}
+
+panel_service_config = {
+    "external_url": "https://panel-service.hesi.energy",
+    "internal_url": "https://panel-service.hesi.energy"
 }
 
 if os.environ.get('MAPEDITOR_HESI_ENERGY'):
@@ -98,7 +104,6 @@ if os.environ.get('MAPEDITOR_HESI_ENERGY'):
         "natsURL": "nats://nats:4222"
     }
 elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
-    # Settings for in GEIS cloud behind traefik reverse proxy and served at mapeditor.hesi.energy
     print('Starting application with MAPEDITOR_OPEN_SOURCE settings (hosting at mapeditor:8111)')
 
     FLASK_DEBUG = False
@@ -144,6 +149,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
     }
 
     profile_database_config = {
+        "protocol": "http",
         "host": "influxdb",
         "port": "8086",
         "database": "energy_profiles",
@@ -158,11 +164,15 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
         "database": "esdl_mapeditor_settings"
     }
 
+    panel_service_config = {
+        "external_url": "http://localhost:3400",
+        "internal_url": "http://panel-service:3400"
+    }
+
 else:
     # Local settings
     print('Starting application with local settings')
 
-    #FLASK_DEBUG = True
     OIDC_CLIENT_SECRETS = 'credentials/client_secrets_local.json'
     USER_LOGGING_ENABLED = False
     FLASK_DEBUG = True
