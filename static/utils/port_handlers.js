@@ -144,15 +144,6 @@ function cancel_connection(e) {
 }
 
 function click_port(layer) {
-    let start_lat = layer._latlng['lat'];
-    let start_lng = layer._latlng['lng'];
-
-    let this_pos;
-    if (first_port.parent_type === 'marker') {
-        this_pos = layer.parent.getLatLng();
-    } else if (first_port.parent_type === 'line') {
-        this_pos = layer.getLatLng();
-    }
     if (port_drawing_connection) {
         socket.emit('command', {'cmd': 'connect_ports', port1id: first_port.port_parent.id, port2id: layer.port_parent.id});
 
@@ -177,7 +168,6 @@ function set_line_port_handlers(line) {
             let ports = layer.ports;
             let coords = layer._latlngs;
             let coords_len = coords.length;
-
 
             for (let p in ports) {
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;

@@ -37,10 +37,6 @@ class HeatNetwork:
         with self.flask_app.app_context():
             #print(session)
             asset_to_be_added_list = list()
-
-            # add port mappings to session
-            # mapping = get_session('port_to_asset_mapping')
-            mapping = get_session_for_esid(es_id, 'port_to_asset_mapping')
             port_list = list()
 
             for i in range(len(asset.port)):
@@ -51,15 +47,11 @@ class HeatNetwork:
                         coord = (asset.geometry.lat, asset.geometry.lon)
                     elif isinstance(asset.geometry, Line):
                         coord = (asset.geometry.point[0].lat, asset.geometry.point[0].lon)
-                    mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'first'}
-                    print('mapping', mapping[port.id])
                 elif i == len(asset.port) - 1:
                     if isinstance(asset.geometry, Point):
                         coord = (asset.geometry.lat, asset.geometry.lon)
                     elif isinstance(asset.geometry, Line):
                         coord = (asset.geometry.point[-1].lat, asset.geometry.point[-1].lon)
-                    mapping[port.id] = {'asset_id': asset.id, 'coord': coord, 'pos': 'last'}
-                    print('mapping', mapping[port.id])
                 connTo_ids = list(o.id for o in port.connectedTo)
                 port_list.append(
                     {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})

@@ -21,7 +21,7 @@ function add_building_map_handlers(mp) {
                         var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
                         esdl_object.setLatLng(newLatLng);
 
-                        // send updated coordinates to backend to update port_to_asset_mapping and update connections
+                        // send updated coordinates to backend to update connections
                         socket.emit('update-coord', {id: layer.id, lat: polygon_center[0], lng: polygon_center[1], asspot: layer.asspot});
                     }
                 }

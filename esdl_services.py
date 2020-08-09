@@ -7,7 +7,8 @@ from flask_socketio import emit
 
 import esdl_config
 from esdl.processing import ESDLAsset
-from esdl_helper import create_port_asset_mapping, energy_asset_to_ui
+# from esdl_helper import create_port_asset_mapping, energy_asset_to_ui
+from esdl_helper import energy_asset_to_ui
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 
 
@@ -150,10 +151,6 @@ class ESDLServices:
                     es_edit = esh.get_energy_system(es_id=active_es_id)
                     instance = es_edit.instance
                     area = instance[0].area
-                    mapping = get_session_for_esid(
-                        active_es_id, "port_to_asset_mapping"
-                    )
-
                     asset_str_list = json.loads(r.text)
 
                     try:
@@ -161,8 +158,7 @@ class ESDLServices:
                             asset = ESDLAsset.load_asset_from_string(asset_str)
                             esh.add_object_to_dict(active_es_id, asset)
                             ESDLAsset.add_asset_to_area(es_edit, asset, area.id)
-                            create_port_asset_mapping(asset, mapping)
-                            asset_ui, conn_list = energy_asset_to_ui(asset, mapping)
+                            asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
                             emit(
                                 "add_esdl_objects",
                                 {
