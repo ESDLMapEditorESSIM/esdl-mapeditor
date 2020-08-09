@@ -803,20 +803,16 @@ def split_conductor(conductor, location, mode, conductor_container):
         points = geometry.point
         segm_ctr = 0
         print('segment min = {}'.format(min_dist_segm))
-        for point in points:
+        for point in list(points):
             if segm_ctr == min_dist_segm:
-                new_point = esdl.Point(lon=middle_point.lon, lat=middle_point.lat, elevation=middle_point.elevation);
+                new_point = esdl.Point(lon=middle_point.lon, lat=middle_point.lat, elevation=middle_point.elevation)
                 line1.point.append(new_point)
                 line2.point.append(new_point.clone())
             if segm_ctr < min_dist_segm:
                 line1.point.append(point)
-                prev_point = point
             else:
                 line2.point.append(point)
             segm_ctr += 1
-
-        end_point = point
-
 
         #find old ports and connections
         ports = conductor.port
