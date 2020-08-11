@@ -272,6 +272,10 @@ function run_ESSIM_simulation_window() {
     sidebar_ctr.innerHTML += essim_kpi_selection;
     show_essim_kpi_selection('essim_kpi_select');
 
+    sidebar_ctr.innerHTML += '<div id="essim_loadflow">';
+    sidebar_ctr.innerHTML += '<input type="checkbox" id="essim_loadflow_cb" name="essim_loadflow"><label for="essim_loadflow_cb"> Use ESSIM with loadflow engine</label>';
+    sidebar_ctr.innerHTML += '</div>';
+
     sidebar_ctr.innerHTML += '<p id="run_essim_simulation_button"><button id="run_ESSIM_button" onclick="run_ESSIM_simulation();">Run</button></p>';
 
     sidebar_ctr.innerHTML += '<div id="simulation_progress_div"></div>';
@@ -286,6 +290,7 @@ function run_ESSIM_simulation_window() {
 function run_ESSIM_simulation() {
     document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation started</h1>';
     document.getElementById('essim_settings').style.display = 'none';
+    document.getElementById('essim_loadflow').style.display = 'none';
     document.getElementById('run_essim_simulation_button').style.display = 'none';
     document.getElementById('essim_kpi_selection_div').style.display = 'none';
     document.getElementById('favorites_list_div').style.display = 'none';
@@ -317,10 +322,13 @@ function run_ESSIM_simulation() {
         sim_end_datetime = document.getElementById('sim_end_datetime').value;
     }
 
+    let essim_loadflow = $('#essim_loadflow_cb').prop('checked');
     let selected_kpis = $('#essim_kpi_select').val();
+    console.log(essim_loadflow);
 
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
-        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis});
+        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis,
+        essim_loadflow: essim_loadflow});
     attempt = 0;
     setTimeout(poll_simulation_progress, 1000);
 }

@@ -366,7 +366,7 @@ class ESSIM:
                 # print(sim_list)
                 self.settings_storage.set_user(user_email, essim_list, sim_list)
 
-    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, essim_kpis):
+    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
         with self.flask_app.app_context():
             esh = get_handler()
             active_es_id = get_session('active_es_id')
@@ -383,8 +383,12 @@ class ESSIM:
 
             ESSIM_config = settings.essim_config
 
-            url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
-            # print('ESSIM url: ', url)
+            print("essim_loadflow: {}".format(essim_loadflow))
+            if essim_loadflow:
+                url = ESSIM_config['ESSIM_host_loadflow'] + ESSIM_config['ESSIM_path']
+            else:
+                url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
+            print('ESSIM url: ', url)
 
             payload = {
                 'user': user_fullname.strip(),

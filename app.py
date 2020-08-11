@@ -2151,11 +2151,10 @@ def process_command(message):
         sim_start_datetime = message['sim_start_datetime']
         sim_end_datetime = message['sim_end_datetime']
         essim_kpis = message['essim_kpis']
+        essim_loadflow = message['essim_loadflow']
         # Create the HTTP POST to start the simulation
-        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, essim_kpis):
+        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
             emit('simulation_not_started')
-        # start_checking_ESSIM_progress()
-        # check_ESSIM_progress()
 
     if message['cmd'] == 'validate_for_ESSIM':
         print('validation for ESSIM command received')

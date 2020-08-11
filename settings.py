@@ -93,6 +93,7 @@ if os.environ.get('MAPEDITOR_HESI_ENERGY'):
 
     essim_config = {
         "ESSIM_host": "http://10.30.2.1:8112",
+        "ESSIM_host_loadflow": "http://10.30.2.1:8113",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://10.30.2.1:8086",
         "grafanaURL": "https://essim-dashboard.hesi.energy",
@@ -113,6 +114,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
 
     essim_config = {
         "ESSIM_host": "http://essim-engine:8112",
+        "ESSIM_host_loadflow": "",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://influxdb:8086",
         "grafanaURL": "http://grafana:3000",
@@ -182,6 +184,7 @@ else:
 
     essim_config = {
         "ESSIM_host": "http://geis.hesi.energy:8112",
+        "ESSIM_host_loadflow": "http://geis.hesi.energy:8113",
         "ESSIM_path": "/essim/simulation",
         "influxURL": "http://geis.hesi.energy:8086",
         "grafanaURL": "https://essim-dashboard.hesi.energy",

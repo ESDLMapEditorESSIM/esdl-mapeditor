@@ -527,7 +527,11 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 #sidebar select[multiple] {
-    height: 300px;
+    height: 150px;
+}
+
+#sidebar label {
+    margin-left: 0.3rem;
 }
 
 .hidden {
