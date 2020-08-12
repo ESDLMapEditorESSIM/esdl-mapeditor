@@ -87,8 +87,13 @@ class ESSIM:
                 user_email = get_session('user-email')
                 # print(es_simid)
                 if es_simid:
+                    active_simulation = get_session('active_simulation')
+
                     ESSIM_config = settings.essim_config
-                    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
+                    if active_simulation['essim_loadflow']:
+                        url = ESSIM_config['ESSIM_host_loadflow'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
+                    else:
+                        url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid
 
                     try:
                         r = requests.get(url + '/status')
@@ -397,7 +402,7 @@ class ESSIM:
                 'startDate': sim_start_datetime,
                 'endDate': sim_end_datetime,
                 'influxURL': ESSIM_config['influxURL'],
-                'grafanaURL': ESSIM_config['grafanaURL'],
+                # 'grafanaURL': ESSIM_config['grafanaURL'],
                 'esdlContents': urllib.parse.quote(esdlstr)
             }
 
@@ -451,7 +456,8 @@ class ESSIM:
                         'startDate': sim_start_datetime,
                         'endDate': sim_end_datetime,
                         'dashboardURL': '',
-                        'kpi_result_list': None
+                        'kpi_result_list': None,
+                        'essim_loadflow': essim_loadflow
                     }
                     set_session('active_simulation', active_simulation)
                 else:
