@@ -141,7 +141,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
     mondaine_hub_config = None
 
     cdo_mondaine_config = {
-        "hostname": "http://hub:9080"
+        "hostname": "http://esdl-drive:9080"
     }
 
     user_logging_config = {
