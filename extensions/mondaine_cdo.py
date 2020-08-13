@@ -1,5 +1,5 @@
 """
-Mondaine CDO extension
+Mondaine CDO extension / ESDL Drive extension
 Connects to Mondaine CDO HUB for file sharing
 """
 
@@ -19,6 +19,7 @@ from settings import cdo_mondaine_config
 url = cdo_mondaine_config['hostname']
 browse_endpoint = "/store/browse"
 resource_endpoint = "/store/resource"
+drive_name = "ESDl Drive"
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +33,12 @@ class MondaineCDO:
         self.files = dict();
 
     def register(self):
-        print('Registering Mondaine CDO extension at ' + cdo_mondaine_config['hostname'])
+        print('Registering ESDL Drive CDO extension at ' + cdo_mondaine_config['hostname'])
 
         @self.socketio.on('cdo_browse', namespace='/esdl')
         def socketio_mondaine_browse(message):
             with self.flask_app.app_context():
-                logger.debug('MondaineCDO: {}'.format(message))
+                logger.debug('CDO: {}'.format(message))
                 return self.browse_cdo(message)
 
         @self.socketio.on('cdo_open', namespace='/esdl')
@@ -47,19 +48,19 @@ class MondaineCDO:
                 token = get_session('jwt-token')
                 headers = {'Authorization': 'Bearer ' + token}
                 uri = CDOHttpURI(url + resource_endpoint + path, headers_function=add_authorization_header)
-                logger.debug('MondaineCDO open: {} ({})'.format(message, uri.plain))
+                logger.debug('CDO open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
                     es = esh.load_file(uri)
                 except Exception as e:
-                    logger.error("Error in loading file from MondaineCDO", e)
+                    logger.error("Error in loading file from CDO", e)
                     #send_alert('Error loading ESDL file with id {} from store'.format(store_id))
                     return
 
                 if es.name:
-                    title = 'MondaineHUB ' + es.name
+                    title = drive_name + ': ' + es.name
                 else:
-                    title = 'MondaineHUB ES id: ' + es.id
+                    title = drive_name + ' ES id: ' + es.id
 
                 set_session('active_es_id', es.id)
                 set_session('es_filename', title)  # TODO: separate filename and title
@@ -78,7 +79,7 @@ class MondaineCDO:
                 active_es_id = get_session('active_es_id')
                 #esh.get_energy_system(active_es_id)
                 resource:Resource = esh.get_resource(active_es_id)
-                logger.debug('Mondaine CDO saving resource {}'.format(resource.uri))
+                logger.debug('CDO saving resource {}'.format(resource.uri))
                 if resource.uri.normalize() == uri:
                     # resource already in CDO
                     logger.debug('Saving resource that is already loaded from CDO: {}'.format(resource.uri.plain))
@@ -174,14 +175,14 @@ class MondaineCDO:
         #active_es_id = get_session('active_es_id')
         # esh.get_energy_system(active_es_id)
         #resource: Resource = esh.get_resource(active_es_id)
-        logger.debug('Mondaine CDO saving resource {}'.format(location))
+        logger.debug('CDO saving resource {}'.format(location))
         try:
             uri = CDOHttpURI(location, headers_function=add_authorization_header)
             uri.create_outstream(text_content=content_as_string)
             response = uri.close_stream()  # send content to CDO
             return response
         except Exception as e:
-            logger.error("Error saving to Mondaine CDO ".format(e))
+            logger.error("Error saving to CDO ".format(e))
             raise e
 
 

@@ -10,6 +10,7 @@ class MondaineCDO {
         this.files = {};
         this.blob = {};
         this.chunkSize = 100*1024; // 100kb chunks
+        this.driveName = "ESDL Drive"
      }
 
      getTreeBrowser() {
@@ -492,7 +493,7 @@ class MondaineCDO {
 
         dialog.setSize([esdl_browser.width, esdl_browser.height]);
         dialog.setLocation([esdl_browser.x, esdl_browser.y]);
-        dialog.setTitle('Load file from Mondaine HUB');
+        dialog.setTitle('Load file from ' + this.driveName);
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
      }
@@ -515,14 +516,14 @@ class MondaineCDO {
 
         dialog.setSize([esdl_browser.width, esdl_browser.height]);
         dialog.setLocation([esdl_browser.x, esdl_browser.y]);
-        dialog.setTitle('Save file to Mondaine HUB');
+        dialog.setTitle('Save file to ' + this.driveName);
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
      }
 
 
      initSocketIO() {
-        console.log("Registering socket io bindings for Mondaine CDO repo")
+        console.log("Registering socket io bindings for ESDL Drive CDO repo")
         var self = this;
         socket.on('cdo_file_open', function(data) {
             self.file_open_dialog();
