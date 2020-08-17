@@ -17,7 +17,7 @@ def get_panel_service_datasource(database):
 
     # Try to find the datasource
     ps_influxdb_name = None
-    url = settings.panel_service_config["internal_url"] + "/influxdbs"
+    url = settings.panel_service_config["internal_url"] + "/influxdbs/"
     try:
         r = requests.get(url)
         if r.status_code == 200:
@@ -85,7 +85,7 @@ def create_panel(graph_title, axis_title, database, measurement, field, start_da
     }
 
     print(payload)
-    url = settings.panel_service_config["internal_url"] + "/graphs"
+    url = settings.panel_service_config["internal_url"] + "/graphs/"
     try:
         r = requests.post(url, json=payload)
         if r.status_code == 201:
