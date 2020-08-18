@@ -168,7 +168,7 @@ elif os.environ.get('MAPEDITOR_OPEN_SOURCE'):
 
     panel_service_config = {
         "external_url": "http://localhost:3400",
-        "internal_url": "http://panel-service:3400"
+        "internal_url": "http://panel-service:5000"
     }
 
 else:
