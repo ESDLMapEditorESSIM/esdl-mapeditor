@@ -6,6 +6,7 @@ import requests
 import json
 import uuid
 import re
+import os
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
@@ -300,9 +301,14 @@ class BoundaryService:
         if self.settings_storage.has_user(user, BOUNDARY_SERVICE_USER_CONFIG):
             return self.settings_storage.get_user(user, BOUNDARY_SERVICE_USER_CONFIG)
         else:
-            user_settings = {
-                'boundaries_year': 2018
-            }
+            if os.environ.get('MAPEDITOR_OPEN_SOURCE'):
+                user_settings = {
+                    'boundaries_year': 2019
+                }
+            else:
+                user_settings = {
+                    'boundaries_year': 2018
+                }
             self.set_user_settings(user, user_settings)
             return user_settings
 
