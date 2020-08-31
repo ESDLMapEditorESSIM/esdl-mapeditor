@@ -1,0 +1,681 @@
+/*
+    CSS for ESDL map editor
+*/
+html,
+body {
+    position: relative;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+}
+
+.header,
+.footer {
+    background-color: grey;
+    color: white;
+    float:
+        padding: 4px;
+    height: 30px;
+}
+
+.header-title,
+.header-logo {
+    float: left;
+    padding: 2px;
+    font-size: 16px;
+}
+
+.header-logout {
+    float: right;
+    padding-top: 2px;
+    padding-right: 3px;
+}
+
+.h1,
+.h2,
+h1,
+h2 {
+    font-size: 1.5rem;
+    margin-top: 8px;
+}
+
+.h3,
+.h4,
+.h5,
+.h6,
+h3,
+h4,
+h5,
+h6 {
+    font-size: 1.25rem;
+    margin-top: 8px;
+    color: gray;
+}
+
+/*
+    Using Flexbox to make map full screen
+*/
+.flexbox-parent {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: flex-start;
+    /* align items in Main Axis */
+    align-items: stretch;
+    /* align items in Cross Axis */
+    align-content: stretch;
+    /* Extra space in Cross Axis */
+
+    background: rgba(255, 255, 255, .1);
+}
+
+.flexbox-item {
+    padding: 0px;
+}
+
+.flexbox-item-grow {
+    flex: 1;
+    /* same as flex: 1 1 auto; */
+}
+
+/*
+    ESDL Asset styles
+*/
+.circle {
+    margin-left: -18px;
+    /* !important; */
+    margin-top: -18px;
+    /* !important; */
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    box-sizing: content-box;
+}
+
+.circle-img {
+    vertical-align: middle;
+    width: 23px;
+    height: 23px;
+}
+
+.circle-img-joint {
+    vertical-align: middle;
+    width: 10px;
+    height: 10px;
+}
+
+.Producer {
+    background: #93a800;
+    border: 3px solid #6b7a00;
+}
+
+.Consumer {
+    background: #649ec9;
+    border: 3px solid #477393;
+}
+
+.Conversion {
+    background: #b574ba;
+    border: 3px solid #7030a0;
+}
+
+.Storage {
+    background: #cb1325;
+    border: 3px solid #950b18;
+}
+
+.Transport {
+    background: #ffcb00;
+    border: 3px solid #bc9500;
+}
+
+.Potential {
+    background: #bfbfbf;
+    border: 3px solid #808080;
+}
+
+.Building {
+    background: #bfbfbf;
+    border: 3px solid #000000;
+}
+
+.Joint {
+    margin-left: -5px;
+    margin-top: -5px;
+}
+
+.Overload_marker {
+    border: 5px solid red;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+}
+
+/*
+    Ports
+*/
+.Port {
+    border: 3px solid black;
+}
+
+.InPort {
+    background: blue;
+}
+
+.OutPort {
+    background: red;
+}
+
+/* Assets are supported with 1, 2 or 3 InPorts or OutPorts */
+/*
+.OutPort11 { margin-left: 16px; margin-top: -7px !important;}
+.OutPort21 { margin-left: 10px; margin-top: -22px !important;}
+.OutPort22 { margin-left: 10px; margin-top: 8px !important;}
+.OutPort31 { margin-left: 10px; margin-top: -22px !important;}
+.OutPort32 { margin-left: 16px; margin-top: -7px !important;}
+.OutPort33 { margin-left: 10px; margin-top: 8px !important;}
+.InPort11 { margin-left: -30px; margin-top: -7px !important;}
+.InPort21 { margin-left: -24px; margin-top: -22px !important;}
+.InPort22 { margin-left: -24px; margin-top: 8px !important;}
+.InPort31 { margin-left: -24px; margin-top: -22px !important;}
+.InPort32 { margin-left: -30px; margin-top: -7px !important;}
+.InPort33 { margin-left: -24px; margin-top: 8px !important;}
+*/
+/* Except for Joints, only one InPort and OutPort is supported */
+/*
+.JointOutPort11 { margin-left: 4px; margin-top: -7px !important;}
+.JointInPort11 { margin-left: -18px; margin-top: -7px !important;}
+*/
+/*
+    Asset menu
+*/
+#asset_menu-menu .ui-menu-item {
+    margin-left: 0.5em;
+}
+
+#asset_menu-menu .ui-selectmenu-optgroup {
+    font-size: 1.2em !important;
+}
+
+/* Fix max-height in all jquery-ui drop down menus to 600px*/
+.ui-selectmenu-menu .ui-menu {
+    max-height: 600px;
+}
+
+
+/*
+    Legend Control box
+*/
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+}
+
+.legend_title {
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    font-weight: bold;
+}
+
+.legend_select {
+    line-height: 20px;
+    color: #000080;
+    padding: 6px 2px;
+}
+
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+.color_select {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+/*
+    Loader
+*/
+#loader {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 10000;
+    width: 100px;
+    height: 100px;
+    margin: -50px 0 0 -50px;
+    border: 12px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 12px solid #3498db;
+    -webkit-animation: spin 2s linear infinite;
+    animation: spin 2s linear infinite;
+}
+
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ESDL browser*/
+
+/*
+.btn {
+  background-color: white;
+  border: 1px solid black;
+  padding: 16px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
+*/
+
+.browse-btn-small {
+    /*background-color: white;*/
+    /*border: 1px solid black;*/
+    font-size: 10px;
+    cursor: pointer;
+    width: 24px;
+    height: 17px;
+    padding: 0px;
+    /*
+  border-radius: 1px;
+  -moz-border-radius: 1px;
+  -webkit-border-radius: 1px;
+  */
+}
+
+.small-icon {
+    font-size: 10px;
+    padding: 0px;
+}
+
+/* align table in the center of the centertable div */
+.centertable {
+    text-align: center;
+    padding: 5px;
+}
+
+.centertable table {
+    margin: 0 auto;
+}
+
+.centertable table thead {
+    text-align: left;
+}
+
+.centertable table tbody {
+    text-align: left;
+}
+
+/* jstree icon colors */
+
+.layer-node {
+    color: black;
+}
+
+.group-node {
+    color: dark-yellow;
+}
+
+.no_checkbox>i.jstree-checkbox {
+    display: none;
+}
+
+.jstree-contextmenu {
+    font-family: sans-serif;
+    font-size: 10px;
+}
+
+.group_es_layers_anchor {
+    font-size: 10px;
+}
+
+/* Smaller fonts */
+.jstree-anchor,
+.jstree-anchor:link,
+.jstree-anchor:visited,
+.jstree-anchor:hover,
+.jstree-anchor:active {
+    font-size: 12px;
+    padding: 0 0px 0 0px;
+}
+
+.jstree-default .jstree-node {
+    margin-left: 12px
+}
+
+/* Minimizing height of lines */
+.jstree-default .jstree-anchor {
+    line-height: 18px;
+    height: 18px;
+}
+
+.jstree-default .jstree-node {
+    min-height: 18px;
+    line-height: 18px;
+    margin-left: 24px;
+    min-width: 24px;
+}
+
+/* Smaller icons */
+.jstree-default .jstree-icon {
+    background-image: url(../icons/32px.png);
+}
+
+.jstree-default .jstree-icon:empty {
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+}
+
+/*
+z-index for jstree context menu, sidebar has 2000
+.vakata-context {
+   z-index: 20000 !important;
+}
+*/
+
+
+/*
+    SmartMenu
+*/
+.navbar-nav>li>a {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+.navbar {
+    min-height: 20px;
+    margin-bottom: 0px !important;
+    /*
+    background-color: white !important;
+*/
+}
+
+.navlink {
+    /*
+    color: black !important;
+*/
+}
+
+.topmenu {
+    background-color: #343a40;
+}
+
+.navbar .container {
+    padding-right: 0px;
+    padding-left: 0px;
+    margin-right: 0px;
+    margin-left: 0px;
+    width: auto;
+}
+
+.menu-icon {
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    left: -20px;
+    float: left;
+    margin-top: 3px;
+    margin-right: 3px;
+}
+
+.dropdown-menu {
+    padding-right: 20px;
+}
+
+.dropdown-menu>li {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.dropdown-menu>li>a {
+    padding: 3px 0px;
+    /*    display: inline-block; */
+    position: relative;
+    left: 20px;
+    float: left;
+}
+
+/*
+.dropdown-menu>li>a:focus {
+    padding: 3px 0px;
+    left: 20px;
+}
+.dropdown-menu>li>a:hover {
+    padding: 3px 0px;
+    left: 20px;
+}
+*/
+/*
+.dropdown-menu>li>div {
+    float: left;
+    display: inline-block;
+}
+*/
+
+
+.menu-icon#menu_compare {
+    background-image: url(/icons/Compare.png);
+    width: 16;
+    height: 16;
+}
+
+.menu-icon#menu_layers {
+    background-image: url(/icons/Layers.png);
+    width: 16;
+    height: 16;
+}
+
+.menu-icon#menu_import {
+    background-image: url(/icons/Import.png);
+    width: 16;
+    height: 16;
+}
+
+.menu-icon#menu_areageometry {
+    background-image: url(/icons/AreaGeometry.png);
+    width: 16;
+    height: 16;
+}
+
+.simulations .btn {
+    padding: 0rem 0.1rem
+}
+
+.sidebar-div {
+    padding: 6px 0px;
+}
+
+#sidebar select {
+    width: 100%;
+}
+
+#sidebar select[multiple] {
+    height: 150px;
+}
+
+#sidebar label {
+    margin-left: 0.3rem;
+}
+
+#sidebar #service_results_div {
+    margin-top: 6px;
+}
+
+#sidebar_action_button {
+    margin-top: 6px;
+}
+
+.hidden {
+    display: none;
+}
+
+.div-box {
+    border: 1px solid #cccccc;
+    padding: 3px;
+}
+
+/*
+    KPI window
+*/
+.chart-container {
+    position: relative;
+    /*    height: 200px; */
+    width: 300px;
+    margin: 10px;
+}
+
+.kpi_table_title {
+    font-weight: bold;
+}
+
+/*
+    Settings window
+*/
+.settings_window {
+    margin: 0px;
+    padding: 10px 0px 10px 0px;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+}
+
+.settings_modules_list {
+    width: 250px;
+    margin: 0px 10px 0px 0px;
+    padding: 10px;
+    border: 1px solid #cccccc;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.settings_module_content {
+    flex-grow: 4;
+    margin: 0px 0px 0px 10px;
+    padding: 10px;
+    border: 1px solid #cccccc;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/*
+    Statistics window
+*/
+.statistics_window {
+    margin: 0px;
+    padding: 10px 0px 10px 0px;
+    height: 100%;
+}
+
+/*
+    Upload CSV
+*/
+#csv-upload-area {
+  border: 2px dashed #ccc;
+  width: 400px;
+  margin-top: 10px;
+  padding: 20px;
+}
+
+#csv-upload-area.highlight {
+  border-color: purple;
+  background-color: #F2F2F2;
+}
+#csv-upload-area p {
+  margin-top: 0;
+}
+#csv-upload-area .upload-form {
+  margin-bottom: 10px;
+}
+#csv-upload-area .button {
+  display: inline-block;
+  padding: 10px;
+  background: #ccc;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+#csv-upload-area .button:hover {
+  background: #ddd;
+}
+
+/*
+    TimeDimension / IELGAS
+*/
+.leaflet-ielgas {
+    padding: 0px;
+    z-index: 2000;
+    width: 800px;
+    height: 500px;
+    background: white;
+
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+    border-radius: 5px;
+}
+
+.leaflet-ielgas .close {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    width: 31px;
+    height: 31px;
+
+    color: #333;
+    font-size: 25pt;
+    line-height: 1em;
+    text-align: center;
+    background: white;
+    @include border-radius(16px);
+    cursor: pointer;
+
+    z-index: 2800;
+}
+
+.leaflet-ielgas .title {
+    width: 100%;
+    background-color: green;
+    color: white;
+    padding-left: 10px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+.leaflet-ielgas .content {
+    padding: 10px;
+}
