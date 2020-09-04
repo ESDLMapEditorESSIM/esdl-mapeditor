@@ -158,6 +158,9 @@ L.Control.KPICharts = L.Control.extend({
             .off(container, 'dblclick', fakeStop)
             .off(container, 'mousewheel', stop)
             .off(container, 'MozMousePixelScroll', stop);
+
+        // TODO: what is the proper way of doing this?
+        kpicharts = null;
     },
 
     close: function() {
@@ -241,27 +244,91 @@ L.Control.KPICharts = L.Control.extend({
         if (distr_or_value === 'Distribution') {
             let kpi_item = null;
             let dataset_dict = {};
+// This works for bar charts, but not for doughnuts
+// For barcharts, energysystems are shown side by side
+// ---------------------------------------------------
+//            for (let i=0; i<kpi_info.length; i++) {
+//                kpi_item = kpi_info[i];
+//                labels.push(i.toString());      // must be es name (or something like that)
+//
+//                for (let i=0; i<kpi_item.distribution.length; i++) {
+//                    let distr_part = kpi_item.distribution[i]
+//
+//                    if (distr_part.label in dataset_dict)
+//                        dataset_dict[distr_part.label].data.push(distr_part.value)
+//                    else {
+//                        dataset_dict[distr_part.label] = {
+//                            label: distr_part.label,
+//                            backgroundColor: this.get_bg_color(i),
+//                            data: [distr_part.value]
+//                        };
+//                    }
+//                }
+//            }
+//
+//            for (let lbl in dataset_dict) {
+//                datasets.push(dataset_dict[lbl]);
+//            }
+
+// This works both for bar charts and doughnuts
+// For barcharts, energysystems are mixed per distribution label
+// ---------------------------------------------------
+            // Create a dict with keys of all distribution labels for the kpi for all energy systems
+            let distr_labels_dict = {}
+            let num_distr_labels = 0
             for (let i=0; i<kpi_info.length; i++) {
                 kpi_item = kpi_info[i];
-                labels.push(i.toString());      // must be es name (or something like that)
 
-                for (let i=0; i<kpi_item.distribution.length; i++) {
-                    let distr_part = kpi_item.distribution[i]
-
-                    if (distr_part.label in dataset_dict)
-                        dataset_dict[distr_part.label].data.push(distr_part.value)
-                    else {
-                        dataset_dict[distr_part.label] = {
-                            label: distr_part.label,
-                            backgroundColor: this.get_bg_color(i),
-                            data: [distr_part.value]
-                        };
+                for (let j=0; j<kpi_item.distribution.length; j++) {
+                    if (!(kpi_item.distribution[j].label in distr_labels_dict)) {
+                        distr_labels_dict[kpi_item.distribution[j].label] = {
+                            backgroundColor: this.get_bg_color(num_distr_labels),
+                            data: {}        // key=es, data=value for that kpi for that es
+                        }
+                        num_distr_labels = num_distr_labels + 1;
                     }
                 }
             }
+            console.log(distr_labels_dict);
 
-            for (let lbl in dataset_dict) {
-                datasets.push(dataset_dict[lbl]);
+            // Fill in energy system data
+            for (let i=0; i<kpi_info.length; i++) {
+                kpi_item = kpi_info[i];
+
+                for (let j=0; j<kpi_item.distribution.length; j++) {
+                    let distr_part = kpi_item.distribution[j]
+                    distr_labels_dict[distr_part.label]['data'][kpi_item['es_id']] = distr_part.value;
+                }
+            }
+
+            // Convert to list to preserve order (Is this required?)
+            let label_info_array = [];
+            let bgColor_array = [];
+            for (let lbl in distr_labels_dict) {
+                labels.push(lbl);
+                label_info_array.push(distr_labels_dict[lbl]);
+                bgColor_array.push(distr_labels_dict[lbl]['backgroundColor'])
+            }
+
+            // Now transpose the data structure to a format that chartjs accepts
+            // Iterate over all EnergySystems
+            for (let i=0; i<kpi_info.length; i++) {
+                kpi_item = kpi_info[i];
+
+                let dataset = {}
+                dataset['label'] = i.toString();  // kpi_item['es_id'];
+                let data = new Array(labels.length);
+                data = data.fill(0);
+                for (let lbl_info in label_info_array) {
+                    for (let es_id in label_info_array[lbl_info]['data']) {
+                        if (es_id == kpi_item['es_id']) {
+                            data[lbl_info] = label_info_array[lbl_info]['data'][es_id];
+                        }
+                    }
+                }
+                dataset['data'] = data;
+                dataset['backgroundColor'] = bgColor_array;
+                datasets.push(dataset)
             }
 
             type = 'bar'
@@ -275,11 +342,11 @@ L.Control.KPICharts = L.Control.extend({
                     }
                 },
                 scales: {
-                    xAxes: [{
-                        stacked: false,
-                    }],
+ //                   xAxes: [{
+ //                       stacked: false,
+ //                   }],
                     yAxes: [{
-                        stacked: false,
+ //                       stacked: true,
                         ticks: {
                             beginAtZero: true,
 //                            maxTicksLimit: 6,
@@ -349,15 +416,17 @@ L.Control.KPICharts = L.Control.extend({
 
         let chart = createChart(ctx, type, labels, datasets, options)
 
-        $(ctrl_div).append($('<button>').addClass('btn')
-            .append($('<i>').addClass('fas fa-chart-pie').css('color', 'black'))
-            .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'doughnut', labels, datasets, options); }));
+        if (distr_or_value === 'Distribution')
+            $(ctrl_div).append($('<button>').addClass('btn')
+                .append($('<i>').addClass('fas fa-chart-pie').css('color', 'black'))
+                .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'doughnut', labels, datasets, options); }));
         $(ctrl_div).append($('<button>').addClass('btn')
             .append($('<i>').addClass('fas fa-chart-bar').css('color', 'black'))
             .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'bar', labels, datasets, options); }));
-        $(ctrl_div).append($('<button>').addClass('btn')
-            .append($('<i>').addClass('fas fa-chart-line').css('color', 'black'))
-            .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'line', labels, datasets, options); }));
+        if (distr_or_value === 'Distribution')
+            $(ctrl_div).append($('<button>').addClass('btn')
+                .append($('<i>').addClass('fas fa-chart-line').css('color', 'black'))
+                .click( function(e) { chart = changeChart(canvas, table_div, chart, ctx, 'line', labels, datasets, options); }));
         $(ctrl_div).append($('<button>').addClass('btn')
             .append($('<i>').addClass('fas fa-table').css('color', 'black'))
             .click( function(e) { changeTable(canvas, table_div, distr_or_value, kpi_info[0].name, chart, labels, datasets); }));

@@ -317,7 +317,7 @@ class ESSIM:
         with self.flask_app.app_context():
             user_email = get_session('user-email')
             sim_list = self.get_sim_fav_list(essim_list)
-            print(sim_list)
+            # print(sim_list)
             return json.dumps(sim_list)
 
     def get_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):

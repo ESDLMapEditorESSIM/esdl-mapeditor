@@ -31,9 +31,17 @@ class KPIs {
             let kpi_list = data['kpi_list'];
             // Store or replace the kpi info for this energy system
             set_kpi_info(es_id, {scope: scope, kpi_list: kpi_list});
+            kpis.show_all_kpis();
+        });
 
-            // Retrieve kpi info for all energy systems
-            let all_kpi_data = get_all_kpi_info();
+        socket.on('show_kpis', function() {
+            kpis.show_all_kpis();
+        });
+    }
+
+    show_all_kpis() {
+        // Retrieve kpi info for all energy systems
+        let all_kpi_data = get_all_kpi_info();
 //            console.log(all_kpi_data);
 //            {926fa9a2-9f04-45a8-adfd-813d29acd6c0: {…}}
 //                926fa9a2-9f04-45a8-adfd-813d29acd6c0:
@@ -44,7 +52,7 @@ class KPIs {
 //                        length: 3
 //                    scope: "Untitled Area"
 
-            let kpi_data = kpis.preprocess_all_kpis(all_kpi_data);
+        let kpi_data = kpis.preprocess_all_kpis(all_kpi_data);
 //            console.log(kpi_data);
 //            let kpi_data = kpis.create_kpi_chart_data(kpi_list);
 //            console.log(kpi_data);
@@ -54,14 +62,13 @@ class KPIs {
 //                2: {id: "08659497-f1ea-4763-91e9-d8d330449454", name: "Aandeel energiedragers", type: "Distribution", distribution: Array(3)}
 //                length: 3
 
-            if (kpicharts == null) {
-                kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
-                kpicharts.addTo(map);
-            } else {
-                kpicharts.update_data(kpi_data);
-                kpicharts.addTo(map);
-            }
-        });
+        if (kpicharts == null) {
+            kpicharts = L.control.kpicharts('kpicharts', {position: 'bottomright', data: kpi_data});
+            kpicharts.addTo(map);
+        } else {
+            kpicharts.update_data(kpi_data);
+            kpicharts.addTo(map);
+        }
     }
 
     static create(event) {
