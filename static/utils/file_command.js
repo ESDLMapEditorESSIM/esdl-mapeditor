@@ -59,6 +59,9 @@ function open_ESDL(event) {
         socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
     }
 
+    // clear file input so that one could load the same file the next time
+    $('.inputFile')[0].value = "";
+
     // show loader
     show_loader();
 }
