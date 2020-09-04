@@ -77,4 +77,5 @@ yarn-error.log
 yarn.lock
 
 credentials/client_secrets_local.json
+credentials/client_secrets_mapeditor.hesi.energy.json
 environments/
