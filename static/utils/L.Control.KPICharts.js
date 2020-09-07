@@ -35,10 +35,15 @@ function createChart(ctx, type, labels, datasets, options) {
 }
 
 function changeChart(canvas, table_div, chart, ctx, type, labels, datasets, options) {
+    let local_options = options;
+    if (type == 'doughnut') {
+        // Don't show x and y axes in case of a doughut diagram
+        delete(local_options.scales);
+    }
     chart.destroy();
     $(table_div).hide();
     $(canvas).show();
-    return createChart(ctx, type, labels, datasets, options);
+    return createChart(ctx, type, labels, datasets, local_options);
 }
 
 function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels, datasets) {
