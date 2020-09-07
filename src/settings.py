@@ -34,13 +34,13 @@ USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
-    "port": "27017",
+    "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
     "database": "esdl_mapeditor_settings"
 }
 
 user_logging_config = {
     "host": os.environ.get('USER_LOGGING_HOST', None),  # "influxdb",
-    "port": "8086",
+    "port": os.environ.get('USER_LOGGING_PORT', "8086"),
     "database": "user_logging"
 }
 
@@ -54,7 +54,7 @@ boundaries_config = {
 profile_database_config = {
     "protocol": "http",
     "host": os.environ.get('PROFILE_DATABASE_HOST', None),  # "influxdb",
-    "port": "8086",
+    "port": os.environ.get('PROFILE_DATABASE_PORT', "8086"),
     "database": "energy_profiles",
     "filters": "",
     "upload_user": "admin",
@@ -66,7 +66,7 @@ panel_service_config = {
     "internal_url": os.environ.get('PANEL_SERVICE_INTERNAL_URL', None),  # "http://panel-service:5000"
     "profile_database_protocol": "http",
     "profile_database_host": os.environ.get('PANEL_SERVICE_PROFILE_DB_HOST', None),
-    "profile_database_port": "8086",
+    "profile_database_port": os.environ.get('PANEL_SERVICE_PROFILE_DB_PORT', "8086"),
     "profile_database_upload_user": "admin",
     "profile_database_upload_password": "admin"
 }
@@ -79,7 +79,7 @@ essim_config = {
     "grafanaURL": os.environ.get('ESSIM_GRAFANA_URL', None),  # "http://grafana:3000",
     "user": "essim",
     "ESSIM_database_server": os.environ.get('ESSIM_DATABASE_HOST', None),  # "influxdb",
-    "ESSIM_database_port": 8086,
+    "ESSIM_database_port": os.environ.get('ESSIM_DATABASE_PORT', 8086),
     "start_datetime": "2015-01-01T00:00:00+0100",
     "end_datetime": "2016-01-01T00:00:00+0100",
     "natsURL": "nats://nats:4222"
