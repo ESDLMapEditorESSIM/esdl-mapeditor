@@ -75,6 +75,7 @@ logger = get_logger(__name__)
 if settings.USE_GEVENT:
     import gevent.monkey
     gevent.monkey.patch_all()
+    logger.info("Using GEvent")
 
 #TODO fix send_file in uwsgi
 # debugging with pycharm:
@@ -461,6 +462,26 @@ def load_ESDL_EnergySystem(store_id):
             esh = get_handler()
             esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
             return esh
+        except Exception as e:
+            send_alert('Error interpreting ESDL file from store: ' + str(e))
+            return None
+    else:
+        return None
+
+
+def import_ESDL_EnergySystem(store_id):
+    store_item = load_store_item(store_id)
+    if store_item:
+        esdlstr = store_item['esdl']
+
+        del store_item['esdl']
+        set_session('store_item_metadata', store_item)
+        emit('store_item_metadata', store_item)
+
+        try:
+            esh = get_handler()
+            imported_es = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
+            return imported_es
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
             return None
@@ -2529,6 +2550,21 @@ def process_file_command(message):
             call_process_energy_system.submit(esh, None, title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(store_id))
+
+    if message['cmd'] == 'import_esdl_from_store':
+        store_id = message['id']
+
+        imported_es = import_ESDL_EnergySystem(store_id)
+        if imported_es:
+            if imported_es.name:
+                title = 'Store name: ' + imported_es.name + ', store id: ' + store_id
+            else:
+                title = 'Store id: ' + store_id
+
+            esh = get_handler()
+            call_process_energy_system.submit(esh, None, title)  # run in seperate thread
+            set_session('active_es_id', imported_es.id)
+            set_session('es_filename', title)
 
     if message['cmd'] == 'store_esdl':
         title = message['store_title']

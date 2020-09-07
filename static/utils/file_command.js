@@ -88,6 +88,10 @@ function send_cmd_load_ESDL() {
     socket.emit('file_command', {cmd: 'get_list_from_store'});
 }
 
+function send_cmd_import_ESDL() {
+    socket.emit('file_command', {cmd: 'get_list_from_store'});
+}
+
 function click_load_ESDL_button(obj) {
     select = document.getElementById('load_es_selection');
     es_id = select.options[select.selectedIndex].value;
@@ -103,6 +107,12 @@ function click_load_ESDL_button(obj) {
     show_loader();
 }
 
+function click_import_ESDL_button(obj) {
+    select = document.getElementById('load_es_selection');
+    es_id = select.options[select.selectedIndex].value;
+    socket.emit('file_command', {cmd: 'import_esdl_from_store', id: es_id})
+    show_loader();
+}
 
 // Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
 // if we set the window.location.href directly...
