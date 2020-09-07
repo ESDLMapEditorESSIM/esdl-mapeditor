@@ -83,6 +83,9 @@ class ESDLServices:
 
         body = {}
 
+        if "send_email_in_post_body_parameter" in service:
+            body[service["send_email_in_post_body_parameter"]] = get_session("user-email")
+
         if service["type"] == "geo_query":
             area_scope_tag = service["geographical_scope"]["url_area_scope"]
             area_id_tag = service["geographical_scope"]["url_area_id"]

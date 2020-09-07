@@ -238,6 +238,7 @@ esdl_config = {
             "headers": {"Content-Type": "application/x-www-form-urlencoded"},
             "type": "send_esdl",
             "body": "url_encoded",
+            "send_email_in_post_body_parameter": "account",
             "query_parameters": [
                 {
                     "name": "Environment",
