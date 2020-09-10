@@ -24,8 +24,7 @@ If you've updated this code and want to test it locally with the rest of the sta
    services:
      mapeditor:
      container_name: esdl-mapeditor
-     # image: esdlmapeditoressim/esdl-mapeditor:latest
-     image: esdl-mapeditor:latest
+     esdlmapeditoressim/esdl-mapeditor:latest
      networks:
        - mapeditor-net
      ports:
@@ -43,7 +42,7 @@ If you've updated this code and want to test it locally with the rest of the sta
 2. Install the dependencies: `pip install -r requirements.txt`
 
 ## Starting a local instance of the application (with the docker-toolsuite)
-1. Copy the `.env.local-os` file to `.env`
+1. Copy the `.env.local-os` file to a file named `.env`
 
 2. Run the application: `python app.py`
 
