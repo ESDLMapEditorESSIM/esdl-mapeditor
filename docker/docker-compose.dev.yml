@@ -3,27 +3,26 @@ version: "3.3"
 services:
   mapeditor:
     build:
-      context: .
+      context: ..
       dockerfile: ./docker/Dockerfile
-    image: 127.0.0.1:5000/mapeditor-dev
+    image: esdl-mapeditor:dev
+    networks:
+      - mapeditor-net
     volumes:
-     - .:/usr/src/app
+      - ..:/usr/src/app
     entrypoint: >
       watchmedo auto-restart
           --recursive
-          --pattern="*.py"
+          --pattern="*.py;*.js"
           --directory="."
           --
     command: ["python", "app.py"]
     ports:
-      - 8111:8111
+      - "${MAPEDITOR_PORT:-8111}:8111"
+    env_file:
+      - ../.env.open-source
 
-  mongo:
-    image: mvertes/alpine-mongo
-    ports:
-      - 27017:27017
-    volumes:
-      - usersettings_data:/data/db
-
-volumes:
-  usersettings_data:
+networks:
+  mapeditor-net:
+    external:
+      name: mapeditor-net

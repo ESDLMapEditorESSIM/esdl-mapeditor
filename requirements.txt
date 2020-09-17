@@ -15,3 +15,6 @@ PyShp==2.1.0
 python-dotenv==0.14.0
 requests==2.24.0
 xmldiff==2.4
+
+# Development
+watchdog==0.9.0
