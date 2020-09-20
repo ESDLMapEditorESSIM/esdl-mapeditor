@@ -123,8 +123,8 @@ class Profiles:
 
         @self.socketio.on('test_profile', namespace='/esdl')
         def click_test_profile(profile_info):
-            embedUrl = create_panel(profile_info["profile_uiname"], "", profile_info["database"],
-                                    profile_info["measurement"], profile_info["field"],
+            embedUrl = create_panel(profile_info["profile_uiname"], "", None, profile_info["database"],
+                                    profile_info["measurement"], profile_info["field"], profile_info["filters"], None,
                                     profile_info["start_datetime"], profile_info["end_datetime"])
             return embedUrl
 
@@ -233,7 +233,7 @@ class Profiles:
                 field = column_names[i]
                 profile = self.create_new_profile(group, measurement+'_'+field, 1, database, measurement,
                                                field, "", start_datetime, end_datetime)
-                profile["embedUrl"] = create_panel(field, "", database, measurement, field, start_datetime, end_datetime)
+                profile["embedUrl"] = create_panel(field, "", None, database, measurement, field, [], None, start_datetime, end_datetime)
                 self.add_profile(str(uuid4()), profile)
 
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],

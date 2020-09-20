@@ -224,6 +224,7 @@ class Profiles {
                 measurement: $('#input_prof_meas').val(),
                 field: $('#input_prof_field').val(),
                 multiplier: $('#input_prof_mult').val(),
+                filters: [],
                 profile_type: $('#input_prof_type').val(),
                 start_datetime: $('#input_prof_startdt').val(),
                 end_datetime: $('#input_prof_enddt').val(),

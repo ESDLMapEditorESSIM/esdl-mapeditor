@@ -542,6 +542,10 @@ z-index for jstree context menu, sidebar has 2000
     margin-top: 6px;
 }
 
+#sidebar_b #profile_div {
+    height: 280px;
+}
+
 .hidden {
     display: none;
 }

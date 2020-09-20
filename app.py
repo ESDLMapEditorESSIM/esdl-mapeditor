@@ -69,6 +69,7 @@ from extensions.time_dimension import TimeDimension
 from extensions.ielgas import IELGAS
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 from extensions.etm_local import ETMLocal
+from extensions.port_profile_viewer import PortProfileViewer
 
 logger = get_logger(__name__)
 
@@ -147,7 +148,7 @@ ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage, me_settings)
 IELGAS(app, socketio, settings_storage)
 ETMLocal(app, socketio, settings_storage)
-
+PortProfileViewer(app, socketio, settings_storage)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 

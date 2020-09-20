@@ -16,8 +16,10 @@ from flask_socketio import emit
 import requests
 import json
 import src.log as log
+import datetime
 from utils.datetime_utils import parse_date
 import src.settings as settings
+import esdl
 
 logger = log.get_logger(__name__)
 
@@ -27,10 +29,14 @@ def send_alert(message):
     emit('alert', message, namespace='/esdl')
 
 
-def get_panel_service_datasource(database):
-    ps_influxdb_host = settings.panel_service_config['profile_database_protocol'] + "://" + \
+def get_panel_service_datasource(database, host=None):
+    if host:
+        ps_influxdb_host = host
+    else:
+        ps_influxdb_host = settings.panel_service_config['profile_database_protocol'] + "://" + \
                        settings.panel_service_config['profile_database_host'] + ":" + \
                        settings.panel_service_config['profile_database_port']
+    logger.debug("Get_panel_service_datasource: db=" + database + " host="+ps_influxdb_host)
 
     # Try to find the datasource
     ps_influxdb_name = None
@@ -67,6 +73,9 @@ def get_panel_service_datasource(database):
                 result = json.loads(r.text)
                 logger.debug("New datasource created:")
                 logger.debug(result)
+            else:
+                logger.debug("Error creating datasource - status code: " + str(r.status_code))
+                ps_influxdb_name = None
         except Exception as e:
             ps_influxdb_name = None
             print('Exception: ' + str(e))
@@ -75,11 +84,38 @@ def get_panel_service_datasource(database):
     return ps_influxdb_name
 
 
-def create_panel(graph_title, axis_title, database, measurement, field, start_datetime, end_datetime):
-    ps_influxdb_name = get_panel_service_datasource(database)
+def create_panel(graph_title, axis_title, host, database, measurement, field, filters, qau, start_datetime, end_datetime):
+    ps_influxdb_name = get_panel_service_datasource(database, host)
+    if not ps_influxdb_name:
+        logger.error("Could not find or create a datasource")
+        return None
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
-    sdt = parse_date(start_datetime)
-    edt = parse_date(end_datetime)
+    if isinstance(start_datetime, datetime.datetime):
+        sdt = start_datetime
+    else:
+        sdt = parse_date(start_datetime)
+    if isinstance(end_datetime, datetime.datetime):
+        edt = end_datetime
+    else:
+        edt = parse_date(end_datetime)
+
+    if qau:
+        if qau.unit == esdl.UnitEnum.from_string("WATT") and qau.multiplier is None and qau.perUnit is None:
+            axis_format = "watt"
+        elif qau.physicalQuantity == esdl.PhysicalQuantityEnum.from_string("TEMPERATURE") and \
+                qau.unit == esdl.UnitEnum.from_string("DEGREES_CELSIUS"):
+            axis_format = "celsius"
+        elif qau.physicalQuantity == esdl.PhysicalQuantityEnum.from_string("PRESSURE") and \
+                qau.unit == esdl.UnitEnum.from_string("BAR"):
+            axis_format = "pressurebar"
+        # elif qau.physicalQuantity == esdl.PhysicalQuantityEnum.from_string("SPEED") and \
+        #         qau.unit == esdl.UnitEnum.from_string("METRE") and \
+        #         qau.perTimeUnit == esdl.TimeUnitEnum.from_string("SECOND"):
+        #     axis_format = "velocityms"
+        else:
+            axis_format = "none"
+    else:
+        axis_format = "percent"
 
     payload = {
         "title": graph_title,
@@ -91,11 +127,12 @@ def create_panel(graph_title, axis_title, database, measurement, field, start_da
                 "measurement": measurement,
                 "field": field,
                 "function": "sum",
+                "filters": filters,
                 "yaxis": "left"
             }
         ],
         "yaxes": [
-            {"format": "percent"}
+            {"format": axis_format}
         ],
         "thresholds": [
         ],
