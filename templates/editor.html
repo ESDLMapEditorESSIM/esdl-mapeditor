@@ -1209,6 +1209,12 @@
                         add_object_to_layer(es_bld_id, 'esdl_layer', line);
                     }
                 }
+                // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
+                $('div[title]').tooltip({
+                    content: function() {
+                        return $(this).attr('title');
+                    }
+                });
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
