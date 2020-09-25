@@ -14,25 +14,12 @@
  *      TNO
  */
 
-// Profiles
+// ESDLServicesMngmnt
 // requires:
 // map and socketio as global variables
 
 
 class ESDLServicesMngmnt {
-    constructor() {
-        this.initSocketIO();
-    }
-
-    initSocketIO() {
-        console.log("Registering socket io bindings for ESDLServicesMngmnt")
-        var self = this;
-
-        socket.on('update_profiles_list', function(profiles_list) {
-            // console.log(profiles_list);
-            profiles_plugin.profiles_list = profiles_list;
-        });
-    }
 
     send_store_settings() {
         let settings = $('#srvs_mngmnt_textarea').val();
