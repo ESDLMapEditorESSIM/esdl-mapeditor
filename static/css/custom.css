@@ -683,3 +683,8 @@ z-index for jstree context menu, sidebar has 2000
 .leaflet-ielgas .content {
     padding: 10px;
 }
+
+.textarea_srvs_mngmnt {
+    width: 100%;
+    height: 550px;
+}

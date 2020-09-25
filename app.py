@@ -82,7 +82,6 @@ if settings.USE_GEVENT:
 # debugging with pycharm:
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
-esdl_services = ESDLServices()
 user_actions_logging = UserLogging()
 if settings.settings_storage_config["host"] is None or settings.settings_storage_config["host"] == "":
     logger.error("Settings storage is not configured. Aborting...")
@@ -149,6 +148,7 @@ time_dimension = TimeDimension(app, socketio, executor, settings_storage, me_set
 IELGAS(app, socketio, settings_storage)
 ETMLocal(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
+esdl_services = ESDLServices(app, socketio, settings_storage)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -2679,6 +2679,7 @@ def get_carrier_color_dict():
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
+    user = get_session('user-email')
     role = get_session('user-role')
 
     logger.info('Send initial information to client')
@@ -2687,7 +2688,7 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list(role))
+    emit('esdl_services', esdl_services.get_services_list(user, role))
     initialize_app()
 
 
