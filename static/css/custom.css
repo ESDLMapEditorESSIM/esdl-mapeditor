@@ -542,6 +542,10 @@ z-index for jstree context menu, sidebar has 2000
     margin-top: 6px;
 }
 
+#sidebar_b #profile_div {
+    height: 280px;
+}
+
 .hidden {
     display: none;
 }
@@ -678,4 +682,9 @@ z-index for jstree context menu, sidebar has 2000
 
 .leaflet-ielgas .content {
     padding: 10px;
+}
+
+.textarea_srvs_mngmnt {
+    width: 100%;
+    height: 550px;
 }

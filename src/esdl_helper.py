@@ -38,13 +38,14 @@ def generate_profile_info(profile_list):
             multiplier = profile.multiplier
             measurement = profile.measurement
             field = profile.field
-            # profile_name = 'UNKNOWN'
 
             profiles = Profiles.get_instance().get_profiles()['profiles']
             for pkey in profiles:
                 p = profiles[pkey]
                 if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
                     profile_name = p['profile_uiname']
+            if profile_name == None:
+                profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
             profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})

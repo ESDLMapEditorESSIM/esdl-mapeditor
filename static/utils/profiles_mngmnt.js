@@ -224,6 +224,7 @@ class Profiles {
                 measurement: $('#input_prof_meas').val(),
                 field: $('#input_prof_field').val(),
                 multiplier: $('#input_prof_mult').val(),
+                filters: [],
                 profile_type: $('#input_prof_type').val(),
                 start_datetime: $('#input_prof_startdt').val(),
                 end_datetime: $('#input_prof_enddt').val(),
@@ -305,11 +306,14 @@ class Profiles {
         let $droparea = $('<div>').attr('id', 'csv-upload-area');
         let $form = $('<form>').addClass('upload-form');
         let $p1 = $('<p>').text('To upload csv files with profile information use drag & drop from your file explorer or click the button below.');
-        let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
+        let $input = $('<input type="file" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
         let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
         let $message = $('<p>').attr('id', 'csv-message');
         $droparea.append($form);
+        $input.change(function(e) {
+            handleFiles(this.files);
+        });
         $form.append($p1);
         $form.append($input);
         $form.append($label);

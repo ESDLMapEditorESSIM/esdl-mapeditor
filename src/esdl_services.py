@@ -17,29 +17,65 @@ import json
 import urllib.parse
 
 import requests
-from flask_socketio import emit
+from flask import Flask
+from flask_socketio import SocketIO, emit
 
 import src.esdl_config as esdl_config
 from esdl.processing import ESDLAsset
-# from esdl_helper import create_port_asset_mapping, energy_asset_to_ui
 from src.esdl_helper import energy_asset_to_ui
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
+from extensions.session_manager import get_handler, get_session
+from extensions.settings_storage import SettingsStorage
+import src.log as log
+
+logger = log.get_logger(__name__)
+
+ESDL_SERVICES_CONFIG = "ESDL_SERVICES_CONFIG"
 
 
 class ESDLServices:
-    def __init__(self):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.config = esdl_config.esdl_config["predefined_esdl_services"]
+        self.flask_app = flask_app
+        self.socketio = socket
+        self.settings_storage = settings_storage
 
-    def get_services_list(self, roles=[]):
-        self.config = esdl_config.esdl_config["predefined_esdl_services"]
+        self.register()
 
-        this_config = copy.deepcopy(self.config)
-        for s in list(this_config):
-            print(s)
+    def register(self):
+        logger.info('Registering ESDLServices extension')
+
+        @self.socketio.on('get_esdl_services_list', namespace='/esdl')
+        def get_esdl_services_list():
+            user = get_session('user-email')
+            services = self.get_user_settings(user)
+            return services
+
+        @self.socketio.on('store_esdl_services_list', namespace='/esdl')
+        def store_esdl_services_list(settings):
+            user = get_session('user-email')
+            # TODO: check settings format before storing
+            self.set_user_settings(user, settings)
+
+    def get_user_settings(self, user):
+        if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
+            esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
+        else:
+            esdl_services_settings = esdl_config.esdl_config["predefined_esdl_services"]
+            self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
+        return esdl_services_settings
+
+    def set_user_settings(self, user, settings):
+        self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, settings)
+
+    def get_services_list(self, user, roles=[]):
+        srvs_list = self.get_user_settings(user)
+
+        my_list = copy.deepcopy(srvs_list)
+        for s in list(my_list):
             if "required_role" in s and s["required_role"] not in roles:
-                this_config.remove(s)
+                my_list.remove(s)
 
-        return this_config
+        return my_list
 
     def array2list(self, ar):
         if isinstance(ar, list):
@@ -109,7 +145,7 @@ class ESDLServices:
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                 body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
             else:
-                body["energysystem"] = esdlstr
+                body = esdlstr
         elif service["type"] == "simulation":
             esdlstr = esh.to_string(active_es_id)
 
@@ -120,7 +156,7 @@ class ESDLServices:
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                 body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
             else:
-                body["energysystem"] = esdlstr
+                body = esdlstr
 
         query_params = service_params["query_parameters"]
         config_service_params = service["query_parameters"]
@@ -165,7 +201,8 @@ class ESDLServices:
                 # Should not happen, there should always be a method.
                 return False, None
 
-            if r.status_code == 200:
+            if (service["http_method"] == "get" and r.status_code == 200) or \
+                    (service["http_method"] == "post" and r.status_code == 201):
                 # print(r.text)
 
                 if service["result"][0]["action"] == "esdl":
