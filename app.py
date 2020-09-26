@@ -2070,41 +2070,36 @@ def process_command(message):
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
-    # DEAD code according to EWOUD....
-    # if message['cmd'] == 'remove_connection':
-    #     from_asset_id = message['from_asset_id']
-    #     from_asset = esh.get_by_id(es_edit.id, from_asset_id)
-    #     from_port_id = message['from_port_id']
-    #     to_asset_id = message['to_asset_id']
-    #     to_asset = esh.get_by_id(es_edit.id, to_asset_id)
-    #     to_port_id = message['to_port_id']
-    #     print('Removing connection {}#{} -> {}#{}'.format(from_asset.name, from_port_id, to_asset.name, to_port_id))
-    #
-    #     # Aa.port[]->connectedTo->port[].Ab
-    #     fromPort = ESDLAsset.find_port(from_asset.port, from_port_id)
-    #     toPort = ESDLAsset.find_port(to_asset.port, to_port_id)
-    #     fromPort.connectedTo.remove(toPort) # updates the opposite relation automatically
-    #
-    #     # refresh connections in gui
-    #     active_es_id = get_session('active_es_id')
-    #     conn_list = get_session_for_esid(active_es_id, 'conn_list')
-    #     new_list = []
-    #     #print(conn_list)
-    #     for conn in conn_list:
-    #         if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
-    #                 conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
-    #                 (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or \
-    #                 conn['to-port-id'] != from_port_id or conn['to-asset-id'] != from_asset_id):
-    #             # Remove both directions from -> to and to -> from as we don't know how they are stored in the list
-    #             # does not matter, as a connection is unique
-    #             new_list.append(conn)  # add connections that we are not interested in
-    #         else:
-    #             print(' - removed {}'.format(conn))
-    #     set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
-    #     # TODO: send es.id with this message?
-    #     emit('clear_connections')   # clear current active layer connections
-    #     emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
+    if message['cmd'] == 'remove_connection':
+        # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
+        #                         to_asset_id: to_asset_id, to_port_id: to_port_id});
+        from_asset_id = message['from_asset_id']
+        from_port_id = message['from_port_id']
+        from_port = esh.get_by_id(es_edit.id, from_port_id)
+        to_asset_id = message['to_asset_id']
+        to_port_id = message['to_port_id']
+        to_port = esh.get_by_id(es_edit.id, to_port_id)
+        from_port.connectedTo.remove(to_port)
 
+        # refresh connections in gui
+        active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        new_list = []
+        #print(conn_list)
+        for conn in conn_list:
+            if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
+                    conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
+                    (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or \
+                    conn['to-port-id'] != from_port_id or conn['to-asset-id'] != from_asset_id):
+                # Remove both directions from -> to and to -> from as we don't know how they are stored in the list
+                # does not matter, as a connection is unique
+                new_list.append(conn)  # add connections that we are not interested in
+            else:
+                print(' - removed {}'.format(conn))
+        set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
+        # TODO: send es.id with this message?
+        emit('clear_connections')   # clear current active layer connections
+        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']

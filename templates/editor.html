@@ -799,12 +799,9 @@
             socket.emit('command', {cmd: 'remove_port', port_id: pid});
         }
 
-        //////////// this code is dead code according to ewoud
-        //
-        //function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
-        //    socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
-        //}
-        //
+        function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
+            socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
+        }
 
         function change_param(obj) {
             asset_id = $(obj).attr('assetid');
