@@ -16,7 +16,7 @@ from flask import Flask, jsonify, session, abort
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_handler, get_session, set_session, del_session
 from src.essim_kpis import ESSIM_KPIs
 import requests
 import urllib
@@ -76,8 +76,12 @@ class ESSIM:
                             'dashboardURL': result['dashboardURL']
                         }
                         set_session('active_simulation', active_simulation)
-                        esdl_string = result['esdlContents']
-                        res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=urllib.parse.unquote(esdl_string))
+                        esdlstr_base64 = result['esdlContents']
+                        esdlstr_base64_bytes = esdlstr_base64.encode('ascii')
+                        esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
+                        esdlstr = esdlstr_bytes.decode('ascii')
+
+                        res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                         set_session('active_es_id', res_es.id)
 
                         sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
@@ -164,7 +168,7 @@ class ESSIM:
                         send_alert('Error accessing ESSIM API: ' + str(e))
                         abort(500, 'Error accessing ESSIM API: ' + str(e))
                 else:
-                    print("No es_simid in session")
+                    print("ERROR: Querying simulation progress - No es_simid in session")
                     print(session)
                     abort(500, 'Simulation not running')
 
@@ -261,8 +265,7 @@ class ESSIM:
         def essim_kpi_results():
             with self.flask_app.app_context():
                 es_simid = get_session('es_simid')
-                print('------------- getting ESSIM KPI results -----------')
-                print(es_simid)
+                print('Querying ESSIM KPI results for sim_id: ' + es_simid)
                 if es_simid:
                     ESSIM_config = settings.essim_config
                     url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + es_simid + '/kpi'
@@ -272,9 +275,10 @@ class ESSIM:
                         if r.status_code == 200:
                             result = json.loads(r.text)
 
-                            print("result from ESSIM:")
-                            print(result)
+                            # print("result from ESSIM:")
+                            # print(result)
                             if result is None:
+                                print("Error: No results from ESSIM KPI querying")
                                 return [], 200
                             else:
                                 kpi_result_list = self.process_kpi_results(result)
@@ -286,7 +290,7 @@ class ESSIM:
                         send_alert('Error accessing ESSIM API: ' + str(e))
                         abort(500, 'Error accessing ESSIM API: ' + str(e))
                 else:
-                    print("No es_simid in session")
+                    print("ERROR: Querying KPI results - No es_simid in session")
                     print(session)
                     abort(500, 'Simulation not running')
 
@@ -362,6 +366,10 @@ class ESSIM:
 
     def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
         with self.flask_app.app_context():
+            # Clear current active session information
+            del_session('active_simulation')
+            del_session('es_simid')
+
             esh = get_handler()
             active_es_id = get_session('active_es_id')
             user_email = get_session('user-email')
@@ -385,7 +393,7 @@ class ESSIM:
                 url = ESSIM_config['ESSIM_host_loadflow'] + ESSIM_config['ESSIM_path']
             else:
                 url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path']
-            print('ESSIM url: ', url)
+            # print('ESSIM url: ', url)
 
             payload = {
                 'user': user_fullname.strip(),
@@ -416,7 +424,7 @@ class ESSIM:
                     })
                 payload['kpiModule'] = kpi_module
 
-            print(payload)
+            # print(payload)
 
             headers = {
                 'Content-Type': "application/json",
@@ -435,9 +443,9 @@ class ESSIM:
                 # print(r.content)
                 if r.status_code == 201:
                     result = json.loads(r.text)
-                    # print(result)
                     sim_id = result['id']
                     set_session('es_simid', sim_id)
+                    print("ESSIM started, sim_id: " + sim_id)
 
                     self.store_simulation(user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
@@ -457,7 +465,8 @@ class ESSIM:
                     send_alert(
                         'Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(
                             r.reason))
-                    print(r)
+                    print('Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(
+                            r.reason))
                     print(r.content)
                     # emit('', {})
                     return 0
@@ -469,7 +478,7 @@ class ESSIM:
             return 1
 
     def process_kpi_results(self, kpi_result_array):
-        kpi_result_list = []
+        kpis_this_sim_run = []
         one_still_calculating = False
         kpi_list = get_session('kpi_list')  # contains id, name and description
 
@@ -497,79 +506,99 @@ class ESSIM:
                 if 'unit' in kpi_info:
                     kpi_info['unit'] = kpi_result['unit']
 
-            kpi_result_list.append(kpi_info)
+            kpis_this_sim_run.append(kpi_info)
+
+        simid = get_session('es_simid')
+        active_es_id = get_session('active_es_id')
+        kpi_result_list = get_session('kpi_result_list')
+
+        if kpi_result_list:
+            kpis_per_simid = kpi_result_list["kpis_per_simid"]
+            if active_es_id != kpi_result_list["es_id"]:    # if this is a simulation of a new energy system
+                kpis_per_simid = dict()                     # start with an empty dict
+                kpi_result_list["es_id"] = active_es_id     # set the current es_id
+            kpis_per_simid[simid] = kpis_this_sim_run       # add the kpis of the last simulation run
+        else:
+            kpi_result_list = dict()                        # first KPIs for the energy system
+            kpi_result_list["es_id"] = active_es_id
+            kpi_result_list["kpis_per_simid"] = dict()
+            kpi_result_list["kpis_per_simid"][simid] = kpis_this_sim_run
 
         result = {
             'still_calculating': one_still_calculating,
-            'results': kpi_result_list
+            'results': kpis_this_sim_run
         }
 
-        print("Processed results (sent back to client):")
-        print(result)
+        # print("Processed results (sent back to client):")
+        # print(result)
         if not one_still_calculating:
             # self.emit_kpis_for_visualization(kpi_result_list)
+            print("All KPIs finished calculation")
             set_session('kpi_result_list', kpi_result_list)
 
             user_email = get_session('user-email')
-            es_simid = get_session('simulationRun')
-            self.update_stored_simulation(user_email, es_simid, 'kpi_result_list', kpi_result_list)
+            # TODO: fix storing per simid
+            self.update_stored_simulation(user_email, simid, 'kpi_result_list', kpi_result_list)
 
         return result
 
     def emit_kpis_for_visualization(self, kpi_result_list):
         kpi_list = []
 
-        for kpi_result in kpi_result_list:
-            if kpi_result['calc_status'] == 'Success':
-                kpi = dict()
-                kpi['id'] = kpi_result['id']
-                kpi['name'] = kpi_result['name']
+        for sim_id in kpi_result_list["kpis_per_simid"]:
+            kpis_this_sim_run = kpi_result_list["kpis_per_simid"][sim_id]
+            for kpi_result in kpis_this_sim_run:
+                if kpi_result['calc_status'] == 'Success':
+                    kpi = dict()
+                    kpi['id'] = kpi_result['id']
+                    kpi['name'] = kpi_result['name']
+                    kpi['sim_id'] = sim_id
 
-                # ... 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
-                # {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
-                # {'carrier': 'Aardgas', 'value': 0.0028286240994930267}], ...
-                sub_kpi_list = kpi_result['kpi']
+                    # ... 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
+                    # {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
+                    # {'carrier': 'Aardgas', 'value': 0.0028286240994930267}], ...
+                    sub_kpi_list = kpi_result['kpi']
 
-                kpi['sub_kpi'] = list()
-                for sub_kpi in sub_kpi_list:
-                    sub_kpi_res = dict()
-                    if 'Unit' in sub_kpi:
-                        sub_kpi_res['unit'] = sub_kpi['Unit']
+                    kpi['sub_kpi'] = list()
+                    for sub_kpi in sub_kpi_list:
+                        sub_kpi_res = dict()
+                        if 'Unit' in sub_kpi:
+                            sub_kpi_res['unit'] = sub_kpi['Unit']
 
-                    sub_kpi_res['name'] = sub_kpi['Name']
+                        sub_kpi_res['name'] = sub_kpi['Name']
 
-                    if len(sub_kpi['Values']) > 1:
-                        sub_kpi_res['type'] = 'Distribution'
+                        if len(sub_kpi['Values']) > 1:
+                            sub_kpi_res['type'] = 'Distribution'
 
-                        parts = []
-                        for kpi_part in sub_kpi['Values']:
-                            print(kpi_part)
-                            parts.append({
-                                'label': kpi_part['carrier'],
-                                'value': kpi_part['value']
-                            })
-                        sub_kpi_res['distribution'] = parts
-                    else:
-                        sub_kpi_res['type'] = 'Double'
-                        sub_kpi_res['value'] = sub_kpi['Values']
+                            parts = []
+                            for kpi_part in sub_kpi['Values']:
+                                print(kpi_part)
+                                parts.append({
+                                    'label': kpi_part['carrier'],
+                                    'value': kpi_part['value']
+                                })
+                            sub_kpi_res['distribution'] = parts
+                        else:
+                            sub_kpi_res['type'] = 'Double'
+                            sub_kpi_res['value'] = sub_kpi['Values']
 
-                    kpi['sub_kpi'].append(sub_kpi_res)
+                        kpi['sub_kpi'].append(sub_kpi_res)
 
-                    # if len(kpi_res) > 1:
-                    #     kpi['type'] = 'Distribution'
-                    #
-                    #     parts = []
-                    #     for kpi_part in kpi_res:
-                    #         parts.append({
-                    #             'label': kpi_part['carrier'],
-                    #             'percentage': kpi_part['value']
-                    #         })
-                    #     kpi['distribution'] = parts
-                    # else:
-                    #     kpi['value'] = kpi_res[0]['value']
-                    #     kpi['type'] = 'Double'
+                        # if len(kpi_res) > 1:
+                        #     kpi['type'] = 'Distribution'
+                        #
+                        #     parts = []
+                        #     for kpi_part in kpi_res:
+                        #         parts.append({
+                        #             'label': kpi_part['carrier'],
+                        #             'percentage': kpi_part['value']
+                        #         })
+                        #     kpi['distribution'] = parts
+                        # else:
+                        #     kpi['value'] = kpi_res[0]['value']
+                        #     kpi['type'] = 'Double'
 
-                kpi_list.append(kpi)
+                    kpi_list.append(kpi)
 
         if kpi_list:
             print("Emit kpi_list for visualization:")

@@ -263,9 +263,9 @@ function run_ESSIM_simulation_window() {
     essim_settings += '<p><input id="sim_description" type="text" width="600"/></p>';
     essim_settings += 'The following settings should only be changed if you know exactly what you\'re doing';
     essim_settings += '<p>';
-    essim_settings += '<input type="radio" id="sim_y2015" name="sim_period" value="y2015" checked onclick="enable_disable_custom_year(id);">';
+    essim_settings += '<input type="radio" id="sim_y2015" name="sim_period" value="y2015" onclick="enable_disable_custom_year(id);">';
     essim_settings += '<label for="y2015">Year 2015</label><br>';
-    essim_settings += '<input type="radio" id="sim_y2019" name="sim_period" value="y2019" onclick="enable_disable_custom_year(id);">';
+    essim_settings += '<input type="radio" id="sim_y2019" name="sim_period" value="y2019" checked onclick="enable_disable_custom_year(id);">';
     essim_settings += '<label for="y2015">Year 2019</label><br>';
     essim_settings += '<input type="radio" id="sim_custom_year" name="sim_period" value="custom_year" onclick="enable_disable_custom_year(id);">';
     essim_settings += '<label for="y2015">Custom year</label><br>';

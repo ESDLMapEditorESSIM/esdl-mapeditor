@@ -703,7 +703,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
     es_list = esh.get_energy_systems()
     es_info_list = get_session("es_info_list")
 
-    # emit('clear_esdl_layer_list')
+    if force_update_es_id == "all":
+        emit('clear_esdl_layer_list')
 
     conn_list = []
     mapping = {}
@@ -719,7 +720,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
         if es.id is None:
             es.id = str(uuid.uuid4())
 
-        if es.id not in es_info_list or es.id == force_update_es_id:
+        if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
             print("- Processing energysystem with id {}".format(es.id))
             name = es.name
             if not name:

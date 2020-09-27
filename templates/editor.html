@@ -449,7 +449,7 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
-                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng, asspot: marker.asspot});
+                socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
                 // console.log(e.oldLatLng.lat);
                 // console.log(pos.lat + ', ' + pos.lng );
             });
@@ -497,7 +497,7 @@
 
             set_marker_port_handlers(marker);
 
-             // let extensions know they can update this layer.
+            // let extensions know they can update this layer.
             // e.g. add a context menu item
             for (let i=0; i<extensions.length; i++) {
                 updatefun = extensions[i];
@@ -530,7 +530,7 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
-                socket.emit('update-coord', {id: marker.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+                socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works

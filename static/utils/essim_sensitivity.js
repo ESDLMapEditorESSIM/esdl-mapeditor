@@ -19,23 +19,23 @@ class ESSIM_sensitivity{
         this.initSocketIO();
 
         this.attempt = 0;
+        this.kpi_progress_prev_progress = 0;
+        this.kpi_progress_attempt = 0;
         this.kpis = false;
         this.asset_list = [];
+        this.sim_start_datetime = "";
+        this.sim_end_datetime = "";
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESSIM sensitivity plugin");
-
-        socket.on('essim_sensitivity', function(data) {
-            console.log(data);
-            sidebar_b.setContent(essim_sensitivity_plugin.create_sidebar_content(data).get(0));
-            sidebar_b.show();
-        });
+        console.log("Registering ESSIM sensitivity plugin");
     }
 
     show_ESSIM_sensitivity_analysis_window() {
-        sidebar_b.setContent(essim_sensitivity_plugin.create_sidebar_content(null).get(0));
-        sidebar_b.show();
+        if (!(sidebar_b.isVisible())) {
+            sidebar_b.setContent(essim_sensitivity_plugin.create_sidebar_content(null).get(0));
+            sidebar_b.show();
+        }
     }
 
     run_simulations() {
@@ -61,14 +61,20 @@ class ESSIM_sensitivity{
 
         socket.emit('essim_sensitivity_run_simulations', {
             period: {
-                start: '2015-01-01T00:00:00+0100',
-                end: '2016-01-01T00:00:00+0100'
+                start: this.sim_start_datetime,
+                end: this.sim_end_datetime
             },
             selected_kpis: selected_kpis,
             sens_anal_info: sens_anal_info
+        }, function(res) {
+            if (res == 1) {
+                essim_sensitivity_plugin.clean_div();
+                essim_sensitivity_plugin.show_sensitivity_analyis_progress_monitoring();
+            } else {
+                $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Error starting ESSIM SA run');
+                console.log("First SA ESSIM simulation could not be started")
+            }
         });
-        essim_sensitivity_plugin.clean_div();
-        essim_sensitivity_plugin.show_sensitivity_analyis_progress_monitoring();
     }
 
     clean_div() {
@@ -82,32 +88,34 @@ class ESSIM_sensitivity{
             } else {
                 $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Simulations finished');
                 $('#sens_analysis_progress').empty();
-                if (essim_sensitivity_plugin.kpis) {
+                if (essim_sensitivity_plugin.kpis.length) {
                     socket.emit('kpi_visualization');
                 }
             }
         });
     }
 
-    generate_line_with_kpi_calculation_status(status) {
+    generate_kpi_calculation_status(status) {
         let $line = $('<div>');
         let text = 'KPIs: ';
+        let summed_progress = 0.0;
         for (let i=0; i<status.length; i++) {
             let kpi_result_status = status[i];
 
             let kpi_name = kpi_result_status['name'];
             let kpi_calc_status = kpi_result_status['calc_status'];
 
-            let $span_progress = $('<span>');
             if (kpi_calc_status === 'Calculating') {
                 let progr_str = kpi_result_status['progress'];
                 let progr_float = Math.round(((100*parseFloat(progr_str))+Number.EPSILON) * 100) / 100;
                 text = text + ((progr_float).toString() + '%-');
+                summed_progress = summed_progress + progr_float;
             } else {
                 text = text + kpi_calc_status+'-';
             }
         }
-        return $line.append($('<p>').text(text));
+        $line.append($('<p>').text(text));
+        return [$line, summed_progress];
     }
 
     monitor_sensitivity_analysis_kpi_progress() {
@@ -119,10 +127,31 @@ class ESSIM_sensitivity{
                 $('#kpi_progress_div').empty();
                 if (data['still_calculating']) {
                     let status = data['results'];
-                    let $line = essim_sensitivity_plugin.generate_line_with_kpi_calculation_status(status);
+                    let result = essim_sensitivity_plugin.generate_kpi_calculation_status(status);
+                    let $line = result[0];
+                    let summed_progress = result[1];
                     $('#sens_analysis_progress').empty().append($line);
+
+                    if (essim_sensitivity_plugin.kpi_progress_prev_progress < 1e-6) {
+                        if (Math.abs(summed_progress - essim_sensitivity_plugin.kpi_progress_prev_progress) < 1e-6) {
+                            essim_sensitivity_plugin.kpi_progress_attempt = essim_sensitivity_plugin.kpi_progress_attempt + 1;
+                            if (essim_sensitivity_plugin.kpi_progress_attempt == 20) {
+                                $('#sens_analysis_progress').append($('<div>').append($('<p>').text('No KPI progress anymore')));
+                                essim_sensitivity_plugin.kpi_progress_prev_progress = 0.0;
+                                essim_sensitivity_plugin.kpi_progress_attempt = 0;
+                                return;
+                            }
+                        } else {
+                            essim_sensitivity_plugin.kpi_progress_prev_progress = summed_progress;
+                            essim_sensitivity_plugin.kpi_progress_attempt = 0;
+                        }
+                    } else
+                        essim_sensitivity_plugin.kpi_progress_prev_progress = summed_progress;
+
                     setTimeout(essim_sensitivity_plugin.monitor_sensitivity_analysis_kpi_progress, 1000);
                 } else {
+                    essim_sensitivity_plugin.kpi_progress_prev_line = null;
+                    essim_sensitivity_plugin.kpi_progress_attempt = 0;
                     essim_sensitivity_plugin.next_simulation();
                 }
             },
@@ -163,7 +192,7 @@ class ESSIM_sensitivity{
                     progress.innerHTML =  '';
 
                     essim_sensitivity_plugin.attempt = 0;
-                    if (essim_sensitivity_plugin.kpis)
+                    if (essim_sensitivity_plugin.kpis.length)
                         essim_sensitivity_plugin.monitor_sensitivity_analysis_kpi_progress();
                     else
                         essim_sensitivity_plugin.next_simulation();
@@ -203,10 +232,23 @@ class ESSIM_sensitivity{
         $progress_div.append($('<p>').attr('id', 'sens_analysis_dashboard_url'));
         $progress_div.append($('<p>').attr('id', 'sens_analysis_simulationRun'));
 
-        setTimeout(essim_sensitivity_plugin.monitor_sensitivity_analysis_progress, 1000);
+        // Query progress
+        essim_sensitivity_plugin.monitor_sensitivity_analysis_progress();
+        // setTimeout(essim_sensitivity_plugin.monitor_sensitivity_analysis_progress, 1000);
     }
 
     select_kpis_window() {
+        if ($('#sa_y2015').prop('checked')) {
+            this.sim_start_datetime = "2015-01-01T00:00:00+0100";
+            this.sim_end_datetime = "2016-01-01T00:00:00+0100";
+        } else if ($('#sa_y2019').prop('checked')) {
+            this.sim_start_datetime = "2019-01-01T00:00:00+0100";
+            this.sim_end_datetime = "2020-01-01T00:00:00+0100";
+        } else if ($('#sa_custy').prop('checked')) {
+            this.sim_start_datetime = $('#sa_sim_start_datetime').val();
+            this.sim_end_datetime = $('#sa_sim_end_datetime').val();
+        }
+
         essim_sensitivity_plugin.kpis = false;
         $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Select KPIs');
         let $div = $('#essim_sens_content_div')
@@ -225,18 +267,53 @@ class ESSIM_sensitivity{
         $button_div.append($button);
     }
 
+    enable_custom_year(tf) {
+        if (tf) {
+            $('#sa_sim_start_datetime').prop('disabled', false);
+            $('#sa_sim_end_datetime').prop('disabled', false);
+        } else {
+            $('#sa_sim_start_datetime').prop('disabled', true);
+            $('#sa_sim_end_datetime').prop('disabled', true);
+        }
+    }
+
     select_period_window() {
         $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Select simulation period');
         let $div = $('#essim_sens_content_div');
         $div.empty();
 
-        $div.append($('<p>').text('Still needs implementation - defaults to year 2015'));
+        $div.append($('<div>').append($('<input>').attr('type', 'radio').attr('id', 'sa_y2015').attr('value', 'y2015')
+            .attr('name', 'sa_sim_period').click(function() {essim_sensitivity_plugin.enable_custom_year(false);}))
+            .append($('<label>').attr('for', 'y2015').text('2015')));
+        $div.append($('<div>').append($('<input>').attr('type', 'radio').prop('checked',true).attr('id', 'sa_y2019').attr('value', 'y2019')
+            .attr('name', 'sa_sim_period').click(function() {essim_sensitivity_plugin.enable_custom_year(false);}))
+            .append($('<label>').attr('for', 'y2019').text('2019')));
+        $div.append($('<div>').append($('<input>').attr('type', 'radio').attr('id', 'sa_custy').attr('value', 'custom_date')
+            .attr('name', 'sa_sim_period').click(function() {essim_sensitivity_plugin.enable_custom_year(true);}))
+            .append($('<label>').attr('for', 'custy').text('Custom date')));
+
+        $div.append($('<table>')
+            .append($('<tbody>')
+                .append($('<tr>')
+                    .append($('<td>').text('Start datetime: '))
+                    .append($('<td>').append($('<input>').attr('type', 'text').attr('width','60')
+                        .attr('id', 'sa_sim_start_datetime').attr('value','2019-01-01T00:00:00+0100').prop('disabled', true))))
+                .append($('<tr>')
+                    .append($('<td>').text('End datetime: '))
+                    .append($('<td>').append($('<input>').attr('type', 'text').attr('width','60')
+                        .attr('id', 'sa_sim_end_datetime').attr('value','2019-02-01T00:00:00+0100').prop('disabled', true))))
+            ));
 
         let $button_div = $('#essim_sens_button_div');
         $button_div.empty()
         let $button = $('<button>').text('Next');
         $button.click(function () { essim_sensitivity_plugin.select_kpis_window(); });
         $button_div.append($button);
+    }
+
+    clear_sa_assets() {
+        this.asset_list = [];
+        $('#essim_sensitivity_table_body tr').remove();
     }
 
     create_sidebar_content(data) {
@@ -260,7 +337,7 @@ class ESSIM_sensitivity{
 
         for (let i=0; i<essim_sensitivity_plugin.asset_list.length; i++) {
             let asset_info = essim_sensitivity_plugin.asset_list[i];
-            essim_sensitivity_plugin.add_row_to_table(asset_info);
+            $tbody.append(essim_sensitivity_plugin.create_table_row(asset_info));
         }
 
         $table.append($thead);
@@ -270,8 +347,11 @@ class ESSIM_sensitivity{
 
         let $button_div = $('<div>').attr('id', 'essim_sens_button_div').addClass('sidebar-div');
         $div.append($button_div);
+        let $clear_button = $('<button>').text('Clear');
+        $clear_button.click(function() { essim_sensitivity_plugin.clear_sa_assets(); });
+        $button_div.append($clear_button);
         let $button = $('<button>').text('Next');
-        $button.click(function () { essim_sensitivity_plugin.select_period_window(); });
+        $button.click(function() { essim_sensitivity_plugin.select_period_window(); });
         $button_div.append($button);
 
         return $div;
@@ -282,7 +362,7 @@ class ESSIM_sensitivity{
         for (let i=0; i<attrs_sorted.length; i++) {
             if (attrs_sorted[i].type === 'EInt') {
                 asset_info.attr = attrs_sorted[i].name;
-                let value = attrs_sorted[i].value;
+                let value = parseFloat(attrs_sorted[i].value);
 
                 if (value != 0) {
                     let step = Math.round(value / 4);
@@ -315,7 +395,8 @@ class ESSIM_sensitivity{
 
             essim_sensitivity_plugin.show_ESSIM_sensitivity_analysis_window();
             essim_sensitivity_plugin.asset_list.push(asset_info);
-            essim_sensitivity_plugin.add_row_to_table(asset_info);
+
+            $('#essim_sensitivity_table_body').append(essim_sensitivity_plugin.create_table_row(asset_info));
         });
     }
 
@@ -330,8 +411,6 @@ class ESSIM_sensitivity{
     change_select_attr(asset_id) {
         let $select = $('#select_attr_'+asset_id);
         let selected_option = $select.val();
-
-        console.log(selected_option);
 
         let $input_attr_start = $('#input_start_'+asset_id);
         let $input_attr_step = $('#input_step_'+asset_id);
@@ -350,9 +429,8 @@ class ESSIM_sensitivity{
 
                     for (let j=0; j<attrs.length; j++) {
                         if (attrs[j].name === selected_name) {
-                            let value = attrs[j].value;
+                            let value = parseFloat(attrs[j].value);
 
-                            // TODO: fix integer assumption
                             if (value != 0) {
                                 step = Math.round(value / 4);
                                 start = Math.round(value - step);
@@ -401,24 +479,31 @@ class ESSIM_sensitivity{
                 essim_sensitivity_plugin.asset_list[i].attr_end = end;
             }
         }
+        essim_sensitivity_plugin.update_num_steps(asset_id);
     }
 
     change_start_step_stop(param, asset_id) {
-        let $input = $('#input_'+param+'_'+asset_id);
-
-        let value = $input.val();
-        console.log(value);
+        let value = $('#input_'+param+'_'+asset_id).val();
 
         for (let i=0; i<essim_sensitivity_plugin.asset_list.length; i++) {
             if (essim_sensitivity_plugin.asset_list[i].id === asset_id) {
                 essim_sensitivity_plugin.asset_list[i]['attr_'+param] = value;
             }
         }
+
+        essim_sensitivity_plugin.update_num_steps(asset_id);
     }
 
-    add_row_to_table(asset_info) {
-        let $tbody = $('#essim_sensitivity_table_body');
+    update_num_steps(asset_id) {
+        let start = parseFloat($('#input_start_'+asset_id).val());
+        let step = parseFloat($('#input_step_'+asset_id).val());
+        let end = parseFloat($('#input_end_'+asset_id).val());
 
+        let num_steps = essim_sensitivity_plugin.calc_num_steps(start, step, end);
+        $('#row_'+asset_id+' #num_steps').text(num_steps);
+    }
+
+    create_table_row(asset_info) {
         let asset_id = asset_info.id;
         let asset_name = asset_info.name;
         let asset_attr = asset_info.attr;
@@ -426,7 +511,7 @@ class ESSIM_sensitivity{
         let asset_attr_start = asset_info.attr_start;
         let asset_attr_step = asset_info.attr_step;
         let asset_attr_end = asset_info.attr_end;
-        let num_steps = ((asset_attr_end - asset_attr_start) / asset_attr_step) + 1;
+        let num_steps = essim_sensitivity_plugin.calc_num_steps(asset_attr_start, asset_attr_step, asset_attr_end);
         let port_profile_list = asset_info.port_profile_list;
 
         let $select = $('<select>').attr('id', 'select_attr_'+asset_id);
@@ -475,9 +560,18 @@ class ESSIM_sensitivity{
             .append($('<td>').append($input_attr_start))
             .append($('<td>').append($input_attr_step))
             .append($('<td>').append($input_attr_end))
-            .append($('<td>').text(num_steps.toString()))
+            .append($('<td id="num_steps">').text(num_steps))
             .append($('<td>').text('No'));
-        $tbody.append($row);
+        return $row;
+    }
+
+    calc_num_steps(start, step, end) {
+        if (end >= start) {
+            if (step < 1e-9) return 0;
+            return Math.floor((end-start)/step)+1;
+        } else {
+            return 0;
+        }
     }
 
     static create(event) {
@@ -502,10 +596,10 @@ class ESSIM_sensitivity{
     }
 }
 
-var essim_sensitivity_plugin;   // global variable for the Vesta plugin
+var essim_sensitivity_plugin;   // global variable for the ESSIM_sensitivity plugin
 
 $(document).ready(function() {
 // Disable plugin for the time being, results are not processed properly
 // Need to differentiate between multiple simulations of the same ES
-//    extensions.push(function(event) { ESSIM_sensitivity.create(event) });
+    extensions.push(function(event) { ESSIM_sensitivity.create(event) });
 });

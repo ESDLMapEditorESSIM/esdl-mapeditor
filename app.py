@@ -568,7 +568,7 @@ def parse_esdl_config():
 #  Send alert to client UI
 # ---------------------------------------------------------------------------------------------------------------------
 def send_alert(message):
-    logger.warn(message)
+    logger.warning(message)
     emit('alert', message, namespace='/esdl')
 
 
