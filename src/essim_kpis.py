@@ -23,10 +23,6 @@ import src.log as log
 logger = log.get_logger(__name__)
 
 
-def send_alert(msg):
-    logger.warn(msg)
-
-
 class ESSIM_KPIs:
     def __init__(self, flask_app: Flask, socket: SocketIO):
         self.flask_app = flask_app
@@ -44,6 +40,10 @@ class ESSIM_KPIs:
                 asset = esh.get_by_id(active_es_id, asset_id)
 
                 self.calculate_load_duration_curve(asset_id, asset.name)
+
+    def send_alert(self, msg):
+        logger.warn(msg)
+        self.socketio.emit('alert', msg, namespace='/esdl')
 
     def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
         # TODO: This does not work with multiple concurrent users (es, simulationRun, scenario_id, start_date, and so on)
@@ -76,53 +76,56 @@ class ESSIM_KPIs:
         logger.debug("--- calculate_load_duration_curve ---")
 
         active_simulation = get_session('active_simulation')
-        active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
-        sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-        edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
-        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        if active_simulation:
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            es = esh.get_energy_system(active_es_id)
+            sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+            edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+            influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        sim_id = active_simulation['sim_id']
-        asset = esh.get_by_id(active_es_id, asset_id)
-        power = None
-        if hasattr(asset, 'power'):
-            power = asset.power
-        elif hasattr(asset, 'capacity'):
-            power = asset.capacity
-        power_pos = None
-        power_neg = None
+            sim_id = active_simulation['sim_id']
+            asset = esh.get_by_id(active_es_id, asset_id)
+            power = None
+            if hasattr(asset, 'power'):
+                power = asset.power
+            elif hasattr(asset, 'capacity'):
+                power = asset.capacity
+            power_pos = None
+            power_neg = None
 
-        allocation_energy = None
-        try:
-            query = 'SELECT "allocationEnergy" FROM /' + es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\' AND "assetId" = \''+asset_id+'\')'
-            logger.debug(query)
-            allocation_energy = self.database_client.query(query)
-        except Exception as e:
-            logger.error('error with query: ', str(e))
+            allocation_energy = None
+            try:
+                query = 'SELECT "allocationEnergy" FROM /' + es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\' AND "assetId" = \''+asset_id+'\')'
+                logger.debug(query)
+                allocation_energy = self.database_client.query(query)
+            except Exception as e:
+                logger.error('error with query: ', str(e))
 
-        if allocation_energy:
-            # logger.debug(allocation_energy)
-            first_key = list(allocation_energy.keys())[0]
-            series = allocation_energy[first_key]
+            if allocation_energy:
+                # logger.debug(allocation_energy)
+                first_key = list(allocation_energy.keys())[0]
+                series = allocation_energy[first_key]
 
-            ldc_series = []
-            for item in series:
-                ldc_series.append(item['allocationEnergy'])
-            ldc_series.sort(reverse=True)
+                ldc_series = []
+                for item in series:
+                    ldc_series.append(item['allocationEnergy'])
+                ldc_series.sort(reverse=True)
 
-            ldc_series_decimate = []
-            for idx, item in enumerate(ldc_series):
-                if idx % 40 == 0:
-                    ldc_series_decimate.append(item / 3600)
-                    if item > 0:
-                        power_pos = power
-                    if item < 0:
-                        power_neg = -power
+                ldc_series_decimate = []
+                for idx, item in enumerate(ldc_series):
+                    if idx % 40 == 0:
+                        ldc_series_decimate.append(item / 3600)
+                        if item > 0:
+                            power_pos = power
+                        if item < 0:
+                            power_neg = -power
 
-            # logger.debug(ldc_series_decimate)
-            emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos, 'power_neg': power_neg})
+                # logger.debug(ldc_series_decimate)
+                emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos, 'power_neg': power_neg})
 
+            else:
+                logger.warn('query returned no results')
         else:
-            logger.warn('query returned no results')
+            self.send_alert('No active simulation')
