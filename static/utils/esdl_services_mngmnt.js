@@ -28,6 +28,13 @@ class ESDLServicesMngmnt {
         set_esdl_services_information(settings_json);
     }
 
+    send_restore_settings() {
+        socket.emit('restore_esdl_services_settings', function(res) {
+            $('#srvs_mngmnt_textarea').val(JSON.stringify(res, null, 4));
+            set_esdl_services_information(res);
+        });
+    }
+
     settings_window_contents() {
         let $div = $('<div>').attr('id', 'esdl_services_mngmnt_window_div');
         $div.append($('<h1>').text('ESDL Services Management management'));
@@ -35,7 +42,8 @@ class ESDLServicesMngmnt {
         $div.append($('<textarea>').attr('id', 'srvs_mngmnt_textarea').addClass('textarea_srvs_mngmnt'));
 
         $div.append(
-            $('<div>').append($('<button>').text('Store').click(function() {esdl_services_mngmnt_plugin.send_store_settings();}))
+            $('<div>').append($('<button>').text('Reset').click(function() {esdl_services_mngmnt_plugin.send_restore_settings();}))
+                .append($('<button>').text('Store').click(function() {esdl_services_mngmnt_plugin.send_store_settings();}))
         );
 
         socket.emit('get_esdl_services_list', function(res) {
