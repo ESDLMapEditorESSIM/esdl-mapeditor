@@ -599,7 +599,5 @@ class ESSIM_sensitivity{
 var essim_sensitivity_plugin;   // global variable for the ESSIM_sensitivity plugin
 
 $(document).ready(function() {
-// Disable plugin for the time being, results are not processed properly
-// Need to differentiate between multiple simulations of the same ES
     extensions.push(function(event) { ESSIM_sensitivity.create(event) });
 });
