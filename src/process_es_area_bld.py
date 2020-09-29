@@ -79,12 +79,14 @@ def calc_building_assets_location(building):
     - Assets of type AbstractConnection are placed in the left-most column
     - Other transport assets in the second column
     - Then production, conversion and storage
-    - And finally demand
+    - Then demand
+    - And finally potentials
     """
     num_conns = 0
     num_transp = 0
     num_prod_conv_stor = 0
     num_cons = 0
+    num_potentials = 0
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractConnection):
             num_conns = num_conns + 1
@@ -94,12 +96,15 @@ def calc_building_assets_location(building):
             num_prod_conv_stor = num_prod_conv_stor + 1
         if isinstance(basset, esdl.Consumer):
             num_cons = num_cons + 1
+    for bpotential in building.potential:
+        num_potentials = num_potentials + 1
 
     num_cols = 0
     if num_conns > 0: num_cols = num_cols + 1
     if num_transp > 0: num_cols = num_cols + 1
     if num_prod_conv_stor > 0: num_cols = num_cols + 1
     if num_cons > 0: num_cols = num_cols + 1
+    if num_potentials > 0: num_cols = num_cols + 1
 
     if num_cols > 0:
         column_width = 500 / (num_cols + 1)
@@ -112,16 +117,20 @@ def calc_building_assets_location(building):
         column_idx += (num_prod_conv_stor > 0)
         column_cons_x = int(num_cons > 0) * column_idx * column_width
         column_idx += (num_cons > 0)
+        column_pots_x = int(num_potentials > 0) * column_idx * column_width
+        column_idx += (num_potentials > 0)
 
         row_conns_height = 500 / (num_conns + 1)
         row_transp_height = 500 / (num_transp + 1)
         row_pcs_height = 500 / (num_prod_conv_stor + 1)
         row_cons_height = 500 / (num_cons + 1)
+        row_pots_height = 500 / (num_potentials + 1)
 
         row_conns_idx = 1
         row_transp_idx = 1
         row_pcs_idx = 1
         row_cons_idx = 1
+        row_pots_idx = 1
 
         for basset in building.asset:
             if not basset.geometry:
@@ -138,6 +147,10 @@ def calc_building_assets_location(building):
                     basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
                     row_cons_idx = row_cons_idx + 1
 
+        for bpotential in building.potential:
+            if not bpotential.geometry:
+                bpotential.geometry = esdl.Point(lon=column_pots_x, lat=row_pots_idx * row_pots_height, CRS="Simple")
+                row_pots_idx = row_pots_idx + 1
 
 def update_asset_geometries3(area, boundary):
     if boundary:
