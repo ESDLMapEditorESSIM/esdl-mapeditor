@@ -139,7 +139,7 @@ class ESDLBrowser:
             #{'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             parent_object: EObject = self.get_object_from_identifier(message['parent'])
             reference = parent_object.eClass.findEStructuralFeature(message['name'])
-            print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
+            #print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
             xref = self.get_object_from_identifier(message['xref'])
             if not reference.many:
                 parent_object.eSet(reference, xref)
