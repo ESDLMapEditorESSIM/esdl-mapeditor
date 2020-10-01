@@ -36,7 +36,7 @@ from src.wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui
+from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list
 from esdl import esdl
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
@@ -2114,6 +2114,8 @@ def process_command(message):
             else:
                 send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
 
+        update_carrier_conn_list()
+
     if message['cmd'] == 'add_carrier':
         # en_carr: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
         # el_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
@@ -2183,6 +2185,22 @@ def process_command(message):
 
         carrier_list = ESDLEnergySystem.get_carrier_list(es_edit)
         emit('carrier_list', {'es_id': es_edit.id, 'carrier_list': carrier_list})
+
+    if message['cmd'] == 'remove_carrier':
+        carrier_id = message['carrier_id']
+
+        carrier = esh.get_by_id(es_edit.id, carrier_id)
+        carrier.delete()
+
+        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
+        for c in conn_list:
+            if c['from-port-carrier'] == carrier_id:
+                c['from-port-carrier'] = None
+            if c['to-port-carrier'] == carrier_id:
+                c['to-port-carrier'] = None
+
+        emit('clear_connections')  # clear current active layer connections
+        emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list})
 
     if message['cmd'] == 'get_storage_strategy_info':
         asset_id = message['asset_id']

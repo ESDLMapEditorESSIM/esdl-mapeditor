@@ -97,6 +97,20 @@ function add_carrier() {
     }
 }
 
+function remove_carrier(id) {
+    carrier_list = get_carrier_list(active_layer_id);
+    carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
+
+    for (let i=0; i<carrier_list.length; i++) {
+        if (carrier_list[i]['id'] == id) {
+            carrier_list.splice(i, 1);
+        }
+    }
+    delete carrier_info_mapping[id];
+
+    socket.emit('command', {cmd: 'remove_carrier', carrier_id: id});
+}
+
 function select_other_carrier() {
     carr_type_index = document.getElementById('add_carrier_type').selectedIndex;
     carr_type_options = document.getElementById('add_carrier_type').options;
