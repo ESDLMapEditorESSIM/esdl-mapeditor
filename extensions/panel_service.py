@@ -90,6 +90,9 @@ def create_panel(graph_title, axis_title, host, database, measurement, field, fi
         logger.error("Could not find or create a datasource")
         return None
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
+    if not isinstance(filters, list):
+        filters = [filters]
+
     if isinstance(start_datetime, datetime.datetime):
         sdt = start_datetime
     else:
@@ -142,7 +145,6 @@ def create_panel(graph_title, axis_title, host, database, measurement, field, fi
         }
     }
 
-    print(payload)
     url = settings.panel_service_config["internal_url"] + "/graphs/"
     try:
         r = requests.post(url, json=payload)

@@ -347,7 +347,7 @@ def remove_duplicates_in_polygon(array_of_array_of_points):
 def create_ESDL_geometry(shape):
 
     if shape['type'].upper() == 'POINT':
-        geometry = esdl.Point(lon=float(shape['lng']), lat=float(shape['lat']))
+        geometry = esdl.Point(lon=float(shape['coordinates']['lng']), lat=float(shape['coordinates']['lat']))
 
     elif shape['type'].upper() == 'POLYLINE':
         polyline_data = shape['coordinates']

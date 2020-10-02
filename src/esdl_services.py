@@ -47,8 +47,7 @@ class ESDLServices:
         @self.socketio.on('get_esdl_services_list', namespace='/esdl')
         def get_esdl_services_list():
             user = get_session('user-email')
-            services = self.get_user_settings(user)
-            return services
+            return self.get_user_settings(user)
 
         @self.socketio.on('store_esdl_services_list', namespace='/esdl')
         def store_esdl_services_list(settings):
@@ -56,12 +55,22 @@ class ESDLServices:
             # TODO: check settings format before storing
             self.set_user_settings(user, settings)
 
+        @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
+        def restore_esdl_services_settings():
+            user = get_session('user-email')
+            return self.restore_settings(user)
+
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
             esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
         else:
             esdl_services_settings = esdl_config.esdl_config["predefined_esdl_services"]
             self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
+        return esdl_services_settings
+
+    def restore_settings(self, user):
+        esdl_services_settings = esdl_config.esdl_config["predefined_esdl_services"]
+        self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
         return esdl_services_settings
 
     def set_user_settings(self, user, settings):
@@ -139,7 +148,7 @@ class ESDLServices:
 
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
-                print(body)
+                # print(body)
             elif service["body"] == "base64_encoded":
                 esdlstr_bytes = esdlstr.encode('ascii')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
@@ -235,24 +244,24 @@ class ESDLServices:
                                 {"es_id": active_es_id, "conn_list": conn_list},
                             )
                     except Exception as e:
-                        print("Exception occurred: " + str(e))
+                        logger.warning("Exception occurred: " + str(e))
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
                 elif service["result"][0]["action"] == "show_message":
                     return True, {"message": service["result"][0]["message"]}
             else:
-                print(
+                logger.warning(
                     "Error running ESDL service - response "
                     + str(r.status_code)
                     + " with reason: "
                     + str(r.reason)
                 )
-                print(r)
-                print(r.content)
+                logger.warning(r)
+                logger.warning(r.content)
                 return False, None
         except Exception as e:
-            print("Error accessing external ESDL service: " + str(e))
+            logger.warning("Error accessing external ESDL service: " + str(e))
             return False, None
 
         return False, None

@@ -12,8 +12,10 @@
 #  Manager:
 #      TNO
 
+from flask_socketio import emit
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
+from extensions.session_manager import get_handler, get_session, get_session_for_esid
 from extensions.profiles import Profiles
 
 
@@ -158,3 +160,20 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
                 return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type], conn_list
         else:
             return [], []
+
+
+def update_carrier_conn_list():
+    esh = get_handler()
+    active_es_id = get_session('active_es_id')
+    conn_list = get_session_for_esid(active_es_id, 'conn_list')
+
+    for c in conn_list:
+        from_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        if from_port.carrier:
+            c['from-port-carrier'] = from_port.carrier.id
+        to_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        if to_port.carrier:
+            c['to-port-carrier'] = to_port.carrier.id
+
+    emit('clear_connections')  # clear current active layer connections
+    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})

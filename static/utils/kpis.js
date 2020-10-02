@@ -89,10 +89,15 @@ class KPIs {
             let kpi_list = kpis_per_es['kpi_list'];
             for (let i=0; i<kpi_list.length; i++) {
                 let kpi_name = kpi_list[i].name;
+                let kpi_es_sim_id = es_id;
+                // For sensitivity analysis purposes the same KPI is calculated for the same energy system
+                // In order to visualize them all, distinguish them based in simulationID
+                if ('sim_id' in kpi_list[i])
+                    kpi_es_sim_id += '-' + kpi_list[i]['sim_id']
 
                 for (let j=0; j<kpi_list[i].sub_kpi.length; j++) {
                     let kpi_info = kpi_list[i].sub_kpi[j];
-                    kpi_info['es_id'] = es_id;
+                    kpi_info['es_id'] = kpi_es_sim_id;
                     kpi_info['scope'] = kpi_scope;
 
                     if (kpi_info['name'] in kpi_dict)

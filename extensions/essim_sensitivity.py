@@ -14,12 +14,15 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
+from si_prefix import si_format
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_handler, get_session, set_session, del_session
 from esdl.processing import ESDLEcore
 from src.esdl_helper import get_port_profile_info
 from extensions.essim import ESSIM
 import src.log as log
+import time
+import copy
 
 logger = log.get_logger(__name__)
 
@@ -38,9 +41,7 @@ class ESSIMSensitivity:
         self.socketio = socket
         self.settings_storage = settings_storage
         self.essim = essim
-
         self.essim_sensitivity_plugin_settings = self.get_config()
-        self.asset_dict = dict()
 
         self.register()
 
@@ -64,16 +65,11 @@ class ESSIMSensitivity:
                 active_es_id = get_session('active_es_id')
                 asset = esh.get_by_id(active_es_id, id)
 
-                if asset.id in self.asset_dict:
-                    return self.asset_dict[asset.id]
-                else:
-                    asset_info = dict()
+                asset_info = dict()
+                asset_info['attrs_sorted'] = ESDLEcore.get_asset_attributes(asset)
+                asset_info['port_profile_list'] = get_port_profile_info(asset)
 
-                    asset_info['attrs_sorted'] = ESDLEcore.get_asset_attributes(asset)
-                    asset_info['port_profile_list'] = get_port_profile_info(asset)
-
-                    self.asset_dict[asset.id] = asset_info
-                    return asset_info
+                return asset_info
 
         @self.socketio.on('essim_sensitivity_run_simulations', namespace='/esdl')
         def essim_sensitivity_run_simulations(sim_info):
@@ -81,72 +77,112 @@ class ESSIMSensitivity:
             sim_period_end = sim_info['period']['end']
             selected_kpis = sim_info['selected_kpis']
 
-            # TODO: Assume one line
-            sensitivity_info = sim_info['sens_anal_info'][0];
-            asset_id = sensitivity_info['asset_id']
-            attr = sensitivity_info['attr']
-            attr_start = sensitivity_info['attr_start']
+            del_session('kpi_result_list')        # Clear list of KPI
+            sensitivity_info = sim_info['sens_anal_info']
+            sa_mutations = list()
+            var_list = list()
+            self.get_sa_mutations(sensitivity_info, sa_mutations, var_list)
+            logger.info('Starting sensitivity analysis with {} mutations'.format(len(sa_mutations)))
 
-            obj, attr_name = self.get_obj_attr_name(asset_id, attr)
+            sa_index = 0
+            var_list = sa_mutations[sa_index]
 
-            # for attr_value in range(attr_start, attr_end+1, attr_step):
-            # No for-loop here, change es to the first value
-            self.set_param(obj, attr_name, attr_start)
+            sim_title = ''
+            for v in var_list:
+                asset_id = v['asset_id']
+                attr = v['attr']
+                value = v['value']
+                obj, attr_name = self.get_obj_attr_name(asset_id, attr)
+                self.set_param(obj, attr_name, value)
+                if sim_title != '':
+                    sim_title += ' & '
+                sim_title += attr_name + '=' + si_format(value, precision=2)
 
-            set_value = obj.eGet(attr_name)
-            obj_name = obj.name
-            if not obj_name:
-                obj_name = 'noname'
-            print('Running simulation with {} of {} set to {}'.format(attr_name, obj_name, set_value))
-
-            result = self.essim.run_simulation(obj_name+'-'+attr_name+':'+str(set_value), sim_period_start, sim_period_end, selected_kpis)
+            result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, selected_kpis, False)
             if result:
                 set_session('sensitivity_analysis', {
-                    'value': attr_start,
+                    'index': sa_index,
                     'info': sensitivity_info,
+                    'mutations': sa_mutations,
+                    'sim_period_start': sim_period_start,
+                    'sim_period_end': sim_period_end,
                     'selected_kpis': selected_kpis
                 })
+            else:
+                del_session('sensitivity_analysis')
 
             return result
 
         @self.socketio.on('essim_sensitivity_next_simulation', namespace='/esdl')
         def essim_sensitivity_next_simulation():
+            time.sleep(1)
             sensitivity_analysis = get_session('sensitivity_analysis')
             if sensitivity_analysis:
                 sensitivity_info = sensitivity_analysis['info']
+                sa_mutations = sensitivity_analysis['mutations']
+                sa_index = sensitivity_analysis['index']
+                sim_period_start = sensitivity_analysis['sim_period_start']
+                sim_period_end = sensitivity_analysis['sim_period_end']
+
+                sa_index = sa_index + 1
+                if sa_index == len(sa_mutations):
+                    del_session('sensitivity_analysis')
+                    return 0        # end of sensitivity analysis
+                var_list = sa_mutations[sa_index]
+
+                sim_title = ''
+                for v in var_list:
+                    asset_id = v['asset_id']
+                    attr = v['attr']
+                    value = v['value']
+                    obj, attr_name = self.get_obj_attr_name(asset_id, attr)
+                    self.set_param(obj, attr_name, value)
+                    if sim_title != '':
+                        sim_title += ' & '
+                    sim_title += attr_name + '=' + si_format(value, precision=2)
+
                 selected_kpis = sensitivity_analysis['selected_kpis']
 
-                asset_id = sensitivity_info['asset_id']
-                attr = sensitivity_info['attr']
-                attr_step = sensitivity_info['attr_step']
-                attr_end = sensitivity_info['attr_end']
+                result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, selected_kpis, False)
+                if result:
+                    set_session('sensitivity_analysis', {
+                        'index': sa_index,
+                        'info': sensitivity_info,
+                        'mutations': sa_mutations,
+                        'sim_period_start': sim_period_start,
+                        'sim_period_end': sim_period_end,
+                        'selected_kpis': selected_kpis
+                    })
 
-                current_value = sensitivity_analysis['value'] + attr_step
+                return result
+            else:
+                return 0
 
-                if current_value <= attr_end:
+    def get_sa_mutations(self, sensitivity_info, sa_mut: list, var_list: list, var_idx=0):
+        num_vars = len(sensitivity_info)
+        if var_idx < num_vars:
+            if len(var_list) < num_vars:
+                var_list.append(None)  # add an element to the list, element is 'filled in' in the while loop
 
-                    obj, attr_name = self.get_obj_attr_name(asset_id, attr)
-                    # for attr_value in range(attr_start, attr_end+1, attr_step):
-                    # No for-loop here, change es to the first value
-                    self.set_param(obj, attr_name, current_value)
+            var_info = sensitivity_info[var_idx]
+            asset_id = var_info['asset_id']
+            attr = var_info['attr']
+            current = float(var_info['attr_start'])
+            attr_step = float(var_info['attr_step'])
+            attr_end = float(var_info['attr_end'])
 
-                    set_value = obj.eGet(attr_name)
-                    obj_name = obj.name
-                    if not obj_name:
-                        obj_name = 'noname'
-                    print('Running simulation with {} of {} set to {}'.format(attr_name, obj_name, set_value))
+            while current <= attr_end:
+                var_list[var_idx] = {
+                    'asset_id': asset_id,
+                    'attr': attr,
+                    'value': current
+                }
 
-                    result = self.essim.run_simulation(obj_name+'-'+attr_name+':'+str(set_value), '2015-01-01T00:00:00+0100', '2016-01-01T00:00:00+0100', selected_kpis)
-                    if result:
-                        set_session('sensitivity_analysis', {
-                            'value': current_value,
-                            'info': sensitivity_info,
-                            'selected_kpis': selected_kpis
-                        })
-
-                    return result
-                else:
-                    return 0
+                self.get_sa_mutations(sensitivity_info, sa_mut, var_list, var_idx + 1)
+                if current <= attr_end:
+                    current = current + attr_step
+        else:
+            sa_mut.append(copy.deepcopy(var_list))
 
     def get_obj_attr_name(self, asset_id, attr):
         with self.flask_app.app_context():
