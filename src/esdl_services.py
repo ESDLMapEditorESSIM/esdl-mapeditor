@@ -148,7 +148,7 @@ class ESDLServices:
 
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
-                print(body)
+                # print(body)
             elif service["body"] == "base64_encoded":
                 esdlstr_bytes = esdlstr.encode('ascii')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
@@ -244,24 +244,24 @@ class ESDLServices:
                                 {"es_id": active_es_id, "conn_list": conn_list},
                             )
                     except Exception as e:
-                        print("Exception occurred: " + str(e))
+                        logger.warning("Exception occurred: " + str(e))
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
                 elif service["result"][0]["action"] == "show_message":
                     return True, {"message": service["result"][0]["message"]}
             else:
-                print(
+                logger.warning(
                     "Error running ESDL service - response "
                     + str(r.status_code)
                     + " with reason: "
                     + str(r.reason)
                 )
-                print(r)
-                print(r.content)
+                logger.warning(r)
+                logger.warning(r.content)
                 return False, None
         except Exception as e:
-            print("Error accessing external ESDL service: " + str(e))
+            logger.warning("Error accessing external ESDL service: " + str(e))
             return False, None
 
         return False, None
