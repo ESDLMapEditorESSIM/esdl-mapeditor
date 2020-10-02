@@ -38,7 +38,7 @@ function add_building_map_handlers(mp) {
                         esdl_object.setLatLng(newLatLng);
 
                         // send updated coordinates to backend to update connections
-                        socket.emit('update-coord', {id: layer.id, lat: polygon_center[0], lng: polygon_center[1], asspot: layer.asspot});
+                        socket.emit('update-coord', {id: layer.id, coordinates: esdl_object.getLatLng(), asspot: layer.asspot});
                     }
                 }
 
@@ -89,8 +89,7 @@ function add_building_map_handlers(mp) {
                 shape: {
                     type: 'point',
                     crs: 'Simple',
-                    lat: layer.getLatLng().lat,
-                    lng: layer.getLatLng().lng
+                    coordinates: layer.getLatLng()
                 }
             });
         }

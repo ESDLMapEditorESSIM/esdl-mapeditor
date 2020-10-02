@@ -1031,37 +1031,28 @@ def update_coordinates(message):
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
-    es_edit = esh.get_energy_system(es_id=active_es_id)
-    instance = es_edit.instance
-    area = instance[0].area
     obj_id = message['id']
+    coords = message['coordinates']
 
-    if message['asspot'] == 'asset' or message['asspot'] == 'building':
-        # fixme pyEcore: use get_by_id here (faster)
-        # TODO: apparently assets are not always found when importing GEIS data
-        asset = ESDLAsset.find_asset(area, obj_id)
+    object = esh.get_by_id(active_es_id, obj_id)
+    # object can be an EnergyAsset, Building or Potential
+    if object:
+        geom = object.geometry
+        if isinstance(geom, esdl.Point):
+            point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
+            object.geometry = point
+        # elif isinstance(geom, esdl.Polygon):
+            # Do nothing in case of a polygon
+            # only update the connection locations and mappings based on the center of the polygon
+            # that is given as a parameter.
 
-        if asset:
-            geom = asset.geometry
-            if isinstance(geom, esdl.Point):
-                point = esdl.Point(lon=float(message['lng']), lat=float(message['lat']))
-                asset.geometry = point
-            # elif isinstance(geom, esdl.Polygon):
-                # Do nothing in case of a polygon
-                # only update the connection locations and mappings based on the center of the polygon
-                # that is given as a parameter.
+        if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
+            # Update locations of connections on moving assets
+            update_asset_connection_locations(obj_id, coords['lat'], coords['lng'])
 
-        # Update locations of connections on moving assets
-        update_asset_connection_locations(obj_id, message['lat'], message['lng'])
-        if message['asspot'] == 'building':
-            send_alert("Assets in building with locations are not updated yet")
-    else:
-        potential = ESDLAsset.find_potential(area, obj_id)
-        if potential:
-            point = esdl.Point(lon=float(message['lng']), lat=float(message['lat']))
-            potential.geometry = point
-
-    set_handler(esh)
+            # TODO: Check if this is still required
+            if message['asspot'] == 'building':
+                send_alert("Assets in building with locations are not updated yet")
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1463,7 +1454,7 @@ def process_command(message):
                 asset.geometry = geometry
 
                 if isinstance(geometry, esdl.Point):
-                    port_loc = (shape['lat'], shape['lng'])
+                    port_loc = (shape['coordinates']['lat'], shape['coordinates']['lng'])
                 elif isinstance(geometry, esdl.Polygon):
                     port_loc = ESDLGeometry.calculate_polygon_center(geometry)
 
@@ -1539,7 +1530,7 @@ def process_command(message):
 
                 if isinstance(asset, esdl.AbstractBuilding):
                     if isinstance(geometry, esdl.Point):
-                        buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__, [shape['lat'], shape['lng']], False, {}])
+                        buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], False, {}])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
@@ -1552,7 +1543,7 @@ def process_command(message):
 
                     # if object_type not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
                     if isinstance(geometry, esdl.Point):
-                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['lat'], shape['lng']], port_list, capability_type])
+                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], port_list, capability_type])
                     # elif object_type in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
@@ -1720,8 +1711,7 @@ def process_command(message):
                 asset_class = 'AbstractBuilding'
             asset_doc = asset.__doc__
         else:
-            pot = ESDLAsset.find_potential(area, object_id)
-            #asset = esh.get_by_id(es_edit.id, object_id)
+            pot = esh.get_by_id(es_edit.id, object_id)
             logger.debug('Get info for potential ' + pot.id)
             attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
             name = pot.name
@@ -1881,7 +1871,6 @@ def process_command(message):
                  })
             emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
 
-
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']
         polygon_data = message['polygon']
@@ -2032,7 +2021,6 @@ def process_command(message):
                 if p.id == port_id:
                     # p.profile = esdl_profile
                     ESDLAsset.remove_profile_from_port(p, profile_id)
-
 
     if message['cmd'] == 'add_port':
         direction = message['direction']

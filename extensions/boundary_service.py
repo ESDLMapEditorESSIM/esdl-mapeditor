@@ -61,7 +61,7 @@ boundary_service_mapping = {
 
 #create a cache for the boundary service
 boundary_cache = dict()
-current_boundaries_year = "2018"
+DEFAULT_BOUNDARIES_YEAR = 2019
 
 
 def is_valid_boundary_id(id):
@@ -320,7 +320,7 @@ class BoundaryService:
             return self.settings_storage.get_user(user, BOUNDARY_SERVICE_USER_CONFIG)
         else:
             user_settings = {
-                'boundaries_year': 2019
+                'boundaries_year': DEFAULT_BOUNDARIES_YEAR
             }
             self.set_user_settings(user, user_settings)
             return user_settings

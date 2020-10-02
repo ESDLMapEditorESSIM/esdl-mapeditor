@@ -482,9 +482,6 @@ function add_area_layer(area_data) {
                     text += "<br>" + key + ": " + feature.properties.KPIs[key];
                 }
 
-// if we uncomment the following lines, the area context menu doesn't work
-//                layer.bindPopup(text, {closeButton: false, offset: L.point(0, -20)});
-
                 let popup = L.popup();
                 popup.setContent(text);
                 layer.bindPopup(popup);
@@ -510,17 +507,15 @@ function add_area_layer(area_data) {
                     popup.setLatLng(e.latlng).openOn(this_map);
                 });
 
-//                layer.on('mouseover', highlightAreaOrBuilding);
-//                layer.on('mouseout', resetHighlightArea);
                 set_area_handlers(layer);
             }
         }
     }).addTo(get_layers(active_layer_id, 'area_layer'));
 }
+
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
-
 function set_building_contextmenu(layer, id) {
     layer.bindContextMenu({
         contextmenu: true,
@@ -542,10 +537,6 @@ function set_building_contextmenu(layer, id) {
     });
 }
 
-function test(n){
-    var name = n;
-    return function(e){alert(name)}
-}
 function add_building_layer(building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
@@ -676,8 +667,6 @@ function selectAreaKPI(selectObject) {
     });
 }
 
-
-
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
@@ -705,28 +694,6 @@ function createBuildingLegendDiv() {
     return legendDiv;
 };
 
-//function createBuildingLegendDiv() {
-//    var legendDiv = L.DomUtil.create('div', 'info legend');
-//    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-//    legendTitleDiv.innerHTML += 'Building Legend';
-//
-//    var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-//    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this);">';
-//    for (bkpi in building_KPIs) {
-//        selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-//    }
-//    selectText += '</select>';
-//    selectorDiv.innerHTML = selectText;
-//
-//    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
-//
-//    first_kpi_name = Object.keys(building_KPIs)[0];
-//    buildingLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(building_KPIs[first_kpi_name]);
-//    return legendDiv;
-//};
-
-
-
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
@@ -752,6 +719,7 @@ function removeBuildingLegend() {
         map.removeControl(buildingLegend);
     }
 }
+
 function removeAreaLegend() {
     if (areaLegend) {
         map.removeControl(areaLegend);
@@ -778,10 +746,6 @@ function add_building_geojson_layer_with_legend(geojson_building_data) {
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
 
-//    buildingLegendChoice = "buildingYear";
-//    color_grades = grades[num_building_year_categories];
-//    get_building_color = get_buildingYear_colors;
-
     removeBuildingLegend();
     if (!jQuery.isEmptyObject(building_KPIs)) {
         buildingLegend = L.control({position: 'bottomright'});
@@ -794,6 +758,51 @@ function add_building_geojson_layer_with_legend(geojson_building_data) {
     add_building_layer(geojson_building_data);
 }
 
+function add_potential_geojson_layer(geojson_pontential_data) {
+    geojson_potential_layer = L.geoJson(geojson_pontential_data, {
+        style: {
+            fillColor: 'grey',
+            weight: 2,
+            opacity: 1,
+            color: 'grey',
+            dashArray: '',
+            fillOpacity: 0.7
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties) {
+                if (feature.properties.name) {
+                    let popup = L.popup();
+                    popup.setContent(feature.properties.name);
+                    layer.bindPopup(popup);
+
+                    layer.on('mouseover', function (e) {
+                        var popup = e.target.getPopup();
+                        var this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                    });
+
+                    layer.on('mouseout', function(e) {
+                        e.target.closePopup();
+                    });
+
+                    layer.on('mousemove', function (e) {
+                        e.target.closePopup();
+                        var this_map = e.sourceTarget._map;     // can be area map and building map
+                        var popup = e.target.getPopup();
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                    });
+                    // bindPopup doesn't work with contextmenu
+                    // layer.bindPopup(feature.properties.name, {maxWidth: "auto", closeButton: false, offset: L.point(0, -20)});
+                }
+            }
+            // TODO: Implement contextmenu for potentials
+            // if (feature.properties && feature.properties.id) {
+            //     set_potential_contextmenu(layer, feature.properties.id);
+            // }
+        }
+    }).addTo(get_layers(active_layer_id, 'pot_layer'));
+}
+
 function add_geojson_listener(socket, map) {
     socket.on('geojson', function(message) {
         let layer = message['layer'];
@@ -804,9 +813,14 @@ function add_geojson_listener(socket, map) {
             add_area_geojson_layer_with_legend(geojson_area_data);
         }
 
-        if (layer == 'bld_layer') {
-            geojson_building_data = message['geojson']; // store for redraw based on other property
-            add_building_geojson_layer_with_legend(geojson_building_data);
+        // add_building_geojson_layer_with_legend is now called from the 'add_building_objects' socketIO handler
+        // if (layer == 'bld_layer') {
+        //    geojson_building_data = message['geojson']; // store for redraw based on other property
+        //    add_building_geojson_layer_with_legend(geojson_building_data);
+        // }
+
+        if (layer == 'pot_layer') {
+            add_potential_geojson_layer(message['geojson']);
         }
     });
 }
