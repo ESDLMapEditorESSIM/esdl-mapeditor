@@ -2125,17 +2125,32 @@ def process_command(message):
                         energyContent = str2float(carr_encont), energyCarrierType = carr_rentype, stateOfMatter = carr_sofm)
 
             if carr_encunit == 'MJpkg':
-                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      perMultiplier = 'KILO', perUnit = 'GRAM')
+                encont_qandu=esdl.QuantityAndUnitType(
+                    physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                    multiplier=esdl.MultiplierEnum.MEGA,
+                    unit=esdl.UnitEnum.JOULE,
+                    perMultiplier=esdl.MultiplierEnum.KILO,
+                    perUnit=esdl.UnitEnum.GRAM)
             elif carr_encunit == 'MJpNm3':
-                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      perUnit = 'CUBIC_METRE')
+                encont_qandu=esdl.QuantityAndUnitType(
+                    physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                    multiplier=esdl.MultiplierEnum.MEGA,
+                    unit=esdl.UnitEnum.JOULE,
+                    perUnit=esdl.UnitEnum.CUBIC_METRE)
             elif carr_encunit == 'MJpMJ':
-                encont_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'ENERGY', multiplier = 'MEGA', unit = 'JOULE',
-                                                      perMultiplier = 'MEGA', perUnit = 'JOULE')
+                encont_qandu=esdl.QuantityAndUnitType(
+                    physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                    multiplier=esdl.MultiplierEnum.MEGA,
+                    unit=esdl.UnitEnum.JOULE,
+                    perMultiplier=esdl.MultiplierEnum.MEGA,
+                    perUnit=esdl.UnitEnum.JOULE)
 
-            emission_qandu = esdl.QuantityAndUnitType(physicalQuantity = 'EMISSION', multiplier = 'KILO', unit = 'GRAM',
-                                                  perMultiplier = 'GIGA', perUnit = 'JOULE')
+            emission_qandu=esdl.QuantityAndUnitType(
+                physicalQuantity=esdl.PhysicalQuantityEnum.EMISSION,
+                multiplier=esdl.MultiplierEnum.KILO,
+                unit=esdl.UnitEnum.GRAM,
+                perMultiplier=esdl.MultiplierEnum.GIGA,
+                perUnit=esdl.UnitEnum.JOULE)
 
             carrier.energyContentUnit = encont_qandu
             carrier.emissionUnit = emission_qandu
