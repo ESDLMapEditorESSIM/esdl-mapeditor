@@ -186,6 +186,29 @@ esdl_config = {
             ],
         },
         {
+            "id": "c1c209e9-67ff-4201-81f6-0dd7a185ff06",
+            "name": "Get PICO rooftop solar potential",
+            "explanation": "This queries the Geodan rooftop solar potential service for a certain area",
+            "url": "https://pico.geodan.nl/pico/api/v1/<area_scope>/<area_id>/zonopdak?geometrie=false",
+            "http_method": "get",
+            "headers": {
+                "Accept": "application/esdl+xml",
+                "User-Agent": "ESDL Mapeditor/0.1",
+            },
+            "type": "geo_query",
+            "result": [{"code": 200, "action": "esdl"}],
+            "geographical_scope": {
+                "url_area_scope": "<area_scope>",
+                "url_area_id": "<area_id>",
+                "area_scopes": [
+                    {"scope": "PROVINCE", "url_value": "provincies"},
+                    {"scope": "REGION", "url_value": "resgebieden"},
+                    {"scope": "MUNICIPALITY", "url_value": "gemeenten"},
+                ],
+            },
+            "query_parameters": []
+        },
+        {
             "id": "42c584b1-43c1-4369-9001-c89ba80d8370",
             "name": "Get PICO Startanalyse results",
             "explanation": "This queries the Geodan start analyse service for a certain area",
