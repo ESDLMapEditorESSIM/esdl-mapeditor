@@ -57,6 +57,7 @@ from src.user_logging import UserLogging
 from extensions.settings_storage import SettingsStorage
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
+from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.workflow import Workflow
@@ -135,6 +136,7 @@ BAG(app, socketio)
 BoundaryService(app, socketio, settings_storage)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
+ESDLMerge(app, socketio, executor)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)

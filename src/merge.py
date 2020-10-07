@@ -15,6 +15,7 @@
 import esdl.esdl
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import EAbstractSet
+import pyecore.behavior
 from uuid import uuid4
 """
 Merges 2 EnergySystems into one
@@ -22,7 +23,8 @@ Merges 2 EnergySystems into one
 
 _options = dict()
 
-class ESDLMerge:
+
+class ESDLMerger:
 
     def __init__(self):
         _options['forceCombineInstances'] = True
