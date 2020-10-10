@@ -21,6 +21,7 @@ from flask_socketio import emit
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id
@@ -701,11 +702,13 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             add_missing_coordinates(area)
             print('- Processing area')
             process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+            notes_list = get_notes_list(es)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
             emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
+            emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
 
             set_session_for_esid(es.id, 'conn_list', conn_list)
             set_session_for_esid(es.id, 'asset_list', asset_list)

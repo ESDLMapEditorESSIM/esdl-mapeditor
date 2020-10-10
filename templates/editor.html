@@ -1069,6 +1069,45 @@
                 // set_selected_layer(active_layer_id);
             });
 
+
+            // ------------------------------------------------------------------------------------------------------------
+            //  Add notes on the map
+            // ------------------------------------------------------------------------------------------------------------
+            socket.on('add_notes', function(options) {
+                // coords = {'lng': map_location.lon, 'lat': map_location.lat}
+                // {'id': n.id, 'location': coords, 'text': n.text, 'author': n.author, 'date': n.date}
+                let list = options['notes_list'];
+                let add_to_building = options['add_to_building'];
+                let es_id = options['es_id'];
+
+                let es_bld_id = es_id;
+                if (add_to_building) {
+                   es_bld_id = bld_edit_id;
+                }
+
+                for (let i = 0; i<list.length; i++) {
+                    let note_text = '<h3>'+list[i]['title']+'</h3>';
+                    note_text += '<p>'+list[i]['text']+'</p>'
+
+                    let divicon = L.divIcon({
+                        html: '<div class="image-div" style="font-size:0px"><img data-html="true" title="'+note_text+'" class="notes-img" src="images/Note.png"></img></div>',
+                        className: 'notes-div-icon',
+                        iconSize: null
+                    });
+                    let note = L.marker([list[i]['location']['lat'], list[i]['location']['lng']],
+                        {icon: divicon, riseOnHover: true});
+
+                    // set_note_handlers(note);
+                    add_object_to_layer(es_bld_id, 'notes_layer', note);
+                }
+
+                $('.notes-img').tooltip({
+                    content: function() {
+                        return $(this).attr('title');
+                    }
+                });
+            });
+
             // ------------------------------------------------------------------------------------------------------------
             //  ESDL object functions
             // ------------------------------------------------------------------------------------------------------------
