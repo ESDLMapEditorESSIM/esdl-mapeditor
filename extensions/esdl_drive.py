@@ -66,12 +66,13 @@ class ESDLDrive:
         def socketio_esdldrive_open(message):
             with self.flask_app.app_context():
                 path = message['path']
+                params = dict()
                 if 'revision' in message:
-                    revision = message['revision']
-                    params = {'revision': revision}
-                else:
-                    params = None
+                    params['revision'] = message['revision']
+                if 'nocache' in message:
+                    params['nocache'] = message['nocache']
 
+                logger.debug("Open params: {}".format(params))
                 #token = get_session('jwt-token')
                 uri = ESDLDriveHttpURI(url + resource_endpoint + path, headers_function=add_authorization_header, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
@@ -100,30 +101,39 @@ class ESDLDrive:
         def socketio_esdldrive_save(message):
             with self.flask_app.app_context():
                 path = message['path']
+                overwrite = False
+                commitMessage = ""
+                params = {}
                 if 'commitMessage' in message:
-                    message = message['commitMessage']
-                    params = {'commitMessage': message}
-                else:
-                    params = None
+                    commitMessage = message['commitMessage']
+                    params['commitMessage'] = commitMessage
+                if 'forceOverwrite' in message:
+                    overwrite = message['forceOverwrite']
+                    params['overwrite'] = overwrite
+                print(message)
 
                 uri = url + resource_endpoint + path
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 resource: Resource = esh.get_resource(active_es_id)
-                logger.debug('ESDLDrive saving resource {}, message={}'.format(resource.uri, message))
+                logger.debug('ESDLDrive saving resource {}, commitMessage={}, overwrite={}'.format(resource.uri, commitMessage, overwrite))
 
                 if resource.uri.normalize() == uri:
                     # resource already in CDO
                     logger.debug('Saving resource that is already loaded from ESDLDrive: {}'.format(resource.uri.plain))
                     # update uri with commit message
                     resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
-                    resource.save()
+                    response = resource.save()
                 else:
                     logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
                     resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
-                    resource.save()
+                    response: requests.Response = resource.save()
                     esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
                     # new resource
+                if response.ok:
+                    return {'path': path, 'success': True}
+                else:
+                    return {'path': path, 'success': False, 'error': str(response.content), 'status': response.status_code}
 
         @self.socketio.on('cdo_upload', namespace='/esdl')
         # BULK upload from MapEditor
@@ -217,7 +227,10 @@ class ESDLDrive:
             return response
         except Exception as e:
             logger.error("Error saving to ESDLDrive: "+str(e))
-            raise e
+            # response = requests.Response()
+            # response.status_code = 500
+            # response.content = e
+            return e
 
 
 def add_authorization_header():
@@ -282,8 +295,9 @@ class ESDLDriveHttpURI(URI):
             response = requests.put(self.plain, data=self.__stream.getvalue(), headers=headers, params=self.putparams)
             if response.status_code > 400:
                 logger.error("Error writing to ESDLDrive: headers={}, response={}".format(response.headers, response.content))
-                raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
-            logger.debug('Saved successfully to ESDLDrive {} (HTTP status: {}) '.format(self.plain, response.status_code))
+                #raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
+            else:
+                logger.debug('Saved successfully to ESDLDrive {} (HTTP status: {}) '.format(self.plain, response.status_code))
             self.writing = False
             super().close_stream()
             return response

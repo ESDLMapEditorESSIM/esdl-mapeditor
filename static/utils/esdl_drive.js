@@ -26,7 +26,8 @@ class ESDLDrive {
         this.files = {};
         this.blob = {};
         this.chunkSize = 100*1024; // 100kb chunks
-        this.driveName = "ESDL Drive"
+        this.driveName = "ESDL Drive";
+        this.noCache = false; // default use cache
      }
 
      getTreeBrowser() {
@@ -250,7 +251,7 @@ class ESDLDrive {
                                 value = new Date(d[attr]).toLocaleString();
                             }
                             let $td = $('<td>');
-                            if (attr === 'revisionVersion') {
+                            if (attr === 'revisionVersion' || attr === 'lastCommit') {
                                 let $revLink = $('<a>', {text: camelCaseToWords(attr), title: 'Show history of this EnergySystem', href: '#'});
                                 $revLink.click(function(e) {
                                     socket.emit('cdo_browse', {'operation': 'get_revisions', 'id': d['path'] }, function(response) {
@@ -272,7 +273,7 @@ class ESDLDrive {
                             }
                             let $tr = $('<tr>');
                             $tr.append($td);
-                            $tr.append($('<td>').html(value));
+                            $tr.append($('<td>').html(String(value)));
                             $t.append($tr);
                         }
                         $('#data .esdl').empty();
@@ -281,7 +282,8 @@ class ESDLDrive {
                         if (d['path'] !== undefined) {
                             let $a = $('<input type="button" value="Open" id="openbutton">');
                             $a.click(function () {
-                                    socket.emit('cdo_open', {'path':  d.path});
+                                    // use cache?
+                                    socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache});
                                     show_loader();
                                     dialog.close();
                                 });
@@ -363,6 +365,13 @@ class ESDLDrive {
         let $filename = $('<input placeholder="My Energysystem.esdl" type="text">').attr('id', 'filename').css({'width':'400px'});
         $filename_div.append($filename_label).append($filename);
         $filename.val(filename);
+
+        let $overwritecheckbox_div = $('<div>').addClass('blockdiv');
+        let $overwritecheckbox_label = $('<label for="forceOverwrite">').text("Overwrite contents:");
+        let $overwritecheckbox = $('<input type="checkbox" id="forceOverwrite" title="Forcibly overwrite the current file, without identifying the differences.">');
+        $overwritecheckbox_div.append($overwritecheckbox_label).append($overwritecheckbox);
+
+
         let $save = $('<input type="button" class="btn btn-outline-primary blockdiv" value="Save">');
         $save.click(function (e) {
             filename = $('#filename').val();
@@ -370,8 +379,13 @@ class ESDLDrive {
                 filename = filename + ".esdl";
             }
             let commitMessage = $('#message').val();
-            console.log(path + "/" + filename, commitMessage)
-            socket.emit('cdo_save', {'path':  path + "/" + filename, 'commitMessage': commitMessage, 'forceOverwrite': false});
+            let forceOverwrite = $('#forceOverwrite').prop('checked');
+            console.log(path + "/" + filename, commitMessage, forceOverwrite);
+            socket.emit('cdo_save', {'path':  path + "/" + filename, 'commitMessage': commitMessage, 'forceOverwrite': forceOverwrite}, function(response) {
+                if (!response.success) {
+                    alert("Saving failed: " + response.error);
+                }
+            });
             //show_loader();
             dialog.close();
         });
@@ -380,6 +394,7 @@ class ESDLDrive {
         $div.append($p);
         $div.append($message_div);
         $div.append($filename_div);
+        $div.append($overwritecheckbox_div);
         $div.append($save);
          $('#data .esdl').empty();
          $('#data .esdl').append($div);
@@ -609,7 +624,7 @@ class ESDLDrive {
         let $t = $('<table>').addClass('pure-table pure-table-striped').css({'width': '100%'}); //, 'table-layout': 'auto', 'border-collapse': 'collapse'});
         let $thead = $('<thead>').append(
             $('<tr>').append(
-                $('<th>').text("Time").css({'min-width': '135px'}),
+                $('<th>').text("Time").css({'min-width': '140px'}),
                 $('<th>').text('Message').css({'width': '100%'}),
                 $('<th>').text('User'),
                 $('<th>').text('Branch'),
