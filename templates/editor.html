@@ -124,6 +124,7 @@
     <script type="text/javascript" src="./utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src="./utils/esdl_store.js"></script>
     <script type="text/javascript" src="./utils/esdl_compare.js"></script>
+    <script type="text/javascript" src="./utils/esdl_merge.js"></script>
     <script type="text/javascript" src="./utils/esdl_browser.js"></script>
     <script type="text/javascript" src="./utils/esdl_drive.js"></script>
     <script type="text/javascript" src="./utils/check_status.js"></script>
@@ -1757,7 +1758,7 @@
             });
 
             var line_assets = ["ElectricityCable", "Pipe"];
-            var area_assets = ["Area", "PVParc", "PVPark", "WindParc", "WindPark"];
+            var area_assets = ["Area", "PVPark", "WindPark"];
             if (line_assets.includes(selected_asset)) {
                 dc._toolbars.draw._modes.polyline.handler.enable();
             } else if (area_assets.includes(selected_asset)) {
@@ -1968,6 +1969,7 @@
 {% endif %}
 
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>

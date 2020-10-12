@@ -57,6 +57,7 @@ from src.user_logging import UserLogging
 from extensions.settings_storage import SettingsStorage
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
+from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.workflow import Workflow
@@ -135,6 +136,7 @@ BAG(app, socketio)
 BoundaryService(app, socketio, settings_storage)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
+ESDLMerge(app, socketio, executor)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
@@ -1543,17 +1545,14 @@ def process_command(message):
                 else:
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
 
-                    # if object_type not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
                     if isinstance(geometry, esdl.Point):
                         asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], port_list, capability_type])
-                    # elif object_type in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
                         asset_to_be_added_list.append(
                             ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
-                    # elif object_type in ['ElectricityCable', 'Pipe']:
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:

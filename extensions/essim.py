@@ -76,10 +76,14 @@ class ESSIM:
                             'dashboardURL': result['dashboardURL']
                         }
                         set_session('active_simulation', active_simulation)
-                        esdlstr_base64 = result['esdlContents']
-                        esdlstr_base64_bytes = esdlstr_base64.encode('ascii')
-                        esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
-                        esdlstr = esdlstr_bytes.decode('ascii')
+                        try:
+                            esdlstr_base64 = result['esdlContents']
+                            esdlstr_base64_bytes = esdlstr_base64.encode('ascii')
+                            esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
+                            esdlstr = esdlstr_bytes.decode('ascii')
+                        except:
+                            esdlstr_urlenc = result['esdlContents']
+                            esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
                         res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                         set_session('active_es_id', res_es.id)

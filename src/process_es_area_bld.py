@@ -597,7 +597,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                         coords.append([point.lat, point.lon])
                     asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
                 if isinstance(geom, esdl.Polygon):
-                    # if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
+                    # if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                     coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                     coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
