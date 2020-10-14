@@ -14,7 +14,7 @@
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
-from pyecore.valuecontainer import EAbstractSet
+from pyecore.valuecontainer import ECollection
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -103,7 +103,7 @@ class EnergySystemHandler:
                     if value is None:
                         continue
                     if ref.containment:
-                        if ref.many and isinstance(value, EAbstractSet):
+                        if ref.many and isinstance(value, ECollection):
                             #clone all containment elements
                             eAbstractSet = copy.eGet(ref.name)
                             for ref_value in value:

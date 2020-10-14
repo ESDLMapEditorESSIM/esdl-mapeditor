@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from pyecore.ecore import EAttribute, EOrderedSet, EEnum, EReference, EClass, EObject
+from pyecore.ecore import EAttribute, ECollection, EEnum, EReference, EClass, EObject, EStructuralFeature
 from pyecore.resources import Resource
 import esdl
 import gc
@@ -22,6 +22,7 @@ ESDL Ecore library
 Contains functions that leverage the ecore functionality to e.g. list attributes, references, attribute types, etc.
 
 """
+
 
 def get_asset_attributes(asset, esdl_doc=None):
     attributes = list()
@@ -40,9 +41,18 @@ def get_asset_attributes(asset, esdl_doc=None):
             attr['value'] = asset.eGet(x)
             if attr['value'] is not None:
                 if x.many:
-                    if isinstance(attr['value'], EOrderedSet):
-                        attr['value'] = [x.name for x in attr['value']]
-                        attr['many'] = True
+                    if isinstance(attr['value'], ECollection):
+                        if isinstance(x.eType, EStructuralFeature):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        elif isinstance(x.eType, EEnum):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        else:
+                            # primitive type
+                            attr['value'] = list(attr['value'])
+                            attr['many'] = True
+                            pass
                     else:
                         attr['value'] = list(x.eType.to_string(attr['value']))
                 else:
@@ -111,7 +121,7 @@ def get_asset_references(asset, esdl_doc=None, repr_function=string_repr):
             value = asset.eGet(x)
             if value is None:
                 ref['value'] = {"repr": value}
-            elif isinstance(value, EOrderedSet):
+            elif isinstance(value, ECollection):
                 values = list()
                 for item in value:
                     repr = repr_function(item)
@@ -175,8 +185,11 @@ Resolves a URI fragment (e.g. '//@instance.0/@area/@asset.0/@port.0') to the ass
 and returns the object
 This is used for objects that have no ID attribute
 """
+
+
 def resolve_fragment(resource: Resource, fragment: str):
     return resource.resolve(fragment)
+
 
 """
 Calculates a list of all possible reference values for a specific reference
@@ -184,6 +197,8 @@ Was based on allInstances() for each possible subtype in the types list, but thi
 users... so now a slow version to find it by iterating through all nodes of the XML graph.
 TODO: find a more efficient way then by iterating through all the elements 
 """
+
+
 def get_reachable_references(root: EObject, types: list, repr_function=string_repr):
     result = list()
     for instance in root.eAllContents():
@@ -196,5 +211,3 @@ def get_reachable_references(root: EObject, types: list, repr_function=string_re
             result.append(ref)
 
     return result
-
-
