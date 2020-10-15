@@ -1030,8 +1030,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('update-coord', namespace='/esdl')
 def update_coordinates(message):
-    # logger.debug("updating coordinates")
-    # logger.debug('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
+    # This function can also be called when the geometry of an asset is of type esdl.Polygon, because
+    # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -1039,12 +1039,19 @@ def update_coordinates(message):
     coords = message['coordinates']
 
     object = esh.get_by_id(active_es_id, obj_id)
-    # object can be an EnergyAsset, Building or Potential
+    # object can be an EnergyAsset, Building, Potential or Note
     if object:
-        geom = object.geometry
+        if isinstance(object, esdl.Note):
+            geom = object.mapLocation
+        else:
+            geom = object.geometry
+
         if isinstance(geom, esdl.Point):
             point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
-            object.geometry = point
+            if isinstance(object, esdl.Note):
+                object.mapLocation = point
+            else:
+                object.geometry = point
         # elif isinstance(geom, esdl.Polygon):
             # Do nothing in case of a polygon
             # only update the connection locations and mappings based on the center of the polygon

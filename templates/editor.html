@@ -195,6 +195,7 @@
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
+    <script type="text/javascript" src="./utils/notes.js"></script>
 
     <!-- This should be the last one -->
     <script type="text/javascript" src="./utils/app_settings.js"></script>
@@ -1069,45 +1070,6 @@
                 // set_selected_layer(active_layer_id);
             });
 
-
-            // ------------------------------------------------------------------------------------------------------------
-            //  Add notes on the map
-            // ------------------------------------------------------------------------------------------------------------
-            socket.on('add_notes', function(options) {
-                // coords = {'lng': map_location.lon, 'lat': map_location.lat}
-                // {'id': n.id, 'location': coords, 'text': n.text, 'author': n.author, 'date': n.date}
-                let list = options['notes_list'];
-                let add_to_building = options['add_to_building'];
-                let es_id = options['es_id'];
-
-                let es_bld_id = es_id;
-                if (add_to_building) {
-                   es_bld_id = bld_edit_id;
-                }
-
-                for (let i = 0; i<list.length; i++) {
-                    let note_text = '<h3>'+list[i]['title']+'</h3>';
-                    note_text += '<p>'+list[i]['text']+'</p>'
-
-                    let divicon = L.divIcon({
-                        html: '<div class="image-div" style="font-size:0px"><img data-html="true" title="'+note_text+'" class="notes-img" src="images/Note.png"></img></div>',
-                        className: 'notes-div-icon',
-                        iconSize: null
-                    });
-                    let note = L.marker([list[i]['location']['lat'], list[i]['location']['lng']],
-                        {icon: divicon, riseOnHover: true});
-
-                    // set_note_handlers(note);
-                    add_object_to_layer(es_bld_id, 'notes_layer', note);
-                }
-
-                $('.notes-img').tooltip({
-                    content: function() {
-                        return $(this).attr('title');
-                    }
-                });
-            });
-
             // ------------------------------------------------------------------------------------------------------------
             //  ESDL object functions
             // ------------------------------------------------------------------------------------------------------------
@@ -1907,7 +1869,6 @@
     <!--    .jstree ul { z-index:20000 !important; }-->
     <!--    .jstree li > a > .jstree-icon {  display:none !important; }-->
 
-
 </head>
 <body class="flexbox-parent">
     <div class="flexbox-item topmenu">
@@ -2157,8 +2118,15 @@
     dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
 
+    add_note_button_to_essim_control();
 {% if essim_enabled and 'essim' in role %}
-    L.control.essim_control().addTo(map);
+    L.control.essim_control.addTo(map);
+    // L.control.essim_control().addTo(map);
 {% endif %}
 
+    // L.control.notes_control().addTo(map);
+
+
 </script>
+
+<script type="text/javascript" src="./dist/index.umd.js"></script>
