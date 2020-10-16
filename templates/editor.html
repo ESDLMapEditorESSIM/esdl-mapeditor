@@ -208,6 +208,8 @@
         var ldc_control;            // load duration curve
         var ielgas_chart;
 
+        var user_info;              // to store information about the logged in user
+
         var profile_array;
         var quantity_and_units_info;
         var control_strategy_config;
@@ -958,6 +960,10 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+            });
+
+            socket.on('user_info', function(ui) {
+                user_info = ui;
             });
 
             socket.on('profile_info', function(pa) {
@@ -2118,15 +2124,11 @@
     dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
 
-    add_note_button_to_essim_control();
 {% if essim_enabled and 'essim' in role %}
-    L.control.essim_control.addTo(map);
-    // L.control.essim_control().addTo(map);
+    L.control.essim_control().addTo(map);
 {% endif %}
 
-    // L.control.notes_control().addTo(map);
-
+    notesToolbarControl().addTo(map);
 
 </script>
 
-<script type="text/javascript" src="./dist/index.umd.js"></script>

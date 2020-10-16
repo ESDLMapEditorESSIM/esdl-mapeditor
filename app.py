@@ -1579,7 +1579,9 @@ def process_command(message):
         # removes asset or potential from EnergySystem
         obj_id = message['id']
         if obj_id:
-            asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset can also be any other object in ESDL
+            asset = esh.get_by_id(active_es_id, obj_id)
             if isinstance(asset, esdl.AbstractBuilding):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
@@ -1592,6 +1594,35 @@ def process_command(message):
             esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
+
+    if message['cmd'] == 'add_note':
+        id = message['id']
+        location = message['location']
+        author = message['author']
+        note = esdl.Note(id=id, author=author)
+
+        dt = parse_date(message['date'])
+        if dt:
+            note.date = EDate.from_string(str(dt))
+        else:
+            send_alert('Invalid datetime format')
+        point = esdl.Point(lat=location['lat'], lon=location['lng'])
+        note.mapLocation = point
+        esh.add_object_to_dict(es_edit.id, note)
+
+        esi = es_edit.energySystemInformation
+        if not esi:
+            esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+            es_edit.energySystemInformation = esi
+            esh.add_object_to_dict(es_edit.id, esi)
+
+        notes = esi.notes
+        if not notes:
+            notes = esdl.Notes(id=str(uuid.uuid4()))
+            esi.notes = notes
+            esh.add_object_to_dict(es_edit.id, notes)
+
+        notes.note.append(note)
 
     if message['cmd'] == 'remove_area':
         area_id = message['id']
@@ -1817,9 +1848,6 @@ def process_command(message):
         param_name = message['param_name']
         param_value = message['param_value']
 
-        area = es_edit.instance[0].area
-
-        #asset = ESDLAsset.find_asset(area, asset_id)
         if asset_id is None:
             resource = esh.get_resource(active_es_id)
             asset = resource.resolve(fragment)
@@ -2703,7 +2731,7 @@ def get_carrier_color_dict():
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
-    user = get_session('user-email')
+    user_email = get_session('user-email')
     role = get_session('user-role')
 
     logger.info('Send initial information to client')
@@ -2712,7 +2740,8 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list(user, role))
+    emit('esdl_services', esdl_services.get_services_list(user_email, role))
+    emit('user_info', {'email': user_email})
     initialize_app()
 
 

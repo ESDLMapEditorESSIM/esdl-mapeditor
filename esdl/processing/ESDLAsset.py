@@ -17,6 +17,7 @@ from pyecore.ecore import EClass
 from pyecore.resources import ResourceSet
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLEnergySystem
+from extensions.session_manager import get_handler, get_session
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -166,10 +167,10 @@ def recursively_remove_object_from_area(area, object_id):
 
 # todo: move to EnergySystemHandler
 def remove_object_from_energysystem(es, object_id):
-    # find area with area_id
-    instance = es.instance[0]
-    area = instance.area
-    recursively_remove_object_from_area(area, object_id)
+    esh = get_handler()
+    active_es_id = get_session('active_es_id')
+    obj = esh.get_by_id(active_es_id, object_id)
+    obj.delete(recursive=True)
 
 
 def get_asset_capability_type(asset):

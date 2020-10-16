@@ -81,14 +81,28 @@ class Notes {
         enable_esdl_layer_created_event_handler();
     }
 
+    delete_note(e, id) {
+        let layer = e.relatedTarget;
+        remove_object_from_layer(active_layer_id, 'notes_layer', layer);
+
+        socket.emit('command', {
+            cmd: 'remove_object',
+            id: id
+        });
+    }
+
     set_note_handlers(note) {
-//        let note_id = note.id
-//        note.bindContextMenu({
-//            contextmenu: true,
-//            contextmenuWidth: 140,
-//            contextmenuItems: [],
-//            contextmenuInheritItems: false
-//        });
+        let note_id = note.id
+        note.bindContextMenu({
+            contextmenu: true,
+            contextmenuWidth: 140,
+            contextmenuItems: [{
+                text: 'Delete',
+                icon: 'icons/Delete.png',
+                callback: function(e) { notes.delete_note(e, note_id); }
+            }],
+            contextmenuInheritItems: false
+        });
 
         note.on('dragend', function(e) {
             console.log(e);
@@ -181,6 +195,12 @@ class Notes {
             param_name: 'text',
             param_value: text
         });
+        socket.emit('command', {
+            cmd: 'set_asset_param',
+            id: note.id,
+            param_name: 'date',
+            param_value: new Date().today() + " " + new Date().timeNow()
+        });
 
         sidebar.hide();
     }
@@ -205,9 +225,14 @@ class Notes {
     note_created_event_handler(e) {
         console.log(e);
         let note = e.layer;
+        let id = uuidv4();
+        let author = user_info['email'];
+        let date = new Date().today() + " " + new Date().timeNow();
 
         let coords = {'lng': e.layer.getLatLng().lng, 'lat': e.layer.getLatLng().lat};
-        let note_params = {id: 'TODO', location: coords, title: '', text: '', author: '', date: ''}
+        let note_params = {id: id, location: coords, title: '', text: '', author: author, date: date};
+
+        socket.emit('command', {cmd: 'add_note', id: id, location: coords, author: author, date: date});
 
         notes.add_note_to_map(note_params, active_layer_id);
     }
@@ -263,15 +288,14 @@ var AddNote = L.Toolbar2.Action.extend({
     }
 });
 
-L.control.notes_control = function () {
-    return new L.Toolbar2.Control({
+var NotesToolbarControl = L.Toolbar2.Control.extend({
+//    position: 'topleft',
+//    actions: [AddNote]
+});
+
+notesToolbarControl = function() {
+    return new NotesToolbarControl({
         position: 'topleft',
         actions: [AddNote]
     });
-};
-
-function add_note_button_to_essim_control() {
-    console.log(L.control.essim_control);
-    let my_options = L.control.essim_control.options;
-    my_options['actions'].push(AddNote);
 }
