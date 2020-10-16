@@ -1839,7 +1839,7 @@ def process_command(message):
         })
 
     if message['cmd'] == 'set_asset_param':
-        if not 'id' in message:
+        if 'id' not in message or message['id'] is None:
             fragment = message['fragment']
             asset_id = None
         else:
@@ -1853,21 +1853,26 @@ def process_command(message):
             asset = resource.resolve(fragment)
         else:
             asset = esh.get_by_id(active_es_id, asset_id)
-        logger.debug('Set param '+ param_name +' for class ' + asset.eClass.name + ' to value '+ param_value)
+        logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
 
         try:
             attribute = asset.eClass.findEStructuralFeature(param_name)
             if attribute is not None:
-                if param_value == "":
-                    parsed_value = attribute.eType.default_value
-                else:
-                    parsed_value = attribute.eType.from_string(param_value)
                 if attribute.many:
-                    eOrderedSet = asset.eGet(param_name)
-                    eOrderedSet.clear() #TODO no support for multi-select of enums
-                    eOrderedSet.append(parsed_value)
-                    asset.eSet(param_name, eOrderedSet)
+                    #length = len(param_value)
+                    eCollection = asset.eGet(param_name)
+                    eCollection.clear()  # TODO no support for multi-select of enums
+                    print('after clear', eCollection)
+                    if not isinstance(param_value, list):
+                        param_value = [param_value]
+                    for item in param_value:
+                        parsed_value = attribute.eType.from_string(item)
+                        eCollection.append(parsed_value)
                 else:
+                    if param_value == "":
+                        parsed_value = attribute.eType.default_value
+                    else:
+                        parsed_value = attribute.eType.from_string(param_value)
                     if attribute.name == 'id':
                         esh.remove_object_from_dict(active_es_id, asset)
                         asset.eSet(param_name, parsed_value)

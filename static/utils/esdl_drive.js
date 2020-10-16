@@ -26,7 +26,8 @@ class ESDLDrive {
         this.files = {};
         this.blob = {};
         this.chunkSize = 100*1024; // 100kb chunks
-        this.driveName = "ESDL Drive"
+        this.driveName = "ESDL Drive";
+        this.noCache = false; // default use cache
      }
 
      getTreeBrowser() {
@@ -35,11 +36,13 @@ class ESDLDrive {
         let $data = $('<div>').attr('id', 'data');
         let $content_esdl = $('<div>').addClass('content esdl').css('display','none');
         let $content_folder = $('<div>').addClass('content folder').css('display','none');
+        let $content_history = $('<div>').addClass('content history').css('display','none');
         let $content_default = $('<div>').addClass('content default').css('text-align','center').text('Select a file from the tree.');
         let $content_loader = $('<div>').addClass('content loader').css('text-align','center').text('Loading...');
 
         $data.append($content_folder);
         $data.append($content_esdl);
+        $data.append($content_history);
         $data.append($content_default);
         $data.append($content_loader);
         $div.append($jstree);
@@ -221,11 +224,18 @@ class ESDLDrive {
         // get content from CDO and show in browser, for load dialog
         socket.emit('cdo_browse', {'operation': 'get_content', 'id':  data.selected.join(':')}, function(response) {
             console.log('cdo_browse response', response);
+            if (response.status !== undefined && response.status >= 400) {
+                alert(response.error);
+                return;
+            }
 			var d = response.json;
 			$('#data .content').hide();
+			$('#data .history').hide();
 			if(d && typeof d.type !== 'undefined') {
+                console.log('Get Content', d);
                 switch(d.type) {
                     case 'esdl':
+                        let $p = $('<h4>').html('Energy System: <i>' + d.fileName + '</i>');
                         let $t = $('<table>').addClass('pure-table pure-table-striped');
                         let $thead = $('<thead>').append(
                             $('<tr>').append(
@@ -237,20 +247,43 @@ class ESDLDrive {
 
                         for (let attr in d) {
                             let value = d[attr];
-                            if (attr==='Last saved') {
+                            if (attr==='lastChanged') {
                                 value = new Date(d[attr]).toLocaleString();
                             }
+                            let $td = $('<td>');
+                            if (attr === 'revisionVersion' || attr === 'lastCommit') {
+                                let $revLink = $('<a>', {text: camelCaseToWords(attr), title: 'Show history of this EnergySystem', href: '#'});
+                                $revLink.click(function(e) {
+                                    socket.emit('cdo_browse', {'operation': 'get_revisions', 'id': d['path'] }, function(response) {
+                                        console.log('Response:', response);
+                                        if (response.status < 400 ) {
+                                            self.showHistory(response.json);
+                                        } else {
+                                            if (response.error !== undefined) {
+                                                alert(response.error);
+                                            } else {
+                                                console.log("Something went wrong getting history");
+                                            }
+                                        }
+                                    });
+                                });
+                                $td.append($revLink);
+                            } else {
+                                $td.html(camelCaseToWords(attr));
+                            }
                             let $tr = $('<tr>');
-                            $tr.append($('<td>').html(attr));
-                            $tr.append($('<td>').html(value));
+                            $tr.append($td);
+                            $tr.append($('<td>').html(String(value)));
                             $t.append($tr);
                         }
                         $('#data .esdl').empty();
+                        $('#data .esdl').append($p);
                         $('#data .esdl').append($t);
                         if (d['path'] !== undefined) {
                             let $a = $('<input type="button" value="Open" id="openbutton">');
                             $a.click(function () {
-                                    socket.emit('cdo_open', {'path':  d.path});
+                                    // use cache?
+                                    socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache});
                                     show_loader();
                                     dialog.close();
                                 });
@@ -318,22 +351,51 @@ class ESDLDrive {
         }
         $('#data .content').hide();
         let $div = $('<div>')
-        let $intro = $('<p>').text('Select a folder to store the file and enter a file name')
-        let $p = $('<p>').text('Save file to: ' + path)
-        let $input = $('<input placeholder="My Energysystem.esdl" type="text">').attr('id', 'filename');
-        $input.val(filename);
-        let $save = $('<input type="button" value="Save">');
+        let $h4 = $('<h4>').text('Save Energy System');
+        let $intro = $('<p>').text('Select a folder to store the file, add a commit message and enter a file name');
+        let $p = $('<p>').html('Save folder: <i>' + path + '</i>');
+         //<label class="button" for="fileElem">Select some files</label>
+        let $message_div = $('<div>').addClass('blockdiv');
+        let $message_label = $('<label>').addClass('button').attr({'for': 'message'}).text("Commit message:");
+        let $message = $('<textarea placeholder="Added new Energy system" rows="4">').attr('id', 'message').addClass('commitmessage').css({'width':'400px'});
+        $message_div.append($message_label).append($message);
+
+        let $filename_div = $('<div>').addClass('blockdiv');
+        let $filename_label = $('<label>').addClass('button').attr({'for': 'filename'}).text("Specify file name:");
+        let $filename = $('<input placeholder="My Energysystem.esdl" type="text">').attr('id', 'filename').css({'width':'400px'});
+        $filename_div.append($filename_label).append($filename);
+        $filename.val(filename);
+
+        let $overwritecheckbox_div = $('<div>').addClass('blockdiv');
+        let $overwritecheckbox_label = $('<label for="forceOverwrite">').text("Overwrite contents:");
+        let $overwritecheckbox = $('<input type="checkbox" id="forceOverwrite" title="Forcibly overwrite the current file, without identifying the differences.">');
+        $overwritecheckbox_div.append($overwritecheckbox_label).append($overwritecheckbox);
+
+
+        let $save = $('<input type="button" class="btn btn-outline-primary blockdiv" value="Save">');
         $save.click(function (e) {
             filename = $('#filename').val();
-            console.log(path + "/" + filename)
-            socket.emit('cdo_save', {'path':  path + "/" + filename });
+            if (!filename.endsWith('.esdl')) { // add .esdl extension
+                filename = filename + ".esdl";
+            }
+            let commitMessage = $('#message').val();
+            let forceOverwrite = $('#forceOverwrite').prop('checked');
+            console.log(path + "/" + filename, commitMessage, forceOverwrite);
+            socket.emit('cdo_save', {'path':  path + "/" + filename, 'commitMessage': commitMessage, 'forceOverwrite': forceOverwrite}, function(response) {
+                if (!response.success) {
+                    alert("Saving failed: " + response.error);
+                }
+            });
             //show_loader();
             dialog.close();
         });
-        $div.append($intro)
-        $div.append($p)
-        $div.append($input)
-        $div.append($save)
+        $div.append($h4);
+        $div.append($intro);
+        $div.append($p);
+        $div.append($message_div);
+        $div.append($filename_div);
+        $div.append($overwritecheckbox_div);
+        $div.append($save);
          $('#data .esdl').empty();
          $('#data .esdl').append($div);
          $('#data .esdl').show();
@@ -356,10 +418,13 @@ class ESDLDrive {
         let $form = $('<form>').addClass('upload-form');
         let $p1 = $('<p>').text('To upload ESDL files in this folder use drag & drop from your file explorer or click the button below.');
         let $p2 = $('<p id="foldername">');
-        let $input = $('<input type="button" multiple>').attr('id', 'fileElem');
+        let $input = $('<input type="file" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
         let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
         $droparea.append($form);
+        $input.change(function(e) {
+            handleFiles(this.files);
+        });
         $form.append($p1);
         $form.append($p2);
         $form.append($input);
@@ -539,6 +604,57 @@ class ESDLDrive {
         dialog.setTitle('Save file to ' + this.driveName);
         $('.leaflet-control-dialog-contents').scrollTop(0);
         dialog.open();
+     }
+
+     showHistory(history) {
+        //content history
+        let $history = $('#data .history');
+        $history.empty();
+        let $div = $('<div>').css({'display':'inline'});
+        let $p = $('<h4>').text('History of ' + history.name).css({'margin-top': '0px'});
+        let $back_button = $('<button>').css({'float': 'left', 'margin-right': '10px', 'margin-top': '2px'})
+            .addClass('btn-outline-primary dialogbutton btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
+        $div.append($back_button)
+        $div.append($p)
+        $back_button.click(function() {
+            $history.hide();
+            $('#data .esdl').show();
+        });
+        $history.append($div);
+        let $t = $('<table>').addClass('pure-table pure-table-striped').css({'width': '100%'}); //, 'table-layout': 'auto', 'border-collapse': 'collapse'});
+        let $thead = $('<thead>').append(
+            $('<tr>').append(
+                $('<th>').text("Time").css({'min-width': '140px'}),
+                $('<th>').text('Message').css({'width': '100%'}),
+                $('<th>').text('User'),
+                $('<th>').text('Branch'),
+                $('<th>').text('Action')
+            )
+        );
+        $t.append($thead);
+        let commits = history.commits;
+        for (let i in commits) {
+            let commit = commits[i];
+            //console.log(commits[i]);
+            let $tr = $('<tr>');
+            $tr.append($('<td>').html(new Date(commit.time).toLocaleString()).css({'text-align': 'right'}));
+            $tr.append($('<td>').html(commit.message));
+            $tr.append($('<td>').html(commit.user));
+            $tr.append($('<td>').html(commit.branch));
+            let $a = $('<a>', {href: '#', text: 'Open', title: 'Open this version in the MapEditor'});
+            $a.click(function(e) {
+                console.log(e);
+                socket.emit('cdo_open', {'path':  history.path, 'revision': commit.time});
+                show_loader();
+                dialog.close();
+            });
+            $tr.append($('<td>').append($a));
+            $t.append($tr);
+            $history.append($t);
+        }
+        $('#data .esdl').hide();
+        $history.show();
+
      }
 
 

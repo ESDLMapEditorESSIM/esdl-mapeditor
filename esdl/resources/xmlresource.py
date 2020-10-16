@@ -63,4 +63,4 @@ class XMLResource(XMIResource):
                    xml_declaration=True,
                    encoding=tree.docinfo.encoding)
         output.flush()
-        self.uri.close_stream()
+        return self.uri.close_stream()

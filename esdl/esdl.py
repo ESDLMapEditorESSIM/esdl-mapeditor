@@ -1,17 +1,3 @@
-#  This work is based on original code developed and copyrighted by TNO 2020.
-#  Subsequent contributions are licensed to you by the developers of such code and are
-#  made available to the Project under one or several contributor license agreements.
-#
-#  This work is licensed to you under the Apache License, Version 2.0.
-#  You may obtain a copy of the license at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Contributors:
-#      TNO         - Initial implementation
-#  Manager:
-#      TNO
-
 """Definition of meta model 'esdl'."""
 from functools import partial
 import pyecore.ecore as Ecore
@@ -1576,7 +1562,7 @@ class Table(EObject, metaclass=MetaEClass):
 
 class TableRow(EObject, metaclass=MetaEClass):
 
-    value = EAttribute(eType=EDouble, derived=False, changeable=True, upper=-1)
+    value = EAttribute(eType=EDouble, derived=False, changeable=True, unique=False, upper=-1)
 
     def __init__(self, *, value=None, **kwargs):
         if kwargs:

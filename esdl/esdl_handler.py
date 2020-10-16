@@ -14,7 +14,7 @@
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
-from pyecore.valuecontainer import EAbstractSet
+from pyecore.valuecontainer import ECollection
 from pyecore.utils import alias
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
@@ -103,7 +103,7 @@ class EnergySystemHandler:
                     if value is None:
                         continue
                     if ref.containment:
-                        if ref.many and isinstance(value, EAbstractSet):
+                        if ref.many and isinstance(value, ECollection):
                             #clone all containment elements
                             eAbstractSet = copy.eGet(ref.name)
                             for ref_value in value:
@@ -456,8 +456,8 @@ class EnergySystemHandler:
         if object_id in self.get_resource(es_id).uuid_dict:
             return self.get_resource(es_id).uuid_dict[object_id]
         else:
-            print('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
-            print(self.get_resource(es_id).uuid_dict)
+            logger.error('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
+            #print(self.get_resource(es_id).uuid_dict)
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             return None
 
@@ -469,7 +469,7 @@ class EnergySystemHandler:
             if esdl_object.id is not None:
                 self.get_resource(es_id).uuid_dict[esdl_object.id] = esdl_object
             else:
-                print('Id has not been set for object {}({})', esdl_object.eClass.name, esdl_object)
+                logger.warning('Id has not been set for object {}({})'.format(esdl_object.eClass.name, esdl_object))
 
     def remove_object_from_dict(self, es_id, esdl_object):
         if hasattr(esdl_object, 'id'):
