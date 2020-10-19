@@ -109,6 +109,17 @@ h6 {
     height: 10px;
 }
 
+.notes-div-icon {
+    background: transparent;
+    border: 0px transparent;
+}
+
+.notes-img {
+    vertical-align: middle;
+    width: 23px;
+    height: 23px;
+}
+
 .Producer {
     background: #93a800;
     border: 3px solid #6b7a00;

@@ -35,7 +35,8 @@ function update_layer_control_tree() {
                 { label: 'Connections', layer: es.layers['connection_layer'] },
                 { label: 'Buildings', layer: es.layers['bld_layer'] },
                 { label: 'Potentials', layer: es.layers['pot_layer'] },
-                { label: 'Simulation results', layer: es.layers['sim_layer'] }
+                { label: 'Simulation results', layer: es.layers['sim_layer'] },
+                { label: 'Notes', layer: es.layers['notes_layer'] }
             ]
         };
         esdl_layers.push(child)
@@ -141,7 +142,8 @@ function create_new_esdl_layer(es_id, title) {
             bld_layer: L.featureGroup().addTo(map),
             pot_layer: L.featureGroup().addTo(map),
             connection_layer: L.featureGroup().addTo(map),
-            sim_layer: L.featureGroup().addTo(map)
+            sim_layer: L.featureGroup().addTo(map),
+            notes_layer: L.featureGroup().addTo(map)
         },
         sector_list: null,
         carrier_list: null,
@@ -184,7 +186,8 @@ function create_new_bld_layer(bld_id, title, bld_map) {
             esdl_layer: L.featureGroup().addTo(bld_map),
             bld_layer: L.featureGroup().addTo(bld_map),
             pot_layer: L.featureGroup().addTo(bld_map),
-            connection_layer: L.featureGroup().addTo(bld_map)
+            connection_layer: L.featureGroup().addTo(bld_map),
+            notes_layer: L.featureGroup().addTo(bld_map)
         },
         sector_list: null,
         carrier_list: null,

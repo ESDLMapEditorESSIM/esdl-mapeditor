@@ -71,7 +71,8 @@ L.control.essim_control = function () {
             // ESSIM_table_editor_action,
             ESSIM_validation_action,
             ESSIM_simulation_action,
-            ESSIM_sensitivity_analysis_action]
-            // , ESSIM_kpi_results_action, ESSIM_load_animation_action]
+            ESSIM_sensitivity_analysis_action
+            // , ESSIM_kpi_results_action, ESSIM_load_animation_action
+        ]
     });
-};
+}

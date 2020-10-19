@@ -195,6 +195,7 @@
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
+    <script type="text/javascript" src="./utils/notes.js"></script>
 
     <!-- This should be the last one -->
     <script type="text/javascript" src="./utils/app_settings.js"></script>
@@ -206,6 +207,8 @@
         var kpicharts = null;
         var ldc_control;            // load duration curve
         var ielgas_chart;
+
+        var user_info;              // to store information about the logged in user
 
         var profile_array;
         var quantity_and_units_info;
@@ -958,6 +961,10 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+            });
+
+            socket.on('user_info', function(ui) {
+                user_info = ui;
             });
 
             socket.on('profile_info', function(pa) {
@@ -1875,7 +1882,6 @@
     <!--    .jstree ul { z-index:20000 !important; }-->
     <!--    .jstree li > a > .jstree-icon {  display:none !important; }-->
 
-
 </head>
 <body class="flexbox-parent">
     <div class="flexbox-item topmenu">
@@ -2129,4 +2135,7 @@
     L.control.essim_control().addTo(map);
 {% endif %}
 
+    notesToolbarControl().addTo(map);
+
 </script>
+

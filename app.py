@@ -1030,8 +1030,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('update-coord', namespace='/esdl')
 def update_coordinates(message):
-    # logger.debug("updating coordinates")
-    # logger.debug('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
+    # This function can also be called when the geometry of an asset is of type esdl.Polygon, because
+    # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -1039,12 +1039,19 @@ def update_coordinates(message):
     coords = message['coordinates']
 
     object = esh.get_by_id(active_es_id, obj_id)
-    # object can be an EnergyAsset, Building or Potential
+    # object can be an EnergyAsset, Building, Potential or Note
     if object:
-        geom = object.geometry
+        if isinstance(object, esdl.Note):
+            geom = object.mapLocation
+        else:
+            geom = object.geometry
+
         if isinstance(geom, esdl.Point):
             point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
-            object.geometry = point
+            if isinstance(object, esdl.Note):
+                object.mapLocation = point
+            else:
+                object.geometry = point
         # elif isinstance(geom, esdl.Polygon):
             # Do nothing in case of a polygon
             # only update the connection locations and mappings based on the center of the polygon
@@ -1572,7 +1579,9 @@ def process_command(message):
         # removes asset or potential from EnergySystem
         obj_id = message['id']
         if obj_id:
-            asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset can also be any other object in ESDL
+            asset = esh.get_by_id(active_es_id, obj_id)
             if isinstance(asset, esdl.AbstractBuilding):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
@@ -1585,6 +1594,35 @@ def process_command(message):
             esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
+
+    if message['cmd'] == 'add_note':
+        id = message['id']
+        location = message['location']
+        author = message['author']
+        note = esdl.Note(id=id, author=author)
+
+        dt = parse_date(message['date'])
+        if dt:
+            note.date = EDate.from_string(str(dt))
+        else:
+            send_alert('Invalid datetime format')
+        point = esdl.Point(lat=location['lat'], lon=location['lng'])
+        note.mapLocation = point
+        esh.add_object_to_dict(es_edit.id, note)
+
+        esi = es_edit.energySystemInformation
+        if not esi:
+            esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+            es_edit.energySystemInformation = esi
+            esh.add_object_to_dict(es_edit.id, esi)
+
+        notes = esi.notes
+        if not notes:
+            notes = esdl.Notes(id=str(uuid.uuid4()))
+            esi.notes = notes
+            esh.add_object_to_dict(es_edit.id, notes)
+
+        notes.note.append(note)
 
     if message['cmd'] == 'remove_area':
         area_id = message['id']
@@ -1810,8 +1848,6 @@ def process_command(message):
         param_name = message['param_name']
         param_value = message['param_value']
 
-        #area = es_edit.instance[0].area
-        #asset = ESDLAsset.find_asset(area, asset_id)
         if asset_id is None:
             resource = esh.get_resource(active_es_id)
             asset = resource.resolve(fragment)
@@ -2700,7 +2736,7 @@ def get_carrier_color_dict():
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
-    user = get_session('user-email')
+    user_email = get_session('user-email')
     role = get_session('user-role')
 
     logger.info('Send initial information to client')
@@ -2709,7 +2745,8 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list(user, role))
+    emit('esdl_services', esdl_services.get_services_list(user_email, role))
+    emit('user_info', {'email': user_email})
     initialize_app()
 
 
