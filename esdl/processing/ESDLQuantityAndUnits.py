@@ -145,17 +145,26 @@ multiplierdict = {
     'PETA': 'P'
 }
 
+
 def qau_to_string(qau):
-    pq = qau.physicalQuantity.name
+    s = qau.physicalQuantity.name
+    str_unit = unit_to_string(qau)
+    if str_unit != '':
+        s += ' in ' + str_unit
+
+    return s
+
+
+def unit_to_string(qau):
     mult = qau.multiplier.name
     unit = qau.unit.name
     pmult = qau.perMultiplier.name
     punit = qau.perUnit.name
     ptunit = qau.perTimeUnit.name
 
-    s = pq
+    s = ''
+
     if unit != 'NONE' and unit != 'UNDEFINED':
-        s += ' in '
         if mult != 'NONE' and mult != 'UNDEFINED':
             s += multiplierdict[mult]
         s += unitdict[unit]
@@ -165,7 +174,7 @@ def qau_to_string(qau):
             s += multiplierdict[pmult]
         try:
             s += unitdict[punit]
-        except KeyError: # SECOND etc is not in the dict
+        except KeyError:  # SECOND etc is not in the dict
             s += punit
     if ptunit != 'NONE' and ptunit != 'UNDEFINED':
         s += '/' + timeunitdict[ptunit]

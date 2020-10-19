@@ -20,7 +20,7 @@ from flask import session
 from flask_socketio import emit
 
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid
@@ -263,7 +263,17 @@ def find_area_info_geojson(area_list, pot_list, this_area):
     if area_KPIs:
         for kpi in area_KPIs.kpi:
             if not isinstance(kpi, esdl.DistributionKPI):
-                geojson_KPIs[kpi.name] = kpi.value
+                kpi_qau = kpi.quantityAndUnit
+                if kpi_qau:
+                    if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
+                        kpi_qau = kpi_qau.reference
+                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+                else:
+                    unit = ''
+                geojson_KPIs[kpi.name] = {
+                    'value': kpi.value,
+                    'unit': unit
+                }
 
     area_shape = None
 

@@ -146,7 +146,7 @@ esdl_config = {
             },
             "query_parameters": [
                 {
-                    "name": "Distance to buildings",
+                    "name": "Distance to buildings (m)",
                     "description": "Minimum distance to the built environment (in meters)",
                     "parameter_name": "bebouwingsafstand",
                     "type": "integer",

@@ -581,6 +581,25 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 /*
+    Area tooltip with KPI info
+*/
+.kpi_table {
+    border: 1px solid #cbcbcb;
+}
+.kpi_table tr {
+    border: 1px solid #cbcbcb;
+}
+.kpi_table td{
+    border: 1px solid #cbcbcb;
+    padding: 0px 3px 0px 3px;
+}
+.kpi_table th{
+    border: 1px solid #cbcbcb;
+    background: #27ae60;    /* pure-table green */
+    color: #fff;            /* pure-table white */
+}
+
+/*
     Settings window
 */
 .settings_window {
