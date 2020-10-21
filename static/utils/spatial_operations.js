@@ -35,19 +35,24 @@ class SpatialOperations {
         let $div = $('<div>').attr('id', 'spatial-operations-main-div');
         let $title = $('<h1>').text('Spatial Operations');
         $div.append($title);
+        $div.append($('<p>').text('This is very experimental functionality to experiment with some spatial algorithms'))
 
         let $content_div = $('<div>').addClass('sidebar-div');
         let $p_preprocess = $('<p>')
-            .append($('<p>').text('To prepare the sub area triangilation'))
-            .append($('<button>')
-                .text('Preprocess subareas')
-                .click(function() {
-                    socket.emit('spatop_preprocess_areas', function(res) {
-                        console.log(res);
-                    });
-                }));
+            .append($('<h2>').text('Area triangulation'))
+            .append($('<p>')
+                .text('To prepare the sub area triangulation')
+                .append($('<br>'))
+                .append($('<button>')
+                    .text('Preprocess subareas')
+                    .click(function() {
+                        socket.emit('spatop_preprocess_areas', function(res) {
+                            console.log(res);
+                        });
+                    })));
         let $p_centroid = $('<p>')
-            .append($('<p>').text('To generate joints at the center of the sub area polygon'))
+            .text('To generate joints at the center of the sub area polygon')
+            .append($('<br>'))
             .append($('<button>')
                 .text('Joint Centroid')
                 .click(function() {
@@ -56,7 +61,8 @@ class SpatialOperations {
                     });
                 }));
         let $p_delaunay_subarea = $('<p>')
-            .append($('<p>').text('To perform the triangulation with the joints at the center of the sub area polygon'))
+            .text('To perform the triangulation with the joints at the center of the sub area polygon')
+            .append($('<br>'))
             .append($('<button>')
                 .text('Subarea Joint Delaunay triangulation')
                 .click(function() {
@@ -65,22 +71,65 @@ class SpatialOperations {
                     });
                 }));
 
-         let $p_delaunay_joints = $('<p>')
-            .append($('<p>').text('To perform the triangulation with all joints drawn on the map'+
-                ' (you have to draw an Area too)'))
-            .append($('<button>')
-                .text('Joint Delaunay triangulation')
-                .click(function() {
-                    socket.emit('spatop_joint_delaunay', function(res) {
-                        console.log(res);
-                    });
-                }));
+        let $p_delaunay_joints = $('<p>')
+            .append($('<h2>').text('Joints triangulation'))
+            .append($('<p>')
+                .text('To perform the triangulation with all joints drawn on the map'+
+                    ' (you have to draw an Area too)')
+                .append($('<br>'))
+                .append($('<button>')
+                    .text('Joint Delaunay triangulation')
+                    .click(function() {
+                        socket.emit('spatop_joint_delaunay', function(res) {
+                            console.log(res);
+                        });
+                    })));
+
+        let $p_connect_unconnected_assets = $('<p>').attr('id', 'p_conn_unconn_assets');
 
         $content_div
             .append($('<p>').append($p_preprocess))
             .append($('<p>').append($p_centroid))
             .append($('<p>').append($p_delaunay_subarea))
-            .append($('<p>').append($p_delaunay_joints));
+            .append($('<p>').append($p_delaunay_joints))
+            .append($('<p>').append($p_connect_unconnected_assets));
+
+        socket.emit('spatop_get_asset_types', function(res) {
+            let $p = $('#p_conn_unconn_assets');
+            console.log(res);
+
+            if (res.length > 0) {
+                $p.append($('<h2>').text('Connect unconnected assets'))
+                    .append($('<p>').text('It takes the first port of the unconnected asset and tries to find a ' +
+                        'port with opposite type to connect to. If that fails the asset is not connected.'))
+                    .append($('<p>').text('Connect all unconnected:')
+                        .append($('<select>').attr('id', 'select_connect_asset')))
+                    .append($('<p>').text('to the nearest:')
+                        .append($('<select>').attr('id', 'select_connect_to_asset')))
+                    .append($('<button>')
+                        .text('Go')
+                        .click(function() {
+                            let sca_choice = $('#select_connect_asset').val();
+                            let scta_choice = $('#select_connect_to_asset').val();
+                            socket.emit('spatop_connect_unconnected_assets', {
+                                    connect_asset_type: sca_choice,
+                                    connect_to_asset_type: scta_choice
+                                }, function(res) {
+                                    console.log(res);
+                                }
+                            );
+                        }));
+
+                let $sca = $('#select_connect_asset');
+                let $scta = $('#select_connect_to_asset');
+                for (let i=0; i<res.length; i++) {
+                    $sca.append($('<option>').val(res[i]).text(res[i]));
+                    $scta.append($('<option>').val(res[i]).text(res[i]));
+                }
+            } else {
+                $p.append($('<p>').text('No assets in energysystem'));
+            }
+        });
 
         $div.append($content_div);
 

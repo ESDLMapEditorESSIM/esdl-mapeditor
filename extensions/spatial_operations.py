@@ -25,7 +25,7 @@ from extensions.session_manager import get_handler, get_session, set_session
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 import esdl.esdl as esdl
 from src.shape import Shape
-from src.esdl_helper import energy_asset_to_ui
+from src.esdl_helper import energy_asset_to_ui, get_asset_and_coord_from_port_id
 import src.log as log
 
 
@@ -138,6 +138,81 @@ class SpatialOperations:
 
                 self.create_pipes(edges, top_area_shape, mapping_centroid_wkt_to_joint)
 
+        @self.socketio.on('spatop_get_asset_types', namespace='/esdl')
+        def spatop_get_asset_types():
+            with self.flask_app.app_context():
+                esh = get_handler()
+                active_es_id = get_session('active_es_id')
+                es = esh.get_energy_system(active_es_id)
+
+                asset_types_set = set()
+                for c in es.eAllContents():
+                    if isinstance(c, esdl.EnergyAsset):
+                        asset_types_set.add(type(c).__name__)
+
+                print(list(asset_types_set))
+                return list(asset_types_set)
+
+        @self.socketio.on('spatop_connect_unconnected_assets', namespace='/esdl')
+        def spatop_connect_unconnected_assets(params):
+            with self.flask_app.app_context():
+                print(params)
+                connect_asset_type = params["connect_asset_type"]
+                connect_to_asset_type = params["connect_to_asset_type"]
+
+                esh = get_handler()
+                active_es_id = get_session('active_es_id')
+                es = esh.get_energy_system(active_es_id)
+
+                # Collect all assets of the required types
+                connect_asset_list = list()
+                connect_to_asset_list = list()
+                for c in es.eAllContents():
+                    if type(c).__name__ == connect_asset_type:
+                        connect_asset_list.append(c)
+                    if type(c).__name__ == connect_to_asset_type:
+                        connect_to_asset_list.append(c)
+
+                connections_list = list()
+                # Iterate over connect_asset_list
+                for c in connect_asset_list:
+                    # TODO: fix assume one port
+                    port_c = c.port[0]
+
+                    if not port_c.connectedTo:
+                        shape_c = Shape.create(c.geometry)
+                        min_distance = 1e99
+                        closest_ct = None
+
+                        # Find closest asset to connect to
+                        for ct in connect_to_asset_list:
+                            shape_ct = Shape.create(ct.geometry)
+                            if shape_ct.shape.distance(shape_c.shape) < min_distance:
+                                min_distance = shape_ct.shape.distance(shape_c.shape)
+                                closest_ct = ct
+
+                        # Determine the type of port to connect to
+                        if type(port_c) == esdl.InPort:
+                            find_port_type = esdl.OutPort
+                        else:
+                            find_port_type = esdl.InPort
+
+                        # Find first port that matches criteria
+                        for p in closest_ct.port:
+                            if isinstance(p, find_port_type):
+                                p.connectedTo.append(port_c)
+
+                                pct_coord = get_asset_and_coord_from_port_id(esh, active_es_id, p.id)['coord']
+                                pc_coord = get_asset_and_coord_from_port_id(esh, active_es_id, port_c.id)['coord']
+
+                                connections_list.append \
+                                    ({'from-port-id': port_c.id, 'from-asset-id': c.id,
+                                      'from-asset-coord': pc_coord,
+                                      'to-port-id': p.id, 'to-asset-id': closest_ct.id,
+                                      'to-asset-coord': pct_coord})
+                                break
+
+                emit('add_connections', {'es_id': active_es_id, 'conn_list': connections_list})
 
     @staticmethod
     def add_boundary_to_shape_list(shape_list, area_id, boundary):
