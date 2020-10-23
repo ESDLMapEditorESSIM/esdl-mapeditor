@@ -103,6 +103,13 @@ h6 {
     height: 23px;
 }
 
+.circle-img-disabled {
+    vertical-align: middle;
+    width: 23px;
+    height: 23px;
+    opacity: 0.25;
+}
+
 .circle-img-joint {
     vertical-align: middle;
     width: 10px;
@@ -121,38 +128,73 @@ h6 {
 }
 
 .Producer {
-    background: #93a800;
-    border: 3px solid #6b7a00;
+    background: hsl(68, 100%, 33%);  /* #93a800; */
+    border: 3px solid hsl(67, 100%, 24%);  /* #6b7a00; */
 }
 
 .Consumer {
-    background: #649ec9;
-    border: 3px solid #477393;
+    background: hsl(206, 48%, 59%);  /* #649ec9; */
+    border: 3px solid hsl(205, 35%, 43%);  /* #477393; */
 }
 
 .Conversion {
-    background: #b574ba;
-    border: 3px solid #7030a0;
+    background: hsl(296, 34%, 59%);  /* #b574ba; */
+    border: 3px solid hsl(274, 54%, 41%);  /* #7030a0; */
 }
 
 .Storage {
-    background: #cb1325;
-    border: 3px solid #950b18;
+    background: hsl(354, 83%, 44%);  /* #cb1325; */
+    border: 3px solid hsl(354, 86%, 31%);  /* #950b18; */
 }
 
 .Transport {
-    background: #ffcb00;
-    border: 3px solid #bc9500;
+    background: hsl(48, 100%, 50%);  /* #ffcb00; */
+    border: 3px solid hsl(48, 100%, 37%);  /* #bc9500; */
+}
+
+.Optional {
+    border: 3px solid #000;
+    border-style: dashed;
+}
+
+.ProducerDisabled {
+    background: hsla(68, 10%, 33%, 50%);  /* #93a800; 50% transparency */
+    border: 3px solid hsl(67, 100%, 24%);  /* #6b7a00; */
+    border-style: dotted;
+}
+
+.ConsumerDisabled {
+    background: hsla(206, 10%, 59%, 50%);  /* #649ec9; 50% transparency */
+    border: 3px solid hsl(205, 35%, 43%);  /* #477393; */
+    border-style: dotted;
+}
+
+.ConversionDisabled {
+    background: hsla(296, 10%, 59%, 50%);  /* #b574ba; 50% transparency */
+    border: 3px solid hsl(274, 54%, 41%);  /* #7030a0; */
+    border-style: dotted;
+}
+
+.StorageDisabled {
+    background: hsla(354, 10%, 44%, 50%);  /* #cb1325; 50% transparency */
+    border: 3px solid hsl(354, 86%, 31%);  /* #950b18; */
+    border-style: dotted;
+}
+
+.TransportDisabled {
+    background: hsla(48, 10%, 50%, 50%);  /* #ffcb00; 50% transparency */
+    border: 3px solid hsl(48, 100%, 37%);  /* #bc9500; */
+    border-style: dotted;
 }
 
 .Potential {
-    background: #bfbfbf;
-    border: 3px solid #808080;
+    background: hsl(0, 0%, 75%);  /* #bfbfbf; */
+    border: 3px solid hsl(0, 0%, 50%);  /* #808080; */
 }
 
 .Building {
-    background: #bfbfbf;
-    border: 3px solid #000000;
+    background: hsl(0, 0%, 75%);  /* #bfbfbf; */
+    border: 3px solid hsl(0, 0%, 0%);  /* #000000; */
 }
 
 .Joint {

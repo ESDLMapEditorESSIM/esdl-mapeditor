@@ -36,7 +36,7 @@ from src.wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list
+from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui
 from esdl import esdl
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
@@ -953,14 +953,16 @@ def split_conductor(conductor, location, mode, conductor_container):
         port_list = []
         for p in new_cond1.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, port_list])
+        state = asset_state_to_ui(new_cond1)
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, state, port_list])
         coords2 = []
         for point in line2.point:
             coords2.append([point.lat, point.lon])
         port_list = []
         for p in new_cond2.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, port_list])
+        state = asset_state_to_ui(new_cond2)
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, state, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1010,7 +1012,8 @@ def split_conductor(conductor, location, mode, conductor_container):
             for p in joint.port:
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             capability_type = ESDLAsset.get_asset_capability_type(joint)
-            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], port_list, capability_type])
+            state = asset_state_to_ui(joint)
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], state, port_list, capability_type])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
                           'to-port-id': new_port2_conn_to_id, 'to-port-carrier': None, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
@@ -1551,20 +1554,20 @@ def process_command(message):
                     emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list, 'zoom': False})
                 else:
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
-
+                    state = asset_state_to_ui(asset)
                     if isinstance(geometry, esdl.Point):
-                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], port_list, capability_type])
+                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
                         asset_to_be_added_list.append(
-                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
+                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:
                             coords.append([point.lat, point.lon])
-                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
 
                     #logger.debug(asset_to_be_added_list)
                     emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
