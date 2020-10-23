@@ -255,7 +255,7 @@ esdl_config = {
             "id": "7f8722a9-669c-499d-8d75-4a1960e0429f",
             "name": "Create ETM scenario",
             "explanation": "This service sends the ESDL information to the ETM and tries to generate an ETM scenario out of it.",
-            "url": "http://beta-etm-esdl.energytransitionmodel.com/api/v1/EnergySystem/",
+            "url": "http://beta-esdl.energytransitionmodel.com/api/v1/EnergySystem/",
             # "url": "http://localhost:5000/api/v1/EnergySystem/",
             "http_method": "post",
             "headers": {"Content-Type": "application/x-www-form-urlencoded"},
