@@ -18,13 +18,14 @@
 #      TNO
 
 from esdl.esdl_handler import EnergySystemHandler
-from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor
+from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, AssetStateEnum
 from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session
 import src.log as log
+from src.esdl_helper import asset_state_to_ui
 
 logger = log.get_logger(__name__)
 
@@ -66,7 +67,7 @@ class HeatNetwork:
         with self.flask_app.app_context():
             asset_to_be_added_list = list()
             port_list = self.calculate_port_list(asset)
-            message = self.create_asset_discription_message(asset, port_list)
+            message = self.create_asset_description_message(asset, port_list)
             asset_to_be_added_list.append(message)
 
             if not ESDLAsset.add_object_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
@@ -90,7 +91,7 @@ class HeatNetwork:
             # send update_esdl_object message (to be invented) to refresh gui
             emit('delete_esdl_object', {'asset_id': conductor.id})
             port_list = self.calculate_port_list(conductor)
-            asset_description = self.create_asset_discription_message(conductor, port_list)
+            asset_description = self.create_asset_description_message(conductor, port_list)
             add_esdl_object_message = {'es_id': active_es_id, 'asset_pot_list': [asset_description], 'zoom': False}
             print(add_esdl_object_message)
             emit('add_esdl_objects', add_esdl_object_message,namespace='/esdl')
@@ -118,15 +119,16 @@ class HeatNetwork:
         return port_list
 
     @staticmethod
-    def create_asset_discription_message(asset: EnergyAsset, port_list):
+    def create_asset_description_message(asset: EnergyAsset, port_list):
+        state = asset_state_to_ui(asset)
         if isinstance(asset, AbstractConductor):
             # assume a Line geometry here
             coords = [(p.lat, p.lon) for p in asset.geometry.point]
-            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list]
+            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list]
         else:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, asset.geometry.lat,
-                 asset.geometry.lon, port_list, capability_type]
+            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [asset.geometry.lat,
+                 asset.geometry.lon], state, port_list, capability_type]
 
 
 ######

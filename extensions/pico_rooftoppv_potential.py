@@ -99,7 +99,7 @@ class PICORooftopPVPotential:
                 port_list = [{'name': pv_outport.name, 'id': pv_outport.id, 'type': type(pv_outport).__name__, 'conn_to': []}]
                 capability_type = ESDLAsset.get_asset_capability_type(pv_installation)
                 asset_list.append(['point', 'asset', pv_installation.name, pv_installation.id,
-                                   type(pv_installation).__name__, [pv_geometry.lat, pv_geometry.lon], port_list,
+                                   type(pv_installation).__name__, 'e', [pv_geometry.lat, pv_geometry.lon], port_list,
                                                capability_type])
                 emit('add_esdl_objects',
                      {'es_id': active_es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_list,

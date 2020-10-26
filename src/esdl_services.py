@@ -55,10 +55,20 @@ class ESDLServices:
             # TODO: check settings format before storing
             self.set_user_settings(user, settings)
 
+            # Emit the new list to the browser such that the UI is updated
+            role = get_session('user-role')
+            emit('esdl_services', self.get_services_list(user, role))
+
         @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
         def restore_esdl_services_settings():
             user = get_session('user-email')
-            return self.restore_settings(user)
+            settings = self.restore_settings(user)
+
+            # Emit the new list to the browser such that the UI is updated
+            role = get_session('user-role')
+            emit('esdl_services', self.get_services_list(user, role))
+
+            return settings
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
@@ -210,8 +220,7 @@ class ESDLServices:
                 # Should not happen, there should always be a method.
                 return False, None
 
-            if (service["http_method"] == "get" and r.status_code == 200) or \
-                    (service["http_method"] == "post" and r.status_code == 201):
+            if r.status_code == 200 or r.status_code == 201:
                 # print(r.text)
 
                 if service["result"][0]["action"] == "esdl":

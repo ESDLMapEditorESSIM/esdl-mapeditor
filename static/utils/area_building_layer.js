@@ -53,7 +53,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         let layer = layer_data[l_index];
         let KPIs = layer.properties.KPIs;
         for (kpi in KPIs) {
-            KPI_value = KPIs[kpi];
+            KPI_value = KPIs[kpi]['value'];
             if (KPI_value != "") {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
@@ -478,10 +478,20 @@ function add_area_layer(area_data) {
                     text = feature.properties.name + " (" + text + ")";
                 }
 
-                for (let key in feature.properties.KPIs) {
-                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
+                if (Object.keys(feature.properties.KPIs).length != 0) {
+                    text = "<b>"+ text +"</b>";
+                    text += "<br><br><table class=\"kpi_table\">";
+                    text += "<thead><tr><th>KPI</th><th>Value</th><th>Unit</th></tr></thead><tbody>"
+                    for (let key in feature.properties.KPIs) {
+                        text += "<tr><td>" + key + "</td><td align=\"right\">" + feature.properties.KPIs[key]['value'] + "</td>";
+                        if (!(feature.properties.KPIs[key]['unit'] === "")) {
+                            text += "<td>" + feature.properties.KPIs[key]['unit'] + "</td></tr>";
+                        } else {
+                            text += "<td>&nbsp;</td></tr>";
+                        }
+                    }
+                    text += "</tbody></table>"
                 }
-
                 let popup = L.popup();
                 popup.setContent(text);
                 layer.bindPopup(popup);
