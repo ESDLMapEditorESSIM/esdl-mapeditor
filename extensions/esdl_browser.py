@@ -252,8 +252,18 @@ class ESDLBrowser:
             return '{}x{} Table'.format(x, y)
 
         if isinstance(item, esdl.TableRow):
-            print(item.value)
+            #print(item.value)
             return '[' + ','.join(map(str, item.value)) + ']'
+
+        if isinstance(item, esdl.CompoundMatterComponent):
+            container: esdl.CompoundMatter = item.eContainer()
+            i: esdl.CompoundMatterComponent = item
+            if container.compoundType == esdl.CompoundTypeEnum.LAYERED:
+                return '{} m of {}'.format(i.layerWidth, ESDLBrowser.generate_repr(i.matter))
+            elif container.compoundType == esdl.CompoundTypeEnum.MIXED:
+                return '{} % of {}'.format(round(i.mixFraction * 100, 2), ESDLBrowser.generate_repr(i.matter))
+            else:
+                return '{}'.format(ESDLBrowser.generate_repr(i.matter))
 
         if isinstance(item, esdl.QuantityAndUnitType):
             return qau_to_string(item)
