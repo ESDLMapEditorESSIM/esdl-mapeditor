@@ -14,8 +14,10 @@
 
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 from lxml.etree import QName, Element, ElementTree
-import warnings
+import logging
 
+
+logger = logging.getLogger(__name__)
 
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.
@@ -27,6 +29,10 @@ class XMLResource(XMIResource):
         self._later = []
         self.prefixes = {}
         self.reverse_nsmap = {}
+        self.parse_information = []
+
+    def get_parse_information(self):
+        return self.parse_information
 
     def save(self, output=None, options=None):
         self.options = options or {}
@@ -90,5 +96,7 @@ class XMLResource(XMIResource):
             if not feature:
                 #raise ValueError('Feature {0} does not exists for type {1}'
                 #                 .format(att_name, owner.eClass.name))
-                print('Feature {0} does not exists for type {1}, ignoring!'.format(att_name, owner.eClass.name))
+                s = 'Attribute {0} does not exists for type {1} and is ignored.'.format(att_name, owner.eClass.name)
+                logger.warning(s)
+                self.parse_information.append(s)
             return feature

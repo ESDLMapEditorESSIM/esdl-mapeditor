@@ -265,6 +265,9 @@ class EnergySystemHandler:
         """Loads a new resource in a new resourceSet"""
         self._new_resource_set()
         self.resource = self.rset.get_resource(uri)
+        parse_info = []
+        if isinstance(self.resource, XMLResource):
+            parse_info = self.resource.get_parse_information()
         # At this point, the model instance is loaded!
         self.energy_system = self.resource.contents[0]
         if isinstance(uri, str):
@@ -272,11 +275,14 @@ class EnergySystemHandler:
         else:
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
         self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
-        return self.energy_system
+        return self.energy_system, parse_info
 
     def add_uri(self, uri):
         """Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to."""
         tmp_resource = self.rset.get_resource(uri)
+        parse_info = []
+        if isinstance(tmp_resource, XMLResource):
+            parse_info = tmp_resource.get_parse_information()
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
         self.validate(es=tmp_resource.contents[0])
@@ -286,7 +292,7 @@ class EnergySystemHandler:
             self.esid_uri_dict[tmp_resource.contents[0].id] = uri.normalize()
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], True)
-        return tmp_resource.contents[0]
+        return tmp_resource.contents[0], parse_info
 
     def load_from_string(self, esdl_string, name='from_string'):
         """Loads an energy system from a string and adds it to a *new* resourceSet
@@ -297,11 +303,14 @@ class EnergySystemHandler:
         try:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
+            parse_info = []
+            if isinstance(self.resource, XMLResource):
+                parse_info = self.resource.get_parse_information()
             self.validate()
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
             # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
             self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
-            return self.energy_system
+            return self.energy_system, parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
             raise
@@ -322,12 +331,15 @@ class EnergySystemHandler:
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
         tmp_resource = self.rset.get_resource(uri)
+        parse_info = []
+        if isinstance(tmp_resource, XMLResource):
+            parse_info = tmp_resource.get_parse_information()
         tmp_es = tmp_resource.contents[0]
         try:
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
-            return tmp_resource.contents[0]
+            return tmp_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
             raise

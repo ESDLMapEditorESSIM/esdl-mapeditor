@@ -465,7 +465,12 @@ def load_ESDL_EnergySystem(store_id):
 
         try:
             esh = get_handler()
-            esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
+            es, parse_info = esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
             return esh
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
@@ -485,7 +490,12 @@ def import_ESDL_EnergySystem(store_id):
 
         try:
             esh = get_handler()
-            imported_es = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
+            imported_es, parse_info = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
             return imported_es
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
@@ -2457,7 +2467,13 @@ def process_command(message):
                 esh = get_handler()
 
                 try:
-                    result = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+                    result, parse_info = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+                    if len(parse_info) > 0:
+                        info = ''
+                        for line in parse_info:
+                            info += line + "\n"
+                        send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+
                     call_process_energy_system.submit(esh, filename)  # run in seperate thread
                     esdl_api.remove_esdls_for_user(user_email)
                 except Exception as e:
@@ -2535,7 +2551,12 @@ def process_file_command(message):
         esh = EnergySystemHandler()
 
         try:
-            result = esh.load_from_string(esdl_string=file_content, name=filename)
+            result, parse_info = esh.load_from_string(esdl_string=file_content, name=filename)
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
         except Exception as e:
             send_alert("Error opening {}. Exception is: {}".format(filename, e))
             emit('clear_ui')
@@ -2562,7 +2583,12 @@ def process_file_command(message):
         esh = get_handler()
 
         try:
-            imported_es = esh.add_from_string(name=filename, esdl_string=file_content)
+            imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content)
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
             call_process_energy_system.submit(esh, filename)  # run in seperate thread
             set_session('active_es_id', imported_es.id)
             set_session('es_filename', filename)

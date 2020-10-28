@@ -224,7 +224,8 @@ class ESDLServices:
                 # print(r.text)
 
                 if service["result"][0]["action"] == "esdl":
-                    esh.add_from_string(service["name"], r.text)
+                    es, parse_info = esh.add_from_string(service["name"], r.text)
+                    # TODO deal with parse_info?
                     return True, None
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text)

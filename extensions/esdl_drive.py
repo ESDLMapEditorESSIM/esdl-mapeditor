@@ -78,10 +78,16 @@ class ESDLDrive:
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
-                    es = esh.load_file(uri)
+                    es, parse_info = esh.load_file(uri)
+                    if len(parse_info) > 0:
+                        info = ''
+                        for line in parse_info:
+                            info += line + "\n"
+                        message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
+                        print(message)
+                        emit('alert', message, namespace='/esdl')
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
-                    #send_alert('Error loading ESDL file with id {} from store'.format(store_id))
                     return
 
                 if es.name:
@@ -90,12 +96,12 @@ class ESDLDrive:
                     title = drive_name + ' ES id: ' + es.id
 
                 set_session('active_es_id', es.id)
-                set_session('es_filename', title)  # TODO: separate filename and title
+                set_session('es_filename', uri.last_segment)  # TODO: separate filename and title
                 es_info_list = {}
                 set_session("es_info_list", es_info_list)
                 emit('clear_ui')
                 emit('clear_esdl_layer_list')
-                self.executor.submit(process_energy_system, esh, None, title)  # run in seperate thread
+                self.executor.submit(process_energy_system, esh, uri.last_segment, title)  # run in seperate thread
 
         @self.socketio.on('cdo_save', namespace='/esdl')
         def socketio_esdldrive_save(message):
