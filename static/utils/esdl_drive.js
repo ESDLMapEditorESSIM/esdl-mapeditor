@@ -280,15 +280,25 @@ class ESDLDrive {
                         $('#data .esdl').append($p);
                         $('#data .esdl').append($t);
                         if (d['path'] !== undefined) {
-                            let $a = $('<input type="button" value="Open" id="openbutton">');
-                            $a.click(function () {
+                            let $openbtn = $('<input type="button" value="Open" id="openbutton" title="Open this file and remove the currently opened files in the MapEditor">');
+                            $openbtn.click(function () {
                                     // use cache?
-                                    socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache});
+                                    socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache, 'import': false});
                                     show_loader();
                                     dialog.close();
                                 });
 
-                            $('#data .esdl').append($a);
+                            let $importbtn = $('<input type="button" value="Import" id="importbutton" title="Add this energy system to the open files in the MapEditor">');
+                            $importbtn.css('margin-left', '30px');
+                            $importbtn.click(function () {
+                                    socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache, 'import': true});
+                                    show_loader();
+                                    dialog.close();
+                                });
+
+                            $('#data .esdl').append($openbtn);
+
+                            $('#data .esdl').append($importbtn);
                         }
 
                         $('#data .esdl').show();

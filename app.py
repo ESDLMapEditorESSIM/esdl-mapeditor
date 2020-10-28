@@ -1908,7 +1908,9 @@ def process_command(message):
             # todo find out how to update energy system name and update Area name in dropdown
             pass
         elif isinstance(asset, esdl.EnergyAsset):
-            if param_name == 'name':
+            if param_name == esdl.EnergyAsset.name.name:
+                update_gui = True
+            if param_name == esdl.EnergyAsset.state.name:
                 update_gui = True
         elif isinstance(asset, esdl.Port):
             update_gui = True

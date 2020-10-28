@@ -67,10 +67,13 @@ class ESDLDrive:
             with self.flask_app.app_context():
                 path = message['path']
                 params = dict()
+                import_es = False
                 if 'revision' in message:
                     params['revision'] = message['revision']
                 if 'nocache' in message:
                     params['nocache'] = message['nocache']
+                if 'import' in message:
+                    import_es = message['import']
 
                 logger.debug("Open params: {}".format(params))
                 #token = get_session('jwt-token')
@@ -78,7 +81,10 @@ class ESDLDrive:
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
-                    es, parse_info = esh.load_file(uri)
+                    if import_es:
+                        es, parse_info = esh.import_file(uri)
+                    else:
+                        es, parse_info = esh.load_file(uri)
                     if len(parse_info) > 0:
                         info = ''
                         for line in parse_info:

@@ -241,7 +241,7 @@ class EnergySystemHandler:
 
     def load_file(self, uri_or_filename):
         """Loads a EnergySystem file or URI into a new resourceSet
-        :returns EnergySystem the first item in the resourceSet"""
+        :returns EnergySystem and the parse warnings as a tuple (es, parse_info)"""
         if isinstance(uri_or_filename, str):
             if uri_or_filename[:4] == 'http':
                 uri = HttpURI(uri_or_filename)
@@ -252,6 +252,9 @@ class EnergySystemHandler:
         return self.load_uri(uri)
 
     def import_file(self, uri_or_filename):
+        """
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+        """
         if isinstance(uri_or_filename, str):
             if uri_or_filename[:4] == 'http':
                 uri = HttpURI(uri_or_filename)
@@ -262,7 +265,9 @@ class EnergySystemHandler:
         return self.add_uri(uri)
 
     def load_uri(self, uri):
-        """Loads a new resource in a new resourceSet"""
+        """Loads a new resource in a new resourceSet
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+        """
         self._new_resource_set()
         self.resource = self.rset.get_resource(uri)
         parse_info = []
@@ -278,7 +283,10 @@ class EnergySystemHandler:
         return self.energy_system, parse_info
 
     def add_uri(self, uri):
-        """Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to."""
+        """
+        Adds the specified URI to the resource set, i.e. load extra resources that the resource can refer to.
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+        """
         tmp_resource = self.rset.get_resource(uri)
         parse_info = []
         if isinstance(tmp_resource, XMLResource):
@@ -295,8 +303,10 @@ class EnergySystemHandler:
         return tmp_resource.contents[0], parse_info
 
     def load_from_string(self, esdl_string, name='from_string'):
-        """Loads an energy system from a string and adds it to a *new* resourceSet
-        :returns the loaded EnergySystem """
+        """
+        Loads an energy system from a string and adds it to a *new* resourceSet
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+         """
         uri = StringURI(name+'.esdl', esdl_string)
         self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
@@ -317,17 +327,23 @@ class EnergySystemHandler:
 
     def load_external_string(self, esdl_string, name='from_string'):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
-        It returns an Energy System, but it is not part of a resource in the ResourceSet """
+        It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
+        """
         uri = StringURI(name+'.esdl', esdl_string)
         external_rset = ResourceSet()
         external_resource = external_rset.create_resource(uri)
         external_resource.load()
+        parse_info = []
+        if isinstance(external_resource, XMLResource):
+            parse_info = external_resource.get_parse_information()
         external_energy_system = external_resource.contents[0]
         self.validate(es=external_energy_system)
-        return external_energy_system
+        return external_energy_system, parse_info
 
     def add_from_string(self, name, esdl_string):
-        """Loads an energy system from a string and adds it to the *existing* resourceSet"""
+        """Loads an energy system from a string and adds it to the *existing* resourceSet
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+        """
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
         tmp_resource = self.rset.get_resource(uri)
