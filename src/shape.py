@@ -15,10 +15,11 @@
 import geojson
 import json
 from shapely import wkt, wkb
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon, shape
+from shapely.geometry import Point, LineString, Polygon, MultiPolygon, GeometryCollection, shape
+from shapely.ops import transform
 from shapely_geojson import Feature, dumps
 import esdl
-
+import pyproj
 
 class Shape:
     def __init__(self):
@@ -78,8 +79,9 @@ class Shape:
             raise Exception("Parsing geojson resulted in unsupported type")
 
     @staticmethod
-    def parse_wkt(wkt_geometry):
-        tmp_shp = wkt.loads(wkt_geometry)
+    def parse_wkt(wkt_geometry, crs="EPSG:4326"):
+        tmp_shp = Shape.transform_crs(wkt.loads(wkt_geometry), crs)
+
         if isinstance(tmp_shp, Point):
             return ShapePoint(tmp_shp)
         elif isinstance(tmp_shp, LineString):
@@ -88,12 +90,15 @@ class Shape:
             return ShapePolygon(tmp_shp)
         elif isinstance(tmp_shp, MultiPolygon):
             return ShapeMultiPolygon(tmp_shp)
+        elif isinstance(tmp_shp, GeometryCollection):
+            return ShapeGeometryCollection(tmp_shp)
         else:
             raise Exception("Parsing WKT resulted in unsupported type")
 
     @staticmethod
-    def parse_wkb(wkb_geometry):
-        tmp_shp = wkb.loads(wkb_geometry)
+    def parse_wkb(wkb_geometry, crs="EPSG:4326"):
+        tmp_shp = Shape.transform_crs(wkb.loads(wkb_geometry), crs)
+
         if isinstance(tmp_shp, Point):
             return ShapePoint(tmp_shp)
         elif isinstance(tmp_shp, LineString):
@@ -108,14 +113,14 @@ class Shape:
     @staticmethod
     def parse_esdl_wkt(esdl_wkt):
         if isinstance(esdl_wkt, esdl.WKT):
-            return Shape.parse_wkt(esdl_wkt.value)
+            return Shape.parse_wkt(esdl_wkt.value, esdl_wkt.CRS)
         else:
             raise Exception("Calling parse_esdl_WKT without an esdl.WKT parameter")
 
     @staticmethod
     def parse_esdl_wkb(esdl_wkb):
         if isinstance(esdl_wkb, esdl.WKB):
-            return Shape.parse_wkb(esdl_wkb.value)
+            return Shape.parse_wkb(esdl_wkb.value, esdl_wkb.CRS)
         else:
             raise Exception("Calling parse_esdl_WKB without an esdl.WKB parameter")
 
@@ -128,6 +133,20 @@ class Shape:
     def get_geojson_feature(self, properties={}):
         feature = Feature(self.shape, properties=properties)
         return json.loads(dumps(feature))
+
+    @staticmethod
+    def transform_crs(shp, from_crs):
+        if from_crs == "WGS84" or from_crs == "":
+            from_crs = "EPSG:4326"
+
+        if from_crs != "EPSG:4326":
+            wgs84 = pyproj.CRS("EPSG:4326")
+            original_crs = pyproj.CRS(from_crs)
+
+            project = pyproj.Transformer.from_crs(original_crs, wgs84, always_xy=True).transform
+            return transform(project, shp)
+        else:
+            return shp
 
 
 class ShapePoint(Shape):
@@ -144,7 +163,7 @@ class ShapePoint(Shape):
     @staticmethod
     def parse_esdl(esdl_geometry):
         if isinstance(esdl_geometry, esdl.Point):
-            return Point(esdl_geometry.lon, esdl_geometry.lat)
+            return Shape.transform_crs(Point(esdl_geometry.lon, esdl_geometry.lat), esdl_geometry.CRS)
         else:
             raise Exception("Cannot instantiate a Shapely Point with an ESDL geometry other than esdl.Point")
 
@@ -176,7 +195,7 @@ class ShapeLine(Shape):
             linestring = list()
             for p in esdl_geometry.point:
                 linestring.append((p.lon, p.lat))
-            return LineString(linestring)
+            return Shape.transform_crs(LineString(linestring), esdl_geometry.CRS)
         else:
             raise Exception("Cannot instantiate a Shapely LineString with an ESDL geometry other than esdl.Line")
 
@@ -221,7 +240,7 @@ class ShapePolygon(Shape):
                 for p in pol.point:
                     interior.append([p.lon, p.lat])
                 interiors.append(interior)
-            return Polygon(exterior, interiors)
+            return Shape.transform_crs(Polygon(exterior, interiors), esdl_geometry.CRS)
         else:
             raise Exception("Cannot instantiate a Shapely Polygon with an ESDL geometry other than esdl.Polygon")
 
@@ -273,7 +292,7 @@ class ShapeMultiPolygon(Shape):
             plist = list()
             for p in esdl_geometry.polygon:
                 plist.append(ShapePolygon.parse_esdl(p))
-            return MultiPolygon(plist)
+            return Shape.transform_crs(MultiPolygon(plist), esdl_geometry.CRS)
         else:
             raise Exception(
                 "Cannot instantiate a Shapely MultiPolygon with an ESDL geometry other than esdl.MultiPolygon")
@@ -291,3 +310,14 @@ class ShapeMultiPolygon(Shape):
 
     def get_esdl(self):
         raise Exception("Not implemented yet, MultiPolygon is not a frequent ESDL geometry")
+
+
+class ShapeGeometryCollection(Shape):
+    def __init__(self, shape_input):
+        if isinstance(shape_input, GeometryCollection):
+            self.shape = shape_input
+        else:
+            raise Exception("ShapeMultiPolygon constructor called with unsupported type")
+
+    def get_esdl(self):
+        raise Exception("Not implemented yet, GeometryCollection is not a frequent ESDL geometry")
