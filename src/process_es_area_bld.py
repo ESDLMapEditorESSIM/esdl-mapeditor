@@ -267,7 +267,11 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                 if kpi_qau:
                     if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
                         kpi_qau = kpi_qau.reference
-                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+
+                    if not kpi_qau:     # Reference field in the ESDL could be "" (but should never be)
+                        unit = ''
+                    else:
+                        unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
                 else:
                     unit = ''
                 geojson_KPIs[kpi.name] = {

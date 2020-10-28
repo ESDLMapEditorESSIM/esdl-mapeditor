@@ -85,7 +85,7 @@ class ESSIM:
                             esdlstr_urlenc = result['esdlContents']
                             esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
-                        res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                        res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                         set_session('active_es_id', res_es.id)
 
                         sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
