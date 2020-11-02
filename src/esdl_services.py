@@ -15,6 +15,7 @@
 import copy
 import json
 import urllib.parse
+import base64
 
 import requests
 from flask import Flask
@@ -23,7 +24,7 @@ from flask_socketio import SocketIO, emit
 import src.esdl_config as esdl_config
 from esdl.processing import ESDLAsset
 from src.esdl_helper import energy_asset_to_ui
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 import src.log as log
 
@@ -34,7 +35,6 @@ ESDL_SERVICES_CONFIG = "ESDL_SERVICES_CONFIG"
 
 class ESDLServices:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
-        self.config = esdl_config.esdl_config["predefined_esdl_services"]
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
@@ -56,8 +56,7 @@ class ESDLServices:
             self.set_user_settings(user, settings)
 
             # Emit the new list to the browser such that the UI is updated
-            role = get_session('user-role')
-            emit('esdl_services', self.get_services_list(user, role))
+            emit('esdl_services', settings)
 
         @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
         def restore_esdl_services_settings():
@@ -65,8 +64,7 @@ class ESDLServices:
             settings = self.restore_settings(user)
 
             # Emit the new list to the browser such that the UI is updated
-            role = get_session('user-role')
-            emit('esdl_services', self.get_services_list(user, role))
+            emit('esdl_services', settings)
 
             return settings
 
@@ -86,8 +84,10 @@ class ESDLServices:
     def set_user_settings(self, user, settings):
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, settings)
 
-    def get_services_list(self, user, roles=[]):
+    def get_user_services_list(self, user, roles=[]):
         srvs_list = self.get_user_settings(user)
+        # store the user services list in session for later use
+        set_session('services_list', srvs_list)
 
         my_list = copy.deepcopy(srvs_list)
         for s in list(my_list):
@@ -113,7 +113,8 @@ class ESDLServices:
 
         # Find the currently active service.
         service = None
-        for config_service in self.config:
+        services_list = get_session('services_list')
+        for config_service in services_list:
             if config_service["id"] == service_params["service_id"]:
                 service = config_service
                 break
