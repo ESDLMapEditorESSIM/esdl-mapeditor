@@ -132,6 +132,17 @@ function process_service_results(results) {
         service_results_div.innerHTML = description;
         service_results_div.innerHTML += '<a href="' + url + '" target="_blank">' + link_text + '</link>';
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        if ('response' in results['show_url']) {
+            if ('errors' in results['show_url']['response']) {
+                let table = '<table class="pure-table pure-table-striped">';
+                table += '<thead><tr><th>Feedback from the ETM API</th></tr></thead>';
+                for (let i=0; i<results['show_url']['response']['errors'].length; i++) {
+                    table += '<tr><td>' + results['show_url']['response']['errors'][i] + '</td></tr>';
+                }
+                table += '</table>';
+                service_results_div.innerHTML += '<p>' + table + '</p>';
+            }
+        }
     }
     if ('message' in results) {
         service_results_div.innerHTML += `<p>${results["message"]}</p>`;
