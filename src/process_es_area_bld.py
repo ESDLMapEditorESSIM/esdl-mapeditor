@@ -301,7 +301,7 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                     area_id_number = ""
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature({
-                    "id": str.upper(area_id) + area_id_number,
+                    "id": area_id + area_id_number,
                     "name": area_name,
                     "KPIs": geojson_KPIs
                 }))
@@ -329,7 +329,7 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                             area_id_number = ""
                         shape_polygon = Shape.create(pol)
                         area_list.append(shape_polygon.get_geojson_feature({
-                            "id": str.upper(area_id) + area_id_number,
+                            "id": area_id + area_id_number,
                             "name": boundary_wgs['name'],
                             "KPIs": geojson_KPIs
                         }))
