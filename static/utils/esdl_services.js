@@ -49,8 +49,8 @@ function query_esdl_service(service, state_params) {
         if (state_params != null) {
             parameter_value = state_params[parameter_name];
         } else {
-            if (ptype == 'integer') {
-                parameter_value = document.getElementById(parameter_name + '_integer').value;
+            if (ptype == 'integer' || ptype == 'string') {
+                parameter_value = document.getElementById(parameter_name + '_' + ptype).value;
             }
             else if (ptype == 'boolean') {
                 parameter_value = document.getElementById(parameter_name + '_boolean').options[document.getElementById(parameter_name + '_boolean').selectedIndex].value;
@@ -289,8 +289,12 @@ function render_service(service, service_settings_div, workflow_state_params) {
                 table += '<tr><td width=180>' + q_params[i]['name'] + '</td><td>';
 
                 let ptype = q_params[i]['type'];
-                if (ptype == 'integer') {
-                    table += '<input id="' + q_params[i]['parameter_name'] + '_integer" type="text"></input>';
+                if (ptype == 'integer' || ptype == 'string') {
+                    let default_value = "";
+                    if ('default' in q_params[i]) {
+                        default_value = q_params[i]['default'];
+                    }
+                    table += '<input id="' + q_params[i]['parameter_name'] + '_' + ptype + '" type="text" value="'+default_value+'"></input>';
                 }
                 else if (ptype == 'boolean') {
                     table += '<select id="' + q_params[i]['parameter_name'] + '_boolean"><option value="true">TRUE</value><option value="false">FALSE</value></select>';
