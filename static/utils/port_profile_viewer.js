@@ -27,6 +27,7 @@ class Port_profile_viewer{
     show_window() {
         sidebar_b.setContent(port_profile_viewer_plugin.create_sidebar_content().get(0));
         sidebar_b.show();
+        port_profile_viewer_plugin.change_selected_profile();
     }
 
     update_port_profile_list() {
@@ -55,8 +56,6 @@ class Port_profile_viewer{
                 $('#profile_div').html('');
             }
         });
-
-
     }
 
     create_sidebar_content() {
