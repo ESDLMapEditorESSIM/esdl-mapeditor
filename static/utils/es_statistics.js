@@ -150,14 +150,18 @@ class ESStatistics {
 
             let $table = $('<table>').addClass('pure-table pure-table-striped').attr('id', 'number_assets_table');
             let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Asset')).append($('<th>')
-               .text('Number')));
+               .text('Number')).append($('<th>').text('aggregationCount')));
             let $tbody = $('<tbody>');
             $table.append($thead);
             $table.append($tbody);
 
             for (let asset_cnt_idx in Object.entries(asset_cnt_info)) {
                 let asset = Object.entries(asset_cnt_info)[asset_cnt_idx];
-                $tbody.append($('<tr>').append($('<td>').text(asset[0])).append($('<td>').css('text-align','right').text(asset[1].toString())));
+                $tbody.append($('<tr>')
+                    .append($('<td>').text(asset[0]))
+                    .append($('<td>').css('text-align','right').text(asset[1]['cnt'].toString()))
+                    .append($('<td>').css('text-align','right').text(asset[1]['aggr_cnt'].toString()))
+                );
             }
             $div.append($table);
         } else {
