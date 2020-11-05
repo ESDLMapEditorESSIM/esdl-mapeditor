@@ -136,7 +136,7 @@ class Shape:
 
     @staticmethod
     def transform_crs(shp, from_crs):
-        if from_crs == "WGS84" or from_crs == "":
+        if from_crs == "WGS84" or from_crs == "" or from_crs is None:
             from_crs = "EPSG:4326"
 
         if from_crs != "EPSG:4326":

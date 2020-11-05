@@ -2776,7 +2776,7 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list(user_email, role))
+    emit('esdl_services', esdl_services.get_user_services_list(user_email, role))
     emit('user_info', {'email': user_email})
     initialize_app()
 
