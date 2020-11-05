@@ -176,6 +176,23 @@ function click_port(layer) {
     }
 }
 
+function update_line_ports(line) {
+    let ports = line.ports;
+    let coords = line._latlngs;
+
+    for (let p in ports) { // ports is a dictionary: {'0': ...., '1': ...}
+        let coords_index = 0;
+        if (p !== '0') {
+            coords_index = coords.length - 1;
+        }
+        let marker = ports[p].marker;
+        if (marker !== undefined) {
+            // update port marker location
+            marker.setLatLng([coords[coords_index].lat, coords[coords_index].lng])
+        }
+    }
+}
+
 function set_line_port_handlers(line) {
 
     line.on('mouseover', function(e) {
@@ -258,7 +275,6 @@ function set_line_port_handlers(line) {
                     // show already created marker
                     ports[p].active = false;
                     ports[p].marker.addTo(map);
-
                 }
             }
             set_port_size_and_position();
