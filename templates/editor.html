@@ -373,6 +373,13 @@
                             select_carrier_menu(asset_id);
                         }
                     });
+                    marker.options.contextmenuItems.push({
+                        text: 'Set Control Strategy',
+                        icon: 'icons/Control.png',
+                        callback: function(e) {
+                            control_strategy_window(asset_id);
+                        }
+                    });
 
                     if (marker.capability == 'Conversion') {
                         marker.options.contextmenuItems.push('-');
@@ -2120,3 +2127,4 @@
 
 </script>
 
+<script type="text/javascript" src="./dist/index.umd.js"></script>
