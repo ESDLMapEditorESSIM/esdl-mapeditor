@@ -91,6 +91,8 @@ function add_area_map_handlers(socket, map) {
             if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);
                 socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+                // ports from a line need to manually updated.
+                update_line_ports(layer);
             }
             if (layer instanceof L.Polygon) {
 
