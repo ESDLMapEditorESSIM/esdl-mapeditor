@@ -285,7 +285,7 @@ export default {
       pid_kp: 0,
       pid_ki: 0,
       pid_kd: 0,
-      pid_sensor: 'S1',
+      pid_sensor: 'Select sensor...',
       pid_sensor_list: [
         {id: 'S1', name: 'Temperature Sensor S1'},
         {id: 'S2', name: 'Flow Sensor S1'},
@@ -335,7 +335,7 @@ export default {
             this.pid_ki = res['controlStrategy']['ki'];
             this.pid_kd = res['controlStrategy']['kd'];
             this.pid_sensor = res['controlStrategy']['sensor_id'];
-            this.pid_setpoint = res['controlStrategy']['setpoint'];
+            this.pid_setpoint = res['controlStrategy']['pid_setpoint'];
           }
           if (res['controlStrategy']['type'] == 'DrivenByProfile') {
             let profile_info = res['controlStrategy']['profile'];
@@ -396,7 +396,7 @@ export default {
         result.ki = this.pid_ki;
         result.kd = this.pid_kd;
         result.sensor_id = this.pid_sensor;
-        result.setpoint = this.pid_setpoint;
+        result.pid_setpoint = this.pid_setpoint;
       }
       if (result.type == 'DrivenByProfile') {
         result.profile = this.build_profile_info();
