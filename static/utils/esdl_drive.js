@@ -430,7 +430,8 @@ class ESDLDrive {
         let $p2 = $('<p id="foldername">');
         let $input = $('<input type="file" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
-        let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0);
+        let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0).css('vertical-align','middle');
+        let $progress_text = $('<span style="margin-left: 1em; margin-top: -4px">').attr('id', 'progress-text').text('progress text');
         $droparea.append($form);
         $input.change(function(e) {
             handleFiles(this.files);
@@ -440,6 +441,7 @@ class ESDLDrive {
         $form.append($input);
         $form.append($label);
         $droparea.append($progress);
+        $droparea.append($progress_text);
 
 
         // ************************ Drag and drop ***************** //
@@ -489,6 +491,8 @@ class ESDLDrive {
 
         function initializeProgress(uuid) {
           progressBar.value = 0;
+          let text = 'Loading ' + self.files[uuid].name;
+          $progress_text.html(text);
           self.uploadProgress[uuid] = 0;
         }
 
@@ -500,6 +504,13 @@ class ESDLDrive {
           console.log(total)
           console.debug('update', fileUuid, percent, total);
           progressBar.value = total;
+          let text = ""
+          if (self.files[fileUuid] === null) {
+            text = 'Done';
+          } else {
+            text = 'Uploading ' + self.files[fileUuid].name + ' ' + percent.toFixed(1) + '%';
+          }
+          $progress_text.html(text)
         }
         self.updateProgress = updateProgress;
 
