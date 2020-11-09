@@ -65,6 +65,10 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 2. Install the dependencies: `pip install -r requirements.txt`
 
+3. Install all vue dependencies: `yarn`
+
+4. Build the vue part: `yarn watch`
+
 ## Starting a local instance of the application (with the docker-toolsuite)
 1. Copy the `.env.local-os` file to a file named `.env`
 
