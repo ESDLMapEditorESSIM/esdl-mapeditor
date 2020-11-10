@@ -4,4 +4,3 @@ environments
 *.lock
 vue
 node_modules
-.env
