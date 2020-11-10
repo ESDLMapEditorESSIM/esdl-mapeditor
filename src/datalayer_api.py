@@ -17,7 +17,7 @@ from flask_socketio import SocketIO, emit
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
-from esdl.processing.ESDLControlStrategy import get_control_strategy_info, set_control_strategy
+from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 import src.log as log
 import esdl
 

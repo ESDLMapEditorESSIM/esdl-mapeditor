@@ -162,7 +162,8 @@ def set_control_strategy(asset, cs_info):
         control_strategy.Ki = str2float(cs_info['ki'])
         control_strategy.Kd = str2float(cs_info['kd'])
 
-        control_strategy.sensor = esh.get_by_id(active_es_id, cs_info['sensor_id'])
+        if cs_info['sensor_id'] != 'Select sensor...':
+            control_strategy.sensor = esh.get_by_id(active_es_id, cs_info['sensor_id'])
         control_strategy.setPoint = esdl.SingleValue(
             id=str(uuid4()),
             name='PID setPoint for ' + asset.name,

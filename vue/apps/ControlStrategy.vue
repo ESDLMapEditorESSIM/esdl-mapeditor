@@ -86,7 +86,7 @@
           v-if="dbp_radio=='PfDb'"
           direction="vertical"
         >
-          Sselect an existing profile from the profile database
+          Select an existing profile from the profile database
           <a-select
             v-model:value="db_profile"
             placeholder="Select a profile"
@@ -223,7 +223,7 @@
 <script>
 import FancyNumberEdit from "../components/forms/FancyNumberEdit" 
 import ProfileTableEdit from "../components/forms/ProfileTableEdit"
-import { useObject } from '../composables/control_strategy'
+import { useObject } from '../composables/ObjectID'
 import { v4 as uuidv4 } from 'uuid';
 
 const defaultDbPoptions = [
@@ -335,6 +335,7 @@ export default {
             this.pid_ki = res['controlStrategy']['ki'];
             this.pid_kd = res['controlStrategy']['kd'];
             this.pid_sensor = res['controlStrategy']['sensor_id'];
+            if (this.pid_sensor == null) this.pid_sensor = 'Select sensor...';
             this.pid_setpoint = res['controlStrategy']['pid_setpoint'];
           }
           if (res['controlStrategy']['type'] == 'DrivenByProfile') {
