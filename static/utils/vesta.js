@@ -93,7 +93,7 @@ class Vesta {
             success: function(data){
                 if (data.length > 0) {
                     let $ul = $('<ul>').css('list-style-type', 'none');
-                    $('#measures_p').append($ul);
+                    $('#measures_p').empty().append($ul);
                     for (let i=0; i<data.length; i++) {
 //                        console.log(data[i]);
 

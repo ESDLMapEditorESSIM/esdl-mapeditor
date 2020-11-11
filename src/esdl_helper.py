@@ -110,6 +110,15 @@ def get_asset_and_coord_from_port_id(esh, es_id, pid):
     return {'asset': asset, 'coord': ()}
 
 
+def asset_state_to_ui(asset):
+    if asset.state == esdl.AssetStateEnum.ENABLED:
+        return 'e'
+    elif asset.state == esdl.AssetStateEnum.OPTIONAL:
+        return 'o'
+    else:
+        return 'd'
+
+
 def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
     port_list = []
     conn_list = []
@@ -137,6 +146,7 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
                     ({'from-port-id': p.id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
                                   'to-port-id': id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
+    state = asset_state_to_ui(asset)
     geom = asset.geometry
     if geom:
         if isinstance(geom, esdl.Point):
@@ -144,20 +154,19 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
             lon = geom.lon
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], port_list, capability_type], conn_list
+            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list, capability_type], conn_list
         elif isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
                 coords.append([point.lat, point.lon])
-            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list], conn_list
+            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list], conn_list
         elif isinstance(geom, esdl.Polygon):
-            if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) \
-                    or isinstance(asset, esdl.PVPark):
+            if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                 coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                 coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                 capability_type = ESDLAsset.get_asset_capability_type(asset)
                 # print(coords)
-                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type], conn_list
+                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type], conn_list
         else:
             return [], []
 

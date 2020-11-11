@@ -20,10 +20,11 @@ from flask import session
 from flask_socketio import emit
 
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
+from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid
-from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id
+from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui
 from src.shape import Shape, ShapePoint
 from utils.RDWGSConverter import RDWGSConverter
 import shapely
@@ -262,7 +263,21 @@ def find_area_info_geojson(area_list, pot_list, this_area):
     if area_KPIs:
         for kpi in area_KPIs.kpi:
             if not isinstance(kpi, esdl.DistributionKPI):
-                geojson_KPIs[kpi.name] = kpi.value
+                kpi_qau = kpi.quantityAndUnit
+                if kpi_qau:
+                    if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
+                        kpi_qau = kpi_qau.reference
+
+                    if not kpi_qau:     # Reference field in the ESDL could be "" (but should never be)
+                        unit = ''
+                    else:
+                        unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+                else:
+                    unit = ''
+                geojson_KPIs[kpi.name] = {
+                    'value': kpi.value,
+                    'unit': unit
+                }
 
     area_shape = None
 
@@ -286,7 +301,7 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                     area_id_number = ""
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature({
-                    "id": str.upper(area_id) + area_id_number,
+                    "id": area_id + area_id_number,
                     "name": area_name,
                     "KPIs": geojson_KPIs
                 }))
@@ -314,7 +329,7 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                             area_id_number = ""
                         shape_polygon = Shape.create(pol)
                         area_list.append(shape_polygon.get_geojson_feature({
-                            "id": str.upper(area_id) + area_id_number,
+                            "id": area_id + area_id_number,
                             "name": boundary_wgs['name'],
                             "KPIs": geojson_KPIs
                         }))
@@ -462,8 +477,9 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                     coord = (lat, lon)
 
                     capability_type = ESDLAsset.get_asset_capability_type(basset)
+                    state = asset_state_to_ui(basset)
                     if bld_editor:
-                        asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], port_list, capability_type])
+                        asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], state, port_list, capability_type])
                 else:
                     send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
 
@@ -583,6 +599,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                         conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
                                           'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
+            state = asset_state_to_ui(asset)
             geom = asset.geometry
             if geom:
                 if isinstance(geom, esdl.Point):
@@ -590,19 +607,19 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                     lon = geom.lon
 
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
-                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], port_list, capability_type])
+                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list, capability_type])
                 if isinstance(geom, esdl.Line):
                     coords = []
                     for point in geom.point:
                         coords.append([point.lat, point.lon])
-                    asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+                    asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
                 if isinstance(geom, esdl.Polygon):
-                    # if isinstance(asset, esdl.WindParc) or isinstance(asset, esdl.PVParc) or isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
+                    # if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                     coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                     coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
                     # print(coords)
-                    asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
+                    asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
 
     for potential in area.potential:
         geom = potential.geometry
@@ -701,11 +718,13 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             add_missing_coordinates(area)
             print('- Processing area')
             process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+            notes_list = get_notes_list(es)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
             emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
+            emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
 
             set_session_for_esid(es.id, 'conn_list', conn_list)
             set_session_for_esid(es.id, 'asset_list', asset_list)

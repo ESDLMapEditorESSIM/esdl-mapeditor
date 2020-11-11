@@ -24,7 +24,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLQuantityAndUnits import qau_to_string
 from esdl import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
-from pyecore.ecore import EObject, EReference
+from pyecore.ecore import EObject, EReference, ECollection
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -93,6 +93,9 @@ class ESDLBrowser:
             if reference.containment:
                 try:
                     esh.remove_object_from_dict(active_es_id, ref_object)
+                    resource = esh.get_resource(active_es_id)
+                    fragment = ref_object.eURIFragment()
+                    del resource._resolve_mem[fragment]
                 except KeyError as e:
                     print('ESDL Browser: can\'t delete id from uuid_dict')
                 if isinstance(ref_object, esdl.EnergyAsset):
@@ -139,7 +142,7 @@ class ESDLBrowser:
             #{'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             parent_object: EObject = self.get_object_from_identifier(message['parent'])
             reference = parent_object.eClass.findEStructuralFeature(message['name'])
-            print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
+            #print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
             xref = self.get_object_from_identifier(message['xref'])
             if not reference.many:
                 parent_object.eSet(reference, xref)
@@ -236,6 +239,31 @@ class ESDLBrowser:
                 return '{}-{}, value: {}'.format(element.from_, element.to, element.value)
             else:
                 return '{}, value: {}'.format(element.from_, element.value)
+
+        if isinstance(item, esdl.Table):
+            element: esdl.Table = item
+            x = 0
+            y = 0
+            if element.header and isinstance(element.header, ECollection):
+                units: ECollection = element.header
+                x = len(units)
+            if element.row and isinstance(element.row, ECollection):
+                y = len(element.row)
+            return '{}x{} Table'.format(x, y)
+
+        if isinstance(item, esdl.TableRow):
+            #print(item.value)
+            return '[' + ','.join(map(str, item.value)) + ']'
+
+        if isinstance(item, esdl.CompoundMatterComponent):
+            container: esdl.CompoundMatter = item.eContainer()
+            i: esdl.CompoundMatterComponent = item
+            if container.compoundType == esdl.CompoundTypeEnum.LAYERED:
+                return '{} m of {}'.format(i.layerWidth, ESDLBrowser.generate_repr(i.matter))
+            elif container.compoundType == esdl.CompoundTypeEnum.MIXED:
+                return '{} % of {}'.format(round(i.mixFraction * 100, 2), ESDLBrowser.generate_repr(i.matter))
+            else:
+                return '{}'.format(ESDLBrowser.generate_repr(i.matter))
 
         if isinstance(item, esdl.QuantityAndUnitType):
             return qau_to_string(item)

@@ -17,6 +17,7 @@ from pyecore.ecore import EClass
 from pyecore.resources import ResourceSet
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLEnergySystem
+from extensions.session_manager import get_handler, get_session
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -166,10 +167,10 @@ def recursively_remove_object_from_area(area, object_id):
 
 # todo: move to EnergySystemHandler
 def remove_object_from_energysystem(es, object_id):
-    # find area with area_id
-    instance = es.instance[0]
-    area = instance.area
-    recursively_remove_object_from_area(area, object_id)
+    esh = get_handler()
+    active_es_id = get_session('active_es_id')
+    obj = esh.get_by_id(active_es_id, object_id)
+    obj.delete(recursive=True)
 
 
 def get_asset_capability_type(asset):
@@ -185,9 +186,6 @@ def get_asset_capability_type(asset):
 def get_objects_list():
     capabilities = dict()
     capabilities['Producer'] = get_capability_list(esdl.Producer)
-    # don't remove WindParc and PVParc until all tools are adapted
-    # capabilities['Producer'].remove('WindParc')     # Deprecated, replaced by WindPark
-    # capabilities['Producer'].remove('PVParc')       # Deprecated, replaced by PVPark
     capabilities['Consumer'] = get_capability_list(esdl.Consumer)
     capabilities['Storage'] = get_capability_list(esdl.Storage)
     capabilities['Transport'] = get_capability_list(esdl.Transport)

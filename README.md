@@ -63,7 +63,7 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 3. Start the software stack in the docker-toolsuite project using `docker-compose up`.
 
-## Local development
+## Starting a local instance of the application (with the docker-toolsuite)
 
 Perform the following steps to run the mapeditor directly on your own machine. Prerequisites are Python3 and pip. You also need to be running the Docker Toolsuite.
 
@@ -73,9 +73,13 @@ Perform the following steps to run the mapeditor directly on your own machine. P
 
 3. Copy the `.env.local-os` file to a file named `.env`
 
-4. Run the application: `python app.py`
+4. Install all vue dependencies: `yarn`
 
-5. Open a browser and go to `http://localhost:8111`.
+5. Build the vue part: `yarn watch`
+
+6. Run the application: `python app.py`
+
+7. Open a browser and go to `http://localhost:8111`.
 
 ## Local development in Docker
 

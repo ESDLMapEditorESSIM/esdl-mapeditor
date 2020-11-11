@@ -101,6 +101,21 @@ def get_sector_list(es):
     return sector_list
 
 
+def get_notes_list(es):
+    notes_list = list()
+    esi = es.energySystemInformation
+    if esi:
+        notes = esi.notes
+        if notes:
+            for n in notes.note:
+                map_location = n.mapLocation
+                if map_location:
+                    coords = {'lng': map_location.lon, 'lat': map_location.lat}
+                    notes_list.append({'id': n.id, 'location': coords, 'title': n.title, 'text': n.text,
+                                       'author': n.author}) # , 'date': n.date})
+    return notes_list
+
+
 def add_sector(es, sector_name, sector_code, sector_descr):
     esi = es.energySystemInformation
     if not esi:

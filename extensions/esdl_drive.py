@@ -66,15 +66,33 @@ class ESDLDrive:
         def socketio_esdldrive_open(message):
             with self.flask_app.app_context():
                 path = message['path']
-                token = get_session('jwt-token')
-                uri = ESDLDriveHttpURI(url + resource_endpoint + path, headers_function=add_authorization_header)
+                params = dict()
+                import_es = False
+                if 'revision' in message:
+                    params['revision'] = message['revision']
+                if 'nocache' in message:
+                    params['nocache'] = message['nocache']
+                if 'import' in message:
+                    import_es = message['import']
+
+                logger.debug("Open params: {}".format(params))
+                #token = get_session('jwt-token')
+                uri = ESDLDriveHttpURI(url + resource_endpoint + path, headers_function=add_authorization_header, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
-                    es = esh.load_file(uri)
+                    if import_es:
+                        es, parse_info = esh.import_file(uri)
+                    else:
+                        es, parse_info = esh.load_file(uri)
+                    if len(parse_info) > 0:
+                        info = ''
+                        for line in parse_info:
+                            info += line + "\n"
+                        message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
+                        emit('alert', message, namespace='/esdl')
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
-                    #send_alert('Error loading ESDL file with id {} from store'.format(store_id))
                     return
 
                 if es.name:
@@ -83,34 +101,53 @@ class ESDLDrive:
                     title = drive_name + ' ES id: ' + es.id
 
                 set_session('active_es_id', es.id)
-                set_session('es_filename', title)  # TODO: separate filename and title
+                set_session('es_filename', uri.last_segment)  # TODO: separate filename and title
                 es_info_list = {}
                 set_session("es_info_list", es_info_list)
                 emit('clear_ui')
                 emit('clear_esdl_layer_list')
-                self.executor.submit(process_energy_system, esh, None, title)  # run in seperate thread
+                self.executor.submit(process_energy_system, esh, uri.last_segment, title)  # run in seperate thread
 
         @self.socketio.on('cdo_save', namespace='/esdl')
         def socketio_esdldrive_save(message):
             with self.flask_app.app_context():
                 path = message['path']
+                overwrite = False
+                commitMessage = ""
+                params = {}
+                if 'commitMessage' in message:
+                    commitMessage = message['commitMessage']
+                    params['commitMessage'] = commitMessage
+                if 'forceOverwrite' in message:
+                    overwrite = message['forceOverwrite']
+                    params['overwrite'] = overwrite
+                print(message)
+
                 uri = url + resource_endpoint + path
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 resource: Resource = esh.get_resource(active_es_id)
-                logger.debug('ESDLDrive saving resource {}'.format(resource.uri))
+                logger.debug('ESDLDrive saving resource {}, commitMessage={}, overwrite={}'.format(resource.uri, commitMessage, overwrite))
+
                 if resource.uri.normalize() == uri:
                     # resource already in CDO
                     logger.debug('Saving resource that is already loaded from ESDLDrive: {}'.format(resource.uri.plain))
-                    resource.save()
+                    # update uri with commit message
+                    resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
+                    response = resource.save()
                 else:
                     logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
-                    resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header)
-                    resource.save()
+                    resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
+                    response: requests.Response = resource.save()
                     esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
                     # new resource
+                if response.ok:
+                    return {'path': path, 'success': True}
+                else:
+                    return {'path': path, 'success': False, 'error': str(response.content), 'status': response.status_code}
 
         @self.socketio.on('cdo_upload', namespace='/esdl')
+        # BULK upload from MapEditor
         def socketio_esdldrive_upload(message):
             with self.flask_app.app_context():
                 message_type = message['message_type'] # start, next_chunk, done
@@ -168,7 +205,7 @@ class ESDLDrive:
             token = get_session('jwt-token')
             if token is None:
                 print("Token is None!")
-                return {'status': 403, 'error': "Token not available, please reauthenticate"}
+                return {'status': 403, 'error': "ESDLDrive: Token not available, please reauthenticate"}
             headers = {'Authorization': 'Bearer ' + token}
             try:
                 r = requests.get(url + browse_endpoint, params=params, headers=headers)
@@ -201,7 +238,10 @@ class ESDLDrive:
             return response
         except Exception as e:
             logger.error("Error saving to ESDLDrive: "+str(e))
-            raise e
+            # response = requests.Response()
+            # response.status_code = 500
+            # response.content = e
+            return e
 
 
 def add_authorization_header():
@@ -212,10 +252,20 @@ def add_authorization_header():
 """
 ESDL resources in ESDLDrive are directly accessible by a URL. 
 ESDLDriveHttpURI wraps this URL and adds support for JWT tokens for authentication when using a ESDL Drive URL.
+header_function is used to query the JWT token that is at that moment in use and not expired. This token needs to be
+added to the HTTP request just before it gets called.
 """
 class ESDLDriveHttpURI(URI):
-    def __init__(self, uri, headers_function=None):
+    def __init__(self, uri, headers_function=None, getparams: dict = None, putparams: dict=None):
         self.headers_function = headers_function
+        if headers_function is None:
+            self.headers_function = lambda: dict()
+        self.putparams = putparams
+        if putparams is None:
+            self.putparams=dict()
+        self.getparams = getparams
+        if getparams is None:
+            self.getparams=dict()
         self.writing = False
         super().__init__(uri)
 
@@ -225,7 +275,7 @@ class ESDLDriveHttpURI(URI):
         #self.__stream = urllib.request.urlopen(self.plain)
         print('ESDLDrive Downloading {}'.format(self.plain))
         headers = self.headers_function()
-        response = requests.get(self.plain, headers=headers)
+        response = requests.get(self.plain, headers=headers, params=self.getparams)
         if response.status_code > 400:
             logger.error("Error reading from ESDLDrive: headers={}, response={}".format(response.headers, response.content))
             raise Exception("Error accessing {}: HTTP Status {}".format(self.plain, response.status_code))
@@ -253,11 +303,12 @@ class ESDLDriveHttpURI(URI):
         if self.writing:
             logger.debug("Writing to {}".format(self.plain))
             headers = self.headers_function()
-            response = requests.put(self.plain, data=self.__stream.getvalue(), headers=headers)
+            response = requests.put(self.plain, data=self.__stream.getvalue(), headers=headers, params=self.putparams)
             if response.status_code > 400:
                 logger.error("Error writing to ESDLDrive: headers={}, response={}".format(response.headers, response.content))
-                raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
-            logger.debug('Saved successfully to ESDLDrive {} (HTTP status: {}) '.format(self.plain, response.status_code))
+                #raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
+            else:
+                logger.debug('Saved successfully to ESDLDrive {} (HTTP status: {}) '.format(self.plain, response.status_code))
             self.writing = False
             super().close_stream()
             return response

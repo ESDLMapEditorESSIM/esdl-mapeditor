@@ -36,7 +36,7 @@ from src.wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list
+from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui
 from esdl import esdl
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
@@ -57,6 +57,7 @@ from src.user_logging import UserLogging
 from extensions.settings_storage import SettingsStorage
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_compare import ESDLCompare
+from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.vesta import Vesta
 from extensions.workflow import Workflow
@@ -71,6 +72,7 @@ from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTIN
 from extensions.etm_local import ETMLocal
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
+from src.datalayer_api import DataLayerAPI
 
 logger = get_logger(__name__)
 
@@ -135,6 +137,7 @@ BAG(app, socketio)
 BoundaryService(app, socketio, settings_storage)
 esdl_api = ESDL_API(app, socketio)
 ESDLCompare(app, socketio)
+ESDLMerge(app, socketio, executor)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
@@ -151,6 +154,7 @@ ETMLocal(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
 esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
+DataLayerAPI(app, socketio, esdl_doc)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -463,7 +467,12 @@ def load_ESDL_EnergySystem(store_id):
 
         try:
             esh = get_handler()
-            esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
+            es, parse_info = esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
             return esh
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
@@ -483,7 +492,12 @@ def import_ESDL_EnergySystem(store_id):
 
         try:
             esh = get_handler()
-            imported_es = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
+            imported_es, parse_info = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
             return imported_es
         except Exception as e:
             send_alert('Error interpreting ESDL file from store: ' + str(e))
@@ -951,14 +965,16 @@ def split_conductor(conductor, location, mode, conductor_container):
         port_list = []
         for p in new_cond1.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, port_list])
+        state = asset_state_to_ui(new_cond1)
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, state, port_list])
         coords2 = []
         for point in line2.point:
             coords2.append([point.lat, point.lon])
         port_list = []
         for p in new_cond2.port:
             port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, port_list])
+        state = asset_state_to_ui(new_cond2)
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, state, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1008,7 +1024,8 @@ def split_conductor(conductor, location, mode, conductor_container):
             for p in joint.port:
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             capability_type = ESDLAsset.get_asset_capability_type(joint)
-            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], port_list, capability_type])
+            state = asset_state_to_ui(joint)
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], state, port_list, capability_type])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
                           'to-port-id': new_port2_conn_to_id, 'to-port-carrier': None, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
@@ -1028,8 +1045,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('update-coord', namespace='/esdl')
 def update_coordinates(message):
-    # logger.debug("updating coordinates")
-    # logger.debug('received: ' + str(message['id']) + ':' + str(message['lat']) + ',' + str(message['lng']) + ' - ' + str(message['asspot']))
+    # This function can also be called when the geometry of an asset is of type esdl.Polygon, because
+    # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -1037,12 +1054,19 @@ def update_coordinates(message):
     coords = message['coordinates']
 
     object = esh.get_by_id(active_es_id, obj_id)
-    # object can be an EnergyAsset, Building or Potential
+    # object can be an EnergyAsset, Building, Potential or Note
     if object:
-        geom = object.geometry
+        if isinstance(object, esdl.Note):
+            geom = object.mapLocation
+        else:
+            geom = object.geometry
+
         if isinstance(geom, esdl.Point):
             point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
-            object.geometry = point
+            if isinstance(object, esdl.Note):
+                object.mapLocation = point
+            else:
+                object.geometry = point
         # elif isinstance(geom, esdl.Polygon):
             # Do nothing in case of a polygon
             # only update the connection locations and mappings based on the center of the polygon
@@ -1542,23 +1566,20 @@ def process_command(message):
                     emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list, 'zoom': False})
                 else:
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
-
-                    # if object_type not in ['ElectricityCable', 'Pipe', 'PVParc', 'PVPark', 'WindParc', 'WindPark']:
+                    state = asset_state_to_ui(asset)
                     if isinstance(geometry, esdl.Point):
-                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], port_list, capability_type])
-                    # elif object_type in ['PVParc', 'PVPark', 'WindParc', 'WindPark']:
+                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
                         asset_to_be_added_list.append(
-                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type])
-                    # elif object_type in ['ElectricityCable', 'Pipe']:
+                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:
                             coords.append([point.lat, point.lon])
-                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list])
+                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
 
                     #logger.debug(asset_to_be_added_list)
                     emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
@@ -1573,7 +1594,9 @@ def process_command(message):
         # removes asset or potential from EnergySystem
         obj_id = message['id']
         if obj_id:
-            asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
+            # asset can also be any other object in ESDL
+            asset = esh.get_by_id(active_es_id, obj_id)
             if isinstance(asset, esdl.AbstractBuilding):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
@@ -1586,6 +1609,35 @@ def process_command(message):
             esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
+
+    if message['cmd'] == 'add_note':
+        id = message['id']
+        location = message['location']
+        author = message['author']
+        note = esdl.Note(id=id, author=author)
+
+        dt = parse_date(message['date'])
+        if dt:
+            note.date = EDate.from_string(str(dt))
+        else:
+            send_alert('Invalid datetime format')
+        point = esdl.Point(lat=location['lat'], lon=location['lng'])
+        note.mapLocation = point
+        esh.add_object_to_dict(es_edit.id, note)
+
+        esi = es_edit.energySystemInformation
+        if not esi:
+            esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+            es_edit.energySystemInformation = esi
+            esh.add_object_to_dict(es_edit.id, esi)
+
+        notes = esi.notes
+        if not notes:
+            notes = esdl.Notes(id=str(uuid.uuid4()))
+            esi.notes = notes
+            esh.add_object_to_dict(es_edit.id, notes)
+
+        notes.note.append(note)
 
     if message['cmd'] == 'remove_area':
         area_id = message['id']
@@ -1802,7 +1854,7 @@ def process_command(message):
         })
 
     if message['cmd'] == 'set_asset_param':
-        if not 'id' in message:
+        if 'id' not in message or message['id'] is None:
             fragment = message['fragment']
             asset_id = None
         else:
@@ -1811,29 +1863,31 @@ def process_command(message):
         param_name = message['param_name']
         param_value = message['param_value']
 
-        area = es_edit.instance[0].area
-
-        #asset = ESDLAsset.find_asset(area, asset_id)
         if asset_id is None:
             resource = esh.get_resource(active_es_id)
             asset = resource.resolve(fragment)
         else:
             asset = esh.get_by_id(active_es_id, asset_id)
-        logger.debug('Set param '+ param_name +' for class ' + asset.eClass.name + ' to value '+ param_value)
+        logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
 
         try:
             attribute = asset.eClass.findEStructuralFeature(param_name)
             if attribute is not None:
-                if param_value == "":
-                    parsed_value = attribute.eType.default_value
-                else:
-                    parsed_value = attribute.eType.from_string(param_value)
                 if attribute.many:
-                    eOrderedSet = asset.eGet(param_name)
-                    eOrderedSet.clear() #TODO no support for multi-select of enums
-                    eOrderedSet.append(parsed_value)
-                    asset.eSet(param_name, eOrderedSet)
+                    #length = len(param_value)
+                    eCollection = asset.eGet(param_name)
+                    eCollection.clear()  # TODO no support for multi-select of enums
+                    print('after clear', eCollection)
+                    if not isinstance(param_value, list):
+                        param_value = [param_value]
+                    for item in param_value:
+                        parsed_value = attribute.eType.from_string(item)
+                        eCollection.append(parsed_value)
                 else:
+                    if param_value == "":
+                        parsed_value = attribute.eType.default_value
+                    else:
+                        parsed_value = attribute.eType.from_string(param_value)
                     if attribute.name == 'id':
                         esh.remove_object_from_dict(active_es_id, asset)
                         asset.eSet(param_name, parsed_value)
@@ -1856,7 +1910,9 @@ def process_command(message):
             # todo find out how to update energy system name and update Area name in dropdown
             pass
         elif isinstance(asset, esdl.EnergyAsset):
-            if param_name == 'name':
+            if param_name == esdl.EnergyAsset.name.name:
+                update_gui = True
+            if param_name == esdl.EnergyAsset.state.name:
                 update_gui = True
         elif isinstance(asset, esdl.Port):
             update_gui = True
@@ -2415,7 +2471,13 @@ def process_command(message):
                 esh = get_handler()
 
                 try:
-                    result = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+                    result, parse_info = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+                    if len(parse_info) > 0:
+                        info = ''
+                        for line in parse_info:
+                            info += line + "\n"
+                        send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+
                     call_process_energy_system.submit(esh, filename)  # run in seperate thread
                     esdl_api.remove_esdls_for_user(user_email)
                 except Exception as e:
@@ -2493,7 +2555,12 @@ def process_file_command(message):
         esh = EnergySystemHandler()
 
         try:
-            result = esh.load_from_string(esdl_string=file_content, name=filename)
+            result, parse_info = esh.load_from_string(esdl_string=file_content, name=filename)
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
         except Exception as e:
             send_alert("Error opening {}. Exception is: {}".format(filename, e))
             emit('clear_ui')
@@ -2520,7 +2587,12 @@ def process_file_command(message):
         esh = get_handler()
 
         try:
-            imported_es = esh.add_from_string(name=filename, esdl_string=file_content)
+            imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content)
+            if len(parse_info) > 0:
+                info = ''
+                for line in parse_info:
+                    info += line + "\n"
+                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
             call_process_energy_system.submit(esh, filename)  # run in seperate thread
             set_session('active_es_id', imported_es.id)
             set_session('es_filename', filename)
@@ -2697,7 +2769,7 @@ def get_carrier_color_dict():
 
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
-    user = get_session('user-email')
+    user_email = get_session('user-email')
     role = get_session('user-role')
 
     logger.info('Send initial information to client')
@@ -2706,7 +2778,8 @@ def browser_initialize():
     emit('wms_layer_list', wms_layers.get_layers())
     emit('cap_pot_list', ESDLAsset.get_objects_list())
     emit('qau_information', get_qau_information())
-    emit('esdl_services', esdl_services.get_services_list(user, role))
+    emit('esdl_services', esdl_services.get_user_services_list(user_email, role))
+    emit('user_info', {'email': user_email})
     initialize_app()
 
 

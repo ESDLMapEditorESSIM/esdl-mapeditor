@@ -109,12 +109,11 @@ def del_session(key):
             del managed_sessions[client_id][key]
 
 
-# does not work
 def clean_up_sessions():
     global managed_sessions
     logger.debug('Current Thread %s' % threading.currentThread().getName())
     logger.info('Clean up sessions: current number of sessions: {}'.format(len(managed_sessions)))
-    for key in list(managed_sessions.keys()): # make a copy of the keys in the list
+    for key in list(managed_sessions.keys()):  # make a copy of the keys in the list
         last_accessed = managed_sessions[key][LAST_ACCESSED_KEY]
         now = datetime.now()
         difference = (now - last_accessed).total_seconds()

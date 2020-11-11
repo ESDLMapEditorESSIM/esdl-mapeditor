@@ -49,8 +49,8 @@ function query_esdl_service(service, state_params) {
         if (state_params != null) {
             parameter_value = state_params[parameter_name];
         } else {
-            if (ptype == 'integer') {
-                parameter_value = document.getElementById(parameter_name + '_integer').value;
+            if (ptype == 'integer' || ptype == 'string') {
+                parameter_value = document.getElementById(parameter_name + '_' + ptype).value;
             }
             else if (ptype == 'boolean') {
                 parameter_value = document.getElementById(parameter_name + '_boolean').options[document.getElementById(parameter_name + '_boolean').selectedIndex].value;
@@ -132,6 +132,17 @@ function process_service_results(results) {
         service_results_div.innerHTML = description;
         service_results_div.innerHTML += '<a href="' + url + '" target="_blank">' + link_text + '</link>';
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        if ('response' in results['show_url']) {
+            if ('errors' in results['show_url']['response']) {
+                let table = '<table class="pure-table pure-table-striped">';
+                table += '<thead><tr><th>Feedback from the ETM API</th></tr></thead>';
+                for (let i=0; i<results['show_url']['response']['errors'].length; i++) {
+                    table += '<tr><td>' + results['show_url']['response']['errors'][i] + '</td></tr>';
+                }
+                table += '</table>';
+                service_results_div.innerHTML += '<p>' + table + '</p>';
+            }
+        }
     }
     if ('message' in results) {
         service_results_div.innerHTML += `<p>${results["message"]}</p>`;
@@ -278,8 +289,12 @@ function render_service(service, service_settings_div, workflow_state_params) {
                 table += '<tr><td width=180>' + q_params[i]['name'] + '</td><td>';
 
                 let ptype = q_params[i]['type'];
-                if (ptype == 'integer') {
-                    table += '<input id="' + q_params[i]['parameter_name'] + '_integer" type="text"></input>';
+                if (ptype == 'integer' || ptype == 'string') {
+                    let default_value = "";
+                    if ('default' in q_params[i]) {
+                        default_value = q_params[i]['default'];
+                    }
+                    table += '<input id="' + q_params[i]['parameter_name'] + '_' + ptype + '" type="text" value="'+default_value+'"></input>';
                 }
                 else if (ptype == 'boolean') {
                     table += '<select id="' + q_params[i]['parameter_name'] + '_boolean"><option value="true">TRUE</value><option value="false">FALSE</value></select>';
