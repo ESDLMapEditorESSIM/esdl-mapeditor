@@ -73,6 +73,7 @@ from extensions.etm_local import ETMLocal
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from src.datalayer_api import DataLayerAPI
+from src.view_modes import ViewModes
 
 logger = get_logger(__name__)
 
@@ -155,6 +156,7 @@ PortProfileViewer(app, socketio, settings_storage)
 esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
+ViewModes(app, socketio, settings_storage)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 

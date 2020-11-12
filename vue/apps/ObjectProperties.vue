@@ -7,7 +7,11 @@
     id="object-properties"
     direction="vertical"
   >
-
+    <a-collapse v-model:activeKey="activePanels">
+      <a-collapse-panel
+        :key="basic" header="Basic attributes">
+      </a-collapse-panel>
+    </a-collapse>
     <a-space>
       <a-button
         type="primary"
@@ -41,7 +45,14 @@ export default {
   },
   data() {
     return {
+      obj_properties: {},
+      activePanels: ['basic'],
       isLoading: true
+    };
+  },
+  watch: {
+    activePanels(key) {
+      console.log(key);
     }
   },
   computed: {
@@ -56,17 +67,17 @@ export default {
     },
     getDataSocketIO: function() {
       console.log(currentObjectID.value);
-      window.socket.emit('DLA_get_cs_info', {'id': currentObjectID.value}, (res) => {
+      window.socket.emit('DLA_get_object_properties', {'id': currentObjectID.value}, (res) => {
         console.log(res);
-
-        this.isLoading = false
+        this.obj_properties = res;
+        this.isLoading = false;
       });
     },
     save: function() {
       console.log('Pressed save');
       const result = this.buildResultInfo();
       console.log(result);
-      window.socket.emit('DLA_set_cs', {'id': currentObjectID.value}, result);
+      window.socket.emit('DLA_set_object_properties', {'id': currentObjectID.value}, result);
       window.sidebar.hide();
     },
     cancel: function() {

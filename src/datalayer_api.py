@@ -33,9 +33,15 @@ class DataLayerAPI:
     def register(self):
         logger.info("Registering DataLayerAPI")
 
+        # Implementation that could be used for the ESDL Browser
         @self.socketio.on('DLA_get_object_info', namespace='/esdl')
         def DLA_get_object_info(identifier):
             return self.datalayer.get_object_info_by_identifier(identifier)
+
+        # Implementation that is used for the Sidebar
+        @self.socketio.on('DLA_get_object_properties', namespace='/esdl')
+        def DLA_get_object_properties(identifier):
+            return self.datalayer.get_object_parameters_by_identifier(identifier)
         
         @self.socketio.on('DLA_get_cs_info', namespace='/esdl')
         def DLA_get_cs_info(identifier):
@@ -66,7 +72,6 @@ class DataLayerAPI:
                 # list of standard profiles
                 result['profile_list'] = self.datalayer.get_standard_profiles_list()
 
-            print(result)
             return result
 
         @self.socketio.on('DLA_set_cs', namespace='/esdl')

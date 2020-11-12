@@ -17,8 +17,11 @@ from esdl.processing import ESDLEcore
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
+from extensions.vue_backend.object_properties import get_object_properties_info
+from src.view_modes import ViewModes
 import esdl.esdl
 import src.log as log
+
 
 logger = log.get_logger(__name__)
 
@@ -31,6 +34,18 @@ class ESDLDataLayer:
     def get_object_info_by_identifier(self, identifier):
         esdl_object = self.get_object_from_identifier(identifier)
         return self.get_object_info(esdl_object)
+
+    def get_object_parameters_by_identifier(self, identifier):
+        esdl_object = self.get_object_from_identifier(identifier)
+        obj_info = self.get_object_info(esdl_object)
+        attrs = obj_info['attributes']
+
+        view_mode = ViewModes.get_instance()
+        cat_attrs = view_mode.categorize_object_attributes(esdl_object, attrs)
+
+        # Is this the right way?
+        obj_info['attributes'] = cat_attrs
+        return obj_info
 
     def get_standard_profiles_list(self):
         profiles = Profiles.get_instance().get_profiles()['profiles']
@@ -112,7 +127,6 @@ class ESDLDataLayer:
         esh = get_handler()
         if 'id' in identifier:
             object_id = identifier['id']
-            #object_id is not None:
             try:
                 the_object = esh.get_by_id(active_es_id, object_id)
             except KeyError:
@@ -160,10 +174,11 @@ class ESDLDataLayer:
         else:
             name = esdl_object.name
 
-        object_dict = {'name': name,
-                        'doc': esdl_object.__doc__,
-                        'type': esdl_object.eClass.name
-                        }
+        object_dict = {
+            'name': name,
+            'doc': esdl_object.__doc__,
+            'type': esdl_object.eClass.name
+        }
         if not hasattr(esdl_object, 'id'):
             object_dict['id'] = None
             object_dict['fragment'] = esdl_object.eURIFragment()
