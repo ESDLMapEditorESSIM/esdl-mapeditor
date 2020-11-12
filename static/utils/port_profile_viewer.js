@@ -37,9 +37,14 @@ class Port_profile_viewer{
         let $profile_select = $('#profile_select');
         $profile_select.empty();
 
-        for (let i=0; i<profile_list.length; i++) {
-            let $option = $('<option>').attr('value', i).text(profile_list[i].uiname);
-            $profile_select.append($option);
+        if (profile_list) {
+            for (let i=0; i<profile_list.length; i++) {
+                let $option = $('<option>').attr('value', i).text(profile_list[i].uiname);
+                $profile_select.append($option);
+            }
+            port_profile_viewer_plugin.change_selected_profile();
+        } else {
+            $('#profile_div').html('<p>Error - no profiles attached to this port</p>');
         }
     }
 
@@ -48,14 +53,18 @@ class Port_profile_viewer{
         let profile_idx = $('#profile_select').val();
         let profile_info = port_profile_viewer_plugin.asset_port_profile_list[port_idx].profiles[profile_idx];
 
-        console.log(profile_info);
-        socket.emit('get_profile_panel', profile_info['id'], function(embed_url) {
-            if (embed_url) {
-                $('#profile_div').html('<iframe width="100%" height="100%" src="'+embed_url+'"></iframme>');
-            } else {
-                $('#profile_div').html('');
-            }
-        });
+        if (profile_info) {
+            socket.emit('get_profile_panel', profile_info['id'], function(embed_url) {
+                console.log(embed_url);
+                if (embed_url) {
+                    $('#profile_div').html('<iframe width="100%" height="100%" src="'+embed_url+'"></iframme>');
+                } else {
+                    $('#profile_div').html('<p>Error - no profile URL returned</p>');
+                }
+            });
+        } else {
+            $('#profile_div').html('<p>Error - no profiles attached to this port</p>');
+        }
     }
 
     create_sidebar_content() {
