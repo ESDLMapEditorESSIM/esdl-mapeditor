@@ -9,7 +9,41 @@
   >
     <a-collapse v-model:activeKey="activePanels">
       <a-collapse-panel
-        :key="basic" header="Basic attributes">
+        v-for="(cat, key) in obj_properties.attributes"
+        :key="key" :header="key + ' attributes'">
+        <table>
+          <tr v-for="attr in cat" :key="attr.value">
+            <td><span :title="attr.doc">{{ attr.name }}</span></td>
+            <td>
+              <FancyNumberEdit
+                v-if="attr.type=='EInt'"
+                v-model="attr.value" />
+              <FancyNumberEdit
+                v-if="attr.type=='EDouble'"
+                v-model="attr.value" />
+              <a-input
+                v-if="attr.type=='EString'"
+                v-model:value="attr.value"
+                class="fe_box"
+                type="text" />
+              <a-select
+                v-if="attr.type=='EEnum' || attr.type=='EBoolean'"
+                v-model:value="attr.value">
+                <a-select-option
+                  v-for="opt in attr.options"
+                  :key="opt" :value="opt">
+                  {{ opt }}
+                </a-select-option>
+              </a-select>
+              <a-date-picker
+                v-if="attr.type == 'EDate'"
+                format="YYYY-MM-DD HH:mm:ss"
+                :default-value="moment(attr.value, 'YYYY-MM-DD HH:mm:ss')"
+                :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }"
+              />
+            </td>
+          </tr>
+        </table>
       </a-collapse-panel>
     </a-collapse>
     <a-space>
@@ -31,12 +65,13 @@
 </template>
 
 <script>
+import moment from 'moment';
 import FancyNumberEdit from "../components/forms/FancyNumberEdit"
 import ProfileTableEdit from "../components/forms/ProfileTableEdit"
 import { useObject } from '../composables/ObjectID'
 import { v4 as uuidv4 } from 'uuid';
 
-export const { currentObjectID } = useObject();   // Lars: Dit snap ik niet goed, waarom export?
+const { currentObjectID } = useObject();
 
 export default {
   components: {
@@ -46,7 +81,7 @@ export default {
   data() {
     return {
       obj_properties: {},
-      activePanels: ['basic'],
+      activePanels: ['Basic'],
       isLoading: true
     };
   },
@@ -61,6 +96,7 @@ export default {
     this.getDataSocketIO();
   },
   methods: {
+    moment,
     handleUpdate: function(field, message) {
       console.log(message);
       this[field] = message;
@@ -92,3 +128,10 @@ export default {
   }
 };
 </script>
+
+<style>
+  .fe_box {
+    border-width: 1px;
+  }
+</style>
+

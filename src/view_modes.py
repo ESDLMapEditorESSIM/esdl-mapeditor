@@ -25,7 +25,7 @@ logger = log.get_logger(__name__)
 
 view_modes_config = {
     "standard": {
-        "basic": {
+        "Basic": {
             "EnergyAsset": [
                 "name",
                 "power",
@@ -34,7 +34,7 @@ view_modes_config = {
         },
     },
     "ESSIM": {
-        "basic": {
+        "Basic": {
             "EnergyAsset": [
                 "name",
                 "state",
@@ -54,7 +54,7 @@ view_modes_config = {
         },
     },
     "CHESS": {
-        "basic": {
+        "Basic": {
 
         },
     }
@@ -110,7 +110,7 @@ class ViewModes:
 
     def categorize_object_attributes(self, object, attributes):
         attr_dict = {attr['name']: attr for attr in attributes}
-        view_mode = get_session('mapeditor_view_mode')
+        view_mode = 'ESSIM'  # get_session('mapeditor_view_mode')
 
         this_view_mode_config = view_modes_config[view_mode]
 
@@ -125,10 +125,10 @@ class ViewModes:
                         del attr_dict[attr]
                         categorized_attributes_list[key].append(attr_info)
 
-        categorized_attributes_list['extended'] = list()
+        categorized_attributes_list['Advanced'] = list()
         for attr in attr_dict:
             attr_info = deepcopy(attr_dict[attr])
-            categorized_attributes_list['extended'].append(attr_info)
+            categorized_attributes_list['Advanced'].append(attr_info)
 
         return categorized_attributes_list
 

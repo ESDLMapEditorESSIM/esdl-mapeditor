@@ -70,6 +70,32 @@ def get_port_profile_info(asset):
     return port_profile_list
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+#  Get connections information for an asset
+# ---------------------------------------------------------------------------------------------------------------------
+def get_connected_to_info(asset):
+    result = []
+    ports = asset.port
+    for p in ports:
+        ptype = type(p).__name__
+
+        if p.carrier:
+            pcarr = p.carrier.name
+        else:
+            pcarr = None
+
+        ct_list = []
+        conn_to = p.connectedTo
+        if conn_to:
+            for conn_port in conn_to:
+                conn_asset = conn_port.energyasset #small a instead of Asset
+                ct_list.append({'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
+
+        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': pcarr, 'ct_list': ct_list})
+    #logger.debug(result)
+    return result
+
+
 def get_asset_geom_info(asset):
     geom = asset.geometry
     if geom:

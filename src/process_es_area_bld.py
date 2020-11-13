@@ -578,7 +578,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                 if p.carrier:
                     p_carr_id = p.carrier.id
                 if profile:
-                    profile_info_list = generate_profile_info(profile)
+                    profile_info_list = []  # generate_profile_info(profile)
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list, 'carrier': p_carr_id})
                 if conn_to_ids:
                     for pc in p.connectedTo:

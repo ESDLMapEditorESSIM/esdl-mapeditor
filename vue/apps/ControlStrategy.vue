@@ -236,7 +236,7 @@ const portTypeForCS = {
   DrivenBySupply: 'InPort'
 }
 
-export const { currentObjectID } = useObject();   // Lars: Dit snap ik niet goed, waarom export?
+const { currentObjectID } = useObject();
 
 export default {
   components: {

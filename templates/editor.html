@@ -1218,7 +1218,7 @@
                     bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
-                    map.flyToBounds(bounds, {padding: [50,50], animate: true});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
                 } else {
                     set_leaflet_sizes();
                 }

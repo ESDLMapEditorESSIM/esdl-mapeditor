@@ -18,6 +18,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
+from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
 import src.log as log
@@ -45,6 +46,14 @@ class ESDLDataLayer:
 
         # Is this the right way?
         obj_info['attributes'] = cat_attrs
+
+        if isinstance(esdl_object, esdl.EnergyAsset):
+            obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
+            obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
+        else:
+            obj_info['port_profile_info'] = list()
+            obj_info['port_connected_to_info'] = list()
+
         return obj_info
 
     def get_standard_profiles_list(self):
