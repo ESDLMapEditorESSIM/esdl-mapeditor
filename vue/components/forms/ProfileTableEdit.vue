@@ -75,15 +75,6 @@ const columns = [
   },
 ];
 
-const data2 = [];
-for (let i = 0; i < 2; i++) {
-  data2.push({
-    key: i.toString(),
-    datetime: "2020-10-17 11:50:00",
-    profilevalue: 4,
-  });
-}
-
 export default {
   props: {
     tableData: {

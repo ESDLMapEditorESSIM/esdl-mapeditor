@@ -102,7 +102,7 @@
           </a-select>
         </a-space>
         <!------------------------------------>
-        <!-- Profile from database          -->
+        <!-- Profile table editor           -->
         <!------------------------------------>
         <a-space
           v-if="dbp_radio=='PTE'"

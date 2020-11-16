@@ -18,6 +18,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
+from extensions.vue_backend.cost_information import get_cost_information
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
@@ -53,6 +54,9 @@ class ESDLDataLayer:
         else:
             obj_info['port_profile_info'] = list()
             obj_info['port_connected_to_info'] = list()
+
+        if isinstance(esdl_object, esdl.Asset):
+            obj_info['cost_information'] = get_cost_information(esdl_object)
 
         return obj_info
 

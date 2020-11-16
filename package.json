@@ -1,7 +1,8 @@
 {
   "scripts": {
     "lint": "vue-cli-service lint",
-    "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js"
+    "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
+    "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js"
   },
   "dependencies": {
     "ant-design-vue": "2.0.0-beta.10",
