@@ -2,9 +2,7 @@
   <a-table :columns="portColumns" :data-source="ports" size="middle">
     <template #expandedRowRender="{ record }">
       <p>Connected To:</p>
-      <p>{{ record }}</p>
-      <!--
-      <a-table :columns="connectedToColumns" :data-source="" size="middle">
+      <a-table :columns="connectedToColumns" :data-source="record.ct_list" size="middle">
         <template #operation="{ record }">
           <div class="editable-row-operations">
             <span>
@@ -15,7 +13,6 @@
           </div>
         </template>  
       </a-table>
-      -->
     </template>
     <template #operation="{ record }">
       <div class="editable-row-operations">

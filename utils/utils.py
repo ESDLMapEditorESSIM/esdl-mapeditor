@@ -12,6 +12,8 @@
 #  Manager:
 #      TNO
 
+import re
+
 
 def str2float(string):
     try:
@@ -19,3 +21,15 @@ def str2float(string):
         return f
     except:
         return 0.0
+
+
+def _unCamelCase(match):
+    s = match.group()
+    return s[0].upper() + s[1:].lower()
+
+
+def camelCaseToWords(s):
+    # if no lowercase characters found, just use the word as given, e.g. COP
+    if re.match(r"^[A-Z]+$", s):
+        return s
+    return ' '.join(list(map(_unCamelCase, re.finditer(r"([a-z]+)|([A-Z][a-z]*)", s))))

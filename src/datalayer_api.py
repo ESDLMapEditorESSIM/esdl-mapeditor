@@ -18,6 +18,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
+from extensions.vue_backend.cost_information import set_cost_information
 import src.log as log
 import esdl
 
@@ -42,7 +43,16 @@ class DataLayerAPI:
         @self.socketio.on('DLA_get_object_properties', namespace='/esdl')
         def DLA_get_object_properties(identifier):
             return self.datalayer.get_object_parameters_by_identifier(identifier)
+
+        # @self.socketio.on('DLA_set_object_properties', namespace='/esdl')
+        # def DLA_set_object_properties(identifier, properties):
+        #     return self.datalayer.set_object_parameters_by_identifier(identifier, properties)       
         
+        @self.socketio.on('DLA_set_cost_information', namespace='/esdl')
+        def DLA_set_cost_information(identifier, cost_information):
+            object = self.datalayer.get_object_from_identifier(identifier)
+            set_cost_information(object, cost_information)             
+
         @self.socketio.on('DLA_get_cs_info', namespace='/esdl')
         def DLA_get_cs_info(identifier):
             """

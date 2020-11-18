@@ -60,6 +60,11 @@ class ESDLDataLayer:
 
         return obj_info
 
+    def set_object_parameters_by_identifier(self, identifier, parameters):
+        esdl_object = self.get_object_from_identifier(identifier)
+
+        # TODO: implement
+
     def get_standard_profiles_list(self):
         profiles = Profiles.get_instance().get_profiles()['profiles']
         profiles_list = list()

@@ -15,6 +15,7 @@
 import uuid
 from esdl import esdl
 from pyecore.ecore import EClass, EEnum, EAttribute, EOrderedSet, EObject
+from uuid import uuid4
 
 
 def get_qau_information(esdl_doc = None):
@@ -99,6 +100,7 @@ def build_qau_from_dict(qau_dict):
     return qau
 
 unitdict = {
+    'AMPERE': 'A',
     'JOULE': 'J',
     'WATTHOUR': 'Wh',
     'WATT': 'W',
