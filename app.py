@@ -2079,6 +2079,30 @@ def process_command(message):
         else:
             send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
 
+    if message['cmd'] == 'add_port_with_id':
+        asset_id = message['asset_id']
+        ptype = message['ptype']
+        pname = message['pname']
+        pid = message['pid']
+
+        asset = esh.get_by_id(es_edit.id, asset_id)
+        if ptype == 'InPort':
+            port = esdl.InPort(id=pid, name=pname)
+        else:
+            port = esdl.OutPort(id=pid, name=pname)
+
+        geom = asset.geometry
+        if isinstance(geom, esdl.Point):
+            asset.port.append(port)
+            esh.add_object_to_dict(active_es_id, port)
+            port_list = []
+            for p in asset.port:
+                port_list.append(
+                    {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+            emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+        else:
+            send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
+
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
         asset = get_asset_from_port_id(esh, active_es_id, pid)
@@ -2091,6 +2115,36 @@ def process_command(message):
             else:
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+
+    if message['cmd'] == 'remove_connection_portids':
+        from_port_id = message['from_port_id']
+        from_port = esh.get_by_id(es_edit.id, from_port_id)
+        to_port_id = message['to_port_id']
+        to_port = esh.get_by_id(es_edit.id, to_port_id)
+        from_port.connectedTo.remove(to_port)
+
+        from_asset_id = from_port.eContainer().id
+        to_asset_id = to_port.eContainer().id
+
+        # refresh connections in gui
+        active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        new_list = []
+        #print(conn_list)
+        for conn in conn_list:
+            if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
+                    conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
+                    (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or \
+                    conn['to-port-id'] != from_port_id or conn['to-asset-id'] != from_asset_id):
+                # Remove both directions from -> to and to -> from as we don't know how they are stored in the list
+                # does not matter, as a connection is unique
+                new_list.append(conn)  # add connections that we are not interested in
+            else:
+                print(' - removed {}'.format(conn))
+        set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
+        # TODO: send es.id with this message?
+        emit('clear_connections')   # clear current active layer connections
+        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
     if message['cmd'] == 'remove_connection':
         # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,

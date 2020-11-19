@@ -106,8 +106,8 @@ export default {
         return fn;
       },
       onLoseFocus: function() {
-        this.fancy_number = this.processFancyNumber(this.fancy_number)
-        this.$emit('update:value', this.number)
+        this.fancy_number = this.processFancyNumber(this.fancy_number);
+        this.$emit('update:value', this.number);
       }
   }
 }

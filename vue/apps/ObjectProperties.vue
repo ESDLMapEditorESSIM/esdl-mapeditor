@@ -12,23 +12,27 @@
         v-for="(cat, key) in obj_properties.attributes"
         :key="key" :header="key + ' attributes'">
         <table>
-          <tr v-for="attr in cat" :key="attr.value">
+          <tr v-for="attr in cat" :key="attr.name">
             <td><span :title="attr.doc">{{ attr.name }}</span></td>
             <td>
               <FancyNumberEdit
                 v-if="attr.type=='EInt'"
-                v-model="attr.value" />
+                v-model="attr.value" 
+                @update:value="(val) => { updateAttribute(attr.name, val); }" />
               <FancyNumberEdit
                 v-if="attr.type=='EDouble'"
-                v-model="attr.value" />
+                v-model="attr.value"
+                @update:value="(val) => { updateAttribute(attr.name, val); }" />
               <a-input
                 v-if="attr.type=='EString'"
                 v-model:value="attr.value"
                 class="fe_box"
-                type="text" />
+                type="text" 
+                @blur="updateAttribute(attr.name, attr.value)" />
               <a-select
                 v-if="attr.type=='EEnum' || attr.type=='EBoolean'"
-                v-model:value="attr.value">
+                v-model:value="attr.value"
+                @blur="updateAttribute(attr.name, attr.value)">
                 <a-select-option
                   v-for="opt in attr.options"
                   :key="opt" :value="opt">
@@ -39,16 +43,17 @@
                 v-if="attr.type == 'EDate'"
                 format="YYYY-MM-DD HH:mm:ss"
                 :default-value="moment(attr.value, 'YYYY-MM-DD HH:mm:ss')"
-                :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }" />
+                :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }" 
+                @change="updateAttribute(attr.name, attr.value)" />
             </td>
           </tr>
         </table>
       </a-collapse-panel>
       <a-collapse-panel key="Ports" header="Ports">
-        <PortsEdit v-model:portList="obj_properties.port_connected_to_info" />
+        <PortsEdit v-model:portList="obj_properties.port_connected_to_info" v-model:objectID="obj_properties.object.id" />
       </a-collapse-panel>
       <a-collapse-panel key="CostInformation" header="Cost information">
-        <CostInformationView v-model:costInfo="obj_properties.cost_information" v-model:objectID="obj_properties.object.id"/>
+        <CostInformationView v-model:costInfo="obj_properties.cost_information" v-model:objectID="obj_properties.object.id" />
       </a-collapse-panel>
     </a-collapse>
   </a-space>
@@ -64,6 +69,12 @@
       @click="cancel"
     >
       Cancel
+    </a-button>
+        <a-button
+      type="primary"
+      @click="dump"
+    >
+      Dump
     </a-button>
   </a-space>
 </template>
@@ -132,6 +143,22 @@ export default {
     buildResultInfo: function() {
       let result = this.obj_properties;
       return result;
+    },
+    updateAttribute(name, new_value) {
+      console.log(new_value);
+      console.log("setting param "+ name +" to value "+new_value);
+      window.socket.emit('command', {
+        'cmd': 'set_asset_param', 
+        'id': currentObjectID.value,
+        'param_name': name,
+        'param_value': new_value
+      });
+    },
+    dump: function() {
+      console.log(this.obj_properties);
+    },
+    processUpdateEvent: function(e) {
+      console.log(e);
     }
   }
 };

@@ -16,6 +16,7 @@
         <template #ciunit="{ record }">
           <a-select
             v-model:value="record.unit"
+            style="width: 140px"
             placeholder="Please select a unit..."
           >
             <a-select-option
@@ -95,8 +96,7 @@ export default {
     showModal() {
       this.visible = true;
     },
-    handleOk(e) {
-      console.log(e);
+    handleOk() {
       window.socket.emit('DLA_set_cost_information', {'id': this.objectIdentifier}, this.costInformation);
       this.visible = false;
     },
