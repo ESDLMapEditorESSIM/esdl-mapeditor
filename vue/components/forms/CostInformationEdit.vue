@@ -90,7 +90,7 @@ export default {
   computed: {
   },
   mounted() {
-    console.log(this.costInformation);
+    // console.log(this.costInformation);
   },
   methods: {
     showModal() {
@@ -100,12 +100,9 @@ export default {
       window.socket.emit('DLA_set_cost_information', {'id': this.objectIdentifier}, this.costInformation);
       this.visible = false;
     },
-    deleteCostInformationType(key) {
-      console.log(key);
-    },
     handleChange(val, key) {
-      console.log(val);
-      console.log(key);
+      // console.log(val);
+      // console.log(key);
       for (let i=0; i<this.costInformation.length; i++) {
         if (this.costInformation[i]["key"] == key) this.costInformation[i]["value"] = val;
       }

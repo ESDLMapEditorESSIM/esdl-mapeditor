@@ -98,11 +98,10 @@ export default {
       editingKey: '',
     };
   },
-  // watchEffect(() => { this.$emit('update', this.data); }),
   methods: {
     moment,
     handleChange(value, key, column) {
-      console.log(value);
+      // console.log(value);
       const newData = [...this.data];
       const target = newData.filter(item => key === item.key)[0];
       if (target) {
@@ -114,14 +113,14 @@ export default {
     deleteRow(key) {
       const data = [...this.data]
       this.data = data.filter(item => item.key !== key)
-        this.$emit('update:tableData', this.data);
+      this.$emit('update:tableData', this.data);
     },
     addRow() {
       const newData = [...this.data];
       const addedRow = this.generateNewRow();
       this.data = [...newData, addedRow];
-      console.log(this.data);
-        this.$emit('update:tableData', this.data);
+      // console.log(this.data);
+      this.$emit('update:tableData', this.data);
     },
     generateNewRow() {
       return {
@@ -131,8 +130,8 @@ export default {
       }
     },
     dateChange(date, dateString, rec_key) {
-      console.log(rec_key);
-      console.log(dateString);
+      // console.log(rec_key);
+      // console.log(dateString);
       
       const newData = [...this.data];
       const target = newData.filter(item => rec_key === item.key)[0];

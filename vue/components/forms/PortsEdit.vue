@@ -34,8 +34,8 @@
           <td>Port type</td>
           <td>
             <a-select v-model:value="portType" style="width: 120px">
-              <a-select-option :key="InPort" :value="InPort">InPort</a-select-option>
-              <a-select-option :key="OutPort" :value="OutPort">OutPort</a-select-option>
+              <a-select-option key="InPort" value="InPort">InPort</a-select-option>
+              <a-select-option key="OutPort" value="OutPort">OutPort</a-select-option>
             </a-select>
           </td>
         </tr>
@@ -89,14 +89,14 @@ export default {
     }
   },
   mounted() {
-    console.log(this.ports);
+    // console.log(this.ports);
   },
   computed: {
 
   },
   methods: {
     deletePort(port_id) {
-      console.log(port_id);
+      // console.log(port_id);
       window.socket.emit('command', {
         'cmd': 'remove_port',
         'port_id': port_id
@@ -105,7 +105,7 @@ export default {
       this.ports = port_list.filter(item => item.pid !== port_id);
     },
     deleteConnection(port_ids) {
-      console.log(port_ids);
+      // console.log(port_ids);
       let components = port_ids.split("&&");
       let port_id = components[0];
       let connected_to_port_id = components[1];
@@ -129,8 +129,6 @@ export default {
     },
     handleOk() {
       let pid = uuidv4();
-      console.log(this.portType);
-      console.log(this.portName)
       let newPort = {
         pid: pid,
         ptype: this.portType,
@@ -147,8 +145,8 @@ export default {
         'pid': pid,
       });
 
-      this.portName = '';
-      this.portType = '';
+      this.portName = 'Port';
+      this.portType = 'InPort';
       this.visible = false;
     }
   }

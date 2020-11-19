@@ -110,7 +110,6 @@
         >
           <ProfileTableEdit
             v-model:tableData="profile_table_data"
-            @update="onPTUpdate"
           />
         </a-space>
       </a-space>
@@ -195,28 +194,6 @@
         Cancel
       </a-button>
     </a-space>
-
-    <!--
-    <p>
-      <small>
-        <h3>Debug info:</h3>
-        REST call result: {{ msg }}<br>
-        Selected CS: {{ selected }}<br>
-        Selected port: {{ selected_port }}<br>
-        Max power: {{ max_power }}<br>
-        DBprofile radio: {{ dbp_radio }}<br>
-        <p
-          v-for="p in profile_table_data"
-          :key="p.id"
-        >
-          {{ p.datetime }}
-        </p>
-        <p>
-          {{ JSON.stringify(profile_table_data) }}
-        </p>
-      </small>
-    </p>
-    -->
   </a-space>
 </template>
 
@@ -258,26 +235,17 @@ export default {
         {name: 'PID Controller', value: 'PIDController'},
       ],
       ports: [
-        {id: 'P1', repr: 'Out E', type: 'OutPort'},
-        {id: 'P2', repr: 'Out H', type: 'OutPort'},
       ],
       selected_port: "",
       max_power: 0,
       db_profile: "",
       db_profiles: [
-        {id: 'P1', name: 'NEDU E1A (Huishoudens)'},
-        {id: 'P2', name: 'NEDU E2A (...)'}
       ],
       profile_table_data: [
         {
           key: uuidv4(),
           datetime: "2020-01-01 00:00:00",
           profilevalue: 0.0
-        },
-        {
-          key: uuidv4(),
-          datetime: "2020-05-01 00:00:00",
-          profilevalue: 1.0
         }
       ],
       marginal_charge_costs: 0.0,
@@ -287,8 +255,6 @@ export default {
       pid_kd: 0,
       pid_sensor: 'Select sensor...',
       pid_sensor_list: [
-        {id: 'S1', name: 'Temperature Sensor S1'},
-        {id: 'S2', name: 'Flow Sensor S1'},
       ], 
       pid_setpoint: 0,
       msg: "",
@@ -308,13 +274,13 @@ export default {
   },
   methods: {
     handleUpdate: function(field, message) {
-      console.log(message);
+      // console.log(message);
       this[field] = message;
     },
     getDataSocketIO: function() {
-      console.log(currentObjectID.value);
+      // console.log(currentObjectID.value);
       window.socket.emit('DLA_get_cs_info', {'id': currentObjectID.value}, (res) => {
-        console.log(res);
+        // console.log(res);
 
         if (Object.keys(res['controlStrategy']).length !== 0) {
           this.selected = res['controlStrategy']['type']
@@ -361,19 +327,19 @@ export default {
       });
     },
     remove: function() {
-      console.log('Pressed remove strategy')
+      // console.log('Pressed remove strategy')
       window.socket.emit('DLA_remove_cs', {'id': currentObjectID.value});
       this.selected = 'None'
     },
     save: function() {
-      console.log('Pressed save');
+      // console.log('Pressed save');
       const result = this.buildResultInfo();
-      console.log(result);
+      // console.log(result);
       window.socket.emit('DLA_set_cs', {'id': currentObjectID.value}, result);
       window.sidebar.hide();
     },
     cancel: function() {
-      console.log('Pressed cancel');
+      // console.log('Pressed cancel');
       window.sidebar.hide();
     },
     buildResultInfo: function() {
@@ -417,9 +383,6 @@ export default {
       }
   
       return profile_info;
-    },
-    onPTUpdate: function(message) {
-      console.log(message);
     }
   }
 };

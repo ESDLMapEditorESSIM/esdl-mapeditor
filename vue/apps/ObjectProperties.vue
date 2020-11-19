@@ -70,12 +70,6 @@
     >
       Cancel
     </a-button>
-        <a-button
-      type="primary"
-      @click="dump"
-    >
-      Dump
-    </a-button>
   </a-space>
 </template>
 
@@ -86,7 +80,6 @@ import ProfileTableEdit from "../components/forms/ProfileTableEdit"
 import PortsEdit from "../components/forms/PortsEdit"
 import CostInformationView from "../components/forms/CostInformationView"
 import { useObject } from '../composables/ObjectID'
-// import { v4 as uuidv4 } from 'uuid';
 
 const { currentObjectID } = useObject();
 
@@ -105,11 +98,6 @@ export default {
       isLoading: true
     };
   },
-  watch: {
-    activePanels(key) {
-      console.log(key);
-    }
-  },
   computed: {
   },
   mounted() {
@@ -117,12 +105,8 @@ export default {
   },
   methods: {
     moment,
-    handleUpdate: function(field, message) {
-      console.log(message);
-      this[field] = message;
-    },
     getDataSocketIO: function() {
-      console.log(currentObjectID.value);
+      // console.log(currentObjectID.value);
       window.socket.emit('DLA_get_object_properties', {'id': currentObjectID.value}, (res) => {
         console.log(res);
         this.obj_properties = res;
@@ -130,23 +114,16 @@ export default {
       });
     },
     save: function() {
-      console.log('Pressed save');
-      const result = this.buildResultInfo();
-      console.log(result);
-      window.socket.emit('DLA_set_object_properties', {'id': currentObjectID.value}, result);
+      window.socket.emit('DLA_set_object_properties', {'id': currentObjectID.value}, this.obj_properties);
       window.sidebar.hide();
     },
     cancel: function() {
-      console.log('Pressed cancel');
+      // console.log('Pressed cancel');
       window.sidebar.hide();
     },
-    buildResultInfo: function() {
-      let result = this.obj_properties;
-      return result;
-    },
     updateAttribute(name, new_value) {
-      console.log(new_value);
-      console.log("setting param "+ name +" to value "+new_value);
+      // console.log(new_value);
+      // console.log("setting param "+ name +" to value "+new_value);
       window.socket.emit('command', {
         'cmd': 'set_asset_param', 
         'id': currentObjectID.value,
@@ -154,12 +131,6 @@ export default {
         'param_value': new_value
       });
     },
-    dump: function() {
-      console.log(this.obj_properties);
-    },
-    processUpdateEvent: function(e) {
-      console.log(e);
-    }
   }
 };
 </script>
