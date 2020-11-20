@@ -17,11 +17,11 @@
             <td>
               <FancyNumberEdit
                 v-if="attr.type=='EInt'"
-                v-model="attr.value" 
+                v-model:value="attr.value" 
                 @update:value="(val) => { updateAttribute(attr.name, val); }" />
               <FancyNumberEdit
                 v-if="attr.type=='EDouble'"
-                v-model="attr.value"
+                v-model:value="attr.value"
                 @update:value="(val) => { updateAttribute(attr.name, val); }" />
               <a-input
                 v-if="attr.type=='EString'"

@@ -503,7 +503,9 @@
                     // console.log('marker clicked');
                     var marker = e.target;
                     var id = marker.id;
-                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
+
+                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
+                    object_properties_window(id);
                 }
             });
 

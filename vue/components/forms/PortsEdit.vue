@@ -51,7 +51,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
 const portColumns = [
-  { title: 'Id', dataIndex: 'pid', key: 'pid' },
   { title: 'Name', dataIndex: 'pname', key: 'pname' },
   { title: 'Type', dataIndex: 'ptype', key: 'ptype' },
   { title: 'Carrier', dataIndex: 'pcarr', key: 'pcarr' },
@@ -59,7 +58,6 @@ const portColumns = [
 ];
 
 const connectedToColumns = [
-  { title: 'Id', dataIndex: 'pid', key: 'pid' },
   { title: 'Name', dataIndex: 'aname', key: 'aname' },
   { title: 'Type', dataIndex: 'atype', key: 'atype' },
   { title: '', slots: { customRender: 'operation' }},

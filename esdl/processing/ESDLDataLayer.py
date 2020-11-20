@@ -41,6 +41,7 @@ class ESDLDataLayer:
         esdl_object = self.get_object_from_identifier(identifier)
         obj_info = self.get_object_info(esdl_object)
         attrs = obj_info['attributes']
+        self._convert_attributes_to_primitive_types(attrs)
 
         view_mode = ViewModes.get_instance()
         cat_attrs = view_mode.categorize_object_attributes(esdl_object, attrs)
@@ -170,6 +171,15 @@ class ESDLDataLayer:
             'container': container_descr
         }
     
+    def _convert_attributes_to_primitive_types(self, attributes):
+        for attr in attributes:
+            if attr['type'] == 'EDouble':
+                attr['value'] = float(attr['value'])
+                attr['default'] = float(attr['default'])
+            if attr['type'] == 'EInt':
+                attr['value'] = int(attr['value'])
+                attr['default'] = int(attr['default'])
+
     def get_container_dict(self, container):
         if container is None:
             return None

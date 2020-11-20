@@ -30,20 +30,20 @@ class ViewModes {
             view_modes_plugin = new ViewModes();
             return view_modes_plugin;
         }
-        if (event.type === 'add_contextmenu') {
-            let layer = event.layer;
-            let layer_type = event.layer_type;
-            let id = layer.id;
-            if (layer_type === 'marker') {
-                layer.options.contextmenuItems.push({
-                    text: 'edit attributes',
-                    icon: resource_uri + 'icons/Edit.png',
-                    callback: function(e) {
-                        object_properties_window(id);
-                    }
-                });
-            }
-        }
+        // if (event.type === 'add_contextmenu') {
+        //     let layer = event.layer;
+        //     let layer_type = event.layer_type;
+        //     let id = layer.id;
+        //     if (layer_type === 'marker') {
+        //         layer.options.contextmenuItems.push({
+        //             text: 'edit attributes',
+        //             icon: resource_uri + 'icons/Edit.png',
+        //             callback: function(e) {
+        //                 object_properties_window(id);
+        //             }
+        //         });
+        //     }
+        // }
         if (event.type === 'settings_menu_items') {
             let menu_items = {
                 'value': 'view_modes_plugin_settings',

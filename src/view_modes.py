@@ -110,7 +110,7 @@ class ViewModes:
 
     def categorize_object_attributes(self, object, attributes):
         attr_dict = {attr['name']: attr for attr in attributes}
-        view_mode = 'ESSIM'  # get_session('mapeditor_view_mode')
+        view_mode = get_session('mapeditor_view_mode')
 
         this_view_mode_config = view_modes_config[view_mode]
 
