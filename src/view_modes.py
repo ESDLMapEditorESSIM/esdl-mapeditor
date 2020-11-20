@@ -28,8 +28,23 @@ view_modes_config = {
         "Basic": {
             "EnergyAsset": [
                 "name",
-                "power",
                 "state",
+            ],
+            "Consumer": [
+                "power"
+            ],
+            "Producer": [
+                "power"
+            ],
+            "Storage": [
+                "capacity"
+            ],
+            "Transport": [
+                "capacity"
+            ],
+            "Conversion": [
+                "power",
+                "efficiency"
             ]
         },
     },
