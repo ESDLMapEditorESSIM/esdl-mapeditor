@@ -646,7 +646,8 @@
             line.on('click', function(e) {
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
-                    socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
+                    // socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
+                    object_properties_window(line.id);
                 }
             });
 
