@@ -91,11 +91,12 @@ class ESDLDrive:
                             info += line + "\n"
                         message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
                         emit('alert', message, namespace='/esdl')
+                        print(esh.rset.resources)
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
                     return
 
-                if es.name:
+                if hasattr(es, 'name') and es.name:
                     title = drive_name + ': ' + es.name
                 else:
                     title = drive_name + ' ES id: ' + es.id
@@ -315,4 +316,6 @@ class ESDLDriveHttpURI(URI):
         super().close_stream()
 
     def apply_relative_from_me(self, relative_path):
-        return self.plain
+        # currently make all http-based uri's unique,
+        # better would be to check each path's segment until there is a difference
+        return relative_path
