@@ -34,7 +34,8 @@ view_modes_config = {
                 "power"
             ],
             "Producer": [
-                "power"
+                "power",
+                "prodType"
             ],
             "Storage": [
                 "capacity"
@@ -45,8 +46,17 @@ view_modes_config = {
             "Conversion": [
                 "power",
                 "efficiency"
+            ],
+            "HeatPump": [
+                "COP"
             ]
         },
+        "Aggregation": {
+            "EnergyAsset": [
+                "aggregated",
+                "aggregationCount",
+            ],
+        }
     },
     "ESSIM": {
         "Basic": {
