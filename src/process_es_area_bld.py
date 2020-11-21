@@ -23,7 +23,7 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid
+from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui
 from src.shape import Shape, ShapePoint
 from utils.RDWGSConverter import RDWGSConverter
@@ -668,6 +668,7 @@ def get_building_information(building):
 def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None):
     # emit('clear_ui')
     print("Processing energysystems in esh")
+    print("active_es_id at start: {}".format(get_session('active_es_id')))
 
     # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
     # set_session('active_es_id', main_es.id)     # TODO: check if required here?
@@ -738,11 +739,20 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             es_info_list[es.id] = {
                 "processed": True
             }
+
+            # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
+            # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
+            # Be aware: process_energy_system is called in a seperate thread, active_es_id is also changed in the functions
+            # calling process_energy_system!
+            if get_session('active_es_id') != es.id:
+                set_session('active_es_id', es.id)
         else:
             print("- Energysystem with id {} already processed".format(es.id))
 
     set_handler(esh)
     # emit('set_active_layer_id', main_es.id)
+
+    print("active_es_id at end: {}".format(get_session('active_es_id')))
 
     #session.modified = True
     print('session variables set', session)

@@ -2547,7 +2547,7 @@ def query_esdl_services(params):
 @socketio.on('set_active_es_id', namespace='/esdl')
 def set_active_es_id(id):
     set_session('active_es_id', id)
-    logger.debug("========================= Setting active es_id!!!  ============================")
+    logger.debug("========== Setting active es_id to {} =============".format(id))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
