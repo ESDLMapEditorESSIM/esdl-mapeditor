@@ -57,7 +57,7 @@ def calc_random_location_around_center(center, delta_x, delta_y, convert_RD_to_W
     return geom
 
 
-def calc_building_assets_location(building):
+def calc_building_assets_location(building, force_repositioning=False):
     """
     Calculate the locations of assets in buildings when they are not given
     The building editor uses a 500x500 pixel canvas
@@ -119,7 +119,7 @@ def calc_building_assets_location(building):
         row_pots_idx = 1
 
         for basset in building.asset:
-            if not basset.geometry:
+            if not basset.geometry or force_repositioning:
                 if isinstance(basset, esdl.AbstractConnection):
                     basset.geometry = esdl.Point(lon=column_conns_x , lat=row_conns_idx * row_conns_height, CRS="Simple")
                     row_conns_idx = row_conns_idx + 1
@@ -134,7 +134,7 @@ def calc_building_assets_location(building):
                     row_cons_idx = row_cons_idx + 1
 
         for bpotential in building.potential:
-            if not bpotential.geometry:
+            if not bpotential.geometry or force_repositioning:
                 bpotential.geometry = esdl.Point(lon=column_pots_x, lat=row_pots_idx * row_pots_height, CRS="Simple")
                 row_pots_idx = row_pots_idx + 1
 
@@ -247,7 +247,7 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def find_area_info_geojson(area_list, pot_list, this_area):
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     area_id = this_area.id
     area_name = this_area.name
     if not area_name: area_name = ""
@@ -339,6 +339,7 @@ def find_area_info_geojson(area_list, pot_list, this_area):
     # assign random coordinates if boundary is given and area contains assets without coordinates
     # and gives assets within buildings a proper coordinate
     if area_shape:
+        shape_dictionary[area_id] = area_shape
         update_asset_geometries_shape(this_area, area_shape)
 
     potentials = this_area.potential
@@ -354,18 +355,26 @@ def find_area_info_geojson(area_list, pot_list, this_area):
                     "id": potential.id,
                     "name": potential_name,
                 }))
+                shape_dictionary[potential.id] = shape
 
     for area in this_area.area:
-        find_area_info_geojson(area_list, pot_list, area)
+        find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
 
 
 def create_area_info_geojson(area):
     area_list = []
     pot_list = []
+
+    shape_dictionary = get_session('shape_dictionary')
+    if not shape_dictionary:
+        shape_dictionary = {}
+
     print("- Finding ESDL boundaries...")
     BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)
-    find_area_info_geojson(area_list, pot_list, area)
+    find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
     print("- Done")
+
+    set_session('shape_dictionary', shape_dictionary)
     return area_list, pot_list
 
 
@@ -637,6 +646,24 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                     coords.append([point.lat, point.lon])
                 asset_list.append(['polygon', 'potential', potential.name, potential.id, type(potential).__name__, coords])
 
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Recalcultate area and building list
+# ---------------------------------------------------------------------------------------------------------------------
+def recalculate_area_bld_list(area):
+    area_bld_list = []
+    recalculate_area_bld_list_area(area, area_bld_list, 1)
+    return area_bld_list
+
+def recalculate_area_bld_list_area(area, area_bld_list, level):
+    area_bld_list.append(['Area', area.id, area.name, level])
+
+    for asset in area.asset:
+        if isinstance(asset, esdl.AbstractBuilding):
+            area_bld_list.append(['Building', asset.id, asset.name, level])
+
+    for subarea in area.area:
+        recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Get building information
