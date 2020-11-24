@@ -42,9 +42,9 @@
               <a-date-picker
                 v-if="attr.type == 'EDate'"
                 format="YYYY-MM-DD HH:mm:ss"
-                :default-value="moment(attr.value, 'YYYY-MM-DD HH:mm:ss')"
+                :default-value="get_default_date(attr.value)"
                 :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }" 
-                @change="updateAttribute(attr.name, attr.value)" />
+                @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }" />
             </td>
           </tr>
         </table>
@@ -131,6 +131,27 @@ export default {
         'param_value': new_value
       });
     },
+    updateDateAttribute(date, dateString, name) {
+      let new_value;
+      if (date) {
+        new_value = date.format('YYYY-MM-DDTHH:mm:ss.SSSSSSZZ');
+      } else {
+        new_value = '';
+      }
+      window.socket.emit('command', {
+        'cmd': 'set_asset_param',
+        'id': currentObjectID.value,
+        'param_name': name,
+        'param_value': new_value
+      });
+    },
+    get_default_date(value) {
+      console.log(value);
+      if (value)
+        return moment(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
+      else
+        return null;
+    }
   }
 };
 </script>
