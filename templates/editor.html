@@ -2131,4 +2131,8 @@
 
 </script>
 
+{% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
+{% else %}
+<script type="text/javascript" src="./dist/index.umd.min.js"></script>
+{% endif %}

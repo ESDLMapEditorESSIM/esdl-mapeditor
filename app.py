@@ -292,7 +292,8 @@ def editor():
                                boundary_service_enabled=boundary_service_enabled,
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
-                               ibis_service_enabled=ibis_service_enabled
+                               ibis_service_enabled=ibis_service_enabled,
+                               debug=settings.FLASK_DEBUG
                                )
     else:
         return render_template('index.html')
