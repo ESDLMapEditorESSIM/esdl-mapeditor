@@ -259,6 +259,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     boundaries_year = user_settings['boundaries_year']
 
     geojson_KPIs = {}
+    geojson_dist_kpis = {}
     area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
@@ -278,6 +279,18 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                     'value': kpi.value,
                     'unit': unit
                 }
+            else:
+                geojson_dist_kpis[kpi.name] = {"type": "distributionKPI",
+                                               "value": []}
+                for str_val in kpi.distribution.stringItem:
+                    geojson_dist_kpis[kpi.name]["value"].append({"name": str_val.label,
+                                              "value": str_val.value})
+
+                if area_geometry:
+                    shape = Shape.create(area_geometry)
+                    geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0], shape.shape.centroid.coords.xy[0][0]]
+                else:
+                    geojson_dist_kpis[kpi.name]["location"] = None
 
     area_shape = None
 
@@ -287,7 +300,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
             area_list.append(shape_polygon.get_geojson_feature({
                 "id": area_id,
                 "name": area_name,
-                "KPIs": geojson_KPIs
+                "KPIs": geojson_KPIs,
+                "dist_KPIs": geojson_dist_kpis
             }))
             area_shape = shape_polygon
         if isinstance(area_geometry, esdl.MultiPolygon):
@@ -301,9 +315,10 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                     area_id_number = ""
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature({
-                    "id": area_id + area_id_number,
+                    "id": str.upper(area_id) + area_id_number,
                     "name": area_name,
-                    "KPIs": geojson_KPIs
+                    "KPIs": geojson_KPIs,
+                    "dist_KPIs": geojson_dist_kpis
                 }))
             area_shape = shape_multipolygon
         if isinstance(area_geometry, esdl.WKT):
@@ -328,10 +343,18 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                         else:
                             area_id_number = ""
                         shape_polygon = Shape.create(pol)
+                        # We still need to add the center of the area for the distribution KPI.
+                        for kpi in area_KPIs.kpi:
+                            if isinstance(kpi, esdl.DistributionKPI):
+                                shape = sh
+                                geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0],
+                                                                           shape.shape.centroid.coords.xy[0][0]]
+
                         area_list.append(shape_polygon.get_geojson_feature({
-                            "id": area_id + area_id_number,
+                            "id": str.upper(area_id) + area_id_number,
                             "name": boundary_wgs['name'],
-                            "KPIs": geojson_KPIs
+                            "KPIs": geojson_KPIs,
+                            "dist_KPIs": geojson_dist_kpis
                         }))
 
                     area_shape = sh

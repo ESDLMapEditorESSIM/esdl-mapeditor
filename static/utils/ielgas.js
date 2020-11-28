@@ -166,10 +166,7 @@ L.Control.IELGASChart = L.Control.extend({
     create_control: function(content_div) {
         let $select_asset=$('<select>').attr('id','sel_asset');
         socket.emit('timedimension_get_asset_ids', function(asset_ids) {
-            console.log(asset_ids);
             for (let key in asset_ids) {
-                console.log(key);
-                console.log(asset_ids[key]);
                 let $optgroup = $('<optgroup>').attr('label', key);
                 for (let i=0; i<asset_ids[key].length; i++) {
                     let $option = $('<option>').attr('value', asset_ids[key][i]).text(asset_ids[key][i])
@@ -202,7 +199,6 @@ class IELGAS {
         // socket.emit('initialize_ielgas_extension');
 
         socket.on('ielgas_monitor_asset_data', function(ielgas_data) {
-            console.log(ielgas_data);
             if (ielgas.chart) {
                 ielgas.chart.update_data(ielgas_data);
             } else {

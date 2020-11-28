@@ -37,6 +37,8 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // ------------------------------------------------------------------------------------------------------------
 var area_KPIs = {};
 var building_KPIs = {};
+pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
+    '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
 
@@ -52,6 +54,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     for (l_index in layer_data) {
         let layer = layer_data[l_index];
         let KPIs = layer.properties.KPIs;
+        let dist_KPIs = layer.properties.dist_KPIs;
         for (kpi in KPIs) {
             KPI_value = KPIs[kpi]['value'];
             if (KPI_value != "") {
@@ -81,6 +84,29 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                             (kpi_list[kpi]).push(KPI_value);
                         }
                     }
+                }
+            }
+        }
+
+        // Handle Distributed KPIs here for now.
+        for (kpi in dist_KPIs) {
+            KPI_value = dist_KPIs[kpi]["value"];
+
+            if (KPI_value != null) {
+                if (!(kpi in kpi_list)) {
+                    if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
+                    if (layer_type === "building" && !buildingLegendChoice) { buildingLegendChoice = kpi; }
+
+                        if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
+                        if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
+                        //value = parseFloat(KPI_value);
+                        kpi_list[kpi] = {"type": "distributionKPI", "names": []};
+                        for (i=0; i<KPI_value.length; i++) {
+                            val = KPI_value[i];
+                            kpi_list[kpi]["names"].push(val["name"]);
+                        }
+
+                        //kpi_list[kpi] = { "min": value, "max": value };
                 }
             }
         }
@@ -268,6 +294,16 @@ function create_floorArea_legendClassesDiv() {
         result +=
             '<i style="background:' + get_floorArea_colors(building_area_categories[i] + 1) + '"></i> ' +
             building_area_categories[i] + (building_area_categories[i + 1] ? ' <b>&ndash;</b> ' + building_area_categories[i + 1] + '<br>' : '+');
+    }
+    return result;
+}
+
+function create_distribution_legendClassesDiv(kpi) {
+    let result = '';
+    for (var i = 0; i < kpi["names"].length; i++) {
+        result +=
+            '<i style="background:' + pie_chart_color_list[i] + '"></i> ' +
+            kpi["names"][i] + ' <br />';
     }
     return result;
 }
@@ -467,6 +503,9 @@ function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
         onEachFeature: function(feature, layer) {
+            if (Object.keys(feature.properties.dist_KPIs).length != 0) {
+                feature.properties.get_area_color = get_area_range_colors;
+            }
             if (Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
@@ -492,6 +531,7 @@ function add_area_layer(area_data) {
                     }
                     text += "</tbody></table>"
                 }
+
                 let popup = L.popup();
                 popup.setContent(text);
                 layer.bindPopup(popup);
@@ -521,6 +561,50 @@ function add_area_layer(area_data) {
             }
         }
     }).addTo(get_layers(active_layer_id, 'area_layer'));
+
+    // Pie chart options.
+    var pieChartOptions = {
+        radius: 50,
+        fillOpacity: 1.0,
+        opacity: 1.0,
+        data: {},
+        chartOptions: {},
+        weight: 1,
+    };
+    // Add the pie chart here
+    for(let i=0; i<area_data.length; i++) {
+        let ar = area_data[i];
+        if (Object.keys(ar.properties.dist_KPIs).length != 0) {
+            let keys = Object.keys(ar.properties.dist_KPIs);
+
+            for (let j=0; j<keys.length; j++) {
+                let key = keys[j];
+                for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
+                    let dist_kpi = ar.properties.dist_KPIs[key].value[k];
+
+                    pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
+                    pieChartOptions.chartOptions[dist_kpi["name"]] = {
+                        fillColor: pie_chart_color_list[k],
+                        minValue: 0,
+                        maxValue: 10,
+                        maxHeight: 10,
+                        displayText: function (value) {
+                            return 1;
+                        }
+                    }
+                }
+                var pieChartMarker = new L.PieChartMarker(
+                    new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
+                    pieChartOptions
+                );
+                pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                pieChartMarker.bringToFront();
+
+                // Only show first DistributionKPI found.
+                break;
+            }
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -653,12 +737,16 @@ function create_area_array_or_range_legendClassesDiv(kpi) {
         get_area_color = get_area_array_colors;
         return create_array_area_legendClassesDiv(kpi);
     } else {
-        // kpi is number with min and max
-        var min = kpi["min"];
-        var max = kpi["max"];
-        area_legend_ranges = create_ranges(min, max);
-        num_area_range_colors = area_legend_ranges.length;
-        get_area_color = get_area_range_colors;
+        if(kpi["type"] === "distributionKPI") {
+            return create_distribution_legendClassesDiv(kpi);
+        } else {
+            // kpi is number with min and max
+            var min = kpi["min"];
+            var max = kpi["max"];
+            area_legend_ranges = create_ranges(min, max);
+            num_area_range_colors = area_legend_ranges.length;
+            get_area_color = get_area_range_colors;
+        }
         return create_range_area_legendClassesDiv();
     }
 }

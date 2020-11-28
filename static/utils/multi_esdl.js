@@ -35,6 +35,7 @@ function update_layer_control_tree() {
                 { label: 'Connections', layer: es.layers['connection_layer'] },
                 { label: 'Buildings', layer: es.layers['bld_layer'] },
                 { label: 'Potentials', layer: es.layers['pot_layer'] },
+                { label: 'KPIs', layer: es.layers['kpi_layer'] },
                 { label: 'Simulation results', layer: es.layers['sim_layer'] },
                 { label: 'Notes', layer: es.layers['notes_layer'] }
             ]
@@ -142,6 +143,7 @@ function create_new_esdl_layer(es_id, title) {
             bld_layer: L.featureGroup().addTo(map),
             pot_layer: L.featureGroup().addTo(map),
             connection_layer: L.featureGroup().addTo(map),
+            kpi_layer: L.featureGroup().addTo(map),
             sim_layer: L.featureGroup().addTo(map),
             notes_layer: L.featureGroup().addTo(map)
         },
