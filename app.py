@@ -2650,7 +2650,9 @@ def process_file_command(message):
         for store_item in data:
             store_list.append({'id': store_item['id'], 'title': store_item['title']})
 
-        emit('store_list', store_list)
+        sorted_store_list = sorted(store_list, key=lambda x: x['title'], reverse=False)
+
+        emit('store_list', sorted_store_list)
 
     if message['cmd'] == 'load_esdl_from_store':
         store_id = message['id']
