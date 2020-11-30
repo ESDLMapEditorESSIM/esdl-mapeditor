@@ -683,6 +683,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
         area_bld_list = []
         conn_list = []
 
+        if not isinstance(es, esdl.EnergySystem):
+            print("- Detected ESDL without an EnergySystem, is of type {}. Ignoring.".format(es.eClass.name))
+            continue
+
         if es.id is None:
             es.id = str(uuid.uuid4())
 
