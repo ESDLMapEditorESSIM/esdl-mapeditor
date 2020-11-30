@@ -18,7 +18,7 @@ from extensions.session_manager import get_handler, get_session
 from extensions.boundary_service import is_valid_boundary_id
 from esdl import esdl
 from esdl.processing import ESDLAsset
-from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list
+from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
 import uuid
 import requests
 import src.log as log
@@ -132,7 +132,7 @@ class PICORooftopPVPotential:
                     es = esh.get_energy_system(active_es_id)
                     area = es.instance[0].area
                 else:
-                    area_id = area_id.split()[0]  # Area.id could be 'BUxxxxxxxx (1 of 4)'
+                    area_id = get_area_id_from_mapeditor_id(area_id)
                     area = esh.get_by_id(active_es_id, area_id)
                 if area:
                     for obj in area.eAllContents():
@@ -174,7 +174,7 @@ class PICORooftopPVPotential:
                 if all_areas:
                     area = es.instance[0].area
                 else:
-                    area_id = area_id.split()[0]  # Area.id could be 'BUxxxxxxxx (1 of 4)'
+                    area_id = get_area_id_from_mapeditor_id(area_id)
                     area = esh.get_by_id(active_es_id, area_id)
 
                 if area:

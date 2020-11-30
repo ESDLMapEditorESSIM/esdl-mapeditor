@@ -29,6 +29,7 @@ from src.shape import Shape, ShapePoint
 from utils.RDWGSConverter import RDWGSConverter
 import shapely
 import math
+import re
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -37,6 +38,18 @@ import math
 def send_alert(message):
     print(message)
     emit('alert', message, namespace='/esdl')
+
+
+def get_area_id_from_mapeditor_id(id):
+    """
+    Mapeditor frontend uses e.g. 'BUxxxxxxxx (1 of 4)' in case of MulitPolygons
+    :param id: id from the frontend
+    :return: clean id (without ' (1 of 4)')
+    """
+    if re.match(r".* ([0-9]+ of [0-9]+)", id):
+        return id.split()[0]
+    else:
+        return id
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -315,7 +328,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                     area_id_number = ""
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature({
-                    "id": str.upper(area_id) + area_id_number,
+                    "id": area_id + area_id_number,
                     "name": area_name,
                     "KPIs": geojson_KPIs,
                     "dist_KPIs": geojson_dist_kpis
@@ -351,7 +364,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                                                                            shape.shape.centroid.coords.xy[0][0]]
 
                         area_list.append(shape_polygon.get_geojson_feature({
-                            "id": str.upper(area_id) + area_id_number,
+                            "id": area_id + area_id_number,
                             "name": boundary_wgs['name'],
                             "KPIs": geojson_KPIs,
                             "dist_KPIs": geojson_dist_kpis

@@ -22,6 +22,8 @@ import json
 from extensions.settings_storage import SettingsStorage
 import src.settings as settings
 import src.log as log
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
+
 
 logger = log.get_logger(__name__)
 
@@ -81,6 +83,7 @@ class ETMLocal:
         logger.debug("Nummber of records: {}".format(len(self.cbs_etm_id_mapping)))
 
     def call_etmlocal_api(self, id):
+        id = get_area_id_from_mapeditor_id(id)
         url = self.plugin_settings['etmlocal_api'].replace('<ID>', id)
         result = None
 
