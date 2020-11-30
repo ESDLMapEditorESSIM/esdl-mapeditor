@@ -111,7 +111,7 @@ class Vesta {
                         vesta_plugin.set_area_restrictions();
                         sidebar.hide();
                     });
-                    $('#measures_button_p').append($button);
+                    $('#measures_button_p').empty().append($button);
                 }
             }
         });
