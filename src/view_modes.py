@@ -28,10 +28,35 @@ view_modes_config = {
         "Basic": {
             "EnergyAsset": [
                 "name",
-                "power",
                 "state",
+            ],
+            "Consumer": [
+                "power"
+            ],
+            "Producer": [
+                "power",
+                "prodType"
+            ],
+            "Storage": [
+                "capacity"
+            ],
+            "Transport": [
+                "capacity"
+            ],
+            "Conversion": [
+                "power",
+                "efficiency"
+            ],
+            "HeatPump": [
+                "COP"
             ]
         },
+        "Aggregation": {
+            "EnergyAsset": [
+                "aggregated",
+                "aggregationCount",
+            ],
+        }
     },
     "ESSIM": {
         "Basic": {

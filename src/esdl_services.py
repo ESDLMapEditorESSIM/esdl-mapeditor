@@ -178,6 +178,36 @@ class ESDLServices:
             else:
                 body = esdlstr
 
+        if "body_config" in service:
+            if service["body_config"]["type"] == "text":
+                esdlstr = esh.to_string(active_es_id)
+                if service["body_config"]["encoding"] == "none":
+                    body = esdlstr
+                if service["body_config"]["encoding"] == "url_encoded":
+                    body = urllib.parse.quote(esdlstr)
+                if service["body_config"]["encoding"] == "base64_encoded":
+                    esdlstr_bytes = esdlstr.encode('ascii')
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    body = esdlstr_base64_bytes.decode('ascii')
+            if service["body_config"]["type"] == "json":
+                body = {}
+                for param in service["body_config"]['parameters']:
+                    if param["type"] == "esdl":
+                        esdlstr = esh.to_string(active_es_id)
+                        if param["encoding"] == "none":
+                            body[param["parameter"]] = esdlstr
+                        if param["encoding"] == "url_encoded":
+                            body[param["parameter"]] = urllib.parse.quote(esdlstr)
+                        if param["encoding"] == "base64_encoded":
+                            esdlstr_bytes = esdlstr.encode('ascii')
+                            esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                            body[param["parameter"]] = esdlstr_base64_bytes.decode('ascii')
+                    if param["type"] == "json_string":
+                        body_params = service_params["body_config"]
+                        for bp in body_params:
+                            if param["parameter"] == bp:
+                                body[param["parameter"]] = body_params[bp]
+
         query_params = service_params["query_parameters"]
         config_service_params = service["query_parameters"]
         if query_params:

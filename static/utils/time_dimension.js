@@ -18,22 +18,19 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
 
     initialize: function(layer, options) {
         L.TimeDimension.Layer.GeoJson.prototype.initialize.call(this, layer, options);
-        this.startDate = new Date('2015-01-01T00:00:00+0100');
-        this.simDuration = 1;
+        this.startDate = new Date(options.startDate);
+        this.window_size = 24;
         this.endDate = new Date(this.startDate);
-        this.endDate.setDate(this.endDate.getDate() + 1);
+        map.timeDimension.setCurrentTime(0);
         this.getTimeWindowFromServer();
         this._loaded = true;
-        map.timeDimension.setCurrentTime(0);
     },
 
     _update: function() {
         currentTime = new Date(this._timeDimension.getCurrentTime());
-        if(currentTime < this.startDate || currentTime >= this.endDate) {
+        if(currentTime < this.startDate || currentTime > this.endDate) {
             this._loaded = false;
             this.startDate = currentTime;
-            this.endDate = new Date(this.startDate);
-            this.endDate.setDate(this.endDate.getDate() + 1);
             this.getTimeWindowFromServer();
         }
         //return L.TimeDimension.Layer.GeoJson.prototype._update.call(this);
@@ -86,15 +83,6 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
         }
     },
 
-
-
-//    _update: function() {
-//        currentTime = new Date(this._timeDimension.getCurrentTime());
-//        this._loaded = false;
-//        this.getSimulationData(currentTime);
-//        return L.TimeDimension.Layer.GeoJson.prototype._update.call(this);
-//    },
-
     eachLine: function(feature, layer) {
         if (feature.properties.pos) {
             direction = '   >   ';
@@ -118,7 +106,6 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
                 callback: function(e) {
                     let target = e.relatedTarget;
                     let id = target.feature.properties.id;
-                    console.log(id);
                     socket.emit('request_ielgas_ldc', {'id':id});
                 }
             },{
@@ -127,7 +114,6 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
                 callback: function(e) {
                     let target = e.relatedTarget;
                     let id = target.feature.properties.id;
-                    console.log(id);
                     socket.emit('ielgas_monitor_asset', {'id':id});
                 }
             }],
@@ -153,16 +139,25 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
 //        });
 //    },
 
+    determineWindowEndTime: function() {
+        var times = map.timeDimension.getAvailableTimes();
+        var idx = times.indexOf(this.startDate.getTime());
+
+        this.endDate = new Date(times[Math.min(times.length - 1, idx + 24)]);
+    },
+
     getTimeWindowFromServer: function() {
+        this.determineWindowEndTime();
         // Obtain new date range.
-        socket.emit('get_windowed_simulation_data', this.startDate.toISOString(), this.endDate.toISOString(), (geojson_test) =>
+        socket.emit('get_windowed_simulation_data', this.startDate.toISOString(), this.endDate.toISOString(), (geojson_result) =>
         {
-            if(data == "{}")
+            if(geojson_result == "{}")
             {
                 console.log("No data was available for the current time window.");
+                return;
             }
-            console.log(data);
-            var data = JSON.parse(geojson_test);
+            // console.log(geojson_result);
+            var data = JSON.parse(geojson_result);
 
             var geoJSONLayer = L.geoJSON(data, {
                 style: function(feature) {
@@ -195,28 +190,41 @@ class TimeDimension {
 //        this.current_time_window_end.setDate(this.current_time_window_start.getDate() + 1);
     }
 
-    initialize() {
+    initialize(database, simulation_id, networks=[]) {
+        time_dimension.removeGeoJSONLayers();
         show_loader();
-        socket.emit('timedimension_initialize', function(result) {
+        socket.emit('timedimension_initialize', {database: database, simulation_id: simulation_id, networks: networks}, function(result) {
             if (result) {
                 hide_loader();
-                time_dimension.addGeoJSONLayer();
+
+                var time_list = result;
+                var startDate = time_list[0];
+                // Time dimension expects time list to be a single string with times separated by a comma.
+
+                time_list = time_list.join();
+                map.timeDimension.setAvailableTimes(time_list, 'replace');
+                // console.log(time_list);
+
+                time_dimension.addGeoJSONLayer(startDate);
             }
         });
     }
 
-    addGeoJSONLayer() {
-
+    addGeoJSONLayer(startDate) {
         var geoJSONLayer = L.geoJSON();
-
         var geoJSONTDLayer = L.timeDimension.layer.windowedGeoJson(geoJSONLayer, {
             updateTimeDimension: false, // true
             duration: 'PT59M',
             updateTimeDimensionMode: 'replace',
-            updateCurrentTime: true
+            updateCurrentTime: true,
+            startDate: startDate
         });
 
         geoJSONTDLayer.addTo(get_layers(active_layer_id, 'sim_layer'));
+    }
+
+    removeGeoJSONLayers() {
+        clear_layers(active_layer_id, 'sim_layer');
     }
 
     static create(event) {
@@ -232,4 +240,3 @@ var time_dimension;
 $(document).ready(function() {
     extensions.push(function(event) { TimeDimension.create(event) });
 });
-

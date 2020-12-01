@@ -65,6 +65,22 @@ function query_esdl_service(service, state_params) {
         params['query_parameters'][parameter_name] = parameter_value;
     }
 
+    params['body_config'] = {}
+    if (service['type'] == 'json') {
+        let b_params = service['body_config'];
+        if (Object.keys(b_params).length) {
+            if (b_params['type'] == 'json') {
+                for (let i=0; i<b_params['parameters'].length; i++) {
+                    if (b_params['parameters'][i]['type'] == 'json_string') {
+                        let parameter_name = b_params['parameters'][i]['parameter'];
+                        let parameter_value = document.getElementById(parameter_name+'_textarea').value;
+                        params['body_config'][parameter_name] = JSON.parse(parameter_value);
+                    }
+                }
+            }
+        }
+    }
+
     document.getElementById('query_service_button').style.display = 'none';
     show_loader();
     socket.emit('command', { cmd: 'query_esdl_service', params: params });
@@ -147,6 +163,10 @@ function process_service_results(results) {
     if ('message' in results) {
         service_results_div.innerHTML += `<p>${results["message"]}</p>`;
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+    }
+
+    if (!('show_asset_results' in results) && !('show_url' in results)) {
+        sidebar.hide();
     }
 }
 
@@ -278,11 +298,11 @@ function render_service(service, service_settings_div, workflow_state_params) {
         // document.getElementById('area_scope').onchange();  // force loading
     }
 
-    if (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl') {
+    if (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl' || service['type'] == 'json') {
         let q_params = service['query_parameters'];
 
         if (q_params.length > 0) {
-            service_settings_div.innerHTML += '<h3>Service parameters</h3>';
+            service_settings_div.innerHTML += '<h3>Service query parameters</h3>';
 
             let table = '<table>';
             for (let i = 0; i < q_params.length; i++) {
@@ -317,6 +337,34 @@ function render_service(service, service_settings_div, workflow_state_params) {
 
             table += '</table>';
             service_settings_div.innerHTML += table;
+        }
+    }
+
+    let first_body_ui_parameter = true;
+    if (service['type'] == 'json') {
+        let b_params = service['body_config'];
+        if (Object.keys(b_params).length) {
+            if (b_params['type'] == 'json') {
+                for (let i=0; i<b_params['parameters'].length; i++) {
+                    if (b_params['parameters'][i]['type'] == 'json_string') {
+                        if (first_body_ui_parameter) {
+                            service_settings_div.innerHTML += '<p><h3>Service body parameters</h3>';
+                            service_settings_div.innerHTML += '<table>';
+                            first_body_ui_parameter = false;
+                        }
+
+                        let table_rows = '<tr><td>'+b_params['parameters'][i]['name']+'</td></tr>';
+                        table_rows += '<tr><td><textarea id="'+b_params['parameters'][i]['parameter']+'_textarea" style="width:100%; height:200px;">';
+                        table_rows += JSON.stringify(b_params['parameters'][i]['default'], null, 4);
+                        table_rows += '</textarea></td></tr>';
+
+                        service_settings_div.innerHTML += table_rows;
+                    }
+                }
+                if (!first_body_ui_parameter) {
+                    service_settings_div.innerHTML += '</table></p>';
+                }
+            }
         }
     }
 

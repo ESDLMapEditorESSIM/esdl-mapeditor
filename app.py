@@ -294,7 +294,8 @@ def editor():
                                boundary_service_enabled=boundary_service_enabled,
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
-                               ibis_service_enabled=ibis_service_enabled
+                               ibis_service_enabled=ibis_service_enabled,
+                               debug=settings.FLASK_DEBUG
                                )
     else:
         return render_template('index.html')
@@ -2549,7 +2550,7 @@ def query_esdl_services(params):
 @socketio.on('set_active_es_id', namespace='/esdl')
 def set_active_es_id(id):
     set_session('active_es_id', id)
-    logger.debug("========================= Setting active es_id!!!  ============================")
+    logger.debug("========== Setting active es_id to {} =============".format(id))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2651,7 +2652,9 @@ def process_file_command(message):
         for store_item in data:
             store_list.append({'id': store_item['id'], 'title': store_item['title']})
 
-        emit('store_list', store_list)
+        sorted_store_list = sorted(store_list, key=lambda x: x['title'], reverse=False)
+
+        emit('store_list', sorted_store_list)
 
     if message['cmd'] == 'load_esdl_from_store':
         store_id = message['id']
