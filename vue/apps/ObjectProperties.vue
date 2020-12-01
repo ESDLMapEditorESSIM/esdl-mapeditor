@@ -1,9 +1,9 @@
 <template>
-  <h1>Properties of </h1>
+  <h1 v-if="!isLoading"><span :title="obj_properties.object.doc">{{ obj_properties.object.name }}</span></h1>
   <div v-if="!isLoading" id="object-properties">
     <a-row :gutter="[0, 24]">
       <a-col :span="24">
-        <a-collapse v-model:activeKey="activePanels">
+        <a-collapse v-model:activeKey="activePanels" defaultActiveKey="Basic">
           <a-collapse-panel
             v-for="(cat, key) in obj_properties.attributes"
             :key="key"
@@ -11,10 +11,10 @@
           >
             <div>
               <a-row :gutter="[0, 4]" type="flex" align="middle" v-for="attr in cat" :key="attr.name">
-                <a-col :span="8">
+                <a-col :span="9">
                   <span :title="attr.doc">{{ camelCase(attr.name) }}</span>
                 </a-col>
-                <a-col :span="16">
+                <a-col :span="15">
                   <FancyNumberEdit
                     v-if="attr.type == 'EInt'"
                     v-model:value="attr.value"
@@ -180,12 +180,12 @@ export default {
       });
     },
     get_default_date(value) {
-      console.log(value);
+      //console.log(value);
       if (value)
         return moment(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
       else
         return null;
-    }
+    }    
   }
 };
 </script>
