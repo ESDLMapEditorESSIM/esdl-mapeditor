@@ -39,11 +39,11 @@ function getAbbrevation(assetType) {
 }
 
 function drawTextImage(text) {
-    jqcanvas = $('<canvas>', {id:'cvs', style: 'display: none;'}).attr({'width':128,'height':128});
+    let jqcanvas = $('<canvas>', {id:'cvs', style: 'display: none;'}).attr({'width':128,'height':128});
     //$('.doc').prepend(jqcanvas)
     //canvas = $('#cvs').get(0);
-    canvas = jqcanvas.get(0);
-    ctx = canvas.getContext('2d');
+    let canvas = jqcanvas.get(0);
+    let ctx = canvas.getContext('2d');
     ctx.fillStyle = '#000000';
     ctx.textAlign = "center";
     // auto size text to fit in box

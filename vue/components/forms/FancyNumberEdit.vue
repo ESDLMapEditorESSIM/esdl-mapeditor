@@ -4,6 +4,7 @@
       v-model:value="fancy_number"
       class="fe_box"
       type="text"
+      v-model:size="text_box_size"
       @blur="onLoseFocus"
     />
     <!-- <p>
@@ -31,13 +32,16 @@ const factors = {
     'z': 1e-21,
     'y': 1e-24,
 }
-
 export default {
   name: "FancyNumberEdit",
   props: {
     'value': {
       type: Number,
       default: 0
+    },
+    'size': {
+      type: String,
+      default: "default"
     }
   },
   emits: ['update:value'],
@@ -49,7 +53,11 @@ export default {
   computed: {
       number: function() {
         return this.parseFancyNumber(this.fancy_number)
-      }
+      },
+      text_box_size: function() {
+        // make props.size available as variable in the template
+        return this.size;
+      }     
   },
   methods: {
       parseFancyNumber: function(fn) {
