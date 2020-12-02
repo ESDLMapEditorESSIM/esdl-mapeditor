@@ -1,5 +1,5 @@
 module.exports = {
     configureWebpack: (config) => {
-        config.devtool = 'source-map'
+        config.devtool = 'eval-source-map'
     },
 };

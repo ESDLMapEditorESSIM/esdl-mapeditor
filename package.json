@@ -1,6 +1,7 @@
 {
   "scripts": {
     "lint": "vue-cli-service lint",
+    "clean": "rm -rf static/dist",
     "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js"
   },

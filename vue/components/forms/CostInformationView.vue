@@ -4,7 +4,6 @@
 </template>
 
 <script>
-import FancyNumberEdit from './FancyNumberEdit';
 import CostInformationEdit from './CostInformationEdit'
 
 const costInformationColumns = [
@@ -16,7 +15,6 @@ const costInformationColumns = [
 export default {
   name: "CostInformationView",
   components: {
-    FancyNumberEdit,
     CostInformationEdit
   },
   props: {
@@ -36,13 +34,13 @@ export default {
        costInformationColumns
     }
   },
-  mounted() {
-    console.log(this.costInformation);
-  },
   computed: {
     ci_filtered: function() {
       return this.costInformation.filter(ci => ci.value != "");
     }
+  },
+  mounted() {
+    console.log(this.costInformation);
   },
   methods: {
     deleteCostInformationType(key) {

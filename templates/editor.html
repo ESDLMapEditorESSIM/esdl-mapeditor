@@ -201,7 +201,7 @@
 
     <!-- This should be the last one -->
     <script type="text/javascript" src="./utils/app_settings.js"></script>
-
+    
     <script type="text/javascript" charset="utf-8">
         var sidebar;
         var sidebar_b;
@@ -256,6 +256,7 @@
         colors['Transport'] = 'yellow';
         colors['Conversion'] = 'purple';
         colors['Potential'] = 'grey';
+
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -1737,6 +1738,7 @@
                 hide_loader();
                 process_service_results(results)
             });
+
         });
     </script>
 
@@ -1868,6 +1870,7 @@
 
     ul { z-index:20000 !important; }
     </style>
+
     <!--    // z-index for jstree context menu, sidebar has 2000-->
     <!--    .vakata-context { z-index:20000 !important; }-->
     <!--    .jstree ul { z-index:20000 !important; }-->
@@ -1987,8 +1990,18 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
-                                    <li><a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);"><div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>Show/hide animation bar</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);"><div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>Show/hide KPIs</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);">
+                                            <div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show/hide animation bar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
+                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
+                                            Show/hide KPIs
+                                        </a>
+                                    </li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon">&nbsp;</div>Settings</a></li>
                                 </ul>
@@ -2032,6 +2045,8 @@
         <span id="deleteLogItems" onclick="deleteLogItems()">Delete all</span>
         <div id="messages"></div>
     </div>
+</div>
+
 </body>
 </html>
 
