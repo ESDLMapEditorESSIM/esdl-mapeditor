@@ -347,12 +347,12 @@ class EnergySystemHandler:
         """
         uri = StringURI(name + '.esdl', esdl_string)
         # self.add_uri(uri)
-        tmp_resource = self.rset.get_resource(uri)
-        parse_info = []
-        if isinstance(tmp_resource, XMLResource):
-            parse_info = tmp_resource.get_parse_information()
-        tmp_es = tmp_resource.contents[0]
         try:
+            tmp_resource = self.rset.get_resource(uri)
+            parse_info = []
+            if isinstance(tmp_resource, XMLResource):
+                parse_info = tmp_resource.get_parse_information()
+            tmp_es = tmp_resource.contents[0]
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)

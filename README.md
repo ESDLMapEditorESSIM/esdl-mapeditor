@@ -10,6 +10,7 @@ The ESDL MapEditor is part of a bigger software stack. See [the Docker Toolsuite
 For more documentation go [here](https://energytransition.gitbook.io/esdl/esdl-based-tools/mapeditor).
 
 The MapEditor integrates with several models and tools of external partners:
+
 - The Energy Transition Model (ETM) of Quintel
 - The VESTA model of PBL / ObjectVision
 - The PICO model of Geodan
@@ -24,6 +25,7 @@ used as a research prototype in different projects and extended based on various
 the case.
 
 From within many different projects we're improving the ESDL MapEditor. Current activities involve:
+
 - Introduction of a generic simulation framework - to connect and control external simulation engines 
 - Introduction of functionality to perform sensitivity analyses 
 - Better support for different control strategies (a.o. PID controllers)
@@ -39,7 +41,7 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 1. Build your docker container image:
 
-   ```shell script
+   ```shell
    docker build -t esdl-mapeditor:latest -f docker/Dockerfile-uwsgi .
    ```
 
@@ -75,7 +77,7 @@ Perform the following steps to run the mapeditor directly on your own machine. P
 
 4. Install all vue dependencies: `yarn`
 
-5. Build the vue part: `yarn watch`
+5. Run the Vue code compiler in watch mode: `yarn run watch`
 
 6. Run the application: `python app.py`
 
@@ -89,9 +91,9 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 
 1. Build the local Docker image: `docker-compose -f docker/docker-compose.dev.yml build`
 
-2. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`
+2. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`.
 
-Every change made to the code will automatically reload the application. The above commands can also be found in the `Makefile`, for convenience.
+Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 
 ## License
 

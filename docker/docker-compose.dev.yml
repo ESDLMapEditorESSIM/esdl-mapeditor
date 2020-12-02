@@ -13,7 +13,7 @@ services:
     entrypoint: >
       watchmedo auto-restart
           --recursive
-          --pattern="*.py;*.js"
+          --pattern="*.py"
           --directory="."
           --
     command: ["python", "app.py"]
@@ -21,6 +21,17 @@ services:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
       - ../.env.open-source
+    environment:
+      - OIDC_CLIENT_SECRETS=credentials/client_secrets_local-docker.json
+
+  vue-watch:
+    image: node:14-slim
+    working_dir: /usr/src/app
+    volumes:
+      - ..:/usr/src/app
+    command: ["yarn", "run", "watch"]
+    environment:
+      - NODE_ENV=development
 
 networks:
   mapeditor-net:

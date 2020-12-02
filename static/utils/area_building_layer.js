@@ -42,6 +42,12 @@ pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a
 
 function isNumeric(val) { return !isNaN(val); }
 
+/**
+ * Preprocess layer data of an area or building. Creates KPI's and sets colors.
+ * @param {*} layer_type Either area or building.
+ * @param {*} layer_data 
+ * @param {*} kpi_list An object to which the KPI's from the layer will be added.
+ */
 function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "area") {
         get_area_color = null;
@@ -51,12 +57,19 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         get_building_color = null;
         buildingLegendChoice = null;
     }
-    for (l_index in layer_data) {
+    for (const l_index in layer_data) {
         let layer = layer_data[l_index];
         let KPIs = layer.properties.KPIs;
         let dist_KPIs = layer.properties.dist_KPIs;
-        for (kpi in KPIs) {
-            KPI_value = KPIs[kpi]['value'];
+        for (const kpi in KPIs) {
+            const kpi_obj = KPIs[kpi];
+            let KPI_value;
+            if (kpi_obj.hasOwnProperty('value')) {
+                KPI_value = KPIs[kpi]['value'];
+            } else {
+                // Legacy support for older ESDLs.
+                KPI_value = kpi_obj;
+            }
             if (KPI_value != "") {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
@@ -631,12 +644,18 @@ function set_building_contextmenu(layer, id) {
     });
 }
 
+/**
+ * Add layer of type building to the map.
+ * 
+ * @param {*} building_data 
+ */
 function add_building_layer(building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
         onEachFeature: function(feature, layer) {
             if (feature.properties) {
                 let text = "<table>";
+                // Render the KPI's. These were set in the preprocess_layer_data function.
                 for (let key in feature.properties.KPIs) {
                     kpi = feature.properties.KPIs[key]
                     if (typeof kpi === "number") {
@@ -656,6 +675,8 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
+                console.log("Add building layer")
+                window.PubSubManager.broadcast('ADD_FEATURE_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 set_building_contextmenu(layer, feature.properties.id);
             }
         }
@@ -840,7 +861,13 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
     add_area_layer(geojson_area_data);
 }
 
+/**
+ * Add all buildings to the map with the KPI legend.
+ * 
+ * @param {*} geojson_building_data 
+ */
 function add_building_geojson_layer_with_legend(geojson_building_data) {
+    console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
 

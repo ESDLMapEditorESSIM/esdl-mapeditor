@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 
+import jwt
 import base64
 import cgi
 import os
@@ -50,18 +51,20 @@ class Workflow:
             headers = (
                 {"Authorization": f"Bearer {jwt_token}"} if with_jwt_token else None
             )
+            url = url.format(**other_args)
             r = requests.get(url, headers=headers, params=other_args)
-            if r.status_code == 200:
-                return jsonify(r.json()), 200
-            else:
-                return jsonify([]), r.status_code
+            try:
+                resp_json = r.json()
+            except Exception:
+                resp_json = []
+            return jsonify(resp_json), r.status_code
 
         @self.flask_app.route("/workflow/download_file", methods=["POST"])
         def download_file():
             """
             Download a file by POSTing to a remote service, and providing some
             parameters, if they're provided.
-            
+
             Returns a base64 encoded version of the file, which the frontend
             should be able to parse and offer as download to the user.
             """
@@ -73,6 +76,7 @@ class Workflow:
             )
 
             request_params = request.json.get("request_params")
+            url = url.format(**request_params)
             r = requests.post(url, json=request_params, headers=headers)
             if r.status_code == 200:
                 # Get the filename from the header.
@@ -84,12 +88,8 @@ class Workflow:
             else:
                 return jsonify([]), r.status_code
 
-        @self.flask_app.route("/workflow/upload_file", methods=["POST"])
-        def upload_file():
-            """
-            Upload a file by POSTing to a remote service, and providing some
-            parameters, if they're provided.
-            """
+        @self.flask_app.route("/workflow/post_data", methods=["POST"])
+        def post_data():
             url = request.json["remote_url"]
             with_jwt_token = request.args.get("with_jwt_token", True)
             jwt_token = get_session("jwt-token")
@@ -99,4 +99,8 @@ class Workflow:
 
             request_params = request.json.get("request_params")
             r = requests.post(url, json=request_params, headers=headers)
-            return jsonify([]), r.status_code
+            try:
+                resp_json = r.json()
+            except Exception:
+                resp_json = []
+            return jsonify(resp_json), r.status_code
