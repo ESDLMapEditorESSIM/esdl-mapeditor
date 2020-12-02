@@ -2002,8 +2002,10 @@
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
             <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
+
+
 {% if edr_enabled %}
-            <button id="edr-asset-btn" onclick="select_edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
+            <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
 {% endif %}
             <select id="asset_menu" style='position:relative;z-index:100'></select>
 
