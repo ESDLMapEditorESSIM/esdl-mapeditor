@@ -69,6 +69,11 @@
               </a-row>
             </div>
           </a-collapse-panel>
+          <a-collapse-panel key="References" header="References">
+            <a-row :gutter="[0, 4]" type="flex" align="middle" v-for="ref in filteredReferences" :key="ref">
+              <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="ref"/>
+            </a-row>
+          </a-collapse-panel>
           <a-collapse-panel key="Ports" header="Ports">
             <PortsEdit
               v-model:portList="obj_properties.port_connected_to_info"
@@ -101,10 +106,12 @@ import FancyNumberEdit from "../components/forms/FancyNumberEdit";
 import ProfileTableEdit from "../components/forms/ProfileTableEdit";
 import PortsEdit from "../components/forms/PortsEdit";
 import CostInformationView from "../components/forms/CostInformationView";
+import ReferenceViewer from "../components/forms/ReferenceViewer";
 import { useObject } from "../composables/ObjectID";
 // import { camelCaseToWords } from "../../static/utils/utils"
 
 const { currentObjectID } = useObject();
+const ignoredRefs = ['port', 'costInformation', 'geometry'];
 
 export default {
   name: "ObjectProperties",
@@ -113,6 +120,7 @@ export default {
     ProfileTableEdit,
     PortsEdit,
     CostInformationView,
+    ReferenceViewer,
   },
   data() {
     return {
@@ -121,7 +129,11 @@ export default {
       isLoading: true,
     };
   },
-  computed: {},
+  computed: {
+    filteredReferences: function() {
+      return this.obj_properties.references.filter(ref => !ignoredRefs.includes(ref.name));
+    }
+  },
   mounted() {
     this.getDataSocketIO();
   },

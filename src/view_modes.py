@@ -38,7 +38,9 @@ view_modes_config = {
                 "prodType"
             ],
             "Storage": [
-                "capacity"
+                "capacity",
+                "maxChargeRate",
+                "maxDischargeRate",
             ],
             "Transport": [
                 "capacity"
@@ -73,8 +75,16 @@ view_modes_config = {
                 "efficiency",
                 "power"
             ],
+            "Storage": [
+                "capacity"
+                "fillLevel",
+                "maxChargeRate",
+                "maxDischargeRate",
+                "selfDischargeRate"                
+            ],
             "HeatPump": [
-                "COP"
+                "COP",
+                "stages"
             ]
         },
     },

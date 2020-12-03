@@ -15,6 +15,7 @@
 from uuid import uuid4
 from esdl.processing import ESDLEcore
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from extensions.esdl_browser import ESDLBrowser
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
@@ -163,7 +164,7 @@ class ESDLDataLayer:
         container = esdl_object.eContainer()
         container_descr = self.get_container_dict(container)
         attributes = ESDLEcore.get_asset_attributes(esdl_object, self.esdl_doc)
-        references = ESDLEcore.get_asset_references(esdl_object, self.esdl_doc, ESDLDataLayer.generate_repr)
+        references = ESDLEcore.get_asset_references(esdl_object, self.esdl_doc, ESDLBrowser.generate_repr)
         return {
             'object': esdl_object_descr,
             'attributes': attributes,
