@@ -12,6 +12,7 @@ module.exports = {
   },
   rules: {
     'vue/singline-html-element': 'off',
+    'vue/singleline-html-element-content-newline': 'off',
     'vue/max-attributes-per-line': 'off',
     'vue/no-unused-components': 'warn',
     'no-unused-vars': 'warn',
