@@ -38,6 +38,20 @@ class SpatialOperations {
         $div.append($('<p>').text('This is very experimental functionality to experiment with some spatial algorithms'))
 
         let $content_div = $('<div>').addClass('sidebar-div');
+
+        let $p_collect = $('<p>')
+            .append($('<h2>').text('Collect info'))
+            .append($('<p>')
+                .text('To collect the sub area energy data')
+                .append($('<br>'))
+                .append($('<button>')
+                    .text('Collect subarea energy info')
+                    .click(function() {
+                        socket.emit('spatop_collect_info', function(res) {
+                            console.log(res);
+                        });
+                    })));
+
         let $p_preprocess = $('<p>')
             .append($('<h2>').text('Area triangulation'))
             .append($('<p>')
@@ -88,6 +102,7 @@ class SpatialOperations {
         let $p_connect_unconnected_assets = $('<p>').attr('id', 'p_conn_unconn_assets');
 
         $content_div
+            .append($('<p>').append($p_collect))
             .append($('<p>').append($p_preprocess))
             .append($('<p>').append($p_centroid))
             .append($('<p>').append($p_delaunay_subarea))

@@ -27,7 +27,7 @@ import esdl.esdl as esdl
 from src.shape import Shape
 from src.esdl_helper import energy_asset_to_ui, get_asset_and_coord_from_port_id
 import src.log as log
-
+import requests
 
 logger = log.get_logger(__name__)
 
@@ -41,6 +41,16 @@ class SpatialOperations:
 
     def register(self):
         logger.info('Registering Spatial Operations extension')
+
+        @self.socketio.on('spatop_collect_info', namespace='/esdl')
+        def spatop_collect_info():
+            with self.flask_app.app_context():
+                esh = get_handler()
+                active_es_id = get_session('active_es_id')
+                es = esh.get_energy_system(active_es_id)
+                area = es.instance[0].area
+
+                self.collect_info(area, True)
 
         @self.socketio.on('spatop_preprocess_areas', namespace='/esdl')
         def spatop_preprocess_subarea():
@@ -304,3 +314,79 @@ class SpatialOperations:
             "zoom": False,
         })
         emit("add_connections", {"es_id": active_es_id, "conn_list": connections_to_ui_list})
+
+    def collect_info(self, area, include_all_areas):
+        esh = get_handler()
+        active_es_id = get_session('active_es_id')
+        es = esh.get_energy_system(active_es_id)
+
+        heat_qau = esdl.QuantityAndUnitType(
+                    physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                    multiplier=esdl.MultiplierEnum.MEGA,
+                    unit=esdl.UnitEnum.JOULE)
+
+        esi = es.energySystemInformation
+        if not esi:
+            esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+            es.energySystemInformation = esi
+
+        qaus = esi.quantityAndUnits
+        if not qaus:
+            qaus = esdl.QuantityAndUnits(id=str(uuid.uuid4()))
+            esi.quantityAndUnits = qaus
+
+        qaus.quantityAndUnit.append(heat_qau)
+
+        for ar in area.area:
+            asset_list, qau_list = self.call_residentail_EG_service(ar.id, ar.scope)
+            for qau in qau_list:
+                try:
+                    q = esh.get_by_id(active_es_id, qau.id)
+                except:
+                    # Only add qau if not already exists
+                    qaus.quantityAndUnit.append(qau)
+                    esh.add_object_to_dict(active_es_id, qau)
+
+            for asset in list(asset_list):
+                if isinstance(asset, esdl.GasDemand):
+                    gv = asset.port[0].profile[0].value   # in m3
+                    hv = gv * 35.17      # in MJ
+
+                    hd = esdl.HeatingDemand(id=str(uuid.uuid4()), name="HD_"+ar.id)
+                    hd.port.append(esdl.InPort(id=str(uuid.uuid4()),name="InPort"))
+                    hd.port[0].profile.append(esdl.SingleValue(id=str(uuid.uuid4()), value=hv))
+                    hd.port[0].profile[0].profileQuantityAndUnit = esdl.QuantityAndUnitReference(reference=heat_qau)
+
+                    ar.asset.append(hd)
+                    esh.add_object_to_dict(active_es_id, hd, True)
+
+    def call_residentail_EG_service(self, area_id, area_type):
+        esh = get_handler()
+        url = "http://10.30.2.1:4008/" + area_type.name + "/" + area_id + "?format=xml"
+        headers = {"Accept": "test/xml", "User-Agent": "ESDL Mapeditor/0.1"}
+
+        asset_list = list()
+        qau_list = list()
+        try:
+            r = requests.get(url, headers=headers)
+            if r.status_code == 200:
+                corrected_esdl = r.text.replace('aggregationCount=""', 'aggregationCount="1"')
+                print(corrected_esdl)
+                res_eg_es = esh.load_external_string(corrected_esdl, "residentail_EG.esdl")
+
+                for asset in res_eg_es.instance[0].area.asset:
+                    asset_copy = asset.deepcopy()
+                    asset_copy.id = str(uuid.uuid4())
+                    asset_copy.port[0].id = str(uuid.uuid4())
+                    asset_copy.port[0].profile[0].id = str(uuid.uuid4())
+
+                    asset_list.append(asset_copy)
+
+                for qau in res_eg_es.energySystemInformation.quantityAndUnits.quantityAndUnit:
+                    qau_list.append(qau.deepcopy())
+        except:
+            print("Error accessing API")
+
+        return asset_list, qau_list
+
+
