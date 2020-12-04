@@ -357,11 +357,12 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                             area_id_number = ""
                         shape_polygon = Shape.create(pol)
                         # We still need to add the center of the area for the distribution KPI.
-                        for kpi in area_KPIs.kpi:
-                            if isinstance(kpi, esdl.DistributionKPI):
-                                shape = sh
-                                geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0],
-                                                                           shape.shape.centroid.coords.xy[0][0]]
+                        if area_KPIs:
+                            for kpi in area_KPIs.kpi:
+                                if isinstance(kpi, esdl.DistributionKPI):
+                                    shape = sh
+                                    geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0],
+                                                                               shape.shape.centroid.coords.xy[0][0]]
 
                         area_list.append(shape_polygon.get_geojson_feature({
                             "id": area_id + area_id_number,
