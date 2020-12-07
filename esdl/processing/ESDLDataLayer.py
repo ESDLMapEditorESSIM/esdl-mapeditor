@@ -42,10 +42,11 @@ class ESDLDataLayer:
         esdl_object = self.get_object_from_identifier(identifier)
         obj_info = self.get_object_info(esdl_object)
         attrs = obj_info['attributes']
+        refs = obj_info['references']
         self._convert_attributes_to_primitive_types(attrs)
 
         view_mode = ViewModes.get_instance()
-        cat_attrs = view_mode.categorize_object_attributes(esdl_object, attrs)
+        cat_attrs = view_mode.categorize_object_attributes_and_references(esdl_object, attrs, refs)
 
         # Is this the right way?
         obj_info['attributes'] = cat_attrs

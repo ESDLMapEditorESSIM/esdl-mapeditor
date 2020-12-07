@@ -11,20 +11,12 @@
           >
             <div>
               <a-row :gutter="[0, 4]" type="flex" align="middle" v-for="attr in cat" :key="attr.name">
-                <a-col :span="9">
+              <!-- attributes -->
+                <a-col :span="9"  v-if="isAttribute(attr)">
                   <span :title="attr.doc">{{ camelCase(attr.name) }}</span>
                 </a-col>
-                <a-col :span="15">
-                  <FancyNumberEdit
-                    v-if="attr.type == 'EInt'"
-                    v-model:value="attr.value"
-                    size="small"
-                    @update:value="
-                      (val) => {
-                        updateAttribute(attr.name, val);
-                      }
-                    "
-                  />
+                <a-col :span="15" v-if="isAttribute(attr)">
+                  <FancyNumberEdit v-if="attr.type == 'EInt'" v-model:value="attr.value" size="small" @update:value="(val) => { updateAttribute(attr.name, val);}"/>
                   <FancyNumberEdit
                     v-if="attr.type == 'EDouble'"
                     v-model:value="attr.value"
@@ -66,14 +58,13 @@
                     @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }"
                   />
                 </a-col>
+              <!-- references -->
+                <a-col :span="24" v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)">
+                    <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="attr"/>
+                </a-col>
               </a-row>
             </div>
-          </a-collapse-panel>
-          <a-collapse-panel key="References" header="References">
-            <a-row :gutter="[0, 4]" type="flex" align="middle" v-for="ref in filteredReferences" :key="ref">
-              <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="ref"/>
-            </a-row>
-          </a-collapse-panel>
+          </a-collapse-panel>          
           <a-collapse-panel key="Ports" header="Ports">
             <PortsEdit
               v-model:portList="obj_properties.port_connected_to_info"
@@ -127,12 +118,13 @@ export default {
       obj_properties: {},
       activePanels: ["Basic"],
       isLoading: true,
+      ignoredRefs
     };
   },
   computed: {
     filteredReferences: function() {
       return this.obj_properties.references.filter(ref => !ignoredRefs.includes(ref.name));
-    }
+    },    
   },
   mounted() {
     this.getDataSocketIO();
@@ -197,6 +189,10 @@ export default {
         return moment(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
       else
         return null;
+    },
+    isAttribute: function(feature) {
+        // in the combined features list (attributes and references) one can check if it is an attibute or not.
+        return !('containment' in feature);
     }    
   }
 };

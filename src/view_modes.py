@@ -51,6 +51,16 @@ view_modes_config = {
             ],
             "HeatPump": [
                 "COP"
+            ],
+            "Pump": [
+                "pumpCurveTable",
+                "controlStrategy"
+            ],
+            "Pipe": [
+                "diameter",
+                "innerDiameter",
+                "outerDiameter",
+                "material"
             ]
         },
         "Aggregation": {
@@ -166,5 +176,39 @@ class ViewModes:
             categorized_attributes_list['Advanced'].append(attr_info)
 
         return categorized_attributes_list
+    
+    def categorize_object_attributes_and_references(self, object, attributes, references):
+        attr_dict = {attr['name']: attr for attr in attributes}
+        ref_dict = {ref['name']: ref for ref in references}
+        view_mode = get_session('mapeditor_view_mode')
+
+        this_view_mode_config = view_modes_config[view_mode]
+
+        categorized_list = dict()
+        for key in this_view_mode_config:
+            categorized_list[key] = list()
+
+            for objtype in this_view_mode_config[key]:
+                if isinstance(object, esdl.getEClassifier(objtype)):
+                    for feature in this_view_mode_config[key][objtype]:
+                        if feature in attr_dict:
+                            attr_info = deepcopy(attr_dict[feature])
+                            del attr_dict[feature]
+                            categorized_list[key].append(attr_info)
+                        elif feature in ref_dict:
+                            ref_info = deepcopy(ref_dict[feature])
+                            del ref_dict[feature]
+                            categorized_list[key].append(ref_info)
+                    
+
+        categorized_list['Advanced'] = list()
+        for feature in attr_dict:
+            attr_info = deepcopy(attr_dict[feature])
+            categorized_list['Advanced'].append(attr_info)
+        for feature in ref_dict:
+            attr_info = deepcopy(ref_dict[feature])
+            categorized_list['Advanced'].append(attr_info)
+
+        return categorized_list
 
 
