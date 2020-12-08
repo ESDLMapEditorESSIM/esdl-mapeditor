@@ -54,14 +54,30 @@ view_modes_config = {
             ],
             "Pump": [
                 "pumpCurveTable",
-                "controlStrategy"
+                "controlStrategy",
+                "pumpCapacity",
+                "pumpEfficiency",
+                "ratedSpeed"
             ],
             "Pipe": [
                 "diameter",
                 "innerDiameter",
                 "outerDiameter",
                 "material"
+            ],
+            "CheckValve": [
+                "innerDiameter",
+                "reopenDeltaP",
+                "flowCoefficient"
+            ],
+            "Valve": [
+                "type",
+                "flowCoefficient",
+                "innerDiameter",
+                "position"
+
             ]
+
         },
         "Aggregation": {
             "EnergyAsset": [

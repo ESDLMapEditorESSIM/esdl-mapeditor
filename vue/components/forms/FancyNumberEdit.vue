@@ -7,6 +7,7 @@
       v-model:size="text_box_size"
       @blur="onLoseFocus"
     />
+    <!-- TODO use addon-after="W" to add the unit to the input box, if the unit is available -->
     <!-- <p>
       Number: {{ number }}, fancy_number: {{ fancy_number }}
     </p> -->

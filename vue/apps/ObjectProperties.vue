@@ -28,18 +28,26 @@
                     "
                   />
                   <a-input
-                    v-if="attr.type == 'EString'"
+                    v-if="attr.type == 'EString' && attr.name !== 'description'"
                     v-model:value="attr.value"
                     class="fe_box"
                     size="small"
                     type="text"
                     @blur="updateAttribute(attr.name, attr.value)"
                   />
+                  <a-textarea
+                    v-if="attr.type == 'EString' && attr.name === 'description'"
+                    v-model:value="attr.value"
+                    size="small"
+                    auto-size
+                    @blur="updateAttribute(attr.name, attr.value)"
+                  />
                   <a-select
                     v-if="attr.type == 'EEnum' || attr.type == 'EBoolean'"
-                    v-model:value="attr.value" size="small"
+                    v-model:value="attr.value" size="small" style="width: 100%"
                     @change="updateAttribute(attr.name, attr.value)"
                   >
+                    <!-- mode werkt nog niet op deze manier: :mode="multiSelect(attr)"-->    
                     <a-select-option
                       v-for="opt in attr.options"
                       :key="opt"
@@ -51,6 +59,8 @@
                   <a-date-picker
                     v-if="attr.type == 'EDate'"
                     format="YYYY-MM-DD HH:mm:ss"
+                    size="small"
+                    style="width: 100%"
                     :default-value="get_default_date(attr.value)"
                     :show-time="{
                       defaultValue: moment('00:00:00', 'HH:mm:ss'),
@@ -59,8 +69,11 @@
                   />
                 </a-col>
               <!-- references -->
+
                 <a-col :span="24" v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)">
+                    <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="attr"/>
+                    </a-row>
                 </a-col>
               </a-row>
             </div>
@@ -124,7 +137,10 @@ export default {
   computed: {
     filteredReferences: function() {
       return this.obj_properties.references.filter(ref => !ignoredRefs.includes(ref.name));
-    },    
+    },
+    multiSelect: function(attr) {
+      return (attr.many ? 'multiple' : 'default');
+    }
   },
   mounted() {
     this.getDataSocketIO();
