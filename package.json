@@ -5,19 +5,19 @@
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js"
   },
   "dependencies": {
-    "ant-design-vue": "2.0.0-beta.10",
+    "ant-design-vue": "2.0.0-rc.3",
     "axios": "^0.20.0",
     "core-js": "^3.6.5",
     "reqwest": "^2.0.5",
     "sass-loader": "^10.0.2",
     "uuid": "^8.3.1",
-    "vue": "^3.0.0"
+    "vue": "^3.0.4"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
     "@vue/cli-plugin-eslint": "~4.5.0",
     "@vue/cli-service": "~4.5.0",
-    "@vue/compiler-sfc": "^3.0.0-0",
+    "@vue/compiler-sfc": "^3.0.4",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.13.0",
     "eslint-plugin-vue": "^7.1.0",
