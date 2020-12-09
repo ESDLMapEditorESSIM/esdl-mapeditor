@@ -312,7 +312,9 @@ class Profiles {
         let $message = $('<p>').attr('id', 'csv-message');
         $droparea.append($form);
         $input.change(function(e) {
-            handleFiles(this.files);
+            $('#csv-message').text('Uploading CSV files')
+            let selected_group = $('#profile_group_select').val();
+            handleFiles(this.files, selected_group);
         });
         $form.append($p1);
         $form.append($input);

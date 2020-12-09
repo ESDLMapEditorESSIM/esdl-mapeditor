@@ -20,7 +20,7 @@
     </template>
   </a-tree>
   <p v-else>
-    Please select a building to request EPS results for.
+    Please right-click on a building and select "Show EPS results" to view detailed information.
   </p>
 </template>
 
@@ -44,7 +44,7 @@ const state = getState();
 export let treeData = ref([]);
 export const isLoading = ref(false);
 
-const contextMenuItemText = "Retrieve ESDL data";
+const contextMenuItemText = "Show EPS Results";
 
 export default {
   components: {
