@@ -528,6 +528,13 @@ function format_KPI_value(value) {
         return value;
 }
 
+function format_KPI_unit(unit) {
+    if (unit.indexOf('Mg') >= 0) {
+        return unit.replace('Mg', 'ton');
+    } else
+        return unit;
+}
+
 function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
@@ -553,7 +560,7 @@ function add_area_layer(area_data) {
                     for (let key in feature.properties.KPIs) {
                         text += "<tr><td>" + key + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
                         if (!(feature.properties.KPIs[key]['unit'] === "")) {
-                            text += "<td>" + feature.properties.KPIs[key]['unit'] + "</td></tr>";
+                            text += "<td>" + format_KPI_unit(feature.properties.KPIs[key]['unit']) + "</td></tr>";
                         } else {
                             text += "<td>&nbsp;</td></tr>";
                         }
