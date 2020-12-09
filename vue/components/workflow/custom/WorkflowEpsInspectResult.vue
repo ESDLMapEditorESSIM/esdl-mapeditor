@@ -25,7 +25,7 @@
 </template>
 
 <script setup="props">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onUnmounted, ref } from "vue";
 import {
   BuildOutlined,
   NumberOutlined,

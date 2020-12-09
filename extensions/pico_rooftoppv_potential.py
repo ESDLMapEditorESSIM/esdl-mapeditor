@@ -235,7 +235,7 @@ class PICORooftopPVPotential:
 
         asset_copy = None
         for code in PICO_ID_TO_URL_MAPPING:
-            if area.id[0: len(code)] == code:
+            if area.id[0: len(code)].upper() == code:
                 url = PICO_API_URL + PICO_ID_TO_URL_MAPPING[code] + "/" + area.id.upper() + "/zonopdak?geometrie=false"
                 headers = {
                     "Accept": "application/esdl+xml",

@@ -780,8 +780,8 @@ function selectAreaKPI(selectObject) {
 
     geojson_area_layer.eachLayer(function (layer) {
         layer.setStyle({
-            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice]),
-            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice])
+            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
+            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
         });
     });
 }
@@ -969,7 +969,7 @@ function style_area(feature) {
         //if (feature.properties.get_area_color) {
         //    get_area_color = feature.properties.get_area_color;
         //}
-        var color = get_area_color(feature.properties.KPIs[areaLegendChoice]);
+        var color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
         return {
             fillColor: color,
             weight: 2,

@@ -49,7 +49,7 @@ import src.esdl_config as esdl_config
 from src.esdl_helper import get_asset_from_port_id, get_asset_and_coord_from_port_id, generate_profile_info, get_port_profile_info
 from utils.datetime_utils import parse_date
 import src.settings as settings
-from src.edr_assets import EDR_assets
+from src.edr_assets import EDRAssets
 from src.esdl_services import ESDLServices
 from extensions.profiles import Profiles
 from pyecore.ecore import EDate
@@ -157,6 +157,7 @@ esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
+edr_assets = EDRAssets(app, socketio, settings_storage)
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -404,30 +405,30 @@ def serve_static(path):
     return send_from_directory('static', path)
 
 
-@app.route('/edr_assets')
-def get_edr_assets():
-    edr_url = settings.edr_config['EDR_host']+'/store/tagged?tag=asset'
-    # logger.debug('accessing URL: '+edr_url)
-
-    try:
-        r = requests.get(edr_url)
-        if r.status_code == 200:
-            result = json.loads(r.text)
-            asset_list = []
-            for a in result:
-                asset = {'id': a["id"], 'title': a["title"], 'description': a["description"]}
-                asset_list.append(asset)
-
-            return (jsonify({'asset_list': asset_list})), 200
-        else:
-            logger.error('code: ', r.status_code)
-            send_alert('Error in getting the EDR assets')
-            abort(500, 'Error in getting the EDR assets')
-    except Exception as e:
-        logger.error('Exception: ')
-        logger.error(e)
-        send_alert('Error accessing EDR API')
-        abort(500, 'Error accessing EDR API')
+# @app.route('/edr_assets')
+# def get_edr_assets():
+#     edr_url = settings.edr_config['EDR_host']+'/store/tagged?tag=asset'
+#     # logger.debug('accessing URL: '+edr_url)
+#
+#     try:
+#         r = requests.get(edr_url)
+#         if r.status_code == 200:
+#             result = json.loads(r.text)
+#             asset_list = []
+#             for a in result:
+#                 asset = {'id': a["id"], 'title': a["title"], 'description': a["description"]}
+#                 asset_list.append(asset)
+#
+#             return (jsonify({'asset_list': asset_list})), 200
+#         else:
+#             logger.error('code: ', r.status_code)
+#             send_alert('Error in getting the EDR assets')
+#             abort(500, 'Error in getting the EDR assets')
+#     except Exception as e:
+#         logger.error('Exception: ')
+#         logger.error(e)
+#         send_alert('Error accessing EDR API')
+#         abort(500, 'Error accessing EDR API')
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2454,7 +2455,6 @@ def process_command(message):
 
     if message['cmd'] == 'get_edr_asset':
         edr_asset_id = message['edr_asset_id']
-        edr_assets = EDR_assets()
         edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)

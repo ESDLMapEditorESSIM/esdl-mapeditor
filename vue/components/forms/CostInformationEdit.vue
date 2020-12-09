@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import FancyNumberEdit from "./FancyNumberEdit"
+// import FancyNumberEdit from "./FancyNumberEdit"
 
 const costInformationColumns = [
   { title: 'Type', dataIndex: 'uiname', key: 'citype' },
@@ -66,7 +66,7 @@ const costInformationProfileTypes = [
 export default {
   name: "CostInformationEdit",
   components: {
-    FancyNumberEdit
+//    FancyNumberEdit
   },
   props: {
     costInfo: {
