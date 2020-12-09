@@ -97,8 +97,8 @@ MobilityFuelTypeEnum = EEnum('MobilityFuelTypeEnum', literals=[
 VehicleTypeEnum = EEnum('VehicleTypeEnum', literals=['UNDEFINED', 'CAR', 'TRUCK', 'VAN', 'BUS', 'METRO', 'TRAM', 'TRAIN', 'PASSENGER_TRAIN',
                                                      'FREIGHT_TRAIN', 'SCOOTER', 'MOTOR_CYCLE', 'NONROAD_VEHICLE', 'AGRARIAN_VEHICLE', 'BARGE', 'INTERNATIONAL_SHIPPING', 'AIRCRAFT', 'OTHER', 'TOTAL'])
 
-MultiplierEnum = EEnum('MultiplierEnum', literals=[
-                       'NONE', 'KILO', 'MEGA', 'GIGA', 'TERRA', 'PETA', 'MILLI', 'MICRO', 'NANO', 'PICO'])
+MultiplierEnum = EEnum('MultiplierEnum', literals=['NONE', 'ATTO', 'FEMTO', 'PICO', 'NANO', 'MICRO',
+                                                   'MILLI', 'CENTI', 'DECI', 'DEKA', 'HECTO', 'KILO', 'MEGA', 'GIGA', 'TERA', 'TERRA', 'PETA', 'EXA'])
 
 PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE', 'EMISSION', 'COST', 'TIME', 'LENGTH', 'DISTANCE',
                                                                'IRRADIANCE', 'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA', 'POWER_REACTIVE', 'COMPOSITION', 'FLOW', 'STATE', 'HEAD', 'POSITION', 'COEFFICIENT', 'WEIGHT', 'FORCE', 'CURRENT'])
@@ -663,10 +663,10 @@ class CostInformation(EObject, metaclass=MetaEClass):
     marginalCosts = EReference(ordered=True, unique=True, containment=True)
     variableOperationalAndMaintenanceCosts = EReference(ordered=True, unique=True, containment=True)
     discountRate = EReference(ordered=True, unique=True, containment=True)
-    variableOperationalCosts = EReference(ordered=True, unique=True, containment=True, upper=-1)
-    fixedMaintenanceCosts = EReference(ordered=True, unique=True, containment=True, upper=-1)
-    fixedOperationalCosts = EReference(ordered=True, unique=True, containment=True, upper=-1)
-    variableMaintenanceCosts = EReference(ordered=True, unique=True, containment=True, upper=-1)
+    variableOperationalCosts = EReference(ordered=True, unique=True, containment=True)
+    fixedMaintenanceCosts = EReference(ordered=True, unique=True, containment=True)
+    fixedOperationalCosts = EReference(ordered=True, unique=True, containment=True)
+    variableMaintenanceCosts = EReference(ordered=True, unique=True, containment=True)
 
     def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, **kwargs):
         if kwargs:
@@ -695,17 +695,17 @@ class CostInformation(EObject, metaclass=MetaEClass):
         if discountRate is not None:
             self.discountRate = discountRate
 
-        if variableOperationalCosts:
-            self.variableOperationalCosts.extend(variableOperationalCosts)
+        if variableOperationalCosts is not None:
+            self.variableOperationalCosts = variableOperationalCosts
 
-        if fixedMaintenanceCosts:
-            self.fixedMaintenanceCosts.extend(fixedMaintenanceCosts)
+        if fixedMaintenanceCosts is not None:
+            self.fixedMaintenanceCosts = fixedMaintenanceCosts
 
-        if fixedOperationalCosts:
-            self.fixedOperationalCosts.extend(fixedOperationalCosts)
+        if fixedOperationalCosts is not None:
+            self.fixedOperationalCosts = fixedOperationalCosts
 
-        if variableMaintenanceCosts:
-            self.variableMaintenanceCosts.extend(variableMaintenanceCosts)
+        if variableMaintenanceCosts is not None:
+            self.variableMaintenanceCosts = variableMaintenanceCosts
 
 
 class StringItem(EObject, metaclass=MetaEClass):
@@ -1568,21 +1568,33 @@ class BuildingInformation(EObject, metaclass=MetaEClass):
 
 
 class Table(EObject, metaclass=MetaEClass):
-
+    """Table class that represents data in a table structure. Current examples are the pump curve table and a table describing the flowCoefficient of a checkvalve (relation between pressure drop and flow rate)"""
+    name = EAttribute(eType=EString, derived=False, changeable=True)
+    description = EAttribute(eType=EString, derived=False, changeable=True)
     row = EReference(ordered=True, unique=True, containment=True, upper=-1)
     header = EReference(ordered=True, unique=True, containment=True, upper=-1)
+    datasource = EReference(ordered=True, unique=True, containment=True)
 
-    def __init__(self, *, row=None, header=None, **kwargs):
+    def __init__(self, *, row=None, header=None, name=None, description=None, datasource=None, **kwargs):
         if kwargs:
             raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
         super().__init__()
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if row:
             self.row.extend(row)
 
         if header:
             self.header.extend(header)
+
+        if datasource is not None:
+            self.datasource = datasource
 
 
 class TableRow(EObject, metaclass=MetaEClass):
@@ -2025,7 +2037,7 @@ class SpecificLabelDistribution(GenericDistribution):
         super().__init__(**kwargs)
 
 
-class SymetricVariance(AbstractVariance):
+class SymmetricVariance(AbstractVariance):
     """(experimental) Used to define statistical information"""
     sigma = EAttribute(eType=EDouble, derived=False, changeable=True)
 
@@ -2037,7 +2049,7 @@ class SymetricVariance(AbstractVariance):
             self.sigma = sigma
 
 
-class AssymetricVariance(AbstractVariance):
+class AssymmetricVariance(AbstractVariance):
     """(experimental) Used to define statistical information"""
     sigmaMin = EAttribute(eType=EDouble, derived=False, changeable=True)
     sigmaPlus = EAttribute(eType=EDouble, derived=False, changeable=True)
@@ -2053,7 +2065,7 @@ class AssymetricVariance(AbstractVariance):
             self.sigmaPlus = sigmaPlus
 
 
-class DoubleAssymetricVariance(AbstractVariance):
+class DoubleAssymmetricVariance(AbstractVariance):
     """(experimental) Used to define statistical information"""
     plus34perc = EAttribute(eType=EDouble, derived=False, changeable=True)
     plus48perc = EAttribute(eType=EDouble, derived=False, changeable=True)
@@ -2619,7 +2631,7 @@ class MatterReference(AbstractMatter):
             self.reference = reference
 
 
-class InputOutputRelation(AbstractBehaviour):
+class InputOutputQuantityRelation(AbstractBehaviour):
 
     def __init__(self, **kwargs):
 
