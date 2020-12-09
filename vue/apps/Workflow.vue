@@ -37,6 +37,12 @@
       "
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowProgress
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.PROGRESS
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowCustomComponent
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
@@ -65,6 +71,7 @@ import { default as WorkflowEsdlService } from "../components/workflow/WorkflowE
 import { default as WorkflowDownloadFile } from "../components/workflow/WorkflowDownloadFile";
 import { default as WorkflowUploadFile } from "../components/workflow/WorkflowUploadFile";
 import { default as WorkflowHttpPost } from "../components/workflow/WorkflowHttpPost";
+import { default as WorkflowProgress } from "../components/workflow/WorkflowProgress";
 import { default as WorkflowCustomComponent } from "../components/workflow/WorkflowCustomComponent";
 
 export default {
@@ -81,6 +88,7 @@ export default {
       WorkflowChoice,
       WorkflowSelectQuery,
       WorkflowEsdlService,
+      WorkflowProgress,
       WorkflowDownloadFile,
     };
   },

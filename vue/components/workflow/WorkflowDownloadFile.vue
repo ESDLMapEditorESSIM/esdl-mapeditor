@@ -23,9 +23,9 @@ const workflowStep = props.workflowStep;
 const { getFromState, goToNextStep } = useWorkflow();
 
 export const onSubmit = async () => {
-  const requestParams = getFromState(workflowStep["request_params"]);
+  const requestParams = getFromState(workflowStep.source.request_params);
   const params = {
-    remote_url: workflowStep.url,
+    remote_url: workflowStep.source.url,
     request_params: requestParams,
   };
   window.show_loader();

@@ -19,7 +19,6 @@ export const PubSubManager = {
 
   broadcast: function (name, message) {
     const subscribers = this.subscriptions[name];
-    console.log(`Broadcasting ${name} to ${subscribers.length} subscribers`)
     subscribers.forEach(function(subscriber) {
       subscriber.callback(name, message);
     });

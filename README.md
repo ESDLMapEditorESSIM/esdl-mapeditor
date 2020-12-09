@@ -89,9 +89,11 @@ It is also possible to develop on this project directly from Docker. For this, w
 
 Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to be running.
 
-1. Build the local Docker image: `docker-compose -f docker/docker-compose.dev.yml build`
+1. Copy the proper env file to .env, for example `cp .env.open-source .env`
 
-2. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`.
+2. Build the local Docker image: `docker-compose -f docker/docker-compose.dev.yml build`
+
+3. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`.
 
 Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 

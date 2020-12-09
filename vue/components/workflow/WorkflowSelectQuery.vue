@@ -72,7 +72,7 @@ fetch(`workflow/get_data?${queryString}`)
     const source = workflowStep.source;
     const entities = data[source.choices_attr];
     options.value = entities.map(entity => {
-      const label_list = source.label_fields.map(label_field => entity[label_field]);
+      const label_list = source.label_fields.map(label_field => entity[label_field]).filter(value => value);
       const label = label_list.join(' - ');
       return {
         'label': label,

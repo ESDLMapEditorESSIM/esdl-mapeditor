@@ -18,8 +18,8 @@ export function mountSidebarComponent(component) {
 }
 
 export function createVueLControl(component) {
-    const simulation_control = new VueComponentLControl();
-    simulation_control.addTo(window.map).mount(component);
+    const lcontrol = new VueComponentLControl();
+    lcontrol.addTo(window.map).mount(component);
 }
 
 export function mountApp(component, elementSelector) {

@@ -6,7 +6,7 @@ const VueComponentLControl = window.L.Control.extend({
     },
 
     onAdd: function () {
-        return window.L.DomUtil.create('div', `vue_simulation_control`);
+        return window.L.DomUtil.create('div', `vue_control`);
     },
 
     onRemove: function () {

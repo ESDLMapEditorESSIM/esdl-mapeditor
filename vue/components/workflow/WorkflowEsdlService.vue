@@ -1,12 +1,24 @@
 <template>
-  <p>Please select the "Load ESDL" button below to call the ESDL service.</p>
-  <a-button type="primary" @click="loadEsdl">
-    Load ESDL
-  </a-button>
+  <p v-if="workflowStep.service.auto">
+    The ESDL service will be called automatically. Please click next when all data is loaded.
+  </p>
+  <div v-else>
+    <p>
+      Please select the "Run ESDL service" button below to run the ESDL service
+      and load the results.
+    </p>
+    <a-button
+      v-if="!workflowStep.service.auto"
+      type="primary"
+      @click="loadEsdl"
+    >
+      Run ESDL service
+    </a-button>
+  </div>
+  <a-button type="primary" @click="goToNextStep"> Next </a-button>
 </template>
 
 <script setup="props">
-import { ref } from "vue";
 import { useWorkflow } from "../../composables/workflow.js";
 
 export default {
@@ -24,7 +36,6 @@ export const { goToNextStep } = useWorkflow();
 const { getState } = useWorkflow();
 const state = getState();
 
-export const esdlLoaded = ref(false);
 export const workflowStep = props.workflowStep;
 
 export const loadEsdl = () => {
@@ -38,8 +49,13 @@ export const loadEsdl = () => {
     let parameter_value = state[parameter_name];
     params["query_parameters"][parameter_name] = parameter_value;
   }
+
+  window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
-  goToNextStep();
+
+  window.socket.on("add_building_objects", function () {
+    window.hide_loader();
+  });
 };
 
 if (workflowStep.service.auto) {

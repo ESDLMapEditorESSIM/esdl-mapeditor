@@ -20,7 +20,7 @@ services:
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
-      - ../.env.open-source
+      - ../.env
     environment:
       - OIDC_CLIENT_SECRETS=credentials/client_secrets_local-docker.json
 

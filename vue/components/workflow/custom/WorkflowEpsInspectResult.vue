@@ -68,6 +68,7 @@ onUnmounted(() => {
 });
 
 export const getEpsDetails = (asset_id) => {
+  // window.continue_service_workflow();
   window.socket.emit("DLA_get_object_properties", { id: asset_id }, (res) => {
     isLoading.value = true;
     try {
@@ -87,7 +88,6 @@ export const getEpsDetails = (asset_id) => {
       fetch(`workflow/get_data?${queryString}`)
         .then((response) => response.json())
         .then((data) => {
-          console.log(data);
           generateTreeData(data);
         })
         .catch(genericErrorHandler)
@@ -98,6 +98,7 @@ export const getEpsDetails = (asset_id) => {
   });
 };
 
+removeContextMenuItem(contextMenuItemText);
 addContextMenuItem(contextMenuItemText, "icons/BuildingContents.png", getEpsDetails);
 
 /**
