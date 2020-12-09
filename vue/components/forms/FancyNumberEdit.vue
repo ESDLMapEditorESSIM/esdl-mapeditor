@@ -3,6 +3,7 @@
     <a-input
       v-model:value="fancy_number"
       class="fe_box"
+      size="small"
       type="text"
       @blur="onLoseFocus"
     />

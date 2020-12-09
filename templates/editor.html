@@ -580,7 +580,8 @@
                     var marker = e.target;
                     var id = marker.id;
 
-                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                    object_properties_window(id);
                 }
             });
         }
