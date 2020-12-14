@@ -87,9 +87,9 @@ export default {
         });
       },
       handleChange:  function(new_value, key, col, row_nr) {
-        console.log(new_value, key, col, row_nr);
+        console.log('update table', new_value, key, col, row_nr);
         this.table.rows[row_nr][col] = new_value;
-        console.log(this.table);
+        console.log('new table', this.table);
       }
   },
 };

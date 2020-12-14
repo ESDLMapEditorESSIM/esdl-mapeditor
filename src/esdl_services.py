@@ -18,15 +18,16 @@ import urllib.parse
 import base64
 
 import requests
-from flask import Flask
-from flask_socketio import SocketIO, emit
 
 import src.esdl_config as esdl_config
+import src.log as log
 from esdl.processing import ESDLAsset
 from src.esdl_helper import energy_asset_to_ui
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
-import src.log as log
+from flask import Flask
+from flask_socketio import SocketIO, emit
+from src.esdl_helper import energy_asset_to_ui
 
 logger = log.get_logger(__name__)
 
@@ -118,8 +119,8 @@ class ESDLServices:
             if config_service["id"] == service_params["service_id"]:
                 service = config_service
                 break
-            # If it's a workflow, lookin its steps.
-            if config_service["type"] == "workflow":
+            # If it's a workflow, look in its steps.
+            if config_service["type"] in ("workflow", "vueworkflow"):
                 for step in config_service["workflow"]:
                     if (
                         step["type"] == "service"
@@ -222,7 +223,7 @@ class ESDLServices:
                                 if cfg_service_param["location"] == "url":
                                     url = url.replace(
                                         "<" + cfg_service_param["parameter_name"] + ">",
-                                        query_params[key],
+                                        str(query_params[key]),
                                     )
                                 elif cfg_service_param["location"] == "body" and isinstance(body, dict):
                                     body[

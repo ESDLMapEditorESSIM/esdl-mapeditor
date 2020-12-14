@@ -28,7 +28,10 @@ view_modes_config = {
         "Basic": {
             "EnergyAsset": [
                 "name",
-                "state",
+                "state"
+            ],
+            "Potential": [
+                "name",
             ],
             "Consumer": [
                 "power"
@@ -76,15 +79,29 @@ view_modes_config = {
                 "flowCoefficient",
                 "innerDiameter",
                 "position"
-
+                ],
+            "Building": [
+                "name",
+                "type",
+                "buildingYear",
+                "surfaceArea",
+                "floorArea",
+                "energyLabel"
             ]
-
         },
         "Aggregation": {
             "EnergyAsset": [
                 "aggregated",
-                "aggregationCount",
+                "aggregationCount"
             ],
+            "Potential": [
+                "aggregated",
+                "aggregationCount"
+            ],
+            "Building": [
+                "aggregated",
+                "aggregationCount"
+            ]
         }
     },
     "ESSIM": {

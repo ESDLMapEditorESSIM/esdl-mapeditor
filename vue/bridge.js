@@ -1,15 +1,30 @@
-export const PubSubManager = {
-  subscribers: [],
+/**
+ * Bridging functionality, to bridge the gap between classic JS / JQuery and Vue.
+ */
 
-  subscribe: function(parent, callback) {
-    this.subscribers.push({ parent: parent, callback: callback });
+
+export const MessageNames = Object.freeze({
+    ADD_FEATURE_TO_LAYER: 'ADD_FEATURE_TO_LAYER',
+});
+
+export const PubSubManager = {
+  subscriptions: {
+    'ADD_FEATURE_TO_LAYER': [],
   },
 
-  color: function(name) {
-    // Notify subscribers of event.
-    this.subscribers.forEach(function(subscriber) {
-      subscriber.callback(name, subscriber.parent);
+  subscribe: function(name, callback) {
+    console.log(`Adding subscriber for ${name}`)
+    this.subscriptions[name].push({ callback: callback });
+  },
+
+  broadcast: function (name, message) {
+    const subscribers = this.subscriptions[name];
+    subscribers.forEach(function(subscriber) {
+      subscriber.callback(name, message);
     });
-  }
+
+  },
+
 };
 
+window.PubSubManager = PubSubManager

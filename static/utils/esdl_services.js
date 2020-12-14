@@ -68,7 +68,7 @@ function query_esdl_service(service, state_params) {
     params['body_config'] = {}
     if (service['type'] == 'json') {
         let b_params = service['body_config'];
-        if (Object.keys(b_params).length) {
+        if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
                 for (let i=0; i<b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {
@@ -255,9 +255,11 @@ function show_service_settings(index, new_workflow = true) {
         if (workflow.workflow_step && workflow.workflow_step.refresh >= 0) {
             setTimeout(() => show_service_settings(index, false), workflow.workflow_step.refresh * 1000);
         }
+    }
+    else if (service['type'] == 'vueworkflow') {
+        window.activate_service_workflow(index, service);
     } else {
         render_service(service, service_settings_div);
-        // service_settings_div.innerHTML += '<button id="query_service_button" onclick="query_esdl_service(' + index + ');">Run Service</button>';
     }
 }
 
@@ -343,7 +345,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
     let first_body_ui_parameter = true;
     if (service['type'] == 'json') {
         let b_params = service['body_config'];
-        if (Object.keys(b_params).length) {
+        if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
                 for (let i=0; i<b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {

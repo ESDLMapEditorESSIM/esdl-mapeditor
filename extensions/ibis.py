@@ -38,7 +38,7 @@ class IBISBedrijventerreinen:
         @self.socketio.on('ibis_bedrijventerreinen', namespace='/esdl')
         def get_ibis_contours(info):
             with self.flask_app.app_context():
-                print("getting ibis request")
+                logger.info("getting ibis request")
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
 
@@ -52,12 +52,12 @@ class IBISBedrijventerreinen:
                 try:
                     url = 'http://' + settings.ibis_config["host"] + ':' + settings.ibis_config["port"] + \
                            settings.ibis_config["path_contour"] + rin_list
-                    print(url)
+                    logger.info(url)
                     r = requests.get(url)
                     if len(r.text) > 0:
                         area_list = json.loads(r.text)
                 except Exception as e:
-                    print('ERROR in accessing IBIS boundary service for {}'.format(rin_list))
+                    logger.info('ERROR in accessing IBIS boundary service for {}'.format(rin_list))
                     return None
 
                 if add_boundary_to_ESDL:
@@ -69,12 +69,12 @@ class IBISBedrijventerreinen:
             try:
                 url = 'http://' + settings.ibis_config["host"] + ':' + settings.ibis_config["port"] + \
                       settings.ibis_config["path_list"]
-                print(url)
+                logger.info(url)
                 r = requests.get(url)
                 if len(r.text) > 0:
                     bedrijventerreinen_list = json.loads(r.text)
             except Exception as e:
-                print('ERROR in accessing IBIS service')
+                logger.info('ERROR in accessing IBIS service')
                 return None
 
             return { "bedrijventerreinen": bedrijventerreinen_list }

@@ -16,16 +16,16 @@
                   <span :title="attr.doc">{{ camelCase(attr.name) }}</span>
                 </a-col>
                 <a-col :span="15" v-if="isAttribute(attr)">
-                  <FancyNumberEdit v-if="attr.type == 'EInt'" v-model:value="attr.value" size="small" @update:value="(val) => { updateAttribute(attr.name, val);}"/>
+                  <FancyNumberEdit 
+                    v-if="attr.type == 'EInt'" 
+                    v-model:value="attr.value" 
+                    size="small" 
+                    @update:value="(val) => { updateAttribute(attr.name, val);}"/>
                   <FancyNumberEdit
                     v-if="attr.type == 'EDouble'"
                     v-model:value="attr.value"
                     size="small"
-                    @update:value="
-                      (val) => {
-                        updateAttribute(attr.name, val);
-                      }
-                    "
+                    @update:value="(val) => { updateAttribute(attr.name, val); }"
                   />
                   <a-input
                     v-if="attr.type == 'EString' && attr.name !== 'description'"
@@ -62,9 +62,7 @@
                     size="small"
                     style="width: 100%"
                     :default-value="get_default_date(attr.value)"
-                    :show-time="{
-                      defaultValue: moment('00:00:00', 'HH:mm:ss'),
-                    }"
+                    :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }"
                     @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }"
                   />
                 </a-col>
@@ -94,6 +92,7 @@
       </a-col>
     </a-row>
     <a-row>
+      <!-- these buttons are not necessary I think... -->
       <a-col :span="24">
         <a-space>
           <a-button type="primary" @click="save">Save</a-button>

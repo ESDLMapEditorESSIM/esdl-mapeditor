@@ -330,11 +330,12 @@ class TimeDimension:
                                     (current_asset.geometry.point.items[1].lon, current_asset.geometry.point.items[1].lat)]]
 
                     color = colors[active_es_id+item['carrierId']]['color']  # 32a852"
-                    feature_list.append(
-                        self.generate_timed_geojson_for_line(coordinates, item['time'], 0.5,
-                                                             item[simulation_parameter], item['assetId'], color,
-                                                             allocation_boundaries[key][0], allocation_boundaries[key][1]))
-                    fid += 1
+                    if item[simulation_parameter] > 1e-2:
+                        feature_list.append(
+                            self.generate_timed_geojson_for_line(coordinates, item['time'], 0.5,
+                                                                 item[simulation_parameter], item['assetId'], color,
+                                                                 allocation_boundaries[key][0], allocation_boundaries[key][1]))
+                        fid += 1
                     if 'data' in monitor_data and item['assetId'] in monitor_data['data']:
                         monitor_data['data'][item['assetId']]['data_x'].append(item['time'].split('T')[1].strip('Z'))
                         monitor_data['data'][item['assetId']]['data_y'].append(item[simulation_parameter])
