@@ -83,30 +83,30 @@ def _change_cost_unit(qau, cost_unit_string):
     else:
         logger.warn('probably not a cost unit')
 
-    if re.match(r"/kWh", cost_unit_string):
+    if re.match(r"\w+/kWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/MWh", cost_unit_string):
+    elif re.match(r"\w+/MWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
-    elif re.match(r"/kW", cost_unit_string):
-        qau.perUnit = esdl.UnitEnum.WATTH
+    elif re.match(r"\w+/kW", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/MW", cost_unit_string):
+    elif re.match(r"\w+/MW", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
-    elif re.match(r"/km", cost_unit_string):
+    elif re.match(r"\w+/km", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/m", cost_unit_string):
+    elif re.match(r"\w+/m", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.NONE
 
-    if re.match(r"/yr", cost_unit_string):
+    if re.match(r".+/yr", cost_unit_string):
         qau.perTimeUnit = esdl.TimeUnitEnum.YEAR
 
 def _create_cost_qau(cost_unit_string):
-    qau = esdl.QuantityAndUnitType(id=str(uuid4), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
+    qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
     return qau
 
@@ -117,7 +117,7 @@ def set_cost_information(obj, cost_information_data):
     
     obj_ci = obj.costInformation
     if not obj_ci:
-        obj.costInformation = esdl.CostInformation(id=str(uuid4))
+        obj.costInformation = esdl.CostInformation(id=str(uuid4()))
         esh.add_object_to_dict(active_es_id, obj.costInformation)
 
     for ci_component in cost_information_data:
@@ -145,7 +145,7 @@ def set_cost_information(obj, cost_information_data):
 
             else:
                 if ci_component['value'] != '':
-                    new_cost_component_profile = esdl.SingleValue(id=str(uuid4))
+                    new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
                     new_cost_component_profile.value = str2float(ci_component['value'])
                     new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
