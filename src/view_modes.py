@@ -66,9 +66,10 @@ view_modes_config = {
                 "material"
             ],
             "CheckValve": [
+                "flowCoefficient",
                 "innerDiameter",
-                "reopenDeltaP",
-                "flowCoefficient"
+                "reopenDeltaP"
+                
             ],
             "Valve": [
                 "type",

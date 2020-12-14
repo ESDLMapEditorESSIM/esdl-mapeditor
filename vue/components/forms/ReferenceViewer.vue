@@ -26,15 +26,18 @@
         </a-button>
     </a-col>
     <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px">
-        <span v-if="ref.type == 'Table'">TABLE EDITOR</span>
+        <TableEditor :parentObjectID="parentObjectIdentifier" :reference="ref" v-if="ref.type == 'Table'"/>
         <span v-else>Other editor</span>
     </a-modal>
 </template>
 
 <script>
-
+import TableEditor from './TableEditor'
 export default {
   name: "ReferenceViewer",
+  components: {
+      TableEditor
+  },
   props: {
     reference: {
       type: Object,

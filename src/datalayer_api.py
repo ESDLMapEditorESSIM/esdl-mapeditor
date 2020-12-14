@@ -19,10 +19,15 @@ from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information
+from dataclasses import asdict
+from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response
 import src.log as log
 import esdl
 
 logger = log.get_logger(__name__)
+
+
+
 
 class DataLayerAPI:
     def __init__(self, flask_app: Flask, socket: SocketIO, esdl_doc: EcoreDocumentation):
@@ -105,3 +110,14 @@ class DataLayerAPI:
 
             if isinstance(object, esdl.EnergyAsset):
                 self.datalayer.remove_control_strategy(object)
+
+
+        @self.socketio.on('DLA_get_table_data', namespace='/esdl')
+        def DLA_get_table_data(message):
+            table_data_request = DLA_table_data_request(**message)
+            print('DLA_get_table_data_request', table_data_request)
+            response: DLA_table_data_response = self.datalayer.get_table(table_data_request)
+            # return the dataclass as dict
+            return asdict(response)
+
+

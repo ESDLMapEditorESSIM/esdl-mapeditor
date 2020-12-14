@@ -90,7 +90,7 @@ export default {
   computed: {
   },
   mounted() {
-    // console.log(this.costInformation);
+    console.log(this.costInformation);
   },
   methods: {
     showModal() {
