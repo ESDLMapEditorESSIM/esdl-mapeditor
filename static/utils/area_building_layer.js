@@ -511,6 +511,29 @@ function set_area_handlers(area) {
     }
 }
 
+function format_KPI_value(value) {
+    if (typeof(value) == "number") {
+        value_str = value.toString();
+        index_of_decimal_seperator = value_str.indexOf('.');
+        if (index_of_decimal_seperator >= 0) {
+            if (index_of_decimal_seperator < value_str.length - 3) {
+                value = Math.round((1000*value)+Number.EPSILON) / 1000;
+                value_str = value.toString();
+            }
+            return value_str;
+        } else
+            return value_str;
+    } else
+        return value;
+}
+
+function format_KPI_unit(unit) {
+    if (unit.indexOf('Mg') >= 0) {
+        return unit.replace('Mg', 'ton');
+    } else
+        return unit;
+}
+
 function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
@@ -534,9 +557,9 @@ function add_area_layer(area_data) {
                     text += "<br><br><table class=\"kpi_table\">";
                     text += "<thead><tr><th>KPI</th><th>Value</th><th>Unit</th></tr></thead><tbody>"
                     for (let key in feature.properties.KPIs) {
-                        text += "<tr><td>" + key + "</td><td align=\"right\">" + feature.properties.KPIs[key]['value'] + "</td>";
+                        text += "<tr><td>" + key + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
                         if (!(feature.properties.KPIs[key]['unit'] === "")) {
-                            text += "<td>" + feature.properties.KPIs[key]['unit'] + "</td></tr>";
+                            text += "<td>" + format_KPI_unit(feature.properties.KPIs[key]['unit']) + "</td></tr>";
                         } else {
                             text += "<td>&nbsp;</td></tr>";
                         }

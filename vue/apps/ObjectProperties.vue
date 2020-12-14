@@ -27,11 +27,13 @@
                 v-if="attr.type=='EString'"
                 v-model:value="attr.value"
                 class="fe_box"
+                size="small" style="width: 100%"
                 type="text" 
                 @blur="updateAttribute(attr.name, attr.value)" />
               <a-select
                 v-if="attr.type=='EEnum' || attr.type=='EBoolean'"
                 v-model:value="attr.value"
+                size="small" style="width: 100%"
                 @blur="updateAttribute(attr.name, attr.value)">
                 <a-select-option
                   v-for="opt in attr.options"
@@ -42,6 +44,7 @@
               <a-date-picker
                 v-if="attr.type == 'EDate'"
                 format="YYYY-MM-DD HH:mm:ss"
+                size="small" style="width: 100%"
                 :default-value="get_default_date(attr.value)"
                 :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }" 
                 @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }" />
