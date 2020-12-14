@@ -50,12 +50,8 @@ export const loadEsdl = () => {
     params["query_parameters"][parameter_name] = parameter_value;
   }
 
-  window.show_loader();
+  window.hide_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
-
-  window.socket.on("add_building_objects", function () {
-    window.hide_loader();
-  });
 };
 
 if (workflowStep.service.auto) {
