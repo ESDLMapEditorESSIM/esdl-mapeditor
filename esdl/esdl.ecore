@@ -12,6 +12,12 @@
         containment="true" eOpposite="#//Port/energyasset"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="controlStrategy" eType="#//ControlStrategy"
         eOpposite="#//ControlStrategy/energyAsset"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="behaviour" upperBound="-1"
+        eType="#//AbstractBehaviour" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="parameter that allows to specify the (dynamic) behaviour of this asset"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Producer" abstract="true" eSuperTypes="#//EnergyAsset">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -572,6 +578,7 @@
         <details key="documentation" value="Allows for describing of what material(s) the Asset is made"/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="manufacturer" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="GenericConsumer" eSuperTypes="#//Consumer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -895,7 +902,8 @@
     <eLiterals name="SPACE_HEATING" value="1"/>
     <eLiterals name="HOT_TAPWATER" value="2"/>
     <eLiterals name="SH_AND_HTW" value="3"/>
-    <eLiterals name="OTHER" value="4"/>
+    <eLiterals name="COOKING" value="4"/>
+    <eLiterals name="OTHER" value="5"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ElectricityDemand" eSuperTypes="#//Consumer">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1025,17 +1033,21 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Exchange heat between two circuits"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="LossDeltaT" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value=""/>
-      </eAnnotations>
-    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="heatTransferCoefficient"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The heat transfer coefficient in W/K"/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lengthPrimarySide" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="diameterPrimarySide" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="roughnessPrimarySide" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lengthSecundarySide" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
+        defaultValueLiteral="0.0"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="diameterSecundarySide"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble" defaultValueLiteral="0.0"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="roughnessSecundarySide"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble" defaultValueLiteral="0.0"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ResidentialBuildingTypeEnum">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1604,6 +1616,16 @@
         <details key="documentation" value="Unique identifier for the CostInformation collection"/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="discountRate" eType="#//GenericProfile"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="variableOperationalCosts"
+        eType="#//GenericProfile" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fixedMaintenanceCosts"
+        eType="#//GenericProfile" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fixedOperationalCosts"
+        eType="#//GenericProfile" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="variableMaintenanceCosts"
+        eType="#//GenericProfile" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="SpecificLabelDistribution" abstract="true"
       eSuperTypes="#//GenericDistribution">
@@ -1666,20 +1688,20 @@
       <details key="documentation" value="(experimental) Used to define statistical information"/>
     </eAnnotations>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="SymetricVariance" eSuperTypes="#//AbstractVariance">
+  <eClassifiers xsi:type="ecore:EClass" name="SymmetricVariance" eSuperTypes="#//AbstractVariance">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="(experimental) Used to define statistical information"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sigma" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AssymetricVariance" eSuperTypes="#//AbstractVariance">
+  <eClassifiers xsi:type="ecore:EClass" name="AssymmetricVariance" eSuperTypes="#//AbstractVariance">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="(experimental) Used to define statistical information"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sigmaMin" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sigmaPlus" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="DoubleAssymetricVariance" eSuperTypes="#//AbstractVariance">
+  <eClassifiers xsi:type="ecore:EClass" name="DoubleAssymmetricVariance" eSuperTypes="#//AbstractVariance">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="(experimental) Used to define statistical information"/>
     </eAnnotations>
@@ -1740,7 +1762,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="database" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="filters" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Can be used in the WHERE-clause of a query"/>
+        <details key="documentation" value="Raw string that can be communicated as the WHERE clause of the query"/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -2085,8 +2107,8 @@
       <details key="documentation" value="Type of vehicle, e.g. car, truck, train"/>
     </eAnnotations>
     <eLiterals name="UNDEFINED"/>
-    <eLiterals name="CAR"/>
-    <eLiterals name="TRUCK"/>
+    <eLiterals name="CAR" value="1"/>
+    <eLiterals name="TRUCK" value="2"/>
     <eLiterals name="VAN" value="3"/>
     <eLiterals name="BUS" value="4"/>
     <eLiterals name="METRO" value="5"/>
@@ -2208,15 +2230,31 @@
       <details key="documentation" value="Defines the possible multipliers in QuantityAndUnitType"/>
     </eAnnotations>
     <eLiterals name="NONE"/>
-    <eLiterals name="KILO" value="1"/>
-    <eLiterals name="MEGA" value="2"/>
-    <eLiterals name="GIGA" value="3"/>
-    <eLiterals name="TERRA" value="4"/>
-    <eLiterals name="PETA" value="5"/>
+    <eLiterals name="ATTO" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="10"/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FEMTO" value="2"/>
+    <eLiterals name="PICO" value="3"/>
+    <eLiterals name="NANO" value="4"/>
+    <eLiterals name="MICRO" value="5"/>
     <eLiterals name="MILLI" value="6"/>
-    <eLiterals name="MICRO" value="7"/>
-    <eLiterals name="NANO" value="8"/>
-    <eLiterals name="PICO" value="9"/>
+    <eLiterals name="CENTI" value="7"/>
+    <eLiterals name="DECI" value="8"/>
+    <eLiterals name="DEKA" value="9"/>
+    <eLiterals name="HECTO" value="10"/>
+    <eLiterals name="KILO" value="11"/>
+    <eLiterals name="MEGA" value="12"/>
+    <eLiterals name="GIGA" value="13"/>
+    <eLiterals name="TERA" value="14"/>
+    <eLiterals name="TERRA" value="15">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Decrepated (spelling mistake, still here for older models that use it)"/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PETA" value="16"/>
+    <eLiterals name="EXA" value="17"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="PhysicalQuantityEnum">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -2251,6 +2289,7 @@
     <eLiterals name="COEFFICIENT" value="22"/>
     <eLiterals name="WEIGHT" value="23"/>
     <eLiterals name="FORCE" value="24"/>
+    <eLiterals name="CURRENT" value="25"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="UnitEnum">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -2288,6 +2327,7 @@
     <eLiterals name="VOLT_AMPERE_REACTIVE" value="29"/>
     <eLiterals name="PASCAL" value="30"/>
     <eLiterals name="NEWTON" value="31"/>
+    <eLiterals name="AMPERE" value="32"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AbstractDataSource" abstract="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -3504,10 +3544,29 @@
     </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Table">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Table class that represents data in a table structure. Current examples are the pump curve table and a table describing the flowCoefficient of a checkvalve (relation between pressure drop and flow rate)"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="row" upperBound="-1" eType="#//TableRow"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="header" upperBound="-1"
         eType="#//AbstractQuantityAndUnit" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Name of the table"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Description of the table"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="datasource" eType="#//AbstractDataSource"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Reference to a datasource describing where the data in the table comes from"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TableRow">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" unique="false" upperBound="-1"
@@ -3532,7 +3591,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="flowCoefficient" eType="#//Table"
         containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AirVessel"/>
+  <eClassifiers xsi:type="ecore:EClass" name="AirVessel" eSuperTypes="#//Transport"/>
   <eClassifiers xsi:type="ecore:EClass" name="Notes">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Collection of notes that can be added to the map, like postits (with comments in HTML)"/>
@@ -3622,6 +3681,11 @@
         <details key="documentation" value="The Young's modulus is a mechanical property that measures the stiffness of a solid material (in Pascal or Newton/m2)"/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="specificHeatCapacity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The specific heat capacity of the material in J/(K kg) (Joule per Kelvin kilogram)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Matters">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
@@ -3702,5 +3766,87 @@
         <details key="documentation" value="Unique identifier for the EnvironmentalProfiles collection"/>
       </eAnnotations>
     </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AbstractBehaviour" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract class for specification of the (dynamic) behaviour of an asset"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Unique identifier for this behaviour specification"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="name for this behaviour specification"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GenericTransferFunction" eSuperTypes="#//AbstractTransferFunction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Generic transfer function with numerator and denominator"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="numerator" unique="false"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Polynomial constants of the numerator in a Laplace representation of a transfer function: H = y(s) / u(s) = (a0 + a1 * s + a2 * s^2 + ... + an * s^n) / (b0 + b1 * s + b2 * s^2 + ... + bn * s^n)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="denominator" unique="false"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Polynomial constants of the denominator in a Laplace representation of a transfer function: H = y(s) / u(s) = (a0 + a1 * s + a2 * s^2 + ... + an * s^n) / (b0 + b1 * s + b2 * s^2 + ... + bn * s^n)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InputOutputQuantityRelation" eSuperTypes="#//AbstractBehaviour"/>
+  <eClassifiers xsi:type="ecore:EClass" name="DelayTransferFunction" eSuperTypes="#//AbstractTransferFunction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Delay transfer function with a time constant"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeConstant" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
+        defaultValueLiteral="0.0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Time constant of a delay transfer function: H = y(s) / u(s) = (1 / s) * e ^(-timeConstant * s)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AbstractTransferFunction" abstract="true"
+      eSuperTypes="#//AbstractBehaviour">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract class for a TransferFunction for the specification of the behaviour of an asset"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//TransferFunctionTypeEnum">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Type of transfer function"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CombinedTransferFunction" eSuperTypes="#//AbstractTransferFunction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Combination of multiple transfer functions by addition of multiplication of individual components"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="component" lowerBound="2"
+        upperBound="-1" eType="#//AbstractTransferFunction" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="combinationFunction" eType="#//CombinationFunctionEnum">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Specifies the combination function to apply to the individual components of a combined transfer function"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CombinationFunctionEnum">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Specificaton of the combination function"/>
+    </eAnnotations>
+    <eLiterals name="MULTIPLICATION"/>
+    <eLiterals name="ADDITION" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TransferFunctionTypeEnum">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Specification of the transfer function type"/>
+    </eAnnotations>
+    <eLiterals name="UNDEFINED"/>
+    <eLiterals name="POWER_SETPOINT_RESPONSE" value="1"/>
+    <eLiterals name="TEMPERATURE_SETPOINT_RESPONSE" value="2"/>
   </eClassifiers>
 </ecore:EPackage>
