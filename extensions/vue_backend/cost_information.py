@@ -16,6 +16,7 @@ from pyecore.ecore import EReference
 from extensions.session_manager import get_session, set_session, get_handler
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.esdl_handler import EnergySystemHandler
 import src.log as log
 from uuid import uuid4
 from utils.utils import str2float, camelCaseToWords
@@ -104,10 +105,13 @@ def _change_cost_unit(qau, cost_unit_string):
 
     if re.match(r".+/yr", cost_unit_string):
         qau.perTimeUnit = esdl.TimeUnitEnum.YEAR
+    # make sure the description matches this updated/new qau
+    qau.description = 'Cost in ' + unit_to_string(qau)
 
 def _create_cost_qau(cost_unit_string):
     qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
+    print('new qau', EnergySystemHandler.attr_to_dict(qau))
     return qau
 
 

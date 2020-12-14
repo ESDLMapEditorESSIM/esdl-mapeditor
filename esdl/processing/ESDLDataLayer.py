@@ -15,11 +15,14 @@
 from uuid import uuid4
 from esdl.processing import ESDLEcore
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from extensions.esdl_browser import ESDLBrowser
+from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
 from extensions.vue_backend.cost_information import get_cost_information
+from extensions.vue_backend.table_data import get_table_data
+from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response
+from extensions.vue_backend.messages.identifier_message import Identifier
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
@@ -34,11 +37,11 @@ class ESDLDataLayer:
         self.esdl_doc = esdl_doc
         pass
 
-    def get_object_info_by_identifier(self, identifier):
+    def get_object_info_by_identifier(self, identifier: Identifier):
         esdl_object = self.get_object_from_identifier(identifier)
         return self.get_object_info(esdl_object)
 
-    def get_object_parameters_by_identifier(self, identifier):
+    def get_object_parameters_by_identifier(self, identifier: Identifier):
         esdl_object = self.get_object_from_identifier(identifier)
         obj_info = self.get_object_info(esdl_object)
         attrs = obj_info['attributes']
@@ -63,7 +66,7 @@ class ESDLDataLayer:
 
         return obj_info
 
-    def set_object_parameters_by_identifier(self, identifier, parameters):
+    def set_object_parameters_by_identifier(self, identifier: Identifier, parameters):
         esdl_object = self.get_object_from_identifier(identifier)
 
         # TODO: implement
@@ -118,8 +121,9 @@ class ESDLDataLayer:
             es.services = services
         return services
 
-    def get_table(self):
-        pass
+    def get_table(self, message: DLA_table_data_request) -> DLA_table_data_response:
+        esdl_object = self.get_object_from_identifier(message.parent_id)
+        return get_table_data(esdl_object, message)
 
     def get_filtered_type(self, esdl_object, reference):
         """
@@ -143,7 +147,7 @@ class ESDLDataLayer:
             types = ESDLEcore.find_types(reference)
         return types
 
-    def get_object_from_identifier(self, identifier):
+    def get_object_from_identifier(self, identifier: Identifier):
         active_es_id = get_session('active_es_id')
         esh = get_handler()
         if 'id' in identifier:
