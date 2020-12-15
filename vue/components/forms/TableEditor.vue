@@ -5,14 +5,12 @@
     <div v-else>
         <p> {{ table.name }} </p>
         <a-table :columns="table.header" :data-source="table.rows" size="small">
-            <template v-for="col in colList" #[col]="{ text, record, index }">
-                <div :key="col">
+            <template v-for="col in colList" #[col]="{ text, record, index }" :key="col">
                     <a-input
                         style="margin: -5px 0"
                         :value="text"
                         @change="e => handleChange(e.target.value, record.key, col, index)"
                     />
-                </div>
             </template>
         </a-table>
         
