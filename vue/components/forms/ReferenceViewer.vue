@@ -1,38 +1,39 @@
 <!-- todo: deal with ref.many: how to display multiple references -->
 <template>
-    <!-- This template assumes that it is part of a <a-row> -->
-    <a-col :span="9">
-        <span :title="ref.doc">{{ camelCase(ref.name) }}</span>
-    </a-col>
-    <a-col :span="15 - nrButtons*2">        
-        <span> {{ ref.value.repr }}</span>
-    </a-col>
-    <a-col :span="2"  v-if="ref.value.repr !== null && !ref.eopposite">
-        <a-button size="small" @click="editRef(ref)" class="align-right">
-            <!-- <a-icon type="edit" /> -->
-            <i class="fa fa-edit small-icon" />
-        </a-button>
-    </a-col>   
-    <a-col :span="2" v-if="(ref.value.repr == null || ref.many) && !ref.eopposite">
-        <a-button size="small" @click="addRef(ref)" class="align-right">
-            <!-- <a-icon type="plus-square" /> -->
-            <i class="fa fa-plus small-icon" />
-        </a-button>
-    </a-col>
-     <a-col :span="2" v-if="ref.value.repr !== null && !ref.eopposite">
-        <a-button size="small" @click="deleteRef(ref)" class="align-right">
-            <!-- <a-icon type="delete" /> -->
-            <i class="fa fa-trash small-icon" />
-        </a-button>
-    </a-col>
-    <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px">
-        <TableEditor :parentObjectID="parentObjectIdentifier" :reference="ref" v-if="ref.type == 'Table'"/>
-        <span v-else>Other editor</span>
-    </a-modal>
+  <!-- This template assumes that it is part of a <a-row> -->
+  <a-col :span="9">
+    <span :title="ref.doc">{{ camelCase(ref.name) }}</span>
+  </a-col>
+  <a-col :span="15 - nrButtons*2">        
+      <span> {{ ref.value.repr }}</span>
+  </a-col>
+  <a-col :span="2" v-if="ref.value.repr !== null && !ref.eopposite">
+    <a-button size="small" @click="editRef(ref)" class="align-right">
+      <!-- <a-icon type="edit" /> -->
+      <i class="fa fa-edit small-icon" />
+    </a-button>
+  </a-col>   
+  <a-col :span="2" v-if="(ref.value.repr == null || ref.many) && !ref.eopposite">
+    <a-button size="small" @click="addRef(ref)" class="align-right">
+      <!-- <a-icon type="plus-square" /> -->
+      <i class="fa fa-plus small-icon" />
+    </a-button>
+  </a-col>
+    <a-col :span="2" v-if="ref.value.repr !== null && !ref.eopposite">
+      <a-button size="small" @click="deleteRef(ref)" class="align-right">
+        <!-- <a-icon type="delete" /> -->
+        <i class="fa fa-trash small-icon" />
+      </a-button>
+  </a-col>
+  <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
+  <TableEditor :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" v-if="ref.type == 'Table'"/>
+  <!-- <span v-else>Other editor</span> -->
+  <!-- </a-modal> -->
 </template>
 
 <script>
 import TableEditor from './TableEditor'
+import { Modal } from 'ant-design-vue';
 export default {
   name: "ReferenceViewer",
   components: {
@@ -99,7 +100,7 @@ export default {
     // },
     deleteRef: function(ref) {
       let self=this;
-      this.$confirm({
+      Modal.confirm({
         title: 'Delete value of ' + ref.type,
         content: 'Are you sure you want to delete the data of ' + ref.name + ' with value \'' + ref.value.repr + '\'?',
         okText: 'Yes',
@@ -114,10 +115,11 @@ export default {
           self.visible = false;
         },
       });
-    },
-    handleOk: function(ref) {
-        console.log(ref);
-        this.visible = false;
+    },    
+    tableReady: function() {
+      // called when closing the TableEditor
+      console.log('table editor ready')
+      this.visible = false;
     }
   },
 };

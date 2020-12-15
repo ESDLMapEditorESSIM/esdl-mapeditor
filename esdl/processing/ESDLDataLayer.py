@@ -20,8 +20,9 @@ from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
 from extensions.vue_backend.cost_information import get_cost_information
-from extensions.vue_backend.table_data import get_table_data
-from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response
+from extensions.vue_backend.table_data import get_table_data, set_table_data
+from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
+    DLA_set_table_data_request
 from extensions.vue_backend.messages.identifier_message import Identifier
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
@@ -123,7 +124,53 @@ class ESDLDataLayer:
 
     def get_table(self, message: DLA_table_data_request) -> DLA_table_data_response:
         esdl_object = self.get_object_from_identifier(message.parent_id)
-        return get_table_data(esdl_object, message)
+        esh = get_handler()
+        return get_table_data(self, esdl_object, message)
+
+    def set_table(self, message: DLA_set_table_data_request):
+        esdl_object = self.get_object_from_identifier(message.parent_id)
+        return set_table_data(esdl_object, message)
+
+    def get_or_create_qau(self, qua_id):
+        esh = get_handler()
+        active_es_id = get_session('active_es_id')
+        try:
+            qua = esh.get_by_id(qua_id)
+            return qua
+        except KeyError:
+            # qua does not exist, create it
+            global_qua = self.get_or_create_esi_qau()
+            if qua_id == 'flow':
+                qua = esdl.QuantityAndUnitType(id=qua_id)
+                qua.physicalQuantity = esdl.PhysicalQuantityEnum.FLOW
+                qua.unit = esdl.UnitEnum.CUBIC_METRE
+                qua.perTimeUnit = esdl.TimeUnitEnum.HOUR
+                qua.description = "Flow in m³/h"
+            if qua_id == 'head':
+                qua = esdl.QuantityAndUnitType(id=qua_id)
+                qua.physicalQuantity = esdl.PhysicalQuantityEnum.HEAD
+                qua.unit = esdl.UnitEnum.METRE
+                qua.description = "Head in m"
+            if qua_id == 'efficiency':
+                qua = esdl.QuantityAndUnitType(id=qua_id)
+                qua.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
+                qua.unit = esdl.UnitEnum.PERCENT
+                qua.description = "Efficiency in %"
+            global_qua.quantityAndUnit.append(qua)
+
+            return qua
+
+    def get_or_create_esi_qau(self):
+        esh = get_handler()
+        active_es_id = get_session('active_es_id')
+        es: esdl.EnergySystem = esh.get_energy_system(active_es_id)
+        if not es.energySystemInformation:
+            esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
+            es.energySystemInformation = esi
+        if not es.energySystemInformation.quantityAndUnits:
+            qua = esdl.QuantityAndUnits(id=str(uuid4()))
+            es.energySystemInformation.quantityAndUnits = qua
+        return es.energySystemInformation.quantityAndUnits
 
     def get_filtered_type(self, esdl_object, reference):
         """

@@ -20,7 +20,8 @@ from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information
 from dataclasses import asdict
-from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response
+from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
+    DLA_set_table_data_request
 import src.log as log
 import esdl
 
@@ -52,11 +53,11 @@ class DataLayerAPI:
         # @self.socketio.on('DLA_set_object_properties', namespace='/esdl')
         # def DLA_set_object_properties(identifier, properties):
         #     return self.datalayer.set_object_parameters_by_identifier(identifier, properties)       
-        
+
         @self.socketio.on('DLA_set_cost_information', namespace='/esdl')
         def DLA_set_cost_information(identifier, cost_information):
             object = self.datalayer.get_object_from_identifier(identifier)
-            set_cost_information(object, cost_information)             
+            set_cost_information(object, cost_information)
 
         @self.socketio.on('DLA_get_cs_info', namespace='/esdl')
         def DLA_get_cs_info(identifier):
@@ -119,5 +120,11 @@ class DataLayerAPI:
             response: DLA_table_data_response = self.datalayer.get_table(table_data_request)
             # return the dataclass as dict
             return asdict(response)
+
+        @self.socketio.on('DLA_set_table_data', namespace='/esdl')
+        def DLA_set_table_data(message):
+            new_table_data = DLA_set_table_data_request(**message)
+            print('DLA_set_table_data_request', new_table_data)
+            self.datalayer.set_table(new_table_data)
 
 
