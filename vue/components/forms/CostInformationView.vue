@@ -1,6 +1,6 @@
 <template>
-  <a-table :columns="costInformationColumns" :data-source="ci_filtered" size="middle" />
-  <CostInformationEdit v-model:costInfo="costInformation" v-model:objectID="objectIdentifier"/>
+  <a-table :columns="costInformationColumns" :data-source="ci_filtered" size="middle" :pagination="paginationConfig" />
+  <CostInformationEdit v-model:costInfo="costInformation" v-model:objectID="objectIdentifier" />
 </template>
 
 <script>
@@ -11,6 +11,8 @@ const costInformationColumns = [
   { title: 'Value', dataIndex: 'value', key: 'civalue'},
   { title: 'Unit', dataIndex: 'unit', key: 'ciunit'},
 ];
+
+const paginationConfig = { hideOnSinglePage: true};
 
 export default {
   name: "CostInformationView",
@@ -31,7 +33,8 @@ export default {
     return {
        costInformation: this.costInfo,
        objectIdentifier: this.objectID,
-       costInformationColumns
+       costInformationColumns,
+       paginationConfig
     }
   },
   computed: {
