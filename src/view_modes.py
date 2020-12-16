@@ -33,6 +33,9 @@ view_modes_config = {
             "Potential": [
                 "name",
             ],
+            # ===========================
+            #  The 5 ESDL capabilities
+            # ===========================
             "Consumer": [
                 "power"
             ],
@@ -52,9 +55,9 @@ view_modes_config = {
                 "power",
                 "efficiency"
             ],
-            "HeatPump": [
-                "COP"
-            ],
+            # ===========================
+            #  Transport assets
+            # ===========================
             "Pump": [
                 "pumpCurveTable",
                 "controlStrategy",
@@ -80,6 +83,15 @@ view_modes_config = {
                 "innerDiameter",
                 "position"
                 ],
+            # ===========================
+            #  Conversion assets
+            # ===========================
+            "HeatPump": [
+                "COP"
+            ],
+            # ===========================
+            #  Building assets
+            # ===========================
             "Building": [
                 "name",
                 "type",
@@ -87,6 +99,21 @@ view_modes_config = {
                 "surfaceArea",
                 "floorArea",
                 "energyLabel"
+            ],
+            "AggregatedBuilding": [
+                "name",
+                "surfaceArea",
+                "floorArea"
+            ],
+            # ===========================
+            #  Potentials
+            # ===========================
+            "SolarPotential": [
+                "area",
+                "description",
+                "orientation",
+                "solarPotentialType",
+                "value"
             ]
         },
         "Aggregation": {
