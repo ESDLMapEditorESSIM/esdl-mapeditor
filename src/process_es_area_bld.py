@@ -211,7 +211,7 @@ def update_asset_geometries_shape(area, shape):
         if not geom and possible_locations:
             loc = choose_location(possible_locations).get_esdl()
             asset.geometry = loc
-            print("assigning location lng:{} lat:{} to asset".format(loc.lon, loc.lat))
+            # print("assigning location lng:{} lat:{} to asset".format(loc.lon, loc.lat))
 
         if isinstance(asset, esdl.AbstractBuilding):
             calc_building_assets_location(asset)
