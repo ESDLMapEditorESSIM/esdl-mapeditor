@@ -1117,6 +1117,7 @@
                         });
                     }
 
+                    if (list[i][2] == null) list[i][2] = 'No name';
 					var title = list[i][4]+': '+list[i][2];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
@@ -1264,6 +1265,7 @@
                         iconSize: null
                     });
 
+                    if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
