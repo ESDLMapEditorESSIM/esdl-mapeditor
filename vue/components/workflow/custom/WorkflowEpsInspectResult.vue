@@ -25,7 +25,7 @@
 </template>
 
 <script setup="props">
-import { onUnmounted, ref } from "vue";
+import { onUnmounted, ref, defineProps } from "vue";
 import {
   BuildOutlined,
   NumberOutlined,
@@ -41,33 +41,30 @@ const { getState } = useWorkflow();
 const { addContextMenuItem, removeContextMenuItem } = useEsdlBuildings();
 const state = getState();
 
-export let treeData = ref([]);
-export const isLoading = ref(false);
+let treeData = ref([]);
+const isLoading = ref(false);
 
 const contextMenuItemText = "Show EPS Results";
 
-export default {
-  components: {
-    BuildOutlined,
-    HomeOutlined,
-    NumberOutlined,
-    TeamOutlined,
-  },
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
-  },
+const components = {
+  BuildOutlined,
+  HomeOutlined,
+  NumberOutlined,
+  TeamOutlined,
 };
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
+  },
+});
 
 onUnmounted(() => {
   removeContextMenuItem(contextMenuItemText);
 });
 
-export const getEpsDetails = (asset_id) => {
+const getEpsDetails = (asset_id) => {
   // window.continue_service_workflow();
   window.socket.emit("DLA_get_object_properties", { id: asset_id }, (res) => {
     isLoading.value = true;

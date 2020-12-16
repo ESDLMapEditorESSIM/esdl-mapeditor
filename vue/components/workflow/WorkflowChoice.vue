@@ -16,19 +16,16 @@
 
 <script setup="props">
 import { useWorkflow } from '../../composables/workflow';
+import { defineProps } from 'vue'
 
-export const { goToStep } = useWorkflow();
-
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-}
+});
 
-export const options = props.workflowStep.options;
+const { goToStep } = useWorkflow();
+const options = props.workflowStep.options;
 </script>

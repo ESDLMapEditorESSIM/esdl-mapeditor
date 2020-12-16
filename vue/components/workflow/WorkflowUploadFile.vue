@@ -9,26 +9,24 @@
 <script setup="props">
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
+import { defineProps } from 'vue'
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-};
+});
 
-export const inputId = 'workflow_file_upload';
+const inputId = 'workflow_file_upload';
 
 const workflowStep = props.workflowStep;
 
 const { getFromState, getState, goToNextStep } = useWorkflow();
 const state = getState();
 
-export const onSubmit = async () => {
+const onSubmit = async () => {
   const file_input = document.getElementById(inputId);
   const file_reader = new FileReader();
   const file_to_upload = file_input.files[0];
