@@ -14,6 +14,7 @@
 
 from uuid import uuid4
 from esdl.processing import ESDLEcore
+from pyecore.ecore import EReference
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
@@ -23,6 +24,7 @@ from extensions.vue_backend.cost_information import get_cost_information
 from extensions.vue_backend.table_data import get_table_data, set_table_data
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
+from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
 from extensions.vue_backend.messages.identifier_message import Identifier
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
@@ -124,18 +126,44 @@ class ESDLDataLayer:
 
     def get_table(self, message: DLA_table_data_request) -> DLA_table_data_response:
         esdl_object = self.get_object_from_identifier(message.parent_id)
-        esh = get_handler()
         return get_table_data(self, esdl_object, message)
 
     def set_table(self, message: DLA_set_table_data_request):
         esdl_object = self.get_object_from_identifier(message.parent_id)
-        return set_table_data(esdl_object, message)
+        set_table_data(self, esdl_object, message)
+
+    def delete_ref(self, message: DeleteRefMessage):
+        parent_object = self.get_object_from_identifier(message.parent)
+        esh = get_handler()
+        active_es_id = get_session('active_es_id')
+        reference: EReference = parent_object.eClass.findEStructuralFeature(message.ref_name)
+        ref_object = parent_object.eGet(reference)
+        print('deleting', message, ref_object)
+        if reference.containment:
+            try:
+                esh.remove_object_from_dict(active_es_id, ref_object)
+                resource = esh.get_resource(active_es_id)
+                fragment = ref_object.eURIFragment()
+                del resource._resolve_mem[fragment] # update fragment cache for pyecore<0.12.0
+            except KeyError as e:
+                print('ESDL Browser: can\'t delete id from uuid_dict', e)
+            ref_object.delete(recursive=True)  # will automatically remove the reference from the list
+        else:
+            if reference.many:
+                eOrderedSet = parent_object.eGet(reference)
+                eOrderedSet.remove(ref_object)
+            else:
+                parent_object.eSet(reference, reference.get_default_value())
+        # send updated reference description to frontend
+        response = ESDLEcore.describe_reference_value(parent_object.eGet(reference), ESDLBrowser.generate_repr)
+        print('delete ref response', response)
+        return response
 
     def get_or_create_qau(self, qua_id):
         esh = get_handler()
         active_es_id = get_session('active_es_id')
         try:
-            qua = esh.get_by_id(qua_id)
+            qua = esh.get_by_id(active_es_id, qua_id)
             return qua
         except KeyError:
             # qua does not exist, create it
@@ -156,6 +184,18 @@ class ESDLDataLayer:
                 qua.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
                 qua.unit = esdl.UnitEnum.PERCENT
                 qua.description = "Efficiency in %"
+            if qua_id == 'position':
+                qua = esdl.QuantityAndUnitType(id=qua_id)
+                qua.physicalQuantity = esdl.PhysicalQuantityEnum.POSITION
+                qua.unit = esdl.UnitEnum.NONE
+                qua.description = "Position [-]"
+            if qua_id == 'kv_coefficient':
+                qua = esdl.QuantityAndUnitType(id=qua_id)
+                qua.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
+                qua.unit = esdl.UnitEnum.CUBIC_METRE
+                qua.perTimeUnit = esdl.TimeUnitEnum.HOUR
+                qua.perUnit = esdl.UnitEnum.BAR
+                qua.description = "Coefficient in m³/h/bar"
             global_qua.quantityAndUnit.append(qua)
 
             return qua

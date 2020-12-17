@@ -70,7 +70,7 @@
 
                 <a-col :span="24" v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)">
                     <a-row :gutter="[0, 0]" type="flex" align="middle">
-                    <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="attr"/>
+                    <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="attr" @update="updateRef($event, attr)"/>
                     </a-row>
                 </a-col>
               </a-row>
@@ -208,7 +208,12 @@ export default {
     isAttribute: function(feature) {
         // in the combined features list (attributes and references) one can check if it is an attibute or not.
         return !('containment' in feature);
-    }    
+    },
+    updateRef: function(event, reference) {
+      console.log('OP ref updated: ', event, reference)
+      reference.value.type = event.value.type;
+      reference.value.repr = event.value.repr;
+    }
   }
 };
 </script>

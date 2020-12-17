@@ -10,11 +10,16 @@ class DLA_table_data_request:
     ref_type: str
 
 @dataclass
+class ColumnHeader:
+    title: str
+    id: str
+
+@dataclass
 class DLA_table_data_response:
     """ defines the message that is send from the frontend to get table data """
     name: str = None
     description: str = None
-    header: List = field(default_factory=list)
+    header: List[ColumnHeader] = field(default_factory=list)
     rows: List[List[float]] = field(default_factory=list)
     datasource: str = None
 
@@ -26,5 +31,5 @@ class DLA_set_table_data_request:
     ref_type: str
     name: str
     description: str
-    header: List
+    header: List[ColumnHeader]
     rows: List[List[Any]]

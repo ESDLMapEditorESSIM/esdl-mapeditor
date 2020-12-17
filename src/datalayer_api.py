@@ -22,6 +22,7 @@ from extensions.vue_backend.cost_information import set_cost_information
 from dataclasses import asdict
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
+from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
 import src.log as log
 import esdl
 
@@ -127,4 +128,8 @@ class DataLayerAPI:
             print('DLA_set_table_data_request', new_table_data)
             self.datalayer.set_table(new_table_data)
 
+        @self.socketio.on('DLA_delete_ref', namespace='/esdl')
+        def DLA_delete_ref(message):
+            delete_ref_message = DeleteRefMessage(**message)
+            return self.datalayer.delete_ref(delete_ref_message)
 

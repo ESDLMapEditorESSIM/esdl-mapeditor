@@ -26,7 +26,7 @@
       </a-button>
   </a-col>
   <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
-  <TableEditor :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" v-if="ref.type == 'Table'"/>
+  <TableEditor :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" v-if="ref.type == 'Table'"/>
   <!-- <span v-else>Other editor</span> -->
   <!-- </a-modal> -->
 </template>
@@ -48,6 +48,7 @@ export default {
     },
     parentObjectID: String,
   },
+  emits: ['update'],
   data() {
     return {
       parentObjectIdentifier: this.parentObjectID,
@@ -108,6 +109,19 @@ export default {
         cancelText: 'No',
         onOk() {
           self.visible = false;
+          const delete_ref = {
+            parent: {id: self.parentObjectID},
+            ref_name: self.reference.name            
+          }
+          window.socket.emit("DLA_delete_ref", delete_ref, (res) => {
+            const updateData = {
+              value: {
+                repr: res.repr,
+                type: res.type
+              }
+            }
+            self.$emit('update', updateData);
+          });
           console.log('delete', ref);
         },
         onCancel() {
@@ -118,8 +132,21 @@ export default {
     },    
     tableReady: function() {
       // called when closing the TableEditor
-      console.log('table editor ready')
       this.visible = false;
+    },
+    tableUpdate: function(ref, data) {
+      //console.log('RV table update data', ref, data);
+      // forward event to ObjectProperties, where the ref data original comes from
+      
+
+      // TODO: this needs to move to the Table editor: as this is table specific for now
+      const updateData = {
+        value: {
+          type: ref.type,
+          repr: data.header.length + 'x' + data.rows.length + " " + ref.type
+        }
+      }
+      this.$emit('update', updateData);
     }
   },
 };

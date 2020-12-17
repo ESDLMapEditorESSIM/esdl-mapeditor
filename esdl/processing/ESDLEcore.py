@@ -116,34 +116,46 @@ def get_asset_references(asset, esdl_doc=None, repr_function=string_repr):
             ref['eopposite'] = x.eOpposite and x.eOpposite.containment
             ref['types'] = find_types(x)
             value = asset.eGet(x)
-            if value is None:
-                ref['value'] = {"repr": value}
-            elif isinstance(value, ECollection):
-                values = list()
-                for item in value:
-                    repr = repr_function(item)
-                    refValue = dict()
-                    refValue['repr'] = repr
-                    refValue['type'] = item.eClass.name
-                    if hasattr(item, 'id'):
-                        refValue['id'] = item.id
-                    refValue['fragment'] = item.eURIFragment()
-                    values.append(refValue)
-                ref['value'] = values
-            else:
-                refValue = dict()
-                repr = repr_function(value)
-                refValue['repr'] = repr
-                refValue['type'] = value.eClass.name
-                if hasattr(value, 'id'):
-                    refValue['id'] = value.id
-                ref['value'] = refValue
+            ref['value'] = describe_reference_value(value, repr_function)
+            if not x.many and value is not None:
+                # todo: check if this is necessary, as fragment is also in value
                 ref['fragment'] = value.eURIFragment()
             ref['doc'] = x.__doc__
             if x.__doc__ is None and esdl_doc is not None:
                 ref['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
             references.append(ref)
     return references
+
+
+"""
+Calculates the value for a reference that is send to the frontend
+Return value describes the value in a dict
+"""
+def describe_reference_value(value, repr_function):
+    if value is None:
+        return {"repr": value}
+    elif isinstance(value, ECollection):
+        values = list()
+        for item in value:
+            repr_str = repr_function(item)
+            refValue = dict()
+            refValue['repr'] = repr_str
+            refValue['type'] = item.eClass.name
+            if hasattr(item, 'id'):
+                refValue['id'] = item.id
+            refValue['fragment'] = item.eURIFragment()
+            values.append(refValue)
+        return values
+    else:
+        refValue = dict()
+        repr_str = repr_function(value)
+        refValue['repr'] = repr_str
+        refValue['type'] = value.eClass.name
+        if hasattr(value, 'id'):
+            refValue['id'] = value.id
+        else:
+            refValue['fragment'] = value.eURIFragment()
+        return refValue
 
 
 """
