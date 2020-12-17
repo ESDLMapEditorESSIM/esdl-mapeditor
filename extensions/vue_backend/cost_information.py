@@ -77,7 +77,9 @@ def get_cost_information(obj):
 
 
 def _change_cost_unit(qau, cost_unit_string):
-    if re.match(r"EUR", cost_unit_string):
+    if re.match(r"%", cost_unit_string):
+        qau.unit = esdl.UnitEnum.PERCENT
+    elif re.match(r"EUR", cost_unit_string):
         qau.unit = esdl.UnitEnum.EURO
     elif re.match(r"USD", cost_unit_string):
         qau.unit = esdl.UnitEnum.DOLLAR
@@ -108,6 +110,7 @@ def _change_cost_unit(qau, cost_unit_string):
     # make sure the description matches this updated/new qau
     qau.description = 'Cost in ' + unit_to_string(qau)
 
+
 def _create_cost_qau(cost_unit_string):
     qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
@@ -121,7 +124,8 @@ def set_cost_information(obj, cost_information_data):
     
     obj_ci = obj.costInformation
     if not obj_ci:
-        obj.costInformation = esdl.CostInformation(id=str(uuid4()))
+        obj_ci = esdl.CostInformation(id=str(uuid4()))
+        obj.costInformation = obj_ci
         esh.add_object_to_dict(active_es_id, obj.costInformation)
 
     for ci_component in cost_information_data:
@@ -155,4 +159,3 @@ def set_cost_information(obj, cost_information_data):
 
                     obj_ci.eSet(ci_component_name, new_cost_component_profile)
                     esh.add_object_to_dict(active_es_id, new_cost_component_profile)
-                    

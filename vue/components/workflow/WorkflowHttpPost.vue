@@ -11,34 +11,31 @@
 
 
 <script setup="props">
-import { ref } from "vue";
+import { defineProps, ref } from "vue";
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-};
+});
 
 const workflowStep = props.workflowStep;
 
-export const isLoading = ref(true);
-export const options = ref([]);
-export const form = {};
+const isLoading = ref(true);
+const options = ref([]);
+const form = {};
 form[workflowStep.target_variable] = "";
 
-export const { goToNextStep } = useWorkflow();
+const { goToNextStep } = useWorkflow();
 const { getFromState } = useWorkflow();
 
-export const message = ref("");
+const message = ref("");
 
-export const doPost = async () => {
+const doPost = async () => {
   // Build the target request parameters by getting the values from the state.
   const request_params = getFromState(workflowStep.target["request_params"]);
   const params = {

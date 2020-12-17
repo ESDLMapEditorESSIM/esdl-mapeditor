@@ -9,7 +9,6 @@ import VueComponentLControl from './components/leaflet/VueComponentLControl'
 // Import subset.
 import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Tree, Upload, Row, Col, InputNumber, Radio } from 'ant-design-vue';
 
-
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
     sidebar_ctr.innerHTML = '<div id="vue_sidebar_app"></div';
@@ -38,6 +37,8 @@ export function mountApp(component, elementSelector) {
     app.use(Select);
     app.use(Space);
     app.use(Table);
+    app.use(Col);
+    app.use(Row);
     app.use(Tree);
     app.use(Upload);
     app.use(Row);

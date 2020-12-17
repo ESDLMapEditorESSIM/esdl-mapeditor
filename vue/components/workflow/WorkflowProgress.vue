@@ -7,20 +7,18 @@
 <script setup="props">
 import { useWorkflow } from '../../composables/workflow';
 import { useLongProcessState } from '../../composables/longProcess';
+import { defineProps } from 'vue'
 
-export const { activeLongProcess, showActiveLongProcess, startLongProcess } = useLongProcessState();
+const { activeLongProcess, showActiveLongProcess, startLongProcess } = useLongProcessState();
 const { getFromState } = useWorkflow();
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-}
+});
 
 const workflowStep = props.workflowStep;
 

@@ -1,7 +1,7 @@
 # Direct requirements
 Flask==1.1.2
 Flask-Executor==0.9.3
-Flask-SocketIO==4.3.1
+Flask-SocketIO==5.0.0
 Flask-Session==0.3.2
 flask-oidc==1.4.0
 geomet==0.2.1.post1

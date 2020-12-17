@@ -20,25 +20,23 @@
 
 <script setup="props">
 import { useWorkflow } from "../../composables/workflow.js";
+import { defineProps } from 'vue'
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-};
+});
 
-export const { goToNextStep } = useWorkflow();
+const { goToNextStep } = useWorkflow();
 const { getState } = useWorkflow();
 const state = getState();
 
-export const workflowStep = props.workflowStep;
+const workflowStep = props.workflowStep;
 
-export const loadEsdl = () => {
+const loadEsdl = () => {
   let params = {};
   params["service_id"] = workflowStep.service.id;
 

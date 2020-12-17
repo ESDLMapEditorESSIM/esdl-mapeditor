@@ -6,23 +6,21 @@
 import { download_binary_file_from_base64_str_with_type } from "../../utils/files.js";
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
+import { defineProps } from 'vue'
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-};
+});
 
 const workflowStep = props.workflowStep;
 
 const { getFromState, goToNextStep } = useWorkflow();
 
-export const onSubmit = async () => {
+const onSubmit = async () => {
   const requestParams = getFromState(workflowStep.source.request_params);
   const params = {
     remote_url: workflowStep.source.url,
