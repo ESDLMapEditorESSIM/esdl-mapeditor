@@ -1,11 +1,10 @@
 <template>
-  <p v-if="isLoading">Loading...</p>
+  <p v-if="isLoading">Sending data...</p>
   <div v-else>
     <p v-if="message != ''">
       {{ message }}
     </p>
-    <p v-else>Request complete.</p>
-    <a-button type="primary" @click="goToNextStep"> Next </a-button>
+    <next-or-close :workflow-step="workflowStep" />
   </div>
 </template>
 
@@ -14,6 +13,8 @@
 import { defineProps, ref } from "vue";
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
+// eslint-disable-next-line no-unused-vars
+import { default as NextOrClose } from "./NextOrClose";
 
 const props = defineProps({
   workflowStep: {
@@ -26,18 +27,17 @@ const props = defineProps({
 const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
-const options = ref([]);
 const form = {};
 form[workflowStep.target_variable] = "";
 
 const { goToNextStep } = useWorkflow();
-const { getFromState } = useWorkflow();
+const { getParamsFromState } = useWorkflow();
 
 const message = ref("");
 
 const doPost = async () => {
   // Build the target request parameters by getting the values from the state.
-  const request_params = getFromState(workflowStep.target["request_params"]);
+  const request_params = getParamsFromState(workflowStep.target["request_params"]);
   const params = {
     remote_url: workflowStep.target.url,
     request_params: request_params,

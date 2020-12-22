@@ -15,12 +15,14 @@
       Run ESDL service
     </a-button>
   </div>
-  <a-button type="primary" @click="goToNextStep"> Next </a-button>
+  <next-or-close workflow-step="workflowStep" />
 </template>
 
 <script setup="props">
 import { useWorkflow } from "../../composables/workflow.js";
 import { defineProps } from 'vue'
+// eslint-disable-next-line no-unused-vars
+import { default as NextOrClose } from "./NextOrClose";
 
 const props = defineProps({
   workflowStep: {
@@ -30,9 +32,8 @@ const props = defineProps({
   },
 });
 
-const { goToNextStep } = useWorkflow();
-const { getState } = useWorkflow();
-const state = getState();
+// eslint-disable-next-line no-unused-vars
+const { getFromState, goToNextStep } = useWorkflow();
 
 const workflowStep = props.workflowStep;
 
@@ -44,7 +45,7 @@ const loadEsdl = () => {
   let q_params = workflowStep.service["query_parameters"];
   for (let i = 0; i < q_params.length; i++) {
     let parameter_name = q_params[i]["parameter_name"];
-    let parameter_value = state[parameter_name];
+    let parameter_value = getFromState(parameter_name);
     params["query_parameters"][parameter_name] = parameter_value;
   }
 

@@ -11,6 +11,7 @@
 import { default as WorkflowEpsInspectResult } from './custom/WorkflowEpsInspectResult';
 import { defineProps } from 'vue'
 
+// eslint-disable-next-line no-unused-vars
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
 };
@@ -24,6 +25,7 @@ const props = defineProps({
 
 const workflowStep = props.workflowStep;
 // The current custom component (key in components map above).
+// eslint-disable-next-line no-unused-vars
 const current =  workflowStep.component;
 
 </script>

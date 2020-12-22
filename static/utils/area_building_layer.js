@@ -954,6 +954,7 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 function add_geojson_listener(socket, map) {
     socket.on('geojson', function(message) {
         let layer = message['layer'];
+        console.log(layer);
         hide_loader();
 
         if (layer == 'area_layer') {
