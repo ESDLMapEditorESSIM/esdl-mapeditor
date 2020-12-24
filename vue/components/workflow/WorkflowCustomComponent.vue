@@ -4,36 +4,26 @@
       :is="current"
       :workflow-step="workflowStep"
     />
-    <a-button
-      type="primary"
-      @click="goToNextStep"
-    >
-      Next
-    </a-button>
   </div>
 </template>
 
 <script setup="props">
-import { useWorkflow } from '../../composables/workflow';
 import { default as WorkflowEpsInspectResult } from './custom/WorkflowEpsInspectResult';
+import { defineProps } from 'vue'
 
-export default {
-  components: {
-    "eps-inspect-result": WorkflowEpsInspectResult,
+const components = {
+  "eps-inspect-result": WorkflowEpsInspectResult,
+};
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
-  },
-}
+});
 
-export const { goToNextStep } = useWorkflow();
-export const workflowStep = props.workflowStep;
+const workflowStep = props.workflowStep;
 // The current custom component (key in components map above).
-export const current =  workflowStep.component;
+const current =  workflowStep.component;
 
 </script>

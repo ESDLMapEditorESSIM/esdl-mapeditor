@@ -5,8 +5,10 @@
       class="fe_box"
       size="small"
       type="text"
+      v-model:size="text_box_size"
       @blur="onLoseFocus"
     />
+    <!-- TODO use addon-after="W" to add the unit to the input box, if the unit is available -->
     <!-- <p>
       Number: {{ number }}, fancy_number: {{ fancy_number }}
     </p> -->
@@ -32,13 +34,16 @@ const factors = {
     'z': 1e-21,
     'y': 1e-24,
 }
-
 export default {
   name: "FancyNumberEdit",
   props: {
     'value': {
       type: Number,
       default: 0
+    },
+    'size': {
+      type: String,
+      default: "default"
     }
   },
   emits: ['update:value'],
@@ -50,7 +55,11 @@ export default {
   computed: {
       number: function() {
         return this.parseFancyNumber(this.fancy_number)
-      }
+      },
+      text_box_size: function() {
+        // make props.size available as variable in the template
+        return this.size;
+      }     
   },
   methods: {
       parseFancyNumber: function(fn) {

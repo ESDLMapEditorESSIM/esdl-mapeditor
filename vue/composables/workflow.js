@@ -13,6 +13,7 @@ export const WorkflowStepTypes = Object.freeze({
     HTTP_POST: 'http_post',
     // Call a global JS function.
     CALL_JS_FUNCTION: 'call_js_function',
+    PROGRESS: 'progress',
     // Custom component.
     CUSTOM: 'custom',
 });

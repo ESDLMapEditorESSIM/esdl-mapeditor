@@ -31,6 +31,7 @@ from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, set_session
 import requests
 from pyecore.resources import URI, Resource
+from pyecore.resources.resource import URIConverter
 from io import BytesIO
 from src.process_es_area_bld import process_energy_system
 from flask_executor import Executor

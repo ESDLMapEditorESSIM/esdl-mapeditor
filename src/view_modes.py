@@ -33,6 +33,9 @@ view_modes_config = {
             "Potential": [
                 "name",
             ],
+            # ===========================
+            #  The 5 ESDL capabilities
+            # ===========================
             "Consumer": [
                 "power"
             ],
@@ -41,7 +44,9 @@ view_modes_config = {
                 "prodType"
             ],
             "Storage": [
-                "capacity"
+                "capacity",
+                "maxChargeRate",
+                "maxDischargeRate",
             ],
             "Transport": [
                 "capacity"
@@ -50,9 +55,43 @@ view_modes_config = {
                 "power",
                 "efficiency"
             ],
+            # ===========================
+            #  Transport assets
+            # ===========================
+            "Pump": [
+                "pumpCurveTable",
+                "controlStrategy",
+                "pumpCapacity",
+                "pumpEfficiency",
+                "ratedSpeed"
+            ],
+            "Pipe": [
+                "diameter",
+                "innerDiameter",
+                "outerDiameter",
+                "material"
+            ],
+            "CheckValve": [
+                "flowCoefficient",
+                "innerDiameter",
+                "reopenDeltaP"
+                
+            ],
+            "Valve": [
+                "type",
+                "flowCoefficient",
+                "innerDiameter",
+                "position"
+                ],
+            # ===========================
+            #  Conversion assets
+            # ===========================
             "HeatPump": [
                 "COP"
             ],
+            # ===========================
+            #  Building assets
+            # ===========================
             "Building": [
                 "name",
                 "type",
@@ -60,6 +99,21 @@ view_modes_config = {
                 "surfaceArea",
                 "floorArea",
                 "energyLabel"
+            ],
+            "AggregatedBuilding": [
+                "name",
+                "surfaceArea",
+                "floorArea"
+            ],
+            # ===========================
+            #  Potentials
+            # ===========================
+            "SolarPotential": [
+                "area",
+                "description",
+                "orientation",
+                "solarPotentialType",
+                "value"
             ]
         },
         "Aggregation": {
@@ -92,8 +146,16 @@ view_modes_config = {
                 "efficiency",
                 "power"
             ],
+            "Storage": [
+                "capacity"
+                "fillLevel",
+                "maxChargeRate",
+                "maxDischargeRate",
+                "selfDischargeRate"                
+            ],
             "HeatPump": [
-                "COP"
+                "COP",
+                "stages"
             ]
         },
     },
@@ -175,5 +237,39 @@ class ViewModes:
             categorized_attributes_list['Advanced'].append(attr_info)
 
         return categorized_attributes_list
+    
+    def categorize_object_attributes_and_references(self, object, attributes, references):
+        attr_dict = {attr['name']: attr for attr in attributes}
+        ref_dict = {ref['name']: ref for ref in references}
+        view_mode = get_session('mapeditor_view_mode')
+
+        this_view_mode_config = view_modes_config[view_mode]
+
+        categorized_list = dict()
+        for key in this_view_mode_config:
+            categorized_list[key] = list()
+
+            for objtype in this_view_mode_config[key]:
+                if isinstance(object, esdl.getEClassifier(objtype)):
+                    for feature in this_view_mode_config[key][objtype]:
+                        if feature in attr_dict:
+                            attr_info = deepcopy(attr_dict[feature])
+                            del attr_dict[feature]
+                            categorized_list[key].append(attr_info)
+                        elif feature in ref_dict:
+                            ref_info = deepcopy(ref_dict[feature])
+                            del ref_dict[feature]
+                            categorized_list[key].append(ref_info)
+                    
+
+        categorized_list['Advanced'] = list()
+        for feature in attr_dict:
+            attr_info = deepcopy(attr_dict[feature])
+            categorized_list['Advanced'].append(attr_info)
+        for feature in ref_dict:
+            attr_info = deepcopy(ref_dict[feature])
+            categorized_list['Advanced'].append(attr_info)
+
+        return categorized_list
 
 

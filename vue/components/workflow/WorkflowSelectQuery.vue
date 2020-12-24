@@ -31,29 +31,27 @@
 import { ref } from 'vue';
 import { genericErrorHandler } from '../../utils/errors.js'
 import { useWorkflow } from '../../composables/workflow.js';
+import { defineProps } from 'vue'
 
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
   },
-}
+});
 
 const workflowStep = props.workflowStep;
 
-export const isLoading = ref(true);
-export const options = ref([]);
-export const form = {}
+const isLoading = ref(true);
+const options = ref([]);
+const form = {}
 form[workflowStep.target_variable] = '';
 
 const { goToNextStep, getState } = useWorkflow();
 const state = getState();
 
-export const onSubmit = () => {
+const onSubmit = () => {
   const value = form[workflowStep.target_variable];
   if (!value) {
     alert("Please select a valid option.");
@@ -72,7 +70,7 @@ fetch(`workflow/get_data?${queryString}`)
     const source = workflowStep.source;
     const entities = data[source.choices_attr];
     options.value = entities.map(entity => {
-      const label_list = source.label_fields.map(label_field => entity[label_field]);
+      const label_list = source.label_fields.map(label_field => entity[label_field]).filter(value => value);
       const label = label_list.join(' - ');
       return {
         'label': label,

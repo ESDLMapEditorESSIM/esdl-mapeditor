@@ -1117,6 +1117,7 @@
                         });
                     }
 
+                    if (list[i][2] == null) list[i][2] = 'No name';
 					var title = list[i][4]+': '+list[i][2];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
@@ -1264,6 +1265,7 @@
                         iconSize: null
                     });
 
+                    if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
@@ -2007,6 +2009,7 @@
                                             Show/hide KPIs
                                         </a>
                                     </li>
+                                    <li id="vue_toggle_long_process_view"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon">&nbsp;</div>Settings</a></li>
                                 </ul>
@@ -2093,8 +2096,18 @@
                 layer: osm.addTo(map)
             },
             {
-                label: 'Google',
-                layer: L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+                label: 'Google Streets',
+                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: 'Google'
+                })
+            },
+            {
+                label: 'Google Satellite',
+                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                    maxZoom: 20,
+                    subdomains:['mt0','mt1','mt2','mt3'],
                     attribution: 'Google'
                 })
             },
@@ -2171,4 +2184,5 @@
 <script type="text/javascript" src="./dist/index.umd.js"></script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
+<link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% endif %}

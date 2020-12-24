@@ -23,6 +23,8 @@
 #data .history { padding: 20px; overflow: auto; height:100%; }
 
 #treebrowser .file-esdl { background:url('/icons/esdl.png') 2px 3px/13px 13px no-repeat; }
+#treebrowser .folder-drive { background:url('/icons/drive.png') 2px 3px/13px 13px no-repeat; }
+#treebrowser .folder-edr { background:url('/icons/edr3.png') 2px 3px/13px 13px no-repeat; }
 #treebrowser .folder { background:url('/icons/file_sprite.png') right bottom no-repeat; }
 #treebrowser .file { background:url('/icons/file_sprite.png') 0 0 no-repeat; }
 #treebrowser .file-pdf { background-position: -32px 0 }

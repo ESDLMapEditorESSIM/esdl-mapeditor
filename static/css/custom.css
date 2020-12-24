@@ -575,6 +575,10 @@ z-index for jstree context menu, sidebar has 2000
     padding: 6px 0px;
 }
 
+#sidebar {
+    padding: 8px 8px;
+}
+
 #sidebar select {
     width: 100%;
 }

@@ -3,9 +3,8 @@
     <a-button type="primary" @click="showModal">
       Change or add costs
     </a-button>
-    <div style="width: 400px;">
-    <a-modal v-model:visible="visible" title="Cost Information" @ok="handleOk">
-      <a-table :columns="costInformationColumns" :data-source="costInformation" size="middle">
+    <a-modal v-model:visible="visible" title="Cost Information" width="750px" @ok="handleOk">
+      <a-table :columns="costInformationColumns" :data-source="costInformation" size="middle" :pagination="paginationConfig">
         <template #civalue="{ text, record }">
           <a-input
             style="margin: -5px 0"
@@ -21,7 +20,8 @@
           >
             <a-select-option
               v-for="ptype in costInformationProfileTypes"
-              :key="ptype.key" :value="ptype.key">
+              :key="ptype.key" :value="ptype.key"
+            >
               {{ ptype.type }}
             </a-select-option>
           </a-select>
@@ -29,13 +29,12 @@
         <template #operation="{ record }">
           <div v-if="record.value != ''">
             <a @click="deleteCostInformation(record.key)">
-              <i class="fa fa-trash"/>
+              <i class="fa fa-trash" />
             </a>
           </div>
         </template>
       </a-table>
     </a-modal>
-    </div>
   </div>
 </template>
 
@@ -61,7 +60,10 @@ const costInformationProfileTypes = [
   { key: 'EUR/MWh/yr', type: "EUR/MWh/yr"},
   { key: 'EUR/m', type: "EUR/m"},
   { key: 'EUR/km', type: "EUR/km"},
+  { key: '%', type: "% of CAPEX"},
 ]
+
+const paginationConfig = { hideOnSinglePage: true};
 
 export default {
   name: "CostInformationEdit",
@@ -84,13 +86,14 @@ export default {
         costInformation: this.costInfo,
         objectIdentifier: this.objectID,
         costInformationColumns,
-        costInformationProfileTypes
+        costInformationProfileTypes,
+        paginationConfig
     }
   },
   computed: {
   },
   mounted() {
-    // console.log(this.costInformation);
+    console.log(this.costInformation);
   },
   methods: {
     showModal() {

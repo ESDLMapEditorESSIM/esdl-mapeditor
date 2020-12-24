@@ -7,8 +7,7 @@ import VueComponentLControl from './components/leaflet/VueComponentLControl'
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
 // Import subset.
-import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Tree, Upload } from 'ant-design-vue';
-
+import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Tree, Upload, Row, Col, InputNumber, Radio } from 'ant-design-vue';
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -18,8 +17,8 @@ export function mountSidebarComponent(component) {
 }
 
 export function createVueLControl(component) {
-    const simulation_control = new VueComponentLControl();
-    simulation_control.addTo(window.map).mount(component);
+    const lcontrol = new VueComponentLControl();
+    lcontrol.addTo(window.map).mount(component);
 }
 
 export function mountApp(component, elementSelector) {
@@ -27,16 +26,22 @@ export function mountApp(component, elementSelector) {
     // app.use(Antd);
     app.use(Button);
     app.use(Card);
+    app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
     app.use(Dropdown);
     app.use(Input);
+    app.use(InputNumber);
     app.use(Form);
     app.use(Modal);
     app.use(Select);
     app.use(Space);
     app.use(Table);
+    app.use(Col);
+    app.use(Row);
     app.use(Tree);
     app.use(Upload);
+    app.use(Row);
+    app.use(Col);
     app.mount(elementSelector);
 }

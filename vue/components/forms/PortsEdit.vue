@@ -1,8 +1,8 @@
 <template>
-  <a-table :columns="portColumns" :data-source="ports" :rowKey="(record, index) => {return record.pid;}" size="middle">
+  <a-table :columns="portColumns" :data-source="ports" :rowKey="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig" >
     <template #expandedRowRender="{ record }">
-      <p>Connected To:</p>
-      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :rowKey="(record, index) => {return record.pid;}" size="middle">
+      <a-divider orientation="left" id="table-divider">Connected To:</a-divider>
+      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :rowKey="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
         <template #operation="{ record }">
           <div class="editable-row-operations">
             <span>
@@ -12,7 +12,9 @@
             </span>
           </div>
         </template>  
-      </a-table>
+      </a-table>  
+      <!-- <a-divider id="table-divider"/> -->
+      
     </template>
     <template #operation="{ record }">
       <div class="editable-row-operations">
@@ -63,6 +65,8 @@ const connectedToColumns = [
   { title: '', slots: { customRender: 'operation' }},
 ];
 
+const paginationConfig = { hideOnSinglePage: true};
+
 export default {
   name: "PortsEdit",
   props: {
@@ -83,14 +87,15 @@ export default {
       connectedToColumns,
       portType: 'InPort',
       portName: 'Port',
-      visible: false
+      visible: false,
+      paginationConfig
     }
   },
   mounted() {
+
     // console.log(this.ports);
   },
-  computed: {
-
+  computed: {    
   },
   methods: {
     deletePort(port_id) {
@@ -150,3 +155,12 @@ export default {
   }
 }
 </script>
+<style>
+#table-divider {
+  font-size: 12px;
+  margin-top: 2px;
+  margin-bottom: 12px;
+}
+
+</style>
+

@@ -401,7 +401,7 @@ export class Workflow {
                 show_loader();
                 $.ajax({
                     type: "POST",
-                    url: 'workflow/upload_file',
+                    url: 'workflow/post_data',
                     data: JSON.stringify(params),
                     contentType: "application/json",
                     success: () => {

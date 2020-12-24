@@ -68,7 +68,7 @@ function query_esdl_service(service, state_params) {
     params['body_config'] = {}
     if (service['type'] == 'json') {
         let b_params = service['body_config'];
-        if (Object.keys(b_params).length) {
+        if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
                 for (let i=0; i<b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {
@@ -345,7 +345,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
     let first_body_ui_parameter = true;
     if (service['type'] == 'json') {
         let b_params = service['body_config'];
-        if (Object.keys(b_params).length) {
+        if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
                 for (let i=0; i<b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {

@@ -16,26 +16,27 @@
 </template>
 
 <script setup="props">
-export default {
-  inheritAttrs: false,
-  props: {
-    workflowStep: {
-      type: Object,
-      default: null,
-      required: true,
-    },
-  },
-};
+import { defineProps } from 'vue'
 
-const dom_elements = this.workflow_step["dom_elements"];
-export const hidden_elements = [];
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
+  },
+});
+
+const workflowStep = props.workflowStep;
+
+const dom_elements = workflowStep["dom_elements"];
+const hidden_elements = [];
 for (const [id, state_param_name] of Object.entries(dom_elements)) {
   const param = this.state[state_param_name];
   hidden_elements.append({ id: id, value: param });
 }
 
-export const callFunction = () => {
-  const js_function_name = this.workflow_step["js_function"];
-  window[js_function_name](...this.workflow_step.parameters);
+const callFunction = () => {
+  const js_function_name = workflowStep["js_function"];
+  window[js_function_name](...workflowStep.parameters);
 };
 </script>

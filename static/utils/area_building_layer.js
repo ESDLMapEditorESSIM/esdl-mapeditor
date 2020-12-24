@@ -102,8 +102,8 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         }
 
         // Handle Distributed KPIs here for now.
-        for (kpi in dist_KPIs) {
-            KPI_value = dist_KPIs[kpi]["value"];
+        for (const kpi in dist_KPIs) {
+            const KPI_value = dist_KPIs[kpi]["value"];
 
             if (KPI_value != null) {
                 if (!(kpi in kpi_list)) {
@@ -130,7 +130,6 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "building") {
         if (!get_building_color ) { get_building_color = get_building_default_color; }
     }
-    // console.log(kpi_list);
 }
 
 function calc_order_of_magnitude(n) {
@@ -539,10 +538,10 @@ function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
         onEachFeature: function(feature, layer) {
-            if (Object.keys(feature.properties.dist_KPIs).length != 0) {
+            if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
-            if (Object.keys(feature.properties.KPIs).length != 0) {
+            if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
             if (feature.properties && feature.properties.id) {
@@ -610,7 +609,7 @@ function add_area_layer(area_data) {
     // Add the pie chart here
     for(let i=0; i<area_data.length; i++) {
         let ar = area_data[i];
-        if (Object.keys(ar.properties.dist_KPIs).length != 0) {
+        if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
             let keys = Object.keys(ar.properties.dist_KPIs);
 
             for (let j=0; j<keys.length; j++) {
@@ -680,7 +679,7 @@ function add_building_layer(building_data) {
                 let text = "<table>";
                 // Render the KPI's. These were set in the preprocess_layer_data function.
                 for (let key in feature.properties.KPIs) {
-                    kpi = feature.properties.KPIs[key]
+                    const kpi = feature.properties.KPIs[key]
                     if (typeof kpi === "number") {
                         if (Math.floor(kpi) === kpi)
                             kpi_string = feature.properties.KPIs[key].toFixed(0);
@@ -725,6 +724,7 @@ function create_building_legendClassesDiv(legendChoice) {
 
 function selectBuildingKPI(selectObject) {
     let legendChoice = selectObject.value;
+    buildingLegendChoice = legendChoice;
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(legendChoice);
 
     geojson_building_layer.eachLayer(function (layer) {

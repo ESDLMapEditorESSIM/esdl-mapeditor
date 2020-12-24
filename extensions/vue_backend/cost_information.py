@@ -16,6 +16,7 @@ from pyecore.ecore import EReference
 from extensions.session_manager import get_session, set_session, get_handler
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.esdl_handler import EnergySystemHandler
 import src.log as log
 from uuid import uuid4
 from utils.utils import str2float, camelCaseToWords
@@ -76,38 +77,44 @@ def get_cost_information(obj):
 
 
 def _change_cost_unit(qau, cost_unit_string):
-    if re.match(r"EUR", cost_unit_string):
+    if re.match(r"%", cost_unit_string):
+        qau.unit = esdl.UnitEnum.PERCENT
+    elif re.match(r"EUR", cost_unit_string):
         qau.unit = esdl.UnitEnum.EURO
     elif re.match(r"USD", cost_unit_string):
         qau.unit = esdl.UnitEnum.DOLLAR
     else:
         logger.warn('probably not a cost unit')
 
-    if re.match(r"/kWh", cost_unit_string):
+    if re.match(r"\w+/kWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/MWh", cost_unit_string):
+    elif re.match(r"\w+/MWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
-    elif re.match(r"/kW", cost_unit_string):
-        qau.perUnit = esdl.UnitEnum.WATTH
+    elif re.match(r"\w+/kW", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/MW", cost_unit_string):
+    elif re.match(r"\w+/MW", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
-    elif re.match(r"/km", cost_unit_string):
+    elif re.match(r"\w+/km", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.KILO
-    elif re.match(r"/m", cost_unit_string):
+    elif re.match(r"\w+/m", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.NONE
 
-    if re.match(r"/yr", cost_unit_string):
+    if re.match(r".+/yr", cost_unit_string):
         qau.perTimeUnit = esdl.TimeUnitEnum.YEAR
+    # make sure the description matches this updated/new qau
+    qau.description = 'Cost in ' + unit_to_string(qau)
+
 
 def _create_cost_qau(cost_unit_string):
-    qau = esdl.QuantityAndUnitType(id=str(uuid4), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
+    qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
+    print('new qau', EnergySystemHandler.attr_to_dict(qau))
     return qau
 
 
@@ -117,7 +124,8 @@ def set_cost_information(obj, cost_information_data):
     
     obj_ci = obj.costInformation
     if not obj_ci:
-        obj.costInformation = esdl.CostInformation(id=str(uuid4))
+        obj_ci = esdl.CostInformation(id=str(uuid4()))
+        obj.costInformation = obj_ci
         esh.add_object_to_dict(active_es_id, obj.costInformation)
 
     for ci_component in cost_information_data:
@@ -145,10 +153,9 @@ def set_cost_information(obj, cost_information_data):
 
             else:
                 if ci_component['value'] != '':
-                    new_cost_component_profile = esdl.SingleValue(id=str(uuid4))
+                    new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
                     new_cost_component_profile.value = str2float(ci_component['value'])
                     new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
                     obj_ci.eSet(ci_component_name, new_cost_component_profile)
                     esh.add_object_to_dict(active_es_id, new_cost_component_profile)
-                    
