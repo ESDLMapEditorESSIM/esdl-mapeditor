@@ -53,13 +53,18 @@ view_modes_config = {
             "HeatPump": [
                 "COP"
             ],
+            "AbstractBuilding": [
+                "name"
+            ],
             "Building": [
-                "name",
                 "type",
                 "buildingYear",
                 "surfaceArea",
                 "floorArea",
                 "energyLabel"
+            ],
+            "AggregatedBuilding": [
+                "numberOfBuildings"
             ]
         },
         "Aggregation": {

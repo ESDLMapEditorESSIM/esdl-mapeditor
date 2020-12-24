@@ -3,10 +3,13 @@
  * available functions that trigger mounting a Vue Component to some part of the
  * DOM.
  */
+import { createApp } from "vue";
 import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
-import { mountSidebarComponent } from "./mounts";
+import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
+import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
+import { createVueLControl, mountSidebarComponent } from "./mounts";
 import { useWorkflow } from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import { useObject } from './composables/ObjectID';
@@ -20,7 +23,6 @@ window.activate_service_workflow = (serviceIndex, service) => {
     startNewWorkflow(serviceIndex, service);
     mountSidebarComponent(Workflow);
 }
-
 
 window.control_strategy_window = (object_id) => {
     const { newObject } = useObject();
@@ -37,3 +39,6 @@ window.object_properties_window = (object_id) => {
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
+
+createVueLControl(AssetDrawToolbar);
+createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
