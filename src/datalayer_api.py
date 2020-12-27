@@ -105,3 +105,14 @@ class DataLayerAPI:
 
             if isinstance(object, esdl.EnergyAsset):
                 self.datalayer.remove_control_strategy(object)
+
+        @self.flask_app.route('/DLA_get_asset_list')
+        def DLA_get_asset_list():
+            """
+            Retrieves a list of assets that can be rendered in the AssetDrawToolbox. Elements in the list change when
+            view_mode changes.
+
+            :return: a dictionary with per ESDL capability a list of assets
+            """
+            with self.flask_app.app_context():
+                return {"asset_list": self.datalayer.get_asset_list()}

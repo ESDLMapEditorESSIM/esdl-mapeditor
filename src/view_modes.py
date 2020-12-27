@@ -109,6 +109,34 @@ view_modes_config = {
     }
 }
 
+asset_list = {
+    "standard": {
+        "Producer": [
+            "PVInstallation",
+            "GeothermalSource",
+        ],
+        "Consumer": [
+            "ElectricityDemand",
+        ],
+        "Conversion": [
+            "CHP",
+            "PowerPlant",
+            "Electrolyzer",
+        ]
+    },
+    "CHESS": {
+        "Producer": [
+            "GenericProducer",
+        ],
+        "Consumer": [
+            "GenericConsumer",
+        ],
+        "Storage": [
+            "WaterBuffer",
+        ],
+    }
+}
+
 VIEW_MODES_USER_CONFIG = "VIEW_MODES_USER_CONFIG"
 view_modes = None
 
@@ -181,4 +209,7 @@ class ViewModes:
 
         return categorized_attributes_list
 
-
+    @staticmethod
+    def get_asset_list():
+        view_mode = get_session('mapeditor_view_mode')
+        return asset_list[view_mode]
