@@ -317,3 +317,6 @@ class ESDLDataLayer:
                 name = item.eClass.name
             return name + ' (' + item.eClass.name + ")"
         return item.eClass.name
+
+    def get_asset_list(self):
+        return ViewModes.get_asset_list()

@@ -75,7 +75,7 @@ view_modes_config = {
                 "flowCoefficient",
                 "innerDiameter",
                 "reopenDeltaP"
-                
+
             ],
             "Valve": [
                 "type",
@@ -92,8 +92,10 @@ view_modes_config = {
             # ===========================
             #  Building assets
             # ===========================
+            "AbstractBuilding": [
+                "name"
+            ],
             "Building": [
-                "name",
                 "type",
                 "buildingYear",
                 "surfaceArea",
@@ -101,8 +103,8 @@ view_modes_config = {
                 "energyLabel"
             ],
             "AggregatedBuilding": [
-                "name",
                 "surfaceArea",
+                "numberOfBuildings",
                 "floorArea"
             ],
             # ===========================
@@ -114,7 +116,7 @@ view_modes_config = {
                 "orientation",
                 "solarPotentialType",
                 "value"
-            ]
+            ],
         },
         "Aggregation": {
             "EnergyAsset": [
@@ -151,7 +153,7 @@ view_modes_config = {
                 "fillLevel",
                 "maxChargeRate",
                 "maxDischargeRate",
-                "selfDischargeRate"                
+                "selfDischargeRate"
             ],
             "HeatPump": [
                 "COP",
@@ -163,6 +165,34 @@ view_modes_config = {
         "Basic": {
 
         },
+    }
+}
+
+asset_list = {
+    "standard": {
+        "Producer": [
+            "PVInstallation",
+            "GeothermalSource",
+        ],
+        "Consumer": [
+            "ElectricityDemand",
+        ],
+        "Conversion": [
+            "CHP",
+            "PowerPlant",
+            "Electrolyzer",
+        ]
+    },
+    "CHESS": {
+        "Producer": [
+            "GenericProducer",
+        ],
+        "Consumer": [
+            "GenericConsumer",
+        ],
+        "Storage": [
+            "WaterBuffer",
+        ],
     }
 }
 
@@ -237,7 +267,7 @@ class ViewModes:
             categorized_attributes_list['Advanced'].append(attr_info)
 
         return categorized_attributes_list
-    
+
     def categorize_object_attributes_and_references(self, object, attributes, references):
         attr_dict = {attr['name']: attr for attr in attributes}
         ref_dict = {ref['name']: ref for ref in references}
@@ -260,7 +290,6 @@ class ViewModes:
                             ref_info = deepcopy(ref_dict[feature])
                             del ref_dict[feature]
                             categorized_list[key].append(ref_info)
-                    
 
         categorized_list['Advanced'] = list()
         for feature in attr_dict:
@@ -272,4 +301,7 @@ class ViewModes:
 
         return categorized_list
 
-
+    @staticmethod
+    def get_asset_list():
+        view_mode = get_session('mapeditor_view_mode')
+        return asset_list[view_mode]
