@@ -436,11 +436,11 @@ def serve_static(path):
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-if settings.esdl_store_config is not None and settings.esdl_store_config is not "":
+if settings.esdl_store_config is not None and settings.esdl_store_config != "":
     default_store_url = settings.esdl_store_config['hostname'] + '/store/'
 else:
     default_store_url = None
-if settings.mondaine_hub_config is not None and settings.mondaine_hub_config is not "":
+if settings.mondaine_hub_config is not None and settings.mondaine_hub_config != "":
     mondaine_hub_url = settings.mondaine_hub_config['hostname'] + '/store/'
 else:
     mondaine_hub_url = None

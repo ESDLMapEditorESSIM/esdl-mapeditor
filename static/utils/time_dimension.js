@@ -227,10 +227,51 @@ class TimeDimension {
         clear_layers(active_layer_id, 'sim_layer');
     }
 
+    UISettings() {
+        let $div = $('<div>').append($('<h3>').text('Time Dimension'));
+
+        let $visible_on_startup = $('<input>').attr('type', 'checkbox').attr('id', 'ab_visible').attr('value', 'ab_visible').attr('name', 'ab_visible');
+        let $abvis_label = $('<label>').attr('for', 'ab_visible').text('Animation bar visible on startup');
+        $div.append($('<p>').append($visible_on_startup).append($abvis_label));
+
+        $visible_on_startup.change(function() {
+            let ab_visible = $('#ab_visible').is(':checked');
+            if (ab_visible) {
+                // copied from vendor/socib/leaflet.timedimension.src.js
+                map.timeDimensionControl = L.control.timeDimension(map.options.timeDimensionControlOptions || {});
+                map.addControl(map.timeDimensionControl);
+            } else
+                map.removeControl(map.timeDimensionControl);
+
+            socket.emit('time_dimension_set_settings', {
+                ab_visible: ab_visible
+            });
+        });
+
+        socket.emit('time_dimension_get_settings', function(res) {
+            let ab_visible = res['ab_visible'];
+            $('#ab_visible').prop('checked', ab_visible);
+        });
+
+        return $div;
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
+            socket.emit('time_dimension_get_settings', function(res) {
+                let ab_visible = res['ab_visible'];
+                if (ab_visible) {
+                    // copied from vendor/socib/leaflet.timedimension.src.js
+                    map.timeDimensionControl = L.control.timeDimension(map.options.timeDimensionControlOptions || {});
+                    map.addControl(map.timeDimensionControl);
+                } else
+                    map.removeControl(map.timeDimensionControl);
+            });
             time_dimension = new TimeDimension();
             return time_dimension;
+        }
+        if (event.type === 'ui_settings_div') {
+            return time_dimension.UISettings();
         }
     }
 }
@@ -238,5 +279,5 @@ class TimeDimension {
 var time_dimension;
 
 $(document).ready(function() {
-    extensions.push(function(event) { TimeDimension.create(event) });
+    extensions.push(function(event) { return TimeDimension.create(event) });
 });

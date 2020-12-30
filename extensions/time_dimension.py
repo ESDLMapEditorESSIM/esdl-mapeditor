@@ -138,6 +138,34 @@ class TimeDimension:
             with self.flask_app.app_context():
                 return get_session('timedimension-asset-ids')
 
+        @self.socketio.on('time_dimension_get_settings', namespace='/esdl')
+        def time_dimension_get_settings():
+            print('get_settings')
+            user = get_session('user-email')
+            user_settings = self.get_user_settings(user)
+            print(user_settings)
+            return user_settings
+
+        @self.socketio.on('time_dimension_set_settings', namespace='/esdl')
+        def time_dimension_set_settings(user_settings):
+            print('set settings')
+            print(user_settings)
+            user = get_session('user-email')
+            self.set_user_settings(user, user_settings)
+
+    def get_user_settings(self, user):
+        if self.settings_storage.has_user(user, TIME_DIMENSION_USER_CONFIG):
+            return self.settings_storage.get_user(user, TIME_DIMENSION_USER_CONFIG)
+        else:
+            user_settings = {
+                'ab_visible': False         # Animation bar visible on startup
+            }
+            self.set_user_settings(user, user_settings)
+            return user_settings
+
+    def set_user_settings(self, user, user_settings):
+        self.settings_storage.set_user(user, TIME_DIMENSION_USER_CONFIG, user_settings)
+
     def connect_to_database(self):
         database = get_session('timedimension-database')
         return InfluxDBClient(host=self.config['ESSIM_database_server'],

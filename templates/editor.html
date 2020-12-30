@@ -199,9 +199,10 @@
     <script type="text/javascript" src="./utils/notes.js"></script>
     <script type="text/javascript" src="./utils/view_modes.js"></script>
 
-    <!-- This should be the last one -->
+    <!-- These should be the last ones -->
+    <script type="text/javascript" src="./utils/ui_settings.js"></script>
     <script type="text/javascript" src="./utils/app_settings.js"></script>
-    
+
     <script type="text/javascript" charset="utf-8">
         var sidebar;
         var sidebar_b;
@@ -2087,7 +2088,7 @@
     var map = new L.Map('mapid', {
         center: new L.LatLng(52.1, 5.8),
         zoom: 8,
-        timeDimensionControl: true,
+        timeDimensionControl: false,
         timeDimensionControlOptions: {
             loopButton: true,
             timeZones: ["UTC","Local"],

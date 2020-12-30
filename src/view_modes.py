@@ -227,9 +227,18 @@ class ViewModes:
             set_session('mapeditor_view_mode', settings['mode'])
             logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
 
+        @self.socketio.on('view_modes_get_possible_modes', namespace='/esdl')
+        def view_modes_get_possible_modes():
+            return view_modes_config.keys()
+
         @self.socketio.on('view_modes_set_mode', namespace='/esdl')
         def view_modes_set_mode(mode):
-            pass
+            user = get_session('user-email')
+            settings = self.get_user_settings(user)
+            settings['mode'] = mode
+            self.set_user_settings(user, settings)
+            set_session('mapeditor_view_mode', settings['mode'])
+            logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, VIEW_MODES_USER_CONFIG):
