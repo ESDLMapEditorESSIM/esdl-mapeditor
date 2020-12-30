@@ -884,7 +884,7 @@
             let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
             let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
 
-            $('#mapid .circle').css({
+            $('#mapid .zoom.circle').css({
                 'width': size_marker,
                 'height': size_marker,
                 'line-height': size_marker,
@@ -893,15 +893,15 @@
                 'border-width': marker_border
             });
             $('#mapid .image-div').css({'text-align':'center'});
-            $('#mapid .circle-img').css({'width':size_image, 'height':size_image});
+            $('#mapid .zoom.circle-img').css({'width':size_image, 'height':size_image});
 
             /* Joints */
             if (size/3 < 5) size_joint = 5; else size_joint = size/3;
             let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
             let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
 
-            $('#mapid .Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
-            $('#mapid .circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+            $('#mapid .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+            $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
             set_port_size_and_position();       /* Ports */
         }
@@ -1083,12 +1083,15 @@
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
                         capability = list[i][8];
                         classname = 'circle ' + capability;
+                        if (!add_to_building) classname = 'zoom '+classname;
                     } else if (list[i][1] == 'potential') {
                         classname = 'circle Potential';
+                        if (!add_to_building) classname = 'zoom '+classname;
                     } else {
                         classname = '';
                     }
                     let img_class = "circle-img";
+                    if (!add_to_building) img_class = 'zoom '+img_class;
                     if (list[i][1] == 'asset') {
                         if (list[i][6] == 'o') {
                             classname += ' Optional';       // will become 'Producer Optional'
@@ -1110,9 +1113,13 @@
                         iconSize: null
                     });
                     if (list[i][4] == 'Joint') {
+                        img_class = "circle-img-joint"
+                        if (!add_to_building) img_class = 'zoom '+img_class;
+                        classname = "Joint"
+                        if (!add_to_building) classname = 'zoom '+classname;
                         divicon = L.divIcon({
-                            className: 'Joint',
-                            html: '<div style="font-size:0px"><img class="circle-img-joint" src="' + imgsrc + '"></img></div>',
+                            className: classname,
+                            html: '<div style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
                             iconSize: null
                         });
                     }
@@ -1805,6 +1812,16 @@
 
         });
 
+        function update_asset_menu(value) {
+            let am = $('#asset_menu');
+            am.val(value);
+            $("#asset_menu").selectmenu("refresh").change();
+        }
+
+        function remove_tooltip() {
+            $(".ui-tooltip-content").parents('div').remove();  // remove tooltip as it is shown when clicking
+        }
+
         $(function() {
             $(document).tooltip();
         });
@@ -2003,6 +2020,7 @@
                                             Show/hide animation bar
                                         </a>
                                     </li>
+                                    <li id="vue_toggle_show_asset_draw_toolbar"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
                                             <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>

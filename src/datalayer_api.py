@@ -29,8 +29,6 @@ import esdl
 logger = log.get_logger(__name__)
 
 
-
-
 class DataLayerAPI:
     def __init__(self, flask_app: Flask, socket: SocketIO, esdl_doc: EcoreDocumentation):
         self.flask_app = flask_app
@@ -113,7 +111,6 @@ class DataLayerAPI:
             if isinstance(object, esdl.EnergyAsset):
                 self.datalayer.remove_control_strategy(object)
 
-
         @self.socketio.on('DLA_get_table_data', namespace='/esdl')
         def DLA_get_table_data(message):
             table_data_request = DLA_table_data_request(**message)
@@ -133,3 +130,13 @@ class DataLayerAPI:
             delete_ref_message = DeleteRefMessage(**message)
             return self.datalayer.delete_ref(delete_ref_message)
 
+        @self.flask_app.route('/DLA_get_asset_list')
+        def DLA_get_asset_list():
+            """
+            Retrieves a list of assets that can be rendered in the AssetDrawToolbox. Elements in the list change when
+            view_mode changes.
+
+            :return: a dictionary with per ESDL capability a list of assets
+            """
+            with self.flask_app.app_context():
+                return {"asset_list": self.datalayer.get_asset_list()}
