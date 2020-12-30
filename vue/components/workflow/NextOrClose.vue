@@ -1,7 +1,7 @@
 <template>
   <a-button v-if="workflowStep.next_step != null" type="primary" @click="goToNextStep"> Next </a-button>
   <div v-else>
-    <a-button @click="startOver"> Start over </a-button>
+    <a-button @click="startOver"> Back to beginning </a-button>
   </div>
 </template>
 

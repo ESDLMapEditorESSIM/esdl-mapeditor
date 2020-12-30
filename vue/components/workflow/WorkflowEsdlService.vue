@@ -10,7 +10,7 @@
     <a-button
       v-if="!workflowStep.service.auto"
       type="primary"
-      @click="loadEsdl"
+      @click="clearLayersAndLoadEsdl"
     >
       Run ESDL service
     </a-button>
@@ -39,7 +39,7 @@ const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
 
-const clearLayersAndloadEsdl = () => {
+const clearLayersAndLoadEsdl = () => {
   if (workflowStep.service.clearLayers) {
     clearEsdlLayers();
     setTimeout(loadEsdl, 1000);
@@ -60,6 +60,6 @@ const loadEsdl = () => {
 
 if (workflowStep.service.auto) {
   // Load the ESDL upon loading of this step.
-  clearLayersAndloadEsdl();
+  clearLayersAndLoadEsdl();
 }
 </script>

@@ -27,8 +27,6 @@ const props = defineProps({
 const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
-const form = {};
-form[workflowStep.target_variable] = "";
 
 const { goToNextStep } = useWorkflow();
 const { getParamsFromState } = useWorkflow();
