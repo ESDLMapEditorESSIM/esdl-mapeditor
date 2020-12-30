@@ -1,6 +1,6 @@
 <template>
   <p v-if="workflowStep.service.auto">
-    The ESDL service will be called automatically. Please click next when all data is loaded.
+    The ESDL service will be called automatically. Please click next when the ESDL is visible on the map.
   </p>
   <div v-else>
     <p>
@@ -15,11 +15,12 @@
       Run ESDL service
     </a-button>
   </div>
-  <next-or-close workflow-step="workflowStep" />
+  <next-or-close :workflow-step="workflowStep" />
 </template>
 
 <script setup="props">
 import { useWorkflow } from "../../composables/workflow.js";
+import { useEsdlLayers } from "../../composables/esdlLayers.js";
 import { defineProps } from 'vue'
 // eslint-disable-next-line no-unused-vars
 import { default as NextOrClose } from "./NextOrClose";
@@ -33,28 +34,32 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getFromState, goToNextStep } = useWorkflow();
+const { getFromState, getParamsFromState, goToNextStep } = useWorkflow();
+const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
+
+const clearLayersAndloadEsdl = () => {
+  if (workflowStep.service.clearLayers) {
+    clearEsdlLayers();
+    setTimeout(loadEsdl, 1000);
+  } else {
+    loadEsdl();
+  }
+}
 
 const loadEsdl = () => {
   let params = {};
   params["service_id"] = workflowStep.service.id;
 
-  params["query_parameters"] = {};
-  let q_params = workflowStep.service["query_parameters"];
-  for (let i = 0; i < q_params.length; i++) {
-    let parameter_name = q_params[i]["parameter_name"];
-    let parameter_value = getFromState(parameter_name);
-    params["query_parameters"][parameter_name] = parameter_value;
-  }
+  params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
 
-  window.hide_loader();
+  window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 };
 
 if (workflowStep.service.auto) {
   // Load the ESDL upon loading of this step.
-  loadEsdl();
+  clearLayersAndloadEsdl();
 }
 </script>

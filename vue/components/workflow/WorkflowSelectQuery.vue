@@ -75,6 +75,10 @@ const queryString = new URLSearchParams(request_params).toString();
 fetch(`workflow/get_data?${queryString}`)
   .then(response => response.json())
   .then(data => {
+    if (data == null || data == undefined) {
+      alert("No data received.");
+      return;
+    }
     const source = workflowStep.source;
     const choices = data[source.choices_attr];
 

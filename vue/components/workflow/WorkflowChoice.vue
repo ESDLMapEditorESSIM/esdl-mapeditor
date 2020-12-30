@@ -32,7 +32,6 @@ const options = props.workflowStep.options;
 
 // eslint-disable-next-line no-unused-vars
 const isOptionDisabled = (option) => {
-  console.log(option);
   if (option.disabled) {
     return true;
   }
