@@ -140,3 +140,13 @@ class DataLayerAPI:
             """
             with self.flask_app.app_context():
                 return {"asset_list": self.datalayer.get_asset_list()}
+
+        @self.socketio.on('DLA_get_profile_names_list', namespace='/esdl')
+        def DLA_get_profile_names_list(message):
+            """
+            :return: a dictionary returning the list of profile names in the
+            current ESDL, and the list of uploaded profile names.
+            """
+            esdl_profile_names = self.datalayer.get_profile_names_list()
+
+            return {"esdl_profile_names": esdl_profile_names }

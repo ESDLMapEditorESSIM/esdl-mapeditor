@@ -15,7 +15,7 @@
         </a-switch>
       </a-form-item>
       <a-form-item label="Number of scenarios to generate">
-        <a-input-number :min="1" :max="5" @change="setNrOfScenarios" />
+        <a-input-number :min="1" :max="5" :default-value="1" @change="setNrOfScenarios" />
       </a-form-item>
     </a-form>
     <a-button type="primary" @click="doPost"> Run ESDL service </a-button>
