@@ -199,6 +199,7 @@ asset_list = {
 VIEW_MODES_USER_CONFIG = "VIEW_MODES_USER_CONFIG"
 view_modes = None
 
+
 class ViewModes:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
@@ -217,25 +218,25 @@ class ViewModes:
         global view_modes
         return view_modes
 
+    def initialize_user(self, user):
+        settings = self.get_user_settings(user)
+        set_session('mapeditor_view_mode', settings['mode'])
+        logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
+
     def register(self):
         logger.info("Registering ViewModes")
 
-        @self.socketio.on('view_modes_initialize', namespace='/esdl')
-        def view_modes_initialize():
-            user = get_session('user-email')
-            settings = self.get_user_settings(user)
-            set_session('mapeditor_view_mode', settings['mode'])
-            logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
-
         @self.socketio.on('view_modes_get_possible_modes', namespace='/esdl')
         def view_modes_get_possible_modes():
-            return view_modes_config.keys()
+            return {
+                'possible_modes': list(view_modes_config.keys())
+            }
 
         @self.socketio.on('view_modes_set_mode', namespace='/esdl')
         def view_modes_set_mode(mode):
             user = get_session('user-email')
             settings = self.get_user_settings(user)
-            settings['mode'] = mode
+            settings['mode'] = mode['mode']
             self.set_user_settings(user, settings)
             set_session('mapeditor_view_mode', settings['mode'])
             logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
@@ -313,4 +314,10 @@ class ViewModes:
     @staticmethod
     def get_asset_list():
         view_mode = get_session('mapeditor_view_mode')
-        return asset_list[view_mode]
+        if view_mode:
+            return asset_list[view_mode]
+        else:
+            logger.error('-----------------------------------------------------------------------')
+            logger.error('view_mode not yet set --> Solve this!!')
+            logger.error('-----------------------------------------------------------------------')
+            return asset_list['standard']

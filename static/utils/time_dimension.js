@@ -228,10 +228,10 @@ class TimeDimension {
     }
 
     UISettings() {
-        let $div = $('<div>').append($('<h3>').text('Time Dimension'));
+        let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Animation toolbar'));
 
         let $visible_on_startup = $('<input>').attr('type', 'checkbox').attr('id', 'ab_visible').attr('value', 'ab_visible').attr('name', 'ab_visible');
-        let $abvis_label = $('<label>').attr('for', 'ab_visible').text('Animation bar visible on startup');
+        let $abvis_label = $('<label>').attr('for', 'ab_visible').text('Animation toolbar visible on startup');
         $div.append($('<p>').append($visible_on_startup).append($abvis_label));
 
         $visible_on_startup.change(function() {

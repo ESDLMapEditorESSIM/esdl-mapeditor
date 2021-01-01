@@ -675,6 +675,15 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 /*
+    UI Settings boxes
+*/
+.ui_settings_div {
+    padding: 5px 10px 5px 10px;
+    margin: 10px 0px 0px 0px;
+    border: 1px solid #cccccc;
+}
+
+/*
     Statistics window
 */
 .statistics_window {

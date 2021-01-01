@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLEcore import instantiate_type
@@ -139,4 +139,4 @@ class DataLayerAPI:
             :return: a dictionary with per ESDL capability a list of assets
             """
             with self.flask_app.app_context():
-                return {"asset_list": self.datalayer.get_asset_list()}
+                return jsonify({"asset_list": self.datalayer.get_asset_list()}), 200

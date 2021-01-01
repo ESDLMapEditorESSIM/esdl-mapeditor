@@ -2807,6 +2807,9 @@ def browser_initialize():
     user_email = get_session('user-email')
     role = get_session('user-role')
 
+    view_modes = ViewModes.get_instance()
+    view_modes.initialize_user(user_email)
+
     logger.info('Send initial information to client')
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('carrier_color_dict', get_carrier_color_dict())
