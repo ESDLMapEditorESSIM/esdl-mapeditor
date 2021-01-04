@@ -58,31 +58,7 @@ view_modes_config = {
             # ===========================
             #  Transport assets
             # ===========================
-            "Pump": [
-                "pumpCurveTable",
-                "controlStrategy",
-                "pumpCapacity",
-                "pumpEfficiency",
-                "ratedSpeed"
-            ],
-            "Pipe": [
-                "diameter",
-                "innerDiameter",
-                "outerDiameter",
-                "material"
-            ],
-            "CheckValve": [
-                "flowCoefficient",
-                "innerDiameter",
-                "reopenDeltaP"
 
-            ],
-            "Valve": [
-                "type",
-                "flowCoefficient",
-                "innerDiameter",
-                "position"
-                ],
             # ===========================
             #  Conversion assets
             # ===========================
@@ -163,8 +139,91 @@ view_modes_config = {
     },
     "CHESS": {
         "Basic": {
+            "EnergyAsset": [
+                "name",
+                "state"
+            ],
+            "Potential": [
+                "name",
+            ],
+            # ===========================
+            #  The 5 ESDL capabilities
+            # ===========================
+            "Consumer": [
+                "power"
+            ],
+            "Producer": [
+                "power",
+                "prodType"
+            ],
+            "Storage": [
+                "capacity",
+                "maxChargeRate",
+                "maxDischargeRate",
+            ],
+            "Transport": [
+                "capacity"
+            ],
+            "Conversion": [
+                "power",
+                "efficiency"
+            ],
+            # ===========================
+            #  Transport assets
+            # ===========================
+            "Pump": [
+                "pumpCurveTable",
+                "controlStrategy",
+                "pumpCapacity",
+                "pumpEfficiency",
+                "ratedSpeed"
+            ],
+            "Pipe": [
+                "diameter",
+                "innerDiameter",
+                "outerDiameter",
+                "material"
+            ],
+            "CheckValve": [
+                "flowCoefficient",
+                "innerDiameter",
+                "reopenDeltaP"
 
-        },
+            ],
+            "Valve": [
+                "type",
+                "flowCoefficient",
+                "innerDiameter",
+                "position"
+            ],
+            # ===========================
+            #  Conversion assets
+            # ===========================
+            "HeatPump": [
+                "COP"
+            ],
+            # ===========================
+            #  Building assets
+            # ===========================
+            "AbstractBuilding": [
+                "name"
+            ],
+            "Building": [
+                "type",
+                "buildingYear",
+                "surfaceArea",
+                "floorArea",
+                "energyLabel"
+            ],
+            "AggregatedBuilding": [
+                "surfaceArea",
+                "numberOfBuildings",
+                "floorArea"
+            ],
+            # ===========================
+            #  Potentials
+            # ===========================
+        }
     }
 }
 
@@ -186,13 +245,20 @@ asset_list = {
     "CHESS": {
         "Producer": [
             "GenericProducer",
+            "GeothermalSource",
+            "ResidualHeatSource",
         ],
         "Consumer": [
             "GenericConsumer",
+            "HeatingDemand",
         ],
         "Storage": [
-            "WaterBuffer",
+            "HeatStorage",
         ],
+        "Conversion": [
+            "GasHeater",
+            "HeatPump",
+        ]
     }
 }
 
@@ -222,13 +288,17 @@ class ViewModes:
         settings = self.get_user_settings(user)
         set_session('mapeditor_view_mode', settings['mode'])
         logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
+        return settings['mode']
 
     def register(self):
         logger.info("Registering ViewModes")
 
-        @self.socketio.on('view_modes_get_possible_modes', namespace='/esdl')
-        def view_modes_get_possible_modes():
+        @self.socketio.on('view_modes_get_mode_info', namespace='/esdl')
+        def view_modes_get_mode_info():
+            user = get_session('user-email')
+            settings = self.get_user_settings(user)
             return {
+                'current_mode': settings['mode'],
                 'possible_modes': list(view_modes_config.keys())
             }
 
@@ -311,13 +381,10 @@ class ViewModes:
 
         return categorized_list
 
-    @staticmethod
-    def get_asset_list():
+    def get_asset_list(self):
         view_mode = get_session('mapeditor_view_mode')
-        if view_mode:
-            return asset_list[view_mode]
-        else:
-            logger.error('-----------------------------------------------------------------------')
-            logger.error('view_mode not yet set --> Solve this!!')
-            logger.error('-----------------------------------------------------------------------')
-            return asset_list['standard']
+        if not view_mode:
+            user = get_session('user-email')
+            view_mode = self.initialize_user(user)
+
+        return asset_list[view_mode]

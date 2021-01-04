@@ -16,10 +16,6 @@
 
 class ViewModes {
     constructor() {
-        this.initSocketIO();
-    }
-
-    initSocketIO() {
         console.log("Registering ViewModes plugin");
     }
 
@@ -41,10 +37,13 @@ class ViewModes {
             });
         });
 
-        socket.emit('view_modes_get_possible_modes', function(res) {
+        socket.emit('view_modes_get_mode_info', function(res) {
+            let current_mode = res['current_mode'];
             let possible_modes = res['possible_modes'];
             for (let i=0; i<possible_modes.length; i++) {
                 let $option = $('<option>').attr('value',possible_modes[i]).text(possible_modes[i]);
+                if (possible_modes[i] === current_mode)
+                    $option = $option.attr('selected', true);
                 $view_mode_select.append($option);
             }
         });
