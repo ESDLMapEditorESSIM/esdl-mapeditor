@@ -89,28 +89,39 @@ function set_marker_port_handlers(marker) {
                     iconSize: null
                 });
 
-                let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
-                port_marker.addTo(map);
+                if (ports[p].marker === undefined) {
+                    // marker not yet created
+                    let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                    port_marker.addTo(map);
 
-                ports[p].active = false;
-                ports[p].marker = port_marker;
-                port_marker.parent = marker;
-                port_marker.parent_type = 'marker';
-                port_marker.port_parent = ports[p];
+                    ports[p].active = false;
+                    ports[p].marker = port_marker;
+                    port_marker.parent = marker;
+                    port_marker.parent_type = 'marker';
+                    port_marker.port_parent = ports[p];
 
-                port_marker.on('mouseover', function(e) {
-                    let layer = e.target;
-                    layer.port_parent.active = true;
-                });
-                port_marker.on('mouseout', function(e) {
-                    let layer = e.target;
-                    layer.removeFrom(map);
-                });
-                port_marker.on('click', function(e) {
-                    let layer = e.target;
-                    if (first_port == null) first_port = port_marker;
-                    click_port(layer);
-                });
+                    port_marker.on('mouseover', function(e) {
+                        let layer = e.target;
+                        layer.port_parent.active = true;
+                    });
+                    port_marker.on('mouseout', function(e) {
+                        let layer = e.target;
+                        setTimeout(function() {
+                            layer.port_parent.active = false;
+                            layer.removeFrom(map);
+                        }, 50);
+    //                    layer.removeFrom(map);
+                    });
+                    port_marker.on('click', function(e) {
+                        let layer = e.target;
+                        if (first_port == null) first_port = port_marker;
+                        click_port(layer);
+                    });
+                } else {
+                    // show already created marker
+                    ports[p].active = false;
+                    ports[p].marker.addTo(map);
+                }
             }
             set_port_size_and_position();
         }
@@ -122,10 +133,10 @@ function set_marker_port_handlers(marker) {
 
         for (let p in ports) {
             setTimeout(function() {
-                if (ports[p].active == false) {
+                if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 10);
+            }, 50);
         }
     });
 }
