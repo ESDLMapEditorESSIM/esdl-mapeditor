@@ -7,6 +7,7 @@ import { createApp } from "vue";
 import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
+import EsdlProfiles from './apps/EsdlProfiles';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
@@ -27,7 +28,12 @@ window.activate_service_workflow = (serviceIndex, service) => {
 }
 
 window.continue_service_workflow = () => {
-    mountSidebarComponent(Workflow);
+    const { currentWorkflow } = useWorkflow();
+    if (currentWorkflow.value) {
+        mountSidebarComponent(Workflow);
+    } else {
+        alert("No workflow active.");
+    }
 }
 
 window.control_strategy_window = (object_id) => {
@@ -44,6 +50,10 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.activate_esdl_profiles = () => {
+    mountApp(EsdlProfiles, '#settings_module_contents');
 }
 
 createVueLControl(ActiveLongProcess);

@@ -18,10 +18,10 @@ const props = defineProps({
 
 const workflowStep = props.workflowStep;
 
-const { getFromState, goToNextStep } = useWorkflow();
+const { getParamsFromState, goToNextStep } = useWorkflow();
 
 const onSubmit = async () => {
-  const requestParams = getFromState(workflowStep.source.request_params);
+  const requestParams = getParamsFromState(workflowStep.source.request_params);
   const params = {
     remote_url: workflowStep.source.url,
     request_params: requestParams,

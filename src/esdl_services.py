@@ -123,7 +123,7 @@ class ESDLServices:
             if config_service["type"] in ("workflow", "vueworkflow"):
                 for step in config_service["workflow"]:
                     if (
-                        step["type"] == "service"
+                        step["type"] in ("service", "custom")
                         and step["service"]["id"] == service_params["service_id"]
                     ):
                         service = step["service"]

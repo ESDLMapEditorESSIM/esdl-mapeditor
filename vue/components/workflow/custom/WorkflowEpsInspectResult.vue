@@ -22,10 +22,13 @@
   <p v-else>
     Please right-click on a building and select "Show EPS results" to view detailed information.
   </p>
+  <next-or-close :workflow-step="workflowStep" />
 </template>
 
 <script setup="props">
 import { onUnmounted, ref, defineProps } from "vue";
+// eslint-disable-next-line no-unused-vars
+import { default as NextOrClose } from "../NextOrClose";
 import {
   BuildOutlined,
   NumberOutlined,
@@ -37,15 +40,15 @@ import { useWorkflow } from "../../../composables/workflow.js";
 import { useEsdlBuildings } from "../../../composables/esdlBuildings.js";
 
 const workflowStep = props.workflowStep;
-const { getState } = useWorkflow();
+const { getFromState } = useWorkflow();
 const { addContextMenuItem, removeContextMenuItem } = useEsdlBuildings();
-const state = getState();
 
 let treeData = ref([]);
 const isLoading = ref(false);
 
 const contextMenuItemText = "Show EPS Results";
 
+// eslint-disable-next-line no-unused-vars
 const components = {
   BuildOutlined,
   HomeOutlined,
@@ -79,7 +82,7 @@ const getEpsDetails = (asset_id) => {
       }
       const request_params = {};
       request_params["url"] = workflowStep.custom_data.url;
-      request_params["execution_id"] = state["execution_id"];
+      request_params["execution_id"] = getFromState("execution.id");
       request_params["pand_bagid"] = pand_bagid;
       const queryString = new URLSearchParams(request_params).toString();
       fetch(`workflow/get_data?${queryString}`)

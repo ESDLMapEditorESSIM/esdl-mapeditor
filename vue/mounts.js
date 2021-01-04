@@ -7,7 +7,7 @@ import VueComponentLControl from './components/leaflet/VueComponentLControl'
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
 // Import subset.
-import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Tree, Upload, Row, Col, InputNumber, Radio } from 'ant-design-vue';
+import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Tree, Upload, Row, Col, InputNumber, Radio, Switch } from 'ant-design-vue';
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -39,6 +39,7 @@ export function mountApp(component, elementSelector) {
     app.use(Table);
     app.use(Col);
     app.use(Row);
+    app.use(Switch);
     app.use(Tree);
     app.use(Upload);
     app.use(Row);

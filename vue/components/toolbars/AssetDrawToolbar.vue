@@ -46,7 +46,7 @@ export default {
   methods: {
     getAssetList: function() {
       console.log('getAssetList');
-      const path = '/DLA_get_asset_list';
+      const path = '/DLA_get_asset_toolbar_list';
       axios.get(path)
         .then((res) => {
           console.log(res);
