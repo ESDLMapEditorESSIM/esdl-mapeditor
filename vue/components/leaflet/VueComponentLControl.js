@@ -6,7 +6,21 @@ const VueComponentLControl = window.L.Control.extend({
     },
 
     onAdd: function () {
-        return window.L.DomUtil.create('div', `vue_control`);
+        let container = window.L.DomUtil.create('div', `vue_control`);
+
+        // Make sure w/e don't drag the map when we interact with the content
+        let stop = window.L.DomEvent.stopPropagation;
+        let fakeStop = window.L.DomEvent._fakeStop || stop;
+        window.L.DomEvent
+            .on(container, 'contextmenu', stop)
+            .on(container, 'click', fakeStop)
+            .on(container, 'mousedown', stop)
+            .on(container, 'touchstart', stop)
+            .on(container, 'dblclick', fakeStop)
+            .on(container, 'mousewheel', stop)
+            .on(container, 'MozMousePixelScroll', stop);
+
+        return container;
     },
 
     onRemove: function () {
