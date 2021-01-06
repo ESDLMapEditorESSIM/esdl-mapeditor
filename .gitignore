@@ -78,6 +78,6 @@ yarn.lock
 
 credentials/
 environments/
-venv/
+venv*/
 node_modules/
 

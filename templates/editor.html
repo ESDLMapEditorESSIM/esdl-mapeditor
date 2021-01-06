@@ -1827,33 +1827,19 @@
             $(document).tooltip();
         });
 
-        function show_or_hide_animation_bar(object) {
-            if (object.childNodes[0].classList.contains("ui-icon-check")) {
-                // hide animation bar; remove checkmark
-                $('.leaflet-bar-timecontrol').hide();
-
-                object.childNodes[0].classList.remove("ui-icon-check");
-                object.childNodes[0].classList.remove("ui-icon");
-            } else {
-                // show animation bar; add checkmark
-                $('.leaflet-bar-timecontrol').show();
-                object.childNodes[0].classList.add("ui-icon-check");
-                object.childNodes[0].classList.add("ui-icon");
-            }
-        };
         function show_or_hide_kpicharts_bar(object) {
-            if (object.childNodes[0].classList.contains("ui-icon-check")) {
+            if (object.childNodes[1].classList.contains("ui-icon-check")) {
                 // hide kpicharts bar; remove checkmark
                 $('.leaflet-kpicharts').hide();
 
-                object.childNodes[0].classList.remove("ui-icon-check");
-                object.childNodes[0].classList.remove("ui-icon");
+                object.childNodes[1].classList.remove("ui-icon-check");
+                object.childNodes[1].classList.remove("ui-icon");
             } else {
                 // show kpicharts bar; add checkmark
                 $('.leaflet-kpicharts').show();
                 kpis.show_all_kpis();
-                object.childNodes[0].classList.add("ui-icon-check");
-                object.childNodes[0].classList.add("ui-icon");
+                object.childNodes[1].classList.add("ui-icon-check");
+                object.childNodes[1].classList.add("ui-icon");
             }
         };
     </script>
@@ -2018,7 +2004,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li>
-                                        <a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);">
+                                        <a class="dropdown-item" href="#" onclick="time_dimension.toggle_animation_toolbar_visibility();">
                                             <div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
                                             Show/hide animation bar
                                         </a>
