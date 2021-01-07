@@ -52,6 +52,7 @@ const costInformationColumns = [
 const costInformationProfileTypes = [
   { key: '', type: "Please select a unit..."},
   { key: 'EUR', type: "EUR"},
+  { key: 'EUR/yr', type: "EUR/yr"},
   { key: 'EUR/kW', type: "EUR/kW"},
   { key: 'EUR/MW', type: "EUR/MW"},
   { key: 'EUR/kWh', type: "EUR/kWh"},
