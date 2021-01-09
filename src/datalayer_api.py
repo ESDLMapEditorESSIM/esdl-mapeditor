@@ -130,8 +130,8 @@ class DataLayerAPI:
             delete_ref_message = DeleteRefMessage(**message)
             return self.datalayer.delete_ref(delete_ref_message)
 
-        @self.flask_app.route('/DLA_get_asset_toolbar_list')
-        def DLA_get_asset_toolbar_list():
+        @self.flask_app.route('/DLA_get_asset_toolbar_info')
+        def DLA_get_asset_toolbar_info():
             """
             Retrieves a list of assets that can be rendered in the AssetDrawToolbox. Elements in the list change when
             view_mode changes.
@@ -139,7 +139,12 @@ class DataLayerAPI:
             :return: a dictionary with per ESDL capability a list of assets
             """
             with self.flask_app.app_context():
-                return jsonify({"asset_list": self.datalayer.get_asset_list()}), 200
+                assets_per_cap_dict = self.datalayer.get_asset_list()
+                recently_used_edr_assets = self.datalayer.get_recently_used_edr_assets()
+                return {
+                    "assets_per_cap_dict": assets_per_cap_dict,
+                    "recent_edr_assets": recently_used_edr_assets
+                }
 
         @self.socketio.on('DLA_get_profile_names_list', namespace='/esdl')
         def DLA_get_profile_names_list(message):

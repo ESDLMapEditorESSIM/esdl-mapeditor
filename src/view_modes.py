@@ -188,13 +188,21 @@ view_modes_config = {
                 "flowCoefficient",
                 "innerDiameter",
                 "reopenDeltaP"
-
             ],
             "Valve": [
                 "type",
                 "flowCoefficient",
                 "innerDiameter",
                 "position"
+            ],
+            "HeatExchange": [
+                "heatTransferCoefficient",
+                "diameterPrimarySide",
+                "diameterSecundarySide",
+                "lengthPrimarySide",
+                "lengthSecundarySide",
+                "roughnessPrimarySide",
+                "roughnessSecundarySide"
             ],
             # ===========================
             #  Conversion assets
@@ -258,6 +266,13 @@ asset_list = {
         "Conversion": [
             "GasHeater",
             "HeatPump",
+        ],
+        "Transport": [
+            "Pipe",
+            "Pump",
+            "Valve",
+            "CheckValve",
+            "HeatExchange"
         ]
     }
 }

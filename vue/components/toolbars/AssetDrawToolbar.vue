@@ -7,10 +7,20 @@
     <table class="asset-table">
       <tr>
         <template v-for="(capabilityList, capability) in assetList" :key="capability">
-          <td v-for="asset in capabilityList" :key="asset">
+          <td v-for="asset in capabilityList" :key="asset" class="icon">
             <div :title="asset" :class="'circle '+capability" @click="buttonClick(asset)">
               <div class="image-div" style="font-size:0px">
                 <img class="circle-img" :src="'images/' + asset + '.png'">
+              </div>
+            </div>
+          </td>
+        </template>
+        <template v-if="recentEDRassets && recentEDRassets.length">
+          <td>Recent EDR: </td>
+          <td v-for="asset in recentEDRassets" :key="asset.edr_asset_id" class="icon">
+            <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
+              <div class="image-div" style="font-size:0px">
+                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
               </div>
             </div>
           </td>
@@ -37,20 +47,28 @@ export default {
   data() {
     return {
       assetList: [],
+      recentEDRassets: [],
       isLoading: true
     };
   },
   mounted() {
     this.getAssetList();
+    window.addEventListener('load', () => {
+      // run after everything is in-place
+      window.socket.on('recently_used_edr_assets', function(res) {
+        this.recentEDRassets = res;
+      });
+    })
   },
   methods: {
     getAssetList: function() {
       console.log('getAssetList');
-      const path = '/DLA_get_asset_toolbar_list';
+      const path = '/DLA_get_asset_toolbar_info';
       axios.get(path)
         .then((res) => {
-          console.log(res);
-          this.assetList = res["data"]["asset_list"];
+          // console.log(res);
+          this.assetList = res["data"]["assets_per_cap_dict"];
+          this.recentEDRassets = res["data"]["recent_edr_assets"];
           this.isLoading = false;
         })
         .catch((error) => {
@@ -58,9 +76,13 @@ export default {
           console.error(error);
         });
     },
-    buttonClick: function(assetName) {
+    startDrawing: function(assetName) {
       var marker_class_name = window[assetName+ "Marker"];
-      window.update_asset_menu(assetName);
+      if (assetName == 'Pipe' || assetName == 'ElectricityCable')
+        window.update_line_asset_menu(assetName);
+      else
+        window.update_asset_menu(assetName);
+
       window.remove_tooltip();
 
       window.draw_control.setDrawingOptions({
@@ -79,8 +101,22 @@ export default {
       } else {
           window.draw_control._toolbars.draw._modes.marker.handler.enable();
       }
+    },
+    buttonClick: function(assetName) {
+      window.socket.emit('command', {
+        'cmd': 'set_asset_drawing_mode',
+        'mode': 'empty_assets'
+      });
+      this.startDrawing(assetName);   // communicate the ESDL class of the clicked asset
 
-      console.log('Button');
+    },
+    buttonEDRClick: function(asset) {
+      window.socket.emit('command', {
+        'cmd': 'set_asset_drawing_mode',
+        'mode': 'edr_asset',
+        'edr_asset_info': asset
+      });
+      this.startDrawing(asset.edr_asset_type);   // communicate the ESDL class of the clicked EDR asset
     }
   },
 };
@@ -101,7 +137,7 @@ to
   margin-bottom: 0;
 }
 
-.asset-table tr td {
+.asset-table tr td.icon {
    width: 40px;
    height: 40px;
    text-align: center;

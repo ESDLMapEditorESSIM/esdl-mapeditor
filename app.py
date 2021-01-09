@@ -30,6 +30,7 @@ import logging
 from datetime import datetime
 from pprint import pprint
 
+from esdl.processing.ESDLAsset import get_asset_capability_type
 from src.essim_validation import validate_ESSIM
 from src.essim_kpis import ESSIM_KPIs
 from src.wms_layers import WMSLayers
@@ -2460,9 +2461,42 @@ def process_command(message):
         edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
+            edr_asset_name = edr_asset.name
             edr_asset_type = type(edr_asset).__name__
+            edr_asset_cap = get_asset_capability_type(edr_asset)
             emit('place_edr_asset', edr_asset_type)
             set_session('adding_edr_assets', edr_asset_str)
+
+            recently_used_edr_assets = get_session('recently_used_edr_assets')
+            if recently_used_edr_assets:
+                current_edr_asset_in_list = False
+                for edra in recently_used_edr_assets:
+                    if edra['edr_asset_id'] == edr_asset_id:
+                        current_edr_asset_in_list = True
+
+                if not current_edr_asset_in_list and len(recently_used_edr_assets) == 5:
+                    recently_used_edr_assets.pop()     # Remove last element
+
+                if not current_edr_asset_in_list:
+                    recently_used_edr_assets.insert(0, {
+                        'edr_asset_id': edr_asset_id,
+                        'edr_asset_name': edr_asset_name,
+                        'edr_asset_type': edr_asset_type,
+                        'edr_asset_cap': edr_asset_cap,
+                        'edr_asset_str': edr_asset_str
+                    })
+            else:
+                recently_used_edr_assets = list()
+                recently_used_edr_assets.append({
+                    'edr_asset_id': edr_asset_id,
+                    'edr_asset_name': edr_asset_name,
+                    'edr_asset_type': edr_asset_type,
+                    'edr_asset_cap': edr_asset_cap,
+                    'edr_asset_str': edr_asset_str
+                })
+                set_session('recently_used_edr_assets', recently_used_edr_assets)
+
+            emit('recently_used_edr_assets', recently_used_edr_assets)
         else:
             send_alert('Error getting ESDL model from EDR')
 
@@ -2470,6 +2504,9 @@ def process_command(message):
         mode = message['mode']
         if mode == 'empty_assets':
             set_session('adding_edr_assets', None)
+        if mode == 'edr_asset':
+            edr_asset_info = message['edr_asset_info']
+            set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
 
     if message['cmd'] == 'query_esdl_service':
         params = message['params']

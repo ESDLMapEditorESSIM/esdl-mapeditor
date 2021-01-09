@@ -31,10 +31,10 @@
 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.5.0/lodash.min.js" crossorigin=""></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" type="text/css"/>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
-    <!--script src="./plugins/leaflet.draw.js"></script-->
+<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" type="text/css"/>-->
+<!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>-->
+    <link rel="stylesheet" href="./plugins/leaflet.draw.css" />
+    <script src="./plugins/leaflet.draw-custom.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css" type="text/css"/>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"></script>
@@ -1818,6 +1818,11 @@
             am.val(value);
             $("#asset_menu").selectmenu("refresh").change();
         }
+        function update_line_asset_menu(value) {
+            let lam = $('#line_select');
+            lam.val(value);
+            $("#line_select").selectmenu("refresh").change();
+        }
 
         function remove_tooltip() {
             $(".ui-tooltip-content").parents('div').remove();  // remove tooltip as it is shown when clicking
@@ -2139,15 +2144,14 @@
         filename: 'ESDL_map'
     }).addTo(map);
 
-
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
     var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "CheckValve", "CoolingDemand",
         "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
         "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer",
         "GenericConversion", "GenericProducer", "GenericTransport", "GeothermalSource", "HConnection", "HeatingDemand",
-        "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "PowerPlant", "Pump",
-        "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSource", "ResidualHeatSourcePotential", "SinkConsumer",
-        "SourceProducer", "Transformer", "UTES", "Valve", "WindTurbine", "EVChargingStation", "Sensor"];
+        "HeatExchange", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "Pipe",
+        "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSource", "ResidualHeatSourcePotential",
+        "SinkConsumer", "SourceProducer", "Transformer", "UTES", "Valve", "WindTurbine", "EVChargingStation", "Sensor"];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {

@@ -322,6 +322,16 @@ class ESDLDataLayer:
         view_modes = ViewModes.get_instance()
         return view_modes.get_asset_list()
 
+    def get_recently_used_edr_assets(self):
+        recently_used_edr_assets = get_session('recently_used_edr_assets')
+        if recently_used_edr_assets is None:
+            recently_used_edr_assets = list()
+
+        print("=======================================")
+        print("get_recently_used_edr_assets")
+        print(recently_used_edr_assets)
+        return recently_used_edr_assets
+
     def get_profile_names_list(self):
         """Build a list of all profile names in the ESDL file.
         """

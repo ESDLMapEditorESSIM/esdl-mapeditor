@@ -101,8 +101,11 @@ export default {
         // Then correct for leading zeros (multiples of 0.001)
         zeros = fn.substring(0,4);
         while (zeros == '0.00') {
+          console.log(zeros);
           multiplier = multiplier / 1000;
+          console.log(multiplier)
           fn = (parseFloat(fn) * 1000).toString();
+          console.log(fn)
           zeros = fn.substring(0,4);
         }
         // construct the string again

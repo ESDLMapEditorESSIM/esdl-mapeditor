@@ -136,6 +136,10 @@ function add_area_map_handlers(socket, map) {
         editing_objects = false;
 	});
 
+    map.on('draw:stopdrawing', function(event) {
+        socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
+    });
+
     enable_esdl_layer_created_event_handler();
 
     map.on('click', function(e) {
