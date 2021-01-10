@@ -31,6 +31,7 @@ from datetime import datetime
 from pprint import pprint
 
 from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.assets_to_be_added import AssetsToBeAdded
 from src.essim_validation import validate_ESSIM
 from src.essim_kpis import ESSIM_KPIs
 from src.wms_layers import WMSLayers
@@ -1426,9 +1427,16 @@ def process_command(message):
                 class_ = type(asset)
                 object_type = class_.__name__
             else:
-                module = importlib.import_module('esdl.esdl')
-                class_ = getattr(module, object_type)
-                asset = class_()
+                asset_drawing_mode = get_session('asset_drawing_mode')
+                if asset_drawing_mode == 'asset_from_measures':
+                    asset_from_measure_id = get_session('asset_from_measure_id')
+                    asset = AssetsToBeAdded.get_instance_of_measure_with_asset_id(es_edit, asset_from_measure_id)
+                    class_ = type(asset)
+                    object_type = class_.__name__
+                else:
+                    module = importlib.import_module('esdl.esdl')
+                    class_ = getattr(module, object_type)
+                    asset = class_()
 
             if issubclass(class_, esdl.Potential):
                 potential = class_()
@@ -2502,11 +2510,16 @@ def process_command(message):
 
     if message['cmd'] == 'set_asset_drawing_mode':
         mode = message['mode']
+        set_session('asset_drawing_mode', mode)
         if mode == 'empty_assets':
             set_session('adding_edr_assets', None)
+            set_session('asset_from_measure_id', None)
         if mode == 'edr_asset':
             edr_asset_info = message['edr_asset_info']
             set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
+        if mode == 'asset_from_measures':
+            asset_from_measure_id = message['asset_from_measure_id']
+            set_session('asset_from_measure_id', asset_from_measure_id)
 
     if message['cmd'] == 'query_esdl_service':
         params = message['params']

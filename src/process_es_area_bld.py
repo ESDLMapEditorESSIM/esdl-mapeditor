@@ -26,6 +26,7 @@ from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui
 from src.shape import Shape, ShapePoint
+from src.assets_to_be_added import AssetsToBeAdded
 from utils.RDWGSConverter import RDWGSConverter
 import shapely
 import math
@@ -782,6 +783,11 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 area_name = title
             if area_kpis:
                 emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
+
+            # measures can contain assets that still need to be added to the energysystem
+            # assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
+            # if assets_to_be_added:
+            #    emit('assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
 
             # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
             add_missing_coordinates(area)

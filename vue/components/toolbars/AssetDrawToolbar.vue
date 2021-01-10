@@ -55,8 +55,9 @@ export default {
     this.getAssetList();
     window.addEventListener('load', () => {
       // run after everything is in-place
+      let rea = this.recentEDRassets;
       window.socket.on('recently_used_edr_assets', function(res) {
-        this.recentEDRassets = res;
+        rea = res;
       });
     })
   },

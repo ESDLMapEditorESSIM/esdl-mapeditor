@@ -16,14 +16,15 @@ export function mountSidebarComponent(component) {
     mountApp(component, '#vue_sidebar_app');
 }
 
-export function createVueLControl(component) {
-    const lcontrol = new VueComponentLControl();
+export function createVueLControl(component, options) {
+    const lcontrol = new VueComponentLControl(options);
     lcontrol.addTo(window.map).mount(component);
 }
 
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
     // app.use(Antd);
+    // app.use(Badge);
     app.use(Button);
     app.use(Card);
     app.use(Radio);

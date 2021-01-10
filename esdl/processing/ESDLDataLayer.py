@@ -326,10 +326,6 @@ class ESDLDataLayer:
         recently_used_edr_assets = get_session('recently_used_edr_assets')
         if recently_used_edr_assets is None:
             recently_used_edr_assets = list()
-
-        print("=======================================")
-        print("get_recently_used_edr_assets")
-        print(recently_used_edr_assets)
         return recently_used_edr_assets
 
     def get_profile_names_list(self):
