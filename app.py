@@ -162,6 +162,8 @@ PICORooftopPVPotential(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
+AssetsToBeAdded(app, socketio)
+
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -1431,6 +1433,8 @@ def process_command(message):
                 if asset_drawing_mode == 'asset_from_measures':
                     asset_from_measure_id = get_session('asset_from_measure_id')
                     asset = AssetsToBeAdded.get_instance_of_measure_with_asset_id(es_edit, asset_from_measure_id)
+                    atba = AssetsToBeAdded.get_instance()
+                    atba.reduce_ui_asset_count(es_edit, asset_from_measure_id)
                     class_ = type(asset)
                     object_type = class_.__name__
                 else:

@@ -1,6 +1,6 @@
-<template v-if="assetList && assetList.length">
+<template>
   <div
-    v-show="visible"
+    v-show="assetList && assetList.length"
     class="my-control leaflet-assets-to-be-added-toolbar"
   >
     <p>Assets to be added:</p>
@@ -36,9 +36,21 @@ export default {
   mounted() {
     window.addEventListener('load', () => {
       // run after everything is in-place
-      window.socket.on('assets_to_be_added', function(res) {
-         console.log(res);
-         assetList.value = res['assets_to_be_added'];
+      window.socket.on('ATBA_assets_to_be_added', function(res) {
+        console.log(res);
+        assetList.value = res['assets_to_be_added'];
+      });
+      window.socket.on('ATBA_use_asset', function(info) {
+        console.log(info);
+        let asset_id = info['id'];
+        for (let idx in assetList.value) {
+          if (assetList.value[idx].id == asset_id) {
+            assetList.value[idx].count -= 1;
+            if (assetList.value[idx].count == 0) {
+              assetList.value.splice(idx, 1);
+            }
+          }
+        }
       });
     });
   },
@@ -76,7 +88,6 @@ export default {
           'mode': 'asset_from_measures',
           'asset_from_measure_id': asset.id
         });
-        asset.count = asset.count - 1;
         this.startDrawing(asset.type);   // communicate the ESDL class of the clicked asset
       }
     },
