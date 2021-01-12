@@ -14,6 +14,7 @@
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.utils import DynamicEPackage
+from pyecore.ecore import EModelElement, EAnnotation
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
 import src.log as log
@@ -55,6 +56,7 @@ class EcoreDocumentation:
 
             # Create a dynamic model from the loaded esdl.ecore model, which we can use to build Energy Systems
             self.esdl = DynamicEPackage(esdl_model)
+            logger.info("Initialized ESDL version {}".format(self.get_esdl_version()))
 
 
     def get_doc(self, className, attributeName):
@@ -65,5 +67,23 @@ class EcoreDocumentation:
         attr = ecoreClass.findEStructuralFeature(attributeName)
         if attr is None: return None
         # logger.debug('Retrieving doc for {}: {}'.format(attributeName, attr.__doc__))
-        return (attr.__doc__)
+        return attr.__doc__
 
+    def get_unit(self, className:str, attributeName:str) -> str:
+        """
+        :value: EmodelElement (e.g. EObject) that has an annotation attached
+        :returns: The unit attached to this annotation or empty string
+        """
+        ecoreClass = self.esdl_model.getEClassifier(className)
+        if ecoreClass is None: return None
+        attr = ecoreClass.findEStructuralFeature(attributeName)
+        if attr is None: return None
+
+        annotation: EAnnotation = attr.getEAnnotation('http://www.tno.nl/esdl/attribute/unit')
+        unit = annotation.details.get('unit', '') if annotation else None
+        return unit if unit else ''
+
+    def get_esdl_version(self):
+        annotation: EAnnotation = self.esdl_model.getEAnnotation('http://www.tno.nl/esdl/version')
+        version = annotation.details.get('version', '') if annotation else None
+        return version if version else 'unknown'
