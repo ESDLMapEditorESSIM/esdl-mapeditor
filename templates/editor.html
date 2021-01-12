@@ -661,16 +661,16 @@
                 { text: 'Split and add joint', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor_add_joint(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
-            for (let p=0; p<line.ports.length; p++) {
-                let port_id = ''+line.ports[p].id;
-                line.options.contextmenuItems.push({
-                    icon: 'icons/Connect.png',
-                    text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) { connect_asset(line_id, port_id); }
-                });
-            }
+            // for (let p=0; p<line.ports.length; p++) {
+            //     let port_id = ''+line.ports[p].id;
+            //     line.options.contextmenuItems.push({
+            //         icon: 'icons/Connect.png',
+            //         text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
+            //         callback: function (e) { connect_asset(line_id, port_id); }
+            //     });
+            // }
 
-            line.options.contextmenuItems.push('-');
+            // line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push({
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
