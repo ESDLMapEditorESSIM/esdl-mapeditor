@@ -300,7 +300,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
         // document.getElementById('area_scope').onchange();  // force loading
     }
 
-    if (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl' || service['type'] == 'json') {
+    if (service['show_query_params'] != false && (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl' || service['type'] == 'json')) {
         let q_params = service['query_parameters'];
 
         if (q_params.length > 0) {

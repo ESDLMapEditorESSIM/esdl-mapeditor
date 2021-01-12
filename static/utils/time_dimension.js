@@ -190,6 +190,13 @@ class TimeDimension {
 //        this.current_time_window_end.setDate(this.current_time_window_start.getDate() + 1);
     }
 
+    initialize_animation_toolbar_setting() {
+        socket.emit('time_dimension_get_settings', function(res) {
+            let ab_visible = res['ab_visible'];
+            time_dimension.show_hide_animation_toolbar(ab_visible);
+        });
+    }
+
     initialize(database, simulation_id, networks=[]) {
         time_dimension.removeGeoJSONLayers();
         show_loader();
@@ -227,10 +234,58 @@ class TimeDimension {
         clear_layers(active_layer_id, 'sim_layer');
     }
 
+    toggle_animation_toolbar_visibility() {
+        if ($('#menu_option_animation_bar').hasClass("ui-icon-check ui-icon"))
+            time_dimension.show_hide_animation_toolbar(false);
+        else
+            time_dimension.show_hide_animation_toolbar(true);
+    }
+
+    show_hide_animation_toolbar(visible) {
+        if (visible) {
+            // copied from vendor/socib/leaflet.timedimension.src.js
+            map.timeDimensionControl = L.control.timeDimension(map.options.timeDimensionControlOptions || {});
+            map.addControl(map.timeDimensionControl);
+
+            // set checkmark at view menu option
+            $('#menu_option_animation_bar').addClass("ui-icon-check ui-icon");
+        } else {
+            if (map.timeDimensionControl) map.removeControl(map.timeDimensionControl);
+
+            // remove checkmark at view menu option
+            $('#menu_option_animation_bar').removeClass("ui-icon-check ui-icon");
+        }
+    }
+
+    UISettings() {
+        let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Animation toolbar'));
+
+        let $visible_on_startup = $('<input>').attr('type', 'checkbox').attr('id', 'ab_visible').attr('value', 'ab_visible').attr('name', 'ab_visible');
+        let $abvis_label = $('<label>').attr('for', 'ab_visible').text('Animation toolbar visible on startup');
+        $div.append($('<p>').append($visible_on_startup).append($abvis_label));
+
+        $visible_on_startup.change(function() {
+            let ab_visible = $('#ab_visible').is(':checked');
+            time_dimension.show_hide_animation_toolbar(ab_visible);
+            socket.emit('time_dimension_set_settings', {ab_visible: ab_visible});
+        });
+
+        socket.emit('time_dimension_get_settings', function(res) {
+            let ab_visible = res['ab_visible'];
+            $('#ab_visible').prop('checked', ab_visible);
+        });
+
+        return $div;
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
             time_dimension = new TimeDimension();
+            time_dimension.initialize_animation_toolbar_setting();
             return time_dimension;
+        }
+        if (event.type === 'ui_settings_div') {
+            return time_dimension.UISettings();
         }
     }
 }
@@ -238,5 +293,5 @@ class TimeDimension {
 var time_dimension;
 
 $(document).ready(function() {
-    extensions.push(function(event) { TimeDimension.create(event) });
+    extensions.push(function(event) { return TimeDimension.create(event) });
 });

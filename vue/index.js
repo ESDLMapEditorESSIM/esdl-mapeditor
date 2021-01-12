@@ -3,15 +3,20 @@
  * available functions that trigger mounting a Vue Component to some part of the
  * DOM.
  */
+import { createApp } from "vue";
 import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
+import EsdlProfiles from './apps/EsdlProfiles';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
+import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
+import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
+import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import { useWorkflow } from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import { useObject } from './composables/ObjectID';
-import ActiveLongProcess from './components/progress/ActiveProcess'
-import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
+// import ActiveLongProcess from './components/progress/ActiveProcess'
+// import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 
 
@@ -24,9 +29,13 @@ window.activate_service_workflow = (serviceIndex, service) => {
 }
 
 window.continue_service_workflow = () => {
-    mountSidebarComponent(Workflow);
+    const { currentWorkflow } = useWorkflow();
+    if (currentWorkflow.value) {
+        mountSidebarComponent(Workflow);
+    } else {
+        alert("No workflow active.");
+    }
 }
-
 
 window.control_strategy_window = (object_id) => {
     const { newObject } = useObject();
@@ -44,6 +53,16 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-createVueLControl(ActiveLongProcess);
+window.activate_esdl_profiles = () => {
+    mountApp(EsdlProfiles, '#settings_module_contents');
+}
 
-mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+// createVueLControl(ActiveLongProcess);
+// mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+
+createVueLControl(AssetDrawToolbar, {});
+createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+
+createVueLControl(AssetsToBeAddedToolbar, {
+        position: 'bottomright',
+    });

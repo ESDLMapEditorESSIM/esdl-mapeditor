@@ -23,7 +23,7 @@ const inputId = 'workflow_file_upload';
 
 const workflowStep = props.workflowStep;
 
-const { getFromState, getState, goToNextStep } = useWorkflow();
+const { getParamsFromState, getState, goToNextStep } = useWorkflow();
 const state = getState();
 
 const onSubmit = async () => {
@@ -36,7 +36,7 @@ const onSubmit = async () => {
   // calling readAsDataURL on the file_reader.
   const upload_file = async () => {
     // Build the target request parameters by getting the values from the state.
-    const request_params = getFromState(workflowStep.target['request_params']);
+    const request_params = getParamsFromState(workflowStep.target['request_params']);
     // Add file upload specific fields.
     request_params['base64_file'] = file_reader.result;
     request_params['file_name'] = file_name;

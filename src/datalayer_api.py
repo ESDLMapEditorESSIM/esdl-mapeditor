@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLEcore import instantiate_type
@@ -27,8 +27,6 @@ import src.log as log
 import esdl
 
 logger = log.get_logger(__name__)
-
-
 
 
 class DataLayerAPI:
@@ -113,7 +111,6 @@ class DataLayerAPI:
             if isinstance(object, esdl.EnergyAsset):
                 self.datalayer.remove_control_strategy(object)
 
-
         @self.socketio.on('DLA_get_table_data', namespace='/esdl')
         def DLA_get_table_data(message):
             table_data_request = DLA_table_data_request(**message)
@@ -133,3 +130,28 @@ class DataLayerAPI:
             delete_ref_message = DeleteRefMessage(**message)
             return self.datalayer.delete_ref(delete_ref_message)
 
+        @self.flask_app.route('/DLA_get_asset_toolbar_info')
+        def DLA_get_asset_toolbar_info():
+            """
+            Retrieves a list of assets that can be rendered in the AssetDrawToolbox. Elements in the list change when
+            view_mode changes.
+
+            :return: a dictionary with per ESDL capability a list of assets
+            """
+            with self.flask_app.app_context():
+                assets_per_cap_dict = self.datalayer.get_asset_list()
+                recently_used_edr_assets = self.datalayer.get_recently_used_edr_assets()
+                return {
+                    "assets_per_cap_dict": assets_per_cap_dict,
+                    "recent_edr_assets": recently_used_edr_assets
+                }
+
+        @self.socketio.on('DLA_get_profile_names_list', namespace='/esdl')
+        def DLA_get_profile_names_list(message):
+            """
+            :return: a dictionary returning the list of profile names in the
+            current ESDL, and the list of uploaded profile names.
+            """
+            esdl_profile_names = self.datalayer.get_profile_names_list()
+
+            return {"esdl_profile_names": esdl_profile_names}

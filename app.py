@@ -30,6 +30,8 @@ import logging
 from datetime import datetime
 from pprint import pprint
 
+from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.assets_to_be_added import AssetsToBeAdded
 from src.essim_validation import validate_ESSIM
 from src.essim_kpis import ESSIM_KPIs
 from src.wms_layers import WMSLayers
@@ -115,7 +117,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
 app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True
+# app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
@@ -160,6 +162,8 @@ PICORooftopPVPotential(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
+AssetsToBeAdded(app, socketio)
+
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -436,11 +440,11 @@ def serve_static(path):
 # ---------------------------------------------------------------------------------------------------------------------
 #  File I/O and ESDL Store API calls
 # ---------------------------------------------------------------------------------------------------------------------
-if settings.esdl_store_config is not None and settings.esdl_store_config is not "":
+if settings.esdl_store_config is not None and settings.esdl_store_config != "":
     default_store_url = settings.esdl_store_config['hostname'] + '/store/'
 else:
     default_store_url = None
-if settings.mondaine_hub_config is not None and settings.mondaine_hub_config is not "":
+if settings.mondaine_hub_config is not None and settings.mondaine_hub_config != "":
     mondaine_hub_url = settings.mondaine_hub_config['hostname'] + '/store/'
 else:
     mondaine_hub_url = None
@@ -1425,9 +1429,18 @@ def process_command(message):
                 class_ = type(asset)
                 object_type = class_.__name__
             else:
-                module = importlib.import_module('esdl.esdl')
-                class_ = getattr(module, object_type)
-                asset = class_()
+                asset_drawing_mode = get_session('asset_drawing_mode')
+                if asset_drawing_mode == 'asset_from_measures':
+                    asset_from_measure_id = get_session('asset_from_measure_id')
+                    asset = AssetsToBeAdded.get_instance_of_measure_with_asset_id(es_edit, asset_from_measure_id)
+                    atba = AssetsToBeAdded.get_instance()
+                    atba.reduce_ui_asset_count(es_edit, asset_from_measure_id)
+                    class_ = type(asset)
+                    object_type = class_.__name__
+                else:
+                    module = importlib.import_module('esdl.esdl')
+                    class_ = getattr(module, object_type)
+                    asset = class_()
 
             if issubclass(class_, esdl.Potential):
                 potential = class_()
@@ -2460,16 +2473,57 @@ def process_command(message):
         edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
+            edr_asset_name = edr_asset.name
             edr_asset_type = type(edr_asset).__name__
+            edr_asset_cap = get_asset_capability_type(edr_asset)
             emit('place_edr_asset', edr_asset_type)
             set_session('adding_edr_assets', edr_asset_str)
+
+            recently_used_edr_assets = get_session('recently_used_edr_assets')
+            if recently_used_edr_assets:
+                current_edr_asset_in_list = False
+                for edra in recently_used_edr_assets:
+                    if edra['edr_asset_id'] == edr_asset_id:
+                        current_edr_asset_in_list = True
+
+                if not current_edr_asset_in_list and len(recently_used_edr_assets) == 5:
+                    recently_used_edr_assets.pop()     # Remove last element
+
+                if not current_edr_asset_in_list:
+                    recently_used_edr_assets.insert(0, {
+                        'edr_asset_id': edr_asset_id,
+                        'edr_asset_name': edr_asset_name,
+                        'edr_asset_type': edr_asset_type,
+                        'edr_asset_cap': edr_asset_cap,
+                        'edr_asset_str': edr_asset_str
+                    })
+            else:
+                recently_used_edr_assets = list()
+                recently_used_edr_assets.append({
+                    'edr_asset_id': edr_asset_id,
+                    'edr_asset_name': edr_asset_name,
+                    'edr_asset_type': edr_asset_type,
+                    'edr_asset_cap': edr_asset_cap,
+                    'edr_asset_str': edr_asset_str
+                })
+                set_session('recently_used_edr_assets', recently_used_edr_assets)
+
+            emit('recently_used_edr_assets', recently_used_edr_assets)
         else:
             send_alert('Error getting ESDL model from EDR')
 
     if message['cmd'] == 'set_asset_drawing_mode':
         mode = message['mode']
+        set_session('asset_drawing_mode', mode)
         if mode == 'empty_assets':
             set_session('adding_edr_assets', None)
+            set_session('asset_from_measure_id', None)
+        if mode == 'edr_asset':
+            edr_asset_info = message['edr_asset_info']
+            set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
+        if mode == 'asset_from_measures':
+            asset_from_measure_id = message['asset_from_measure_id']
+            set_session('asset_from_measure_id', asset_from_measure_id)
 
     if message['cmd'] == 'query_esdl_service':
         params = message['params']
@@ -2806,6 +2860,9 @@ def get_carrier_color_dict():
 def browser_initialize():
     user_email = get_session('user-email')
     role = get_session('user-role')
+
+    view_modes = ViewModes.get_instance()
+    view_modes.initialize_user(user_email)
 
     logger.info('Send initial information to client')
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])

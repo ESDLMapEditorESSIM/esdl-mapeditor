@@ -58,31 +58,7 @@ view_modes_config = {
             # ===========================
             #  Transport assets
             # ===========================
-            "Pump": [
-                "pumpCurveTable",
-                "controlStrategy",
-                "pumpCapacity",
-                "pumpEfficiency",
-                "ratedSpeed"
-            ],
-            "Pipe": [
-                "diameter",
-                "innerDiameter",
-                "outerDiameter",
-                "material"
-            ],
-            "CheckValve": [
-                "flowCoefficient",
-                "innerDiameter",
-                "reopenDeltaP"
-                
-            ],
-            "Valve": [
-                "type",
-                "flowCoefficient",
-                "innerDiameter",
-                "position"
-                ],
+
             # ===========================
             #  Conversion assets
             # ===========================
@@ -92,8 +68,10 @@ view_modes_config = {
             # ===========================
             #  Building assets
             # ===========================
+            "AbstractBuilding": [
+                "name"
+            ],
             "Building": [
-                "name",
                 "type",
                 "buildingYear",
                 "surfaceArea",
@@ -101,8 +79,8 @@ view_modes_config = {
                 "energyLabel"
             ],
             "AggregatedBuilding": [
-                "name",
                 "surfaceArea",
+                "numberOfBuildings",
                 "floorArea"
             ],
             # ===========================
@@ -114,7 +92,7 @@ view_modes_config = {
                 "orientation",
                 "solarPotentialType",
                 "value"
-            ]
+            ],
         },
         "Aggregation": {
             "EnergyAsset": [
@@ -151,7 +129,7 @@ view_modes_config = {
                 "fillLevel",
                 "maxChargeRate",
                 "maxDischargeRate",
-                "selfDischargeRate"                
+                "selfDischargeRate"
             ],
             "HeatPump": [
                 "COP",
@@ -161,13 +139,147 @@ view_modes_config = {
     },
     "CHESS": {
         "Basic": {
+            "EnergyAsset": [
+                "name",
+                "state"
+            ],
+            "Potential": [
+                "name",
+            ],
+            # ===========================
+            #  The 5 ESDL capabilities
+            # ===========================
+            "Consumer": [
+                "power"
+            ],
+            "Producer": [
+                "power",
+                "prodType"
+            ],
+            "Storage": [
+                "capacity",
+                "maxChargeRate",
+                "maxDischargeRate",
+            ],
+            "Transport": [
+                "capacity"
+            ],
+            "Conversion": [
+                "power",
+                "efficiency"
+            ],
+            # ===========================
+            #  Transport assets
+            # ===========================
+            "Pump": [
+                "pumpCurveTable",
+                "controlStrategy",
+                "pumpCapacity",
+                "pumpEfficiency",
+                "ratedSpeed"
+            ],
+            "Pipe": [
+                "diameter",
+                "innerDiameter",
+                "outerDiameter",
+                "material"
+            ],
+            "CheckValve": [
+                "flowCoefficient",
+                "innerDiameter",
+                "reopenDeltaP"
+            ],
+            "Valve": [
+                "type",
+                "flowCoefficient",
+                "innerDiameter",
+                "position"
+            ],
+            "HeatExchange": [
+                "heatTransferCoefficient",
+                "diameterPrimarySide",
+                "diameterSecundarySide",
+                "lengthPrimarySide",
+                "lengthSecundarySide",
+                "roughnessPrimarySide",
+                "roughnessSecundarySide"
+            ],
+            # ===========================
+            #  Conversion assets
+            # ===========================
+            "HeatPump": [
+                "COP"
+            ],
+            # ===========================
+            #  Building assets
+            # ===========================
+            "AbstractBuilding": [
+                "name"
+            ],
+            "Building": [
+                "type",
+                "buildingYear",
+                "surfaceArea",
+                "floorArea",
+                "energyLabel"
+            ],
+            "AggregatedBuilding": [
+                "surfaceArea",
+                "numberOfBuildings",
+                "floorArea"
+            ],
+            # ===========================
+            #  Potentials
+            # ===========================
+        }
+    }
+}
 
-        },
+asset_list = {
+    "standard": {
+        "Producer": [
+            "PVInstallation",
+            "GeothermalSource",
+        ],
+        "Consumer": [
+            "ElectricityDemand",
+        ],
+        "Conversion": [
+            "CHP",
+            "PowerPlant",
+            "Electrolyzer",
+        ]
+    },
+    "CHESS": {
+        "Producer": [
+            "GenericProducer",
+            "GeothermalSource",
+            "ResidualHeatSource",
+        ],
+        "Consumer": [
+            "GenericConsumer",
+            "HeatingDemand",
+        ],
+        "Storage": [
+            "HeatStorage",
+        ],
+        "Conversion": [
+            "GasHeater",
+            "HeatPump",
+        ],
+        "Transport": [
+            "Pipe",
+            "Pump",
+            "Valve",
+            "CheckValve",
+            "HeatExchange"
+        ]
     }
 }
 
 VIEW_MODES_USER_CONFIG = "VIEW_MODES_USER_CONFIG"
 view_modes = None
+
 
 class ViewModes:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -187,19 +299,32 @@ class ViewModes:
         global view_modes
         return view_modes
 
+    def initialize_user(self, user):
+        settings = self.get_user_settings(user)
+        set_session('mapeditor_view_mode', settings['mode'])
+        logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
+        return settings['mode']
+
     def register(self):
         logger.info("Registering ViewModes")
 
-        @self.socketio.on('view_modes_initialize', namespace='/esdl')
-        def view_modes_initialize():
+        @self.socketio.on('view_modes_get_mode_info', namespace='/esdl')
+        def view_modes_get_mode_info():
             user = get_session('user-email')
             settings = self.get_user_settings(user)
-            set_session('mapeditor_view_mode', settings['mode'])
-            logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
+            return {
+                'current_mode': settings['mode'],
+                'possible_modes': list(view_modes_config.keys())
+            }
 
         @self.socketio.on('view_modes_set_mode', namespace='/esdl')
         def view_modes_set_mode(mode):
-            pass
+            user = get_session('user-email')
+            settings = self.get_user_settings(user)
+            settings['mode'] = mode['mode']
+            self.set_user_settings(user, settings)
+            set_session('mapeditor_view_mode', settings['mode'])
+            logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, VIEW_MODES_USER_CONFIG):
@@ -237,7 +362,7 @@ class ViewModes:
             categorized_attributes_list['Advanced'].append(attr_info)
 
         return categorized_attributes_list
-    
+
     def categorize_object_attributes_and_references(self, object, attributes, references):
         attr_dict = {attr['name']: attr for attr in attributes}
         ref_dict = {ref['name']: ref for ref in references}
@@ -260,7 +385,6 @@ class ViewModes:
                             ref_info = deepcopy(ref_dict[feature])
                             del ref_dict[feature]
                             categorized_list[key].append(ref_info)
-                    
 
         categorized_list['Advanced'] = list()
         for feature in attr_dict:
@@ -272,4 +396,10 @@ class ViewModes:
 
         return categorized_list
 
+    def get_asset_list(self):
+        view_mode = get_session('mapeditor_view_mode')
+        if not view_mode:
+            user = get_session('user-email')
+            view_mode = self.initialize_user(user)
 
+        return asset_list[view_mode]

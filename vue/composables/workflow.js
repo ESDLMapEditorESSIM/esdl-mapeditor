@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { getattrd } from "../utils/utils";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -34,6 +35,15 @@ export function useWorkflow() {
     }
 
     /**
+     * Start over the current workflow.
+     * 
+     */
+    const startOver = () => {
+        currentWorkflow.value = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
+        return currentWorkflow;
+    }
+
+    /**
      * Get the current workflow state.
      */
     const getState = () => {
@@ -41,16 +51,26 @@ export function useWorkflow() {
     }
 
     /**
-     * Get values from the state.
+     * Get value from the state.
+     * 
+     * @param {*} to_obtain_field The name of the field in the state to get.
+     */
+    const getFromState = (to_obtain_field) => {
+        const state = getState();
+        return getattrd(state, to_obtain_field);
+    }
+
+    /**
+     * Get values from the state, as a parameter mapping..
      * 
      * @param {*} to_obtain_params An object mapping a key (what it should be in the
      * result) to a value (the name in the state).
      */
-    const getFromState = (to_obtain_params) => {
+    const getParamsFromState = (to_obtain_params) => {
         const state = getState();
         const params = {};
-        for (const [key, value] of Object.entries(to_obtain_params)) {
-            params[key] = state[value];
+        for (const [target_field, state_field] of Object.entries(to_obtain_params)) {
+            params[target_field] = getattrd(state, state_field);
         }
         return params;
     }
@@ -83,7 +103,9 @@ export function useWorkflow() {
         goToPreviousStep,
         getState,
         getFromState,
+        getParamsFromState,
         startNewWorkflow,
+        startOver,
     }
 }
 

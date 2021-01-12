@@ -317,3 +317,32 @@ class ESDLDataLayer:
                 name = item.eClass.name
             return name + ' (' + item.eClass.name + ")"
         return item.eClass.name
+
+    def get_asset_list(self):
+        view_modes = ViewModes.get_instance()
+        return view_modes.get_asset_list()
+
+    def get_recently_used_edr_assets(self):
+        recently_used_edr_assets = get_session('recently_used_edr_assets')
+        if recently_used_edr_assets is None:
+            recently_used_edr_assets = list()
+        return recently_used_edr_assets
+
+    def get_profile_names_list(self):
+        """Build a list of all profile names in the ESDL file.
+        """
+        active_es_id = get_session('active_es_id')
+        logger.info(active_es_id)
+        esh = get_handler()
+        energy_system = esh.get_energy_system(es_id=active_es_id)
+
+        instance = energy_system.instance[0]
+        profile_fields = []
+        if instance and instance.area:
+            for asset in instance.area.asset:
+                for inner_asset in getattr(asset, 'asset', []):
+                    for port in getattr(inner_asset, 'port', []):
+                        for profile in getattr(port, 'profile', []):
+                            profile_fields.append(profile.field)
+
+        return profile_fields

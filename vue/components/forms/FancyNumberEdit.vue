@@ -2,10 +2,10 @@
   <div id="fancy_number_edit">
     <a-input
       v-model:value="fancy_number"
+      v-model:size="text_box_size"
       class="fe_box"
       size="small"
       type="text"
-      v-model:size="text_box_size"
       @blur="onLoseFocus"
     />
     <!-- TODO use addon-after="W" to add the unit to the input box, if the unit is available -->
@@ -33,7 +33,13 @@ const factors = {
     'a': 1e-18,
     'z': 1e-21,
     'y': 1e-24,
-}
+};
+
+const multipliers = [
+  1e24, 1e21, 1e18, 1e15, 1e12, 1e9, 1e6, 1e3, 1, 1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18, 1e-21, 1e-24,
+];
+const NO_MULTIPLIER = 8;   // index in multipliers array
+
 export default {
   name: "FancyNumberEdit",
   props: {
@@ -77,6 +83,7 @@ export default {
         return fn
       },
       processFancyNumber: function(fn) {
+        if (fn == "" || fn == "0") return fn;
         // This function allows to enter any positive number and any multiplier, the result
         // will be the 'best' human readable number. Examples:
         // - 60000000000 --> 60G 
@@ -90,21 +97,37 @@ export default {
           let f = fn.slice(-1);
           fn = (parseFloat(n) * factors[f]).toString();
         }
-        // Then correct for trailing zeros (multiples of 1000)
-        let zeros = fn.slice(-3);
-        let multiplier = 1;
-        while (zeros == '000') {
-          multiplier = multiplier * 1000;
-          fn = fn.substring(0, fn.length - 3);
-          zeros = fn.slice(-3);
+        // (here we have the real number in the string, without the 'multiplier')
+
+        // then calculate the precision, so we can use it for the end result
+        // Note: scientific notation fails
+        let precision = fn.length;
+        for (let i=0; i<fn.length; i++) {
+          if (fn[i] == '0' || fn[i] == '.')
+            precision -= 1;
+          else
+            break;
         }
+
         // Then correct for leading zeros (multiples of 0.001)
+        let multiplier = NO_MULTIPLIER;
         zeros = fn.substring(0,4);
         while (zeros == '0.00') {
-          multiplier = multiplier / 1000;
+          multiplier += 1;
           fn = (parseFloat(fn) * 1000).toString();
           zeros = fn.substring(0,4);
         }
+
+        // Then correct for trailing zeros (multiples of 1000)
+        let zeros = fn.slice(-3);
+        while (zeros == '000') {
+          multiplier -= 1;
+          fn = fn.substring(0, fn.length - 3);
+          zeros = fn.slice(-3);
+        }
+
+        fn = parseFloat(fn).toPrecision(precision);  // use same precision as for input
+        multiplier = multipliers[multiplier];  // now go from index to real multiplier
         // construct the string again
         if (multiplier != 1) {
           for (let f in factors) {
