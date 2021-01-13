@@ -1,4 +1,4 @@
-import { createApp } from "vue"
+import { mountApp } from "../../mounts"
 
 const VueComponentLControl = window.L.Control.extend({
     options: {
@@ -28,7 +28,7 @@ const VueComponentLControl = window.L.Control.extend({
     },
 
     mount: function (component) {
-        createApp(component).mount(this.getContainer());
+        mountApp(component, this.getContainer());
     }
 });
 

@@ -15,6 +15,8 @@
 from uuid import uuid4
 from esdl.processing import ESDLEcore
 from pyecore.ecore import EReference
+
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
@@ -30,7 +32,7 @@ from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
 import src.log as log
-
+from utils.utils import camelCaseToWords
 
 logger = log.get_logger(__name__)
 
@@ -278,7 +280,7 @@ class ESDLDataLayer:
             return None
         c_dict = {'doc': container.__doc__, 'type': container.eClass.name,}
         if hasattr(container, 'name'):
-            c_dict['name']= container.name
+            c_dict['name'] = container.name
         else:
             c_dict['name'] = None
         if not hasattr(container, 'id') or container.id is None:
@@ -346,3 +348,50 @@ class ESDLDataLayer:
                             profile_fields.append(profile.field)
 
         return profile_fields
+
+    def get_environmental_profiles(self):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+
+        result = list()
+
+        es = esh.get_energy_system(active_es_id)
+        esi = es.energySystemInformation
+
+        for x in esdl.EnvironmentalProfiles.eClass.eAllStructuralFeatures():
+            if isinstance(x, EReference):
+                ep_instance = dict()
+                ep_instance['key'] = str(uuid4())
+                ep_instance['name'] = x.name
+                ep_instance['uiname'] = camelCaseToWords(x.name)
+
+                if esi and esi.environmentalProfiles:
+                    env_profiles = esi.environmentalProfiles
+                    profile = env_profiles.eGet(x)
+                    if profile:
+                        if isinstance(profile, esdl.SingleValue):
+                            ep_instance['type'] = 'SingleValue'
+                            ep_instance['value'] = profile.value
+                        elif isinstance(profile, esdl.InfluxDBProfile):
+                            ep_instance['type'] = 'InfluxDBProfile'
+                            # check if it is a 'standard profile' that is present in our configuration
+
+                            # else it is a 'external profile' not known here
+                        else:
+                            logger.warn('Cost information profiles other than SingleValue are not supported')
+                            ep_instance['value'] = ''
+
+                        if profile.profileQuantityAndUnit:
+                            qau = profile.profileQuantityAndUnit
+                            if isinstance(qau, esdl.QuantityAndUnitReference):
+                                qau = qau.reference
+                            ep_instance['unit'] = unit_to_string(qau)
+                        else:
+                            ep_instance['unit'] = ''
+
+                    else:
+                        ep_instance['value'] = ''
+
+                result.append(ep_instance)
+
+        return result

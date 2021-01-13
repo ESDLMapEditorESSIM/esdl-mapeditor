@@ -8,6 +8,7 @@ import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EsdlProfiles from './apps/EsdlProfiles';
+import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -55,6 +56,10 @@ window.edr_asset_window = () => {
 
 window.activate_esdl_profiles = () => {
     mountApp(EsdlProfiles, '#settings_module_contents');
+}
+
+window.environmental_profiles = () => {
+    mountSidebarComponent(EnvironmentalProfiles);
 }
 
 // createVueLControl(ActiveLongProcess);
