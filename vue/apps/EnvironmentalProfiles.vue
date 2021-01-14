@@ -8,69 +8,102 @@
     direction="vertical"
   >
     <a-card>
-      <a-space>
-        <a-table :columns="envProfilesColumns" :data-source="env_profiles" size="middle" :pagination="paginationConfig" />
-      </a-space>
-      <a-space>
-        <!------------------------------------>
-        <!-- Profiles                       -->
-        <!------------------------------------>
-        How do you want to define the profile?
-        <a-radio-group v-model:value="dbp_radio">
-          <a-radio
-            v-for="dbpo in DbPOptions"
-            :key="dbpo.id"
-            :value="dbpo.id"
-            class="radiostyle"
-          >
-            {{ dbpo.name }}
-          </a-radio>
-        </a-radio-group>
+      <a-row :gutter="[0, 24]">
+        <a-col :span="24">
+          <a-table :columns="envProfilesColumns" :data-source="env_profiles" size="middle" :pagination="paginationConfig">
+            <template #operation="{ record }">
+              <div v-if="record.type == 'InfluxDBProfile'" class="editable-row-operations">
+                <span>
+                  <a @click="editProfile(record.key)">
+                    <i class="fa fa-database" />
+                  </a>
+                </span>
+              </div>
+              <div v-if="record.type == 'SingleValue'" class="editable-row-operations">
+                <span>
+                  <a @click="editProfile(record.key)">
+                    <span class="fa-stack">
+                      <span class="fa fa-circle-o fa-stack-2x"></span>
+                      <strong class="fa-stack-1x">123</strong>
+                    </span>
+                  </a>
+                </span>
+              </div>
+              <div class="editable-row-operations">
+                <span>
+                  <a @click="deleteProfile(record.key)">
+                    <i class="fa fa-trash" />
+                  </a>
+                </span>
+              </div>
+            </template>
+          </a-table>
+        </a-col>
+      </a-row>
 
-        <!------------------------------------>
-        <!-- Profile from database          -->
-        <!------------------------------------>
-        <a-space
-          v-if="dbp_radio=='PfDb'"
-          direction="vertical"
-        >
-          Select an existing profile from the profile database
-          <a-select
-            v-model:value="db_profile"
-            placeholder="Select a profile"
-            style="width: 100%"
-          >
-            <a-select-option
-              v-for="dbp in db_profiles"
-              :key="dbp.id"
-              :value="dbp.id"
+      <a-row :gutter="[0, 24]">
+        <a-col :span="24">
+          <!------------------------------------>
+          <!-- Profiles                       -->
+          <!------------------------------------>
+          How do you want to define the profile?
+          <a-radio-group v-model:value="dbp_radio">
+            <a-radio
+              v-for="dbpo in DbPOptions"
+              :key="dbpo.id"
+              :value="dbpo.id"
+              class="radiostyle"
             >
-              {{ dbp.name }}
-            </a-select-option>
-          </a-select>
-        </a-space>
-        <!------------------------------------>
-        <!-- Profile table editor           -->
-        <!------------------------------------>
-        <a-space
-          v-if="dbp_radio=='PTE'"
-          direction="vertical"
-        >
-          <ProfileTableEdit
-            v-model:tableData="profile_table_data"
-          />
-        </a-space>
-      </a-space>
+              {{ dbpo.name }}
+            </a-radio>
+          </a-radio-group>
+        </a-col>
+      </a-row>
+
+      <a-row>
+
+      </a-row>
+
+      <a-row :gutter="[0, 24]">
+        <a-col :span="24">
+          <!------------------------------------>
+          <!-- Profile from database          -->
+          <!------------------------------------>
+          <a-space
+            v-if="dbp_radio=='PfDb'"
+            direction="vertical"
+          >
+            Select an existing profile from the profile database
+            <a-select
+              v-model:value="db_profile"
+              placeholder="Select a profile"
+              style="width: 100%"
+            >
+              <a-select-option
+                v-for="dbp in db_profiles"
+                :key="dbp.id"
+                :value="dbp.id"
+              >
+                {{ dbp.name }}
+              </a-select-option>
+            </a-select>
+          </a-space>
+          <!------------------------------------>
+          <!-- Profile table editor           -->
+          <!------------------------------------>
+          <a-space
+            v-if="dbp_radio=='PTE'"
+            direction="vertical"
+          >
+            <ProfileTableEdit
+              v-model:tableData="profile_table_data"
+            />
+          </a-space>
+        </a-col>
+      </a-row>
     </a-card>
 
     <a-space>
-      <a-button
-        type="primary"
-        :disabled="selected == 'None'"
-        @click="remove"
-      >
-        Remove strategy
-      </a-button>
       <a-button
         type="primary"
         @click="save"
@@ -99,8 +132,8 @@ const defaultDbPoptions = [
 ];
 
 const envProfilesColumns = [
-  { title: 'Profile', dataIndex: 'uiname', key: 'epname' },
-  { title: 'State', dataIndex: 'state', key: 'epstate'},
+  { title: 'Profile type', dataIndex: 'uiname', key: 'epname' },
+  { title: '', slots: { customRender: 'operation' }},
 ];
 
 export default {
@@ -137,7 +170,11 @@ export default {
         this.env_profiles = res['env_profiles'];
         this.isLoading = false;
       });
-    }
+    },
+    deleteProfile: function(key) {
+    },
+    editProfile: function(key) {
+    },
   },
 };
 
