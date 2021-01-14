@@ -1512,17 +1512,48 @@ def process_command(message):
 
                     else:
                         capability = ESDLAsset.get_asset_capability_type(asset)
+
+                        # The view mode influences if single or double ports are added
+                        double_line_mode = False
+                        view_modes = ViewModes.get_instance()
+                        if view_modes.get_user_settings(user_email)['mode'] == 'CHESS':
+                            double_line_mode = True
+
                         if capability == 'Producer':
                             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                             asset.port.append(outp)
+                            if double_line_mode:
+                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                                asset.port.append(inp)
                         elif capability in ['Consumer', 'Storage']:
                             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                             asset.port.append(inp)
-                        elif capability in ['Conversion', 'Transport']:
+                            if double_line_mode:
+                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                                asset.port.append(outp)
+                        elif capability == 'Conversion':
                             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                             asset.port.append(inp)
                             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                             asset.port.append(outp)
+                        elif capability == 'Transport':
+                            if object_type == 'HeatExchange' or object_type == 'Transformer':
+                                inp = esdl.InPort(id=str(uuid.uuid4()), name='PrimIn')
+                                asset.port.append(inp)
+                                if double_line_mode:
+                                    outp = esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut')
+                                    asset.port.append(outp)
+
+                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='SecOut')
+                                asset.port.append(outp)
+                                if double_line_mode:
+                                    inp = esdl.InPort(id=str(uuid.uuid4()), name='SecIn')
+                                    asset.port.append(inp)
+                            else:
+                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                                asset.port.append(inp)
+                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+                                asset.port.append(outp)
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else:
