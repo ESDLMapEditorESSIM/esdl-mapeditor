@@ -364,6 +364,7 @@ class ESDLDataLayer:
                 ep_instance['key'] = str(uuid4())
                 ep_instance['name'] = x.name
                 ep_instance['uiname'] = camelCaseToWords(x.name)
+                ep_instance['type'] = 'Unset'
 
                 if esi and esi.environmentalProfiles:
                     env_profiles = esi.environmentalProfiles
@@ -375,10 +376,15 @@ class ESDLDataLayer:
                         elif isinstance(profile, esdl.InfluxDBProfile):
                             ep_instance['type'] = 'InfluxDBProfile'
                             # check if it is a 'standard profile' that is present in our configuration
-
-                            # else it is a 'external profile' not known here
+                            profiles = Profiles.get_instance().get_profiles()['profiles']
+                            for pkey in profiles:
+                                std_profile = profiles[pkey]
+                                if profile.database == std_profile['database'] and \
+                                    profile.measurement == std_profile['measurement'] and \
+                                    profile.field == std_profile['field']:
+                                    ep_instance['profile_id'] = pkey
                         else:
-                            logger.warn('Cost information profiles other than SingleValue are not supported')
+                            logger.warn('Environmental profiles other than SingleValue/InfluxDB are not supported')
                             ep_instance['value'] = ''
 
                         if profile.profileQuantityAndUnit:
