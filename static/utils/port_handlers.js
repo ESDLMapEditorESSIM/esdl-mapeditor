@@ -187,6 +187,19 @@ function click_port(layer) {
     }
 }
 
+function update_marker_ports(marker) {
+    let ports = marker.ports;
+    let coord = marker.getLatLng();
+
+    for (let p in ports) { // ports is a dictionary: {'0': ...., '1': ...}
+        let marker = ports[p].marker;
+        if (marker !== undefined) {
+            // update port marker location
+            marker.setLatLng([coord.lat, coord.lng])
+        }
+    }
+}
+
 function update_line_ports(line) {
     let ports = line.ports;
     let coords = line._latlngs;
