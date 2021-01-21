@@ -100,11 +100,11 @@ VehicleTypeEnum = EEnum('VehicleTypeEnum', literals=['UNDEFINED', 'CAR', 'TRUCK'
 MultiplierEnum = EEnum('MultiplierEnum', literals=['NONE', 'ATTO', 'FEMTO', 'PICO', 'NANO', 'MICRO',
                                                    'MILLI', 'CENTI', 'DECI', 'DEKA', 'HECTO', 'KILO', 'MEGA', 'GIGA', 'TERA', 'TERRA', 'PETA', 'EXA'])
 
-PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE', 'EMISSION', 'COST', 'TIME', 'LENGTH', 'DISTANCE',
-                                                               'IRRADIANCE', 'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA', 'POWER_REACTIVE', 'COMPOSITION', 'FLOW', 'STATE', 'HEAD', 'POSITION', 'COEFFICIENT', 'WEIGHT', 'FORCE', 'CURRENT'])
+PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE', 'EMISSION', 'COST', 'TIME', 'LENGTH', 'DISTANCE', 'IRRADIANCE',
+                                                               'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA', 'POWER_REACTIVE', 'COMPOSITION', 'FLOW', 'STATE', 'HEAD', 'POSITION', 'COEFFICIENT', 'WEIGHT', 'FORCE', 'CURRENT', 'RELATIVE_HUMIDITY', 'DIRECTION'])
 
-UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR',
-                                       'DAY', 'WEEK', 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT', 'VOLT_AMPERE', 'VOLT_AMPERE_REACTIVE', 'PASCAL', 'NEWTON', 'AMPERE'])
+UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY',
+                                       'WEEK', 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT', 'VOLT_AMPERE', 'VOLT_AMPERE_REACTIVE', 'PASCAL', 'NEWTON', 'AMPERE', 'DEGREES'])
 
 TimeUnitEnum = EEnum('TimeUnitEnum', literals=[
                      'NONE', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
@@ -1727,7 +1727,7 @@ class AbstractMatter(EObject, metaclass=MetaEClass):
 class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
 
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
-    outsideTemparatureProfile = EReference(
+    outsideTemperatureProfile = EReference(
         ordered=True, unique=True, containment=True, derived=False)
     solarIrradianceProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
     windSpeedProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
@@ -1735,7 +1735,7 @@ class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
     soilTemperatureProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
     relativeHumidityProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, outsideTemparatureProfile=None, solarIrradianceProfile=None, windSpeedProfile=None, windDirectionProfile=None, soilTemperatureProfile=None, relativeHumidityProfile=None, id=None):
+    def __init__(self, *, outsideTemperatureProfile=None, solarIrradianceProfile=None, windSpeedProfile=None, windDirectionProfile=None, soilTemperatureProfile=None, relativeHumidityProfile=None, id=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1744,8 +1744,8 @@ class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
         if id is not None:
             self.id = id
 
-        if outsideTemparatureProfile is not None:
-            self.outsideTemparatureProfile = outsideTemparatureProfile
+        if outsideTemperatureProfile is not None:
+            self.outsideTemperatureProfile = outsideTemperatureProfile
 
         if solarIrradianceProfile is not None:
             self.solarIrradianceProfile = solarIrradianceProfile
@@ -3694,8 +3694,9 @@ class EnergyMarket(EnergyService):
     asset = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
     carrier = EReference(ordered=True, unique=True, containment=False, derived=False)
     parameters = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    marketPrice = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, asset=None, carrier=None, parameters=None, **kwargs):
+    def __init__(self, *, asset=None, carrier=None, parameters=None, marketPrice=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3707,6 +3708,9 @@ class EnergyMarket(EnergyService):
 
         if parameters:
             self.parameters.extend(parameters)
+
+        if marketPrice is not None:
+            self.marketPrice = marketPrice
 
 
 class GeothermalEnergyPotential(AbstractGTPotential):

@@ -141,6 +141,7 @@ const defaultProfileTypeOptions = [
 
 const envProfilesColumns = [
   { title: 'Profile type', dataIndex: 'uiname', key: 'epname' },
+  { title: 'Unit', dataIndex: 'default_unit', key: 'epunit'},
   { title: '', width: '30%', slots: { customRender: 'operation' }},
 ];
 
@@ -198,6 +199,7 @@ export default {
       }
       this.current_profile_key = ''
       this.action = '';
+      this.send_update('delete', key);
     },
     editProfile: function(key) {
       this.current_profile_key = key;
@@ -238,14 +240,31 @@ export default {
             this.env_profiles[i]["data"] = this.profile_table_data;
             this.env_profiles[i]["type"] = "DatetimeProfile";
           }
+
+          if (this.env_profiles[i]["unit"] == undefined) {
+            this.env_profiles[i]["unit"] = this.env_profiles[i]["default_unit"];
+          }
         }
       }
+      this.send_update('save', this.current_profile_key);
       this.current_profile_key = ''
       this.action = '';
     },
     cancel: function() {
       this.current_profile_key = ''
       this.action = '';
+    },
+    send_update: function(action, key) {
+      let profile_info = {};
+      for (let i=0; i<this.env_profiles.length; i++) {
+        if (this.env_profiles[i]["key"] == key) {
+          profile_info = this.env_profiles[i];
+        }
+      }
+      window.socket.emit('DLA_update_environmental_profiles_info', {
+        action: action,
+        profile_info: profile_info
+      });
     }
   },
 };

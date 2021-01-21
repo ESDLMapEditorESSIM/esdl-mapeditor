@@ -172,3 +172,12 @@ class DataLayerAPI:
 
             return result
 
+        @self.socketio.on('DLA_update_environmental_profiles_info', namespace='/esdl')
+        def DLA_update_environmental_profiles_info(info):
+            """
+            Updates information about the Environmental profiles configured in the ESDL.
+            """
+            action = info["action"]
+            profile_info = info["profile_info"]
+
+            self.datalayer.update_environmental_profiles(action, profile_info)
