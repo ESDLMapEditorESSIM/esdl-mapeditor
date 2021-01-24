@@ -12,22 +12,74 @@
 #  Manager:
 #      TNO
 
-import src.settings as settings
-import requests
 
+from flask import Flask, jsonify, abort
+from flask_socketio import SocketIO
+from extensions.settings_storage import SettingsStorage
+import src.settings as settings
+import src.log as log
+import requests
+import json
+
+logger = log.get_logger(__name__)
 
 #TODO: find proper way
 def send_alert(msg):
     print(msg)
 
+ASSET_TYPE_TAG_PREFIX = "assetType:"
 
-class EDR_assets:
 
-    def __init__(self):
-        # self.current_asset = None
+class EDRAssets:
+
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
+        self.flask_app = flask_app
+        self.socketio = socket
+        self.settings_storage = settings_storage
         self.current_asset_string = ''
         self.EDR_config = settings.edr_config
-        pass
+
+        self.register()
+
+    def register(self):
+        logger.info("Registering EDRAssets extension")
+
+        @self.flask_app.route('/edr_assets')
+        def get_edr_assets():
+            edr_url = self.EDR_config['EDR_host'] + '/store/tagged?tag=asset'
+            # logger.debug('accessing URL: '+edr_url)
+
+            try:
+                r = requests.get(edr_url)
+                if r.status_code == 200:
+                    result = json.loads(r.text)
+                    asset_list = []
+                    asset_type_list = []
+                    for a in result:
+                        asset_type = None
+                        tags = a["tags"]
+                        for t in tags:
+                            if ASSET_TYPE_TAG_PREFIX in t:
+                                asset_type = t[len(ASSET_TYPE_TAG_PREFIX):]
+                                if not asset_type in asset_type_list:
+                                    asset_type_list.append(asset_type)
+
+                        asset = {'id': a["id"], 'title': a["title"], 'asset_type': asset_type, 'description': a["description"]}
+                        asset_list.append(asset)
+
+                    asset_type_list.sort()
+                    asset_list.sort(key=lambda x: x["title"])
+
+                    return (jsonify({'asset_list': asset_list, 'asset_type_list': asset_type_list})), 200
+                else:
+                    logger.error('code: ', r.status_code)
+                    send_alert('Error in getting the EDR assets')
+                    abort(500, 'Error in getting the EDR assets')
+            except Exception as e:
+                logger.error('Exception: ')
+                logger.error(e)
+                send_alert('Error accessing EDR API')
+                abort(500, 'Error accessing EDR API')
 
     def get_asset_from_EDR(self, edr_asset_id):
         url = self.EDR_config['EDR_host'] + self.EDR_config['EDR_path'] + edr_asset_id + '?format=xml'

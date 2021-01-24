@@ -17,11 +17,14 @@
 #treebrowsercontainer { min-width:405px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; height:100%}
 #treebrowser { float:left; min-width:400px; border-right:1px solid silver; overflow:auto; padding:0px 0; height:100%; overflow: auto; padding-right: 20px; margin-right: 10px}
 #data { margin-left:400px; height: 100%; /*float: left;*/}
-#data textarea { margin:0; padding:0; height:100%; width:100%; border:0; background:white; display:block; line-height:18px; resize:none; }
+/* #data textarea { margin:0; padding:0; height:100%; width:100%; border:0; background:white; display:block; line-height:18px; resize:none; } */
 /* #data, #code { font: normal normal normal 12px/18px 'Consolas', monospace !important; } */
 #data .esdl { padding: 20px; overflow: auto; height:100%; }
+#data .history { padding: 20px; overflow: auto; height:100%; }
 
 #treebrowser .file-esdl { background:url('/icons/esdl.png') 2px 3px/13px 13px no-repeat; }
+#treebrowser .folder-drive { background:url('/icons/drive.png') 2px 3px/13px 13px no-repeat; }
+#treebrowser .folder-edr { background:url('/icons/edr3.png') 2px 3px/13px 13px no-repeat; }
 #treebrowser .folder { background:url('/icons/file_sprite.png') right bottom no-repeat; }
 #treebrowser .file { background:url('/icons/file_sprite.png') 0 0 no-repeat; }
 #treebrowser .file-pdf { background-position: -32px 0 }
@@ -49,6 +52,36 @@
 
 #openbutton {
     margin-top: 20px;
+}
+
+.blockdiv {
+    display: block;
+}
+
+/* save dialog */
+#message {
+    display: inline;
+    border: 1px solid black;
+    padding: 3px;
+    vertical-align: top;
+    margin: 0 10px auto;
+    resize: both;
+    border-radius: 3px;
+}
+
+#filename {
+    margin: 20px 15px auto;
+    /* border: none;*/
+    border: 1px solid black;
+    border-radius: 3px;
+    padding: 3px;
+}
+
+
+.dialogbutton {
+    /* background-color: rgb(33, 37, 41); */
+    transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    padding: 0px;
 }
 
 #drop-area {

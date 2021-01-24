@@ -89,28 +89,39 @@ function set_marker_port_handlers(marker) {
                     iconSize: null
                 });
 
-                let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
-                port_marker.addTo(map);
+                if (ports[p].marker === undefined) {
+                    // marker not yet created
+                    let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                    port_marker.addTo(map);
 
-                ports[p].active = false;
-                ports[p].marker = port_marker;
-                port_marker.parent = marker;
-                port_marker.parent_type = 'marker';
-                port_marker.port_parent = ports[p];
+                    ports[p].active = false;
+                    ports[p].marker = port_marker;
+                    port_marker.parent = marker;
+                    port_marker.parent_type = 'marker';
+                    port_marker.port_parent = ports[p];
 
-                port_marker.on('mouseover', function(e) {
-                    let layer = e.target;
-                    layer.port_parent.active = true;
-                });
-                port_marker.on('mouseout', function(e) {
-                    let layer = e.target;
-                    layer.removeFrom(map);
-                });
-                port_marker.on('click', function(e) {
-                    let layer = e.target;
-                    if (first_port == null) first_port = port_marker;
-                    click_port(layer);
-                });
+                    port_marker.on('mouseover', function(e) {
+                        let layer = e.target;
+                        layer.port_parent.active = true;
+                    });
+                    port_marker.on('mouseout', function(e) {
+                        let layer = e.target;
+                        setTimeout(function() {
+                            layer.port_parent.active = false;
+                            layer.removeFrom(map);
+                        }, 50);
+    //                    layer.removeFrom(map);
+                    });
+                    port_marker.on('click', function(e) {
+                        let layer = e.target;
+                        if (first_port == null) first_port = port_marker;
+                        click_port(layer);
+                    });
+                } else {
+                    // show already created marker
+                    ports[p].active = false;
+                    ports[p].marker.addTo(map);
+                }
             }
             set_port_size_and_position();
         }
@@ -122,10 +133,10 @@ function set_marker_port_handlers(marker) {
 
         for (let p in ports) {
             setTimeout(function() {
-                if (ports[p].active == false) {
+                if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 10);
+            }, 50);
         }
     });
 }
@@ -176,11 +187,71 @@ function click_port(layer) {
     }
 }
 
-function set_line_port_handlers(line) {
-    line.on('mouseover', function(e) {
-        if (!editing_objects) {
-            let layer = e.target;
+function update_marker_ports(marker) {
+    let ports = marker.ports;
+    let coord = marker.getLatLng();
 
+    for (let p in ports) { // ports is a dictionary: {'0': ...., '1': ...}
+        let marker = ports[p].marker;
+        if (marker !== undefined) {
+            // update port marker location
+            marker.setLatLng([coord.lat, coord.lng])
+        }
+    }
+}
+
+function update_line_ports(line) {
+    let ports = line.ports;
+    let coords = line._latlngs;
+
+    for (let p in ports) { // ports is a dictionary: {'0': ...., '1': ...}
+        let coords_index = 0;
+        if (p !== '0') {
+            coords_index = coords.length - 1;
+        }
+        let marker = ports[p].marker;
+        if (marker !== undefined) {
+            // update port marker location
+            marker.setLatLng([coords[coords_index].lat, coords[coords_index].lng])
+        }
+    }
+}
+
+function set_line_port_handlers(line) {
+
+    line.on('mouseover', function(e) {
+        let layer = e.target;
+
+        if (map.getZoom() > 12 || calculate_length(layer) > 1000) {
+        // add line decorator with >>> to show direction of conductor
+            if (layer.type === undefined) {
+                layer.type = 'ElectricityCable';
+            }
+            layer.setStyle({
+                color: layer.color,
+                opacity: 1,
+                weight: 4
+            });
+            let lineType = layer.type;
+            let lineColor = layer.color;
+            // let lineColorHoover = colors[lineType + '_hoover']
+            let lineColorHoover = lineColor;
+            // only show when zoom level is appropriate and length is larger than 1km
+            let arrowHead = L.polylineDecorator(layer, {
+                        patterns: [
+                            {
+                                offset: '1%',
+                                repeat: '49%',
+                                endOffset: 5,
+                                symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
+                            }
+                        ]
+                    }).addTo(map);
+            line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
+        }
+
+        if (!editing_objects) {
+           // do handling of ports of a conductor
             let ports = layer.ports;
             let coords = layer._latlngs;
             let coords_len = coords.length;
@@ -196,28 +267,39 @@ function set_line_port_handlers(line) {
                     iconSize: null
                 });
 
-                let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
-                port_marker.addTo(map);
+                if (ports[p].marker === undefined) {
+                    // marker not yet created
 
-                ports[p].active = false;
-                ports[p].marker = port_marker;
-                port_marker.parent = line;
-                port_marker.parent_type = 'line';
-                port_marker.port_parent = ports[p];
+                    let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                    port_marker.addTo(map);
 
-                port_marker.on('mouseover', function(e) {
-                    let layer = e.target;
-                    layer.port_parent.active = true;
-                });
-                port_marker.on('mouseout', function(e) {
-                    let layer = e.target;
-                    layer.removeFrom(map);
-                });
-                port_marker.on('click', function(e) {
-                    let layer = e.target;
-                    if (first_port == null) first_port = port_marker;
-                    click_port(layer);
-                });
+                    ports[p].active = false;
+                    ports[p].marker = port_marker;
+                    port_marker.parent = line;
+                    port_marker.parent_type = 'line';
+                    port_marker.port_parent = ports[p];
+
+                    port_marker.on('mouseover', function(e) {
+                        let layer = e.target;
+                        layer.port_parent.active = true;
+                    });
+                    port_marker.on('mouseout', function(e) {
+                        let layer = e.target;
+                        setTimeout(function() {
+                            layer.port_parent.active = false;
+                            layer.removeFrom(map);
+                        }, 50);
+                    });
+                    port_marker.on('click', function(e) {
+                        let layer = e.target;
+                        if (first_port == null) first_port = port_marker;
+                        click_port(layer);
+                    });
+                } else {
+                    // show already created marker
+                    ports[p].active = false;
+                    ports[p].marker.addTo(map);
+                }
             }
             set_port_size_and_position();
         }
@@ -225,14 +307,25 @@ function set_line_port_handlers(line) {
 
     line.on('mouseout', function(e) {
         let layer = e.target;
-        let ports = layer.ports;
+        // remove line decoration
+        layer.setStyle({
+            color: layer.color,
+            opacity: 1,
+            weight: 3
+        });
+        if (layer.mouseOverArrowHead !== undefined) {
+            map.removeLayer(layer.mouseOverArrowHead)
+            delete layer.mouseOverArrowHead;
+        }
 
+        // remove port decoration
+        let ports = layer.ports;
         for (let p in ports) {
             setTimeout(function() {
-                if (ports[p].active == false) {
+                if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 10);
+            }, 50);
         }
     });
 }

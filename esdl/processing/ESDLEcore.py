@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from pyecore.ecore import EAttribute, EOrderedSet, EEnum, EReference, EClass, EObject
+from pyecore.ecore import EAttribute, ECollection, EEnum, EReference, EClass, EObject, EStructuralFeature
 from pyecore.resources import Resource
 import esdl
 import gc
@@ -23,6 +23,7 @@ Contains functions that leverage the ecore functionality to e.g. list attributes
 
 """
 
+
 def get_asset_attributes(asset, esdl_doc=None):
     attributes = list()
     for x in asset.eClass.eAllStructuralFeatures():
@@ -31,18 +32,24 @@ def get_asset_attributes(asset, esdl_doc=None):
             attr = dict()
             attr['name'] = x.name
             attr['type'] = x.eType.name
-            if not x.required and x.lowerBound > 0:
-                attr['required'] = True
-            else:
-                attr['required'] = x.required
+            attr['required'] = x.required or x.lowerBound > 0
             # if isinstance(x., EEnum):
             #    attr['value'] = list(es.eGet(x))
             attr['value'] = asset.eGet(x)
             if attr['value'] is not None:
                 if x.many:
-                    if isinstance(attr['value'], EOrderedSet):
-                        attr['value'] = [x.name for x in attr['value']]
-                        attr['many'] = True
+                    if isinstance(attr['value'], ECollection):
+                        if isinstance(x.eType, EStructuralFeature):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        elif isinstance(x.eType, EEnum):
+                            attr['value'] = [x.name for x in attr['value']]
+                            attr['many'] = True
+                        else:
+                            # primitive type
+                            attr['value'] = list(attr['value'])
+                            attr['many'] = True
+                            pass
                     else:
                         attr['value'] = list(x.eType.to_string(attr['value']))
                 else:
@@ -109,34 +116,46 @@ def get_asset_references(asset, esdl_doc=None, repr_function=string_repr):
             ref['eopposite'] = x.eOpposite and x.eOpposite.containment
             ref['types'] = find_types(x)
             value = asset.eGet(x)
-            if value is None:
-                ref['value'] = {"repr": value}
-            elif isinstance(value, EOrderedSet):
-                values = list()
-                for item in value:
-                    repr = repr_function(item)
-                    refValue = dict()
-                    refValue['repr'] = repr
-                    refValue['type'] = item.eClass.name
-                    if hasattr(item, 'id'):
-                        refValue['id'] = item.id
-                    refValue['fragment'] = item.eURIFragment()
-                    values.append(refValue)
-                ref['value'] = values
-            else:
-                refValue = dict()
-                repr = repr_function(value)
-                refValue['repr'] = repr
-                refValue['type'] = value.eClass.name
-                if hasattr(value, 'id'):
-                    refValue['id'] = value.id
-                ref['value'] = refValue
+            ref['value'] = describe_reference_value(value, repr_function)
+            if not x.many and value is not None:
+                # todo: check if this is necessary, as fragment is also in value
                 ref['fragment'] = value.eURIFragment()
             ref['doc'] = x.__doc__
             if x.__doc__ is None and esdl_doc is not None:
                 ref['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
             references.append(ref)
     return references
+
+
+"""
+Calculates the value for a reference that is send to the frontend
+Return value describes the value in a dict
+"""
+def describe_reference_value(value, repr_function):
+    if value is None:
+        return {"repr": value}
+    elif isinstance(value, ECollection):
+        values = list()
+        for item in value:
+            repr_str = repr_function(item)
+            refValue = dict()
+            refValue['repr'] = repr_str
+            refValue['type'] = item.eClass.name
+            if hasattr(item, 'id'):
+                refValue['id'] = item.id
+            refValue['fragment'] = item.eURIFragment()
+            values.append(refValue)
+        return values
+    else:
+        refValue = dict()
+        repr_str = repr_function(value)
+        refValue['repr'] = repr_str
+        refValue['type'] = value.eClass.name
+        if hasattr(value, 'id'):
+            refValue['id'] = value.id
+        else:
+            refValue['fragment'] = value.eURIFragment()
+        return refValue
 
 
 """
@@ -175,8 +194,11 @@ Resolves a URI fragment (e.g. '//@instance.0/@area/@asset.0/@port.0') to the ass
 and returns the object
 This is used for objects that have no ID attribute
 """
+
+
 def resolve_fragment(resource: Resource, fragment: str):
     return resource.resolve(fragment)
+
 
 """
 Calculates a list of all possible reference values for a specific reference
@@ -184,6 +206,8 @@ Was based on allInstances() for each possible subtype in the types list, but thi
 users... so now a slow version to find it by iterating through all nodes of the XML graph.
 TODO: find a more efficient way then by iterating through all the elements 
 """
+
+
 def get_reachable_references(root: EObject, types: list, repr_function=string_repr):
     result = list()
     for instance in root.eAllContents():
@@ -196,5 +220,3 @@ def get_reachable_references(root: EObject, types: list, repr_function=string_re
             result.append(ref)
 
     return result
-
-

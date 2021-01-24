@@ -85,7 +85,7 @@ class ESSIM:
                             esdlstr_urlenc = result['esdlContents']
                             esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
-                        res_es = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                        res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                         set_session('active_es_id', res_es.id)
 
                         sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
@@ -558,49 +558,19 @@ class ESSIM:
                     kpi['name'] = kpi_result['name']
                     kpi['sim_id'] = sim_id
 
-                    # ... 'kpi': [{'carrier': 'Warmte', 'value': 16969661811971.447},
-                    # {'carrier': 'Elektriciteit', 'value': 89870082037933.03},
-                    # {'carrier': 'Aardgas', 'value': 0.0028286240994930267}], ...
                     sub_kpi_list = kpi_result['kpi']
 
                     kpi['sub_kpi'] = list()
+
                     for sub_kpi in sub_kpi_list:
-                        sub_kpi_res = dict()
-                        if 'Unit' in sub_kpi:
-                            sub_kpi_res['unit'] = sub_kpi['Unit']
-
-                        sub_kpi_res['name'] = sub_kpi['Name']
-
-                        if len(sub_kpi['Values']) > 1:
-                            sub_kpi_res['type'] = 'Distribution'
-
-                            parts = []
-                            for kpi_part in sub_kpi['Values']:
-                                print(kpi_part)
-                                parts.append({
-                                    'label': kpi_part['carrier'],
-                                    'value': kpi_part['value']
-                                })
-                            sub_kpi_res['distribution'] = parts
-                        else:
-                            sub_kpi_res['type'] = 'Double'
-                            sub_kpi_res['value'] = sub_kpi['Values']
-
-                        kpi['sub_kpi'].append(sub_kpi_res)
-
-                        # if len(kpi_res) > 1:
-                        #     kpi['type'] = 'Distribution'
-                        #
-                        #     parts = []
-                        #     for kpi_part in kpi_res:
-                        #         parts.append({
-                        #             'label': kpi_part['carrier'],
-                        #             'percentage': kpi_part['value']
-                        #         })
-                        #     kpi['distribution'] = parts
-                        # else:
-                        #     kpi['value'] = kpi_res[0]['value']
-                        #     kpi['type'] = 'Double'
+                        if "system" in sub_kpi:
+                            for sys_kpi in sub_kpi["system"]:
+                                sys_kpi_res = self.process_sub_kpi(sys_kpi)
+                                kpi['sub_kpi'].append(sys_kpi_res)
+                        if "per_carrier" in sub_kpi:
+                            for pc_kpi in sub_kpi["per_carrier"]:
+                                pc_kpi_res = self.process_sub_kpi(pc_kpi)
+                                kpi['sub_kpi'].append(pc_kpi_res)
 
                     kpi_list.append(kpi)
 
@@ -610,3 +580,41 @@ class ESSIM:
             with self.flask_app.app_context():
                 es_id = get_session('active_es_id')
                 emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_list': kpi_list})
+
+    def process_sub_kpi(self, sub_kpi):
+        sub_kpi_res = dict()
+        if 'Unit' in sub_kpi:
+            sub_kpi_res['unit'] = sub_kpi['Unit']
+
+        sub_kpi_res['name'] = sub_kpi['Name']
+
+        if isinstance(sub_kpi['Values'], list):
+            sub_kpi_res['type'] = 'Distribution'
+
+            parts = []
+            for kpi_part in sub_kpi['Values']:
+                print(kpi_part)
+                parts.append({
+                    'label': kpi_part['carrier'],
+                    'value': kpi_part['value']
+                })
+            sub_kpi_res['distribution'] = parts
+        else:
+            sub_kpi_res['type'] = 'Double'
+            sub_kpi_res['value'] = sub_kpi['Values']
+
+        return sub_kpi_res
+
+        # if len(kpi_res) > 1:
+        #     kpi['type'] = 'Distribution'
+        #
+        #     parts = []
+        #     for kpi_part in kpi_res:
+        #         parts.append({
+        #             'label': kpi_part['carrier'],
+        #             'percentage': kpi_part['value']
+        #         })
+        #     kpi['distribution'] = parts
+        # else:
+        #     kpi['value'] = kpi_res[0]['value']
+        #     kpi['type'] = 'Double'

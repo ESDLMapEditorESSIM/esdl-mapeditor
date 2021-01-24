@@ -16,6 +16,7 @@ from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_handler, get_session
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from esdl import esdl
 from esdl.processing import ESDLAsset, ESDLEnergySystem
 import src.settings as settings
@@ -64,6 +65,7 @@ class Vesta:
             with self.flask_app.app_context():
                 esh = get_handler()
                 print(area_id)
+                area_id = get_area_id_from_mapeditor_id(area_id)
 
                 active_es_id = get_session('active_es_id')
                 current_es = esh.get_energy_system(active_es_id)
@@ -91,6 +93,7 @@ class Vesta:
         @self.socketio.on('select_area_restrictions', namespace='/esdl')
         def select_area_restrictions(measures_data):
             area_id = measures_data['area_id']
+            area_id = get_area_id_from_mapeditor_id(area_id)
             measures = measures_data['selected_measures']
 
             with self.flask_app.app_context():
@@ -125,6 +128,7 @@ class Vesta:
         es = esh.get_energy_system(active_es_id)
         top_area = es.instance[0].area
 
+        area_id = get_area_id_from_mapeditor_id(area_id)
         area = ESDLEnergySystem.find_area(top_area, area_id)
         area.measures = None
 

@@ -14,7 +14,10 @@
 
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 from lxml.etree import QName, Element, ElementTree
+import logging
 
+
+logger = logging.getLogger(__name__)
 
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.
@@ -26,6 +29,10 @@ class XMLResource(XMIResource):
         self._later = []
         self.prefixes = {}
         self.reverse_nsmap = {}
+        self.parse_information = []
+
+    def get_parse_information(self):
+        return self.parse_information
 
     def save(self, output=None, options=None):
         self.options = options or {}
@@ -63,4 +70,33 @@ class XMLResource(XMIResource):
                    xml_declaration=True,
                    encoding=tree.docinfo.encoding)
         output.flush()
-        self.uri.close_stream()
+        return self.uri.close_stream()
+
+    """
+    This function has been overriden XMIResource, to make it a little more robust for ESDL's that
+    are 'older' and do not have a certain feature. By default XMIResource throws an exception when 
+    an unknown attribute is found for a class. This version prints a warning and continues.
+    """
+    def _decode_attribute(self, owner, key, value):
+        namespace, att_name = self.extract_namespace(key)
+        prefix = self.reverse_nsmap[namespace] if namespace else None
+        # This is a special case, we are working with uuids
+        if key == self.xmiid:
+            owner._internal_id = value
+            self.uuid_dict[value] = owner
+        elif prefix in ('xsi', 'xmi') and att_name == 'type':
+            # type has already been handled
+            pass
+        # elif namespace:
+        #     pass
+        elif not namespace:
+            if att_name == 'href':
+                return
+            feature = self._find_feature(owner.eClass, att_name)
+            if not feature:
+                #raise ValueError('Feature {0} does not exists for type {1}'
+                #                 .format(att_name, owner.eClass.name))
+                s = 'Attribute {0} does not exists for type {1} and is ignored.'.format(att_name, owner.eClass.name)
+                logger.warning(s)
+                self.parse_information.append(s)
+            return feature

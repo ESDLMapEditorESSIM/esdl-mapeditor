@@ -312,7 +312,9 @@ class Profiles {
         let $message = $('<p>').attr('id', 'csv-message');
         $droparea.append($form);
         $input.change(function(e) {
-            handleFiles(this.files);
+            $('#csv-message').text('Uploading CSV files')
+            let selected_group = $('#profile_group_select').val();
+            handleFiles(this.files, selected_group);
         });
         $form.append($p1);
         $form.append($input);
@@ -453,6 +455,12 @@ class Profiles {
         return $div;
     }
 
+    esdl_profiles_window_contents() {
+        // We just activate a Vue component and move on.
+        window.activate_esdl_profiles();
+        return $('<div>');
+    }
+
     create_profiles_management(div) {
         socket.emit('get_profiles_list', function(profiles_list) {
             // console.log(profiles_list);
@@ -540,6 +548,12 @@ class Profiles {
                         'value': 'profile_db_settings',
                         'text': 'Profile database settings',
                         'settings_func': profiles_plugin.db_settings_window_contents,
+                        'sub_menu_items': []
+                    },
+                    {
+                        'value': 'esdl_profiles',
+                        'text': 'Profiles in ESDL',
+                        'settings_func': profiles_plugin.esdl_profiles_window_contents,
                         'sub_menu_items': []
                     },
                 ]

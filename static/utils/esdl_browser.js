@@ -28,6 +28,11 @@ class ESDLBrowser {
         this.height = 750;
         this.x = 10;
         this.y = (width.x/2)-(this.width/2);
+        this.uniqueId = 0;
+    }
+
+    get_unique_id() {
+        return this.uniqueId++;
     }
 
     open_browser(esdl_object_id) {
@@ -91,7 +96,8 @@ class ESDLBrowser {
         return $div;
     }
 
-    static generateTable(data) {
+    generateTable(data) {
+        let self = this;
         let $div = $('<div>');
         let object_name = data.object.name;
         if (object_name == null || object_name === '') {
@@ -161,7 +167,7 @@ class ESDLBrowser {
                         }
                     }(currentContainer));
             $pathSpan.prepend($cA);
-            $pathSpan.prepend($('<span>').text('/').css('font-face', 'bold'));
+            $pathSpan.prepend($('<span>').html('/').css('font-face', 'bold'));
             currentContainer = currentContainer.container;
         }
         $div.append($pathDiv);
@@ -180,8 +186,9 @@ class ESDLBrowser {
             let name = data.attributes[i].name;
             let value = data.attributes[i].value;
             let doc = data.attributes[i].doc;
+            let select_input = (data.attributes[i].type === "EEnum" || data.attributes[i].type === "EBoolean")
             var $repr;
-            if (data.attributes[i].type === "EEnum" || data.attributes[i].type === "EBoolean" ) {
+            if (select_input) {
                 //<select width="60" style="width:145px" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
                 //asset_attrs[i]['name'] + '" onchange="change_param(this);">';
                 $repr = $('<select>')
@@ -201,15 +208,45 @@ class ESDLBrowser {
             } else {
                 //'<td><input type="text" width="60" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
                             //asset_attrs[i]['name'] + '" value="' + value +'" onchange="change_param(this);" ' + edate + '></td></tr>';
-                $repr = $('<input>')
-                    .attr('type', "text")
-                    .attr("id", data.attributes[i].name + i)
-                    .attr('assetid', data.object.id)
-                    .attr('name', data.attributes[i].name)
-                    .attr('value', data.attributes[i].value)
-                    .attr('fragment', data.object.fragment)
-                    .change(function(e) { change_param(this); });
-                    // edate
+                if (data.attributes[i].many) {
+                    let attr = data.attributes[i];
+                    $repr = $('<div id="itemlist">');
+                    for (let j=0; j<attr.value.length; j++) {
+                        let uid = self.get_unique_id();
+                        let $itemdiv = $('<div>').attr('id', attr.name + uid );
+                        $itemdiv.append($('<input>')
+                            .attr('type', "text")
+                            .attr("id", attr.name + '_' + uid)
+                            .attr('assetid', data.object.id)
+                            .attr('name', attr.name)
+                            .attr('value', attr.value[j])
+                            .attr('index', uid)
+                            .attr('fragment', data.object.fragment)
+                            .change((e) => { this.update_list(e.target); }));
+                        let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+                        let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
+                        $delButton.click(() => {
+                            let selector = '#'+attr.name + uid;
+                            console.log('selector', selector);
+                            $(selector).remove();
+                            this.refresh_list({name: attr.name, assetid: data.object.id, fragment: data.object.fragment});
+                        });
+                        //$itemdiv.append($('<span style="float: right">').html('&nbsp'));
+                        $delSpan.append($delButton)
+                        $itemdiv.append($delSpan);
+                        $repr.append($itemdiv);
+                    }
+                } else {
+                    $repr = $('<input>')
+                        .attr('type', "text")
+                        .attr("id", data.attributes[i].name + i)
+                        .attr('assetid', data.object.id)
+                        .attr('name', data.attributes[i].name)
+                        .attr('value', data.attributes[i].value)
+                        .attr('fragment', data.object.fragment)
+                        .change(function(e) { change_param(this); });
+                        // edate
+                }
 
 
             }
@@ -219,9 +256,19 @@ class ESDLBrowser {
                 $td_key = $td_key.css("text-decoration", "underline dotted red");
             }
             let $td_value = $("<td>").append($repr);
-            $tr.append($td_key)
-            $tr.append($td_value)
-            $tr.append($("<td>"))
+            $tr.append($td_key);
+            $tr.append($td_value);
+            if (data.attributes[i].many && !select_input) {
+                let $actions = $("<td>");
+                let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green'))
+                    .click( function(e) {
+                              esdl_browser.add_attribute_row(data.object, data.attributes[i], $repr);
+                    });
+                $actions.append($addButton);
+                $tr.append($actions);
+            } else {
+                $tr.append($("<td>"));
+            }
             $tbody.append($tr)
         }
 
@@ -326,6 +373,69 @@ class ESDLBrowser {
 
         return $div;
 
+    }
+
+    // add an attribute row (e.g. for list of EDoubles)
+    add_attribute_row(parent_object_identifier, attr, parent_div) {
+        let self=this;
+        let uid = this.get_unique_id();
+        let $itemdiv = $('<div>').attr('id', attr.name + uid);
+        $itemdiv.append($('<input>')
+            .attr('type', "text")
+            .attr("id", attr.name + '_' + uid)
+            .attr('assetid', parent_object_identifier.id)
+            .attr('name', attr.name)
+            .attr('value', attr.default)
+            .attr('index', uid)
+            .attr('fragment', parent_object_identifier.fragment)
+            .change((e) => { this.update_list(e.target); }));
+        let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
+        let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
+        $delButton.click((e) => {
+             let selector = '#'+attr.name + uid;
+             console.log('selector', selector);
+             $(selector).remove();
+             this.refresh_list({name: attr.name, assetid: parent_object_identifier.id, fragment: parent_object_identifier.fragment});
+        });
+        //$itemdiv.append($('<span style="float: right">').html('&nbsp'));
+        $delSpan.append($delButton)
+        $itemdiv.append($delSpan);
+        parent_div.append($itemdiv);
+    }
+
+    // get all the values from the list and put those in an array
+    // and send it to the backend
+    update_list(input_element) {
+        console.log(input_element);
+        let listitems = $('#itemlist [name='+input_element.name+']')
+        let object_value = [];
+        for (let i=0;i<listitems.length;i++) {
+            object_value.push(listitems[i].value)
+        }
+        console.log(object_value);
+        let message = {
+            id: input_element.getAttribute('id'),
+            assetid: input_element.getAttribute('assetid'),
+            name: input_element.getAttribute('name'),
+            value: object_value,
+            fragment: input_element.getAttribute('fragment')
+            };
+        console.log(message);
+        // change_param(message);
+        // mimic change_param(), as it expects a dom element
+        socket.emit('command', {cmd: 'set_asset_param', 'id': message.assetid, 'fragment': message.fragment, 'param_name': message.name, 'param_value': object_value});
+    }
+
+    // after delete or add button click
+    // update all list items and send to backend
+    refresh_list(attribute) {
+        console.log(attribute);
+        let listitems = $('#itemlist [name='+attribute.name+']')
+        let object_value = [];
+        for (let i=0;i<listitems.length;i++) {
+            object_value.push(listitems[i].value);
+        }
+        socket.emit('command', {cmd: 'set_asset_param', 'id': attribute.assetid, 'fragment': attribute.fragment, 'param_name': attribute.name, 'param_value': object_value});
     }
 
     static identifier(esdl_object) {
@@ -450,13 +560,14 @@ class ESDLBrowser {
 
 
     initSocketIO() {
+        let self = this;
         console.log("Registering socket io bindings for ESDLBrowser")
 
         socket.on('esdl_browse_to', function(data) {
             //console.log("ESDL_Brower: browse_to SocketIO call");
             console.log(data);
 
-            let jqueryNode = ESDLBrowser.generateTable(data);
+            let jqueryNode = self.generateTable(data);
 
             if (dialog === undefined) {
                 console.log("ERROR: dialog not defined")

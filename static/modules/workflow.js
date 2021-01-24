@@ -55,47 +55,52 @@ export class Workflow {
      */
     show_service = () => {
         const service_settings_div = document.getElementById('service_settings_div');
+        try {
 
-        service_settings_div.innerHTML += `
+            service_settings_div.innerHTML += `
             <h3>${this.workflow_step.name}</h3>
             <p>${this.workflow_step.description}</p>
         `;
 
-        let result_service = null;
-        // A workflow consists of multiple steps. Every step consists of a service, plus metadata.
-        if (this.workflow_step.type === WorkflowStepTypes.CHOICE) {
-            service_settings_div.innerHTML += this.render_choice();
-        } else if (this.workflow_step.type === WorkflowStepTypes.SELECT_QUERY) {
-            this.handle_select_query_step(service_settings_div, this.workflow_step['multiple']);
-        } else if (this.workflow_step.type === WorkflowStepTypes.FORM) {
-            const form_elements = [];
-            for (const field of this.workflow_step.fields) {
-                form_elements.push(render_form_field(field.type, field.target_variable, field.description));
+            let result_service = null;
+            // A workflow consists of multiple steps. Every step consists of a service, plus metadata.
+            if (this.workflow_step.type === WorkflowStepTypes.CHOICE) {
+                service_settings_div.innerHTML += this.render_choice();
+            } else if (this.workflow_step.type === WorkflowStepTypes.SELECT_QUERY) {
+                this.handle_select_query_step(service_settings_div, this.workflow_step['multiple']);
+            } else if (this.workflow_step.type === WorkflowStepTypes.FORM) {
+                const form_elements = [];
+                for (const field of this.workflow_step.fields) {
+                    form_elements.push(render_form_field(field.type, field.target_variable, field.description));
+                }
+                service_settings_div.innerHTML += render_form(this.get_form_id(), form_elements)
+                service_settings_div.innerHTML += this.render_prev_next(false);
+                $(`form#${this.get_form_id()}`).submit(event => this.submit_form(event))
+            } else if (this.workflow_step.type === WorkflowStepTypes.DOWNLOAD_FILE) {
+                this.handle_download_file_step(service_settings_div);
+            } else if (this.workflow_step.type === WorkflowStepTypes.UPLOAD_FILE) {
+                this.handle_upload_file_step(service_settings_div);
+            } else if (this.workflow_step.type === WorkflowStepTypes.GET_DATA) {
+                this.handle_get_data_step(service_settings_div);
+            } else if (this.workflow_step.type === WorkflowStepTypes.CALL_JS_FUNCTION) {
+                this.handle_call_js_function_step(service_settings_div);
+                service_settings_div.innerHTML += this.render_prev_next();
+            } else if (this.workflow_step.type === WorkflowStepTypes.SERVICE) {
+                // Continue with the service. Provide state params.
+                let params = this.get_from_state(this.workflow_step.state_params);
+                window.render_service(this.workflow_step['service'], service_settings_div, params);
+                service_settings_div.innerHTML += this.render_prev_next();
+            } else {
+                // Not sure what to do, so do nothing.
+                service_settings_div.innerHTML += 'Unknown step type.';
+                return null;
             }
-            service_settings_div.innerHTML += render_form(this.get_form_id(), form_elements)
-            service_settings_div.innerHTML += this.render_prev_next(false);
-            $(`form#${this.get_form_id()}`).submit(event => this.submit_form(event))
-        } else if (this.workflow_step.type === WorkflowStepTypes.DOWNLOAD_FILE) {
-            this.handle_download_file_step(service_settings_div);
-        } else if (this.workflow_step.type === WorkflowStepTypes.UPLOAD_FILE) {
-            this.handle_upload_file_step(service_settings_div);
-        } else if (this.workflow_step.type === WorkflowStepTypes.GET_DATA) {
-            this.handle_get_data_step(service_settings_div);
-        } else if (this.workflow_step.type === WorkflowStepTypes.CALL_JS_FUNCTION) {
-            this.handle_call_js_function_step(service_settings_div);
-            service_settings_div.innerHTML += this.render_prev_next();
-        } else if (this.workflow_step.type === WorkflowStepTypes.SERVICE) {
-            // Continue with the service. Provide state params.
-            let params = this.get_from_state(this.workflow_step.state_params);
-            render_service(this.workflow_step['service'], service_settings_div, params);
-            service_settings_div.innerHTML += this.render_prev_next();
-        } else {
-            // Not sure what to do, so do nothing.
-            service_settings_div.innerHTML += 'Unknown step type.';
-            return null;
-        }
 
-        return result_service;
+            return result_service;
+        } catch (e) {
+            console.error(e, e.stack);
+            this._error_handler(service_settings_div);
+        }
     }
 
 
@@ -155,7 +160,7 @@ export class Workflow {
             return content;
         }
 
-        show_loader();
+        window.show_loader();
         $.ajax({
             url: `workflow/get_data?${query_string}`,
             success: (data) => {
@@ -166,7 +171,7 @@ export class Workflow {
                 `;
             },
             error: this._error_handler(service_settings_div),
-            complete: () => hide_loader(),
+            complete: () => window.hide_loader(),
         });
     }
 
@@ -194,7 +199,7 @@ export class Workflow {
                 $(`form#${this.get_form_id()}`).submit(event => this.submit_form(event, multiple));
             },
             error: this._error_handler(service_settings_div),
-            complete: () => hide_loader(),
+            complete: () => window.hide_loader(),
         });
     }
 
@@ -315,7 +320,7 @@ export class Workflow {
         }
         if (this.step_idx >= 0) {
             this.workflow_step = this.service.workflow[this.step_idx];
-            show_service_settings(this.service_index, false);
+            window.show_service_settings(this.service_index, false);
         }
     }
 
@@ -330,7 +335,7 @@ export class Workflow {
         }
         if (this.step_idx >= 0) {
             this.workflow_step = this.service.workflow[this.step_idx];
-            show_service_settings(this.service_index, false);
+            window.show_service_settings(this.service_index, false);
         }
     }
 
@@ -348,7 +353,7 @@ export class Workflow {
                 'request_params': request_params,
             };
             // Perform the request to the Webeditor backend, who will forward it to the service.
-            show_loader();
+            window.show_loader();
             $.ajax({
                 type: "POST",
                 url: 'workflow/download_file',
@@ -357,11 +362,11 @@ export class Workflow {
                 success: (data) => {
                     download_binary_file_from_base64_str(data['base64file'], data['filename']);
                     if (this.workflow_step.next_step == null) {
-                        service_settings_div.innerHTML += this.render_close();
+                        service_settings_div.innerHTML = '';
                     }
                 },
                 error: this._error_handler(service_settings_div),
-                complete: () => hide_loader(),
+                complete: () => window.hide_loader(),
             });
         });
     }
@@ -383,41 +388,45 @@ export class Workflow {
             const file_input = document.getElementById(file_input_id);
             const file_reader = new FileReader()
             const file_to_upload = file_input.files[0];
-            const file_name = file_to_upload.name;
+            if (file_to_upload) {
+                const file_name = file_to_upload.name;
 
-            // This function will do the actual uploading. It is triggered when
-            // calling readAsDataURL on the file_reader.
-            const upload_file = () => {
-                // Build the target request parameters by getting the values from the state.
-                const request_params = this.get_from_state(this.workflow_step['request_params']);
-                // Add file upload specific fields.
-                request_params['base64_file'] = file_reader.result;
-                request_params['file_name'] = file_name;
-                const params = {
-                    'remote_url': this.workflow_step.url,
-                    'request_params': request_params,
+                // This function will do the actual uploading. It is triggered when
+                // calling readAsDataURL on the file_reader.
+                const upload_file = () => {
+                    // Build the target request parameters by getting the values from the state.
+                    const request_params = this.get_from_state(this.workflow_step['request_params']);
+                    // Add file upload specific fields.
+                    request_params['base64_file'] = file_reader.result;
+                    request_params['file_name'] = file_name;
+                    const params = {
+                        'remote_url': this.workflow_step.url,
+                        'request_params': request_params,
+                    }
+                    // Perform the request to the Webeditor backend, who will forward it to the service.
+                    window.show_loader();
+                    $.ajax({
+                        type: "POST",
+                        url: 'workflow/post_data',
+                        data: JSON.stringify(params),
+                        contentType: "application/json",
+                        success: () => {
+                            alert('Upload successful!');
+                            if (this.workflow_step.next_step == null) {
+                                service_settings_div.innerHTML = '';
+                            }
+                        },
+                        error: this._error_handler(service_settings_div),
+                        complete: () => window.hide_loader(),
+                    });
                 }
-                // Perform the request to the Webeditor backend, who will forward it to the service.
-                show_loader();
-                $.ajax({
-                    type: "POST",
-                    url: 'workflow/upload_file',
-                    data: JSON.stringify(params),
-                    contentType: "application/json",
-                    success: () => {
-                        alert('Upload successful!');
-                        if (this.workflow_step.next_step == null) {
-                            service_settings_div.innerHTML += this.render_close();
-                        }
-                    },
-                    error: this._error_handler(service_settings_div),
-                    complete: () => hide_loader(),
-                });
-            }
 
-            file_reader.onload = upload_file
-            // Trigger the onload.
-            file_reader.readAsDataURL(file_to_upload);
+                file_reader.onload = upload_file
+                // Trigger the onload.
+                file_reader.readAsDataURL(file_to_upload);
+            } else {
+                alert("Please select a valid file to upload.")
+            }
         });
     }
 
@@ -432,7 +441,7 @@ export class Workflow {
         }
         service_settings_div.innerHTML += render_button(this.workflow_step.name, 'primary', "button", "", this.get_form_id())
         setTimeout(() => {
-            $(`button#${this.get_form_id()}`).click((event) => {
+            $(`button#${this.get_form_id()}`).click(() => {
                 const js_function_name = this.workflow_step['js_function'];
                 window[js_function_name](...this.workflow_step.parameters);
             });
@@ -444,9 +453,9 @@ export class Workflow {
             let text = null;
             if (error.status == 401) {
                 text = "You are logged out. Please log out and back in again.";
-                auth_status();
+                window.auth_status();
             }
-            service_settings_div.innerHTML += service_render_error(this.service_index, text);
+            service_settings_div.innerHTML += window.service_render_error(this.service_index, text);
         }
     }
 

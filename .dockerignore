@@ -1,3 +1,6 @@
 *venv
 credentials/client_secrets_local.json
 environments
+*.lock
+vue
+node_modules

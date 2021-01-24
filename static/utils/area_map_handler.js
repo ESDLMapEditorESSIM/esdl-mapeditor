@@ -14,7 +14,73 @@
  *      TNO
  */
 
- function add_area_map_handlers(socket, map) {
+function esdl_layer_created_event_handler(event) {
+    let layer = event.layer;
+    let type = event.layerType;
+    layer.id = uuidv4();
+
+    selected_area_bld_index = document.getElementById("area_bld_select").selectedIndex;
+    selected_area_bld_options = document.getElementById("area_bld_select").options;
+    selected_area_bld_id = selected_area_bld_options[selected_area_bld_index].value;
+    // console.log('selected area/building id: ' + selected_area_bld_id);
+
+    if (type === 'marker') {
+        selection = document.getElementById("asset_menu").selectedIndex;
+        asset_options = document.getElementById("asset_menu").options;
+        selected_asset = asset_options[selection].value;
+        // console.log('selected option: ' + selection);
+        // console.log('selected asset: ' + selected_asset);
+
+        layer.name = selected_asset + '_' + layer.id.substring(0,4);
+        socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
+            shape: {
+                type: 'point',
+                crs: 'WGS84',
+                coordinates: layer.getLatLng()
+            }
+        });
+    }
+    if (type === 'polyline') {
+        line_type = document.getElementById("line_select").value;
+        //console.log('selected line type: ' + line_type);
+        layer.type = line_type;
+        layer.name = line_type + '_' + layer.id.substring(0,4);
+        layer.title = layer.name;
+        polyline_length = calculate_length(layer);
+        socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: line_type, asset_name: layer.name, asset_id: layer.id,
+            shape: {
+                type: 'polyline',
+                crs: 'WGS84',
+                coordinates: layer.getLatLngs(),
+                length: polyline_length
+            }
+        });
+    }
+    if (type === 'polygon' || type === 'rectangle') {
+        // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
+        // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
+        // area_layer.addLayer(layer, true);
+
+        selection = document.getElementById("asset_menu").selectedIndex;
+        asset_options = document.getElementById("asset_menu").options;
+        selected_asset = asset_options[selection].value;
+        // console.log('selected option: ' + selection);
+        // console.log('selected asset: ' + selected_asset);
+
+        layer.name = selected_asset + '_' + layer.id.substring(0,4);
+        polygon_area = calculate_area(layer);
+        socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
+            shape: {
+                type: type,
+                crs: 'WGS84',
+                coordinates: layer.getLatLngs(),
+                polygon_area: polygon_area
+            }
+        });
+    }
+}
+
+function add_area_map_handlers(socket, map) {
 
     console.log('Adding handlers to area map');
 
@@ -22,9 +88,15 @@
     map.on('draw:edited', function (e) {
         var layers = e.layers;
         layers.eachLayer(function (layer) {
+            if (layer instanceof L.Marker) {
+                // Update location of ports
+                update_marker_ports(layer);
+            }
             if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);
                 socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+                // ports from a line need to manually updated.
+                update_line_ports(layer);
             }
             if (layer instanceof L.Polygon) {
 
@@ -36,7 +108,8 @@
                     if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
                         polygon_center = calculate_leaflet_polygon_center(layer.getLatLngs()[0]);
                         var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
-                        esdl_object.setLatLng(newLatLng);
+                        esdl_object.setLatLng(newLatLng);   // update the location of the marker itself
+                        update_marker_ports(esdl_object);   // update the location of the port markers of this marker
 
                         // send updated coordinates to backend to update connections
                         socket.emit('update-coord', {id: layer.id, coordinates: esdl_object.getLatLng(), asspot: layer.asspot});
@@ -68,73 +141,21 @@
         editing_objects = false;
 	});
 
-    map.on(L.Draw.Event.CREATED, function (event) {
-        let layer = event.layer;
-        let type = event.layerType;
-        layer.id = uuidv4();
-
-        selected_area_bld_index = document.getElementById("area_bld_select").selectedIndex;
-        selected_area_bld_options = document.getElementById("area_bld_select").options;
-        selected_area_bld_id = selected_area_bld_options[selected_area_bld_index].value;
-        // console.log('selected area/building id: ' + selected_area_bld_id);
-
-        if (type === 'marker') {
-            selection = document.getElementById("asset_menu").selectedIndex;
-            asset_options = document.getElementById("asset_menu").options;
-            selected_asset = asset_options[selection].value;
-            // console.log('selected option: ' + selection);
-            // console.log('selected asset: ' + selected_asset);
-
-            layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: 'point',
-                    crs: 'WGS84',
-                    coordinates: layer.getLatLng()
-                }
-            });
-        }
-        if (type === 'polyline') {
-            line_type = document.getElementById("line_select").value;
-            //console.log('selected line type: ' + line_type);
-            layer.type = line_type;
-            layer.name = line_type + '_' + layer.id.substring(0,4);
-            layer.title = layer.name;
-            polyline_length = calculate_length(layer);
-            socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: line_type, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: 'polyline',
-                    crs: 'WGS84',
-                    coordinates: layer.getLatLngs(),
-                    length: polyline_length
-                }
-            });
-        }
-        if (type === 'polygon' || type === 'rectangle') {
-            // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
-            // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
-            // area_layer.addLayer(layer, true);
-
-            selection = document.getElementById("asset_menu").selectedIndex;
-            asset_options = document.getElementById("asset_menu").options;
-            selected_asset = asset_options[selection].value;
-            // console.log('selected option: ' + selection);
-            // console.log('selected asset: ' + selected_asset);
-
-            layer.name = selected_asset + '_' + layer.id.substring(0,4);
-            polygon_area = calculate_area(layer);
-            socket.emit('command', {cmd: 'add_object', area_bld_id: selected_area_bld_id, object: selected_asset, asset_name: layer.name, asset_id: layer.id,
-                shape: {
-                    type: type,
-                    crs: 'WGS84',
-                    coordinates: layer.getLatLngs(),
-                    polygon_area: polygon_area
-                }
-            });
-        }
+    map.on('draw:stopdrawing', function(event) {
+        socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
     });
+
+    enable_esdl_layer_created_event_handler();
 
     map.on('click', function(e) {
         map.contextmenu.hide();
     });
 };
+
+function enable_esdl_layer_created_event_handler() {
+    map.on(L.Draw.Event.CREATED, esdl_layer_created_event_handler);
+}
+
+function diable_esdl_layer_created_event_handler() {
+    map.off(L.Draw.Event.CREATED, esdl_layer_created_event_handler);
+}

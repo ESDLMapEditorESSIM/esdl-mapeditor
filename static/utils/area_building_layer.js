@@ -37,9 +37,17 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // ------------------------------------------------------------------------------------------------------------
 var area_KPIs = {};
 var building_KPIs = {};
+pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
+    '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
 
+/**
+ * Preprocess layer data of an area or building. Creates KPI's and sets colors.
+ * @param {*} layer_type Either area or building.
+ * @param {*} layer_data 
+ * @param {*} kpi_list An object to which the KPI's from the layer will be added.
+ */
 function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "area") {
         get_area_color = null;
@@ -49,11 +57,19 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
         get_building_color = null;
         buildingLegendChoice = null;
     }
-    for (l_index in layer_data) {
+    for (const l_index in layer_data) {
         let layer = layer_data[l_index];
         let KPIs = layer.properties.KPIs;
-        for (kpi in KPIs) {
-            KPI_value = KPIs[kpi];
+        let dist_KPIs = layer.properties.dist_KPIs;
+        for (const kpi in KPIs) {
+            const kpi_obj = KPIs[kpi];
+            let KPI_value;
+            if (kpi_obj.hasOwnProperty('value')) {
+                KPI_value = KPIs[kpi]['value'];
+            } else {
+                // Legacy support for older ESDLs.
+                KPI_value = kpi_obj;
+            }
             if (KPI_value != "") {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
@@ -84,6 +100,29 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                 }
             }
         }
+
+        // Handle Distributed KPIs here for now.
+        for (const kpi in dist_KPIs) {
+            const KPI_value = dist_KPIs[kpi]["value"];
+
+            if (KPI_value != null) {
+                if (!(kpi in kpi_list)) {
+                    if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
+                    if (layer_type === "building" && !buildingLegendChoice) { buildingLegendChoice = kpi; }
+
+                        if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
+                        if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
+                        //value = parseFloat(KPI_value);
+                        kpi_list[kpi] = {"type": "distributionKPI", "names": []};
+                        for (i=0; i<KPI_value.length; i++) {
+                            val = KPI_value[i];
+                            kpi_list[kpi]["names"].push(val["name"]);
+                        }
+
+                        //kpi_list[kpi] = { "min": value, "max": value };
+                }
+            }
+        }
     };
     if (layer_type === "area") {
         if (!get_area_color) { get_area_color = get_area_default_color; }
@@ -91,7 +130,6 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "building") {
         if (!get_building_color ) { get_building_color = get_building_default_color; }
     }
-    // console.log(kpi_list);
 }
 
 function calc_order_of_magnitude(n) {
@@ -268,6 +306,16 @@ function create_floorArea_legendClassesDiv() {
         result +=
             '<i style="background:' + get_floorArea_colors(building_area_categories[i] + 1) + '"></i> ' +
             building_area_categories[i] + (building_area_categories[i + 1] ? ' <b>&ndash;</b> ' + building_area_categories[i + 1] + '<br>' : '+');
+    }
+    return result;
+}
+
+function create_distribution_legendClassesDiv(kpi) {
+    let result = '';
+    for (var i = 0; i < kpi["names"].length; i++) {
+        result +=
+            '<i style="background:' + pie_chart_color_list[i] + '"></i> ' +
+            kpi["names"][i] + ' <br />';
     }
     return result;
 }
@@ -463,11 +511,37 @@ function set_area_handlers(area) {
     }
 }
 
+function format_KPI_value(value) {
+    if (typeof(value) == "number") {
+        value_str = value.toString();
+        index_of_decimal_seperator = value_str.indexOf('.');
+        if (index_of_decimal_seperator >= 0) {
+            if (index_of_decimal_seperator < value_str.length - 3) {
+                value = Math.round((1000*value)+Number.EPSILON) / 1000;
+                value_str = value.toString();
+            }
+            return value_str;
+        } else
+            return value_str;
+    } else
+        return value;
+}
+
+function format_KPI_unit(unit) {
+    if (unit.indexOf('Mg') >= 0) {
+        return unit.replace('Mg', 'ton');
+    } else
+        return unit;
+}
+
 function add_area_layer(area_data) {
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
         onEachFeature: function(feature, layer) {
-            if (Object.keys(feature.properties.KPIs).length != 0) {
+            if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
+                feature.properties.get_area_color = get_area_range_colors;
+            }
+            if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
             if (feature.properties && feature.properties.id) {
@@ -478,8 +552,19 @@ function add_area_layer(area_data) {
                     text = feature.properties.name + " (" + text + ")";
                 }
 
-                for (let key in feature.properties.KPIs) {
-                    text += "<br>" + key + ": " + feature.properties.KPIs[key];
+                if (Object.keys(feature.properties.KPIs).length != 0) {
+                    text = "<b>"+ text +"</b>";
+                    text += "<br><br><table class=\"kpi_table\">";
+                    text += "<thead><tr><th>KPI</th><th>Value</th><th>Unit</th></tr></thead><tbody>"
+                    for (let key in feature.properties.KPIs) {
+                        text += "<tr><td>" + key + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
+                        if (!(feature.properties.KPIs[key]['unit'] === "")) {
+                            text += "<td>" + format_KPI_unit(feature.properties.KPIs[key]['unit']) + "</td></tr>";
+                        } else {
+                            text += "<td>&nbsp;</td></tr>";
+                        }
+                    }
+                    text += "</tbody></table>"
                 }
 
                 let popup = L.popup();
@@ -511,6 +596,50 @@ function add_area_layer(area_data) {
             }
         }
     }).addTo(get_layers(active_layer_id, 'area_layer'));
+
+    // Pie chart options.
+    var pieChartOptions = {
+        radius: 50,
+        fillOpacity: 1.0,
+        opacity: 1.0,
+        data: {},
+        chartOptions: {},
+        weight: 1,
+    };
+    // Add the pie chart here
+    for(let i=0; i<area_data.length; i++) {
+        let ar = area_data[i];
+        if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
+            let keys = Object.keys(ar.properties.dist_KPIs);
+
+            for (let j=0; j<keys.length; j++) {
+                let key = keys[j];
+                for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
+                    let dist_kpi = ar.properties.dist_KPIs[key].value[k];
+
+                    pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
+                    pieChartOptions.chartOptions[dist_kpi["name"]] = {
+                        fillColor: pie_chart_color_list[k],
+                        minValue: 0,
+                        maxValue: 10,
+                        maxHeight: 10,
+                        displayText: function (value) {
+                            return 1;
+                        }
+                    }
+                }
+                var pieChartMarker = new L.PieChartMarker(
+                    new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
+                    pieChartOptions
+                );
+                pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                pieChartMarker.bringToFront();
+
+                // Only show first DistributionKPI found.
+                break;
+            }
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -537,14 +666,20 @@ function set_building_contextmenu(layer, id) {
     });
 }
 
+/**
+ * Add layer of type building to the map.
+ * 
+ * @param {*} building_data 
+ */
 function add_building_layer(building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
         onEachFeature: function(feature, layer) {
             if (feature.properties) {
                 let text = "<table>";
+                // Render the KPI's. These were set in the preprocess_layer_data function.
                 for (let key in feature.properties.KPIs) {
-                    kpi = feature.properties.KPIs[key]
+                    const kpi = feature.properties.KPIs[key]
                     if (typeof kpi === "number") {
                         if (Math.floor(kpi) === kpi)
                             kpi_string = feature.properties.KPIs[key].toFixed(0);
@@ -562,6 +697,8 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
+                console.log("Add building layer")
+                window.PubSubManager.broadcast('ADD_FEATURE_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 set_building_contextmenu(layer, feature.properties.id);
             }
         }
@@ -587,6 +724,7 @@ function create_building_legendClassesDiv(legendChoice) {
 
 function selectBuildingKPI(selectObject) {
     let legendChoice = selectObject.value;
+    buildingLegendChoice = legendChoice;
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(legendChoice);
 
     geojson_building_layer.eachLayer(function (layer) {
@@ -643,12 +781,16 @@ function create_area_array_or_range_legendClassesDiv(kpi) {
         get_area_color = get_area_array_colors;
         return create_array_area_legendClassesDiv(kpi);
     } else {
-        // kpi is number with min and max
-        var min = kpi["min"];
-        var max = kpi["max"];
-        area_legend_ranges = create_ranges(min, max);
-        num_area_range_colors = area_legend_ranges.length;
-        get_area_color = get_area_range_colors;
+        if(kpi["type"] === "distributionKPI") {
+            return create_distribution_legendClassesDiv(kpi);
+        } else {
+            // kpi is number with min and max
+            var min = kpi["min"];
+            var max = kpi["max"];
+            area_legend_ranges = create_ranges(min, max);
+            num_area_range_colors = area_legend_ranges.length;
+            get_area_color = get_area_range_colors;
+        }
         return create_range_area_legendClassesDiv();
     }
 }
@@ -661,8 +803,8 @@ function selectAreaKPI(selectObject) {
 
     geojson_area_layer.eachLayer(function (layer) {
         layer.setStyle({
-            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice]),
-            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice])
+            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
+            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
         });
     });
 }
@@ -742,7 +884,13 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
     add_area_layer(geojson_area_data);
 }
 
+/**
+ * Add all buildings to the map with the KPI legend.
+ * 
+ * @param {*} geojson_building_data 
+ */
 function add_building_geojson_layer_with_legend(geojson_building_data) {
+    console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
 
@@ -844,7 +992,7 @@ function style_area(feature) {
         //if (feature.properties.get_area_color) {
         //    get_area_color = feature.properties.get_area_color;
         //}
-        var color = get_area_color(feature.properties.KPIs[areaLegendChoice]);
+        var color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
         return {
             fillColor: color,
             weight: 2,

@@ -39,11 +39,11 @@ function getAbbrevation(assetType) {
 }
 
 function drawTextImage(text) {
-    jqcanvas = $('<canvas>', {id:'cvs', style: 'display: none;'}).attr({'width':128,'height':128});
+    let jqcanvas = $('<canvas>', {id:'cvs', style: 'display: none;'}).attr({'width':128,'height':128});
     //$('.doc').prepend(jqcanvas)
     //canvas = $('#cvs').get(0);
-    canvas = jqcanvas.get(0);
-    ctx = canvas.getContext('2d');
+    let canvas = jqcanvas.get(0);
+    let ctx = canvas.getContext('2d');
     ctx.fillStyle = '#000000';
     ctx.textAlign = "center";
     // auto size text to fit in box
@@ -64,4 +64,16 @@ function drawTextImage(text) {
     //$('#imgs').append(img)
 
     //return img;
+}
+
+// For todays date;
+Date.prototype.today = function () {
+    return this.getFullYear() + "-" +(((this.getMonth()+1) < 10)?"0":"") + (this.getMonth()+1) +
+        "-" + ((this.getDate() < 10)?"0":"") + this.getDate();
+}
+
+// For the time now
+Date.prototype.timeNow = function () {
+     return ((this.getHours() < 10)?"0":"") + this.getHours() +":"+ ((this.getMinutes() < 10)?"0":"") +
+        this.getMinutes() +":"+ ((this.getSeconds() < 10)?"0":"") + this.getSeconds();
 }

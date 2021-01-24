@@ -93,7 +93,7 @@ class Vesta {
             success: function(data){
                 if (data.length > 0) {
                     let $ul = $('<ul>').css('list-style-type', 'none');
-                    $('#measures_p').append($ul);
+                    $('#measures_p').empty().append($ul);
                     for (let i=0; i<data.length; i++) {
 //                        console.log(data[i]);
 
@@ -111,7 +111,7 @@ class Vesta {
                         vesta_plugin.set_area_restrictions();
                         sidebar.hide();
                     });
-                    $('#measures_button_p').append($button);
+                    $('#measures_button_p').empty().append($button);
                 }
             }
         });

@@ -70,6 +70,32 @@ def get_port_profile_info(asset):
     return port_profile_list
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+#  Get connections information for an asset
+# ---------------------------------------------------------------------------------------------------------------------
+def get_connected_to_info(asset):
+    result = []
+    ports = asset.port
+    for p in ports:
+        ptype = type(p).__name__
+
+        if p.carrier:
+            pcarr = p.carrier.name
+        else:
+            pcarr = None
+
+        ct_list = []
+        conn_to = p.connectedTo
+        if conn_to:
+            for conn_port in conn_to:
+                conn_asset = conn_port.energyasset #small a instead of Asset
+                ct_list.append({'opid': p.id, 'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
+
+        result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': pcarr, 'ct_list': ct_list})
+    #logger.debug(result)
+    return result
+
+
 def get_asset_geom_info(asset):
     geom = asset.geometry
     if geom:
@@ -110,6 +136,15 @@ def get_asset_and_coord_from_port_id(esh, es_id, pid):
     return {'asset': asset, 'coord': ()}
 
 
+def asset_state_to_ui(asset):
+    if asset.state == esdl.AssetStateEnum.ENABLED:
+        return 'e'
+    elif asset.state == esdl.AssetStateEnum.OPTIONAL:
+        return 'o'
+    else:
+        return 'd'
+
+
 def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
     port_list = []
     conn_list = []
@@ -137,6 +172,7 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
                     ({'from-port-id': p.id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
                                   'to-port-id': id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
+    state = asset_state_to_ui(asset)
     geom = asset.geometry
     if geom:
         if isinstance(geom, esdl.Point):
@@ -144,19 +180,19 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
             lon = geom.lon
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], port_list, capability_type], conn_list
+            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list, capability_type], conn_list
         elif isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
                 coords.append([point.lat, point.lon])
-            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list], conn_list
+            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list], conn_list
         elif isinstance(geom, esdl.Polygon):
             if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                 coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                 coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                 capability_type = ESDLAsset.get_asset_capability_type(asset)
                 # print(coords)
-                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, port_list, capability_type], conn_list
+                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type], conn_list
         else:
             return [], []
 

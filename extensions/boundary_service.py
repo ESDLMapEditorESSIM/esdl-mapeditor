@@ -27,6 +27,7 @@ from esdl.processing import ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 
+from src.shape import Shape
 import src.settings as settings
 import src.log as log
 
@@ -179,6 +180,10 @@ class BoundaryService:
             user_settings = self.get_user_settings(user)
             boundaries_year = user_settings['boundaries_year']
 
+            shape_dictionary = get_session('shape_dictionary')
+            if not shape_dictionary:
+                shape_dictionary = {}
+
             identifier = info["identifier"]
             toparea_name = info["toparea_name"]
             scope = info["scope"]
@@ -210,6 +215,10 @@ class BoundaryService:
                 if boundary:
                     geom = boundary['geom']
                     # geometry = ESDLGeometry.create_geometry_from_geom()
+
+                    shape = Shape.parse_geojson_geometry(boundary['geom'])
+                    if shape:
+                        shape_dictionary[identifier] = shape
 
                     for i in range(0, len(geom['coordinates'])):
                         if len(geom['coordinates']) > 1:
@@ -249,6 +258,10 @@ class BoundaryService:
                         geometry = ESDLGeometry.create_geometry_from_geom(boundary['geom'])
                         area.geometry = geometry
 
+                        shape = Shape.parse_geojson_geometry(boundary['geom'])
+                        if shape:
+                            shape_dictionary[identifier] = shape
+
                     # boundary = get_boundary_from_service(area_scope, area_id)
                     # if boundary:
                     #    emit('area_boundary', {'info-type': 'MP-RD', 'crs': 'RD', 'boundary': boundary})
@@ -269,6 +282,10 @@ class BoundaryService:
                     try:
                         # geom = json.loads(boundary["geom"])
                         geom = boundary["geom"]
+
+                        shape = Shape.parse_geojson_geometry(boundary['geom'])
+                        if shape:
+                            shape_dictionary[boundary['code']] = shape
                     except Exception as e:
                         print('Error parsing JSON from GEIS boundary service: '+ str(e))
 
@@ -312,6 +329,7 @@ class BoundaryService:
                                     }
                                 })
 
+            set_session('shape_dictionary', shape_dictionary)
             emit('geojson', {"layer": "area_layer", "geojson": area_list})
             print('Ready processing boundary information')
 

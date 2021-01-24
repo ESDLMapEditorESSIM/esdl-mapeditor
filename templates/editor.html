@@ -31,10 +31,10 @@
 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.5.0/lodash.min.js" crossorigin=""></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" type="text/css"/>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!--link rel="stylesheet" href="./plugins/leaflet.draw.css"/-->
-    <!--script src="./plugins/leaflet.draw.js"></script-->
+<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" type="text/css"/>-->
+<!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>-->
+    <link rel="stylesheet" href="./plugins/leaflet.draw.css" />
+    <script src="./plugins/leaflet.draw-custom.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css" type="text/css"/>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"></script>
@@ -59,7 +59,7 @@
 
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.slim.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
 
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.js"></script>
@@ -149,13 +149,14 @@
 
     <script type="text/javascript" src="./plugins/leaflet.shpfile.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-dvf/0.3.1/leaflet-dvf.js"></script>
 
     <script type="text/javascript" src="./utils/file_command.js"></script>
     <script type="text/javascript" src="./utils/area_map_handler.js"></script>
     <script type="text/javascript" src="./utils/building_map_handler.js"></script>
 
     <script type="text/javascript" src="./utils/boundary_service.js"></script>
-{% if 'ielgas' in role %}
+{% if 'ielgas' in role or 'opera' in role %}
     <script type="text/javascript" src="./utils/time_dimension.js"></script>
     <script type="text/javascript" src="./utils/ielgas.js"></script>
 {% endif %}
@@ -196,8 +197,11 @@
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
     <script type="text/javascript" src="./utils/spatial_operations.js"></script>
+    <script type="text/javascript" src="./utils/notes.js"></script>
+    <script type="text/javascript" src="./utils/view_modes.js"></script>
 
-    <!-- This should be the last one -->
+    <!-- These should be the last ones -->
+    <script type="text/javascript" src="./utils/ui_settings.js"></script>
     <script type="text/javascript" src="./utils/app_settings.js"></script>
 
     <script type="text/javascript" charset="utf-8">
@@ -207,6 +211,8 @@
         var kpicharts = null;
         var ldc_control;            // load duration curve
         var ielgas_chart;
+
+        var user_info;              // to store information about the logged in user
 
         var profile_array;
         var quantity_and_units_info;
@@ -252,6 +258,7 @@
         colors['Transport'] = 'yellow';
         colors['Conversion'] = 'purple';
         colors['Potential'] = 'grey';
+
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -317,8 +324,57 @@
                 console.log('removing connection', conn);
                 remove_object_from_layer(es_id, 'connection_layer', conn);
             }
-
         }
+
+        function delete_asset_marker(marker) {
+            // console.log('remove marker');
+            $(".ui-tooltip-content").parents('div').remove();
+            let asset_id = marker.id;
+
+            // Remove polygon that belongs to marker, if one is present
+            if (marker.polygon) {
+               all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+               for (let i=0; i<all_layers.length; i++) {
+                    layer = all_layers[i];
+                    if (layer.id == asset_id && layer instanceof L.Polygon) {
+                        remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                    }
+               }
+            }
+            // remove connections manually:
+            for (let i in marker.ports) {
+                let from_id = marker.ports[i].id;
+                for (let j in marker.ports[i].conn_to) {
+                    remove_single_connection(from_id, marker.ports[i].conn_to[j], marker.esid)
+                }
+            }
+
+            // remove the marker itself
+            remove_object_from_layer(marker.esid, 'esdl_layer', marker);
+
+            socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+        }
+
+        function delete_asset_line(line) {
+            if (line.mouseOverArrowHead !== undefined) {
+                map.removeLayer(line.mouseOverArrowHead)
+                delete line.mouseOverArrowHead;
+            }
+
+            // remove connections
+            console.log(line.ports);
+            for (let i in line.ports) {
+                let from_id = line.ports[i].id;
+                for (let j in line.ports[i].conn_to) {
+                    remove_single_connection(from_id, line.ports[i].conn_to[j], line.esid)
+                }
+            }
+
+            // remove the line itself
+            remove_object_from_layer(line.esid, 'esdl_layer', line);
+
+            socket.emit('command', {cmd: 'remove_object', id: line.id});
+        };
 
         // ------------------------------------------------------------------------------------------------------------
         //  Handlers for clicking on an asset or potential
@@ -335,20 +391,19 @@
 
             if (marker.ports) {
                 if (marker.ports.length > 0) {
-                    for (let p=0; p<marker.ports.length; p++) {
-                        let port_id = ''+marker.ports[p].id;
-                        let port_id_in_menu = '';
-                        if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
-                                port_id_in_menu = ' (' + port_id + ')'
-                        }
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Connect.png',
-                            text: 'Connect ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
-                            callback: function(e) { connect_asset(asset_id, port_id); }
-                        });
-                    }
-                    marker.options.contextmenuItems.push('-');
-
+                    // for (let p=0; p<marker.ports.length; p++) {
+                    //    let port_id = ''+marker.ports[p].id;
+                    //    let port_id_in_menu = '';
+                    //    if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
+                    //            port_id_in_menu = ' (' + port_id + ')'
+                    //    }
+                    //    marker.options.contextmenuItems.push({
+                    //        icon: 'icons/Connect.png',
+                    //        text: 'Connect ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
+                    //        callback: function(e) { connect_asset(asset_id, port_id); }
+                    //    });
+                    // }
+                    // marker.options.contextmenuItems.push('-');
 
                     for (let p=0; p<marker.ports.length; p++) {
                         let port_id = marker.ports[p].id;
@@ -369,6 +424,13 @@
                         icon: 'icons/SetCarrier.png',
                         callback: function(e) {
                             select_carrier_menu(asset_id);
+                        }
+                    });
+                    marker.options.contextmenuItems.push({
+                        text: 'Set Control Strategy',
+                        icon: 'icons/Control.png',
+                        callback: function(e) {
+                            control_strategy_window(asset_id);
                         }
                     });
 
@@ -445,6 +507,13 @@
                     });
                     // TODO: decide on seperators
                     marker.options.contextmenuItems.push('-');
+                    marker.options.contextmenuItems.push({
+                        icon: 'icons/Delete.png',
+                        text: 'Delete',
+                        callback: function(e) {
+                            delete_asset_marker(marker);
+                        }
+                    });
                 }
             }
 
@@ -493,7 +562,9 @@
                     // console.log('marker clicked');
                     var marker = e.target;
                     var id = marker.id;
-                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
+
+                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
+                    object_properties_window(id);
                 }
             });
 
@@ -566,7 +637,8 @@
                     var marker = e.target;
                     var id = marker.id;
 
-                    socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                    object_properties_window(id);
                 }
             });
         }
@@ -590,21 +662,29 @@
                 { text: 'Split and add joint', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor_add_joint(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
-            for (let p=0; p<line.ports.length; p++) {
-                let port_id = ''+line.ports[p].id;
-                line.options.contextmenuItems.push({
-                    icon: 'icons/Connect.png',
-                    text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) { connect_asset(line_id, port_id); }
-                });
-            }
+            // for (let p=0; p<line.ports.length; p++) {
+            //     let port_id = ''+line.ports[p].id;
+            //     line.options.contextmenuItems.push({
+            //         icon: 'icons/Connect.png',
+            //         text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
+            //         callback: function (e) { connect_asset(line_id, port_id); }
+            //     });
+            // }
 
-            line.options.contextmenuItems.push('-');
+            // line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push({
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
                     select_carrier_menu(line_id);
+                }
+            });
+
+            line.options.contextmenuItems.push({
+                icon: 'icons/Delete.png',
+                text: 'Delete',
+                callback: function(e) {
+                    delete_asset_line(line);
                 }
             });
 
@@ -634,46 +714,8 @@
             line.on('click', function(e) {
                 if (deleting_objects == false && editing_objects == false) {
                     var line = e.target;
-                    socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
-                }
-            });
-
-            line.on('mouseover', function(e) {
-                var layer = e.target;
-                if (layer.type === undefined) {
-                    layer.type = 'ElectricityCable';
-                }
-                layer.setStyle({
-                    color: layer.color,
-                    opacity: 1,
-                    weight: 4
-                });
-                let lineType = layer.type;
-                let lineColor = layer.color;
-                // let lineColorHoover = colors[lineType + '_hoover']
-                let lineColorHoover = lineColor;
-                let arrowHead = L.polylineDecorator(layer, {
-                            patterns: [
-                                {
-                                    offset: '1%',
-                                    repeat: '49%',
-                                    symbol: L.Symbol.arrowHead({pixelSize: 12, headAngle: 0, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
-                                }
-                            ]
-                        }).addTo(map);
-                line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
-            });
-
-            line.on('mouseout', function(e) {
-                var layer = e.target;
-                layer.setStyle({
-                    color: layer.color,
-                    opacity: 1,
-                    weight: 3
-                });
-                if (layer.mouseOverArrowHead !== undefined) {
-                    map.removeLayer(layer.mouseOverArrowHead)
-                    delete layer.mouseOverArrowHead;
+                    // socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
+                    object_properties_window(line.id);
                 }
             });
 
@@ -810,6 +852,7 @@
             asset_fragment = $(obj).attr('fragment'); // in case there is no id present
             asset_param_name = obj.name;
             asset_param_value = obj.value;
+
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
         }
 
@@ -905,7 +948,7 @@
             let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
             let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
 
-            $('#mapid .circle').css({
+            $('#mapid .zoom.circle').css({
                 'width': size_marker,
                 'height': size_marker,
                 'line-height': size_marker,
@@ -914,15 +957,15 @@
                 'border-width': marker_border
             });
             $('#mapid .image-div').css({'text-align':'center'});
-            $('#mapid .circle-img').css({'width':size_image, 'height':size_image});
+            $('#mapid .zoom.circle-img').css({'width':size_image, 'height':size_image});
 
             /* Joints */
             if (size/3 < 5) size_joint = 5; else size_joint = size/3;
             let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
             let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
 
-            $('#mapid .Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
-            $('#mapid .circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+            $('#mapid .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+            $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
             set_port_size_and_position();       /* Ports */
         }
@@ -958,6 +1001,10 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+            });
+
+            socket.on('user_info', function(ui) {
+                user_info = ui;
             });
 
             socket.on('profile_info', function(pa) {
@@ -1075,12 +1122,12 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0         1          2       3           4       5          6       7
-                // 'point'   asset      name    id      class_name  [lat,lon]  [ports] capability
-                // 'line'    asset      name    id      class_name  [...]      [ports]
-                // 'polygon' asset      name    id      class_name  [...]      [ports] capability
-                // 'point'   potential  name    id      class_name  [lat,lon]
-                // 'polygon' potential  name    id      class_name  [...]
+                // 0         1          2     3   4           5          6      7        8
+                // 'point'   asset      name  id  class_name  [lat,lon]  state  [ports]  capability
+                // 'line'    asset      name  id  class_name  [...]      state  [ports]
+                // 'polygon' asset      name  id  class_name  [...]      state  [ports]  capability
+                // 'point'   potential  name  id  class_name  [lat,lon]
+                // 'polygon' potential  name  id  class_name  [...]
 
                 // hide_loader();
                 // console.log(options);
@@ -1098,32 +1145,50 @@
 
                     if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
-                        capability = list[i][7];
+                        capability = list[i][8];
                         classname = 'circle ' + capability;
+                        if (!add_to_building) classname = 'zoom '+classname;
                     } else if (list[i][1] == 'potential') {
                         classname = 'circle Potential';
+                        if (!add_to_building) classname = 'zoom '+classname;
                     } else {
                         classname = '';
+                    }
+                    let img_class = "circle-img";
+                    if (!add_to_building) img_class = 'zoom '+img_class;
+                    if (list[i][1] == 'asset') {
+                        if (list[i][6] == 'o') {
+                            classname += ' Optional';       // will become 'Producer Optional'
+                        }
+                        if (list[i][6] == 'd') {
+                            classname += 'Disabled';        // will become 'ProducerDisabled'
+                            img_class += "-disabled";
+                        }
                     }
 
                     imgsrc = 'images/' + list[i][4] + '.png';
                     if (!assets_for_icons.includes(list[i][4])) {
-                        imgsrc =  drawTextImage(getAbbrevation(list[i][4]));
+                        imgsrc = drawTextImage(getAbbrevation(list[i][4]));
                     }
 
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<div class="image-div" style="font-size:0px"><img class="circle-img" src="' + imgsrc + '"></img></div>',
+                        html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
                         iconSize: null
                     });
                     if (list[i][4] == 'Joint') {
+                        img_class = "circle-img-joint"
+                        if (!add_to_building) img_class = 'zoom '+img_class;
+                        classname = "Joint"
+                        if (!add_to_building) classname = 'zoom '+classname;
                         divicon = L.divIcon({
-                            className: 'Joint',
-                            html: '<div style="font-size:0px"><img class="circle-img-joint" src="' + imgsrc + '"></img></div>',
+                            className: classname,
+                            html: '<div style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
                             iconSize: null
                         });
                     }
 
+                    if (list[i][2] == null) list[i][2] = 'No name';
 					var title = list[i][4]+': '+list[i][2];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
@@ -1135,8 +1200,8 @@
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
                         if (marker.asspot == 'asset') {
-                            marker.ports = list[i][6];
-                            marker.capability = list[i][7];
+                            marker.ports = list[i][7];
+                            marker.capability = list[i][8];
                         }
 
                         set_marker_handlers(marker);
@@ -1147,7 +1212,7 @@
                         var coords = list[i][5];
                         let polygon_color;
                         if (list[i][1] == 'asset') {
-                            polygon_color = colors[list[i][7]]
+                            polygon_color = colors[list[i][8]]
                         } else {
                             polygon_color = colors["Potential"]
                         }
@@ -1174,8 +1239,8 @@
                         marker.asspot = list[i][1];
                         marker.polygon = true;
                         if (marker.asspot == 'asset') {
-                            marker.ports = list[i][6];
-                            marker.capability = list[i][7];
+                            marker.ports = list[i][7];
+                            marker.capability = list[i][8];
                         }
 
                         set_marker_handlers(marker);
@@ -1185,7 +1250,7 @@
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
                         var lineType = list[i][4];
-                        var port_list = list[i][6];
+                        var port_list = list[i][7];
                         var line_color = colors[lineType];
                         for (let p=0; p<port_list.length; p++) {
                             let port_carrier_id = port_list[p]['carrier'];
@@ -1193,14 +1258,21 @@
                                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                             }
                         }
-
-                        var line = L.polyline(coords, {color: line_color, weight: 3, draggable:true, title: title});
+                        let line_options = {color: line_color, weight: 3, draggable:true, title: title};
+                        if (list[i][6] == 'o') {   // Optional asset with dashed line
+                            line_options['dashArray'] = '3,10';
+                        }
+                        if (list[i][6] == 'd') {    // Disabled asset with grey dotted line
+                            line_options['dashArray'] = '2,4';
+                            line_options['color'] = '#808080';
+                        }
+                        var line = L.polyline(coords, line_options);
 
                         // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
 						line.title = title;
                         line.id = list[i][3];
                         line.esid = es_id;
-                        line.ports = list[i][6];
+                        line.ports = list[i][7];
                         line.type = list[i][4];
                         line.asspot = list[i][1];
                         line.name = "";
@@ -1211,6 +1283,12 @@
                         add_object_to_layer(es_bld_id, 'esdl_layer', line);
                     }
                 }
+                // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
+                $('div[title]').tooltip({
+                    content: function() {
+                        return $(this).attr('title');
+                    }
+                });
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
@@ -1218,7 +1296,7 @@
                     bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
-                    map.flyToBounds(bounds, {padding: [50,50], animate: true});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
                 } else {
                     set_leaflet_sizes();
                 }
@@ -1258,6 +1336,7 @@
                         iconSize: null
                     });
 
+                    if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
@@ -1733,6 +1812,7 @@
                 hide_loader();
                 process_service_results(results)
             });
+
         });
     </script>
 
@@ -1796,37 +1876,38 @@
 
         });
 
+        function update_asset_menu(value) {
+            let am = $('#asset_menu');
+            am.val(value);
+            $("#asset_menu").selectmenu("refresh").change();
+        }
+        function update_line_asset_menu(value) {
+            let lam = $('#line_select');
+            lam.val(value);
+            $("#line_select").selectmenu("refresh").change();
+        }
+
+        function remove_tooltip() {
+            $(".ui-tooltip-content").parents('div').remove();  // remove tooltip as it is shown when clicking
+        }
+
         $(function() {
             $(document).tooltip();
         });
 
-        function show_or_hide_animation_bar(object) {
-            if (object.childNodes[0].classList.contains("ui-icon-check")) {
-                // hide animation bar; remove checkmark
-                $('.leaflet-bar-timecontrol').hide();
-
-                object.childNodes[0].classList.remove("ui-icon-check");
-                object.childNodes[0].classList.remove("ui-icon");
-            } else {
-                // show animation bar; add checkmark
-                $('.leaflet-bar-timecontrol').show();
-                object.childNodes[0].classList.add("ui-icon-check");
-                object.childNodes[0].classList.add("ui-icon");
-            }
-        };
         function show_or_hide_kpicharts_bar(object) {
-            if (object.childNodes[0].classList.contains("ui-icon-check")) {
+            if (object.childNodes[1].classList.contains("ui-icon-check")) {
                 // hide kpicharts bar; remove checkmark
                 $('.leaflet-kpicharts').hide();
 
-                object.childNodes[0].classList.remove("ui-icon-check");
-                object.childNodes[0].classList.remove("ui-icon");
+                object.childNodes[1].classList.remove("ui-icon-check");
+                object.childNodes[1].classList.remove("ui-icon");
             } else {
                 // show kpicharts bar; add checkmark
                 $('.leaflet-kpicharts').show();
                 kpis.show_all_kpis();
-                object.childNodes[0].classList.add("ui-icon-check");
-                object.childNodes[0].classList.add("ui-icon");
+                object.childNodes[1].classList.add("ui-icon-check");
+                object.childNodes[1].classList.add("ui-icon");
             }
         };
     </script>
@@ -1864,11 +1945,11 @@
 
     ul { z-index:20000 !important; }
     </style>
+
     <!--    // z-index for jstree context menu, sidebar has 2000-->
     <!--    .vakata-context { z-index:20000 !important; }-->
     <!--    .jstree ul { z-index:20000 !important; }-->
     <!--    .jstree li > a > .jstree-icon {  display:none !important; }-->
-
 
 </head>
 <body class="flexbox-parent">
@@ -1932,6 +2013,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter</a></li>
                                 </ul>
                             </li>
@@ -1959,9 +2041,28 @@
                                         </ul>
                                     </li>
 {% endif %}
+                                    <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>Load animation</a>
+                                        <ul class="dropdown-menu">
 {% if 'ielgas' in role %}
-                                    <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize();"><div class="menu-icon" id="menu_ielgas">&nbsp;</div>Initialize I-ELGAS model</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', []);"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model - hydrogen</a></li>
 {% endif %}
+{% if 'opera' in role %}
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', []);"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera-e">&nbsp;</div>Opera model - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_opera-g">&nbsp;</div>Opera model - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera-h">&nbsp;</div>Opera model - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', []);"><div class="menu-icon" id="menu_td_opera2">&nbsp;</div>Opera model - 2 - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera2-e">&nbsp;</div>Opera model -2  - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['gas_network']);"><div class="menu-icon" id="menu_td_opera2-g">&nbsp;</div>Opera model - 2 - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera2-h">&nbsp;</div>Opera model - 2 - hydrogen</a></li>
+{% endif %}
+                                        </ul>
+                                    </li>
+
+                                    <li><a class="dropdown-item" href="#" onclick="continue_service_workflow();"><div class="menu-icon">&nbsp;</div>Continue active workflow</a></li>
 
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
@@ -1971,8 +2072,20 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
-                                    <li><a class="dropdown-item" href="#" onclick="show_or_hide_animation_bar(this);"><div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>Show/hide animation bar</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);"><div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>Show/hide KPIs</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="time_dimension.toggle_animation_toolbar_visibility();">
+                                            <div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show/hide animation bar
+                                        </a>
+                                    </li>
+                                    <li id="vue_toggle_show_asset_draw_toolbar"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
+                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
+                                            Show/hide KPIs
+                                        </a>
+                                    </li>
+                                    <li id="vue_toggle_long_process_view"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon">&nbsp;</div>Settings</a></li>
                                 </ul>
@@ -1986,8 +2099,10 @@
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
             <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
+
+
 {% if edr_enabled %}
-            <button id="edr-asset-btn" onclick="select_edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
+            <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
 {% endif %}
             <select id="asset_menu" style='position:relative;z-index:100'></select>
 
@@ -2016,6 +2131,8 @@
         <span id="deleteLogItems" onclick="deleteLogItems()">Delete all</span>
         <div id="messages"></div>
     </div>
+</div>
+
 </body>
 </html>
 
@@ -2023,12 +2140,12 @@
 
     var osmUrl = location.protocol + '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            osm = L.tileLayer(osmUrl, { maxZoom: 19, attribution: osmAttrib });
+            osm = L.tileLayer(osmUrl, { maxZoom: 25, maxNativeZoom:19, attribution: osmAttrib });
 
     var map = new L.Map('mapid', {
         center: new L.LatLng(52.1, 5.8),
         zoom: 8,
-        timeDimensionControl: true,
+        timeDimensionControl: false,
         timeDimensionControlOptions: {
             loopButton: true,
             timeZones: ["UTC","Local"],
@@ -2055,8 +2172,18 @@
                 layer: osm.addTo(map)
             },
             {
-                label: 'Google',
-                layer: L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+                label: 'Google Streets',
+                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    attribution: 'Google'
+                })
+            },
+            {
+                label: 'Google Satellite',
+                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                    maxZoom: 20,
+                    subdomains:['mt0','mt1','mt2','mt3'],
                     attribution: 'Google'
                 })
             },
@@ -2081,13 +2208,14 @@
         filename: 'ESDL_map'
     }).addTo(map);
 
-
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "CheckValve", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
-        "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
-        "GeothermalSource", "HConnection", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "PowerPlant",
-        "Pump", "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSourcePotential", "SinkConsumer", "SourceProducer", "Transformer",
-        "UTES", "Valve", "WindTurbine", "EVChargingStation"];
+    var assets_for_icons = ["AggregatedBuilding", "Battery", "Building", "Bus", "CHP", "CheckValve", "CoolingDemand",
+        "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
+        "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer",
+        "GenericConversion", "GenericProducer", "GenericTransport", "GeothermalSource", "HConnection", "HeatingDemand",
+        "HeatExchange", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "Pipe",
+        "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSource", "ResidualHeatSourcePotential",
+        "SinkConsumer", "SourceProducer", "Transformer", "UTES", "Valve", "WindTurbine", "EVChargingStation", "Sensor"];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
@@ -2123,4 +2251,13 @@
     L.control.essim_control().addTo(map);
 {% endif %}
 
+    notesToolbarControl().addTo(map);
+
 </script>
+
+{% if debug %}
+<script type="text/javascript" src="./dist/index.umd.js"></script>
+{% else %}
+<script type="text/javascript" src="./dist/index.umd.min.js"></script>
+<link rel="stylesheet" href="./dist/index.css" type="text/css"/>
+{% endif %}
