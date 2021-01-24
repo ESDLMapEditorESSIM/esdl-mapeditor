@@ -1009,8 +1009,6 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
-                console.log("=== user_roles ======================================================");
-                console.log(user_roles);
             });
 
             socket.on('user_info', function(ui) {
