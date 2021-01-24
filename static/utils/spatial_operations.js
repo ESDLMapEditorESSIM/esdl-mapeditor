@@ -17,13 +17,7 @@
 
 class SpatialOperations {
     constructor() {
-        this.initSocketIO();
-    }
-
-    initSocketIO() {
-        socket.on('data', function(data) {
-            console.log('Jee');
-        });
+        console.log("Registered Spatial operations plugin")
     }
 
     open_window() {
@@ -157,17 +151,19 @@ class SpatialOperations {
             return spatial_operations_plugin;
         }
         if (event.type === 'add_contextmenu') {
-            let layer = event.layer;
-            let layer_type = event.layer_type;
-            let id = layer.id;
-            if (layer_type === 'area') {
-                layer.options.contextmenuItems.push({
-                    text: 'spatial operations',
-                    icon: resource_uri + 'icons/AreaGeometry.png',
-                    callback: function(e) {
-                        spatial_operations_plugin.open_window(e, id);
-                    }
-                });
+            if (check_role('spatial')) {
+                let layer = event.layer;
+                let layer_type = event.layer_type;
+                let id = layer.id;
+                if (layer_type === 'area') {
+                    layer.options.contextmenuItems.push({
+                        text: 'spatial operations',
+                        icon: resource_uri + 'icons/AreaGeometry.png',
+                        callback: function(e) {
+                            spatial_operations_plugin.open_window(e, id);
+                        }
+                    });
+                }
             }
         }
     }

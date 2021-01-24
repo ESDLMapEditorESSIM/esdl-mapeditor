@@ -245,6 +245,8 @@
             'statistics_service': {% if statistics_service_enabled %}true{% else %}false{% endif %},
         };
 
+        var user_roles = [{% for r in role %}"{{ r }}", {% endfor %}];
+
         // globally define the colors of the lines/conductors on the map
         var colors = {};
         colors['ElectricityCable'] = '#ff9090';
@@ -970,6 +972,13 @@
             set_port_size_and_position();       /* Ports */
         }
 
+        // ------------------------------------------------------------------------------------------------------------
+        //  Document is ready loading --> all functionality to react on incoming socket messages
+        // ------------------------------------------------------------------------------------------------------------
+        function check_role(role) {
+            return (user_roles.includes(role))
+        }
+
         var socket;
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1001,6 +1010,8 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+                console.log("=== user_roles ======================================================");
+                console.log(user_roles);
             });
 
             socket.on('user_info', function(ui) {
