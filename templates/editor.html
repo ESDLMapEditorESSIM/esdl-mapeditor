@@ -245,8 +245,6 @@
             'statistics_service': {% if statistics_service_enabled %}true{% else %}false{% endif %},
         };
 
-        var user_roles = [{% for r in role %}"{{ r }}", {% endfor %}];
-
         // globally define the colors of the lines/conductors on the map
         var colors = {};
         colors['ElectricityCable'] = '#ff9090';
@@ -973,9 +971,10 @@
         }
 
         // ------------------------------------------------------------------------------------------------------------
-        //  Document is ready loading --> all functionality to react on incoming socket messages
+        //  Function to check if a user has a certain role (can be used in extensions too)
         // ------------------------------------------------------------------------------------------------------------
         function check_role(role) {
+            let user_roles = [{% for r in role %}"{{ r }}", {% endfor %}];
             return (user_roles.includes(role))
         }
 
