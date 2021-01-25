@@ -99,7 +99,9 @@ def build_qau_from_dict(qau_dict):
 
     return qau
 
+
 unitdict = {
+    'NONE': '-',
     'AMPERE': 'A',
     'JOULE': 'J',
     'WATTHOUR': 'Wh',
@@ -107,7 +109,7 @@ unitdict = {
     'VOLT': 'V',
     'BAR': 'bar',
     'PSI': 'psi',
-    'DEGREES_CELSIUS': 'oC',
+    'DEGREES_CELSIUS': '\u2103',  # Sign for degrees Celcius
     'KELVIN': 'K',
     'GRAM': 'g',
     'EURO': 'EUR',
@@ -121,8 +123,12 @@ unitdict = {
     'HECTARE': 'ha',
     'PERCENT': '%',
     'VOLT_AMPERE': 'VA',
-    'VOLT_AMPERE_REACTIVE': 'VAR'
+    'VOLT_AMPERE_REACTIVE': 'VAR',
+    'PASCAL': 'Pa',
+    'NEWTON': 'N',
+    'DEGREES': '\u00b0',  # Sign for degrees
 }
+
 
 timeunitdict = {
     'SECOND': 'sec',
@@ -135,7 +141,10 @@ timeunitdict = {
     'YEAR': 'yr'
 }
 
+
 multiplierdict = {
+    'ATTO': 'a',
+    'FEMTO': 'f',
     'PICO': 'p',
     'NANO': 'n',
     'MICRO': 'u',
@@ -143,8 +152,10 @@ multiplierdict = {
     'KILO': 'k',
     'MEGA': 'M',
     'GIGA': 'G',
-    'TERRA': 'T',
-    'PETA': 'P'
+    'TERA': 'T',
+    'TERRA': 'T',       # due to spelling mistake in ESDL
+    'PETA': 'P',
+    'EXA': 'E'
 }
 
 
@@ -182,3 +193,49 @@ def unit_to_string(qau):
         s += '/' + timeunitdict[ptunit]
 
     return s
+
+
+def build_qau_from_unit_string(unit_string):
+    qau = esdl.QuantityAndUnitType(id=str(uuid.uuid4()))
+
+    unit_parts = unit_string.split('/')
+    if unit_parts:
+        # Parse the unit
+        for u in unitdict:
+            if unitdict[u] == unit_parts[0]:
+                qau.unit = esdl.UnitEnum.from_string(u)
+
+        # if the first try failed, try to see if there is a multiplier in front of the unit
+        if qau.unit == esdl.UnitEnum.NONE:
+            unit = unit_parts[0][1:]
+            for u in unitdict:
+                if unitdict[u] == unit:
+                    for m in multiplierdict:
+                        if multiplierdict[m] == unit_parts[0][0]:
+                            qau.unit = esdl.UnitEnum.from_string(u)
+                            qau.multiplier = esdl.MultiplierEnum.from_string(m)
+
+        # Zero, one or two 'perUnits' are possible
+        if len(unit_parts) > 1:
+            for up in range(1, len(unit_parts)):
+                # Parse the perUnit
+                for u in unitdict:
+                    if unitdict[u] == unit_parts[up]:
+                        qau.perUnit = esdl.UnitEnum.from_string(u)
+
+                # if the first try failed, try to see if there is a multiplier in front of the perUnit
+                if qau.perUnit == esdl.UnitEnum.NONE:
+                    unit = unit_parts[up][1:]
+                    for u in unitdict:
+                        if unitdict[u] == unit:
+                            for m in multiplierdict:
+                                if multiplierdict[m] == unit_parts[up][0]:
+                                    qau.perUnit = esdl.UnitEnum.from_string(u)
+                                    qau.perMultiplier = esdl.MultiplierEnum.from_string(m)
+
+                # Parse the perTimeUnit
+                for tu in timeunitdict:
+                    if timeunitdict[tu] == unit_parts[up]:
+                        qau.perTimeUnit = esdl.TimeUnitEnum.from_string(tu)
+
+    return qau

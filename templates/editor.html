@@ -196,6 +196,7 @@
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
+    <script type="text/javascript" src="./utils/spatial_operations.js"></script>
     <script type="text/javascript" src="./utils/notes.js"></script>
     <script type="text/javascript" src="./utils/view_modes.js"></script>
 
@@ -323,8 +324,57 @@
                 console.log('removing connection', conn);
                 remove_object_from_layer(es_id, 'connection_layer', conn);
             }
-
         }
+
+        function delete_asset_marker(marker) {
+            // console.log('remove marker');
+            $(".ui-tooltip-content").parents('div').remove();
+            let asset_id = marker.id;
+
+            // Remove polygon that belongs to marker, if one is present
+            if (marker.polygon) {
+               all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+               for (let i=0; i<all_layers.length; i++) {
+                    layer = all_layers[i];
+                    if (layer.id == asset_id && layer instanceof L.Polygon) {
+                        remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                    }
+               }
+            }
+            // remove connections manually:
+            for (let i in marker.ports) {
+                let from_id = marker.ports[i].id;
+                for (let j in marker.ports[i].conn_to) {
+                    remove_single_connection(from_id, marker.ports[i].conn_to[j], marker.esid)
+                }
+            }
+
+            // remove the marker itself
+            remove_object_from_layer(marker.esid, 'esdl_layer', marker);
+
+            socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
+        }
+
+        function delete_asset_line(line) {
+            if (line.mouseOverArrowHead !== undefined) {
+                map.removeLayer(line.mouseOverArrowHead)
+                delete line.mouseOverArrowHead;
+            }
+
+            // remove connections
+            console.log(line.ports);
+            for (let i in line.ports) {
+                let from_id = line.ports[i].id;
+                for (let j in line.ports[i].conn_to) {
+                    remove_single_connection(from_id, line.ports[i].conn_to[j], line.esid)
+                }
+            }
+
+            // remove the line itself
+            remove_object_from_layer(line.esid, 'esdl_layer', line);
+
+            socket.emit('command', {cmd: 'remove_object', id: line.id});
+        };
 
         // ------------------------------------------------------------------------------------------------------------
         //  Handlers for clicking on an asset or potential
@@ -341,20 +391,19 @@
 
             if (marker.ports) {
                 if (marker.ports.length > 0) {
-                    for (let p=0; p<marker.ports.length; p++) {
-                        let port_id = ''+marker.ports[p].id;
-                        let port_id_in_menu = '';
-                        if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
-                                port_id_in_menu = ' (' + port_id + ')'
-                        }
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Connect.png',
-                            text: 'Connect ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
-                            callback: function(e) { connect_asset(asset_id, port_id); }
-                        });
-                    }
-                    marker.options.contextmenuItems.push('-');
-
+                    // for (let p=0; p<marker.ports.length; p++) {
+                    //    let port_id = ''+marker.ports[p].id;
+                    //    let port_id_in_menu = '';
+                    //    if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
+                    //            port_id_in_menu = ' (' + port_id + ')'
+                    //    }
+                    //    marker.options.contextmenuItems.push({
+                    //        icon: 'icons/Connect.png',
+                    //        text: 'Connect ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
+                    //        callback: function(e) { connect_asset(asset_id, port_id); }
+                    //    });
+                    // }
+                    // marker.options.contextmenuItems.push('-');
 
                     for (let p=0; p<marker.ports.length; p++) {
                         let port_id = marker.ports[p].id;
@@ -458,6 +507,13 @@
                     });
                     // TODO: decide on seperators
                     marker.options.contextmenuItems.push('-');
+                    marker.options.contextmenuItems.push({
+                        icon: 'icons/Delete.png',
+                        text: 'Delete',
+                        callback: function(e) {
+                            delete_asset_marker(marker);
+                        }
+                    });
                 }
             }
 
@@ -606,21 +662,29 @@
                 { text: 'Split and add joint', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor_add_joint(e, line_id); } });
             line.options.contextmenuItems.push('-');
 
-            for (let p=0; p<line.ports.length; p++) {
-                let port_id = ''+line.ports[p].id;
-                line.options.contextmenuItems.push({
-                    icon: 'icons/Connect.png',
-                    text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-                    callback: function (e) { connect_asset(line_id, port_id); }
-                });
-            }
+            // for (let p=0; p<line.ports.length; p++) {
+            //     let port_id = ''+line.ports[p].id;
+            //     line.options.contextmenuItems.push({
+            //         icon: 'icons/Connect.png',
+            //         text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
+            //         callback: function (e) { connect_asset(line_id, port_id); }
+            //     });
+            // }
 
-            line.options.contextmenuItems.push('-');
+            // line.options.contextmenuItems.push('-');
             line.options.contextmenuItems.push({
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
                     select_carrier_menu(line_id);
+                }
+            });
+
+            line.options.contextmenuItems.push({
+                icon: 'icons/Delete.png',
+                text: 'Delete',
+                callback: function(e) {
+                    delete_asset_line(line);
                 }
             });
 
@@ -654,7 +718,6 @@
                     object_properties_window(line.id);
                 }
             });
-
 
             set_line_port_handlers(line);
 
@@ -905,6 +968,14 @@
             $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
             set_port_size_and_position();       /* Ports */
+        }
+
+        // ------------------------------------------------------------------------------------------------------------
+        //  Function to check if a user has a certain role (can be used in extensions too)
+        // ------------------------------------------------------------------------------------------------------------
+        function check_role(role) {
+            let user_roles = [{% for r in role %}"{{ r }}", {% endfor %}];
+            return (user_roles.includes(role))
         }
 
         var socket;
@@ -1950,6 +2021,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter</a></li>
                                 </ul>
                             </li>

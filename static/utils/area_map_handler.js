@@ -88,6 +88,10 @@ function add_area_map_handlers(socket, map) {
     map.on('draw:edited', function (e) {
         var layers = e.layers;
         layers.eachLayer(function (layer) {
+            if (layer instanceof L.Marker) {
+                // Update location of ports
+                update_marker_ports(layer);
+            }
             if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);
                 socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
@@ -104,7 +108,8 @@ function add_area_map_handlers(socket, map) {
                     if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
                         polygon_center = calculate_leaflet_polygon_center(layer.getLatLngs()[0]);
                         var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
-                        esdl_object.setLatLng(newLatLng);
+                        esdl_object.setLatLng(newLatLng);   // update the location of the marker itself
+                        update_marker_ports(esdl_object);   // update the location of the port markers of this marker
 
                         // send updated coordinates to backend to update connections
                         socket.emit('update-coord', {id: layer.id, coordinates: esdl_object.getLatLng(), asspot: layer.asspot});

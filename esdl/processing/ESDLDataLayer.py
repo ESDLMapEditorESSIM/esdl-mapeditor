@@ -15,6 +15,9 @@
 from uuid import uuid4
 from esdl.processing import ESDLEcore
 from pyecore.ecore import EReference
+
+from esdl.processing.ESDLEcore import instantiate_type
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
@@ -30,7 +33,7 @@ from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
 import src.log as log
-
+from utils.utils import camelCaseToWords, str2float
 
 logger = log.get_logger(__name__)
 
@@ -278,7 +281,7 @@ class ESDLDataLayer:
             return None
         c_dict = {'doc': container.__doc__, 'type': container.eClass.name,}
         if hasattr(container, 'name'):
-            c_dict['name']= container.name
+            c_dict['name'] = container.name
         else:
             c_dict['name'] = None
         if not hasattr(container, 'id') or container.id is None:
@@ -346,3 +349,153 @@ class ESDLDataLayer:
                             profile_fields.append(profile.field)
 
         return profile_fields
+
+    def get_default_qau_for_env_profile(self, name):
+        # Note: Spelling mistake in ESDL: outsideTemparatureProfile instead of outsideTemperatureProfile
+        if name == 'outsideTemparatureProfile' or name == 'soilTemperatureProfile':
+            return "\u2103"     # Sign for degrees Celcius
+        if name == 'solarIrradianceProfile':
+            return "W/m2"
+        if name == 'relativeHumidityProfile':
+            return "%"
+        if name == 'windDirectionProfile':
+            return ""       # No degrees as unit in ESDL yet
+        if name == 'windSpeedProfile':
+            return "m/s"
+        return ""
+
+    def update_quantity_in_qau(self, qau, name):
+        # Note: Spelling mistake in ESDL: outsideTemparatureProfile instead of outsideTemperatureProfile
+        if name == 'outsideTemparatureProfile' or name == 'soilTemperatureProfile':
+            qau.physicalQuantity = esdl.PhysicalQuantityEnum.from_string('TEMPERATURE')
+        if name == 'solarIrradianceProfile':
+            qau.physicalQuantity = esdl.PhysicalQuantityEnum.from_string('IRRADIANCE')
+        if name == 'relativeHumidityProfile':
+            qau.physicalQuantity = esdl.PhysicalQuantityEnum.from_string('RELATIVE_HUMIDITY')
+        if name == 'windDirectionProfile':
+            qau.physicalQuantity = esdl.PhysicalQuantityEnum.from_string('DIRECTION')
+        if name == 'windSpeedProfile':
+            qau.physicalQuantity = esdl.PhysicalQuantityEnum.from_string('SPEED')
+
+    def get_environmental_profiles(self):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+
+        result = list()
+
+        es = esh.get_energy_system(active_es_id)
+        esi = es.energySystemInformation
+
+        for x in esdl.EnvironmentalProfiles.eClass.eAllStructuralFeatures():
+            if isinstance(x, EReference):
+                ep_instance = dict()
+                ep_instance['key'] = str(uuid4())
+                ep_instance['name'] = x.name
+                ep_instance['uiname'] = camelCaseToWords(x.name)
+                ep_instance['type'] = 'Unset'
+                ep_instance['default_unit'] = self.get_default_qau_for_env_profile(x.name)
+
+                if esi and esi.environmentalProfiles:
+                    env_profiles = esi.environmentalProfiles
+                    profile = env_profiles.eGet(x)
+                    if profile:
+                        if isinstance(profile, esdl.SingleValue):
+                            ep_instance['type'] = 'SingleValue'
+                            ep_instance['value'] = profile.value
+                        elif isinstance(profile, esdl.InfluxDBProfile):
+                            ep_instance['type'] = 'InfluxDBProfile'
+                            # check if it is a 'standard profile' that is present in our configuration
+                            profiles = Profiles.get_instance().get_profiles()['profiles']
+                            for pkey in profiles:
+                                std_profile = profiles[pkey]
+                                if profile.database == std_profile['database'] and \
+                                    profile.measurement == std_profile['measurement'] and \
+                                    profile.field == std_profile['field']:
+                                    ep_instance['profile_id'] = pkey
+                        else:
+                            logger.warn('Environmental profiles other than SingleValue/InfluxDB are not supported')
+                            ep_instance['value'] = ''
+
+                        if profile.profileQuantityAndUnit:
+                            qau = profile.profileQuantityAndUnit
+                            if isinstance(qau, esdl.QuantityAndUnitReference):
+                                qau = qau.reference
+                            ep_instance['unit'] = unit_to_string(qau)
+                        else:
+                            ep_instance['unit'] = ''
+
+                    else:
+                        ep_instance['value'] = ''
+
+                result.append(ep_instance)
+
+        return result
+
+    def update_environmental_profiles(self, action, profile_info):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+
+        es = esh.get_energy_system(active_es_id)
+        esi = es.energySystemInformation
+
+        print(profile_info)
+
+        if action == 'save':
+            for x in esdl.EnvironmentalProfiles.eClass.eAllStructuralFeatures():
+                if isinstance(x, EReference):
+                    if profile_info['name'] == x.name:
+                        if not esi:
+                            esi = es.energySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
+                            esh.add_object_to_dict(active_es_id, esi)
+                        if not esi.environmentalProfiles:
+                            esi.environmentalProfiles = esdl.EnvironmentalProfiles(id=str(uuid4()))
+                            esh.add_object_to_dict(active_es_id, esi.environmentalProfiles)
+                        env_profiles = esi.environmentalProfiles
+
+                        profile = env_profiles.eGet(x)
+                        if not profile:
+                            profile = instantiate_type(profile_info['type'])
+                            profile.id = str(uuid4())
+                            esh.add_object_to_dict(active_es_id, profile)
+                        else:
+                            if type(profile) != profile_info['type']:
+                                profile = instantiate_type(profile_info['type'])
+
+                        if isinstance(profile, esdl.SingleValue):
+                            profile.value = str2float(profile_info['value'])
+                        if isinstance(profile, esdl.InfluxDBProfile):
+                            std_profiles = Profiles.get_instance().get_profiles()['profiles']
+                            if profile_info['profile_id'] in std_profiles:
+                                std_profile = std_profiles[profile_info['profile_id']]
+                                print(std_profile)
+
+                                profile.id = str(uuid4())
+                                profile.name = std_profile.name
+                                profile.host = std_profile.host
+                                profile.port = std_profile.port
+                                profile.database = std_profile.database
+                                profile.measurement = std_profile.measurement
+                                profile.field = std_profile.field
+                                profile.filters = std_profile.filters
+                                profile.startDate = std_profile.startDate
+                                profile.endDate = std_profile.endDate
+                            else:
+                                logger.error('Profile is referenced that was not communicated before')
+
+                        # Create a QuantityAndUnit instance and set the unit based on the information received
+                        if 'unit' in profile_info:
+                            profile.profileQuantityAndUnit = build_qau_from_unit_string(profile_info['unit'])
+                            esh.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
+                        elif 'default_unit' in profile_info:
+                            profile.profileQuantityAndUnit = build_qau_from_unit_string(profile_info['default_unit'])
+                            esh.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
+
+                        # Set the physical quantity based on the name of the profile reference
+                        self.update_quantity_in_qau(profile.profileQuantityAndUnit, x.name)
+                        env_profiles.eSet(x, profile)
+        elif action == 'delete':
+            env_profile_refname = profile_info['name']
+            env_profiles = esi.environmentalProfiles
+            env_profiles.eSet(env_profile_refname, None)
+        else:
+            logger.error('Unknown action on environmental profiles')

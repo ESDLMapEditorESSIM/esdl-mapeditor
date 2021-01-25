@@ -155,3 +155,29 @@ class DataLayerAPI:
             esdl_profile_names = self.datalayer.get_profile_names_list()
 
             return {"esdl_profile_names": esdl_profile_names}
+
+        @self.socketio.on('DLA_get_environmental_profiles_info', namespace='/esdl')
+        def DLA_get_environmental_profiles_info():
+            """
+            Gets information about the Environmental profiles configured in the ESDL. Also includes information on
+            the currently available standard profiles
+
+            :return: dictionary with environmental profile information
+            """
+            result = dict()
+            result['env_profiles'] = self.datalayer.get_environmental_profiles()
+
+            # list of standard profiles
+            result['standard_profiles_list'] = self.datalayer.get_standard_profiles_list()
+
+            return result
+
+        @self.socketio.on('DLA_update_environmental_profiles_info', namespace='/esdl')
+        def DLA_update_environmental_profiles_info(info):
+            """
+            Updates information about the Environmental profiles configured in the ESDL.
+            """
+            action = info["action"]
+            profile_info = info["profile_info"]
+
+            self.datalayer.update_environmental_profiles(action, profile_info)
