@@ -3,6 +3,7 @@
     <a-input
       v-model:value="fancy_number"
       v-model:size="text_box_size"
+      v-model:addon-after="unit_of_measure"
       class="fe_box"
       size="small"
       type="text"
@@ -50,22 +51,29 @@ export default {
     'size': {
       type: String,
       default: "default"
+    },
+    'unit': {
+      type: String,
+      default: ""
     }
   },
   emits: ['update:value'],
   data() {
       return {
-          fancy_number: this.parseNumber(this.value)
+          fancy_number: this.parseNumber(this.value),
       }
   },
   computed: {
       number: function() {
-        return this.parseFancyNumber(this.fancy_number)
+        return this.parseFancyNumber(this.fancy_number);
       },
       text_box_size: function() {
         // make props.size available as variable in the template
         return this.size;
-      }     
+      },
+      unit_of_measure: function() {
+        return this.unit;
+      }
   },
   methods: {
       parseFancyNumber: function(fn) {

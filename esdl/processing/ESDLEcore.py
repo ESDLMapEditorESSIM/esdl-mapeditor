@@ -14,8 +14,9 @@
 
 from pyecore.ecore import EAttribute, ECollection, EEnum, EReference, EClass, EObject, EStructuralFeature
 from pyecore.resources import Resource
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
 import esdl
-import gc
+
 
 """
 ESDL Ecore library
@@ -24,7 +25,7 @@ Contains functions that leverage the ecore functionality to e.g. list attributes
 """
 
 
-def get_asset_attributes(asset, esdl_doc=None):
+def get_asset_attributes(asset, esdl_doc: EcoreDocumentation = None):
     attributes = list()
     for x in asset.eClass.eAllStructuralFeatures():
         # print('{} is of type {}'.format(x.name, x.eClass.name))
@@ -68,6 +69,8 @@ def get_asset_attributes(asset, esdl_doc=None):
             attr['doc'] = x.__doc__
             if x.__doc__ is None and esdl_doc is not None:
                 attr['doc'] = esdl_doc.get_doc(asset.eClass.name, x.name)
+            if esdl_doc is not None:
+                attr['unit'] = esdl_doc.get_unit(asset.eClass.name, x.name)
 
             attributes.append(attr)
     print(attributes)

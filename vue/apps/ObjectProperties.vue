@@ -20,11 +20,13 @@
                     v-if="attr.type == 'EInt'" 
                     v-model:value="attr.value" 
                     size="small" 
+                    v-model:unit="attr.unit"
                     @update:value="(val) => { updateAttribute(attr.name, val);}"/>
                   <FancyNumberEdit
                     v-if="attr.type == 'EDouble'"
                     v-model:value="attr.value"
                     size="small"
+                    v-model:unit="attr.unit"
                     @update:value="(val) => { updateAttribute(attr.name, val); }"
                   />
                   <a-input
