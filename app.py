@@ -2044,9 +2044,15 @@ def process_command(message):
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-                    esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
-                        settings.profile_database_config['host']
-                    esdl_profile.port = int(settings.profile_database_config['port'])
+                    if 'host' in p and p['host']:
+                        esdl_profile.host = p['host']
+                        if 'port' in p and p['port']:
+                           esdl_profile.port = int(p['port'])
+                    else:
+                        esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                            settings.profile_database_config['host']
+                        esdl_profile.port = int(settings.profile_database_config['port'])
+
                     esdl_profile.database = p['database']
                     esdl_profile.filters = settings.profile_database_config['filters']
 
