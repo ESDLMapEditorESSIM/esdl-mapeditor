@@ -967,6 +967,11 @@
             $('#mapid .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
             $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
+            /* Lines */
+            let size_line = '2px';
+            if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27 + 'px';
+            $('#mapid .zoomline').css({'stroke-width': size_line});
+
             set_port_size_and_position();       /* Ports */
         }
 
@@ -1266,7 +1271,7 @@
                                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                             }
                         }
-                        let line_options = {color: line_color, weight: 3, draggable:true, title: title};
+                        let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
                         if (list[i][6] == 'o') {   // Optional asset with dashed line
                             line_options['dashArray'] = '3,10';
                         }
