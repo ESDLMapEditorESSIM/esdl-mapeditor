@@ -1335,12 +1335,12 @@
                 var geojson_list = [];
 
                 for (let i = 0; i<list.length; i++) {
-                    classname = 'circle Building';
+                    classname = 'zoom circle Building';
                     imgsrc = 'images/' + list[i][3] + '.png';
 
                     var divicon = L.divIcon({
                         className: classname,
-                        html: '<div class="image-div" style="font-size:0px"><img class="circle-img" src="' + imgsrc + '"></img></div>',
+                        html: '<div class="image-div" style="font-size:0px"><img class="zoom circle-img" src="' + imgsrc + '"></img></div>',
                         iconSize: null
                     });
 
