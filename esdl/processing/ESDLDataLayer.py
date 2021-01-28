@@ -17,7 +17,7 @@ from esdl.processing import ESDLEcore
 from pyecore.ecore import EReference
 
 from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, get_or_create_esi_qau
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
@@ -162,58 +162,48 @@ class ESDLDataLayer:
         print('delete ref response', response)
         return response
 
-    def get_or_create_qau(self, qua_id):
+    def get_or_create_qau(self, qau_id):
         esh = get_handler()
         active_es_id = get_session('active_es_id')
         try:
-            qua = esh.get_by_id(active_es_id, qua_id)
-            return qua
+            qau = esh.get_by_id(active_es_id, qau_id)
+            return qau
         except KeyError:
             # qua does not exist, create it
-            global_qua = self.get_or_create_esi_qau()
-            if qua_id == 'flow':
-                qua = esdl.QuantityAndUnitType(id=qua_id)
-                qua.physicalQuantity = esdl.PhysicalQuantityEnum.FLOW
-                qua.unit = esdl.UnitEnum.CUBIC_METRE
-                qua.perTimeUnit = esdl.TimeUnitEnum.HOUR
-                qua.description = "Flow in m³/h"
-            if qua_id == 'head':
-                qua = esdl.QuantityAndUnitType(id=qua_id)
-                qua.physicalQuantity = esdl.PhysicalQuantityEnum.HEAD
-                qua.unit = esdl.UnitEnum.METRE
-                qua.description = "Head in m"
-            if qua_id == 'efficiency':
-                qua = esdl.QuantityAndUnitType(id=qua_id)
-                qua.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
-                qua.unit = esdl.UnitEnum.PERCENT
-                qua.description = "Efficiency in %"
-            if qua_id == 'position':
-                qua = esdl.QuantityAndUnitType(id=qua_id)
-                qua.physicalQuantity = esdl.PhysicalQuantityEnum.POSITION
-                qua.unit = esdl.UnitEnum.NONE
-                qua.description = "Position [-]"
-            if qua_id == 'kv_coefficient':
-                qua = esdl.QuantityAndUnitType(id=qua_id)
-                qua.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
-                qua.unit = esdl.UnitEnum.CUBIC_METRE
-                qua.perTimeUnit = esdl.TimeUnitEnum.HOUR
-                qua.perUnit = esdl.UnitEnum.BAR
-                qua.description = "Coefficient in m³/h/bar"
-            global_qua.quantityAndUnit.append(qua)
+            global_qua = get_or_create_esi_qau(esh, active_es_id)
+            if qau_id == 'flow':
+                qau = esdl.QuantityAndUnitType(id=qau_id)
+                qau.physicalQuantity = esdl.PhysicalQuantityEnum.FLOW
+                qau.unit = esdl.UnitEnum.CUBIC_METRE
+                qau.perTimeUnit = esdl.TimeUnitEnum.HOUR
+                qau.description = "Flow in m³/h"
+            if qau_id == 'head':
+                qau = esdl.QuantityAndUnitType(id=qau_id)
+                qau.physicalQuantity = esdl.PhysicalQuantityEnum.HEAD
+                qau.unit = esdl.UnitEnum.METRE
+                qau.description = "Head in m"
+            if qau_id == 'efficiency':
+                qau = esdl.QuantityAndUnitType(id=qau_id)
+                qau.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
+                qau.unit = esdl.UnitEnum.PERCENT
+                qau.description = "Efficiency in %"
+            if qau_id == 'position':
+                qau = esdl.QuantityAndUnitType(id=qau_id)
+                qau.physicalQuantity = esdl.PhysicalQuantityEnum.POSITION
+                qau.unit = esdl.UnitEnum.NONE
+                qau.description = "Position [-]"
+            if qau_id == 'kv_coefficient':
+                qau = esdl.QuantityAndUnitType(id=qau_id)
+                qau.physicalQuantity = esdl.PhysicalQuantityEnum.COEFFICIENT
+                qau.unit = esdl.UnitEnum.CUBIC_METRE
+                qau.perTimeUnit = esdl.TimeUnitEnum.HOUR
+                qau.perUnit = esdl.UnitEnum.BAR
+                qau.description = "Coefficient in m³/h/bar"
+            global_qua.quantityAndUnit.append(qau)
+            esh.add_object_to_dict(active_es_id, qau)
+            return qau
 
-            return qua
 
-    def get_or_create_esi_qau(self):
-        esh = get_handler()
-        active_es_id = get_session('active_es_id')
-        es: esdl.EnergySystem = esh.get_energy_system(active_es_id)
-        if not es.energySystemInformation:
-            esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
-            es.energySystemInformation = esi
-        if not es.energySystemInformation.quantityAndUnits:
-            qua = esdl.QuantityAndUnits(id=str(uuid4()))
-            es.energySystemInformation.quantityAndUnits = qua
-        return es.energySystemInformation.quantityAndUnits
 
     def get_filtered_type(self, esdl_object, reference):
         """
