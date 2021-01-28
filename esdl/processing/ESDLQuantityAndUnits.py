@@ -16,7 +16,20 @@ import uuid
 from esdl import esdl
 from pyecore.ecore import EClass, EEnum, EAttribute, EOrderedSet, EObject
 from uuid import uuid4
+from esdl.esdl_handler import EnergySystemHandler
 
+
+def get_or_create_esi_qau(esh: EnergySystemHandler, active_es_id: str) -> esdl.QuantityAndUnits:
+    es: esdl.EnergySystem = esh.get_energy_system(active_es_id)
+    if not es.energySystemInformation:
+        esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
+        es.energySystemInformation = esi
+        esh.add_object_to_dict(active_es_id, esi)
+    if not es.energySystemInformation.quantityAndUnits:
+        qaus = esdl.QuantityAndUnits(id=str(uuid4()))
+        es.energySystemInformation.quantityAndUnits = qaus
+        esh.add_object_to_dict(active_es_id, qaus)
+    return es.energySystemInformation.quantityAndUnits
 
 def get_qau_information(esdl_doc = None):
     qaut = esdl.QuantityAndUnitType()
@@ -71,7 +84,7 @@ def get_profile_type_enum_values():
     return values
 
 
-def build_qau_from_dict(qau_dict):
+def build_qau_from_dict(qau_dict) -> esdl.QuantityAndUnitType:
     qau = esdl.QuantityAndUnitType()
 
     if 'id' in qau_dict:
