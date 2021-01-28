@@ -99,19 +99,30 @@ function add_draw_control(dc, mp) {
         mp.removeControl(dc);
     }
 
+    L.drawLocal.draw.toolbar.buttons.polygon = 'Draw an area as a polygon';
+    L.drawLocal.draw.toolbar.buttons.polyline = 'Draw a cable or a pipe';
+    L.drawLocal.draw.toolbar.buttons.marker = 'Draw the asset that is selected in the menu';
+
+
     dc = new L.Control.Draw({
         edit: {
             featureGroup: get_layers(active_layer_id, 'esdl_layer'),
             poly: {
                 allowIntersection: true
+            },
+            edit: {
+                movable: true
             }
         },
         draw: {
             polygon: {
-                allowIntersection: true,
-                showArea: true
+                allowIntersection: false,
+                showArea: true,
+                showLength: true
             },
             circle: false,
+            circlemarker: false,
+            rectangle: false,
             polyline: {
                 repeatMode: true
             },

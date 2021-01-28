@@ -890,7 +890,7 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
  * @param {*} geojson_building_data 
  */
 function add_building_geojson_layer_with_legend(geojson_building_data) {
-    console.log(geojson_building_data);
+    //console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
 

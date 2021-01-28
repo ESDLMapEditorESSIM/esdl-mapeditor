@@ -58,6 +58,9 @@ function set_port_size_and_position() {
 }
 
 function set_marker_port_handlers(marker) {
+    marker.on('mousemove_connect', function(e) {
+        console.log('mousemove_connect', e);
+    })
     marker.on('mouseover', function(e) {
         if (!editing_objects) {
             let layer = e.target;
@@ -141,6 +144,11 @@ function set_marker_port_handlers(marker) {
     });
 }
 
+function handle_escape_key(e) {
+    var event = e.originalEvent;
+    console.log(event.key, e);
+}
+
 function move_connection(e) {
     let strt_pos;
 //    console.log(first_port);
@@ -156,6 +164,7 @@ function move_connection(e) {
     if (connecting_line == null) {
         connecting_line = L.polyline([strt_pos, e.latlng], {color: '#000000', weight: 2, dashArray: '3,10'});
         connecting_line.addTo(map);
+        draw_control._toolbars.draw._modes.polyline.handler.enable()
     } else {
         connecting_line.setLatLngs([strt_pos, e.latlng]);
     }
@@ -168,22 +177,26 @@ function cancel_connection(e) {
     port_drawing_connection = false;
     map.off('mousemove', move_connection);
     map.off('contextmenu', cancel_connection);
+    map.off('draw:canceled', cancel_connection)
 }
 
 function click_port(layer) {
     if (port_drawing_connection) {
         socket.emit('command', {'cmd': 'connect_ports', port1id: first_port.port_parent.id, port2id: layer.port_parent.id});
 
-        connecting_line.removeFrom(map);
-        connecting_line = null;
         map.off('mousemove', move_connection);
         map.off('contextmenu', cancel_connection);
+        map.off('draw:canceled', cancel_connection)
+        connecting_line.removeFrom(map);
+        connecting_line = null;
         first_port = null;
         port_drawing_connection = false;
     } else {
         port_drawing_connection = true;
         map.on('mousemove', move_connection);
         map.on('contextmenu', cancel_connection);
+        map.on('draw:canceled', cancel_connection);
+
     }
 }
 

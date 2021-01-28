@@ -132,6 +132,7 @@ socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, p
 get_logger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
+
 executor = Executor(app)
 
 #extensions
@@ -385,7 +386,7 @@ def download_esdl():
             name = my_es.name
         except:
             name = my_es.id
-        if name is None:
+        if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         logger.info('Sending file %s' % name)
@@ -2654,9 +2655,11 @@ def process_file_command(message):
         email = message['email']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
+        if name == '': name = 'New Energy System'
         filename = 'Unknown'
         esh = EnergySystemHandler()
         es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
+        es.esdlVersion = esdl_doc.get_esdl_version()
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -2832,7 +2835,9 @@ def initialize_app():
     else:
         logger.info('No energysystem in memory - generating empty energysystem')
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+        esdlVersion = esdl_doc.get_esdl_version();
+        es = esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+        es.esdlVersion = esdlVersion
 
     # TODO: discuss how to set active_es_id for the first time after a client connects
     es_list = esh.get_energy_systems()

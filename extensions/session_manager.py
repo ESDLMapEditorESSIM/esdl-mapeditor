@@ -37,7 +37,8 @@ def get_handler():
         else:
             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
             esh = EnergySystemHandler()
-            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+            es = esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+            # todo: set ESDL version
             set_handler(esh)
         return esh
     else:

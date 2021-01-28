@@ -99,9 +99,9 @@ function add_area_map_handlers(socket, map) {
                 update_line_ports(layer);
             }
             if (layer instanceof L.Polygon) {
-
                 // Find marker belonging to Polygon and recalculate center
                 // esdl_objects = esdl_layer.getLayers();
+                console.log('new coords', layer.getLatLngs());
                 esdl_objects = get_layers(active_layer_id, 'esdl_layer').getLayers();
                 for (let i=0; i<esdl_objects.length; i++) {
                     esdl_object = esdl_objects[i];
