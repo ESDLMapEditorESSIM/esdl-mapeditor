@@ -39,7 +39,7 @@ from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info
-from esdl import esdl
+from esdl import esdl, QuantityAndUnits
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
@@ -2069,8 +2069,19 @@ def process_command(message):
             predefined_qau = message["predefined_qau"]
             for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
                 if pqau['id'] == predefined_qau:
-                    qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
-            esdl_profile.profileQuantityAndUnit = qau
+                    try:
+                        # check if predefined qau is already presend in
+                        qau = esh.get_by_id(active_es_id, predefined_qau)
+                    except KeyError:
+                        qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
+                        esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, active_es_id)
+                        esi_qau.quantityAndUnit.append(qau)
+                        esh.add_object_to_dict(active_es_id, qau)
+                        #qau.id = str(uuid.uuid4()) # generate new id for predifined qua otherwise double ids appear
+                    break
+            # make a reference instead of a direct link
+            qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+            esdl_profile.profileQuantityAndUnit = qau_ref
         elif quap_type == 'custom_qau':
             # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
