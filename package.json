@@ -1,6 +1,6 @@
 {
   "name": "MapEditor",
-  "version": "21.2.1",
+  "version": "21.2.2",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
