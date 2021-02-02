@@ -14,6 +14,7 @@
 #  Manager:
 #      TNO
 
+from src.version import __long_version__ as mapeditor_version
 from warnings import warn
 from flask_executor import Executor
 from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, redirect, Response
@@ -78,6 +79,8 @@ from src.datalayer_api import DataLayerAPI
 from src.view_modes import ViewModes
 from extensions.spatial_operations import SpatialOperations
 
+
+print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
 
 if settings.USE_GEVENT:
@@ -302,7 +305,8 @@ def editor():
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
                                ibis_service_enabled=ibis_service_enabled,
-                               debug=settings.FLASK_DEBUG
+                               debug=settings.FLASK_DEBUG,
+                               version=mapeditor_version
                                )
     else:
         return render_template('index.html')
