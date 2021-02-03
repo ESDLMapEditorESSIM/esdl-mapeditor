@@ -4892,22 +4892,21 @@ class AbstractPassiveSwitch(AbstractSwitch):
 class Valve(AbstractActiveSwitch):
     """Defines a valve, e.g. in a water, gas or heat network"""
     type = EAttribute(eType=ValveTypeEnum, unique=True, derived=False, changeable=True)
-    flowCoefficient = EAttribute(eType=EDouble, unique=True,
-                                 derived=False, changeable=True, default_value=0.0)
     innerDiameter = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    flowCoefficient = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, type=None, flowCoefficient=None, innerDiameter=None, **kwargs):
+    def __init__(self, *, type=None, innerDiameter=None, flowCoefficient=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if type is not None:
             self.type = type
 
-        if flowCoefficient is not None:
-            self.flowCoefficient = flowCoefficient
-
         if innerDiameter is not None:
             self.innerDiameter = innerDiameter
+
+        if flowCoefficient is not None:
+            self.flowCoefficient = flowCoefficient
 
 
 class PVInstallation(PVPanel):
@@ -4969,7 +4968,8 @@ class CheckValve(AbstractPassiveSwitch):
 
     innerDiameter = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     reopenDeltaP = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    flowCoefficient = EReference(ordered=True, unique=True, containment=True, derived=False)
+    flowCoefficient = EAttribute(eType=EDouble, unique=True,
+                                 derived=False, changeable=True, default_value=0.0)
 
     def __init__(self, *, innerDiameter=None, reopenDeltaP=None, flowCoefficient=None, **kwargs):
 
