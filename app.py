@@ -14,9 +14,10 @@
 #  Manager:
 #      TNO
 
+from src.version import __long_version__ as mapeditor_version
 from warnings import warn
 from flask_executor import Executor
-from flask import Flask, render_template, session, request, send_from_directory, jsonify, abort, redirect, Response
+from flask import Flask, render_template, session, request, send_from_directory, redirect, Response
 from flask_socketio import SocketIO, emit
 from flask_session import Session
 from flask_oidc import OpenIDConnect
@@ -78,6 +79,8 @@ from src.datalayer_api import DataLayerAPI
 from src.view_modes import ViewModes
 from extensions.spatial_operations import SpatialOperations
 
+
+print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
 
 if settings.USE_GEVENT:
@@ -303,7 +306,8 @@ def editor():
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
                                ibis_service_enabled=ibis_service_enabled,
-                               debug=settings.FLASK_DEBUG
+                               debug=settings.FLASK_DEBUG,
+                               version=mapeditor_version
                                )
     else:
         return render_template('index.html')
@@ -380,19 +384,22 @@ def download_esdl():
 
     try:
         #stream = esh.to_bytesio()
-        content = esh.to_string(es_id=active_es_id)
         my_es = esh.get_energy_system(es_id=active_es_id)
+        esh.update_version(es_id=active_es_id)
+        if my_es.esdlVersion is None or my_es.esdlVersion is '':
+            my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
         except:
             name = my_es.id
-        if name is None or name == '':
+        if name is None or name is '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         logger.info('Sending file %s' % name)
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
+        content = esh.to_string(es_id=active_es_id)
 
         #wrapped_io = FileWrapper(stream)
         #logger.debug(content)
@@ -1683,7 +1690,7 @@ def process_command(message):
             asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
             ports = asset.port
             for p in ports:
-                port_list.append({id: p.id, type: type(p).__name__})
+                port_list.append({'id': p.id, 'type': type(p).__name__})
             emit('portlist', port_list)
 
     if message['cmd'] == 'connect_ports':
@@ -2045,9 +2052,15 @@ def process_command(message):
 
                     esdl_profile.measurement = p['measurement']
                     esdl_profile.field = p['field']
-                    esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
-                        settings.profile_database_config['host']
-                    esdl_profile.port = int(settings.profile_database_config['port'])
+                    if 'host' in p and p['host']:
+                        esdl_profile.host = p['host']
+                        if 'port' in p and p['port']:
+                           esdl_profile.port = int(p['port'])
+                    else:
+                        esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                            settings.profile_database_config['host']
+                        esdl_profile.port = int(settings.profile_database_config['port'])
+
                     esdl_profile.database = p['database']
                     esdl_profile.filters = settings.profile_database_config['filters']
 
@@ -2070,8 +2083,19 @@ def process_command(message):
             predefined_qau = message["predefined_qau"]
             for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
                 if pqau['id'] == predefined_qau:
-                    qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
-            esdl_profile.profileQuantityAndUnit = qau
+                    try:
+                        # check if predefined qau is already presend in
+                        qau = esh.get_by_id(active_es_id, predefined_qau)
+                    except KeyError:
+                        qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
+                        esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, active_es_id)
+                        esi_qau.quantityAndUnit.append(qau)
+                        esh.add_object_to_dict(active_es_id, qau)
+                        #qau.id = str(uuid.uuid4()) # generate new id for predifined qua otherwise double ids appear
+                    break
+            # make a reference instead of a direct link
+            qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+            esdl_profile.profileQuantityAndUnit = qau_ref
         elif quap_type == 'custom_qau':
             # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
@@ -2183,9 +2207,9 @@ def process_command(message):
         new_list = []
         #print(conn_list)
         for conn in conn_list:
-            if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
+            if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or
                     conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
-                    (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or \
+                    (conn['from-port-id'] != to_port_id or conn['from-asset-id'] != to_asset_id or
                     conn['to-port-id'] != from_port_id or conn['to-asset-id'] != from_asset_id):
                 # Remove both directions from -> to and to -> from as we don't know how they are stored in the list
                 # does not matter, as a connection is unique
@@ -2658,8 +2682,7 @@ def process_file_command(message):
         if name == '': name = 'New Energy System'
         filename = 'Unknown'
         esh = EnergySystemHandler()
-        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
-        es.esdlVersion = esdl_doc.get_esdl_version()
+        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name, esdlVersion=esdl_doc.get_esdl_version())
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -2835,9 +2858,7 @@ def initialize_app():
     else:
         logger.info('No energysystem in memory - generating empty energysystem')
         esh = EnergySystemHandler()
-        esdlVersion = esdl_doc.get_esdl_version();
-        es = esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
-        es.esdlVersion = esdlVersion
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.get_esdl_version())
 
     # TODO: discuss how to set active_es_id for the first time after a client connects
     es_list = esh.get_energy_systems()

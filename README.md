@@ -97,6 +97,11 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 
 Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 
+## Releasing versions
+For a new release or deployment, use `npm version patch` to update patch version `z` in version `x`.`y`.`z`. 
+Use `npm version minor` to update `y` version value.
+
+
 ## License
 
 The ESDL MapEditor is distributed under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0).
