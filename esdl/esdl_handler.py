@@ -535,9 +535,9 @@ class EnergySystemHandler:
     def generate_uuid():
         return str(uuid4())
 
-    def create_empty_energy_system(self, name, es_description, inst_title, area_title):
+    def create_empty_energy_system(self, name, es_description, inst_title, area_title, esdlVersion=None):
         es_id = str(uuid4())
-        self.energy_system = esdl.EnergySystem(id=es_id, name=name, description=es_description)
+        self.energy_system = esdl.EnergySystem(id=es_id, name=name, description=es_description, esdlVersion=esdlVersion)
 
         uri = StringURI('empty_energysystem.esdl')
         self.resource = self.rset.create_resource(uri)
@@ -577,6 +577,25 @@ class EnergySystemHandler:
         print('Deserializing EnergySystem...', end="")
         self.load_from_string(state['energySystem'])
         print('done')
+
+
+    def update_version(self, es_id) -> str:
+        """
+        Increments the version of this Energy System and returns it
+
+        """
+        es = self.get_energy_system(es_id)
+        version = '' if es.version is None else str(es.version)
+        try:
+            import re
+            splitted = re.split(r"\D", version)
+            print(splitted)
+            major = splitted[0]
+            major = int(major) + 1
+        except ValueError:
+            major = 1
+        es.version = str(major)
+        return es.version
 
 
 class StringURI(URI):

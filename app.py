@@ -383,19 +383,22 @@ def download_esdl():
 
     try:
         #stream = esh.to_bytesio()
-        content = esh.to_string(es_id=active_es_id)
         my_es = esh.get_energy_system(es_id=active_es_id)
+        esh.update_version(es_id=active_es_id)
+        if my_es.esdlVersion is None or my_es.esdlVersion is '':
+            my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
         except:
             name = my_es.id
-        if name is None:
+        if name is None or name is '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         logger.info('Sending file %s' % name)
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
+        content = esh.to_string(es_id=active_es_id)
 
         #wrapped_io = FileWrapper(stream)
         #logger.debug(content)
@@ -2677,7 +2680,7 @@ def process_file_command(message):
         if top_area_name == '': top_area_name = 'Untitled area'
         filename = 'Unknown'
         esh = EnergySystemHandler()
-        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name)
+        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name, esdlVersion=esdl_doc.get_esdl_version())
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -2853,7 +2856,7 @@ def initialize_app():
     else:
         logger.info('No energysystem in memory - generating empty energysystem')
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.get_esdl_version())
 
     # TODO: discuss how to set active_es_id for the first time after a client connects
     es_list = esh.get_energy_systems()

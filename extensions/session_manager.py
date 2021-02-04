@@ -15,6 +15,7 @@
 from flask import session
 from esdl.esdl_handler import EnergySystemHandler
 from datetime import datetime
+import esdl.processing.EcoreDocumentation as esdl_doc
 import threading
 import time
 import src.log as log
@@ -37,13 +38,13 @@ def get_handler():
         else:
             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
             esh = EnergySystemHandler()
-            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
             set_handler(esh)
         return esh
     else:
         logger.warning('Session has timed-out. Returning empty energy system')
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area')
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
         set_handler(esh)
         return esh
 

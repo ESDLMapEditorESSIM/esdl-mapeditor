@@ -21,6 +21,7 @@ import src.log as log
 
 logger = log.get_logger(__name__)
 
+esdlVersion = "unknown"
 
 class EcoreDocumentation:
     """This class loads the dynamic meta-model and returns the documentation for attributes as these are
@@ -35,6 +36,8 @@ class EcoreDocumentation:
             else:
                 self.esdlEcoreFile = esdlEcoreFile
             self._init_metamodel()
+            global esdlVersion
+            esdlVersion = self.get_esdl_version()
 
     def _init_metamodel(self):
             self.rset = ResourceSet()
