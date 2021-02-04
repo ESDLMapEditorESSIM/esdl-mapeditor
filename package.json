@@ -1,5 +1,4 @@
 {
-  "name": "MapEditor",
   "version": "21.2.5",
   "scripts": {
     "lint": "vue-cli-service lint",
