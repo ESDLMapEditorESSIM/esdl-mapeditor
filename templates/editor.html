@@ -1710,10 +1710,14 @@
 			// });
 
             socket.on('place_edr_asset', function(asset_type) {
-                $('#asset_menu').val(asset_type);
-                $("#asset_menu").selectmenu("refresh");
+                if (asset_type == 'Pipe' || asset_type == 'ElectricityCable') {
+                    update_line_asset_menu(asset_type);
+                    initiate_draw_asset(draw_control, 'line_select');
+                } else {
+                    update_asset_menu(asset_type);
+                    initiate_draw_asset(draw_control, 'asset_menu');
+                }
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'edr_assets'});
-                initiate_draw_asset(draw_control, 'asset_menu');
             });
 
             socket.on('port_profile_info', function(port_profile_info) {
@@ -1840,23 +1844,26 @@
         function initiate_draw_asset(dc, menu_id) {
             var select_box = document.getElementById(menu_id);
             var selected_asset = select_box.options[select_box.selectedIndex].value;
-            var marker_class_name = window[selected_asset + "Marker"];
-
-            dc.setDrawingOptions({
-                marker: {
-                    icon: new marker_class_name()
-                }
-            });
 
             var line_assets = ["ElectricityCable", "Pipe"];
             var area_assets = ["Area", "PVPark", "WindPark"];
             if (line_assets.includes(selected_asset)) {
+                if (menu_id == 'asset_menu') update_line_asset_menu(selected_asset);
                 dc._toolbars.draw._modes.polyline.handler.enable();
-            } else if (area_assets.includes(selected_asset)) {
-                socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
-                dc._toolbars.draw._modes.polygon.handler.enable();
             } else {
-                dc._toolbars.draw._modes.marker.handler.enable();
+                var marker_class_name = window[selected_asset + "Marker"];
+
+                dc.setDrawingOptions({
+                    marker: {
+                        icon: new marker_class_name()
+                    }
+                });
+                if (area_assets.includes(selected_asset)) {
+                    socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
+                    dc._toolbars.draw._modes.polygon.handler.enable();
+                } else {
+                    dc._toolbars.draw._modes.marker.handler.enable();
+                }
             }
         }
 
