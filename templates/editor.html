@@ -35,6 +35,7 @@
 <!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>-->
     <link rel="stylesheet" href="./plugins/leaflet.draw.css" />
     <script src="./plugins/leaflet.draw-custom.js"></script>
+    <script src="./utils/draw_state.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css" type="text/css"/>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.min.js"></script>
@@ -2175,6 +2176,12 @@
             period: "PT1H"
         }
     });
+
+    map.on('keyup', function(e) {
+        if (e.keyCode === 27) {
+            console.log('esc pressed!')
+        }
+    })
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */

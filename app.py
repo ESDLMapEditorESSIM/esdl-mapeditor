@@ -1508,6 +1508,43 @@ def process_command(message):
                         asset.port.append(outp)
                         asset.length = float(shape['length'])
 
+                        # automatically connect the conductor to the ports that have been clicked
+                        if 'connect_ports' in message and message['connect_ports'] is not '':
+                            connect_ports_msg = message['connect_ports']
+                            start_port = None
+                            end_port = None
+                            if 'asset_start_port' in connect_ports_msg:
+                                asset_start_port = connect_ports_msg['asset_start_port']
+                                start_port = esh.get_by_id(active_es_id, asset_start_port)
+                            if 'asset_end_port' in connect_ports_msg:
+                                asset_end_port = connect_ports_msg['asset_end_port']
+                                end_port = esh.get_by_id(active_es_id, asset_end_port)
+                            if isinstance(start_port, esdl.OutPort) and (end_port is None or isinstance(end_port, esdl.InPort)):
+                                inp.connectedTo.append(start_port)
+                                if end_port is not None:
+                                    # only start port is connected
+                                    outp.connectedTo.append(end_port)
+                            elif isinstance(start_port, esdl.InPort) and (end_port is None or isinstance(end_port, esdl.OutPort)):
+                                if end_port is not None:
+                                    # only start port is connected
+                                    inp.connectedTo.append(end_port)
+                                outp.connectedTo.append(start_port)
+                                line: esdl.Line = asset.geometry
+                                from pyecore.valuecontainer import EOrderedSet
+                                point = list(line.point)
+                                line.point.clear()
+                                for p in point:
+                                    line.point.insert(0, p)  # reverse list of coordinates
+                            elif isinstance(start_port, esdl.OutPort) and not isinstance(end_port, esdl.InPort):
+                                send_alert("Please connect the {} to an {}".format(object_type, esdl.InPort.eClass.name))
+                                return
+                            elif isinstance(start_port, esdl.InPort) and not isinstance(end_port, esdl.OutPort):
+                                send_alert(
+                                    "Please connect the {} to an {}".format(object_type, esdl.OutPort.eClass.name))
+                                return
+                            # send connections
+
+
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
                     # -------------------------------------------------------------------------------------------------------------

@@ -17,6 +17,9 @@
 var port_drawing_connection = false;
 var first_port = null;
 var connecting_line = null;
+var port_drawing_conductor = false;
+
+
 
 function set_port_size_and_position() {
     let size = Math.pow(map.getZoom()/8+1,3);
@@ -58,13 +61,9 @@ function set_port_size_and_position() {
 }
 
 function set_marker_port_handlers(marker) {
-    marker.on('mousemove_connect', function(e) {
-        console.log('mousemove_connect', e);
-    })
     marker.on('mouseover', function(e) {
         if (!editing_objects) {
             let layer = e.target;
-
             let ports = layer.ports;
             let coords = layer._latlng;
 
@@ -83,6 +82,7 @@ function set_marker_port_handlers(marker) {
             if (marker_type === 'Joint') css_joint_addition = 'Joint';
 
             for (let p in ports) {
+                if (!drawState.canConnect(ports[p])) continue; // only show port that can be connected
                 let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
                 cnt_ports[ports[p].type]++;
                 let port_name = ports[p].type + ' - ' + ports[p].name;
@@ -106,6 +106,7 @@ function set_marker_port_handlers(marker) {
                     port_marker.on('mouseover', function(e) {
                         let layer = e.target;
                         layer.port_parent.active = true;
+
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
@@ -116,9 +117,12 @@ function set_marker_port_handlers(marker) {
     //                    layer.removeFrom(map);
                     });
                     port_marker.on('click', function(e) {
-                        let layer = e.target;
-                        if (first_port == null) first_port = port_marker;
-                        click_port(layer);
+                        handle_connect(port_marker, e);
+                    });
+                    port_marker.on('keyup', function(e) {
+                        if (e.keyCode === 27) {
+                            console.log('esc pressed!')
+                        }
                     });
                 } else {
                     // show already created marker
@@ -139,14 +143,53 @@ function set_marker_port_handlers(marker) {
                 if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 50);
+            }, 300);
         }
     });
 }
 
-function handle_escape_key(e) {
-    var event = e.originalEvent;
-    console.log(event.key, e);
+function handle_connect(port_marker, e) {
+    let layer = e.target;
+    //console.log('port_marker click', e);
+    // pressing Ctrl button on keyboard starts drawing pipe/cable
+    handler = draw_control._toolbars.draw._modes.polyline.handler;
+    // handler._enabled == true means that the person started drawing using the line tool in the toolbar
+    if ((e.originalEvent.ctrlKey || e.originalEvent.metaKey) || ((drawState.isDrawing() || handler._enabled) && !port_drawing_connection)) {
+        // start drawing pipe/cable
+        if (drawState.isDrawing() === false) {
+            console.log('Connect using conductor');
+
+            if (L.Browser.touch && handler._poly) {
+                // already added first point due to touchstart event, but we don't want this point
+                // so remove
+                let lastMarker = handler._markers.pop();
+                let poly = handler._poly;
+                handler._poly.setLatLngs([]);
+                handler._markerGroup.removeLayer(lastMarker);
+                if (poly.getLatLngs().length < 2) {
+                    handler._map.removeLayer(poly);
+                }
+            }
+            drawState.startDrawConductor(layer, handler);
+            handler.enable();
+            handler.addVertex(layer.getLatLng()); // add first point
+        } else {
+            // finish drawing conductor
+            if (L.Browser.touch) {
+                // if touch is supported by the browser, clicking on a port
+                // generates a touch event on a location we don't want
+                handler.deleteLastVertex(); // delete coord of touchstart event on port
+            }
+            handler.addVertex(layer.getLatLng()); // add latlng of asset
+            drawState.stopDrawConductor(layer);
+            handler.completeShape();
+            drawState.resetRepeatMode();
+        }
+    } else {
+        console.log("Connect ports")
+        if (first_port == null) first_port = port_marker;
+        click_port(layer);
+    }
 }
 
 function move_connection(e) {
@@ -164,7 +207,6 @@ function move_connection(e) {
     if (connecting_line == null) {
         connecting_line = L.polyline([strt_pos, e.latlng], {color: '#000000', weight: 2, dashArray: '3,10'});
         connecting_line.addTo(map);
-        draw_control._toolbars.draw._modes.polyline.handler.enable()
     } else {
         connecting_line.setLatLngs([strt_pos, e.latlng]);
     }
@@ -196,7 +238,6 @@ function click_port(layer) {
         map.on('mousemove', move_connection);
         map.on('contextmenu', cancel_connection);
         map.on('draw:canceled', cancel_connection);
-
     }
 }
 
@@ -304,9 +345,10 @@ function set_line_port_handlers(line) {
                         }, 50);
                     });
                     port_marker.on('click', function(e) {
-                        let layer = e.target;
-                        if (first_port == null) first_port = port_marker;
-                        click_port(layer);
+                        handle_connect(port_marker, e);
+//                        let layer = e.target;
+//                        if (first_port == null) first_port = port_marker;
+//                        click_port(layer);
                     });
                 } else {
                     // show already created marker
@@ -338,7 +380,7 @@ function set_line_port_handlers(line) {
                 if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 50);
+            }, 100);
         }
     });
 }

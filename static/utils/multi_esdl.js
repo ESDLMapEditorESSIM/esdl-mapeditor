@@ -99,9 +99,9 @@ function add_draw_control(dc, mp) {
         mp.removeControl(dc);
     }
 
-    L.drawLocal.draw.toolbar.buttons.polygon = 'Draw an area as a polygon';
+    L.drawLocal.draw.toolbar.buttons.polygon = 'Draw an area or asset as a polygon';
     L.drawLocal.draw.toolbar.buttons.polyline = 'Draw a cable or a pipe';
-    L.drawLocal.draw.toolbar.buttons.marker = 'Draw the asset that is selected in the menu';
+    L.drawLocal.draw.toolbar.buttons.marker = 'Draw the asset that is selected in the menu as a marker';
 
 
     dc = new L.Control.Draw({
@@ -122,9 +122,13 @@ function add_draw_control(dc, mp) {
             },
             circle: false,
             circlemarker: false,
-            rectangle: false,
             polyline: {
-                repeatMode: true
+                repeatMode: true,
+                zIndexOffset: -2000, // for drawing using the port handlers
+                touchIcon: new L.DivIcon({
+			        iconSize: new L.Point(10, 10),
+		        	className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
+		        })
             },
             marker: {
                 icon: new WindTurbineMarker(),

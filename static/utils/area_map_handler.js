@@ -41,6 +41,20 @@ function esdl_layer_created_event_handler(event) {
         });
     }
     if (type === 'polyline') {
+        let connect_ports_msg = '';
+        if (drawState.isFinished()) {
+            // need to connect following port id's with the line
+            let startAsset_port_id = drawState.startLayer.port_parent.id;
+            let endAsset_port_id = drawState.endLayer.port_parent.id;
+            connect_ports_msg = {'asset_start_port': startAsset_port_id, 'asset_end_port': endAsset_port_id};
+        } else {
+            if (drawState.startLayer != null) {
+                // started drawing on a port layer but not finished on a port, but somewhere on the map
+                let startAsset_port_id = drawState.startLayer.port_parent.id;
+                connect_ports_msg = {'asset_start_port': startAsset_port_id };
+            }
+        }
+        drawState.reset(); // reset DrawState for connecting assets by pipes using the ports
         line_type = document.getElementById("line_select").value;
         //console.log('selected line type: ' + line_type);
         layer.type = line_type;
@@ -53,7 +67,8 @@ function esdl_layer_created_event_handler(event) {
                 crs: 'WGS84',
                 coordinates: layer.getLatLngs(),
                 length: polyline_length
-            }
+            },
+            connect_ports: connect_ports_msg
         });
     }
     if (type === 'polygon' || type === 'rectangle') {
@@ -149,6 +164,14 @@ function add_area_map_handlers(socket, map) {
 
     map.on('click', function(e) {
         map.contextmenu.hide();
+    });
+
+//    map.on('draw:canceled', function(e) {
+//        drawState.reset();
+//    });
+    map.on(L.Draw.Event.DRAWSTOP, function(e) {
+        console.log('drawStop');
+        drawState.reset();
     });
 };
 

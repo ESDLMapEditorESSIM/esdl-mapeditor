@@ -279,9 +279,10 @@ $(document).ready(function() {
 // ----------------------------------------------------------------------------------------------------------------
 //  Leaflet Control for a button to add a note to the map
 // ----------------------------------------------------------------------------------------------------------------
+//        toolbarIcon: {html: '<div class="ui-icon ui-icon-document-b ui-icon-large">&nbsp;</div>', tooltip: 'Add note'}
 var AddNote = L.Toolbar2.Action.extend({
     options: {
-        toolbarIcon: {html: '<div class="ui-icon ui-icon-document-b">&nbsp;</div>', tooltip: 'Add note'}
+        toolbarIcon: {html: '<div><i class="far fa-comment-alt" style="color: black"></i></div>', tooltip: 'Add note'}
     },
     addHooks: function () {
         notes.add_note();
