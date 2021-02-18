@@ -306,7 +306,7 @@ class ESDLServices:
                     notes_from_service = ESDLAsset.load_asset_from_string(esdl_string=r.text)
                     if isinstance(notes_from_service, esdl.Notes):
                         notes_list = []
-                        for note in notes_from_service.note:
+                        for note in list(notes_from_service.note):
                             notes.note.append(note)
                             esh.add_object_to_dict(active_es_id, note)
                             map_location = note.mapLocation
