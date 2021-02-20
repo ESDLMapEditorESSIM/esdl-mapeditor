@@ -62,7 +62,7 @@ function set_port_size_and_position() {
 
 function set_marker_port_handlers(marker) {
     marker.on('mouseover', function(e) {
-        if (!editing_objects) {
+        if (!editing_objects && !deleting_objects) {
             let layer = e.target;
             let ports = layer.ports;
             let coords = layer._latlng;
@@ -304,7 +304,7 @@ function set_line_port_handlers(line) {
             line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
         }
 
-        if (!editing_objects) {
+        if (!editing_objects && !deleting_objects) {
            // do handling of ports of a conductor
             let ports = layer.ports;
             let coords = layer._latlngs;
