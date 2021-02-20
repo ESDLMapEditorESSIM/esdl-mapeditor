@@ -24,9 +24,6 @@ class DrawState {
         this.repeatMode = null;
     }
 
-
-
-
     startDrawConductor(startLayer, handler) {
         this.drawing = true;
         this.handler = handler;
@@ -66,7 +63,7 @@ class DrawState {
         return (this.startLayer !== null && this.endLayer !== null);
     }
 
-     reset() {
+    reset() {
         console.log('Reset draw state', this);
         this.drawing = false;
         this.startLayer = null;

@@ -39,7 +39,8 @@ from src.wms_layers import WMSLayers
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info
+from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info, \
+    get_asset_geom_info
 from esdl import esdl
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
@@ -1513,6 +1514,10 @@ def process_command(message):
                             connect_ports_msg = message['connect_ports']
                             start_port = None
                             end_port = None
+                            from_port1 = None
+                            to_port1 = None
+                            from_port2 = None
+                            to_port2 = None
                             if 'asset_start_port' in connect_ports_msg:
                                 asset_start_port = connect_ports_msg['asset_start_port']
                                 start_port = esh.get_by_id(active_es_id, asset_start_port)
@@ -1521,14 +1526,22 @@ def process_command(message):
                                 end_port = esh.get_by_id(active_es_id, asset_end_port)
                             if isinstance(start_port, esdl.OutPort) and (end_port is None or isinstance(end_port, esdl.InPort)):
                                 inp.connectedTo.append(start_port)
+                                from_port1 = inp
+                                to_port1 = start_port
                                 if end_port is not None:
                                     # only start port is connected
                                     outp.connectedTo.append(end_port)
+                                    from_port2 = outp
+                                    to_port2 = end_port
                             elif isinstance(start_port, esdl.InPort) and (end_port is None or isinstance(end_port, esdl.OutPort)):
                                 if end_port is not None:
                                     # only start port is connected
                                     inp.connectedTo.append(end_port)
+                                    from_port2 = inp
+                                    to_port2 = end_port
                                 outp.connectedTo.append(start_port)
+                                from_port1 = outp
+                                to_port1 = start_port
                                 line: esdl.Line = asset.geometry
                                 from pyecore.valuecontainer import EOrderedSet
                                 point = list(line.point)
@@ -1542,8 +1555,42 @@ def process_command(message):
                                 send_alert(
                                     "Please connect the {} to an {}".format(object_type, esdl.OutPort.eClass.name))
                                 return
-                            # send connections
 
+                            # Send connections
+                            add_to_building = False  # TODO: Fix using this inside buildings
+                            conn_list = get_session_for_esid(active_es_id, 'conn_list')
+                            if start_port:
+                                if start_port == inp.connectedTo[0]:
+                                    asset1_port_location = asset.geometry.point[0]
+                                else:
+                                    asset1_port_location = asset.geometry.point[-1]
+
+                                emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                                      'from-port-id': from_port1.id, 'to-port-id': to_port1.id,
+                                                      'new_conn': [[asset1_port_location.lat, asset1_port_location.lon],
+                                                                   [asset1_port_location.lat, asset1_port_location.lon]]})
+                                # TODO: Fix carriers
+                                conn_list.append(
+                                    {'from-port-id': from_port1.id, 'from-port-carrier': None, 'from-asset-id': from_port1.eContainer().id,
+                                     'from-asset-coord': [asset1_port_location.lat, asset1_port_location.lon],
+                                     'to-port-id': to_port1.id, 'to-port-carrier': None, 'to-asset-id': to_port1.eContainer().id,
+                                     'to-asset-coord': [asset1_port_location.lat, asset1_port_location.lon]})
+                            if end_port:
+                                if end_port == inp.connectedTo[0]:
+                                    asset2_port_location = asset.geometry.point[0]
+                                else:
+                                    asset2_port_location = asset.geometry.point[-1]
+
+                                emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                                      'from-port-id': from_port2.id, 'to-port-id': to_port2.id,
+                                                      'new_conn': [[asset2_port_location.lat, asset2_port_location.lon],
+                                                                   [asset2_port_location.lat, asset2_port_location.lon]]})
+                                # TODO: Fix carriers
+                                conn_list.append(
+                                    {'from-port-id': from_port2.id, 'from-port-carrier': None, 'from-asset-id': from_port2.eContainer().id,
+                                     'from-asset-coord': [asset2_port_location.lat, asset2_port_location.lon],
+                                     'to-port-id': to_port2.id, 'to-port-carrier': None, 'to-asset-id': to_port2.eContainer().id,
+                                     'to-asset-coord': [asset2_port_location.lat, asset2_port_location.lon]})
 
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
