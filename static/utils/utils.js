@@ -46,14 +46,20 @@ function drawTextImage(text) {
     let ctx = canvas.getContext('2d');
     ctx.fillStyle = '#000000';
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle"
     // auto size text to fit in box
     let fontface = 'sans-serif';
     let fontsize = 200;
+    let y_start = 72; // align baseline middle would be at 64 pixels, but capital letters start at base line, so lower it a bit
+    if (text.length === 1) {
+        fontsize = 168; // single letters need to be a bit smaller, otherwise they don't fit top and bottom
+        y_start = 76;
+    }
     do {
         ctx.font=fontsize+"px "+fontface;
         fontsize--;
     } while(ctx.measureText(text).width > canvas.width)
-    ctx.fillText(text, 64, Math.max(Math.min(fontsize, 128), 80));
+    ctx.fillText(text, 64, y_start);
 
     // convert to data url and image
     let url = canvas.toDataURL();

@@ -958,16 +958,23 @@ def split_conductor(conductor, location, mode, conductor_container):
         for point in line1.point:
             coords1.append([point.lat, point.lon])
         port_list = []
+        carrier = None
+        if port1.carrier: carrier = port1.carrier
+        if port2.carrier: carrier = port2.carrier
+        carrier_id = carrier.id if carrier is not None else None
         for p in new_cond1.port:
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+            p.carrier = carrier
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond1)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, state, port_list])
         coords2 = []
         for point in line2.point:
             coords2.append([point.lat, point.lon])
         port_list = []
+
         for p in new_cond2.port:
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+            p.carrier = carrier
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond2)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, state, port_list])
 
@@ -984,14 +991,17 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         # create list of connections to be added to UI
         if mode == 'connect':
-            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-port-carrier': None, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-port-carrier': carrier_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         if mode == 'add_joint':
             joint_id = str(uuid.uuid4())
             joint = esdl.Joint(id=joint_id, name='Joint_'+joint_id[:4])
             inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
             outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
+            if carrier:
+                inp.carrier = carrier
+                outp.carrier = carrier
 
             if type(new_port2).__name__ == "OutPort":
                 inp.connectedTo.append(new_port2)
@@ -1022,10 +1032,10 @@ def split_conductor(conductor, location, mode, conductor_container):
             state = asset_state_to_ui(joint)
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], state, port_list, capability_type])
 
-            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': None, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port2_conn_to_id, 'to-port-carrier': None, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
-            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-port-carrier': None, 'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-port-carrier': None, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port2_conn_to_id, 'to-port-carrier': carrier_id, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-port-carrier': carrier_id, 'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                          'to-port-id': new_port1_id, 'to-port-carrier': carrier_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
@@ -1508,7 +1518,7 @@ def process_command(message):
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                         asset.port.append(outp)
                         asset.length = float(shape['length'])
-
+                        print(message)
                         # automatically connect the conductor to the ports that have been clicked
                         if 'connect_ports' in message and message['connect_ports'] is not '':
                             connect_ports_msg = message['connect_ports']
@@ -1524,72 +1534,92 @@ def process_command(message):
                             if 'asset_end_port' in connect_ports_msg:
                                 asset_end_port = connect_ports_msg['asset_end_port']
                                 end_port = esh.get_by_id(active_es_id, asset_end_port)
-                            if isinstance(start_port, esdl.OutPort) and (end_port is None or isinstance(end_port, esdl.InPort)):
-                                inp.connectedTo.append(start_port)
-                                from_port1 = inp
-                                to_port1 = start_port
-                                if end_port is not None:
-                                    # only start port is connected
+
+                            # cannot connect to same port type
+                            if start_port is not None and end_port is not None and \
+                                    type(start_port) == type(end_port):
+                                other_type = esdl.InPort.eClass.name if isinstance(start_port, esdl.OutPort) \
+                                    else esdl.OutPort.eClass.name
+                                send_alert(
+                                    "Please connect the {} to an {}".format(object_type, other_type))
+                                return
+
+                            require_reversed = False  # to indicate the coordinates of the line need reversal
+                            if start_port is not None:
+                                if isinstance(start_port, esdl.OutPort):
+                                    inp.connectedTo.append(start_port)
+                                    from_port1 = inp
+                                    to_port1 = start_port
+                                elif isinstance(start_port, esdl.InPort):
+                                    outp.connectedTo.append(start_port)
+                                    from_port1 = outp
+                                    to_port1 = start_port
+                                    require_reversed = True
+                            if end_port is not None:
+                                if isinstance(end_port, esdl.InPort):
                                     outp.connectedTo.append(end_port)
                                     from_port2 = outp
                                     to_port2 = end_port
-                            elif isinstance(start_port, esdl.InPort) and (end_port is None or isinstance(end_port, esdl.OutPort)):
-                                if end_port is not None:
-                                    # only start port is connected
+                                elif isinstance(end_port, esdl.OutPort):
                                     inp.connectedTo.append(end_port)
                                     from_port2 = inp
                                     to_port2 = end_port
-                                outp.connectedTo.append(start_port)
-                                from_port1 = outp
-                                to_port1 = start_port
-                                line: esdl.Line = asset.geometry
-                                from pyecore.valuecontainer import EOrderedSet
-                                point = list(line.point)
+                                    require_reversed = True
+
+                            if require_reversed:
+                                line: esdl.Line = asset.geometry  # reverse coordinate to change direction of line
+                                point = list(line.point)  # copy list
                                 line.point.clear()
                                 for p in point:
                                     line.point.insert(0, p)  # reverse list of coordinates
-                            elif isinstance(start_port, esdl.OutPort) and not isinstance(end_port, esdl.InPort):
-                                send_alert("Please connect the {} to an {}".format(object_type, esdl.InPort.eClass.name))
-                                return
-                            elif isinstance(start_port, esdl.InPort) and not isinstance(end_port, esdl.OutPort):
-                                send_alert(
-                                    "Please connect the {} to an {}".format(object_type, esdl.OutPort.eClass.name))
-                                return
 
                             # Send connections
                             add_to_building = False  # TODO: Fix using this inside buildings
                             conn_list = get_session_for_esid(active_es_id, 'conn_list')
                             if start_port:
-                                if start_port == inp.connectedTo[0]:
-                                    asset1_port_location = asset.geometry.point[0]
-                                else:
+                                if isinstance(start_port, esdl.InPort):
                                     asset1_port_location = asset.geometry.point[-1]
+                                else:
+                                    asset1_port_location = asset.geometry.point[0]
+                                carrier_id = None
+                                if start_port.carrier is not None:
+                                    carrier_id = start_port.carrier.id
+                                    inp.carrier = start_port.carrier
+                                    outp.carrier = start_port.carrier
+                                    if end_port is not None:
+                                        end_port.carrier = start_port.carrier
+
 
                                 emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
                                                       'from-port-id': from_port1.id, 'to-port-id': to_port1.id,
                                                       'new_conn': [[asset1_port_location.lat, asset1_port_location.lon],
                                                                    [asset1_port_location.lat, asset1_port_location.lon]]})
-                                # TODO: Fix carriers
                                 conn_list.append(
-                                    {'from-port-id': from_port1.id, 'from-port-carrier': None, 'from-asset-id': from_port1.eContainer().id,
+                                    {'from-port-id': from_port1.id, 'from-port-carrier': carrier_id, 'from-asset-id': from_port1.eContainer().id,
                                      'from-asset-coord': [asset1_port_location.lat, asset1_port_location.lon],
-                                     'to-port-id': to_port1.id, 'to-port-carrier': None, 'to-asset-id': to_port1.eContainer().id,
+                                     'to-port-id': to_port1.id, 'to-port-carrier': carrier_id, 'to-asset-id': to_port1.eContainer().id,
                                      'to-asset-coord': [asset1_port_location.lat, asset1_port_location.lon]})
                             if end_port:
-                                if end_port == inp.connectedTo[0]:
-                                    asset2_port_location = asset.geometry.point[0]
-                                else:
+                                if isinstance(end_port, esdl.InPort):
                                     asset2_port_location = asset.geometry.point[-1]
+                                else:
+                                    asset2_port_location = asset.geometry.point[0]
+                                if end_port.carrier is not None and carrier_id is None:  # no start_port carrier
+                                    carrier_id = end_port.carrier.id
+                                    inp.carrier = end_port.carrier
+                                    outp.carrier = end_port.carrier
+                                    if start_port is not None:
+                                        start_port.carrier = end_port.carrier
+
 
                                 emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
                                                       'from-port-id': from_port2.id, 'to-port-id': to_port2.id,
                                                       'new_conn': [[asset2_port_location.lat, asset2_port_location.lon],
                                                                    [asset2_port_location.lat, asset2_port_location.lon]]})
-                                # TODO: Fix carriers
                                 conn_list.append(
-                                    {'from-port-id': from_port2.id, 'from-port-carrier': None, 'from-asset-id': from_port2.eContainer().id,
+                                    {'from-port-id': from_port2.id, 'from-port-carrier': carrier_id, 'from-asset-id': from_port2.eContainer().id,
                                      'from-asset-coord': [asset2_port_location.lat, asset2_port_location.lon],
-                                     'to-port-id': to_port2.id, 'to-port-carrier': None, 'to-asset-id': to_port2.eContainer().id,
+                                     'to-port-id': to_port2.id, 'to-port-carrier': carrier_id, 'to-asset-id': to_port2.eContainer().id,
                                      'to-asset-coord': [asset2_port_location.lat, asset2_port_location.lon]})
 
                     # -------------------------------------------------------------------------------------------------------------
@@ -1669,8 +1699,9 @@ def process_command(message):
                     ports = asset.port
                     for p in ports:
                         connTo_ids = list(o.id for o in p.connectedTo)
+                        carrier_id = p.carrier.id if p.carrier else None
                         port_list.append(
-                            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids})
+                            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids, 'carrier': carrier_id})
 
                 if isinstance(asset, esdl.AbstractBuilding):
                     if isinstance(geometry, esdl.Point):

@@ -118,15 +118,16 @@ function add_draw_control(dc, mp) {
             polygon: {
                 allowIntersection: false,
                 showArea: true,
-                showLength: true
+                showLength: true,
+                zIndexOffset: -2000 // for drawing polygons correctly with adapted polyline
             },
             circle: false,
             circlemarker: false,
             polyline: {
                 repeatMode: true,
                 zIndexOffset: -2000, // for drawing using the port handlers
-                touchIcon: new L.DivIcon({
-			        iconSize: new L.Point(10, 10),
+                touchIcon: new L.DivIcon({ // create smaller touch icon
+			        iconSize: new L.Point(12, 12),
 		        	className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
 		        })
             },

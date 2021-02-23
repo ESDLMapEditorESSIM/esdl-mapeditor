@@ -52,6 +52,10 @@ function esdl_layer_created_event_handler(event) {
                 // started drawing on a port layer but not finished on a port, but somewhere on the map
                 let startAsset_port_id = drawState.startLayer.port_parent.id;
                 connect_ports_msg = {'asset_start_port': startAsset_port_id };
+            } else if (drawState.endLayer != null) {
+                // started drawing somewhere on the map but finished on a port.
+                let stopAsset_port_id = drawState.endLayer.port_parent.id;
+                connect_ports_msg = {'asset_end_port': stopAsset_port_id };
             }
         }
         drawState.reset(); // reset DrawState for connecting assets by pipes using the ports

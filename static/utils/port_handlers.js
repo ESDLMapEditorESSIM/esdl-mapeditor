@@ -113,7 +113,7 @@ function set_marker_port_handlers(marker) {
                         setTimeout(function() {
                             layer.port_parent.active = false;
                             layer.removeFrom(map);
-                        }, 50);
+                        }, 300);
     //                    layer.removeFrom(map);
                     });
                     port_marker.on('click', function(e) {
@@ -161,20 +161,38 @@ function handle_connect(port_marker, e) {
 
             if (L.Browser.touch && handler._poly) {
                 // already added first point due to touchstart event, but we don't want this point
-                // so remove
+                // so remove (manually, as deleteVertex in L.Draw does not delete the point if the length of the line
+                // is smaller than one.
                 let lastMarker = handler._markers.pop();
                 let poly = handler._poly;
-                handler._poly.setLatLngs([]);
+                let latlngs = poly.getLatLngs();
+                latlngs.splice(-1, 1);
+                handler._poly.setLatLngs(latlngs);
                 handler._markerGroup.removeLayer(lastMarker);
                 if (poly.getLatLngs().length < 2) {
                     handler._map.removeLayer(poly);
                 }
             }
-            drawState.startDrawConductor(layer, handler);
-            handler.enable();
-            handler.addVertex(layer.getLatLng()); // add first point
+            if (handler._enabled && handler._poly && handler._poly.getLatLngs().length > 1) { // drawing started elsewhere, but is ending at a port
+                console.log("Drawing started elsewhere and ending on a port")
+//                if (L.Browser.touch) {
+//                    // if touch is supported by the browser, clicking on a port
+//                    // generates a touch event on a location we don't want
+//                    handler.deleteLastVertex(); // delete coord of touchstart event on port
+//                }
+                handler.addVertex(layer.getLatLng()); // add latlng of asset
+                drawState.stopDrawConductor(layer);
+                handler.completeShape();
+
+            } else {
+                console.log("Start drawing on a port")
+                drawState.startDrawConductor(layer, handler);
+                handler.enable();
+                handler.addVertex(layer.getLatLng()); // add first point
+            }
         } else {
             // finish drawing conductor
+            console.log("Finish drawing")
             if (L.Browser.touch) {
                 // if touch is supported by the browser, clicking on a port
                 // generates a touch event on a location we don't want
@@ -342,7 +360,7 @@ function set_line_port_handlers(line) {
                         setTimeout(function() {
                             layer.port_parent.active = false;
                             layer.removeFrom(map);
-                        }, 50);
+                        }, 300);
                     });
                     port_marker.on('click', function(e) {
                         handle_connect(port_marker, e);
@@ -380,7 +398,7 @@ function set_line_port_handlers(line) {
                 if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
                 }
-            }, 100);
+            }, 300);
         }
     });
 }
