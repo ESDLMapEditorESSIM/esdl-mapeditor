@@ -16,11 +16,13 @@ import copy
 import json
 import urllib.parse
 import base64
+import uuid
 
 import requests
 
 import src.esdl_config as esdl_config
 import src.log as log
+from esdl import esdl
 from esdl.processing import ESDLAsset
 from src.esdl_helper import energy_asset_to_ui
 from extensions.session_manager import get_handler, get_session, set_session
@@ -287,6 +289,34 @@ class ESDLServices:
                             )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
+                        return False, None
+
+                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "add_notes":
+                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    esi = es_edit.energySystemInformation
+                    if not esi:
+                        esi = es_edit.energySystemInformation = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
+                        esh.add_object_to_dict(active_es_id, esi)
+                    notes = esi.notes
+                    if not notes:
+                        notes = esi.notes = esdl.Notes(id=str(uuid.uuid4()))
+                        esh.add_object_to_dict(active_es_id, notes)
+
+                    notes_from_service = ESDLAsset.load_asset_from_string(esdl_string=r.text)
+                    if isinstance(notes_from_service, esdl.Notes):
+                        notes_list = []
+                        for note in list(notes_from_service.note):
+                            notes.note.append(note)
+                            esh.add_object_to_dict(active_es_id, note)
+                            map_location = note.mapLocation
+                            if map_location:
+                                coords = {'lng': map_location.lon, 'lat': map_location.lat}
+                                notes_list.append({'id': note.id, 'location': coords, 'title': note.title,
+                                                   'text': note.text, 'author': note.author})  # , 'date': n.date})
+                        emit('add_notes', {'es_id': active_es_id, 'notes_list': notes_list})
+                    else:
+                        logger.error("Service with id "+service_params["service_id"]+" did not return a esdl.Notes object")
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
