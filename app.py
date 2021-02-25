@@ -1876,12 +1876,15 @@ def process_command(message):
                                       'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
                                                    [asset2_port_location[0], asset2_port_location[1]]]})
 
-                p1_carr_id = None
-                if port1.carrier:
-                    p1_carr_id = port1.carrier.id
-                p2_carr_id = None
-                if port2.carrier:
-                    p2_carr_id = port2.carrier.id
+                # propagate carrier
+                if not port2.carrier and port1.carrier:
+                    port2.carrier = port1.carrier
+                elif port2.carrier and not port1.carrier:
+                    port1.carrier = port2.carrier
+
+                p1_carr_id = port1.carrier.id if port1.carrier else None
+                p2_carr_id = port2.carrier.id if port2.carrier else None
+
                 conn_list = get_session_for_esid(active_es_id, 'conn_list')
                 conn_list.append({'from-port-id': port1_id, 'from-port-carrier': p1_carr_id, 'from-asset-id': asset1.id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],

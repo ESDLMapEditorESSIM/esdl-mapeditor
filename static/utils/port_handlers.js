@@ -82,7 +82,7 @@ function set_marker_port_handlers(marker) {
             if (marker_type === 'Joint') css_joint_addition = 'Joint';
 
             for (let p in ports) {
-                if (!drawState.canConnect(ports[p])) continue; // only show port that can be connected
+                if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue; // only show port that can be connected
                 let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
                 cnt_ports[ports[p].type]++;
                 let port_name = ports[p].type + ' - ' + ports[p].name;
@@ -174,7 +174,7 @@ function handle_connect(port_marker, e) {
                 }
             }
             if (handler._enabled && handler._poly && handler._poly.getLatLngs().length > 1) { // drawing started elsewhere, but is ending at a port
-                console.log("Drawing started elsewhere and ending on a port")
+//                console.log("Drawing started elsewhere and ending on a port")
 //                if (L.Browser.touch) {
 //                    // if touch is supported by the browser, clicking on a port
 //                    // generates a touch event on a location we don't want
@@ -238,6 +238,15 @@ function cancel_connection(e) {
     map.off('mousemove', move_connection);
     map.off('contextmenu', cancel_connection);
     map.off('draw:canceled', cancel_connection)
+}
+
+// for click_port connection
+// portType: InPort or OutPort
+function can_connectTo(port) {
+    if (port_drawing_connection && first_port) {
+        return port.type !== first_port.port_parent.type;
+    }
+    return true; // always return true if not in port_drawing_connection mode
 }
 
 function click_port(layer) {
