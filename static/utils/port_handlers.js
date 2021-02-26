@@ -240,7 +240,7 @@ function cancel_connection(e) {
     map.off('draw:canceled', cancel_connection)
 }
 
-// for click_port connection
+// for click_port connection similar to drawState.canConnect() for drawing conductors
 // portType: InPort or OutPort
 function can_connectTo(port) {
     if (port_drawing_connection && first_port) {
