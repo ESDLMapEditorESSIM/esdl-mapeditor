@@ -1740,6 +1740,10 @@ def process_command(message):
                     #logger.debug(asset_to_be_added_list)
                     emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
+                    asset_list = get_session_for_esid(es_edit.id, 'asset_list')
+                    for al_asset in asset_to_be_added_list:
+                        asset_list.append(al_asset)
+
                 esh.add_object_to_dict(es_edit.id, asset)
                 if hasattr(asset, 'port'):
                     for added_port in asset.port:

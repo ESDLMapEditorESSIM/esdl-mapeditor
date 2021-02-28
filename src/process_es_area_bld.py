@@ -23,7 +23,8 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
+from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
+    get_session_for_esid
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
@@ -461,6 +462,46 @@ def add_missing_coordinates(area):
                 child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
 
 
+def add_asset_to_asset_list(asset_list, asset):
+    port_list = []
+    ports = asset.port
+    for p in ports:
+        conn_to_ids = [cp.id for cp in p.connectedTo]
+        profile = p.profile
+        profile_info_list = []
+        p_carr_id = None
+        if p.carrier:
+            p_carr_id = p.carrier.id
+        if profile:
+            profile_info_list = []  # generate_profile_info(profile)
+        port_list.append(
+            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list,
+             'carrier': p_carr_id})
+
+    state = asset_state_to_ui(asset)
+    geom = asset.geometry
+    if geom:
+        if isinstance(geom, esdl.Point):
+            lat = geom.lat
+            lon = geom.lon
+
+            capability_type = ESDLAsset.get_asset_capability_type(asset)
+            asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list,
+                               capability_type])
+        if isinstance(geom, esdl.Line):
+            coords = []
+            for point in geom.point:
+                coords.append([point.lat, point.lon])
+            asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
+        if isinstance(geom, esdl.Polygon):
+            coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)  # [lon, lat]
+            coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
+            capability_type = ESDLAsset.get_asset_capability_type(asset)
+            # print(coords)
+            asset_list.append(
+                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Process building and process area
 # ---------------------------------------------------------------------------------------------------------------------
@@ -613,23 +654,19 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
         if isinstance(asset, esdl.AbstractBuilding):
             process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level+1)
         if isinstance(asset, esdl.EnergyAsset):
-            port_list = []
-            ports = asset.port
-            for p in ports:
+            add_asset_to_asset_list(asset_list, asset)
+
+            for p in asset.port:
                 p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to_ids = [cp.id for cp in p.connectedTo]
-                profile = p.profile
-                profile_info_list = []
                 p_carr_id = None
                 if p.carrier:
                     p_carr_id = p.carrier.id
-                if profile:
-                    profile_info_list = []  # generate_profile_info(profile)
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list, 'carrier': p_carr_id})
                 if conn_to_ids:
                     for pc in p.connectedTo:
                         pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
+                        pc_asset_coord = None
                         if pc_asset['asset'].containingBuilding:
                             bld_pc_asset = pc_asset['asset'].containingBuilding
                             if bld_pc_asset.geometry:
@@ -645,28 +682,6 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                             pc_carr_id = pc.carrier.id
                         conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
                                           'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
-
-            state = asset_state_to_ui(asset)
-            geom = asset.geometry
-            if geom:
-                if isinstance(geom, esdl.Point):
-                    lat = geom.lat
-                    lon = geom.lon
-
-                    capability_type = ESDLAsset.get_asset_capability_type(asset)
-                    asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list, capability_type])
-                if isinstance(geom, esdl.Line):
-                    coords = []
-                    for point in geom.point:
-                        coords.append([point.lat, point.lon])
-                    asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
-                if isinstance(geom, esdl.Polygon):
-                    # if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
-                    coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
-                    coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
-                    capability_type = ESDLAsset.get_asset_capability_type(asset)
-                    # print(coords)
-                    asset_list.append(['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
 
     for potential in area.potential:
         geom = potential.geometry
