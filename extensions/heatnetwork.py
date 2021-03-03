@@ -113,8 +113,9 @@ class HeatNetwork:
                 elif isinstance(asset.geometry, Line):
                     coord = (asset.geometry.point[-1].lat, asset.geometry.point[-1].lon)
             connTo_ids = list(o.id for o in port.connectedTo)
+            carrier_id = port.carrier.id if port.carrier else None
             port_list.append(
-                {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids})
+                {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids, 'carrier': carrier_id})
 
         return port_list
 

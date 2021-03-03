@@ -512,8 +512,9 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
             for p in ports:
                 conn_to = p.connectedTo
                 conn_to_id_list = [ct.id for ct in conn_to]
-                # TODO: add profile_info and carrier
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list})
+                carrier_id = p.carrier.id if p.carrier else None
+                # TODO: add profile_info
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list, 'carrier': carrier_id})
 
             geom = basset.geometry
             coord = ()

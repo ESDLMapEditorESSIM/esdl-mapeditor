@@ -1027,7 +1027,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 
             port_list = []
             for p in joint.port:
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+                p.carrier = carrier
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
             capability_type = ESDLAsset.get_asset_capability_type(joint)
             state = asset_state_to_ui(joint)
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], state, port_list, capability_type])
@@ -1583,12 +1584,12 @@ def process_command(message):
                             # Send connections
                             add_to_building = False  # TODO: Fix using this inside buildings
                             conn_list = get_session_for_esid(active_es_id, 'conn_list')
+                            carrier_id = None
                             if start_port:
                                 if isinstance(start_port, esdl.InPort):
                                     asset1_port_location = asset.geometry.point[-1]
                                 else:
                                     asset1_port_location = asset.geometry.point[0]
-                                carrier_id = None
                                 if start_port.carrier is not None:
                                     carrier_id = start_port.carrier.id
                                     inp.carrier = start_port.carrier
@@ -2314,7 +2315,8 @@ def process_command(message):
             if p.id == pid:
                 ports.remove(p)
             else:
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
+                carrier_id = p.carrier.id if p.carrier else None
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
     if message['cmd'] == 'remove_connection_portids':
@@ -2477,6 +2479,7 @@ def process_command(message):
 
         carrier_list = ESDLEnergySystem.get_carrier_list(es_edit)
         emit('carrier_list', {'es_id': es_edit.id, 'carrier_list': carrier_list})
+        return True
 
     if message['cmd'] == 'remove_carrier':
         carrier_id = message['carrier_id']
