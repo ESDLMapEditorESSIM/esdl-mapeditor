@@ -57,8 +57,14 @@ function add_carrier() {
     carr_type_index = document.getElementById('add_carrier_type').selectedIndex;
     carr_type_options = document.getElementById('add_carrier_type').options;
     carr_type = carr_type_options[carr_type_index].value;
-
     carr_name = document.getElementById('add_carrier_name').value;
+
+    if (carr_name === "") {
+        alert("Carrier name cannot be empty");
+        return;
+    }
+
+    let message = "";
     if (carr_type == 'en_carr') {
         carr_emission = document.getElementById('add_carrier_emission').value;
         carr_encont = document.getElementById('add_carrier_encont').value;
@@ -75,29 +81,39 @@ function add_carrier() {
         carr_rentype_options = document.getElementById('add_carrier_rentype').options;
         carr_rentype = carr_rentype_options[carr_rentype_index].value;
 
-        socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission,
-            encont: carr_encont, encunit: carr_encunit, sofm: carr_sofm, rentype: carr_rentype});
+        message = {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission,
+            encont: carr_encont, encunit: carr_encunit, sofm: carr_sofm, rentype: carr_rentype};
     }
     if (carr_type == 'el_comm') {
         carr_voltage = document.getElementById('add_carrier_voltage').value;
-        socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
+        message = {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage};
     }
     if (carr_type == 'g_comm') {
         carr_pressure = document.getElementById('add_carrier_pressure').value;
-        socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
+        message = {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure};
     }
     if (carr_type == 'h_comm') {
         carr_suptemp = document.getElementById('add_carrier_suptemp').value;
         carr_rettemp = document.getElementById('add_carrier_rettemp').value;
-        socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp,
-            rettemp: carr_rettemp});
+        message =  {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp};
     }
     if (carr_type == 'en_comm') {
-        socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
+        message =  {cmd: 'add_carrier', type: carr_type, name: carr_name};
+    }
+
+    if (message !=="" ) {
+        socket.emit('command', message, function(e) {
+            console.log('refresh carriers');
+            html = create_carrier_info_html();
+            sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = html;
+        });
     }
 }
 
-function remove_carrier(id) {
+function remove_carrier(event, id) {
+    // delete table row of this carrier
+    event.target.parentNode.parentNode.remove()
     carrier_list = get_carrier_list(active_layer_id);
     carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
 
@@ -161,29 +177,31 @@ function change_color(obj, carrier_id) {
     socket.emit('command', {cmd: 'redraw_connections'});
 }
 
-function energy_carrier_info() {
+function create_carrier_info_html() {
     sidebar_ctr = sidebar.getContainer();
-    sidebar_ctr.innerHTML = '<h1>Energy Carriers and Commodities:</h1>';
+    var html = "";
+    html = '<h1>Energy Carriers and Commodities:</h1>';
 
     carrier_list = get_carrier_list(active_layer_id);
     carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
 
-    if (carrier_list) {
+    if (carrier_list && carrier_list.length > 0) {
         table = '<table>';
         table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Type</b></td><td><b>Color</b></td></tr>';
         for (i=0; i<carrier_list.length; i++) {
             // type, id, name
-            table += '<tr><td><button onclick="remove_carrier(\'' + carrier_list[i]['id'] +
-                '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
+            table += '<tr><td><button carrier="'+carrier_list[i]['id']+'" onclick="remove_carrier(event, \'' + carrier_list[i]['id'] + '\');">Del</button></td><td title="' + carrier_list[i]['id'] + '">' + carrier_list[i]['name'] + '</td><td>' +
                 carrier_list[i]['type'] + '</td><td><input type="color" value="'+carrier_info_mapping[carrier_list[i]['id']]['color'] +'" onchange="change_color(this, \''+carrier_list[i]['id']+'\')"></td></tr>';
 
          //       <i class="color_select" style="background:' + carrier_info_mapping[carrier_list[i]['id']]['color'] + '"></i></td></tr>';
         }
         table += '</table>';
-        sidebar_ctr.innerHTML += table;
+
+        html += table;
+        html += "<p>&nbsp;</p>";
     }
 
-    sidebar_ctr.innerHTML += '<h2>Add carrier:</h2>';
+    html += '<h2>Add carrier:</h2>';
     table = '<table>';
     table += '<tr><td width=180>Carrier type</td><td><select id="add_carrier_type" onchange="select_other_carrier();">';
     table += '<option value="en_carr">Energy carrier</option>';
@@ -217,10 +235,15 @@ function energy_carrier_info() {
     table += '<option value="FOSSIL">FOSSIL</option>';
     table += '</select></td></tr>';
     table += '</table>';
-    sidebar_ctr.innerHTML += table;
+    html += table;
+    html += '<button onclick="add_carrier();">Add carrier</button>';
+    return html;
+}
 
-    sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_carrier();">Add carrier</button>';
-
+function energy_carrier_info() {
+    sidebar_ctr = sidebar.getContainer();
+    let html = create_carrier_info_html()
+    sidebar_ctr.innerHTML = html;
     sidebar.show();
 }
 

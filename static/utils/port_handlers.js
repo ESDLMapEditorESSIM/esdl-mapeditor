@@ -87,6 +87,19 @@ function set_marker_port_handlers(marker) {
                 cnt_ports[ports[p].type]++;
                 let port_name = ports[p].type + ' - ' + ports[p].name;
 
+                let carrier_id = null;
+                if (ports[p].carrier) {
+                    carrier_id = ports[p].carrier;
+                    let mapping = get_carrier_info_mapping(active_layer_id)
+                    if (mapping[carrier_id] !== undefined) {
+                        let carrier_name = mapping[carrier_id].name;
+                        port_name = port_name + ' ['+carrier_name+']';
+                        let carrier_class_name = get_carrier_style_class_name(mapping[carrier_id]);
+                        class_name = class_name + " " + carrier_class_name;
+                    }
+                }
+
+
                 let divicon = L.divIcon({
                     className: class_name,
                     iconSize: null
@@ -117,7 +130,9 @@ function set_marker_port_handlers(marker) {
     //                    layer.removeFrom(map);
                     });
                     port_marker.on('click', function(e) {
+                        remove_tooltip();
                         handle_connect(port_marker, e);
+
                     });
                     port_marker.on('keyup', function(e) {
                         if (e.keyCode === 27) {
@@ -205,6 +220,7 @@ function handle_connect(port_marker, e) {
         }
     } else {
         console.log("Connect ports")
+        document.getElementById('mapid').focus();
         if (first_port == null) first_port = port_marker;
         click_port(layer);
     }
@@ -230,14 +246,16 @@ function move_connection(e) {
     }
 }
 
-function cancel_connection(e) {
-    connecting_line.removeFrom(map);
-    connecting_line = null;
-    first_port = null;
-    port_drawing_connection = false;
-    map.off('mousemove', move_connection);
-    map.off('contextmenu', cancel_connection);
-    map.off('draw:canceled', cancel_connection)
+function cancel_connection() {
+    if (port_drawing_connection) {
+        connecting_line.removeFrom(map);
+        connecting_line = null;
+        first_port = null;
+        port_drawing_connection = false;
+        map.off('mousemove', move_connection);
+        map.off('contextmenu', cancel_connection);
+        map.off('draw:canceled', cancel_connection);
+    }
 }
 
 // for click_port connection similar to drawState.canConnect() for drawing conductors
@@ -338,10 +356,22 @@ function set_line_port_handlers(line) {
             let coords_len = coords.length;
 
             for (let p in ports) {
+                if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue;
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
                 let class_name = 'Port '+ports[p].type+' LinePort';
                 let port_name = ports[p].type + ' - ' + ports[p].name;
+
+                let carrier_id = null;
+                if (ports[p].carrier) {
+                    carrier_id = ports[p].carrier;
+                    let mapping = get_carrier_info_mapping(active_layer_id)
+                    if (mapping[carrier_id] !== undefined) {
+                        let name = mapping[carrier_id].name;
+                        let color = mapping[carrier_id].color;
+                        port_name = port_name + ' ['+name+']';
+                    }
+                }
 
                 let divicon = L.divIcon({
                     className: class_name,
@@ -411,3 +441,5 @@ function set_line_port_handlers(line) {
         }
     });
 }
+
+

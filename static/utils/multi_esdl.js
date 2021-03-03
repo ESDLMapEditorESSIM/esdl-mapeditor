@@ -276,6 +276,28 @@ function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
 }
 
+
+
+function get_carrier_style_class_name(carrier_mapping) {
+    return 'car_' + carrier_mapping.name.replace(/[^a-z]/ig, ''); // only a-z in class name, no spaces
+}
+/**
+Creates a dynamic class based on a carrier color that can be added to ports
+*/
+function update_carrier_style_class(carrier_mapping) {
+    let carrier_class_name = carrier_mapping.name;
+    carrier_class_name = get_carrier_style_class_name(carrier_mapping);
+    let carrier_color = carrier_mapping.color;
+    // dynamically create a style we can add to the marker
+    if ( $("head").children("#"+carrier_class_name).length === 0) {
+        // add only when class is not defined
+        let style = $("<style id="+carrier_class_name+" type='text/css'> ."+carrier_class_name+" { border-color: "+carrier_color+";} </style>");
+        style.appendTo("head"); // add to <head> element
+    } else {
+        $("head").children("#"+carrier_class_name).text('.'+carrier_class_name+' { border-color: '+carrier_color+';}');
+    }
+}
+
 // Copied colors from building_type_colors in area_building_layer.js
 // var conn_line_colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
 var conn_line_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
@@ -300,6 +322,7 @@ function set_carrier_list(es_id, carrier_list) {
             color: color,
             name: carrier_list[i].name
         }
+        update_carrier_style_class(carrier_info_mapping[carrier_list[i].id]);
     }
     esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
 }
@@ -314,6 +337,7 @@ function get_carrier_info_mapping(es_id) {
 
 function set_carrier_color(es_id, carrier_id, color) {
     esdl_list[es_id].carrier_info_mapping[carrier_id]['color'] = color
+    update_carrier_style_class(esdl_list[es_id].carrier_info_mapping[carrier_id]);
 }
 
 function set_area_bld_list(es_id, area_bld_list) {
