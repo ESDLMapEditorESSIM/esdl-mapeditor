@@ -62,6 +62,7 @@ function set_port_size_and_position() {
 
 function set_marker_port_handlers(marker) {
     marker.on('mouseover', function(e) {
+        marker.mouseactive = true;
         if (!editing_objects && !deleting_objects) {
             let layer = e.target;
             let ports = layer.ports;
@@ -125,7 +126,10 @@ function set_marker_port_handlers(marker) {
                         let layer = e.target;
                         setTimeout(function() {
                             layer.port_parent.active = false;
-                            layer.removeFrom(map);
+                            if (!layer.parent.mouseactive) {
+                                layer.removeFrom(map);
+                                remove_tooltip();
+                            }
                         }, 300);
     //                    layer.removeFrom(map);
                     });
@@ -133,11 +137,6 @@ function set_marker_port_handlers(marker) {
                         remove_tooltip();
                         handle_connect(port_marker, e);
 
-                    });
-                    port_marker.on('keyup', function(e) {
-                        if (e.keyCode === 27) {
-                            console.log('esc pressed!')
-                        }
                     });
                 } else {
                     // show already created marker
@@ -151,6 +150,7 @@ function set_marker_port_handlers(marker) {
 
     marker.on('mouseout', function(e) {
         let layer = e.target;
+        layer.mouseactive = false;
         let ports = layer.ports;
 
         for (let p in ports) {
@@ -321,6 +321,7 @@ function set_line_port_handlers(line) {
 
     line.on('mouseover', function(e) {
         let layer = e.target;
+        layer.mouseactive = true;
 
         if (map.getZoom() > 12 || calculate_length(layer) > 1000) {
         // add line decorator with >>> to show direction of conductor
@@ -399,7 +400,10 @@ function set_line_port_handlers(line) {
                         let layer = e.target;
                         setTimeout(function() {
                             layer.port_parent.active = false;
-                            layer.removeFrom(map);
+                            if (!layer.parent.mouseactive) {
+                                layer.removeFrom(map); // only remove if not mousemoved back to marker
+                                remove_tooltip();
+                            }
                         }, 300);
                     });
                     port_marker.on('click', function(e) {
@@ -420,6 +424,7 @@ function set_line_port_handlers(line) {
 
     line.on('mouseout', function(e) {
         let layer = e.target;
+        layer.mouseactive = false;
         // remove line decoration
         layer.setStyle({
             color: layer.color,

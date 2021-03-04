@@ -183,6 +183,7 @@ function add_area_map_handlers(socket, map) {
         if (event.keyCode === 27) {
             // cancel drawing a connection if necessary
             cancel_connection();
+            map.contextmenu.hide();
             remove_tooltip(); // clear tooltips if they are sticky
         }
         // only react to events on the map

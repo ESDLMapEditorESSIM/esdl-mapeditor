@@ -1598,15 +1598,17 @@ def process_command(message):
                                         end_port.carrier = start_port.carrier
 
 
-                                emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
-                                                      'from-port-id': from_port1.id, 'to-port-id': to_port1.id,
-                                                      'new_conn': [[asset1_port_location.lat, asset1_port_location.lon],
-                                                                   [asset1_port_location.lat, asset1_port_location.lon]]})
-                                conn_list.append(
-                                    {'from-port-id': from_port1.id, 'from-port-carrier': carrier_id, 'from-asset-id': from_port1.eContainer().id,
+                                # emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                #                       'from-port-id': from_port1.id, 'to-port-id': to_port1.id,
+                                #                       'new_conn': [[asset1_port_location.lat, asset1_port_location.lon],
+                                #                                    [asset1_port_location.lat, asset1_port_location.lon]]})
+                                conn_message = {'from-port-id': from_port1.id, 'from-port-carrier': carrier_id, 'from-asset-id': from_port1.eContainer().id,
                                      'from-asset-coord': [asset1_port_location.lat, asset1_port_location.lon],
                                      'to-port-id': to_port1.id, 'to-port-carrier': carrier_id, 'to-asset-id': to_port1.eContainer().id,
-                                     'to-asset-coord': [asset1_port_location.lat, asset1_port_location.lon]})
+                                     'to-asset-coord': [asset1_port_location.lat, asset1_port_location.lon]}
+                                conn_list.append(conn_message)
+                                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+
                             if end_port:
                                 if isinstance(end_port, esdl.InPort):
                                     asset2_port_location = asset.geometry.point[-1]
@@ -1619,16 +1621,18 @@ def process_command(message):
                                     if start_port is not None:
                                         start_port.carrier = end_port.carrier
 
-
-                                emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
-                                                      'from-port-id': from_port2.id, 'to-port-id': to_port2.id,
-                                                      'new_conn': [[asset2_port_location.lat, asset2_port_location.lon],
-                                                                   [asset2_port_location.lat, asset2_port_location.lon]]})
-                                conn_list.append(
-                                    {'from-port-id': from_port2.id, 'from-port-carrier': carrier_id, 'from-asset-id': from_port2.eContainer().id,
+                                # replaced by better 'add_connections
+                                # emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                #                       'from-port-id': from_port2.id, 'to-port-id': to_port2.id,
+                                #                       'new_conn': [[asset2_port_location.lat, asset2_port_location.lon],
+                                #                                    [asset2_port_location.lat, asset2_port_location.lon]]})
+                                conn_message = {'from-port-id': from_port2.id, 'from-port-carrier': carrier_id,
+                                     'from-asset-id': from_port2.eContainer().id,
                                      'from-asset-coord': [asset2_port_location.lat, asset2_port_location.lon],
                                      'to-port-id': to_port2.id, 'to-port-carrier': carrier_id, 'to-asset-id': to_port2.eContainer().id,
-                                     'to-asset-coord': [asset2_port_location.lat, asset2_port_location.lon]})
+                                     'to-asset-coord': [asset2_port_location.lat, asset2_port_location.lon]}
+                                conn_list.append(conn_message)
+                                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
 
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
@@ -1884,10 +1888,10 @@ def process_command(message):
                         # both assets not in building
                         add_to_building = False
 
-                emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
-                                      'from-port-id': port1_id, 'to-port-id': port2_id,
-                                      'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
-                                                   [asset2_port_location[0], asset2_port_location[1]]]})
+                # emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                #                       'from-port-id': port1_id, 'to-port-id': port2_id,
+                #                       'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
+                #                                    [asset2_port_location[0], asset2_port_location[1]]]})
 
                 # propagate carrier
                 if not port2.carrier and port1.carrier:
@@ -1899,10 +1903,13 @@ def process_command(message):
                 p2_carr_id = port2.carrier.id if port2.carrier else None
 
                 conn_list = get_session_for_esid(active_es_id, 'conn_list')
-                conn_list.append({'from-port-id': port1_id, 'from-port-carrier': p1_carr_id, 'from-asset-id': asset1.id,
+                conn_message = {'from-port-id': port1_id, 'from-port-carrier': p1_carr_id, 'from-asset-id': asset1.id,
                                   'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
                                   'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2.id,
-                                  'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]})
+                                  'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
+                conn_list.append(conn_message)
+                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+
         else:
             send_alert('Serious error connecting ports')
 
