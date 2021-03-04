@@ -217,6 +217,7 @@ function handle_connect(port_marker, e) {
             drawState.stopDrawConductor(layer);
             handler.completeShape();
             drawState.resetRepeatMode();
+            document.getElementById('mapid').focus(); // set focus on map
         }
     } else {
         console.log("Connect ports")

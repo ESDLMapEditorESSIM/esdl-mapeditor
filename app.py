@@ -1450,10 +1450,10 @@ def process_command(message):
                 # Quick fix: session variable adding_edr_assets now contains ESDL string
                 class_ = type(asset)
                 object_type = class_.__name__
-
+                print(asset)
                 # Check if any IDs were 'accidentally' set in EDR model template and replace them by a new unique ID
                 # If no ID was set, assign no new ID either
-                for c in asset.eContents():
+                for c in asset.eContents:
                     if c.eClass.findEStructuralFeature('id'):
                         if c.eGet('id'):
                             c.eSet('id', str(uuid.uuid4()))
