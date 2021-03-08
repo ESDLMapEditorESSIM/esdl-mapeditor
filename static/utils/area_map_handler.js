@@ -175,8 +175,41 @@ function add_area_map_handlers(socket, map) {
 //    });
     map.on(L.Draw.Event.DRAWSTOP, function(e) {
         console.log('drawStop');
-        drawState.reset();
+        drawState.reset(); // reset connecting by pipe/cable
     });
+
+    map.on('keydown', function(e){
+        var event = e.originalEvent
+        if (event.keyCode === 27) {
+            // cancel drawing a connection if necessary
+            cancel_connection();
+            map.contextmenu.hide();
+            remove_tooltip(); // clear tooltips if they are sticky
+        }
+        // only react to events on the map
+        if (document.activeElement.id === 'mapid' && event.key === 'p' /*&& event.metaKey*/) {
+            // draw a pipe
+            window.update_line_asset_menu('Pipe');
+            window.draw_control._toolbars.draw._modes.polyline.handler.enable();
+        } else if (document.activeElement.id === 'mapid' && event.key === 'c' /*&& event.metaKey*/) {
+            // draw a pipe
+            window.update_line_asset_menu('ElectricityCable');
+            window.draw_control._toolbars.draw._modes.polyline.handler.enable();
+        } else if (document.activeElement.id === 'mapid' && event.key === 'a' /*&& event.metaKey*/) {
+            // draw a pipe
+            //window.update_line_asset_menu('ElectricityCable');
+            window.draw_control._toolbars.draw._modes.marker.handler.enable();
+        }
+//        else {
+//            console.log(event.key, event);
+//        }
+    });
+
+//    $(document).keydown(function(e) {
+//        console.log('document', e);
+//    });
+
+
 };
 
 function enable_esdl_layer_created_event_handler() {

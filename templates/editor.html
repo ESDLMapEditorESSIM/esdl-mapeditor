@@ -722,6 +722,15 @@
                     object_properties_window(line.id);
                 }
             });
+            line.on('edit', function(e) { // in edit mode dragging has ended: update connections
+                var layer = e.target;
+                //var pos = marker.getLatLng();
+                polyline_length = calculate_length(layer);
+                socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+                //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+                // console.log(e.oldLatLng.lat);
+                // console.log(pos.lat + ', ' + pos.lng );
+            });
 
             set_line_port_handlers(line);
 
@@ -1505,7 +1514,7 @@
             });
 
 
-
+            /* not used anymore (Ewoud)
             socket.on('add_new_conn', function(connection) {
                 var new_conn = connection['new_conn'];
                 var es_id = connection['es_id'];
@@ -1524,6 +1533,7 @@
                 line.id = connection['from-port-id'] + connection['to-port-id'];
                 add_object_to_layer(es_bld_id, 'connection_layer', line);
             });
+            */
 
             socket.on('carrier_list', function(carr_list) {
                 set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);

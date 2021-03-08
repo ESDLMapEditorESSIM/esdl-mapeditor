@@ -204,6 +204,10 @@ view_modes_config = {
                 "roughnessPrimarySide",
                 "roughnessSecundarySide"
             ],
+            "HeatStorage": [
+                "maxStorageTemperature",
+                "minStorageTemperature"
+            ],
             # ===========================
             #  Conversion assets
             # ===========================

@@ -62,6 +62,7 @@ function set_port_size_and_position() {
 
 function set_marker_port_handlers(marker) {
     marker.on('mouseover', function(e) {
+        marker.mouseactive = true;
         if (!editing_objects && !deleting_objects) {
             let layer = e.target;
             let ports = layer.ports;
@@ -86,6 +87,19 @@ function set_marker_port_handlers(marker) {
                 let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
                 cnt_ports[ports[p].type]++;
                 let port_name = ports[p].type + ' - ' + ports[p].name;
+
+                let carrier_id = null;
+                if (ports[p].carrier) {
+                    carrier_id = ports[p].carrier;
+                    let mapping = get_carrier_info_mapping(active_layer_id)
+                    if (mapping[carrier_id] !== undefined) {
+                        let carrier_name = mapping[carrier_id].name;
+                        port_name = port_name + ' ['+carrier_name+']';
+                        let carrier_class_name = get_carrier_style_class_name(mapping[carrier_id]);
+                        class_name = class_name + " " + carrier_class_name;
+                    }
+                }
+
 
                 let divicon = L.divIcon({
                     className: class_name,
@@ -112,17 +126,17 @@ function set_marker_port_handlers(marker) {
                         let layer = e.target;
                         setTimeout(function() {
                             layer.port_parent.active = false;
-                            layer.removeFrom(map);
+                            if (!layer.parent.mouseactive) {
+                                layer.removeFrom(map);
+                                remove_tooltip();
+                            }
                         }, 300);
     //                    layer.removeFrom(map);
                     });
                     port_marker.on('click', function(e) {
+                        remove_tooltip();
                         handle_connect(port_marker, e);
-                    });
-                    port_marker.on('keyup', function(e) {
-                        if (e.keyCode === 27) {
-                            console.log('esc pressed!')
-                        }
+
                     });
                 } else {
                     // show already created marker
@@ -136,6 +150,7 @@ function set_marker_port_handlers(marker) {
 
     marker.on('mouseout', function(e) {
         let layer = e.target;
+        layer.mouseactive = false;
         let ports = layer.ports;
 
         for (let p in ports) {
@@ -202,9 +217,11 @@ function handle_connect(port_marker, e) {
             drawState.stopDrawConductor(layer);
             handler.completeShape();
             drawState.resetRepeatMode();
+            document.getElementById('mapid').focus(); // set focus on map
         }
     } else {
         console.log("Connect ports")
+        document.getElementById('mapid').focus();
         if (first_port == null) first_port = port_marker;
         click_port(layer);
     }
@@ -230,14 +247,16 @@ function move_connection(e) {
     }
 }
 
-function cancel_connection(e) {
-    connecting_line.removeFrom(map);
-    connecting_line = null;
-    first_port = null;
-    port_drawing_connection = false;
-    map.off('mousemove', move_connection);
-    map.off('contextmenu', cancel_connection);
-    map.off('draw:canceled', cancel_connection)
+function cancel_connection() {
+    if (port_drawing_connection) {
+        connecting_line.removeFrom(map);
+        connecting_line = null;
+        first_port = null;
+        port_drawing_connection = false;
+        map.off('mousemove', move_connection);
+        map.off('contextmenu', cancel_connection);
+        map.off('draw:canceled', cancel_connection);
+    }
 }
 
 // for click_port connection similar to drawState.canConnect() for drawing conductors
@@ -302,6 +321,7 @@ function set_line_port_handlers(line) {
 
     line.on('mouseover', function(e) {
         let layer = e.target;
+        layer.mouseactive = true;
 
         if (map.getZoom() > 12 || calculate_length(layer) > 1000) {
         // add line decorator with >>> to show direction of conductor
@@ -338,10 +358,22 @@ function set_line_port_handlers(line) {
             let coords_len = coords.length;
 
             for (let p in ports) {
+                if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue;
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
                 let class_name = 'Port '+ports[p].type+' LinePort';
                 let port_name = ports[p].type + ' - ' + ports[p].name;
+
+                let carrier_id = null;
+                if (ports[p].carrier) {
+                    carrier_id = ports[p].carrier;
+                    let mapping = get_carrier_info_mapping(active_layer_id)
+                    if (mapping[carrier_id] !== undefined) {
+                        let name = mapping[carrier_id].name;
+                        let color = mapping[carrier_id].color;
+                        port_name = port_name + ' ['+name+']';
+                    }
+                }
 
                 let divicon = L.divIcon({
                     className: class_name,
@@ -368,7 +400,10 @@ function set_line_port_handlers(line) {
                         let layer = e.target;
                         setTimeout(function() {
                             layer.port_parent.active = false;
-                            layer.removeFrom(map);
+                            if (!layer.parent.mouseactive) {
+                                layer.removeFrom(map); // only remove if not mousemoved back to marker
+                                remove_tooltip();
+                            }
                         }, 300);
                     });
                     port_marker.on('click', function(e) {
@@ -389,6 +424,7 @@ function set_line_port_handlers(line) {
 
     line.on('mouseout', function(e) {
         let layer = e.target;
+        layer.mouseactive = false;
         // remove line decoration
         layer.setStyle({
             color: layer.color,
@@ -411,3 +447,5 @@ function set_line_port_handlers(line) {
         }
     });
 }
+
+

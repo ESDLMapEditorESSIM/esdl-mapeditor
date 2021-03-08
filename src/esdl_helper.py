@@ -157,10 +157,11 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
         conn_to = [cp.id for cp in p.connectedTo]
         profile = p.profile
         profile_info_list = []
+        carrier_id = p.carrier.id if p.carrier else None
         if profile:
             profile_info_list = generate_profile_info(profile)
         port_list.append \
-            ({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info_list})
+            ({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info_list, 'carrier': carrier_id})
         if conn_to:
             # conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
             for id in conn_to:
