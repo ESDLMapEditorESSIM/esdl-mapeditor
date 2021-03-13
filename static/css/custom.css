@@ -210,6 +210,33 @@ h6 {
     line-height: 40px;
 }
 
+.asset_feedback {
+}
+
+.Error_marker {
+    border: 5px solid red;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+}
+
+.Warning_marker {
+    border: 5px solid orange;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+}
+
+.Info_marker {
+    border: 5px solid green;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+}
+
 /*
     Ports
 */

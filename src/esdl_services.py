@@ -322,6 +322,15 @@ class ESDLServices:
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "asset_feedback":
+                    service_results = json.loads(r.text)
+
+                    asset_results_dict = dict()
+                    for sr in service_results:
+                        asset_results_dict[sr['assetID']] = sr['messages']
+                    return True, {
+                        "asset_feedback": asset_results_dict
+                    }
                 elif service["result"][0]["action"] == "show_message":
                     return True, {"message": service["result"][0]["message"]}
             else:
