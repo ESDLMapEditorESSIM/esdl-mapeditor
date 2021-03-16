@@ -91,6 +91,24 @@ function query_esdl_service(service, state_params) {
     }
 }
 
+var asset_severity_order = {
+  "INFO": 0,
+  "WARNING": 1,
+  "ERROR": 2,
+};
+
+var asset_severity_color = {
+  "INFO": "#00FF00",
+  "WARNING": "#FFA500",
+  "ERROR": "#FF0000",
+}
+
+var asset_severity_class = {
+  "INFO": "Info_marker",
+  "WARNING": "Warning_marker",
+  "ERROR": "Error_marker",
+}
+
 function process_service_results(results) {
     let service_results_div = document.getElementById('service_results_div');
 
@@ -141,6 +159,66 @@ function process_service_results(results) {
         }
         sidebar.hide();
     }
+
+    if ('asset_feedback' in results) {
+        let esdl_layer = get_layers(active_layer_id, 'esdl_layer');
+        let esdl_objects = esdl_layer.getLayers();
+        let sim_layer = get_layers(active_layer_id, 'sim_layer');
+
+        for (let i = 0; i < esdl_objects.length; i++) {
+            let object = esdl_objects[i];
+            if (object.id in results['asset_feedback']) {
+                let asset_feedback = results['asset_feedback'][object.id];
+
+                let asset_severity = 'INFO';
+                let asset_message = '<h1>Feedback</h1><ul>';
+                asset_feedback.forEach(function(af, index) {
+                    if (asset_severity_order[af["severity"]] > asset_severity_order[asset_severity])
+                        asset_severity = af["severity"]
+                    asset_message += '<li>' + af["severity"] + ': ' + af['message'] + '</li>';
+                });
+                asset_message += '</ul>';
+
+                if (object instanceof L.Marker) {
+                    let cur_location = object.getLatLng();
+
+                    let divicon = L.divIcon({
+                        className: 'asset_feedback ' + asset_severity_class[asset_severity],
+                        html: '',
+
+                        iconSize: [40, 40], // size of the icon     // TODO: Resize on zoom level
+                        iconAnchor: [22, 22], // point of the icon which will correspond to marker's location
+                        popupAnchor: [0, -15] // point from which the popup should open relative to the iconAnchor
+                    });
+
+                    let marker = L.marker(cur_location, { icon: divicon, title: asset_message });
+                    marker.id = object.id;
+                    marker.title = asset_message;
+                    // marker.bindTooltip(asset_message);
+
+                    add_object_to_layer(active_layer_id, 'sim_layer', marker);
+                }
+                if (object instanceof L.Polyline) {
+                    let coords = object.getLatLngs();
+                    let line_color = asset_severity_color[asset_severity];
+                    let line = L.polyline(coords, { color: line_color, weight: 6, draggable: false, title: asset_message });
+                    line.id = object.id;
+                    line.title = asset_message;
+                    line.bindTooltip(asset_message);
+
+                    add_object_to_layer(active_layer_id, 'sim_layer', line);
+                }
+            }
+        }
+
+        $('.asset_feedback').tooltip({
+            content: function() {
+                return $(this).attr('title');
+            }
+        });
+        sidebar.hide();
+    }
+
     if ('show_url' in results) {
         let description = results['show_url']['description']
         let url = results['show_url']['url']
@@ -165,7 +243,7 @@ function process_service_results(results) {
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
     }
 
-    if (!('show_asset_results' in results) && !('show_url' in results)) {
+    if (!('show_asset_results' in results) && !('asset_feedback' in results) && !('show_url' in results)) {
         sidebar.hide();
     }
 }

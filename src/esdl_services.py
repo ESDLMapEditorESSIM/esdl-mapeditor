@@ -205,6 +205,8 @@ class ESDLServices:
                             esdlstr_bytes = esdlstr.encode('ascii')
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                             body[param["parameter"]] = esdlstr_base64_bytes.decode('ascii')
+                    if param["type"] == "value":
+                        body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
                         body_params = service_params["body_config"]
                         for bp in body_params:
@@ -320,6 +322,15 @@ class ESDLServices:
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "asset_feedback":
+                    service_results = json.loads(r.text)
+
+                    asset_results_dict = dict()
+                    for sr in service_results:
+                        asset_results_dict[sr['assetID']] = sr['messages']
+                    return True, {
+                        "asset_feedback": asset_results_dict
+                    }
                 elif service["result"][0]["action"] == "show_message":
                     return True, {"message": service["result"][0]["message"]}
             else:
@@ -331,7 +342,7 @@ class ESDLServices:
                 )
                 logger.warning(r)
                 logger.warning(r.content)
-                return False, None
+                return False, str(r.content)
         except Exception as e:
             logger.warning("Error accessing external ESDL service: " + str(e))
             return False, None

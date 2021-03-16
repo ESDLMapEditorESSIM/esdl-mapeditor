@@ -2796,7 +2796,10 @@ def query_esdl_services(params):
         if esdl_service_result is not None:
             emit('esdl_service_result', esdl_service_result)
     else:
-        send_alert('Error calling service')
+        message = 'Error calling service'
+        if isinstance(esdl_service_result, str):
+            message += ': ' + esdl_service_result
+        send_alert(message)
     # logger.debug('processing energy system')
     call_process_energy_system.submit(esh)
 

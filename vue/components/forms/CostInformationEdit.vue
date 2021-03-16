@@ -6,10 +6,17 @@
     <a-modal v-model:visible="visible" title="Cost Information" width="750px" @ok="handleOk">
       <a-table :columns="costInformationColumns" :data-source="costInformation" size="middle" :pagination="paginationConfig">
         <template #civalue="{ text, record }">
+          <!--
           <a-input
             style="margin: -5px 0"
             :value="text"
             @change="e => handleChange(e.target.value, record.key)"
+          />
+          -->
+          <FancyNumberEdit
+            style="margin: -5px 0"
+            :value="text"
+            @update:value="(val) => handleChange(val, record.key)"
           />
         </template>
         <template #ciunit="{ record }">
@@ -39,7 +46,7 @@
 </template>
 
 <script>
-// import FancyNumberEdit from "./FancyNumberEdit"
+import FancyNumberEdit from "./FancyNumberEdit"
 
 const costInformationColumns = [
   { title: 'Type', dataIndex: 'uiname', key: 'citype' },
@@ -69,7 +76,7 @@ const paginationConfig = { hideOnSinglePage: true};
 export default {
   name: "CostInformationEdit",
   components: {
-//    FancyNumberEdit
+    FancyNumberEdit
   },
   props: {
     costInfo: {
