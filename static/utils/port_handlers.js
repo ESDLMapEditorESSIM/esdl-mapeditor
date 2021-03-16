@@ -155,7 +155,7 @@ function set_marker_port_handlers(marker) {
 
         for (let p in ports) {
             setTimeout(function() {
-                if (ports[p].active === false) {
+                if (ports[p].active === false && !layer.mouseactive) {
                     ports[p].marker.removeFrom(map);
                 }
             }, 300);

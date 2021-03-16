@@ -28,7 +28,7 @@ function calculate_length(layer) {
         previousPoint = latLng;
     });
 
-    return polyline_length;
+    return +(polyline_length.toFixed(1));
 }
 
 function calculate_area(layer) {

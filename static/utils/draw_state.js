@@ -47,7 +47,7 @@ class DrawState {
     // returns always true if not drawing, otherwise it will return true if the start port is different from this port
     canConnect(port) {
         if (this.isDrawing()) {
-            console.log('canConnect', port)
+            //console.log('canConnect', port)
             return this.getStartPortType() !== port.type;
         } else {
             return true; // always return true if not drawing
@@ -64,7 +64,7 @@ class DrawState {
     }
 
     reset() {
-        console.log('Reset draw state', this);
+        //console.log('Reset draw state', this);
         this.drawing = false;
         this.startLayer = null;
         this.endLayer = null;

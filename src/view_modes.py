@@ -161,9 +161,9 @@ view_modes_config = {
                 "maxChargeRate",
                 "maxDischargeRate",
             ],
-            "Transport": [
-                "capacity"
-            ],
+#            "Transport": [  # no capacity required for CHESS/Wanda
+#                "capacity"
+#            ],
             "Conversion": [
                 "power",
                 "efficiency"
@@ -182,6 +182,7 @@ view_modes_config = {
                 "diameter",
                 "innerDiameter",
                 "outerDiameter",
+                "length",
                 "material"
             ],
             "CheckValve": [
@@ -195,6 +196,9 @@ view_modes_config = {
                 "innerDiameter",
                 "position"
             ],
+            "Sensor": [
+                "quantityAndUnit"
+            ],
             "HeatExchange": [
                 "heatTransferCoefficient",
                 "diameterPrimarySide",
@@ -205,6 +209,7 @@ view_modes_config = {
                 "roughnessSecundarySide"
             ],
             "HeatStorage": [
+                "fillLevel",
                 "maxStorageTemperature",
                 "minStorageTemperature"
             ],
