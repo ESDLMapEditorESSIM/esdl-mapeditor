@@ -83,7 +83,7 @@ class EnergySystemHandler:
         Does not work yet for copying references from other resources than this one.
         """
         def deepcopy(self, memo=None):
-            logger.debug("deepcopy: processing {}".format(self))
+            #logger.debug("deepcopy: processing {}".format(self))
             first_call = False
             if memo is None:
                 memo = dict()
@@ -92,7 +92,7 @@ class EnergySystemHandler:
                 return memo[self]
 
             copy: EObject = self.clone()
-            logger.debug("Shallow copy: {}".format(copy))
+            #logger.debug("Shallow copy: {}".format(copy))
             eclass: EClass = self.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EReference):
@@ -119,7 +119,7 @@ class EnergySystemHandler:
             memo[self] = copy
 
             if first_call:
-                logger.debug("copying references")
+                #logger.debug("copying references")
                 for k, v in memo.items():
                     eclass: EClass = k.eClass
                     for x in eclass.eAllStructuralFeatures():
@@ -140,16 +140,14 @@ class EnergySystemHandler:
                                         try:
                                             copy_ref_value = memo[orig_ref_value]
                                         except KeyError:
-                                            logger.warning(f'Cannot find reference of type {orig_ref_value.eClass.Name} \
-                                                for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
+                                            logger.warning(f'Cannot find reference of type {orig_ref_value.eClass.name} for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                             copy_ref_value = orig_ref_value
                                         eAbstractSet.append(copy_ref_value)
                                 else:
                                     try:
                                         copy_value = memo[orig_value]
                                     except KeyError:
-                                        logger.warning(f'Cannot find reference of type {orig_value.eClass.name} of \
-                                            reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
+                                        logger.warning(f'Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                         copy_value = orig_value
                                     v.eSet(ref.name, copy_value)
             return copy

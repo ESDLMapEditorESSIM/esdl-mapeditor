@@ -48,7 +48,7 @@ from extensions.ibis import IBISBedrijventerreinen
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
 from extensions.esdl_browser import ESDLBrowser
-from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid
+from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid, delete_sessions_on_disk
 import src.esdl_config as esdl_config
 from src.esdl_helper import get_asset_from_port_id, get_asset_and_coord_from_port_id, generate_profile_info, get_port_profile_info
 from utils.datetime_utils import parse_date
@@ -134,8 +134,14 @@ logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
 socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
 get_logger('engineio').setLevel(logging.WARNING)  # don't print all the messages
+
+# remove existing sessions when restarting, existing sessions will give errors
+# as associated ESDLs are not stored in the session and the OpenId connect info is wrong
+delete_sessions_on_disk(app.config['SESSION_FILE_DIR'])
+
 # fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
 Session(app)
+
 
 executor = Executor(app)
 
@@ -899,11 +905,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_port1_id = str(uuid.uuid4())
         new_port2_id = str(uuid.uuid4())
 
-        # create two conductors of same type as conductor that is splitted
-        module = importlib.import_module('esdl.esdl')
-        class_ = getattr(module, conductor_type)
-        new_cond1 = class_(id=new_cond1_id, name=conductor.name + '_a')
-        new_cond2 = class_(id=new_cond2_id, name=conductor.name + '_b')
+        # create two conductors of same type as conductor that is splitted by duplicating the original
+        # e.g. also copy over the pipe material
+        new_cond1 = conductor.deepcopy()
+        new_cond2 = conductor.deepcopy()
+        new_cond1.id = new_cond1_id
+        new_cond1.port.clear() # remove existing port, as we add previous used ports later
+        new_cond2.id = new_cond2_id
+        new_cond2.port.clear()
         esh.add_object_to_dict(active_es_id, new_cond1)
         esh.add_object_to_dict(active_es_id, new_cond2)
 
@@ -934,14 +943,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         for i in range(1, len(line1.point)):
             length += ESDLGeometry.distance((start.lat, start.lon), (line1.point[i].lat, line1.point[i].lon)) * 1000
             start = line1.point[i]
-        new_cond1.length = length
+        new_cond1.length = round(length, 2)
 
         start = line2.point[0]
         length = 0
         for i in range(1, len(line2.point)):
             length += ESDLGeometry.distance((start.lat, start.lon), (line2.point[i].lat, line2.point[i].lon)) * 1000
             start = line2.point[i]
-        new_cond2.length = length
+        new_cond2.length = round(length, 2)
 
         logger.debug('split-conductor: line1 length={}, line2 length={}'.format(new_cond1.length, new_cond2.length))
         # assign line geometry to the correct conductor
@@ -1527,7 +1536,7 @@ def process_command(message):
                         asset.port.append(inp)
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                         asset.port.append(outp)
-                        asset.length = float(shape['length'])
+                        asset.length = float(shape['length']) if 'length' in shape else 0.0
                         print(message)
                         # automatically connect the conductor to the ports that have been clicked
                         if 'connect_ports' in message and message['connect_ports'] is not '':

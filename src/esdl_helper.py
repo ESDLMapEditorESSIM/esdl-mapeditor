@@ -160,8 +160,8 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
         carrier_id = p.carrier.id if p.carrier else None
         if profile:
             profile_info_list = generate_profile_info(profile)
-        port_list.append \
-            ({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to, 'profile': profile_info_list, 'carrier': carrier_id})
+        port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to,
+                          'profile': profile_info_list, 'carrier': carrier_id})
         if conn_to:
             # conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
             for id in conn_to:
@@ -169,9 +169,16 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
                 pc_asset = get_asset_and_coord_from_port_id(esh, es_id, id)
                 pc_asset_coord = pc_asset['coord']
 
-                conn_list.append \
-                    ({'from-port-id': p.id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
-                                  'to-port-id': id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
+                conn_list.append(
+                    {'from-port-id': p.id,
+                     'from-asset-id': p_asset['asset'].id,
+                     'from-port-carrier': p.carrier.id if p.carrier else None,
+                     'from-asset-coord': p_asset_coord,
+                     'to-port-id': id,
+                     'to-port-carrier': pc_asset['asset'].carrier.id if pc_asset['asset'].carrier else None,
+                     'to-asset-id': pc_asset['asset'].id,
+                     'to-asset-coord': pc_asset_coord
+                     })
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry

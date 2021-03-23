@@ -19,6 +19,7 @@ import esdl.processing.EcoreDocumentation as esdl_doc
 import threading
 import time
 import src.log as log
+import os, glob
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
@@ -153,3 +154,10 @@ def set_session_for_esid(es_id, key, value):
         new_dict = {}
         new_dict[es_id] = value
         set_session(key, new_dict)
+
+
+def delete_sessions_on_disk(path: str):
+    print('Cleaning up old sessions on disk...')
+    files = glob.glob(path + '/*')
+    for f in files:
+        os.remove(f)

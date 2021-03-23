@@ -18,20 +18,21 @@
 #      TNO
 
 from esdl.esdl_handler import EnergySystemHandler
-from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, AssetStateEnum
+from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Port, InPort, OutPort, Polygon
 from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_session, get_session_for_esid
 import src.log as log
 from src.esdl_helper import asset_state_to_ui
+from esdl.processing import ESDLGeometry
 
 logger = log.get_logger(__name__)
 
 
-DEFAULT_SHIFT_LAT = 0.000020
-DEFAULT_SHIFT_LON = 0.000020
+DEFAULT_SHIFT_LAT = 0.000050
+DEFAULT_SHIFT_LON = 0.000050
 
 
 class HeatNetwork:
@@ -70,31 +71,43 @@ class HeatNetwork:
             message = self.create_asset_description_message(asset, port_list)
             asset_to_be_added_list.append(message)
 
+            add_to_building = False
             if not ESDLAsset.add_object_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
                 ESDLAsset.add_object_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
+                add_to_building = True
 
-            emit('add_esdl_objects', {'es_id': es_id, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
+            emit('add_esdl_objects', {'es_id': es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
     def reverse_conductor(self, active_es_id: str, conductor: AbstractConductor):
         if isinstance(conductor.geometry, Line):
             line: Line = conductor.geometry
             Point.__repr__ = lambda x: 'Point lat={}, lon={}, elev={}'.format(x.lat, x.lon, x.elevation)
-            print('input', line.point)
-            print('fragment', line.point[0].eURIFragment())
             rev_point = list(reversed(line.point))
             line.point.clear()
             line.point.extend(rev_point)
-            print('output', line.point)
-            print('fragment', line.point[0].eURIFragment())
 
+            # todo: swap port connections, but that is only possible if the connectedTo assets
+            # have besides an InPort also an OutPort
+            # not that easy...
+            # inPort, outPort = None
+            # for p in conductor.port:
+            #     if isinstance(p, InPort):
+            #         inPort: InPort = p
+            #     if isinstance(p, OutPort):
+            #         outPort: OutPort = p
+            # for other in inPort.connectedTo:
 
+            self.remove_connections(conductor, active_es_id)
+            connections = self.update_conn_list(conductor, active_es_id)
             # send update_esdl_object message (to be invented) to refresh gui
             emit('delete_esdl_object', {'asset_id': conductor.id})
             port_list = self.calculate_port_list(conductor)
             asset_description = self.create_asset_description_message(conductor, port_list)
             add_esdl_object_message = {'es_id': active_es_id, 'asset_pot_list': [asset_description], 'zoom': False}
             print(add_esdl_object_message)
-            emit('add_esdl_objects', add_esdl_object_message,namespace='/esdl')
+            emit('add_esdl_objects', add_esdl_object_message, namespace='/esdl')
+            emit("add_connections", {"es_id": active_es_id, "conn_list": connections})
+
 
     @staticmethod
     def calculate_port_list(asset: EnergyAsset):
@@ -129,10 +142,71 @@ class HeatNetwork:
         else:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [asset.geometry.lat,
-                 asset.geometry.lon], state, port_list, capability_type]
+                                                                                   asset.geometry.lon], state, port_list, capability_type]
+
+    def remove_connections(self, asset: EnergyAsset, active_es_id: str):
+        check_list = list()
+        for port in asset.port:
+            from_id = port.id
+            to_ports = port.connectedTo
+            for to_port in to_ports:
+                to_id = to_port.id
+                check_list.append({'from-port-id': from_id, 'to-port-id': to_id})
+                emit('remove_single_connection', {'from-port-id': from_id, 'to-port-id': to_id, 'es_id': active_es_id})
+
+        # update conn_list
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+
+        def identical(conn):  # define if a connection is identical to the one we want to delete
+            for item in check_list:
+                if conn['from-port-id'] == item['from-port-id'] and \
+                        conn['to-port-id'] == item['to-port-id']:
+                    print("Connection to remove found ", conn)
+                    return True
+            return False
+        conn_list[:] = [conn for conn in conn_list if not identical(conn)]
 
 
-######
+
+    def update_conn_list(self, asset: EnergyAsset, active_es_id: str):
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        connections = list()
+        for index, port in enumerate(asset.port):
+            from_coords = self.get_port_coordinates(asset, index)
+            for target_port in port.connectedTo:
+                target_port_index = target_port.energyasset.port.index(target_port)
+                to_coords = self.get_port_coordinates(target_port.energyasset, target_port_index)
+                connections.append(
+                    {'from-port-id': port.id,
+                     'from-port-carrier': port.carrier.id if port.carrier else None,
+                     'from-asset-id': asset.id,
+                     'from-asset-coord': from_coords,
+                     'to-port-id': target_port.id,
+                     'to-port-carrier': target_port.carrier.id if target_port.carrier else None,
+                     'to-asset-id': target_port.energyasset.id,
+                     'to-asset-coord': to_coords
+                     })
+        conn_list.extend(connections)
+        print(connections)
+        return connections # only return the newly added connections
+
+
+    def get_port_coordinates(self, asset, index):
+        from_coords = ()
+        if isinstance(asset.geometry, Line):
+            if index == 0:  # first port == first coordinate
+                point: Point = asset.geometry.point[0]
+                from_coords = (point.lat, point.lon)
+            elif index == len(asset.port) - 1:
+                point: Point = asset.geometry.point[-1]
+                from_coords = (point.lat, point.lon)
+        elif isinstance(asset.geometry, Point):
+            from_coords = (asset.geometry.lat, asset.geometry.lon)
+        if isinstance(asset.geometry, Polygon):
+            from_coords = ESDLGeometry.calculate_polygon_center(asset.geometry)
+        return from_coords
+
+    ######
 def _shift_point(point: Point):
         point.lat = point.lat - DEFAULT_SHIFT_LAT
         point.lon = point.lon - DEFAULT_SHIFT_LON
@@ -141,37 +215,35 @@ def _shift_point(point: Point):
 def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str):
     original_asset = esh.get_by_id(es_id, energy_asset_id)
 
-    duplicate_asset = original_asset.clone()
+    duplicate_asset = original_asset.deepcopy()
+    # reset all id's
+    for c in duplicate_asset.eContents:
+        if c.eClass.findEStructuralFeature('id'):
+            if c.eGet('id'):
+                c.eSet('id', str(uuid4()))
     duplicate_asset.id = str(uuid4())
     name = original_asset.name + '_ret'
     if original_asset.name.endswith('_ret'):
         name = original_asset.name[:-4] + '_sup'
     if original_asset.name.endswith('_sup'):
         name = original_asset.name[:-4] + '_ret'
-    if not isinstance(duplicate_asset, Pipe): # do different naming for other pipes
+    if not isinstance(duplicate_asset, Pipe): # do different naming for other conductors then pipes
         name = '{}_{}'.format(original_asset.name, 'copy')
     duplicate_asset.name = name
 
-    geometry = original_asset.geometry
+    geometry = duplicate_asset.geometry
     if isinstance(geometry, Line):
-        line = geometry.clone()
-        for p in geometry.point:
-            point_clone = p.clone()
-            _shift_point(point_clone)
-            line.point.insert(0, point_clone) # reverse the list
-        duplicate_asset.geometry = line
+        line: Line = geometry  # geometry.clone()
+        rev_point = list(reversed(line.point)) # reverse coordinates
+        line.point.clear()
+        line.point.extend(rev_point)
 
     if isinstance(geometry, Point):
-        point_clone = geometry.clone()
-        _shift_point(point_clone)
-        duplicate_asset.geometry = point_clone
+        _shift_point(geometry)
 
-    for port in original_asset.port:
-        newport = port.clone()
-        newport.id = str(uuid4())
-        duplicate_asset.port.append(newport)
-        esh.add_object_to_dict(es_id, newport) # add to UUID registry
+    # disconnect the ports as also the connectedTo has been duplicated, we need to remove this reference
+    for port in duplicate_asset.port:
+        port.connectedTo.clear()
 
-    esh.add_object_to_dict(es_id, duplicate_asset) # add to UUID registry
-
+    esh.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

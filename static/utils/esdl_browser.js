@@ -45,11 +45,14 @@ class ESDLBrowser {
     }
 
     open_browser_identifier(esdl_object_identifier) {
+        let message = {};
         if (esdl_object_identifier.id != null) {
-            socket.emit('esdl_browse_get_objectinfo', {'id': esdl_object_identifier.id});
-        } else {
-            socket.emit('esdl_browse_get_objectinfo_fragment', {'fragment': esdl_object_identifier.fragment});
+            message['id'] = esdl_object_identifier.id;
         }
+        if (esdl_object_identifier.fragment != null) {
+            message['fragment'] = esdl_object_identifier.fragment
+        }
+        socket.emit('esdl_browse_get_objectinfo', message);
     }
 
     open_browser_with_event(e, id) {
@@ -132,7 +135,7 @@ class ESDLBrowser {
                             esdl_browser.open_browser_fragment(data.container.fragment);
                         } else {
                             console.log('navigating to '+data.container.id);
-                            esdl_browser.open_browser(data.container.id);
+                            esdl_browser.open_browser_identifier(data.container);
                         }
                         return false;
                     })
@@ -161,7 +164,7 @@ class ESDLBrowser {
                                 esdl_browser.open_browser_fragment(container.fragment);
                             } else {
                                 console.log('navigating to '+container.id);
-                                esdl_browser.open_browser(container.id);
+                                esdl_browser.open_browser_identifier(container);
                             }
                             return false;
                         }
@@ -334,7 +337,7 @@ class ESDLBrowser {
                     if (value.hasOwnProperty('id') && value.id != null) {
                         let $a = $('<a>').text(value.repr).attr('href', "#");
                         //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
-                        $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser(value.id); return false; });
+                        $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(value); return false; });
                         $repr.append($a);
                         //let $span = $('<span>').text(' (' + value.type + ')');
                         //$repr.append($span)

@@ -156,8 +156,7 @@ def describe_reference_value(value, repr_function):
         refValue['type'] = value.eClass.name
         if hasattr(value, 'id'):
             refValue['id'] = value.id
-        else:
-            refValue['fragment'] = value.eURIFragment()
+        refValue['fragment'] = value.eURIFragment()
         return refValue
 
 
