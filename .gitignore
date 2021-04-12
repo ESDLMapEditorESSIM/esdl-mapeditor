@@ -68,6 +68,7 @@ ENV/
 
 *.xmi
 *.esdl
+!tests/esdl/*.esdl
 download/
 projects/
 html/
