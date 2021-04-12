@@ -50,13 +50,14 @@ def send_alert(message):
 #  TimeDimension
 # ---------------------------------------------------------------------------------------------------------------------
 class TimeDimension:
-    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, settings_storage: SettingsStorage, me_settings: MapEditorSettings):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
         self.executor = executor
         self.settings_storage = settings_storage
         self.register()
         self.config = self.init_config()
+        me_settings = MapEditorSettings.get_instance()
         self.mapeditor_colors = self.get_colors_from_settings(me_settings)
         # self.allocation_boundaries = {}       # stored in user session now
         # self.asset_ids = dict()               # stored in user session now

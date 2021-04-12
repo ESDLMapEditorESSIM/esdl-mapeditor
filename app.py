@@ -161,11 +161,11 @@ ESSIMSensitivity(app, socketio, settings_storage, essim)
 Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
-me_settings = MapEditorSettings(app, socketio, settings_storage)
+MapEditorSettings(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
 ESDLDrive(app, socketio, executor)
 ShapefileConverter(app, socketio, executor)
-time_dimension = TimeDimension(app, socketio, executor, settings_storage, me_settings)
+time_dimension = TimeDimension(app, socketio, executor, settings_storage)
 IELGAS(app, socketio, settings_storage)
 ETMLocal(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
@@ -892,7 +892,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                 line2.point.append(point)
             segm_ctr += 1
 
-        #find old ports and connections
+        # find old ports and connections
         ports = conductor.port
         if len(ports) != 2:
             send_alert('UNSUPPORTED: Conductor doesn\'t have two ports!')
@@ -3062,6 +3062,7 @@ def get_qau_information():
 
 
 def get_carrier_color_dict():
+    me_settings = MapEditorSettings.get_instance()
     me_ui_setting = me_settings.get_system_setting(MAPEDITOR_UI_SETTINGS)
     if me_ui_setting:
         if 'carrier_colors' in me_ui_setting:
@@ -3077,7 +3078,12 @@ def browser_initialize():
     view_modes = ViewModes.get_instance()
     view_modes.initialize_user(user_email)
 
+    me_settings = MapEditorSettings.get_instance()
+    user_settings = me_settings.get_user_settings(user_email)
+    set_session('user_settings', user_settings)
+
     logger.info('Send initial information to client')
+    emit('user_settings', user_settings)
     emit('control_strategy_config', esdl_config.esdl_config['control_strategies'])
     emit('carrier_color_dict', get_carrier_color_dict())
     emit('wms_layer_list', wms_layers.get_layers())

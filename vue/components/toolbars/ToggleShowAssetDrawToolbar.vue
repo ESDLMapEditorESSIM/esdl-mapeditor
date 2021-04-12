@@ -11,16 +11,24 @@
 </template>
 
 <script>
+import { PubSubManager, MessageNames } from "../../bridge.js";
 import { useAssetDrawToolbar } from "../../composables/assetDrawToolbar.js";
+
+PubSubManager.subscribe(MessageNames.USER_SETTINGS, (name, message) => {
+    let ui_settings = message.ui_settings;
+    const { initShowAssetDrawToolbar } = useAssetDrawToolbar();
+    initShowAssetDrawToolbar(ui_settings.asset_bar.visible_on_startup);
+});
 
 export default {
   name: "ToggleShowAssetDrawToolbar",
   setup() {
-    const { toggleShowAssetDrawToolbar, showAssetDrawToolbar } = useAssetDrawToolbar();
+    const { toggleShowAssetDrawToolbar, showAssetDrawToolbar, initShowAssetDrawToolbar } = useAssetDrawToolbar();
 
     return {
       toggleShowAssetDrawToolbar,
       showAssetDrawToolbar,
+      initShowAssetDrawToolbar,
     };
   },
 };

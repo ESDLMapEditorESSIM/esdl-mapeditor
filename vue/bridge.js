@@ -5,11 +5,13 @@
 
 export const MessageNames = Object.freeze({
     ADD_FEATURE_TO_LAYER: 'ADD_FEATURE_TO_LAYER',
+    USER_SETTINGS: 'USER_SETTINGS',
 });
 
 export const PubSubManager = {
   subscriptions: {
     'ADD_FEATURE_TO_LAYER': [],
+    'USER_SETTINGS': [],
   },
 
   subscribe: function(name, callback) {

@@ -217,6 +217,7 @@
         var ielgas_chart;
 
         var user_info;              // to store information about the logged in user
+        var user_settings;          // to store settings per user for ui behaviour
 
         var profile_array;
         var quantity_and_units_info;
@@ -1031,6 +1032,11 @@
 
             socket.on('user_info', function(ui) {
                 user_info = ui;
+            });
+
+            socket.on('user_settings', function(us) {
+                user_settings = us;
+                window.PubSubManager.broadcast('USER_SETTINGS', us);
             });
 
             socket.on('profile_info', function(pa) {

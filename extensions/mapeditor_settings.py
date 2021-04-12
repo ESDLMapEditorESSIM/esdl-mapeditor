@@ -15,6 +15,7 @@
 from flask import Flask
 from flask_socketio import SocketIO
 from extensions.settings_storage import SettingsStorage
+from extensions.session_manager import get_session
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -31,8 +32,19 @@ DEFAULT_SYSTEM_SETTING = {
 }
 
 DEFAULT_USER_SETTING = {
-
+    MAPEDITOR_UI_SETTINGS: {
+        'tooltips': {
+            'marker_tooltip_format': "{name}\n{power}\n{COP/efficiency}",
+            'line_tooltip_format': "{name}\n{power/capacity}",
+            'show_asset_information_on_map': False
+        },
+        'asset_bar': {
+            'visible_on_startup': True
+        },
+    },
 }
+
+me_settings = None
 
 
 class MapEditorSettings:
@@ -42,6 +54,17 @@ class MapEditorSettings:
         self.settings_storage = settings_storage
 
         self.register()
+
+        global me_settings
+        if me_settings:
+            logger.error("ERROR: Only one MapEditorSettings object can be instantiated")
+        else:
+            me_settings = self
+
+    @staticmethod
+    def get_instance():
+        global me_settings
+        return me_settings
 
     def register(self):
         logger.info("Registering MapEditor Settings extension")
@@ -89,6 +112,23 @@ class MapEditorSettings:
             print(cat[setting_name])
             return cat[setting_name]
 
+        @self.socketio.on('mapeditor_user_ui_setting_get', namespace='/esdl')
+        def mapeditor_user_ui_setting_get(info):
+            category = info['category']
+            name = info['name']
+
+            user_email = get_session('user_email')
+            return self.get_user_ui_setting(user_email, category, name)
+
+        @self.socketio.on('mapeditor_user_ui_setting_set', namespace='/esdl')
+        def mapeditor_user_ui_setting_set(info):
+            category = info['category']
+            name = info['name']
+            value = info['value']
+
+            user_email = get_session('user_email')
+            return self.set_user_ui_setting(user_email, category, name, value)
+
     def get_system_settings(self):
         if self.settings_storage.has_system(MAPEDITOR_SYSTEM_CONFIG):
             return self.settings_storage.get_system(MAPEDITOR_SYSTEM_CONFIG)
@@ -134,3 +174,20 @@ class MapEditorSettings:
         user_settings = self.get_user_settings(user)
         user_settings[name] = value
         self.set_user_settings(user, user_settings)
+
+    def get_user_ui_setting(self, user, category, name):
+        user_ui_setting = self.get_user_setting(user, MAPEDITOR_UI_SETTINGS)
+
+        result = False
+        if category in user_ui_setting:
+            if name in user_ui_setting[category]:
+                result = user_ui_setting[category][name]
+        return result
+
+    def set_user_ui_setting(self, user, category, name, value):
+        user_ui_setting = self.get_user_setting(user, MAPEDITOR_UI_SETTINGS)
+        if category not in user_ui_setting:
+            user_ui_setting[category] = dict()
+
+        user_ui_setting[category][name] = value
+        self.set_user_setting(user, MAPEDITOR_UI_SETTINGS, user_ui_setting)
