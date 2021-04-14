@@ -121,18 +121,18 @@ class ESSIM:
                         r = requests.get(url + '/status')
                         if r.status_code == 200:
                             result = json.loads(r.text)
-                            status = result["status"]
+                            status = result["State"]
                             if "moreInfo" in result:
                                 more_info = result["moreInfo"]
                             else:
                                 more_info = ""
 
-                            if status == -1:
-                                descr = result["description"]
+                            if status == "ERROR":
+                                descr = result["Description"]
                                 return (jsonify(
                                     {'percentage': '-1', 'url': '', 'simulationRun': es_simid, 'description': descr, 'moreInfo': more_info})), 200
 
-                            if float(status) >= 1:
+                            if status == "COMPLETE":
                                 r = requests.get(url)
                                 if r.status_code == 200:
                                     # del_session('es_simid')  # simulation ready
@@ -161,7 +161,11 @@ class ESSIM:
                                     send_alert('Error in getting the ESSIM dashboard URL')
                                     abort(r.status_code, 'Error in getting the ESSIM dashboard URL')
                             else:
-                                return (jsonify({'percentage': status, 'url': '', 'simulationRun': es_simid})), 200
+                                if status == "CREATED":
+                                    percentage = 0
+                                else:   # status == "RUNNING"
+                                    percentage = float(result["Description"])
+                                return (jsonify({'percentage': percentage, 'url': '', 'simulationRun': es_simid})), 200
                         else:
                             # print('code: ', r.status_code)
                             send_alert('Error in getting the ESSIM progress status')
