@@ -25,7 +25,8 @@ from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
-from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui
+from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
+    get_tooltip_asset_attrs
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
 from utils.RDWGSConverter import RDWGSConverter
@@ -486,20 +487,24 @@ def add_asset_to_asset_list(asset_list, asset):
             lon = geom.lon
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list,
-                               capability_type])
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon],
+                               tooltip_asset_attrs, state, port_list, capability_type])
         if isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
                 coords.append([point.lat, point.lon])
-            asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+            asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords,
+                               tooltip_asset_attrs, state, port_list])
         if isinstance(geom, esdl.Polygon):
             coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)  # [lon, lat]
             coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            # print(coords)
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
             asset_list.append(
-                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
+                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs, state,
+                 port_list, capability_type])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -568,7 +573,9 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                     capability_type = ESDLAsset.get_asset_capability_type(basset)
                     state = asset_state_to_ui(basset)
                     if bld_editor:
-                        asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon], state, port_list, capability_type])
+                        tooltip_asset_attrs = get_tooltip_asset_attrs(basset, 'marker')
+                        asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon],
+                                           tooltip_asset_attrs, state, port_list, capability_type])
                 else:
                     send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
 
@@ -628,8 +635,10 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                         # ( The case of an asset in an area that is connected with an asset in a building is handled
                         #   in process_area (now all connections are added twice, from both sides) )
                         if bld_editor or in_different_buildings:
-                            conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': basset.id, 'from-asset-coord': coord,
-                                'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
+                            conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id,
+                                              'from-asset-id': basset.id, 'from-asset-coord': coord,
+                                              'to-port-id': pc.id, 'to-port-carrier': pc_carr_id,
+                                              'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
     if bld_editor:
         for potential in building.potential:
@@ -681,8 +690,10 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                         pc_carr_id = None
                         if pc.carrier:
                             pc_carr_id = pc.carrier.id
-                        conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id, 'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
-                                          'to-port-id': pc.id, 'to-port-carrier': pc_carr_id, 'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
+                        conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id,
+                                          'from-asset-id': p_asset['asset'].id, 'from-asset-coord': p_asset_coord,
+                                          'to-port-id': pc.id, 'to-port-carrier': pc_carr_id,
+                                          'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
     for potential in area.potential:
         geom = potential.geometry
@@ -718,6 +729,7 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
 
     for subarea in area.area:
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Get building information

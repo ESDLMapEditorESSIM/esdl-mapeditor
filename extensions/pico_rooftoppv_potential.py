@@ -18,6 +18,7 @@ from extensions.session_manager import get_handler, get_session
 from extensions.boundary_service import is_valid_boundary_id
 from esdl import esdl
 from esdl.processing import ESDLAsset
+from src.esdl_helper import get_tooltip_asset_attrs
 from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
 import uuid
 import requests
@@ -276,7 +277,7 @@ class PICORooftopPVPotential:
 
         # Create a PVInstallation instance and attach a profile with the percentage of the potential that
         # will be 'installed'
-        pv_installation = esdl.PVInstallation(id=str(uuid.uuid4()),name="PV Installation" + orientation_name)
+        pv_installation = esdl.PVInstallation(id=str(uuid.uuid4()), name="PV Installation" + orientation_name)
         pv_outport = esdl.OutPort(id=str(uuid.uuid4()), name="Out")
         pv_profile = esdl.SingleValue(id=str(uuid.uuid4()), name="PV production", value=pot.value * percentage / 100)
         # Assume kWh for now, Geodan should communicate this in the ESDL in the end
@@ -313,7 +314,8 @@ class PICORooftopPVPotential:
 
         port_list = [{'name': pv_outport.name, 'id': pv_outport.id, 'type': type(pv_outport).__name__, 'conn_to': []}]
         capability_type = ESDLAsset.get_asset_capability_type(pv_installation)
+        tooltip_asset_attrs = get_tooltip_asset_attrs(pv_installation, 'marker')
         asset_list.append(['point', 'asset', pv_installation.name, pv_installation.id,
-                           type(pv_installation).__name__, 'e', [pv_geometry.lat, pv_geometry.lon], port_list,
-                                       capability_type])
+                           type(pv_installation).__name__, [pv_geometry.lat, pv_geometry.lon],
+                           tooltip_asset_attrs, 'e', port_list, capability_type])
         return pv_installation

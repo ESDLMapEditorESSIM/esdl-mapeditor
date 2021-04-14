@@ -25,7 +25,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 import src.log as log
-from src.esdl_helper import asset_state_to_ui
+from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs
 from esdl.processing import ESDLGeometry
 
 logger = log.get_logger(__name__)
@@ -138,11 +138,14 @@ class HeatNetwork:
         if isinstance(asset, AbstractConductor):
             # assume a Line geometry here
             coords = [(p.lat, p.lon) for p in asset.geometry.point]
-            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list]
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs, state,
+                    port_list]
         else:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [asset.geometry.lat,
-                                                                                   asset.geometry.lon], state, port_list, capability_type]
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            return ['point', 'asset', asset.name, asset.id, type(asset).__name__,
+                [asset.geometry.lat,asset.geometry.lon], tooltip_asset_attrs, state, port_list, capability_type]
 
     def remove_connections(self, asset: EnergyAsset, active_es_id: str):
         check_list = list()

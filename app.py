@@ -40,7 +40,7 @@ from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info, \
-    get_asset_geom_info
+    get_asset_geom_info, get_tooltip_asset_attrs
 from esdl import esdl
 from src.process_es_area_bld import process_energy_system, get_building_information
 from extensions.heatnetwork import HeatNetwork
@@ -975,9 +975,12 @@ def split_conductor(conductor, location, mode, conductor_container):
         carrier_id = carrier.id if carrier is not None else None
         for p in new_cond1.port:
             p.carrier = carrier
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                              'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond1)
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__, coords1, state, port_list])
+        tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond1, 'line')
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__,
+                                        coords1, tooltip_asset_attrs, state, port_list])
         coords2 = []
         for point in line2.point:
             coords2.append([point.lat, point.lon])
@@ -985,9 +988,12 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         for p in new_cond2.port:
             p.carrier = carrier
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                              'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond2)
-        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__, coords2, state, port_list])
+        tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond2, 'line')
+        esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__,
+                                        coords2, tooltip_asset_attrs, state, port_list])
 
         # update asset id's of conductor with new_cond1 and new_cond2 in conn_list
         for c in conn_list:
@@ -1002,8 +1008,10 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         # create list of connections to be added to UI
         if mode == 'connect':
-            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-port-carrier': carrier_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id,
+                              'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                              'to-port-id': new_port1_id, 'to-port-carrier': carrier_id, 'to-asset-id': new_cond2_id,
+                              'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         if mode == 'add_joint':
             joint_id = str(uuid.uuid4())
@@ -1039,15 +1047,23 @@ def split_conductor(conductor, location, mode, conductor_container):
             port_list = []
             for p in joint.port:
                 p.carrier = carrier
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                                  'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
             capability_type = ESDLAsset.get_asset_capability_type(joint)
             state = asset_state_to_ui(joint)
-            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__, [middle_point.lat, middle_point.lon], state, port_list, capability_type])
+            tooltip_asset_attrs = get_tooltip_asset_attrs(joint, 'marker')
+            esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__,
+                                            [middle_point.lat, middle_point.lon], tooltip_asset_attrs, state, port_list,
+                                            capability_type])
 
-            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id, 'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port2_conn_to_id, 'to-port-carrier': carrier_id, 'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
-            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-port-carrier': carrier_id, 'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
-                          'to-port-id': new_port1_id, 'to-port-carrier': carrier_id, 'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id,
+                              'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                              'to-port-id': new_port2_conn_to_id, 'to-port-carrier': carrier_id,
+                              'to-asset-id': joint.id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
+            conn_list.append({'from-port-id': new_port1_conn_to_id, 'from-port-carrier': carrier_id,
+                              'from-asset-id': joint.id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
+                              'to-port-id': new_port1_id, 'to-port-carrier': carrier_id,
+                              'to-asset-id': new_cond2_id, 'to-asset-coord': (middle_point.lat, middle_point.lon)})
 
         # now send new objects to UI
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
@@ -1496,7 +1512,8 @@ def process_command(message):
                 potentials_to_be_added = []
                 if isinstance(geometry, esdl.Point):
                     potentials_to_be_added.append(
-                        ['point', 'potential', potential.name, potential.id, type(potential).__name__, [geometry.lat, geometry.lon]])
+                        ['point', 'potential', potential.name, potential.id, type(potential).__name__,
+                         [geometry.lat, geometry.lon]])
                 elif isinstance(geometry, esdl.Polygon):
                     coords = ESDLGeometry.parse_esdl_subpolygon(potential.geometry.exterior, False)  # [lon, lat]
                     coords = ESDLGeometry.exchange_coordinates(coords)
@@ -1504,7 +1521,8 @@ def process_command(message):
                         ['polygon', 'potential', potential.name, potential.id, type(potential).__name__, coords])
 
                 if potentials_to_be_added:
-                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': potentials_to_be_added, 'zoom': False})
+                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                              'asset_pot_list': potentials_to_be_added, 'zoom': False})
 
                 esh.add_object_to_dict(active_es_id, potential)
             else:
@@ -1724,37 +1742,49 @@ def process_command(message):
                         connTo_ids = list(o.id for o in p.connectedTo)
                         carrier_id = p.carrier.id if p.carrier else None
                         port_list.append(
-                            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids, 'carrier': carrier_id})
+                            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids,
+                             'carrier': carrier_id})
 
                 if isinstance(asset, esdl.AbstractBuilding):
                     if isinstance(geometry, esdl.Point):
-                        buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], False, {}])
+                        buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__,
+                                                           [shape['coordinates']['lat'], shape['coordinates']['lng']],
+                                                           False, {}])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
-                        buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__, boundary["coordinates"], False, {}])
-                        # buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__, coords])
-                    emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list, 'zoom': False})
+                        buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
+                                                           boundary["coordinates"], False, {}])
+                    emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list,
+                                                  'zoom': False})
                 else:
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
                     state = asset_state_to_ui(asset)
                     if isinstance(geometry, esdl.Point):
-                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [shape['coordinates']['lat'], shape['coordinates']['lng']], state, port_list, capability_type])
+                        tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+                        asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__,
+                                                       [shape['coordinates']['lat'], shape['coordinates']['lng']],
+                                                       tooltip_asset_attrs, state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
+                        tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
                         asset_to_be_added_list.append(
-                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type])
+                            ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
+                             tooltip_asset_attrs, state, port_list, capability_type])
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:
                             coords.append([point.lat, point.lon])
-                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list])
+                        tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+                        asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__,
+                                                       coords, tooltip_asset_attrs, state, port_list])
 
                     #logger.debug(asset_to_be_added_list)
-                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False})
+                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                                              'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
                     asset_list = get_session_for_esid(es_edit.id, 'asset_list')
                     for al_asset in asset_to_be_added_list:
@@ -2233,7 +2263,7 @@ def process_command(message):
             for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
                 if pqau['id'] == predefined_qau:
                     try:
-                        # check if predefined qau is already presend in
+                        # check if predefined qau is already present in the ESDL
                         qau = esh.get_by_id(active_es_id, predefined_qau)
                     except KeyError:
                         qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
@@ -3012,7 +3042,8 @@ def initialize_app():
     else:
         logger.info('No energysystem in memory - generating empty energysystem')
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.get_esdl_version())
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
+                                       esdlVersion=esdl_doc.get_esdl_version())
 
     # TODO: discuss how to set active_es_id for the first time after a client connects
     es_list = esh.get_energy_systems()
@@ -3027,9 +3058,6 @@ def initialize_app():
     emit('clear_ui')
     emit('clear_esdl_layer_list')
     call_process_energy_system.submit(esh, None, None) # run in a seperate thread
-    #thread = threading.Thread(target=process_energy_system, args=(esh,None,title,current_app._get_current_object()))
-    #thread.start()
-    #session.modified = True
 
 
 @socketio.on('connect', namespace='/esdl')

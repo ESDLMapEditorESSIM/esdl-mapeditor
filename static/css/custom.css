@@ -238,6 +238,42 @@ h6 {
 }
 
 /*
+    Marker Tooltips
+*/
+.leaflet-popup-tip {
+    width: 0px;
+    height: 0px;
+}
+
+.marker-tooltip {
+    background: rgba(0, 0, 0, 0) !important;
+    border: none !important;
+    font-size: 10px;
+    box-shadow: none !important;
+}
+
+.leaflet-tooltip-left::before {
+    border-left-color: transparent;
+    margin-right: 32px;
+}
+.leaflet-tooltip-right::before {
+    border-right-color: transparent;
+    margin-left: 32px;
+}
+
+/*
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before,
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before {
+    position: absolute;
+    pointer-events: none;
+    border: 0px solid transparent;
+    background: transparent;
+    content: "Test";
+}
+*/
+/*
     Ports
 */
 .Port {

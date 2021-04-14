@@ -31,6 +31,7 @@ def get_or_create_esi_qau(esh: EnergySystemHandler, active_es_id: str) -> esdl.Q
         esh.add_object_to_dict(active_es_id, qaus)
     return es.energySystemInformation.quantityAndUnits
 
+
 def get_qau_information(esdl_doc = None):
     qaut = esdl.QuantityAndUnitType()
 

@@ -12,7 +12,11 @@
 #  Manager:
 #      TNO
 
+import re
+
 from flask_socketio import emit
+from pyecore.ecore import EEnum
+
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
@@ -145,6 +149,34 @@ def asset_state_to_ui(asset):
         return 'd'
 
 
+def get_tooltip_asset_attrs(asset, shape):
+    user_settings = get_session('user_settings')
+
+    attrs_dict = dict()
+    if user_settings:
+        if 'ui_settings' in user_settings:
+            if 'tooltips' in user_settings['ui_settings']:
+                tooltip_settings = user_settings['ui_settings']['tooltips']
+                if (shape == 'marker' or shape == 'polygon') and 'marker_tooltip_format' in tooltip_settings:
+                    tooltip_format = tooltip_settings['marker_tooltip_format']
+                elif shape == 'line' and 'line_tooltip_format' in tooltip_settings:
+                    tooltip_format = tooltip_settings['line_tooltip_format']
+
+                attr_names_list = re.findall('\{(.*?)\}', tooltip_format)
+                for attr_names in attr_names_list:
+                    for attr_name in attr_names.split('/'):
+                        if attr_name not in ['name', 'id']:
+                            attr = asset.eClass.findEStructuralFeature(attr_name)
+                            if attr:
+                                value = asset.eGet(attr_name)
+                                if isinstance(attr.eType, EEnum):
+                                    attrs_dict[attr_name] = value.name
+                                else:
+                                    attrs_dict[attr_name] = value
+
+    return attrs_dict
+
+
 def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
     port_list = []
     conn_list = []
@@ -188,19 +220,25 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
             lon = geom.lon
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], state, port_list, capability_type], conn_list
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], tooltip_asset_attrs,
+                    state, port_list, capability_type], conn_list
         elif isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
                 coords.append([point.lat, point.lon])
-            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list], conn_list
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+            return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs, state,
+                    port_list], conn_list
         elif isinstance(geom, esdl.Polygon):
             if isinstance(asset, esdl.WindPark) or isinstance(asset, esdl.PVPark):
                 coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)   # [lon, lat]
                 coords = ESDLGeometry.exchange_coordinates(coords)                  # --> [lat, lon]
                 capability_type = ESDLAsset.get_asset_capability_type(asset)
                 # print(coords)
-                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, state, port_list, capability_type], conn_list
+                tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
+                return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs,
+                        state, port_list, capability_type], conn_list
         else:
             return [], []
 

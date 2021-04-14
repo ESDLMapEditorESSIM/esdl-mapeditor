@@ -185,6 +185,7 @@ export default {
         param_name: name,
         param_value: new_value,
       });
+      window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: currentObjectID.value, name: name, value: new_value });
     },
     updateDateAttribute(date, dateString, name) {
       let new_value;

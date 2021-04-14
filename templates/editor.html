@@ -200,6 +200,7 @@
     <script type="text/javascript" src="./utils/spatial_operations.js"></script>
     <script type="text/javascript" src="./utils/notes.js"></script>
     <script type="text/javascript" src="./utils/view_modes.js"></script>
+    <script type="text/javascript" src="./utils/asset_information.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -1154,10 +1155,10 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0         1          2     3   4           5          6      7        8
-                // 'point'   asset      name  id  class_name  [lat,lon]  state  [ports]  capability
-                // 'line'    asset      name  id  class_name  [...]      state  [ports]
-                // 'polygon' asset      name  id  class_name  [...]      state  [ports]  capability
+                // 0         1          2     3   4           5          6      7      8        9
+                // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+                // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
+                // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
                 // 'point'   potential  name  id  class_name  [lat,lon]
                 // 'polygon' potential  name  id  class_name  [...]
 
@@ -1168,6 +1169,8 @@
                 es_id = options['es_id'];
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
 
+                tt_format = get_tooltip_format();
+
                 es_bld_id = es_id;
                 if (add_to_building) {
                    es_bld_id = bld_edit_id;
@@ -1177,7 +1180,7 @@
 
                     if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
                         (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
-                        capability = list[i][8];
+                        capability = list[i][9];
                         classname = 'circle ' + capability;
                         if (!add_to_building) classname = 'zoom '+classname;
                     } else if (list[i][1] == 'potential') {
@@ -1189,10 +1192,10 @@
                     let img_class = "circle-img";
                     if (!add_to_building) img_class = 'zoom '+img_class;
                     if (list[i][1] == 'asset') {
-                        if (list[i][6] == 'o') {
+                        if (list[i][7] == 'o') {
                             classname += ' Optional';       // will become 'Producer Optional'
                         }
-                        if (list[i][6] == 'd') {
+                        if (list[i][7] == 'd') {
                             classname += 'Disabled';        // will become 'ProducerDisabled'
                             img_class += "-disabled";
                         }
@@ -1231,20 +1234,24 @@
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
+                        marker.attrs = list[i][6];
                         if (marker.asspot == 'asset') {
-                            marker.ports = list[i][7];
-                            marker.capability = list[i][8];
+                            marker.ports = list[i][8];
+                            marker.capability = list[i][9];
                         }
 
                         set_marker_handlers(marker);
                         // esdl_layer.addLayer(marker);
                         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+
+                        marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                            { permanent: true, className: 'marker-tooltip' });
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
                         let polygon_color;
                         if (list[i][1] == 'asset') {
-                            polygon_color = colors[list[i][8]]
+                            polygon_color = colors[list[i][9]]
                         } else {
                             polygon_color = colors["Potential"]
                         }
@@ -1256,7 +1263,7 @@
                         polygon.name = list[i][2];
                         polygon.type = list[i][4];
                         polygon.asspot = list[i][1];
-
+                        polygon.attrs = list[i][6];
                         // esdl_layer.addLayer(polygon);
                         add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
 
@@ -1269,20 +1276,24 @@
                         marker.name = list[i][2];
                         marker.type = list[i][4];
                         marker.asspot = list[i][1];
+                        marker.attrs = list[i][6];
                         marker.polygon = true;
                         if (marker.asspot == 'asset') {
-                            marker.ports = list[i][7];
-                            marker.capability = list[i][8];
+                            marker.ports = list[i][8];
+                            marker.capability = list[i][9];
                         }
 
                         set_marker_handlers(marker);
                         // esdl_layer.addLayer(marker);
                         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+
+                        marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                            { permanent: true, className: 'marker-tooltip' });
                     }
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
                         var lineType = list[i][4];
-                        var port_list = list[i][7];
+                        var port_list = list[i][8];
                         var line_color = colors[lineType];
                         for (let p=0; p<port_list.length; p++) {
                             let port_carrier_id = port_list[p]['carrier'];
@@ -1291,10 +1302,10 @@
                             }
                         }
                         let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
-                        if (list[i][6] == 'o') {   // Optional asset with dashed line
+                        if (list[i][7] == 'o') {   // Optional asset with dashed line
                             line_options['dashArray'] = '3,10';
                         }
-                        if (list[i][6] == 'd') {    // Disabled asset with grey dotted line
+                        if (list[i][7] == 'd') {    // Disabled asset with grey dotted line
                             line_options['dashArray'] = '2,4';
                             line_options['color'] = '#808080';
                         }
@@ -1304,15 +1315,18 @@
 						line.title = title;
                         line.id = list[i][3];
                         line.esid = es_id;
-                        line.ports = list[i][7];
+                        line.ports = list[i][8];
                         line.type = list[i][4];
                         line.asspot = list[i][1];
-                        line.name = "";
+                        line.attrs = list[i][6];
+                        line.name = list[i][2];     // "";
                         line.color = line_color;    // TODO: improve?
 
                         set_line_handlers(line);
                         // esdl_layer.addLayer(line);
                         add_object_to_layer(es_bld_id, 'esdl_layer', line);
+                        line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs)+'                   ',
+                                     {repeat: true});
                     }
                 }
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.

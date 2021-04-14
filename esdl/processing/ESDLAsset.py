@@ -246,8 +246,12 @@ def add_profile_to_port(port, profile):
 
 
 def remove_profile_from_port(port, profile_id):
+    esh = get_handler()
+    active_es_id = get_session('active_es_id')
+
     profile_list = port.profile
 
     for profile in set(profile_list):
         if profile.id == profile_id:
             profile_list.remove(profile)
+            esh.remove_object_from_dict(active_es_id, profile)
