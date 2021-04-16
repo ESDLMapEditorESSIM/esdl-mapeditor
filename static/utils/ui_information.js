@@ -36,21 +36,25 @@ function get_tooltip_format() {
 //  Create tooltip text based on format and list of attributes (name is given as a separate parameter)
 // ------------------------------------------------------------------------------------------------------------
 function get_tooltip_text(tt_format, name, attrs) {
+    console.log(attrs);
     let tt_text = tt_format;
-    let attr_names_list = tt_format.match(/{.*?}/g);
-    for (attr_idx in attr_names_list) {
-        let attr_names_tmpl = attr_names_list[attr_idx];
-        let attr_names = attr_names_tmpl.substring(1, attr_names_tmpl.length - 1).split('/');
-        for (attr_name_idx in attr_names) {
-            let attr_name = attr_names[attr_name_idx];
-            if (attr_name == 'name') {
-                tt_text = tt_text.replace(attr_names_tmpl, name);
-            } else {
-                if (attr_name in attrs) {
-                    tt_text = tt_text.replace(attr_names_tmpl, attrs[attr_name]);
-                } else {
-                    tt_text = tt_text.replace(attr_names_tmpl, '');
-                }
+    let attr_list = tt_format.match(/\(.*?\)/g);
+    for (attr_idx in attr_list) {
+        let attr_tmpl = attr_list[attr_idx];
+
+        let attr_name_par = attr_tmpl.match(/{.*}/)[0];
+        let attr_name = /{(.*)}/g.exec(attr_tmpl)[1];
+
+        if (attr_name == 'name') {
+            tt_text = tt_text.replace(attr_tmpl, name);
+        } else {
+            if (attr_name in attrs) {
+                let attr_text = attr_tmpl;
+                attr_text = attr_text.replace(attr_name_par, attrs[attr_name]);
+                attr_text = /\((.*)\)/g.exec(attr_text)[1];
+                tt_text = tt_text.replace(attr_tmpl, attr_text);
+            } else {      // remove whole item
+                tt_text = tt_text.replace(attr_tmpl, '');
             }
         }
     }
