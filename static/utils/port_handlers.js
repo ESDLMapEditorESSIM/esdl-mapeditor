@@ -100,7 +100,6 @@ function set_marker_port_handlers(marker) {
                     }
                 }
 
-
                 let divicon = L.divIcon({
                     className: class_name,
                     iconSize: null

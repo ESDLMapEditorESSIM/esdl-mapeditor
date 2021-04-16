@@ -2116,31 +2116,31 @@ def process_command(message):
 
         # update gui, only if necessary for EnergyAssets, and Ports
         # and EnergySystem ans
-        update_gui = False
-        update_asset = asset
-        if isinstance(asset, esdl.EnergySystem):
-            #emit()
-            # todo find out how to update energy system name and update Area name in dropdown
-            pass
-        elif isinstance(asset, esdl.EnergyAsset):
-            if param_name == esdl.EnergyAsset.name.name:
-                update_gui = True
-            if param_name == esdl.EnergyAsset.state.name:
-                update_gui = True
-        elif isinstance(asset, esdl.Port):
-            update_gui = True
-            update_asset = asset.energyasset
-
-        if update_gui:
-            emit('delete_esdl_object', {'asset_id': update_asset.id})
-            asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, update_asset)
-            emit("add_esdl_objects",
-                 {
-                    "es_id": active_es_id,
-                    "asset_pot_list": [asset_ui],
-                    "zoom": False,
-                 })
-            emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
+        # update_gui = False
+        # update_asset = asset
+        # if isinstance(asset, esdl.EnergySystem):
+        #     #emit()
+        #     # todo find out how to update energy system name and update Area name in dropdown
+        #     pass
+        # elif isinstance(asset, esdl.EnergyAsset):
+        #     if param_name == esdl.EnergyAsset.name.name:
+        #         update_gui = True
+        #     if param_name == esdl.EnergyAsset.state.name:
+        #         update_gui = True
+        # elif isinstance(asset, esdl.Port):
+        #     update_gui = True
+        #     update_asset = asset.energyasset
+        #
+        # if update_gui:
+        #     emit('delete_esdl_object', {'asset_id': update_asset.id})
+        #     asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, update_asset)
+        #     emit("add_esdl_objects",
+        #          {
+        #             "es_id": active_es_id,
+        #             "asset_pot_list": [asset_ui],
+        #             "zoom": False,
+        #          })
+        #     emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
 
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']

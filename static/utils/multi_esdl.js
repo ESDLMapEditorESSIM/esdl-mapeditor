@@ -276,11 +276,10 @@ function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
 }
 
-
-
 function get_carrier_style_class_name(carrier_mapping) {
     return 'car_' + carrier_mapping.name.replace(/[^a-z]/ig, ''); // only a-z in class name, no spaces
 }
+
 /**
 Creates a dynamic class based on a carrier color that can be added to ports
 */
@@ -291,10 +290,10 @@ function update_carrier_style_class(carrier_mapping) {
     // dynamically create a style we can add to the marker
     if ( $("head").children("#"+carrier_class_name).length === 0) {
         // add only when class is not defined
-        let style = $("<style id="+carrier_class_name+" type='text/css'> ."+carrier_class_name+" { border-color: "+carrier_color+";} </style>");
+        let style = $("<style id="+carrier_class_name+" type='text/css'> ."+carrier_class_name+" { background: "+carrier_color+";} </style>");
         style.appendTo("head"); // add to <head> element
     } else {
-        $("head").children("#"+carrier_class_name).text('.'+carrier_class_name+' { border-color: '+carrier_color+';}');
+        $("head").children("#"+carrier_class_name).text('.'+carrier_class_name+' { background: '+carrier_color+';}');
     }
 }
 

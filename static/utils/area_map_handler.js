@@ -181,12 +181,23 @@ function add_area_map_handlers(socket, map) {
     map.on('keydown', function(e){
         var event = e.originalEvent
         if (event.keyCode === 27) {
-            // cancel drawing a connection if necessary
-            cancel_connection();
-            map.contextmenu.hide();
-            remove_tooltip(); // clear tooltips if they are sticky
+            if (editing_objects) {
+                window.draw_control._toolbars.edit._modes.edit.handler.revertLayers();
+          	} else if (deleting_objects) {
+                window.draw_control._toolbars.edit._modes.remove.handler.revertLayers();
+          	} else {
+                // cancel drawing a connection if necessary
+                cancel_connection();
+                map.contextmenu.hide();
+                remove_tooltip(); // clear tooltips if they are sticky
+            }
         }
         // only react to events on the map
+        //  a - start drawing assets (as markers)
+        //  c - start drawing a cable
+        //  d - enter delete layers mode
+        //  e - enter edit layers mode
+        //  p - start drawing a pipe
         if (document.activeElement.id === 'mapid' && event.key === 'p' /*&& event.metaKey*/) {
             // draw a pipe
             window.update_line_asset_menu('Pipe');
@@ -199,10 +210,19 @@ function add_area_map_handlers(socket, map) {
             // draw a pipe
             //window.update_line_asset_menu('ElectricityCable');
             window.draw_control._toolbars.draw._modes.marker.handler.enable();
+        } else if (document.activeElement.id === 'mapid' && event.key === 'e') {
+            window.draw_control._toolbars.edit._modes.edit.handler.enable();
+        } else if (document.activeElement.id === 'mapid' && event.key === 'd') {
+            window.draw_control._toolbars.edit._modes.remove.handler.enable();
+        } else if (event.key === 's') {
+            if (editing_objects) {
+                window.draw_control._toolbars.edit._modes.edit.handler.save();
+          	} else if (deleting_objects) {
+                window.draw_control._toolbars.remove._modes.remove.handler.save();
+          	}
+        } else {
+            console.log(event.key, event);
         }
-//        else {
-//            console.log(event.key, event);
-//        }
     });
 
 //    $(document).keydown(function(e) {

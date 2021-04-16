@@ -277,15 +277,15 @@ h6 {
     Ports
 */
 .Port {
-    border: 3px solid black;
+    background: #CCCCCC;
 }
 
 .InPort {
-    background: blue;
+    border: 3px solid #505050;
 }
 
 .OutPort {
-    background: red;
+    border: 3px solid black;
 }
 
 /* Assets are supported with 1, 2 or 3 InPorts or OutPorts */
