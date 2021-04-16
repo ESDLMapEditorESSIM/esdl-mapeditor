@@ -178,19 +178,32 @@ function add_area_map_handlers(socket, map) {
         drawState.reset(); // reset connecting by pipe/cable
     });
 
-    map.on('keydown', function(e){
+    // attach these keys to the body, because then they also work after clicking a marker
+    // and the map doesn't have focus anymore
+    $("body").on('keydown', function(e){
         var event = e.originalEvent
         if (event.keyCode === 27) {
             if (editing_objects) {
-                window.draw_control._toolbars.edit._modes.edit.handler.revertLayers();
+                window.draw_control._toolbars.edit.disable();
           	} else if (deleting_objects) {
-                window.draw_control._toolbars.edit._modes.remove.handler.revertLayers();
-          	} else {
-                // cancel drawing a connection if necessary
-                cancel_connection();
-                map.contextmenu.hide();
-                remove_tooltip(); // clear tooltips if they are sticky
-            }
+                window.draw_control._toolbars.edit.disable();
+          	}
+        } else if (event.key === 's') {
+            if (editing_objects) {
+                window.draw_control._toolbars.edit._save();
+          	} else if (deleting_objects) {
+                window.draw_control._toolbars.edit._save();
+          	}
+        }
+    });
+
+    map.on('keydown', function(e){
+        var event = e.originalEvent
+        if (event.keyCode === 27) {
+            // cancel drawing a connection if necessary
+            cancel_connection();
+            map.contextmenu.hide();
+            remove_tooltip(); // clear tooltips if they are sticky
         }
         // only react to events on the map
         //  a - start drawing assets (as markers)
@@ -210,18 +223,10 @@ function add_area_map_handlers(socket, map) {
             // draw a pipe
             //window.update_line_asset_menu('ElectricityCable');
             window.draw_control._toolbars.draw._modes.marker.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'e') {
+        } else if (event.key === 'e') {
             window.draw_control._toolbars.edit._modes.edit.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'd') {
+        } else if (event.key === 'd') {
             window.draw_control._toolbars.edit._modes.remove.handler.enable();
-        } else if (event.key === 's') {
-            if (editing_objects) {
-                window.draw_control._toolbars.edit._modes.edit.handler.save();
-          	} else if (deleting_objects) {
-                window.draw_control._toolbars.remove._modes.remove.handler.save();
-          	}
-        } else {
-            console.log(event.key, event);
         }
     });
 
