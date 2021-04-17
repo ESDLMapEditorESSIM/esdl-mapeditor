@@ -155,12 +155,13 @@ class MapEditorSettings:
         self.set_system_settings(system_settings)
 
     def add_missing_settings(self, settings, def_settings):
-        for k in def_settings:
-            if k in settings:
-                if not isinstance(settings[k], str):
-                    self.add_missing_settings(settings[k], def_settings[k])
-            else:
-                settings[k] = def_settings[k]
+        if isinstance(def_settings, dict):
+            for k in def_settings:
+                if k in settings:
+                    if not isinstance(settings[k], str):
+                        self.add_missing_settings(settings[k], def_settings[k])
+                else:
+                    settings[k] = def_settings[k]
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, MAPEDITOR_USER_CONFIG):
