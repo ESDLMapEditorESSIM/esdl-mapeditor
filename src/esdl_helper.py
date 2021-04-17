@@ -167,7 +167,7 @@ def get_tooltip_asset_attrs(asset, shape):
                     for attr_name in attr_names.split('/'):
                         if attr_name not in ['name', 'id']:
                             attr = asset.eClass.findEStructuralFeature(attr_name)
-                            if attr:
+                            if attr and asset.eIsSet(attr_name):
                                 value = asset.eGet(attr_name)
                                 if isinstance(attr.eType, EEnum):
                                     attrs_dict[attr_name] = value.name

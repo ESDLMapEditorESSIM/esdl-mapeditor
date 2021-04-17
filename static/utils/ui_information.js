@@ -74,14 +74,14 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 
     let tt_format = get_tooltip_format();
     let attrs = asset_leaflet_obj.attrs;
-    for (const [k, v] of Object.entries(attrs)) {
-        console.log(`${k}: ${v}`);
-        if (k == attribute_name) attrs[k] = value;
-    }
 
     if (asset_leaflet_obj instanceof L.Marker) {
+        if (tt_format['marker'].includes('{'+attribute_name+'}'))
+            attrs[attribute_name] = value;
         asset_leaflet_obj.setTooltipContent(get_tooltip_text(tt_format['marker'], asset_leaflet_obj.name, attrs));
     } else if (asset_leaflet_obj instanceof L.Polyline) {
+        if (tt_format['line'].includes('{'+attribute_name+'}'))
+            attrs[attribute_name] = value;
         asset_leaflet_obj.setText(get_tooltip_text(tt_format['line'], asset_leaflet_obj.name, attrs)+'                   ',
             {repeat: true});
     }

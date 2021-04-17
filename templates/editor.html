@@ -1244,8 +1244,9 @@
                         // esdl_layer.addLayer(marker);
                         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
 
-                        marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                            { permanent: true, className: 'marker-tooltip' });
+                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                                { permanent: true, className: 'marker-tooltip' });
                     }
                     if (list[i][0] == 'polygon') {
                         var coords = list[i][5];
@@ -1287,8 +1288,9 @@
                         // esdl_layer.addLayer(marker);
                         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
 
-                        marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                            { permanent: true, className: 'marker-tooltip' });
+                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                                { permanent: true, className: 'marker-tooltip' });
                     }
                     if (list[i][0] == 'line') {
                         var coords = list[i][5];
@@ -1325,8 +1327,9 @@
                         set_line_handlers(line);
                         // esdl_layer.addLayer(line);
                         add_object_to_layer(es_bld_id, 'esdl_layer', line);
-                        line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs)+'                   ',
-                                     {repeat: true});
+                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                            line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
+                                '                   ', {repeat: true});
                     }
                 }
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.

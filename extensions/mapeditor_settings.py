@@ -34,8 +34,8 @@ DEFAULT_SYSTEM_SETTING = {
 DEFAULT_USER_SETTING = {
     MAPEDITOR_UI_SETTINGS: {
         'tooltips': {
-            'marker_tooltip_format': "{name}\n{power}\n{COP/efficiency}",
-            'line_tooltip_format': "{name}\n{power/capacity}",
+            'marker_tooltip_format': "({name})(<br>{power}W)(<br>COP: {COP})(<br>Eff: {efficiency})",
+            'line_tooltip_format': "({name})( - {diameter})( - {power}W)( - {capacity})",
             'show_asset_information_on_map': False
         },
         'asset_bar': {
@@ -117,8 +117,10 @@ class MapEditorSettings:
             category = info['category']
             name = info['name']
 
-            user_email = get_session('user_email')
-            return self.get_user_ui_setting(user_email, category, name)
+            user_email = get_session('user-email')
+            res = self.get_user_ui_setting(user_email, category, name)
+            print(name + ': ' + str(res))
+            return res
 
         @self.socketio.on('mapeditor_user_ui_setting_set', namespace='/esdl')
         def mapeditor_user_ui_setting_set(info):
@@ -126,7 +128,7 @@ class MapEditorSettings:
             name = info['name']
             value = info['value']
 
-            user_email = get_session('user_email')
+            user_email = get_session('user-email')
             return self.set_user_ui_setting(user_email, category, name, value)
 
     def get_system_settings(self):
@@ -152,9 +154,20 @@ class MapEditorSettings:
         system_settings[name] = value
         self.set_system_settings(system_settings)
 
+    def add_missing_settings(self, settings, def_settings):
+        for k in def_settings:
+            if k in settings:
+                if not isinstance(settings[k], str):
+                    self.add_missing_settings(settings[k], def_settings[k])
+            else:
+                settings[k] = def_settings[k]
+
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, MAPEDITOR_USER_CONFIG):
-            return self.settings_storage.get_user(user, MAPEDITOR_USER_CONFIG)
+            settings = self.settings_storage.get_user(user, MAPEDITOR_USER_CONFIG)
+            # Add missing settings that have been added to defaults since last deployment/login
+            self.add_missing_settings(settings, DEFAULT_USER_SETTING)
+            return settings
         else:
             user_settings = DEFAULT_USER_SETTING
             self.set_user_settings(user, user_settings)
