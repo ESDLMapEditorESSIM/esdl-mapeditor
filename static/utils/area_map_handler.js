@@ -223,9 +223,9 @@ function add_area_map_handlers(socket, map) {
             // draw a pipe
             //window.update_line_asset_menu('ElectricityCable');
             window.draw_control._toolbars.draw._modes.marker.handler.enable();
-        } else if (event.key === 'e') {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'e') {
             window.draw_control._toolbars.edit._modes.edit.handler.enable();
-        } else if (event.key === 'd') {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'd') {
             window.draw_control._toolbars.edit._modes.remove.handler.enable();
         }
     });
