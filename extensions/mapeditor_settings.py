@@ -158,7 +158,7 @@ class MapEditorSettings:
         if isinstance(def_settings, dict):
             for k in def_settings:
                 if k in settings:
-                    if not isinstance(settings[k], str):
+                    if isinstance(settings[k], dict):
                         self.add_missing_settings(settings[k], def_settings[k])
                 else:
                     settings[k] = def_settings[k]
