@@ -243,7 +243,6 @@ view_modes_config = {
         }
     }
 }
-
 asset_list = {
     "standard": {
         "Producer": [
@@ -257,6 +256,31 @@ asset_list = {
             "CHP",
             "PowerPlant",
             "Electrolyzer",
+        ]
+    },
+    "ESSIM": {
+        "Producer": [
+            "GeothermalSource",
+            "Import",
+            "PVInstallation",
+            "WindTurbine"
+        ],
+        "Consumer": [
+            "ElectricityDemand",
+            "Export",
+            "HeatingDemand",
+        ],
+        "Conversion": [
+            "CHP",
+            "Electrolyzer",
+            "GasHeater",
+            "HeatPump",
+            "PowerPlant",
+        ],
+        "Storage": [
+            "Battery",
+            "GasStorage",
+            "HeatStorage",
         ]
     },
     "CHESS": {
@@ -285,6 +309,7 @@ asset_list = {
         ]
     }
 }
+
 
 VIEW_MODES_USER_CONFIG = "VIEW_MODES_USER_CONFIG"
 view_modes = None
