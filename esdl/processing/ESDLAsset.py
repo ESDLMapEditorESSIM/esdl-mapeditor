@@ -254,4 +254,4 @@ def remove_profile_from_port(port, profile_id):
     for profile in set(profile_list):
         if profile.id == profile_id:
             profile_list.remove(profile)
-            esh.remove_object_from_dict(active_es_id, profile)
+            esh.remove_object_from_dict(active_es_id, profile, True)

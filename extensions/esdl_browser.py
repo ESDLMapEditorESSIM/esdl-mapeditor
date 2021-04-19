@@ -92,7 +92,7 @@ class ESDLBrowser:
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
                 try:
-                    esh.remove_object_from_dict(active_es_id, ref_object)
+                    esh.remove_object_from_dict(active_es_id, ref_object, True)
                     resource = esh.get_resource(active_es_id)
                     fragment = ref_object.eURIFragment()
                     del resource._resolve_mem[fragment]

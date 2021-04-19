@@ -1812,7 +1812,7 @@ def process_command(message):
                 if isinstance(asset, esdl.EnergyAsset):
                     remove_control_strategy_for_asset(asset.id)
             ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_object_from_dict_by_id(es_edit.id, obj_id)
+            esh.remove_object_from_dict(es_edit.id, asset, True)
         else:
             send_alert('Asset or potential without an id cannot be removed')
 

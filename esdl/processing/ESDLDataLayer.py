@@ -113,7 +113,7 @@ class ESDLDataLayer:
         if cs:
             services = cs.eContainer()
             services.service.remove(cs)
-            esh.remove_object_from_dict(active_es_id, cs)
+            esh.remove_object_from_dict(active_es_id, cs, True)
             asset.controlStrategy = None
 
     def get_services(self):
@@ -144,7 +144,7 @@ class ESDLDataLayer:
         print('deleting', message, ref_object)
         if reference.containment:
             try:
-                esh.remove_object_from_dict(active_es_id, ref_object)
+                esh.remove_object_from_dict(active_es_id, ref_object, True)
                 resource = esh.get_resource(active_es_id)
                 fragment = ref_object.eURIFragment()
                 del resource._resolve_mem[fragment] # update fragment cache for pyecore<0.12.0

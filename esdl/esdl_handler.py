@@ -497,7 +497,10 @@ class EnergySystemHandler:
             else:
                 logger.warning('Id has not been set for object {}({})'.format(esdl_object.eClass.name, esdl_object))
 
-    def remove_object_from_dict(self, es_id, esdl_object):
+    def remove_object_from_dict(self, es_id, esdl_object: EObject, recursive=False):
+        if recursive:
+            for obj in esdl_object.eAllContents():
+                self.remove_object_from_dict(es_id, obj)
         if hasattr(esdl_object, 'id'):
             if esdl_object.id is not None:
                 del self.get_resource(es_id).uuid_dict[esdl_object.id]

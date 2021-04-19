@@ -121,7 +121,7 @@ def set_control_strategy(asset, cs_info):
             # remove current strategy
             services = control_strategy.eContainer()
             services.service.remove(control_strategy)
-            esh.remove_object_from_dict(active_es_id, control_strategy)
+            esh.remove_object_from_dict(active_es_id, control_strategy, True)
         # create new control strategy
         control_strategy = instantiate_type(cs_info['type'])
         control_strategy.id = str(uuid4())
