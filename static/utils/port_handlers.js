@@ -371,6 +371,8 @@ function set_line_port_handlers(line) {
                         let name = mapping[carrier_id].name;
                         let color = mapping[carrier_id].color;
                         port_name = port_name + ' ['+name+']';
+                        let carrier_class_name = get_carrier_style_class_name(mapping[carrier_id]);
+                        class_name = class_name + " " + carrier_class_name;
                     }
                 }
 
