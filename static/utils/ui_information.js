@@ -36,7 +36,6 @@ function get_tooltip_format() {
 //  Create tooltip text based on format and list of attributes (name is given as a separate parameter)
 // ------------------------------------------------------------------------------------------------------------
 function get_tooltip_text(tt_format, name, attrs) {
-    console.log(attrs);
     let tt_text = tt_format;
     let attr_list = tt_format.match(/\(.*?\)/g);
     for (attr_idx in attr_list) {
@@ -66,7 +65,6 @@ function get_tooltip_text(tt_format, name, attrs) {
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_tooltip(asset_id, attribute_name, value) {
     let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
-    console.log(asset_leaflet_obj);
 
     if (attribute_name == 'name') {
         asset_leaflet_obj.name = value;
