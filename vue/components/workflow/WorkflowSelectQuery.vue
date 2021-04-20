@@ -80,7 +80,13 @@ fetch(`workflow/get_data?${queryString}`)
       return;
     }
     const source = workflowStep.source;
-    const choices = data[source.choices_attr];
+    let choices = [];
+    // Choices data can be found as an attribute in a dict or is directly returned as a list
+    if ('choices_attr' in source) {
+      choices = data[source.choices_attr];
+    } else {
+      choices = data;
+    }
 
     // Convert the choices to a list of options.
     options.value = choices.map(choice => {

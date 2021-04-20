@@ -126,10 +126,10 @@ class ESDLServices:
                 for step in config_service["workflow"]:
                     if (
                         step["type"] in ("service", "custom")
-                        and step["service"]["id"] == service_params["service_id"]
                     ):
-                        service = step["service"]
-                        break
+                        if "service" in step and step["service"]["id"] == service_params["service_id"]:
+                            service = step["service"]
+                            break
 
         if service is None:
             return False, None
