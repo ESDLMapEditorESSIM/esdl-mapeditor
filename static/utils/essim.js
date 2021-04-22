@@ -363,7 +363,7 @@ function poll_simulation_progress() {
         url: ESSIM_simulation_URL_prefix + 'simulation_progress',
         success: function(data){
             // console.log(data);
-            if (data["percentage"] == "-1") {
+            if (data["status"] == "ERROR") {
                 let description = data["description"];
                 let more_info = data["moreInfo"];
 
@@ -372,7 +372,7 @@ function poll_simulation_progress() {
 
                 document.getElementById('button_close_simulation_dialog').style.display = "block";
                 document.getElementById('button_cancel_simulation').style.display = "none";
-            } else if (data["percentage"] == "1") {
+            } else if (data["status"] == "COMPLETE") {
                 let dashboardURL = data["url"];
                 let simulationRun = data["simulationRun"];
                 // console.log(dashboardURL);

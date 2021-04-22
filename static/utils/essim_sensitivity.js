@@ -175,13 +175,13 @@ class ESSIM_sensitivity{
             url: ESSIM_simulation_URL_prefix + 'simulation_progress',
             success: function(data){
                 // console.log(data);
-                if (data["percentage"] == "-1") {
+                if (data["status"] == "ERROR") {
                     let description = data["description"];
                     let more_info = data["moreInfo"];
 
                     $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Simulation error');
                     document.getElementById('sens_analysis_progress').innerHTML = '<p style="font-size:70%;" title="'+more_info+'">'+description+'</p>';
-                } else if (data["percentage"] == "1") {
+                } else if (data["status"] == "COMPLETE") {
                     let dashboardURL = data["url"];
                     let simulationRun = data["simulationRun"];
 
