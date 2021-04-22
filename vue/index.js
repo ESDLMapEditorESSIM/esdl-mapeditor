@@ -9,6 +9,7 @@ import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
+import AboutBox from './apps/AboutBox';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -67,6 +68,7 @@ window.environmental_profiles = () => {
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+mountApp(AboutBox, '#vue_show_about_box')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
