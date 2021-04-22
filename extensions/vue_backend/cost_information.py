@@ -77,6 +77,12 @@ def get_cost_information(obj):
 
 
 def _change_cost_unit(qau, cost_unit_string):
+    qau.multiplier = esdl.MultiplierEnum.NONE
+    qau.unit = esdl.UnitEnum.NONE
+    qau.perMultiplier = esdl.MultiplierEnum.NONE
+    qau.perUnit = esdl.UnitEnum.NONE
+    qau.perTimeUnit = esdl.TimeUnitEnum.NONE
+
     if re.match(r"%", cost_unit_string):
         qau.unit = esdl.UnitEnum.PERCENT
     elif re.match(r"EUR", cost_unit_string):
