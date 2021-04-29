@@ -1,2 +1,2 @@
-__version__ = "v21.4.1"
-__long_version__ = "v21.4.1-0-g7d7c7a3"
+__version__ = "v21.4.2"
+__long_version__ = "v21.4.2-0-g3843c95"
