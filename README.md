@@ -98,8 +98,14 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 
 ## Releasing versions
-For a new release or deployment, use `npm version patch` to update patch version `z` in version `x`.`y`.`z`. 
-Use `npm version minor` to update `y` version value.
+For a new release or deployment, commit all your changes and then use `npm version patch` to update patch 
+version `z` in version `x.y.z` (e.g. `21.4.1`). `x` is the year,
+`y` is the month and `z` is the patch number in that month, according to our current versioning scheme.
+Use `npm version minor` to update `y` version value (i.e. the month).  
+
+This command will update the version in package.json and git tag the current release with the new version 
+number and commit these changes in your local repository. Do a manual `git push && git push --tags` to send
+this to the remote repository.
 
 
 ## License
