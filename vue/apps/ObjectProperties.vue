@@ -106,7 +106,7 @@
 </template>
 
 <script>
-import moment from "moment";
+const moment = () => import("moment");
 import FancyNumberEdit from "../components/forms/FancyNumberEdit";
 import ProfileTableEdit from "../components/forms/ProfileTableEdit";
 import PortsEdit from "../components/forms/PortsEdit";
