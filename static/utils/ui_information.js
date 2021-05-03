@@ -73,7 +73,7 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
     let tt_format = get_tooltip_format();
     let attrs = asset_leaflet_obj.attrs;
 
-    if (asset_leaflet_obj instanceof L.Marker) {
+    if (asset_leaflet_obj instanceof L.Marker || asset_leaflet_obj instanceof L.Polygon) {
         if (tt_format['marker'].includes('{'+attribute_name+'}'))
             attrs[attribute_name] = value;
         asset_leaflet_obj.setTooltipContent(get_tooltip_text(tt_format['marker'], asset_leaflet_obj.name, attrs));
