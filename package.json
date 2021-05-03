@@ -6,7 +6,7 @@
     "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js --report",
     "build-prod": "npx vue-cli-service build --inline-vue --mode production --dest static/dist --target lib vue/index.js",
-    "version": "./update_version.sh && git add src/version.py"
+    "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
     "ant-design-vue": "2.0.0-rc.3",
