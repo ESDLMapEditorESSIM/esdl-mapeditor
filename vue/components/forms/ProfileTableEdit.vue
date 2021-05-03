@@ -52,7 +52,7 @@
 </template>
 
 <script>
-import moment from 'moment';
+const moment = () => import("moment");
 import { v4 as uuidv4 } from 'uuid';
 
 const columns = [

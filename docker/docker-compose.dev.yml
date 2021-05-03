@@ -16,7 +16,7 @@ services:
           --pattern="*.py"
           --directory="."
           --
-    command: ["python", "app.py"]
+    command: ["python", "-u", "app.py"]
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:

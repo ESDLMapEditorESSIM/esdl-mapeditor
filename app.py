@@ -111,7 +111,7 @@ def is_running_in_uwsgi():
         a = uwsgi.opt
         logger.info("uWSGI startup options: {}".format(a))
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -192,7 +192,12 @@ app.config.update({
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
 
-oidc = OpenIDConnect(app)
+try:
+    oidc = OpenIDConnect(app)
+except Exception as e:
+    logger.exception("Something went wrong when connecting to Keycloak")
+    import sys
+    sys.exit(1)
 
 
 # TEMPORARY SOLUTION TO DISABLE BROWSER CACHING DURING TESTING

@@ -1,11 +1,11 @@
 {
-  "version": "21.4.1",
+  "version": "21.4.5",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
     "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js --report",
-    "build-prod": "npx vue-cli-service build --inline-vue --dest static/dist --target lib vue/index.js",
+    "build-prod": "npx vue-cli-service build --inline-vue --mode production --dest static/dist --target lib vue/index.js",
     "version": "./update_version.sh && git add src/version.py"
   },
   "dependencies": {
