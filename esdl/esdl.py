@@ -3391,6 +3391,27 @@ class CombinedTransferFunction(AbstractTransferFunction):
             self.component.extend(component)
 
 
+class TimeSeriesProfile(StaticProfile):
+    """Describes a profile of which the period between the values is constant. The series of values is indexed in time order as a sequence taken at successive equally spaced points in time. It starts at the startDateTime and every next value has intervalBetweenValues seconds between them."""
+    startDateTime = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
+    timestep = EAttribute(eType=EInt, unique=True, derived=False,
+                          changeable=True, default_value=3600)
+    values = EAttribute(eType=EDouble, unique=False, derived=False, changeable=True, upper=-1)
+
+    def __init__(self, *, startDateTime=None, timestep=None, values=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if startDateTime is not None:
+            self.startDateTime = startDateTime
+
+        if timestep is not None:
+            self.timestep = timestep
+
+        if values:
+            self.values.extend(values)
+
+
 @abstract
 class Producer(EnergyAsset):
     """An abstract class that describes EnergyAssets that can produce energy. It is one of the 5 capabilities in ESDL"""
