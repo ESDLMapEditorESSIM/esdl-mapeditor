@@ -80,13 +80,15 @@ def calc_building_assets_location(building, force_repositioning=False):
     Rules:
     - Assets of type AbstractConnection are placed in the left-most column
     - Other transport assets in the second column
-    - Then production, conversion and storage
+    - Then production
+    - Then conversion and storage
     - Then demand
     - And finally potentials
     """
     num_conns = 0
     num_transp = 0
-    num_prod_conv_stor = 0
+    num_prod = 0
+    num_conv_stor = 0
     num_cons = 0
     num_potentials = 0
     for basset in building.asset:
@@ -94,8 +96,10 @@ def calc_building_assets_location(building, force_repositioning=False):
             num_conns = num_conns + 1
         elif isinstance(basset, esdl.Transport):
             num_transp = num_transp + 1
-        if isinstance(basset, esdl.Producer) or isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
-            num_prod_conv_stor = num_prod_conv_stor + 1
+        if isinstance(basset, esdl.Producer):
+            num_prod = num_prod + 1
+        if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+            num_conv_stor = num_conv_stor + 1
         if isinstance(basset, esdl.Consumer):
             num_cons = num_cons + 1
     for bpotential in building.potential:
@@ -104,7 +108,8 @@ def calc_building_assets_location(building, force_repositioning=False):
     num_cols = 0
     if num_conns > 0: num_cols = num_cols + 1
     if num_transp > 0: num_cols = num_cols + 1
-    if num_prod_conv_stor > 0: num_cols = num_cols + 1
+    if num_prod > 0: num_cols = num_cols + 1
+    if num_conv_stor > 0: num_cols = num_cols + 1
     if num_cons > 0: num_cols = num_cols + 1
     if num_potentials > 0: num_cols = num_cols + 1
 
@@ -115,8 +120,10 @@ def calc_building_assets_location(building, force_repositioning=False):
         column_idx += (num_conns > 0)
         column_transp_x = int(num_transp> 0) * column_idx * column_width
         column_idx += (num_transp > 0)
-        column_pcs_x = int(num_prod_conv_stor > 0) * column_idx * column_width
-        column_idx += (num_prod_conv_stor > 0)
+        column_prod_x = int(num_prod > 0) * column_idx * column_width
+        column_idx += (num_prod > 0)
+        column_cs_x = int(num_conv_stor > 0) * column_idx * column_width
+        column_idx += (num_conv_stor > 0)
         column_cons_x = int(num_cons > 0) * column_idx * column_width
         column_idx += (num_cons > 0)
         column_pots_x = int(num_potentials > 0) * column_idx * column_width
@@ -124,27 +131,32 @@ def calc_building_assets_location(building, force_repositioning=False):
 
         row_conns_height = 500 / (num_conns + 1)
         row_transp_height = 500 / (num_transp + 1)
-        row_pcs_height = 500 / (num_prod_conv_stor + 1)
+        row_prod_height = 500 / (num_prod + 1)
+        row_cs_height = 500 / (num_conv_stor + 1)
         row_cons_height = 500 / (num_cons + 1)
         row_pots_height = 500 / (num_potentials + 1)
 
         row_conns_idx = 1
         row_transp_idx = 1
-        row_pcs_idx = 1
+        row_prod_idx = 1
+        row_cs_idx = 1
         row_cons_idx = 1
         row_pots_idx = 1
 
         for basset in building.asset:
             if not basset.geometry or force_repositioning:
                 if isinstance(basset, esdl.AbstractConnection):
-                    basset.geometry = esdl.Point(lon=column_conns_x , lat=row_conns_idx * row_conns_height, CRS="Simple")
+                    basset.geometry = esdl.Point(lon=column_conns_x, lat=row_conns_idx * row_conns_height, CRS="Simple")
                     row_conns_idx = row_conns_idx + 1
                 elif isinstance(basset, esdl.Transport):
-                    basset.geometry = esdl.Point(lon=column_transp_x , lat=row_transp_idx * row_transp_height, CRS="Simple")
+                    basset.geometry = esdl.Point(lon=column_transp_x, lat=row_transp_idx * row_transp_height, CRS="Simple")
                     row_transp_idx = row_transp_idx + 1
-                if isinstance(basset, esdl.Producer) or isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
-                    basset.geometry = esdl.Point(lon=column_pcs_x , lat=row_pcs_idx * row_pcs_height, CRS="Simple")
-                    row_pcs_idx = row_pcs_idx + 1
+                if isinstance(basset, esdl.Producer):
+                    basset.geometry = esdl.Point(lon=column_prod_x, lat=row_prod_idx * row_prod_height, CRS="Simple")
+                    row_prod_idx = row_prod_idx + 1
+                if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+                    basset.geometry = esdl.Point(lon=column_cs_x, lat=row_cs_idx * row_cs_height, CRS="Simple")
+                    row_cs_idx = row_cs_idx + 1
                 if isinstance(basset, esdl.Consumer):
                     basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
                     row_cons_idx = row_cons_idx + 1
@@ -380,7 +392,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     # and gives assets within buildings a proper coordinate
     if area_shape:
         shape_dictionary[area_id] = area_shape
-        update_asset_geometries_shape(this_area, area_shape)
+    # call this function even with area_shape == None, to position building assets inside a building
+    update_asset_geometries_shape(this_area, area_shape)
 
     potentials = this_area.potential
     for potential in potentials:
@@ -457,7 +470,8 @@ def add_missing_coordinates(area):
     RD_coords = (max_lat > 180 and max_lon > 180)               # boolean indicating if RD CRS is used
 
     for child in area.eAllContents():
-        if isinstance(child, esdl.EnergyAsset) or isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
+        if (isinstance(child, esdl.EnergyAsset) and not isinstance(child.eContainer(), esdl.AbstractBuilding)) or \
+                isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
             if not child.geometry:
                 print("add missing coordinates for asset {}".format(child.name))
                 child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
