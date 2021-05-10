@@ -125,9 +125,11 @@ function update_asset_state(asset_id, new_state) {
 $(document).ready(function() {
     window.PubSubManager.subscribe('ASSET_PROPERTIES', (name, message) => {
         // window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: currentObjectID.value, name: name, value: new_value });
-        update_asset_tooltip(message.id, message.name, message.value);
-        if (message.name === 'state') {
-            update_asset_state(message.id, message.value);
+        if (user_settings.ui_settings.tooltips.show_asset_information_on_map) {
+            update_asset_tooltip(message.id, message.name, message.value);
+            if (message.name === 'state') {
+                update_asset_state(message.id, message.value);
+            }
         }
     });
 });
