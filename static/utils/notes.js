@@ -132,12 +132,12 @@ class Notes {
 
         $tbody.append($('<tr>')
             .append($('<td>').append('Title'))
-            .append($('<td>').append($('<input>').attr('id', 'input_note_title').attr('value', note.title)
+            .append($('<td>').append($('<input>').attr('id', 'input_note_title').attr('value', unescape(note.title))
                 .attr('size',40)))
         );
         $tbody.append($('<tr>')
             .append($('<td>').append('Text'))
-            .append($('<td>').append($('<textarea>').attr('id', 'textarea_note_text').text(note.text)
+            .append($('<td>').append($('<textarea>').attr('id', 'textarea_note_text').text(unescape(note.text))
                 .attr('rows',10).attr('cols',40)))
         );
         $tbody.append($('<tr>')
@@ -164,8 +164,8 @@ class Notes {
     }
 
     click_save(note) {
-        let title = $('#input_note_title').val();
-        let text = $('#textarea_note_text').val();
+        let title = escape($('#input_note_title').val());
+        let text = escape($('#textarea_note_text').val());
 
         // Update note on map
         note.title = title;
