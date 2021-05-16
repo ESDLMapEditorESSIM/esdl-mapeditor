@@ -455,11 +455,11 @@ class Profiles {
         return $div;
     }
 
-    esdl_profiles_window_contents() {
-        // We just activate a Vue component and move on.
-        window.activate_esdl_profiles();
-        return $('<div>');
-    }
+//    esdl_profiles_window_contents() {
+//        // We just activate a Vue component and move on.
+//        window.activate_esdl_profiles();
+//        return $('<div>');
+//    }
 
     create_profiles_management(div) {
         socket.emit('get_profiles_list', function(profiles_list) {
@@ -550,12 +550,12 @@ class Profiles {
                         'settings_func': profiles_plugin.db_settings_window_contents,
                         'sub_menu_items': []
                     },
-                    {
-                        'value': 'esdl_profiles',
-                        'text': 'Profiles in ESDL',
-                        'settings_func': profiles_plugin.esdl_profiles_window_contents,
-                        'sub_menu_items': []
-                    },
+//                    {
+//                        'value': 'esdl_profiles',
+//                        'text': 'Profiles in ESDL',
+//                        'settings_func': profiles_plugin.esdl_profiles_window_contents,
+//                        'sub_menu_items': []
+//                    },
                 ]
             };
 

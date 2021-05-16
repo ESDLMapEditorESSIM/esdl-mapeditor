@@ -7,7 +7,7 @@ import { createApp } from "vue";
 import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
-import EsdlProfiles from './apps/EsdlProfiles';
+//import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import AboutBox from './apps/AboutBox';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
@@ -55,9 +55,9 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.activate_esdl_profiles = () => {
-    mountApp(EsdlProfiles, '#settings_module_contents');
-}
+//window.activate_esdl_profiles = () => {
+//    mountApp(EsdlProfiles, '#settings_module_contents');
+//}
 
 window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
