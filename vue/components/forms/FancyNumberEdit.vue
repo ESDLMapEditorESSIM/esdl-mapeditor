@@ -77,6 +77,8 @@ export default {
   },
   methods: {
       parseFancyNumber: function(fn) {
+        // This function will take a fancy number fn (of type string)
+        // and returns the floating point value of it.
         if (fn.slice(-1) in factors) {
           let n = fn.substring(0, fn.length - 1);
           let f = fn.slice(-1);
@@ -86,6 +88,8 @@ export default {
         }
       },
       parseNumber: function(nr) {
+        // This function will take a floating point number (nr)
+        // and returns the fancy number (of type string)
         let nr_str = nr.toString();
         let fn = this.processFancyNumber(nr_str)
         return fn
