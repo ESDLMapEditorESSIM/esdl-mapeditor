@@ -2102,7 +2102,7 @@ def process_command(message):
                         parsed_value = attribute.eType.from_string(item)
                         eCollection.append(parsed_value)
                 else:
-                    if param_value == "":
+                    if param_value == "" or param_value is None:
                         parsed_value = attribute.eType.default_value
                     else:
                         parsed_value = attribute.eType.from_string(param_value)
