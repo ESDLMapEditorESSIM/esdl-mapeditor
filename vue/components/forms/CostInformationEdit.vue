@@ -34,7 +34,7 @@
           </a-select>
         </template>
         <template #operation="{ record }">
-          <div v-if="record.value != ''">
+          <div v-if="record.value != null">
             <a @click="deleteCostInformation(record.key)">
               <i class="fa fa-trash" />
             </a>
@@ -121,10 +121,10 @@ export default {
     deleteCostInformation(key) {
       for (let i=0; i<this.costInformation.length; i++) {
         if (this.costInformation[i]["key"] == key) {
-          this.costInformation[i]["value"] = "";
-          this.costInformation[i]["unit"] = "";
+          this.costInformation[i]["value"] = null;
+          this.costInformation[i]["unit"] = null;
         }
-      }    
+      }
     }
   },
 };

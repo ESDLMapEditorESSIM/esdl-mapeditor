@@ -7,9 +7,9 @@
       class="fe_box"
       size="small"
       type="text"
-      @blur="onLoseFocus"
+
+      @blur="$emit('update:value', parseFancyNumber(fancy_number))"
     />
-    <!-- TODO use addon-after="W" to add the unit to the input box, if the unit is available -->
     <!-- <p>
       Number: {{ number }}, fancy_number: {{ fancy_number }}
     </p> -->
@@ -46,7 +46,7 @@ export default {
   props: {
     'value': {
       type: Number,
-      default: 0
+      default: 0.0
     },
     'size': {
       type: String,
@@ -64,9 +64,6 @@ export default {
       }
   },
   computed: {
-      number: function() {
-        return this.parseFancyNumber(this.fancy_number);
-      },
       text_box_size: function() {
         // make props.size available as variable in the template
         return this.size;
@@ -75,10 +72,17 @@ export default {
         return this.unit;
       }
   },
+  watch: {
+      value: function(new_value) {
+        this.fancy_number = this.parseNumber(new_value)
+      }
+  },
   methods: {
       parseFancyNumber: function(fn) {
         // This function will take a fancy number fn (of type string)
         // and returns the floating point value of it.
+        console.log(fn);
+        if (fn == null || fn.trim() == "") return null;
         if (fn.slice(-1) in factors) {
           let n = fn.substring(0, fn.length - 1);
           let f = fn.slice(-1);
@@ -90,9 +94,12 @@ export default {
       parseNumber: function(nr) {
         // This function will take a floating point number (nr)
         // and returns the fancy number (of type string)
+        if (nr == null) {
+          return "";
+        }
         let nr_str = nr.toString();
-        let fn = this.processFancyNumber(nr_str)
-        return fn
+        let fn = this.processFancyNumber(nr_str);
+        return fn;
       },
       processFancyNumber: function(fn) {
         if (fn == "" || fn == "0") return fn;
@@ -149,10 +156,6 @@ export default {
           }
         }
         return fn;
-      },
-      onLoseFocus: function() {
-        this.fancy_number = this.processFancyNumber(this.fancy_number);
-        this.$emit('update:value', this.number);
       }
   }
 }

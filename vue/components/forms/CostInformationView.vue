@@ -39,7 +39,7 @@ export default {
   },
   computed: {
     ci_filtered: function() {
-      return this.costInformation.filter(ci => (ci.value != "" && !isNaN(ci.value)));
+      return this.costInformation.filter(ci => (ci.value != null && !isNaN(ci.value)));
     }
   },
   mounted() {
