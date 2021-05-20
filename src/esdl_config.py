@@ -41,6 +41,13 @@ esdl_config = {
             "unit": "JOULE",
         },
         {
+            "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1a",
+            "description": "Power in kW",
+            "physicalQuantity": "POWER",
+            "multiplier": "KILO",
+            "unit": "WATT"
+        },
+        {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1b",
             "description": "Power in MW",
             "physicalQuantity": "POWER",
@@ -276,6 +283,66 @@ esdl_config = {
                 }
             ],
             "result": [{"code": 200, "action": "print"}],
+        },
+        {
+            "id": "912c4a2b-8eee-46f7-a225-87c5f85e645f",
+            "name": "ESDL Validator",
+            "explanation": "This service allows you validate an ESDL against a certain schema",
+            "type": "vueworkflow",
+            "workflow": [
+                {
+                    "name": "Select schema",
+                    "description": "",
+                    "type": "select-query",
+                    "multiple": False,
+                    "source": {
+                        "url": "http://10.30.2.1:3011/schema",
+                        "http_method": "get",
+                        "label_fields": [
+                            "name"
+                        ],
+                        "value_field": "id"
+                    },
+                    "target_variable": "schema",
+                    "next_step": 1
+                },
+                {
+                    "name": "Schema validation",
+                    "description": "",
+                    "type": "service",
+                    "state_params": {
+                        "schemas": "schema.id"
+                    },
+                    "service": {
+                        "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+                        "name": "Validate ESDL against scehema",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/0.1",
+                            "Content-Type": "application/xml"
+                        },
+                        "url": "http://10.30.2.1:3011/validationToMessages/",
+                        "http_method": "post",
+                        "type": "send_esdl",
+                        "query_parameters": [
+                            {
+                                "name": "Schemas",
+                                "description": "ID of the schema to validate this ESDL against",
+                                "parameter_name": "schemas"
+                            }
+                        ],
+                        "body": "",
+                        "result": [
+                            {
+                                "code": 200,
+                                "action": "asset_feedback"
+                            }
+                        ],
+                        "with_jwt_token": False,
+                        "state_params": True
+                    },
+                    "previous_step": 0
+                }
+            ]
         }
     ]
 }
