@@ -55,8 +55,15 @@ class DataLayerAPI:
 
         @self.socketio.on('DLA_set_cost_information', namespace='/esdl')
         def DLA_set_cost_information(identifier, cost_information):
-            object = self.datalayer.get_object_from_identifier(identifier)
-            set_cost_information(object, cost_information)
+            if isinstance(identifier['id'], list):
+                esdl_objects = list()
+                for obj_id in identifier['id']:
+                    esdl_objects.append(self.datalayer.get_object_from_identifier({'id': obj_id}))
+            else:
+                esdl_objects = [self.datalayer.get_object_from_identifier(identifier)]
+
+            for obj in esdl_objects:
+                set_cost_information(obj, cost_information)
 
         @self.socketio.on('DLA_get_cs_info', namespace='/esdl')
         def DLA_get_cs_info(identifier):

@@ -157,6 +157,11 @@ h6 {
     border-style: dashed;
 }
 
+.Selected {
+    border: 3px solid #ffffff;
+    border-style: dashed;
+}
+
 .ProducerDisabled {
     background: hsla(68, 10%, 33%, 50%);  /* #93a800; 50% transparency */
     border: 3px solid hsl(67, 100%, 24%);  /* #6b7a00; */

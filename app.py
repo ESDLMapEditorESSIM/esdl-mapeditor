@@ -2083,41 +2083,48 @@ def process_command(message):
 
         if asset_id is None:
             resource = esh.get_resource(active_es_id)
-            asset = resource.resolve(fragment)
+            assets = [resource.resolve(fragment)]
         else:
-            asset = esh.get_by_id(active_es_id, asset_id)
-        logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
-
-        try:
-            attribute = asset.eClass.findEStructuralFeature(param_name)
-            if attribute is not None:
-                if attribute.many:
-                    #length = len(param_value)
-                    eCollection = asset.eGet(param_name)
-                    eCollection.clear()  # TODO no support for multi-select of enums
-                    print('after clear', eCollection)
-                    if not isinstance(param_value, list):
-                        param_value = [param_value]
-                    for item in param_value:
-                        parsed_value = attribute.eType.from_string(item)
-                        eCollection.append(parsed_value)
-                else:
-                    if param_value == "" or param_value is None:
-                        parsed_value = attribute.eType.default_value
-                    else:
-                        parsed_value = attribute.eType.from_string(param_value)
-                    if attribute.name == 'id':
-                        esh.remove_object_from_dict(active_es_id, asset)
-                        asset.eSet(param_name, parsed_value)
-                        esh.add_object_to_dict(active_es_id, asset)
-                    else:
-                        asset.eSet(param_name, parsed_value)
-
+            if isinstance(asset_id, list):
+                assets = []
+                for ass_id in asset_id:
+                    assets.append(esh.get_by_id(active_es_id, ass_id))
             else:
-                send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
-        except Exception as e:
-            logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
-            send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
+                assets = [esh.get_by_id(active_es_id, asset_id)]
+
+        for asset in assets:
+            logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
+
+            try:
+                attribute = asset.eClass.findEStructuralFeature(param_name)
+                if attribute is not None:
+                    if attribute.many:
+                        #length = len(param_value)
+                        eCollection = asset.eGet(param_name)
+                        eCollection.clear()  # TODO no support for multi-select of enums
+                        print('after clear', eCollection)
+                        if not isinstance(param_value, list):
+                            param_value = [param_value]
+                        for item in param_value:
+                            parsed_value = attribute.eType.from_string(item)
+                            eCollection.append(parsed_value)
+                    else:
+                        if param_value == "" or param_value is None:
+                            parsed_value = attribute.eType.default_value
+                        else:
+                            parsed_value = attribute.eType.from_string(param_value)
+                        if attribute.name == 'id':
+                            esh.remove_object_from_dict(active_es_id, asset)
+                            asset.eSet(param_name, parsed_value)
+                            esh.add_object_to_dict(active_es_id, asset)
+                        else:
+                            asset.eSet(param_name, parsed_value)
+
+                else:
+                    send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
+            except Exception as e:
+                logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
+                send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
 
         # update gui, only if necessary for EnergyAssets, and Ports
         # and EnergySystem ans

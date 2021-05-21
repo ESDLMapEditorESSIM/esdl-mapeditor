@@ -16,7 +16,7 @@
           <FancyNumberEdit
             style="margin: -5px 0"
             :value="text"
-            @update:value="(val) => handleChange(val, record.key)"
+            @update:value="(val) => handleFNEChange(val, record.key)"
           />
         </template>
         <template #ciunit="{ record }">
@@ -24,6 +24,7 @@
             v-model:value="record.unit"
             style="width: 140px"
             placeholder="Please select a unit..."
+            @change="val => handleUnitChange(val, record.key)"
           >
             <a-select-option
               v-for="ptype in costInformationProfileTypes"
@@ -111,11 +112,21 @@ export default {
       window.socket.emit('DLA_set_cost_information', {'id': this.objectIdentifier}, this.costInformation);
       this.visible = false;
     },
-    handleChange(val, key) {
+    handleFNEChange(val, key) {
       // console.log(val);
       // console.log(key);
       for (let i=0; i<this.costInformation.length; i++) {
-        if (this.costInformation[i]["key"] == key) this.costInformation[i]["value"] = val;
+        if (this.costInformation[i]["key"] == key) {
+          this.costInformation[i]["value"] = val;
+          this.costInformation[i]["changed"] = true;
+        }
+      }
+    },
+    handleUnitChange(val, key) {
+      for (let i=0; i<this.costInformation.length; i++) {
+        if (this.costInformation[i]["key"] == key) {
+          this.costInformation[i]["changed"] = true;
+        }
       }
     },
     deleteCostInformation(key) {
@@ -123,6 +134,7 @@ export default {
         if (this.costInformation[i]["key"] == key) {
           this.costInformation[i]["value"] = null;
           this.costInformation[i]["unit"] = null;
+          this.costInformation[i]["changed"] = true;
         }
       }
     }

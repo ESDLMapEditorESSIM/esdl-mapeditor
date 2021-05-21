@@ -48,29 +48,56 @@ class ESDLDataLayer:
         return self.get_object_info(esdl_object)
 
     def get_object_parameters_by_identifier(self, identifier: Identifier):
-        esdl_object = self.get_object_from_identifier(identifier)
-        obj_info = self.get_object_info(esdl_object)
-        attrs = obj_info['attributes']
-        refs = obj_info['references']
-        self._convert_attributes_to_primitive_types(attrs)
-
-        view_mode = ViewModes.get_instance()
-        cat_attrs = view_mode.categorize_object_attributes_and_references(esdl_object, attrs, refs)
-
-        # Is this the right way?
-        obj_info['attributes'] = cat_attrs
-
-        if isinstance(esdl_object, esdl.EnergyAsset):
-            obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
-            obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
+        if isinstance(identifier['id'], list):
+            esdl_objects = list()
+            for obj_id in identifier['id']:
+                esdl_objects.append(self.get_object_from_identifier({'id': obj_id}))
         else:
-            obj_info['port_profile_info'] = list()
-            obj_info['port_connected_to_info'] = list()
+            esdl_objects = [self.get_object_from_identifier(identifier)]
 
-        if isinstance(esdl_object, esdl.Asset):
-            obj_info['cost_information'] = get_cost_information(esdl_object)
+        obj_infos = list()
+        num_assets_selected = 0
+        selected_asset_type = None
+        for esdl_object in esdl_objects:
+            num_assets_selected += 1
+            obj_info = self.get_object_info(esdl_object)
+            if not selected_asset_type:
+                selected_asset_type = obj_info['object']['type']
+            else:
+                if selected_asset_type != obj_info['object']['type']:
+                    selected_asset_type = 'Multiple'
 
-        return obj_info
+            attrs = obj_info['attributes']
+            refs = obj_info['references']
+            self._convert_attributes_to_primitive_types(attrs)
+
+            view_mode = ViewModes.get_instance()
+            cat_attrs = view_mode.categorize_object_attributes_and_references(esdl_object, attrs, refs)
+
+            # Is this the right way?
+            obj_info['attributes'] = cat_attrs
+
+            if isinstance(esdl_object, esdl.EnergyAsset):
+                obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
+                obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
+            else:
+                obj_info['port_profile_info'] = list()
+                obj_info['port_connected_to_info'] = list()
+
+            if isinstance(esdl_object, esdl.Asset):
+                obj_info['cost_information'] = get_cost_information(esdl_object)
+
+            obj_infos.append(obj_info)
+
+        if len(obj_infos) == 1:
+            return obj_infos[0]
+        else:
+            common_obj_data = self.find_common_object_data(obj_infos)
+            common_obj_data['multi_select_info'] = {
+                'num_assets_selected': num_assets_selected,
+                'selected_asset_type': selected_asset_type
+            }
+            return common_obj_data
 
     def set_object_parameters_by_identifier(self, identifier: Identifier, parameters):
         esdl_object = self.get_object_from_identifier(identifier)
@@ -202,8 +229,6 @@ class ESDLDataLayer:
             global_qua.quantityAndUnit.append(qau)
             esh.add_object_to_dict(active_es_id, qau)
             return qau
-
-
 
     def get_filtered_type(self, esdl_object, reference):
         """
@@ -489,3 +514,66 @@ class ESDLDataLayer:
             env_profiles.eSet(env_profile_refname, None)
         else:
             logger.error('Unknown action on environmental profiles')
+
+    @staticmethod
+    def find_common_object_data(object_info_list):
+        """
+        Finds the common attributes, references in a list of objects. Used when multiple assets on the map are selected.
+
+        :param object_info_list: list of individual object_info dicts, for different selected objects
+        :return: one obj_info dict with the common elements that could be edited as a group
+        """
+
+        # obj_info is a dict wiht 7 keys:
+        # - object: dict with 4 keys
+        # - attributes: dict with categories (Basic, ESSIM, Advanced) as keys
+        # - references: list
+        # - container: dict with 5 keys
+        # - port_profile_info: list
+        # - port_connected_to_info: list
+        # - cost_information: list with 10 elements
+
+        common_obj_info = object_info_list.pop(0)       # start with first object
+        del common_obj_info['references']
+        del common_obj_info['container']
+        del common_obj_info['port_profile_info']
+        del common_obj_info['port_connected_to_info']
+
+        for next_obj in object_info_list:
+
+            # Filter 'object'
+            object_dict = common_obj_info['object']
+            for o in object_dict:
+                if o in next_obj['object']:
+                    if object_dict[o] != next_obj['object'][o]:
+                        object_dict[o] = ''
+
+            # Filter 'attributes'
+            attr_dict = common_obj_info['attributes']
+            for cat_key in attr_dict:       # Basic, ESSIM, CHESS, Advanced, ...
+                cat_list = attr_dict[cat_key]
+                # Assume same order for next two statements ???
+                next_obj_name_list = [i['name'] for i in next_obj['attributes'][cat_key]]
+                next_obj_value_list = [i['value'] for i in next_obj['attributes'][cat_key]]
+                for item in list(cat_list):
+                    if item['name'] in next_obj_name_list:
+                        if item['value'] != next_obj_value_list[next_obj_name_list.index(item['name'])]:
+                            if isinstance(item['value'], str):
+                                item['value'] = ''
+                            elif isinstance(item['value'], int):
+                                item['value'] = 0
+                            elif isinstance(item['value'], float):
+                                item['value'] = 0.0
+                            # TODO: add more types
+                    else:
+                        # Attribute is not a common attribute
+                        cat_list.remove(item)
+
+            # Filter 'cost_information'
+            cost_info_list = common_obj_info['cost_information']
+            for ci1, ci2 in zip(cost_info_list, next_obj['cost_information']):
+                if ci1['value'] != ci2['value']:
+                    ci1['value'] = 0.0
+                    ci1['unit'] = None
+
+        return common_obj_info

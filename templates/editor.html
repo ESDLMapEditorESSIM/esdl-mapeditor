@@ -202,6 +202,7 @@
     <script type="text/javascript" src="./utils/notes.js"></script>
     <script type="text/javascript" src="./utils/view_modes.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
+    <script type="text/javascript" src="./utils/select_asset.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -565,17 +566,28 @@
 
             marker.on('click', function(e) {
                 var marker = e.target;
-                if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
-                    // console.log('marker clicked');
-                    var marker = e.target;
-                    var id = marker.id;
+                if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
+                        !e.originalEvent.metaKey) {
+                    if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
+                        // console.log('marker clicked');
+                        var marker = e.target;
 
-                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: marker.asspot});
-                    object_properties_window(id);
+                        if (select_assets.is_select_mode()) {
+                            // One or more assets have been selected
+                            if (select_assets.is_selected(marker)) {
+                                // the current asset is part of this selection
+                                let asset_list = select_assets.get_selected_assets();
+                                object_properties_window(asset_list);
+                            } else  // the current asset is clicked but was not part of the selection
+                                object_properties_window(marker.id);
+                        } else
+                            object_properties_window(marker.id);
+                    }
                 }
             });
 
             set_marker_port_handlers(marker);
+            select_assets.add_asset_handler(marker);
 
             // let extensions know they can update this layer.
             // e.g. add a context menu item
@@ -640,12 +652,15 @@
 
             marker.on('click', function(e) {
                 var marker = e.target;
-                if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
-                    var marker = e.target;
-                    var id = marker.id;
+                if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
+                        !e.originalEvent.metaKey) {
+                    if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
+                        var marker = e.target;
+                        var id = marker.id;
 
-                    // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
-                    object_properties_window(id);
+                        // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                        object_properties_window(id);
+                    }
                 }
             });
         }
@@ -719,10 +734,22 @@
             });
 
             line.on('click', function(e) {
-                if (deleting_objects == false && editing_objects == false) {
-                    var line = e.target;
-                    // socket.emit('command', {cmd: 'get_conductor_info', id: line.id, latlng: e.latlng});
-                    object_properties_window(line.id);
+                if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
+                        !e.originalEvent.metaKey) {
+                    if (deleting_objects == false && editing_objects == false) {
+                        var line = e.target;
+
+                        if (select_assets.is_select_mode()) {
+                            // One or more assets have been selected
+                            if (select_assets.is_selected(line)) {
+                                // the current asset is part of this selection
+                                let asset_list = select_assets.get_selected_assets();
+                                object_properties_window(asset_list);
+                            } else  // the current asset is clicked but was not part of the selection
+                                object_properties_window(line.id);
+                        } else
+                            object_properties_window(line.id);
+                    }
                 }
             });
             line.on('edit', function(e) { // in edit mode dragging has ended: update connections
@@ -735,6 +762,7 @@
                 // console.log(pos.lat + ', ' + pos.lng );
             });
 
+            select_assets.add_asset_handler(line);
             set_line_port_handlers(line);
 
             // let extensions know they can update this layer.
@@ -2247,6 +2275,8 @@
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
     });
+
+    select_assets.add_map_handler(map);
 
     baseTree = {
         label: 'Base layers',

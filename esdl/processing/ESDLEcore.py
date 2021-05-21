@@ -73,7 +73,7 @@ def get_asset_attributes(asset, esdl_doc: EcoreDocumentation = None):
                 attr['unit'] = esdl_doc.get_unit(asset.eClass.name, x.name)
 
             attributes.append(attr)
-    print(attributes)
+    # print(attributes)
     attrs_sorted = sorted(attributes, key=lambda a: a['name'])
     return attrs_sorted
 

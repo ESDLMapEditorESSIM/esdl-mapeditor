@@ -9,6 +9,6 @@ export function useObject() {
 
     return {
         newObject,
-        currentObjectID       // Waarom deze hier? 
+        currentObjectID
     }
 }

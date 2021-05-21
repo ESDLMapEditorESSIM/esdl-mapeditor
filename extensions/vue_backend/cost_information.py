@@ -49,6 +49,7 @@ def get_cost_information(obj):
             ci_instance['key'] = str(uuid4())
             ci_instance['name'] = x.name
             ci_instance['uiname'] = camelCaseToWords(x.name)
+            ci_instance['changed'] = False
 
             if ci:
                 profile = ci.eGet(x)
@@ -139,32 +140,32 @@ def set_cost_information(obj, cost_information_data):
 
         attribute = obj_ci.eClass.findEStructuralFeature(ci_component_name)
         if attribute is not None:
-            current_cost_component_profile = obj_ci.eGet(ci_component_name)
-            if current_cost_component_profile:
-                if ci_component['value'] is None:
-                    current_cost_component_profile.delete()
-                elif isinstance(current_cost_component_profile, esdl.SingleValue):
-                    new_value_str = ci_component['value']
-                    if new_value_str != '':
-                        current_cost_component_profile.value = str2float(new_value_str)
-                    
-                    qau = current_cost_component_profile.profileQuantityAndUnit
-                    if qau:
-                        if isinstance(qau, esdl.QuantityAndUnitReference):
-                            qau = qau.reference
-                        current_unit = unit_to_string(qau)
-                        if current_unit != ci_component['unit']:
-                            _change_cost_unit(qau, ci_component['unit'])
-                    else:
+            if ci_component['changed']:
+                current_cost_component_profile = obj_ci.eGet(ci_component_name)
+                if current_cost_component_profile:
+                    if ci_component['value'] is None:
+                        current_cost_component_profile.delete()
+                    elif isinstance(current_cost_component_profile, esdl.SingleValue):
+                        new_value_str = ci_component['value']
+                        if new_value_str != '':
+                            current_cost_component_profile.value = str2float(new_value_str)
+
+                        qau = current_cost_component_profile.profileQuantityAndUnit
+                        if qau:
+                            if isinstance(qau, esdl.QuantityAndUnitReference):
+                                qau = qau.reference
+                            current_unit = unit_to_string(qau)
+                            if current_unit != ci_component['unit']:
+                                _change_cost_unit(qau, ci_component['unit'])
+                        else:
+                            if ci_component['unit'] is not None and ci_component['unit'] != '':
+                                qau = _create_cost_qau(ci_component['unit'])
+                else:
+                    if ci_component['value'] is not None and ci_component['value'] != '':
+                        new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
+                        new_cost_component_profile.value = str2float(ci_component['value'])
                         if ci_component['unit'] is not None and ci_component['unit'] != '':
-                            qau = _create_cost_qau(ci_component['unit'])
+                            new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
-            else:
-                if ci_component['value'] is not None and ci_component['value'] != '':
-                    new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
-                    new_cost_component_profile.value = str2float(ci_component['value'])
-                    if ci_component['unit'] is not None and ci_component['unit'] != '':
-                        new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
-
-                    obj_ci.eSet(ci_component_name, new_cost_component_profile)
-                    esh.add_object_to_dict(active_es_id, new_cost_component_profile)
+                        obj_ci.eSet(ci_component_name, new_cost_component_profile)
+                        esh.add_object_to_dict(active_es_id, new_cost_component_profile)

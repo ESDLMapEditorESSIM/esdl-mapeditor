@@ -1,5 +1,18 @@
 <template>
-  <h1 v-if="!isLoading"><span :title="obj_properties.object.doc">{{ obj_properties.object.name }}</span></h1>
+  <h1 v-if="!isLoading">
+    <span
+      v-if="!obj_properties.multi_select_info"
+      :title="obj_properties.object.doc"
+    >
+      {{ obj_properties.object.name }}
+    </span>
+    <span
+      v-if="obj_properties.multi_select_info"
+    >
+      {{ obj_properties.multi_select_info.num_assets_selected }} assets selected of type:
+      {{ obj_properties.multi_select_info.selected_asset_type }}
+    </span>
+  </h1>
   <div v-if="!isLoading" id="object-properties">
     <a-row :gutter="[0, 24]">
       <a-col :span="24">
@@ -78,7 +91,7 @@
               </a-row>
             </div>
           </a-collapse-panel>          
-          <a-collapse-panel key="Ports" header="Ports">
+          <a-collapse-panel v-if="obj_properties.port_connected_to_info" key="Ports" header="Ports">
             <PortsEdit
               v-model:portList="obj_properties.port_connected_to_info"
               v-model:objectID="obj_properties.object.id"
