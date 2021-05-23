@@ -88,11 +88,13 @@ class SelectAssets {
                     color: "white",
                     dashArray: "5,10"
                 });
+                asset_leaflet_obj.color = "#ffffff";
             } else {
                 asset_leaflet_obj.setStyle({
                     color: asset_leaflet_obj.options.orig_color,
                     dashArray: ""
                 });
+                asset_leaflet_obj.color = asset_leaflet_obj.options.orig_color;
                 delete asset_leaflet_obj.options.orig_color;
             }
         }
@@ -149,11 +151,14 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
         setTimeout(L.bind(this._resetState, this), 0);
 
         var bounds = new L.LatLngBounds(
-          this._map.containerPointToLatLng(this._startPoint),
-          this._map.containerPointToLatLng(this._point)
+            this._map.containerPointToLatLng(this._startPoint),
+            this._map.containerPointToLatLng(this._point)
         );
 
     		//this._map.fitBounds(bounds).fire('boxzoomend', {boxZoomBounds: bounds});
+        let contains = true;    // if false then use intersects
+        if (this._point.x < this._startPoint.x)
+            contains = false;
 
         let esdl_objects = get_layers(active_layer_id, 'esdl_layer').getLayers();
         for (let i=0; i<esdl_objects.length; i++) {
@@ -164,8 +169,14 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
                     select_assets.toggle_selected(esdl_object);
                 }
             } else {
-                if (bounds.contains(esdl_object.getLatLngs())) {
-                    select_assets.toggle_selected(esdl_object);
+                if (contains) {
+                    if (bounds.contains(esdl_object.getLatLngs())) {
+                        select_assets.toggle_selected(esdl_object);
+                    }
+                } else {
+                    if (bounds.intersects(esdl_object.getLatLngs())) {
+                        select_assets.toggle_selected(esdl_object);
+                    }
                 }
             }
         }
