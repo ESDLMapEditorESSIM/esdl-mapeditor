@@ -27,7 +27,10 @@ export default {
         ];
       }
     },
-    objectID: String
+    objectID: {
+      type: String,
+      default: '',
+    }
   },
   data() {
     return {

@@ -16,30 +16,31 @@
   <div v-if="!isLoading" id="object-properties">
     <a-row :gutter="[0, 24]">
       <a-col :span="24">
-        <a-collapse v-model:activeKey="activePanels" defaultActiveKey="Basic">
+        <a-collapse v-model:activeKey="activePanels" default-active-key="Basic">
           <a-collapse-panel
             v-for="(cat, key) in obj_properties.attributes"
             :key="key"
             :header="key + ' attributes'"
           >
             <div>
-              <a-row :gutter="[0, 4]" type="flex" align="middle" v-for="attr in cat" :key="attr.name">
-              <!-- attributes -->
-                <a-col :span="9"  v-if="isAttribute(attr)">
+              <a-row v-for="attr in cat" :key="attr.name" :gutter="[0, 4]" type="flex" align="middle">
+                <!-- attributes -->
+                <a-col v-if="isAttribute(attr)" :span="9">
                   <span :title="attr.doc">{{ camelCase(attr.name) }}</span>
                 </a-col>
-                <a-col :span="15" v-if="isAttribute(attr)">
+                <a-col v-if="isAttribute(attr)" :span="15">
                   <FancyNumberEdit 
                     v-if="attr.type == 'EInt'" 
                     v-model:value="attr.value" 
-                    size="small" 
                     v-model:unit="attr.unit"
-                    @update:value="(val) => { updateAttribute(attr.name, val);}"/>
+                    size="small"
+                    @update:value="(val) => { updateAttribute(attr.name, val);}"
+                  />
                   <FancyNumberEdit
                     v-if="attr.type == 'EDouble'"
                     v-model:value="attr.value"
-                    size="small"
                     v-model:unit="attr.unit"
+                    size="small"
                     @update:value="(val) => { updateAttribute(attr.name, val); }"
                   />
                   <a-input
@@ -81,12 +82,14 @@
                     @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }"
                   />
                 </a-col>
-              <!-- references -->
-
-                <a-col :span="24" v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)">
-                    <a-row :gutter="[0, 0]" type="flex" align="middle">
-                    <ReferenceViewer :parentObjectID="obj_properties.object.id" :reference="attr" @update="updateRef($event, attr)"/>
-                    </a-row>
+                <a-col v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
+                  <a-row :gutter="[0, 0]" type="flex" align="middle">
+                    <ReferenceViewer
+                      :parent-object-id="obj_properties.object.id"
+                      :reference="attr"
+                      @update="updateRef($event, attr)"
+                    />
+                  </a-row>
                 </a-col>
               </a-row>
             </div>
@@ -121,7 +124,7 @@
 <script>
 const moment = () => import("moment");
 import FancyNumberEdit from "../components/forms/FancyNumberEdit";
-import ProfileTableEdit from "../components/forms/ProfileTableEdit";
+// import ProfileTableEdit from "../components/forms/ProfileTableEdit";
 import PortsEdit from "../components/forms/PortsEdit";
 import CostInformationView from "../components/forms/CostInformationView";
 import ReferenceViewer from "../components/forms/ReferenceViewer";
@@ -135,7 +138,7 @@ export default {
   name: "ObjectProperties",
   components: {
     FancyNumberEdit,
-    ProfileTableEdit,
+    // ProfileTableEdit,
     PortsEdit,
     CostInformationView,
     ReferenceViewer,
