@@ -81,7 +81,7 @@ class PortProfileViewer:
 
                     embedUrl = create_panel(profile_name, "", profile.host+':'+str(profile.port),
                                         profile.database, profile.measurement, profile.field, profile.filters, qau,
-                                        profile.startDate, profile.endDate)
+                                        "sum", profile.startDate, profile.endDate)
                     if embedUrl:
                         return embedUrl
                 else:

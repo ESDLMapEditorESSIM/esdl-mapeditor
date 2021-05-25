@@ -84,7 +84,7 @@ def get_panel_service_datasource(database, host=None):
     return ps_influxdb_name
 
 
-def create_panel(graph_title, axis_title, host, database, measurement, field, filters, qau, start_datetime, end_datetime):
+def create_panel(graph_title, axis_title, host, database, measurement, field, filters, qau, prof_aggr_type, start_datetime, end_datetime):
     ps_influxdb_name = get_panel_service_datasource(database, host)
     if not ps_influxdb_name:
         logger.error("Could not find or create a datasource")
@@ -129,7 +129,7 @@ def create_panel(graph_title, axis_title, host, database, measurement, field, fi
             {
                 "measurement": measurement,
                 "field": field,
-                "function": "sum",
+                "function": prof_aggr_type,
                 "filters": filters,
                 "yaxis": "left"
             }

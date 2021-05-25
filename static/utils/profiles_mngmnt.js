@@ -314,7 +314,8 @@ class Profiles {
         $input.change(function(e) {
             $('#csv-message').text('Uploading CSV files')
             let selected_group = $('#profile_group_select').val();
-            handleFiles(this.files, selected_group);
+            let profile_aggr_type = profiles_plugin.get_selected_profile_type_radio();
+            handleFiles(this.files, selected_group, profile_aggr_type);
         });
         $form.append($p1);
         $form.append($input);
@@ -359,8 +360,9 @@ class Profiles {
             var files = dt.files;
             $('#csv-message').text('Uploading CSV files')
             let selected_group = $('#profile_group_select').val();
+            let profile_aggr_type = profiles_plugin.get_selected_profile_type_radio();
 
-            handleFiles(files, selected_group);
+            handleFiles(files, selected_group, profile_aggr_type);
         }
 
         self.uploadProgress = [];
@@ -382,7 +384,7 @@ class Profiles {
         }
         self.updateProgress = updateProgress;
 
-        function handleFiles(files, selected_group) {
+        function handleFiles(files, selected_group, prof_aggr_type) {
             files = [...files];
             files.forEach(function (file) {
                 let extension = file.name.split('.').pop();
@@ -390,14 +392,14 @@ class Profiles {
                     let uuid = uuidv4();
                     self.files[uuid] = file;
                     initializeProgress(uuid);
-                    uploadFile(file, uuid, selected_group);
+                    uploadFile(file, uuid, selected_group, prof_aggr_type);
                 } else {
                     alert("Not a csv file: " + file.name);
                 }
             });
         }
 
-        function uploadFile(file, uuid, selected_group) {
+        function uploadFile(file, uuid, selected_group, prof_aggr_type) {
             console.log("Uploading ", file);
 
             let reader = new FileReader();
@@ -405,7 +407,7 @@ class Profiles {
                 // reading finished
                 self.blob[uuid] = reader.result;
                 socket.emit('profile_csv_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size,
-                                        'content': '', 'filetype': file.type, 'group': selected_group });
+                                        'content': '', 'filetype': file.type, 'group': selected_group, 'prof_aggr_type': prof_aggr_type });
             };
             reader.onerror = function() {
                 console.log(reader.error);
@@ -430,6 +432,26 @@ class Profiles {
         });
     }
 
+    create_profile_type_radio_buttons(div) {
+        div.append($('<p>').append('Please select how you want your profiles to be visualized:'))
+        div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_sum')
+          .attr('name', 'radio_profile_type').attr('value', 'sum'))
+          .append($('<label>').attr('for', 'radio_pt_sum')
+          .text('Profile values will be summed when aggregating over time (e.g. profiles contain energy values'))
+          .append('<br>');
+        div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_avg')
+          .attr('name', 'radio_profile_type').attr('value', 'mean').prop('checked',true))
+          .append($('<label>').attr('for', 'radio_pt_avg')
+          .text('Profile values will be averaged when aggregating over time (e.g. profiles contain power or temperature values'))
+          .append('<br>');
+    }
+
+    get_selected_profile_type_radio() {
+        let radio = $("input[name=radio_profile_type]:checked").val();
+        console.log("radio button selected: ", radio);
+        return radio;
+    }
+
     upload_profiles_window_contents() {
         let $div = $('<div>').attr('id', 'upload_profiles_window_div');
         $div.append($('<h1>').text('Upload profiles'));
@@ -438,6 +460,12 @@ class Profiles {
         let $group_select = $('<div>');
         $div.append($('<p>').append($group_select));
         profiles_plugin.create_group_select($group_select);
+
+        let $profile_aggr_type = $('<div>');
+        $div.append($('<p>').append($profile_aggr_type));
+        profiles_plugin.create_profile_type_radio_buttons($profile_aggr_type);
+
+        $div.append(profiles_plugin.create_drag_drop());
 
         $div.append($('<p>').text('CSV files with profile data must adhere to a certain format:'))
         $div.append($('<ul>')
@@ -451,7 +479,6 @@ class Profiles {
             .append($('<li>').text('a full year profile contains 8760 profile elements (or 8784 for a leap year)'))
         );
 
-        $div.append(profiles_plugin.create_drag_drop());
         return $div;
     }
 

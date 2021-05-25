@@ -125,13 +125,13 @@ class Profiles:
         def click_test_profile(profile_info):
             embedUrl = create_panel(profile_info["profile_uiname"], "", None, profile_info["database"],
                                     profile_info["measurement"], profile_info["field"], profile_info["filters"], None,
-                                    profile_info["start_datetime"], profile_info["end_datetime"])
+                                    "sum", profile_info["start_datetime"], profile_info["end_datetime"])
             return embedUrl
 
         @self.socketio.on('profile_csv_upload', namespace='/esdl')
         def profile_csv_upload(message):
             with self.flask_app.app_context():
-                message_type = message['message_type'] # start, next_chunk, done
+                message_type = message['message_type']  # start, next_chunk, done
                 if message_type == 'start':
                     # start of upload
                     filetype = message['filetype']
@@ -229,11 +229,13 @@ class Profiles:
 
             # Store profile information in settings
             group = self.csv_files[uuid]['group']
+            prof_aggr_type = self.csv_files[uuid]['prof_aggr_type']
             for i in range(1, num_fields):
                 field = column_names[i]
                 profile = self.create_new_profile(group, measurement+'_'+field, 1, database, measurement,
                                                field, "", start_datetime, end_datetime)
-                profile["embedUrl"] = create_panel(field, "", None, database, measurement, field, [], None, start_datetime, end_datetime)
+                profile["embedUrl"] = create_panel(group + " - " + field, "", None, database, measurement, field, [], None,
+                                                   prof_aggr_type, start_datetime, end_datetime)
                 self.add_profile(str(uuid4()), profile)
 
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],

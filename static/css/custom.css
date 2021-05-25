@@ -742,6 +742,10 @@ z-index for jstree context menu, sidebar has 2000
     overflow-y: auto;
 }
 
+.settings_module_content label {
+    margin-left: 0.3rem;
+}
+
 /*
     UI Settings boxes
 */
@@ -767,6 +771,7 @@ z-index for jstree context menu, sidebar has 2000
   border: 2px dashed #ccc;
   width: 400px;
   margin-top: 10px;
+  margin-bottom: 10px;
   padding: 20px;
 }
 
