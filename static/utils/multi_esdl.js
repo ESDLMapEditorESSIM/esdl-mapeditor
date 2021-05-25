@@ -336,6 +336,7 @@ function get_carrier_info_mapping(es_id) {
 
 function set_carrier_color(es_id, carrier_id, color) {
     esdl_list[es_id].carrier_info_mapping[carrier_id]['color'] = color
+    update_color_in_carrier_color_dict(es_id, carrier_id, color);
     update_carrier_style_class(esdl_list[es_id].carrier_info_mapping[carrier_id]);
 }
 

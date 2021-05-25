@@ -13,7 +13,7 @@
 #      TNO
 
 from uuid import uuid4
-from esdl.processing import ESDLEcore
+from esdl.processing import ESDLEcore, ESDLEnergySystem
 from pyecore.ecore import EReference
 
 from esdl.processing.ESDLEcore import instantiate_type
@@ -29,11 +29,13 @@ from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_dat
     DLA_set_table_data_request
 from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
 from extensions.vue_backend.messages.identifier_message import Identifier
+from extensions.vue_backend.messages.DLA_carrier_message import CarrierMessage
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
 import src.log as log
 from utils.utils import camelCaseToWords, str2float
+import importlib
 
 logger = log.get_logger(__name__)
 
@@ -577,3 +579,91 @@ class ESDLDataLayer:
                     ci1['unit'] = None
 
         return common_obj_info
+
+    @staticmethod
+    def get_carrier(carr_id):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+
+        response = CarrierMessage()
+        carr = esh.get_by_id(active_es_id, carr_id)
+        if carr:
+            response.id = carr_id
+            response.name = carr.name
+            response.type = carr.eClass.name
+
+            if isinstance(carr, esdl.EnergyCarrier):
+                response.emission = carr.emission
+                response.energy_content = carr.energyContent
+                response.energy_content_unit = unit_to_string(carr.energyContentUnit)
+                response.state_of_matter = carr.stateOfMatter.__str__()
+                response.renewable_type = carr.energyCarrierType.__str__()
+            if isinstance(carr, esdl.ElectricityCommodity):
+                response.voltage = carr.voltage
+            if isinstance(carr, esdl.GasCommodity):
+                response.pressure = carr.pressure
+            if isinstance(carr, esdl.HeatCommodity):
+                response.supply_temperature = carr.supplyTemperature
+                response.return_temperature = carr.returnTemperature
+
+        return response
+
+    @staticmethod
+    def update_carrier(carr_id, carr_info):
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+        es = esh.get_energy_system(active_es_id)
+
+        carrier_info = CarrierMessage(**carr_info)
+
+        add_carrier = False
+        try:
+            carrier = esh.get_by_id(active_es_id, carr_id)
+        except KeyError:
+            module = importlib.import_module('esdl.esdl')
+            carr_class_ = getattr(module, carrier_info.type)
+            carrier = carr_class_(id=carrier_info.id)
+            add_carrier = True
+
+        carrier.name = carrier_info.name
+        if carrier_info.type == 'EnergyCarrier':
+            if carrier_info.emission is not None:
+                carrier.emission = float(carrier_info.emission)
+            if carrier_info.energy_content is not None:
+                carrier.energyContent = float(carrier_info.energy_content)
+            carrier.stateOfMatter = esdl.StateOfMatterEnum.from_string(carrier_info.state_of_matter)
+            carrier.energyCarrierType = esdl.RenewableTypeEnum.from_string(carrier_info.renewable_type)
+            carrier.energyContentUnit = build_qau_from_unit_string(carrier_info.energy_content_unit)
+            carrier.energyContentUnit.physicalQuantity = esdl.PhysicalQuantityEnum.ENERGY
+            carrier.emissionUnit = build_qau_from_unit_string('kg/GJ')
+            carrier.emissionUnit.physicalQuantity = esdl.PhysicalQuantityEnum.EMISSION
+        if carrier_info.type == 'ElectricityCommodity':
+            if carrier_info.voltage is not None:
+                carrier.voltage = float(carrier_info.voltage)
+        if carrier_info.type == 'GasCommodity':
+            if carrier_info.pressure is not None:
+                carrier.pressure = float(carrier_info.pressure)
+        if carrier_info.type == 'HeatCommodity':
+            if carrier_info.supply_temperature is not None:
+                carrier.supplyTemperature = float(carrier_info.supply_temperature)
+            if carrier_info.return_temperature is not None:
+                carrier.returnTemperature = float(carrier_info.return_temperature)
+
+        if add_carrier:
+            esi = es.energySystemInformation
+            if not esi:
+                esi = esdl.EnergySystemInformation(id=str(uuid4()))
+                es.energySystemInformation = esi
+                esh.add_object_to_dict(active_es_id, esi)
+
+            ecs = esi.carriers
+            if not ecs:
+                ecs = esdl.Carriers(id=str(uuid4()))
+                esi.carriers = ecs
+                esh.add_object_to_dict(active_es_id, ecs)
+            ecs.carrier.append(carrier)
+            esh.add_object_to_dict(active_es_id, carrier)
+
+        # send list as a result
+        carrier_list = ESDLEnergySystem.get_carrier_list(es)
+        return carrier_list

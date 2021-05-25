@@ -41,6 +41,18 @@ function set_carrier_color_dict(color_dict) {
     carrier_color_dict = color_dict;
 }
 
+function update_color_in_carrier_color_dict(es_id, carrier_id, color) {
+    if (es_id+carrier_id in carrier_color_dict) {
+        carrier_color_dict[es_id+carrier_id]['color'] = color;
+    } else {
+        carrier_color_dict[es_id+carrier_id] = {
+          'es_id': es_id,
+          'carrier_id': carrier_id,
+          'color': color
+        };
+    }
+}
+
 setCarrier = function(e) {
     asset_id = e.relatedTarget.id;
     // console.log(asset_id);

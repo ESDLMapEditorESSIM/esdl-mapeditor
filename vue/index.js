@@ -9,6 +9,7 @@ import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 //import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
+import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
@@ -43,6 +44,10 @@ window.control_strategy_window = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(ControlStrategy);
+}
+
+window.carriers_window = () => {
+    mountSidebarComponent(Carriers);
 }
 
 window.object_properties_window = (object_id) => {
