@@ -43,7 +43,7 @@ class ESSIM_KPIs:
 
     def send_alert(self, msg):
         logger.warn(msg)
-        self.socketio.emit('alert', msg, namespace='/esdl')
+        emit('alert', msg, namespace='/esdl')
 
     def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
         # TODO: This does not work with multiple concurrent users (es, simulationRun, scenario_id, start_date, and so on)
