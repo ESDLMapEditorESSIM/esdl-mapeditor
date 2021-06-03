@@ -2322,34 +2322,20 @@ def process_command(message):
                     # p.profile = esdl_profile
                     ESDLAsset.remove_profile_from_port(p, profile_id)
 
-    if message['cmd'] == 'add_port':
-        direction = message['direction']
+    if message['cmd'] == 'add_port' or message['cmd'] == 'add_port_with_id':
+        # merge add_port and add_port_with_id. Why on earth were there two messages for the same thing!
+        # frontend should be adapted to only send one of these: todo
+        # ptype and direction do the same thing!
         asset_id = message['asset_id']
         pname = message['pname']
-
-        asset = esh.get_by_id(es_edit.id, asset_id)
-        if direction == 'in':
-            port = esdl.InPort(id=str(uuid.uuid4()), name=pname)
-        else:
-            port = esdl.OutPort(id=str(uuid.uuid4()), name=pname)
-
-        geom = asset.geometry
-        if isinstance(geom, esdl.Point):
-            asset.port.append(port)
-            esh.add_object_to_dict(active_es_id, port)
-            port_list = []
-            for p in asset.port:
-                port_list.append(
-                    {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-            emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
-        else:
-            send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
-
-    if message['cmd'] == 'add_port_with_id':
-        asset_id = message['asset_id']
-        ptype = message['ptype']
-        pname = message['pname']
-        pid = message['pid']
+        pid = str(uuid.uuid4())
+        if 'pid' in message:
+            pid = message['pid']
+        if 'ptype' in message:
+            ptype = message['ptype']
+        if 'direction' in message:
+            direction = message['direction']
+            ptype = 'InPort' if direction is 'in' else 'OutPort'
 
         asset = esh.get_by_id(es_edit.id, asset_id)
         if ptype == 'InPort':
@@ -2358,16 +2344,24 @@ def process_command(message):
             port = esdl.OutPort(id=pid, name=pname)
 
         geom = asset.geometry
-        if isinstance(geom, esdl.Point):
-            asset.port.append(port)
+        if len(asset.port) >= 6:
+            send_alert('ERROR: MapEditor cannot visualize assets with more than 6 ports.')
+        if isinstance(geom, esdl.Line) and len(asset.port) >= 2:
+            send_alert('ERROR: Line geometries cannot have more than two ports.')
+        elif isinstance(geom, esdl.Line) and len(asset.port) == 1 and asset.port[0].eClass.name == ptype:
+            send_alert('ERROR: Line cannot have ports of the same type.')
+        else:
+            if isinstance(geom, esdl.Line) and isinstance(port, esdl.InPort):
+                asset.port.insert(0, port)  # insert InPort always at beginning as this is the convention
+            else:
+                asset.port.append(port)
             esh.add_object_to_dict(active_es_id, port)
             port_list = []
             for p in asset.port:
                 port_list.append(
                     {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
-        else:
-            send_alert('ERROR: Adding port not supported yet! asset doesn\'t have geometry esdl.Point')
+
 
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
@@ -2377,10 +2371,14 @@ def process_command(message):
         port_list = []
         for p in set(ports):
             if p.id == pid:
-                ports.remove(p)
+                esh.remove_object_from_dict(active_es_id, p, recursive=True)
+                ports.remove(p) # remove from list
+                p.delete()  # delete from esdl (e.g. if other ports refer to this port, they will be updated)
+                            # question is why is this necessary in pyecore and isn't this done automatically
+                            # as p is not contained anymore and you get dangling references.
             else:
                 carrier_id = p.carrier.id if p.carrier else None
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
     if message['cmd'] == 'remove_connection_portids':
