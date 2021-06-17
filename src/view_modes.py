@@ -117,7 +117,13 @@ view_modes_config = {
             ]
         },
         "ESSIM": {
+            # ===========================
+            #  The 5 ESDL capabilities
+            # ===========================
             "Producer": [
+                "power"
+            ],
+            "Consumer": [
                 "power"
             ],
             "Conversion": [
@@ -131,9 +137,19 @@ view_modes_config = {
                 "maxDischargeRate",
                 "selfDischargeRate"
             ],
+            "Transport": [
+                "capacity"
+            ],
+            # ===========================
+            #  Conversion assets
+            # ===========================
             "HeatPump": [
                 "COP",
                 "stages"
+            ],
+            "CHP": [
+                "electricalEfficiency",
+                "heatEfficiency"
             ]
         },
     },
