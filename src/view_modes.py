@@ -131,7 +131,7 @@ view_modes_config = {
                 "power"
             ],
             "Storage": [
-                "capacity"
+                "capacity",
                 "fillLevel",
                 "maxChargeRate",
                 "maxDischargeRate",
