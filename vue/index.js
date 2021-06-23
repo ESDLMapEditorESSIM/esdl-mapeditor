@@ -11,6 +11,7 @@ import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
+import SearchAssets from './apps/SearchAssets';
 import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -58,6 +59,10 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.search_assets_window = () => {
+    mountSidebarComponent(SearchAssets)
 }
 
 //window.activate_esdl_profiles = () => {
