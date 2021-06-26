@@ -1390,20 +1390,6 @@ def str2float(string):
         return 0.0
 
 
-def get_first_last_of_line(line):
-    first = ()
-    last = ()
-
-    i = 0
-    for point in line.point:
-        if i == 0:
-            first = (point.lat, point.lon)
-        i+=1
-
-    last = (point.lat, point.lon)
-    return first, last
-
-
 @executor.job
 def call_process_energy_system(esh, filename=None, es_title=None, app_context=None):
     process_energy_system(esh, filename, es_title, app_context)

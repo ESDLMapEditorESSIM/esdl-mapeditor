@@ -1376,7 +1376,9 @@
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
                     map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
-                } else {
+                }
+
+                if (!add_to_building) {
                     set_leaflet_sizes();
                 }
             });
