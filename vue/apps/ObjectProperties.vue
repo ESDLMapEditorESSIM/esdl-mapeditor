@@ -85,7 +85,7 @@
                 <a-col v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
                   <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer
-                      :parent-object-id="obj_properties.object.id"
+                      :parent-object-id="currentObjectIDs"
                       :reference="attr"
                       @update="updateRef($event, attr)"
                     />
@@ -103,7 +103,7 @@
           <a-collapse-panel key="CostInformation" header="Cost information">
             <CostInformationView
               v-model:costInfo="obj_properties.cost_information"
-              v-model:objectID="obj_properties.object.id"
+              v-model:objectIDs="currentObjectIDs"
             />
           </a-collapse-panel>
         </a-collapse>
@@ -157,7 +157,10 @@ export default {
     },
     multiSelect: function(attr) {
       return (attr.many ? 'multiple' : 'default');
-    }
+    },
+    currentObjectIDs: function() {
+      return (Array.isArray(currentObjectID.value) ? currentObjectID.value : [currentObjectID.value])
+    },
   },
   mounted() {
     this.getDataSocketIO();
