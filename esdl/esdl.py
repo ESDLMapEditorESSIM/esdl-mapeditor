@@ -1782,6 +1782,25 @@ class AbstractBehaviour(EObject, metaclass=MetaEClass):
             self.name = name
 
 
+class PortRelation(EObject, metaclass=MetaEClass):
+    """Specifies the relation between a port and the main port using a specific ratio."""
+    ratio = EAttribute(eType=EDouble, unique=True, derived=False,
+                       changeable=True, default_value=0.0)
+    port = EReference(ordered=True, unique=True, containment=False, derived=False)
+
+    def __init__(self, *, ratio=None, port=None):
+        # if kwargs:
+        #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if ratio is not None:
+            self.ratio = ratio
+
+        if port is not None:
+            self.port = port
+
+
 class InPort(Port):
     """Represents a port with a positive energy direction into the asset, e.g. for a Consumer. See Port for more details"""
     connectedTo = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
@@ -2662,11 +2681,21 @@ class MatterReference(AbstractMatter):
             self.reference = reference
 
 
-class InputOutputQuantityRelation(AbstractBehaviour):
+class InputOutputRelation(AbstractBehaviour):
+    """Describes the relation between one of the ports of an asset (the mainPort) and all other ports using a specific ratio. Can be used for conversion assets to specify how much of the carrier on the InPorts is required to produce an x amount of the carrier on the OutPort. """
+    mainPortRelation = EReference(ordered=True, unique=True,
+                                  containment=True, derived=False, upper=-1)
+    mainPort = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, mainPortRelation=None, mainPort=None, **kwargs):
 
         super().__init__(**kwargs)
+
+        if mainPortRelation:
+            self.mainPortRelation.extend(mainPortRelation)
+
+        if mainPort is not None:
+            self.mainPort = mainPort
 
 
 @abstract
