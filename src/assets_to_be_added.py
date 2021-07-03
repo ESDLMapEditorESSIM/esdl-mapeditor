@@ -13,7 +13,7 @@
 #      TNO
 
 from flask import Flask
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import src.log as log
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl import esdl
@@ -79,5 +79,5 @@ class AssetsToBeAdded:
 
     def reduce_ui_asset_count(self, es, asset_id):
         print('emitting ATBA_use_asset')
-        self.socketio.emit('ATBA_use_asset', {'es_id': es.id, 'id': asset_id}, namespace='/esdl')
+        emit('ATBA_use_asset', {'es_id': es.id, 'id': asset_id}, namespace='/esdl')
 
