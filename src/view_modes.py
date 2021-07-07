@@ -297,6 +297,10 @@ asset_list = {
             "Battery",
             "GasStorage",
             "HeatStorage",
+        ],
+        "Transport": [
+            "Transformer",
+            "Bus",
         ]
     },
     "CHESS": {
@@ -360,12 +364,7 @@ class ViewModes:
 
         @self.socketio.on('view_modes_get_mode_info', namespace='/esdl')
         def view_modes_get_mode_info():
-            user = get_session('user-email')
-            settings = self.get_user_settings(user)
-            return {
-                'current_mode': settings['mode'],
-                'possible_modes': list(view_modes_config.keys())
-            }
+            return self.view_modes_get_mode_info()
 
         @self.socketio.on('view_modes_set_mode', namespace='/esdl')
         def view_modes_set_mode(mode):
@@ -388,6 +387,14 @@ class ViewModes:
 
     def set_user_settings(self, user, settings):
         self.settings_storage.set_user(user, VIEW_MODES_USER_CONFIG, settings)
+
+    def view_modes_get_mode_info(self):
+        user = get_session('user-email')
+        settings = self.get_user_settings(user)
+        return {
+            'current_mode': settings['mode'],
+            'possible_modes': list(view_modes_config.keys())
+        }
 
     def categorize_object_attributes(self, object, attributes):
         attr_dict = {attr['name']: attr for attr in attributes}
@@ -452,4 +459,7 @@ class ViewModes:
             user = get_session('user-email')
             view_mode = self.initialize_user(user)
 
+        return asset_list[view_mode]
+
+    def get_asset_list_for_view_mode(self, view_mode):
         return asset_list[view_mode]

@@ -12,9 +12,11 @@ import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
-import { createVueLControl, mountApp, mountSidebarComponent } from "./mounts";
+import { createVueLControl, mountApp, mountSidebarComponent, mountSettingsComponent } from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
+import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
+import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import { useWorkflow } from "./composables/workflow";
 import Workflow from "./apps/Workflow";
@@ -68,6 +70,16 @@ window.search_assets_window = () => {
 //window.activate_esdl_profiles = () => {
 //    mountApp(EsdlProfiles, '#settings_module_contents');
 //}
+
+window.activate_asset_draw_toolbar_edr_assets_settings = () => {
+    mountSettingsComponent(AssetDrawToolbarEDRAssetsSettings);
+    // mountApp(AssetDrawToolbarEDRAssetsSettings, '#settings_module_contents')
+}
+
+window.activate_asset_draw_toolbar_standard_assets_settings = () => {
+    mountSettingsComponent(AssetDrawToolbarStandardAssetsSettings);
+    // mountApp(AssetDrawToolbarStandardAssetsSettings, '#settings_module_contents')
+}
 
 window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);

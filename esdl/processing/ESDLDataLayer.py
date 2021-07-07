@@ -30,6 +30,7 @@ from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_dat
 from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
 from extensions.vue_backend.messages.identifier_message import Identifier
 from extensions.vue_backend.messages.DLA_carrier_message import CarrierMessage
+from src.asset_draw_toolbar import AssetDrawToolbar
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
 from src.view_modes import ViewModes
 import esdl.esdl
@@ -339,8 +340,11 @@ class ESDLDataLayer:
         return item.eClass.name
 
     def get_asset_list(self):
-        view_modes = ViewModes.get_instance()
-        return view_modes.get_asset_list()
+        # view_modes = ViewModes.get_instance()
+        # return view_modes.get_asset_list()
+        adt = AssetDrawToolbar.get_instance()
+        standard_assets_info = adt.load_asset_draw_toolbar_standard_assets_info()
+        return standard_assets_info['standard_assets'][standard_assets_info['current_mode']]
 
     def get_recently_used_edr_assets(self):
         recently_used_edr_assets = get_session('recently_used_edr_assets')

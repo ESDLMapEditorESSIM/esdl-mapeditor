@@ -22,16 +22,16 @@
             :key="key"
             :header="key + ' attributes'"
           >
-            <div>
+            <div style="margin-bottom: 10px;">
               <a-row v-for="attr in cat" :key="attr.name" :gutter="[0, 4]" type="flex" align="middle">
                 <!-- attributes -->
                 <a-col v-if="isAttribute(attr)" :span="9">
                   <span :title="attr.doc">{{ camelCase(attr.name) }}</span>
                 </a-col>
                 <a-col v-if="isAttribute(attr)" :span="15">
-                  <FancyNumberEdit 
-                    v-if="attr.type == 'EInt'" 
-                    v-model:value="attr.value" 
+                  <FancyNumberEdit
+                    v-if="attr.type == 'EInt'"
+                    v-model:value="attr.value"
                     v-model:unit="attr.unit"
                     size="small"
                     @update:value="(val) => { updateAttribute(attr.name, val);}"
@@ -63,7 +63,7 @@
                     v-model:value="attr.value" size="small" style="width: 100%"
                     @change="updateAttribute(attr.name, attr.value)"
                   >
-                    <!-- mode werkt nog niet op deze manier: :mode="multiSelect(attr)"-->    
+                    <!-- mode werkt nog niet op deze manier: :mode="multiSelect(attr)"-->
                     <a-select-option
                       v-for="opt in attr.options"
                       :key="opt"
@@ -82,10 +82,10 @@
                     @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }"
                   />
                 </a-col>
-                <a-col v-if="!isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
+                <a-col v-if="!multipleAssetsSelected && !isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
                   <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer
-                      :parent-object-id="currentObjectIDs"
+                      :parentObjectID="currentObjectIDs[0]"
                       :reference="attr"
                       @update="updateRef($event, attr)"
                     />
@@ -93,7 +93,7 @@
                 </a-col>
               </a-row>
             </div>
-          </a-collapse-panel>          
+          </a-collapse-panel>
           <a-collapse-panel v-if="obj_properties.port_connected_to_info" key="Ports" header="Ports">
             <PortsEdit
               v-model:portList="obj_properties.port_connected_to_info"
@@ -160,6 +160,9 @@ export default {
     },
     currentObjectIDs: function() {
       return (Array.isArray(currentObjectID.value) ? currentObjectID.value : [currentObjectID.value])
+    },
+    multipleAssetsSelected: function() {
+      return (this.currentObjectIDs.length > 1);
     },
   },
   mounted() {

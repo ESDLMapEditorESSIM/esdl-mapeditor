@@ -46,7 +46,7 @@ class EDRAssets:
 
         @self.flask_app.route('/edr_assets')
         def get_edr_assets():
-            edr_url = self.EDR_config['EDR_host'] + '/store/tagged?tag=asset'
+            edr_url = self.EDR_config['EDR_host'] + '/store/tagged?take=500&tag=asset'
             # logger.debug('accessing URL: '+edr_url)
 
             try:
