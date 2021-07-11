@@ -421,6 +421,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+        add_risk_buffer(marker);
   
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
@@ -445,6 +446,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         polygon.attrs = asset_info[6];
         // esdl_layer.addLayer(polygon);
         add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
+        add_risk_buffer(polygon);
   
         var polygon_center = calculate_array_polygon_center(coords);
         var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
@@ -504,8 +506,72 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_line_handlers(line);
         add_object_to_layer(es_bld_id, 'esdl_layer', line);
+        add_risk_buffer(line);
+
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
                 '                   ', {repeat: true});
     }
+}
+
+function add_popup_to_risk_buffer(feature, layer) {
+    let text = "Spatial impact: " + turf.area(feature).toFixed() + " m2";
+    let popup = L.popup();
+    popup.setContent(text);
+    layer.bindPopup(popup);
+
+    layer.on('mouseover', function (e) {
+        var popup = e.target.getPopup();
+        var this_map = e.sourceTarget._map;     // can be area map and building map
+        popup.setLatLng(e.latlng).openOn(this_map);
+    });
+
+    layer.on('mouseout', function(e) {
+        e.target.closePopup();
+    });
+}
+
+function get_risk_buffer_layer() {
+    return get_layers(active_layer_id, 'sim_layer')
+}
+
+function create_buffer(layer, distance_meters) {
+    if ('buffer_info' in layer) {
+      layer.buffer_info.buffer.remove();
+    }
+
+    let buffer_geojson = turf.buffer(layer.toGeoJSON(), distance_meters / 1000, {units: 'kilometers'});
+    let buffer_layer = L.geoJson(buffer_geojson, {
+      style: {color:'gray'},
+      onEachFeature: add_popup_to_risk_buffer,
+    });
+
+    buffer_layer.addTo(get_risk_buffer_layer());
+    layer.buffer_info = {
+      buffer: buffer_layer,
+      distance_km: distance_meters,
+    }
+}
+
+distance_dict = {
+  "WindTurbine": 300,
+  "ElectricityCable": 100,
+  "Pipe": 30,
+  "PVPark": 20,
+  "Transformer": 50,
+}
+
+function add_risk_buffer(layer) {
+  if (layer.type in distance_dict) {
+    create_buffer(layer, distance_dict[layer.type]);
+  }
+}
+
+function find_overlapping_risk_buffers(esdl_layer) {
+
+}
+
+function bring_risk_buffers_to_back() {
+    let esdl_layer = get_risk_buffer_layer();
+    esdl_layer.bringToBack();
 }

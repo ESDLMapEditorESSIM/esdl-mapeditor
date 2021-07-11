@@ -139,6 +139,11 @@ function add_area_map_handlers(socket, map) {
                 polygon_area = calculate_area(layer);
                 socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
             }
+
+            // if a risk buffer was drawn, 'move' that too by removing existing one and adding new one...
+            if ('buffer_info' in layer) {
+                add_risk_buffer(layer);
+            }
         });
     });
 

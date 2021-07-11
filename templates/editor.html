@@ -98,6 +98,8 @@
 
     <script type="text/javascript" src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
+    <!-- <script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script> -->
+    <script src='https://unpkg.com/@turf/turf@6.3.0/turf.min.js'></script>
 {% if 'table-do-not-include-this' in role %}
     <link href="./plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
     <script src="./plugins/multi-dropdown-with-search.js" type="text/javascript"></script>
@@ -888,6 +890,7 @@
                 for (let i = 0; i<list.length; i++) {
                     add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
                 }
+                bring_risk_buffers_to_back();
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
                 $('div[title]').tooltip({
