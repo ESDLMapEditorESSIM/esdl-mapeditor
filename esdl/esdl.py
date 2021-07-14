@@ -4970,7 +4970,8 @@ class ATES(HeatStorage):
     aquiferTopDepth = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     aquiferThickness = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     aquiferMidTemperature = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    aquiferNetToGross = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    aquiferNetToGross = EAttribute(eType=EDouble, unique=True,
+                                   derived=False, changeable=True, default_value=0.0)
     aquiferPorosity = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     aquiferPermeability = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     aquiferAnisotropy = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
