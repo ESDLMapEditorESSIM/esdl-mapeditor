@@ -217,6 +217,51 @@ class ESDLDrive {
             });
      }
 
+     // renders the details view as a table
+     render_table(d) {
+            let $t = $('<table>').addClass('pure-table pure-table-striped');
+            let $thead = $('<thead>').append(
+                $('<tr>').append(
+                    $('<th>').text("Property"),
+                    $('<th>').text('Value')
+                )
+            );
+            $t.append($thead);
+
+            for (let attr in d) {
+                let value = d[attr];
+                if (attr==='lastChanged') {
+                    value = new Date(d[attr]).toLocaleString();
+                }
+                let $td = $('<td>');
+                if (attr === 'revisionVersion' || attr === 'lastCommit') {
+                    let $revLink = $('<a>', {text: camelCaseToWords(attr), title: 'Show history of this EnergySystem', href: '#'});
+                    $revLink.click(function(e) {
+                        socket.emit('cdo_browse', {'operation': 'get_revisions', 'id': d['path'] }, function(response) {
+                            console.log('Response:', response);
+                            if (response.status < 400 ) {
+                                self.showHistory(response.json);
+                            } else {
+                                if (response.error !== undefined) {
+                                    alert(response.error);
+                                } else {
+                                    console.log("Something went wrong getting history");
+                                }
+                            }
+                        });
+                    });
+                    $td.append($revLink);
+                } else {
+                    $td.html(camelCaseToWords(attr));
+                }
+                let $tr = $('<tr>');
+                $tr.append($td);
+                $tr.append($('<td>').html(String(value)));
+                $t.append($tr);
+            }
+            return $t;
+     }
+
      tree_changed_load(data) {
         $('#data .content').hide();
         $('#data .loader').show();
@@ -236,46 +281,7 @@ class ESDLDrive {
                 switch(d.type) {
                     case 'esdl':
                         let $p = $('<h4>').html('Energy System: <i>' + d.fileName + '</i>');
-                        let $t = $('<table>').addClass('pure-table pure-table-striped');
-                        let $thead = $('<thead>').append(
-                            $('<tr>').append(
-                                $('<th>').text("Property"),
-                                $('<th>').text('Value')
-                            )
-                        );
-                        $t.append($thead);
-
-                        for (let attr in d) {
-                            let value = d[attr];
-                            if (attr==='lastChanged') {
-                                value = new Date(d[attr]).toLocaleString();
-                            }
-                            let $td = $('<td>');
-                            if (attr === 'revisionVersion' || attr === 'lastCommit') {
-                                let $revLink = $('<a>', {text: camelCaseToWords(attr), title: 'Show history of this EnergySystem', href: '#'});
-                                $revLink.click(function(e) {
-                                    socket.emit('cdo_browse', {'operation': 'get_revisions', 'id': d['path'] }, function(response) {
-                                        console.log('Response:', response);
-                                        if (response.status < 400 ) {
-                                            self.showHistory(response.json);
-                                        } else {
-                                            if (response.error !== undefined) {
-                                                alert(response.error);
-                                            } else {
-                                                console.log("Something went wrong getting history");
-                                            }
-                                        }
-                                    });
-                                });
-                                $td.append($revLink);
-                            } else {
-                                $td.html(camelCaseToWords(attr));
-                            }
-                            let $tr = $('<tr>');
-                            $tr.append($td);
-                            $tr.append($('<td>').html(String(value)));
-                            $t.append($tr);
-                        }
+                        let $t = self.render_table(d);
                         $('#data .esdl').empty();
                         $('#data .esdl').append($p);
                         $('#data .esdl').append($t);
@@ -301,6 +307,16 @@ class ESDLDrive {
                             $('#data .esdl').append($importbtn);
                         }
 
+                        $('#data .esdl').show();
+                        break;
+                    case 'edd':
+                        let $p_edd = $('<h4>').html('Energy Data Description: <i>' + d.fileName + '</i>');
+                        let $t_edd = self.render_table(d);
+                        $('#data .esdl').empty();
+                        $('#data .esdl').append($p_edd);
+                        $('#data .esdl').append($t_edd);
+                        let $hint = $('<span>').text('Currently, Energy Data Descriptions cannot be opened in the MapEditor');
+                        $('#data .esdl').append($hint);
                         $('#data .esdl').show();
                         break;
                     case 'text':
@@ -350,6 +366,8 @@ class ESDLDrive {
 		});
 
      }
+
+
 
      tree_changed_save(data) {
         //console.log(data);
