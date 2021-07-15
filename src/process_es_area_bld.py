@@ -772,7 +772,7 @@ def get_building_information(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None):
+def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
     # emit('clear_ui')
     print("Processing energysystems in esh")
     print("active_es_id at start: {}".format(get_session('active_es_id')))
@@ -806,7 +806,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             else:
                 title = name
 
-            emit('create_new_esdl_layer', {'es_id': es.id, 'title': title})
+            emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
             emit('set_active_layer_id', es.id)
 
             area = es.instance[0].area
@@ -837,8 +837,8 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
             notes_list = get_notes_list(es)
 
-            emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': False})
-            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': True})
+            emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
+            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
             emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
             emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
             emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
@@ -869,3 +869,6 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
     #session.modified = True
     print('session variables set', session)
     # print('es_id: ', get_session('es_id'))
+
+
+

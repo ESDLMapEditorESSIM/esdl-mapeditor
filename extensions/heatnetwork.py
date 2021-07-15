@@ -190,7 +190,7 @@ class HeatNetwork:
                      'to-asset-coord': to_coords
                      })
         conn_list.extend(connections)
-        print(connections)
+        #print(connections)
         return connections # only return the newly added connections
 
 

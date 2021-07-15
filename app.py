@@ -628,6 +628,9 @@ def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_
     esh = get_handler()
     asset = esh.get_by_id(active_es_id, asset_id)
     processed_assets.append(asset_id)
+
+    port_list = []
+
     for p in asset.port:
         p.carrier = esh.get_by_id(active_es_id, carrier_id) #FIXME pyecore
         conn_to = p.connectedTo
@@ -639,15 +642,27 @@ def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_
                     if conn_asset.id not in processed_assets:
                         _set_carrier_for_connected_transport_assets(conn_asset.id, carrier_id, processed_assets)
                 else:
+                    conn_asset_port_list = []
                     for conn_asset_port in conn_asset.port:
                         if conn_asset_port.id == conn_port.id:
                             conn_asset_port.carrier = p.carrier
+                        conn_asset_port_list.append({'name': conn_asset_port.name, 'id': conn_asset_port.id,
+                            'type': type(conn_asset_port).__name__, 'conn_to': [pt.id for pt in conn_asset_port.connectedTo],
+                            'carrier': conn_asset_port.carrier.id if conn_asset_port.carrier else None})
+                    # also update the ports of the 'leaf' asset (recursion stops here)
+                    emit('update_asset', {'asset_id': conn_asset.id, 'ports': conn_asset_port_list})
+        port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                          'conn_to': [pt.id for pt in p.connectedTo], 'carrier': p.carrier.id if p.carrier else None})
+    # update the asset ports in the gui, if the carrier has changed.
+    emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
 
 def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
     processed_assets = []  # List of asset_id's that are processed
     _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
     # logger.debug(processed_assets)
+
+
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1405,8 +1420,8 @@ def get_first_last_of_line(line):
 
 
 @executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None):
-    process_energy_system(esh, filename, es_title, app_context)
+def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    process_energy_system(esh, filename, es_title, app_context, force_update_es_id, zoom)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1438,6 +1453,9 @@ def process_command(message):
     # test to see if this should be moved down:
     #  session.modified = True
     # logger.debug (get_handler().instance[0].area.name)
+
+    tracker_stack = esh.change_tracker.get_tracker_stack(es_edit)
+    tracker_stack.start_recording(combineCommands=True, label=message['cmd'])
 
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
@@ -1643,6 +1661,15 @@ def process_command(message):
                                 conn_list.append(conn_message)
                                 emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
 
+                                # update ports of from_port asset
+                                from_asset = start_port.eContainer()
+                                port_list = []
+                                for p in from_asset.port:
+                                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                                              'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
+                                emit('update_asset', {'asset_id': from_asset.id, 'ports': port_list})
+
+
                             if end_port:
                                 if isinstance(end_port, esdl.InPort):
                                     asset2_port_location = asset.geometry.point[-1]
@@ -1667,6 +1694,15 @@ def process_command(message):
                                      'to-asset-coord': [asset2_port_location.lat, asset2_port_location.lon]}
                                 conn_list.append(conn_message)
                                 emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+
+                                # update ports of from_port asset
+                                to_asset = end_port.eContainer()
+                                port_list = []
+                                for p in to_asset.port:
+                                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                                                      'conn_to': [pt.id for pt in p.connectedTo],
+                                                      'carrier': carrier_id})
+                                emit('update_asset', {'asset_id': to_asset.id, 'ports': port_list})
 
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
@@ -1955,6 +1991,21 @@ def process_command(message):
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
                 conn_list.append(conn_message)
                 emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+
+                # update ports of assets that are connected
+
+                port_list = []
+                for p in asset1.port:
+                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                                      'conn_to': [pt.id for pt in p.connectedTo],
+                                      'carrier': p.carrier.id if p.carrier else None})
+                emit('update_asset', {'asset_id': asset1.id, 'ports': port_list})
+                port_list = []
+                for p in asset2.port:
+                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
+                                      'conn_to': [pt.id for pt in p.connectedTo],
+                                      'carrier': p.carrier.id if p.carrier else None})
+                emit('update_asset', {'asset_id': asset2.id, 'ports': port_list})
 
         else:
             send_alert('Serious error connecting ports')
@@ -2831,6 +2882,31 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         esh.remove_energy_system(es_id=remove_es_id)
 
+
+    if message['cmd'] == 'refresh_esdl':
+        print('refresh_esdl')
+        esh = get_handler()
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+
+    if message['cmd'] == 'undo':
+        print('Undo stack')
+        pprint(tracker_stack.stack)
+        esh = get_handler()
+        tracker_stack.stop_recording()
+        tracker_stack.undo()
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+
+    if message['cmd'] == 'redo':
+        print('Redo stack')
+        pprint(tracker_stack.stack)
+        esh = get_handler()
+        from esdl.undo import UndoRedoCommandStack
+        tracker_stack.stop_recording()
+        tracker_stack.redo()
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+
+    tracker_stack.stop_recording()
+    print("Undo/Redo size={}".format(len(tracker_stack.stack)))
     set_handler(esh)
     session.modified = True
 
@@ -3015,11 +3091,13 @@ def process_file_command(message):
             store_id = get_session('active_es_id')
             create_new_store_item(store_id, title, descr, email, tags, esh)
 
-    # Do not store file_content in logging database
+        # Do not store file_content in logging database
     if 'file_content' in message:
         del message['file_content']
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
+
+
 
 #    if message['cmd'] == 'save_esdl':
 #        esh = get_handler()

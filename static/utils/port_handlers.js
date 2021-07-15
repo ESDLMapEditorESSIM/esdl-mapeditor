@@ -119,7 +119,7 @@ function set_marker_port_handlers(marker) {
                     port_marker.on('mouseover', function(e) {
                         let layer = e.target;
                         layer.port_parent.active = true;
-
+                        highlight_connection(layer.port_parent);
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
@@ -128,6 +128,7 @@ function set_marker_port_handlers(marker) {
                             if (!layer.parent.mouseactive) {
                                 layer.removeFrom(map);
                                 remove_tooltip();
+                                unhighlight_connection(layer.port_parent)
                             }
                         }, 300);
     //                    layer.removeFrom(map);
@@ -135,8 +136,29 @@ function set_marker_port_handlers(marker) {
                     port_marker.on('click', function(e) {
                         remove_tooltip();
                         handle_connect(port_marker, e);
-
                     });
+
+// Following code to add context menu to port does not work, as the port is removed from the map when
+// a contextmenu item is shown and we get all kinds of errors when clicking, because map variable is not available
+//                    port_marker.bindContextMenu({
+//                        contextmenu: true,
+//                        contextmenuWidth: 140,
+//                        contextmenuItems: [],
+//                        contextmenuInheritItems: false
+//                    });
+//                    console.log(ports[p]);
+//                    for (let cn=0; cn<ports[p].conn_to.length;cn++) {
+//                        let conn_id = ports[p].id + ports[p].conn_to[cn];
+//                        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+//                        console.log(conn);
+//                        port_marker.options.contextmenuItems.push({
+//                            icon: 'icons/Delete.png',
+//                            text: 'Delete connection to ' + ports[p].conn_to[cn],
+//                            callback: function(e) { console.log(e) },
+//                            hideOnSelect: true
+//                        });
+//                    }
+
                 } else {
                     // show already created marker
                     ports[p].active = false;
@@ -156,10 +178,44 @@ function set_marker_port_handlers(marker) {
             setTimeout(function() {
                 if (ports[p].active === false && !layer.mouseactive) {
                     ports[p].marker.removeFrom(map);
+                    unhighlight_connection(ports[p])
                 }
             }, 300);
         }
     });
+}
+
+
+function highlight_connection(port) {
+    for (let i=0; i<port.conn_to.length;i++) {
+        let conn_id = port.id + port.conn_to[i];
+        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        if (conn === undefined) {
+            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+        }
+        if (conn && !conn.highlight) { // runs on mouseover, so is received multiple times
+            let curr_weight = conn.options.weight;
+            conn.previous_weight = curr_weight;
+            conn.setStyle({dashArray:'1', weight: curr_weight+2});
+            conn.highlight = true;
+        }
+    }
+}
+
+function unhighlight_connection(port) {
+    for (let i=0; i<port.conn_to.length;i++) {
+        let conn_id = port.id + port.conn_to[i];
+        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        if (conn === undefined) {
+            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+        }
+        if (conn && conn.highlight) {
+            conn.setStyle({dashArray:'3,10', weight: conn.previous_weight});
+            conn.highlight = false;
+        }
+    }
 }
 
 function handle_connect(port_marker, e) {
@@ -336,14 +392,16 @@ function set_line_port_handlers(line) {
             let lineColor = layer.color;
             // let lineColorHoover = colors[lineType + '_hoover']
             let lineColorHoover = lineColor;
-            // only show when zoom level is appropriate and length is larger than 1km
+            let pixelSize = (map.getZoom() > 17) ? (map.getZoom() + 4) : (map.getZoom() / 2) + 2;
+            pixelSize = (map.getZoom() > 23) ? (map.getZoom() + 12) : pixelSize;
+            // only show when zoom level is appropriate or length is larger than 1km
             let arrowHead = L.polylineDecorator(layer, {
                         patterns: [
                             {
                                 offset: '1%',
                                 repeat: '49%',
                                 endOffset: 5,
-                                symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
+                                symbol: L.Symbol.arrowHead({pixelSize: pixelSize, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
                             }
                         ]
                     }).addTo(map);
@@ -396,6 +454,7 @@ function set_line_port_handlers(line) {
                     port_marker.on('mouseover', function(e) {
                         let layer = e.target;
                         layer.port_parent.active = true;
+                        highlight_connection(layer.port_parent);
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
@@ -404,6 +463,7 @@ function set_line_port_handlers(line) {
                             if (!layer.parent.mouseactive) {
                                 layer.removeFrom(map); // only remove if not mousemoved back to marker
                                 remove_tooltip();
+                                unhighlight_connection(layer.port_parent);
                             }
                         }, 300);
                     });
@@ -443,6 +503,7 @@ function set_line_port_handlers(line) {
             setTimeout(function() {
                 if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
+                    unhighlight_connection(ports[p]);
                 }
             }, 300);
         }

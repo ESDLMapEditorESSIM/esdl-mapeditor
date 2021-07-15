@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<esdl:EnergySystem xmlns:esdl="http://www.tno.nl/esdl" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" description="Left" version="1.0" name="Right1" id="90fe33ee-c6cf-472d-b7af-943ab745716d">
+<esdl:EnergySystem xmlns:esdl="http://www.tno.nl/esdl" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" description="Left" version="1.0" name="Right1" id="90fe33ee-c6cf-472d-b7af-943ab745716e">
   <instance xsi:type="esdl:Instance" name="Instance1" id="9f411ea8-ca2d-4984-8fb3-8cac0a209168">
     <area xsi:type="esdl:Area" name="Area1" id="3f5444bd-f33b-487e-a2a9-344dd3aa85e4">
       <asset xsi:type="esdl:PVPark" name="PVPark_1680" id="16801ded-f4f9-4bfb-bad3-995d5a6f087f">

@@ -1,9 +1,7 @@
 <template>
   <a class="dropdown-item" href="#" @click="showAboutBox">
-    <div class="menu-icon">
-      &nbsp;
-    </div>
-    About
+    <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-info-circle" aria-hidden="true" /></div>
+    About...
   </a>
   <a-modal v-model:visible="visible" title="About" width="750px">
     <template #footer>
