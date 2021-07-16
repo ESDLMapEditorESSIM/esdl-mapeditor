@@ -207,6 +207,7 @@
     <script type="text/javascript" src="./utils/select_asset.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
     <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
+    <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -890,7 +891,7 @@
                 for (let i = 0; i<list.length; i++) {
                     add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
                 }
-                bring_risk_buffers_to_back();
+                spatial_buffers_plugin.bring_spatial_buffers_to_back();
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
                 $('div[title]').tooltip({

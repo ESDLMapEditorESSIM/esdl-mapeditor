@@ -140,9 +140,9 @@ function add_area_map_handlers(socket, map) {
                 socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
             }
 
-            // if a risk buffer was drawn, 'move' that too by removing existing one and adding new one...
+            // if one or more risk buffers were drawn, 'move' those too by removing existing ones and adding new ones...
             if ('buffer_info' in layer) {
-                add_risk_buffer(layer);
+                spatial_buffers_plugin.redraw_spatial_buffers(layer);
             }
         });
     });
