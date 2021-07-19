@@ -13,6 +13,14 @@
       {{ obj_properties.multi_select_info.selected_asset_type }}
     </span>
   </h1>
+  <template v-else>
+    <h2>
+      <span>
+        Collecting information...
+      </span>
+    </h2>
+    <spinner />
+  </template>
   <div v-if="!isLoading" id="object-properties">
     <a-row :gutter="[0, 24]">
       <a-col :span="24">
@@ -130,6 +138,7 @@ import CostInformationView from "../components/forms/CostInformationView";
 import ReferenceViewer from "../components/forms/ReferenceViewer";
 import { useObject } from "../composables/ObjectID";
 // import { camelCaseToWords } from "../../static/utils/utils"
+import spinner from "../components/Spinner.vue";
 
 const { currentObjectID } = useObject();
 const ignoredRefs = ['port', 'costInformation', 'geometry'];
@@ -142,6 +151,7 @@ export default {
     PortsEdit,
     CostInformationView,
     ReferenceViewer,
+    spinner,
   },
   data() {
     return {
