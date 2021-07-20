@@ -186,13 +186,18 @@ export default {
     },
     getDataSocketIO: function () {
       // console.log(currentObjectID.value);
+      var tmp_coid = JSON.parse(JSON.stringify(currentObjectID.value));
       window.socket.emit(
         "DLA_get_object_properties",
         { id: currentObjectID.value },
         (res) => {
+          // TODO: Find out why currentObjectID is changed (only when multiple assets are selected from left to right)
+          // console.log(tmp_coid);
+          // console.log(currentObjectID.value);
           console.log(res);
           this.obj_properties = res;
           this.isLoading = false;
+          currentObjectID.value = tmp_coid;
         }
       );
     },
