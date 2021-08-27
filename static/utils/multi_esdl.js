@@ -309,7 +309,7 @@ function set_carrier_list(es_id, carrier_list) {
     carrier_info_mapping[1] = { color: '#FF0000', name: 'Conflicting carriers specified'}
 
     for (i=0; i<carrier_list.length; i++) {
-        let color = conn_line_colors[i]; // default color if no color stored
+        let color = conn_line_colors[i % conn_line_colors.length]; // default color if no color stored
 
         if (carrier_color_dict) {
             if (es_id + carrier_list[i]['id'] in carrier_color_dict) {
