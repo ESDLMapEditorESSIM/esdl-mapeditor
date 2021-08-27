@@ -102,8 +102,40 @@ class ESStatistics {
         } else {
             return $('<p>').text('No information');
         }
-
     }
+
+    generate_spatial_info(spatial_info) {
+        if (Object.keys(spatial_info).length !== 0) {
+            let $table = $('<table>').addClass('pure-table pure-table-striped').attr('id', 'es_info_table');
+            let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Type')).append($('<th>')
+               .text('Number')).append($('<th>').text('Area (approx.)')).append($('<th>').text('Non-overlapping area (approx.)')));
+            let $tbody = $('<tbody>');
+            $table.append($thead);
+            $table.append($tbody);
+
+            for (let key in spatial_info['number']) {
+                let number_info = spatial_info['number'][key];
+                let area_info = '';
+                if (key in spatial_info['area']) {
+                    area_info = spatial_info['area'][key];
+                }
+                let non_overlapping_area_info = '';
+                if (key in spatial_info['area']) {
+                    non_overlapping_area_info = spatial_info['non_overlapping'][key];
+                }
+                $tbody.append(
+                    $('<tr>')
+                      .append($('<td>').text(key))
+                      .append($('<td>').text(number_info))
+                      .append($('<td>').text(area_info))
+                      .append($('<td>').text(non_overlapping_area_info))
+                );
+            }
+
+            return $table;
+        } else {
+            return $('<p>').text('No information');
+        }    }
 
     generate_area_tables(div, area_info, level) {
         let $p = $('<p>');
@@ -121,6 +153,7 @@ class ESStatistics {
         let sub_areas = area_info['sub_areas'];
         $tbody.append($('<tr>').append($('<td>').text('Number of sub areas')).append($('<td>').text(sub_areas.length.toString())));
         $tbody.append($('<tr>').append($('<td>').text('Building statistics')).append($('<td>').append(es_statistics.generate_bld_stats(area_info['bld_info']))));
+        $tbody.append($('<tr>').append($('<td>').text('Spatial information')).append($('<td>').append(es_statistics.generate_spatial_info(area_info['spatial_info']))));
 
         div.append($p.append($table));
 
