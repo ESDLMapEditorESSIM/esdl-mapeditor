@@ -133,7 +133,7 @@ logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
 socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
-get_logger('engineio').setLevel(logging.WARNING)  # don't print all the messages
+# logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
 # remove existing sessions when restarting, existing sessions will give errors
 # as associated ESDLs are not stored in the session and the OpenId connect info is wrong

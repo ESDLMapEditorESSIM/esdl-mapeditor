@@ -45,14 +45,14 @@ esdl_config = {
             "description": "Power in kW",
             "physicalQuantity": "POWER",
             "multiplier": "KILO",
-            "unit": "WATT"
+            "unit": "WATT",
         },
         {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1b",
             "description": "Power in MW",
             "physicalQuantity": "POWER",
             "multiplier": "MEGA",
-            "unit": "WATT"
+            "unit": "WATT",
         },
         {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1c",
@@ -213,7 +213,7 @@ esdl_config = {
                     {"scope": "MUNICIPALITY", "url_value": "gemeenten"},
                 ],
             },
-            "query_parameters": []
+            "query_parameters": [],
         },
         {
             "id": "42c584b1-43c1-4369-9001-c89ba80d8370",
@@ -276,10 +276,7 @@ esdl_config = {
                     "parameter_name": "environment",
                     "location": "body",
                     "type": "selection",
-                    "possible_values": [
-                        "pro",
-                        "beta"
-                    ],
+                    "possible_values": ["pro", "beta"],
                 }
             ],
             "result": [{"code": 200, "action": "print"}],
@@ -298,27 +295,23 @@ esdl_config = {
                     "source": {
                         "url": "http://10.30.2.1:3011/schema",
                         "http_method": "get",
-                        "label_fields": [
-                            "name"
-                        ],
-                        "value_field": "id"
+                        "label_fields": ["name"],
+                        "value_field": "id",
                     },
                     "target_variable": "schema",
-                    "next_step": 1
+                    "next_step": 1,
                 },
                 {
                     "name": "Schema validation",
                     "description": "",
                     "type": "service",
-                    "state_params": {
-                        "schemas": "schema.id"
-                    },
+                    "state_params": {"schemas": "schema.id"},
                     "service": {
                         "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb27",
                         "name": "Validate ESDL against scehema",
                         "headers": {
                             "User-Agent": "ESDL Mapeditor/0.1",
-                            "Content-Type": "application/xml"
+                            "Content-Type": "application/xml",
                         },
                         "url": "http://10.30.2.1:3011/validationToMessages/",
                         "http_method": "post",
@@ -327,22 +320,216 @@ esdl_config = {
                             {
                                 "name": "Schemas",
                                 "description": "ID of the schema to validate this ESDL against",
-                                "parameter_name": "schemas"
+                                "parameter_name": "schemas",
                             }
                         ],
                         "body": "",
-                        "result": [
-                            {
-                                "code": 200,
-                                "action": "asset_feedback"
-                            }
-                        ],
+                        "result": [{"code": 200, "action": "asset_feedback"}],
                         "with_jwt_token": False,
-                        "state_params": True
+                        "state_params": True,
                     },
-                    "previous_step": 0
-                }
-            ]
-        }
-    ]
+                    "previous_step": 0,
+                },
+            ],
+        },
+    ],
+    "role_based_esdl_services": {
+        "eps": [
+            {
+                "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
+                "name": "Energy Potential Scan",
+                "explanation": "This service allows you to run the EPS web service and view the EPS results.",
+                "type": "vueworkflow",
+                "workflow": [
+                    {
+                        "name": "Begin",
+                        "description": "How would you like to proceed?",
+                        "type": "choice",
+                        "options": [
+                            {"name": "Create a new EPS project", "next_step": 1},
+                            {"name": "Upload EPS file", "next_step": 2},
+                            {"name": "Run EPS", "next_step": 4},
+                            {"name": "Inspect results", "next_step": 6},
+                        ],
+                    },
+                    {
+                        "name": "Create Project",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-create-project",
+                        "url": "http://epsweb:3400/api/projects/",
+                        "previous_step": 0,
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select existing project",
+                        "description": "",
+                        "type": "select-query",
+                        "multiple": false,
+                        "source": {
+                            "url": "http://epsweb:3400/api/projects/",
+                            "http_method": "get",
+                            "choices_attr": "projects",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "project_id",
+                        "previous_step": 0,
+                        "next_step": 3,
+                    },
+                    {
+                        "name": "Upload EPS data input file",
+                        "description": "Note: When uploading a file with the same name as a previous file, the previous file will be overwritten!",
+                        "type": "upload_file",
+                        "target": {
+                            "url": "http://epsweb:3400/api/uploads/",
+                            "request_params": {"project_id": "project.id"},
+                            "response_params": {"name": "file_name"},
+                        },
+                        "previous_step": 2,
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select existing project",
+                        "description": "",
+                        "type": "select-query",
+                        "multiple": false,
+                        "source": {
+                            "url": "http://epsweb:3400/api/projects/",
+                            "http_method": "get",
+                            "choices_attr": "projects",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "project",
+                        "previous_step": 0,
+                        "next_step": 5,
+                    },
+                    {
+                        "name": "Run the EPS",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-service",
+                        "url": "http://epsweb:3400/api/eps/",
+                        "target": {
+                            "request_params": {"project_id": "project.id"},
+                            "user_response_spec": {
+                                "0": {"message": "Failed starting the EPS."},
+                                "200": {"message": "EPS started successfully!"},
+                                "429": {
+                                    "message": "It is currently busy on the server. We cannot start an EPS execution at this time. Please try again at a later time."
+                                },
+                            },
+                        },
+                        "previous_step": 4,
+                    },
+                    {
+                        "name": "EPS execution",
+                        "description": "",
+                        "label": "Select EPS execution to inspect:",
+                        "type": "select-query",
+                        "multiple": false,
+                        "source": {
+                            "url": "http://epsweb:3400/api/eps/",
+                            "http_method": "get",
+                            "choices_attr": "executions",
+                            "label_fields": ["project", "id", "success"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "execution",
+                        "previous_step": 0,
+                        "next_step": 7,
+                    },
+                    {
+                        "name": "Execution selected",
+                        "description": "How would you like to proceed?",
+                        "type": "choice",
+                        "options": [
+                            {
+                                "name": "View progress",
+                                "type": "default",
+                                "disable_if_state": "execution.finished_on",
+                                "next_step": 8,
+                            },
+                            {
+                                "name": "Inspect EPS result on Map",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 10,
+                            },
+                            {
+                                "name": "Download input file",
+                                "type": "default",
+                                "next_step": 9,
+                            },
+                        ],
+                        "previous_step": 7,
+                    },
+                    {
+                        "name": "EPS execution progress",
+                        "description": "",
+                        "type": "progress",
+                        "refresh": 30,
+                        "source": {
+                            "url": "http://epsweb:3400/api/eps/progress",
+                            "request_params": {"execution_id": "execution.id"},
+                            "progress_field": "latest_progress",
+                            "message_field": "latest_message",
+                        },
+                        "previous_step": 7,
+                    },
+                    {
+                        "name": "Download input file",
+                        "type": "download_file",
+                        "source": {
+                            "url": "http://epsweb:3400/api/eps/{execution_id}/input",
+                            "request_params": {"execution_id": "execution.id"},
+                        },
+                        "previous_step": 7,
+                    },
+                    {
+                        "name": "Load EPS results",
+                        "description": "",
+                        "type": "service",
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b12",
+                            "name": "Visualize EPS",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": "http://epsweb:3400/api/eps/<execution_id>/esdl",
+                            "auto": true,
+                            "clearLayers": true,
+                            "http_method": "get",
+                            "type": "",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "query_parameters": [
+                                {
+                                    "name": "File Name",
+                                    "location": "url",
+                                    "parameter_name": "execution_id",
+                                }
+                            ],
+                            "with_jwt_token": true,
+                            "state_params": true,
+                        },
+                        "previous_step": 7,
+                        "next_step": 11,
+                    },
+                    {
+                        "name": "Inspect EPS results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-inspect-result",
+                        "previous_step": 10,
+                        "custom_data": {
+                            "url": "http://epsweb:3400/api/eps/{execution_id}/pand/{pand_bagid}"
+                        },
+                    },
+                ],
+            }
+        ]
+    },
 }

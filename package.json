@@ -9,11 +9,15 @@
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
+    "@jsonforms/core": "^2.5.2",
+    "@jsonforms/vue": "^2.5.2",
+    "@jsonforms/vue-vanilla": "^2.5.2",
     "ant-design-vue": "2.0.0-rc.3",
     "axios": "^0.20.0",
     "core-js": "^3.6.5",
     "reqwest": "^2.0.5",
     "sass-loader": "^10.0.2",
+    "sweetalert2": "^11.1.4",
     "uuid": "^8.3.1",
     "vue": "^3.0.4"
   },

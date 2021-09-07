@@ -1,5 +1,13 @@
 <template>
   <div id="app">
+    <a-button
+      v-if="currentWorkflow.workflowStep.previous_step != null && currentWorkflow.workflowStep.previous_step != undefined"
+      type="link"
+      @click="goToPreviousStep()"
+    >
+      <i class="fas fa-long-arrow-alt-left small-icon" />
+    </a-button>
+
     <h1>{{ currentWorkflow.service.name }}</h1>
     <h3>{{ currentWorkflow.workflowStep.name }}</h3>
     <p>{{ currentWorkflow.workflowStep.description }}</p>
@@ -47,19 +55,18 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowJsonForm
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <p v-else>
       Unknown workflow step: {{ currentWorkflow.workflowStep.type }}.
       <br>
       <a-button type="dashed" @click="goToStep(0)"> Start over. </a-button>
     </p>
 
-    <a-button
-      v-if="currentWorkflow.workflowStep.previous_step"
-      type="dashed"
-      @click="goToPreviousStep()"
-    >
-      Previous
-    </a-button>
   </div>
 </template>
 
@@ -73,6 +80,7 @@ import { default as WorkflowUploadFile } from "../components/workflow/WorkflowUp
 import { default as WorkflowHttpPost } from "../components/workflow/WorkflowHttpPost";
 import { default as WorkflowProgress } from "../components/workflow/WorkflowProgress";
 import { default as WorkflowCustomComponent } from "../components/workflow/WorkflowCustomComponent";
+import { default as WorkflowJsonForm } from "../components/workflow/WorkflowJsonForm";
 
 export default {
   setup() {
@@ -90,6 +98,7 @@ export default {
       WorkflowEsdlService,
       WorkflowProgress,
       WorkflowDownloadFile,
+      WorkflowJsonForm,
     };
   },
 };

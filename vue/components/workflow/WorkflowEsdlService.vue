@@ -34,7 +34,7 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getFromState, getParamsFromState, goToNextStep } = useWorkflow();
+const { getParamsFromState } = useWorkflow();
 const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;

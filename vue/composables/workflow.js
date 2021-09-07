@@ -8,6 +8,7 @@ export const WorkflowStepTypes = Object.freeze({
     SELECT_QUERY: 'select-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
+    JSON_FORM: 'json_form',
     DOWNLOAD_FILE: 'download_file',
     UPLOAD_FILE: 'upload_file',
     GET_DATA: 'get_data',

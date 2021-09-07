@@ -37,11 +37,11 @@ const isOptionDisabled = (option) => {
   }
   if (option.disable_if_state) {
     const stateField = getFromState(option.disable_if_state);
-    if (option.disable_invert) {
-      return !stateField;
-    } else {
-      return Boolean(stateField);
-    }
+    return Boolean(stateField);
+  }
+  if (option.enable_if_state) {
+    const stateField = getFromState(option.enable_if_state);
+    return !stateField;
   }
   return false;
 }

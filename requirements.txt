@@ -19,5 +19,9 @@ shapely-geojson==0.0.1
 si-prefix==1.2.2
 xmldiff==2.4
 
+# Logging
+colorama==0.4.4
+structlog==21.1.0
+
 # Development
 watchdog==0.9.0
