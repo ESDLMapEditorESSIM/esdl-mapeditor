@@ -81,11 +81,68 @@ class ShapefileConverter {
 
         $b.click(function(e) {
             console.log('clicked!');
-            shapefile_converter_window.parse_file_selection();
+//            shapefile_converter_window.parse_file_selection();
+            shapefile_converter_window.upload_zip_files();
         });
         $div.append($p);
 
         return $div.get(0);
+    }
+
+    read_zip_file_as_array_buffer(file) {
+        return new Promise(function(resolve,reject){
+            let file_reader = new FileReader();
+
+            file_reader.onload = function() {
+//                let result = {
+//                  file: String.fromCharCode.apply(null, new Uint8Array(file_reader.result)),
+//                  filename: file.name
+//                }
+                let result = {
+                  file: file_reader.result,
+                  filename: file.name
+                }
+                resolve(result);
+            };
+            file_reader.onerror = function() {
+                reject(file_reader);
+            };
+
+            file_reader.readAsDataURL(file);
+        });
+    }
+
+    upload_zip_files() {
+        let files = [];
+        for (let zipfile_row=0; zipfile_row<num_table_rows; zipfile_row++) {
+            let file_select = $('#file_input_shapefile_'+zipfile_row);
+            let file = file_select[0].files[0];
+            if (file) files.push(file);
+        }
+
+        if (!files.length) return;
+
+        let readers = [];
+        for (let i=0; i<files.length; i++) {
+            readers.push(this.read_zip_file_as_array_buffer(files[i]));
+        }
+
+        Promise.all(readers).then((array_with_file_info) => {
+            let shapefile_upload_url = resource_uri + '/shapefile/upload';
+
+//            let data = [];
+//            for (let i=0; i<array_with_file_info.length; i++) {}
+            show_loader();
+            $.ajax({
+                url: shapefile_upload_url,
+                type: 'POST',
+                data: {file_info: array_with_file_info},
+                success: function (data) {
+                   hide_loader();
+                   console.log(data);
+                },
+            });
+        });
     }
 
     parse_file_selection() {

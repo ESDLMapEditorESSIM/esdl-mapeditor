@@ -79,7 +79,7 @@ from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from src.datalayer_api import DataLayerAPI
 from src.view_modes import ViewModes
 from extensions.spatial_operations import SpatialOperations
-
+from src.asset_draw_toolbar import AssetDrawToolbar
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
@@ -176,6 +176,7 @@ DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
+AssetDrawToolbar(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -2820,6 +2821,11 @@ def process_command(message):
             set_session('asset_from_measure_id', None)
         if mode == 'edr_asset':
             edr_asset_info = message['edr_asset_info']
+            # If you select an asset from the EDR directly, ESDL string is cached.
+            # AssetDrawToolbar EDR assets that are stored in mongo, do not have the ESDL string stored.
+            if 'edr_asset_str' not in edr_asset_info:
+                edr_asset_id = edr_asset_info['edr_asset_id']
+                edr_asset_info['edr_asset_str'] = edr_assets.get_asset_from_EDR(edr_asset_id)
             set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
         if mode == 'asset_from_measures':
             asset_from_measure_id = message['asset_from_measure_id']
@@ -3091,13 +3097,11 @@ def process_file_command(message):
             store_id = get_session('active_es_id')
             create_new_store_item(store_id, title, descr, email, tags, esh)
 
-        # Do not store file_content in logging database
+    # Do not store file_content in logging database
     if 'file_content' in message:
         del message['file_content']
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
-
-
 
 #    if message['cmd'] == 'save_esdl':
 #        esh = get_handler()

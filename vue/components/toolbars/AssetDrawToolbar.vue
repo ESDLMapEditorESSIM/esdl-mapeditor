@@ -15,9 +15,19 @@
             </div>
           </td>
         </template>
-        <template v-if="recentEDRassets && recentEDRassets.length">
+        <template v-if="EDRAssets && EDRAssets.length">
+          <td>EDR: </td>
+          <td v-for="asset in EDRAssets" :key="asset.edr_asset_id" class="icon">
+            <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
+              <div class="image-div" style="font-size:0px">
+                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
+              </div>
+            </div>
+          </td>
+        </template>
+        <template v-if="recentEDRAssets && recentEDRAssets.length">
           <td>Recent EDR: </td>
-          <td v-for="asset in recentEDRassets" :key="asset.edr_asset_id" class="icon">
+          <td v-for="asset in recentEDRAssets" :key="asset.edr_asset_id" class="icon">
             <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
                 <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
@@ -47,19 +57,26 @@ export default {
   data() {
     return {
       assetList: [],
-      recentEDRassets: [],
+      EDRAssets: [],
+      recentEDRAssets: [],
       isLoading: true
     };
   },
   mounted() {
     this.getAssetList();
+    var this_asset_toolbar = this;
     window.addEventListener('load', () => {
       // run after everything is in-place
-      let rea = this.recentEDRassets;
       window.socket.on('recently_used_edr_assets', function(res) {
-        rea = res;
+        this_asset_toolbar.recentEDRAssets = res;
       });
-    })
+      window.socket.on('edr_assets_on_toolbar', function(res) {
+        this_asset_toolbar.EDRAssets = res;
+      });
+      window.socket.on('standard_assets_on_toolbar', function(res) {
+        this_asset_toolbar.assetList = res;
+      });
+    });
   },
   methods: {
     getAssetList: function() {
@@ -67,9 +84,10 @@ export default {
       const path = '/DLA_get_asset_toolbar_info';
       axios.get(path)
         .then((res) => {
-          // console.log(res);
+          console.log(res);
           this.assetList = res["data"]["assets_per_cap_dict"];
-          this.recentEDRassets = res["data"]["recent_edr_assets"];
+          this.EDRAssets = res["data"]["edr_assets"];
+          this.recentEDRAssets = res["data"]["recent_edr_assets"];
           this.isLoading = false;
         })
         .catch((error) => {
@@ -109,7 +127,6 @@ export default {
         'mode': 'empty_assets'
       });
       this.startDrawing(assetName);   // communicate the ESDL class of the clicked asset
-
     },
     buttonEDRClick: function(asset) {
       window.socket.emit('command', {

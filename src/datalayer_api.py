@@ -17,12 +17,14 @@ from flask_socketio import SocketIO, emit
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
+from extensions.session_manager import get_session
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information
 from dataclasses import asdict
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
 from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
+from src.asset_draw_toolbar import AssetDrawToolbar
 import src.log as log
 import esdl
 
@@ -146,10 +148,13 @@ class DataLayerAPI:
             :return: a dictionary with per ESDL capability a list of assets
             """
             with self.flask_app.app_context():
+                adt = AssetDrawToolbar.get_instance()
                 assets_per_cap_dict = self.datalayer.get_asset_list()
+                edr_assets_on_toolbar = adt.load_asset_draw_toolbar_edr_assets()
                 recently_used_edr_assets = self.datalayer.get_recently_used_edr_assets()
                 return {
                     "assets_per_cap_dict": assets_per_cap_dict,
+                    "edr_assets": edr_assets_on_toolbar,
                     "recent_edr_assets": recently_used_edr_assets
                 }
 

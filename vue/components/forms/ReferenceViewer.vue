@@ -5,28 +5,28 @@
     <span :title="ref.doc">{{ camelCase(ref.name) }}</span>
   </a-col>
   <a-col :span="15 - nrButtons*2">        
-      <span> {{ ref.value.repr }}</span>
+    <span> {{ ref.value.repr }}</span>
   </a-col>
-  <a-col :span="2" v-if="ref.value.repr !== null && !ref.eopposite">
-    <a-button size="small" @click="editRef(ref)" class="align-right">
+  <a-col v-if="ref.value.repr !== null && !ref.eopposite" :span="2">
+    <a-button size="small" class="align-right" @click="editRef(ref)">
       <!-- <a-icon type="edit" /> -->
       <i class="fa fa-edit small-icon" />
     </a-button>
   </a-col>   
-  <a-col :span="2" v-if="(ref.value.repr == null || ref.many) && !ref.eopposite">
-    <a-button size="small" @click="addRef(ref)" class="align-right">
+  <a-col v-if="(ref.value.repr == null || ref.many) && !ref.eopposite" :span="2">
+    <a-button size="small" class="align-right" @click="addRef(ref)">
       <!-- <a-icon type="plus-square" /> -->
       <i class="fa fa-plus small-icon" />
     </a-button>
   </a-col>
-    <a-col :span="2" v-if="ref.value.repr !== null && !ref.eopposite">
-      <a-button size="small" @click="deleteRef(ref)" class="align-right">
-        <!-- <a-icon type="delete" /> -->
-        <i class="fa fa-trash small-icon" />
-      </a-button>
+  <a-col v-if="ref.value.repr !== null && !ref.eopposite" :span="2">
+    <a-button size="small" class="align-right" @click="deleteRef(ref)">
+      <!-- <a-icon type="delete" /> -->
+      <i class="fa fa-trash small-icon" />
+    </a-button>
   </a-col>
   <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
-  <TableEditor :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" v-if="ref.type == 'Table'"/>
+  <TableEditor v-if="ref.type == 'Table'" :parent-object-id="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
   <!-- <span v-else>Other editor</span> -->
   <!-- </a-modal> -->
 </template>
@@ -57,10 +57,6 @@ export default {
       type: 'Add'
     };
   },
-  mounted() {
-    //console.log(this.reference);
-    this.visible = false;
-  },
   computed: {
       modalTitle: function() {
           return this.type + ' ' + this.camelCase(this.ref.name);
@@ -75,6 +71,10 @@ export default {
           if (canDelete) buttons++;
           return buttons;
       }
+  },
+  mounted() {
+    //console.log(this.reference);
+    this.visible = false;
   },
   methods: {
     camelCase: function(str) {

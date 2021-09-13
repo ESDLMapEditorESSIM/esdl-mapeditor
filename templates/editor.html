@@ -203,6 +203,8 @@
     <script type="text/javascript" src="./utils/view_modes.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
     <script type="text/javascript" src="./utils/select_asset.js"></script>
+    <script type="text/javascript" src="./utils/assets.js"></script>
+    <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -384,219 +386,6 @@
             socket.emit('command', {cmd: 'remove_object', id: line.id});
         };
 
-        // ------------------------------------------------------------------------------------------------------------
-        //  Handlers for clicking on an asset or potential
-        // ------------------------------------------------------------------------------------------------------------
-        function set_marker_handlers(marker) {
-            let asset_id = marker.id;
-
-            marker.bindContextMenu({
-                contextmenu: true,
-                contextmenuWidth: 140,
-                contextmenuItems: [],
-                contextmenuInheritItems: false
-            });
-
-            if (marker.ports) {
-                if (marker.ports.length > 0) {
-                    // for (let p=0; p<marker.ports.length; p++) {
-                    //    let port_id = ''+marker.ports[p].id;
-                    //    let port_id_in_menu = '';
-                    //    if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
-                    //            port_id_in_menu = ' (' + port_id + ')'
-                    //    }
-                    //    marker.options.contextmenuItems.push({
-                    //        icon: 'icons/Connect.png',
-                    //        text: 'Connect ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
-                    //        callback: function(e) { connect_asset(asset_id, port_id); }
-                    //    });
-                    // }
-                    // marker.options.contextmenuItems.push('-');
-
-                    for (let p=0; p<marker.ports.length; p++) {
-                        let port_id = marker.ports[p].id;
-                        let port_id_in_menu = '';
-                        if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
-                                port_id_in_menu = ' (' + port_id + ')'
-                        }
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Graph.png',
-                            text: 'Set profile of ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name,
-                            callback: function(e) { set_port_profile(e, asset_id, port_id); }
-                        });
-                    }
-
-                    marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({
-                        text: 'Set carrier',
-                        icon: 'icons/SetCarrier.png',
-                        callback: function(e) {
-                            select_carrier_menu(asset_id);
-                        }
-                    });
-                    marker.options.contextmenuItems.push({
-                        text: 'Set Control Strategy',
-                        icon: 'icons/Control.png',
-                        callback: function(e) {
-                            control_strategy_window(asset_id);
-                        }
-                    });
-
-                    if (marker.capability == 'Conversion') {
-                        marker.options.contextmenuItems.push('-');
-                        for (p=0; p<marker.ports.length; p++) {
-                            let port_id = marker.ports[p].id
-                            let port_id_in_menu = '';
-                            if (marker.ports[p].name === undefined || marker.ports[p].name === "") {
-                                    port_id_in_menu = ' (' + port_id + ')'
-                            }
-                            if (marker.ports[p].type == 'OutPort') {
-                                menu_item_txt = 'Set DrivenByDemand for: ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name;
-                                callback_function = function(e) {
-                                    set_driven_by_demand(asset_id, port_id);
-                                }
-                            } else {
-                                menu_item_txt = 'Set DrivenBySupply for: ' + marker.ports[p].type + port_id_in_menu + ': ' + marker.ports[p].name;
-                                callback_function = function(e) {
-                                    set_driven_by_supply(asset_id, port_id);
-                                }
-                            }
-
-                            marker.options.contextmenuItems.push({
-                                icon: 'icons/Graph.png',
-                                text: menu_item_txt,
-                                callback: callback_function
-                            });
-                        }
-                    }
-
-                    if (marker.capability == 'Storage') {
-                        marker.options.contextmenuItems.push('-');
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Graph.png',
-                            text: 'Set Storage strategy...',
-                            callback: function(e) {
-                                socket.emit('command', {'cmd': 'get_storage_strategy_info', 'asset_id': asset_id});
-                            }
-                        });
-                    }
-
-                    if (marker.capability == 'Consumer' || marker.capability == 'Producer') {
-                        marker.options.contextmenuItems.push('-');
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Graph.png',
-                            text: 'Set Curtailment strategy...',
-                            callback: function(e) {
-                                socket.emit('command', {cmd: 'get_curtailment_strategy_info', asset_id: asset_id})
-                            }
-                        });
-                    }
-
-                    if (marker.capability == 'Consumer' || marker.capability == 'Producer' ||
-                            marker.capability == 'Conversion') {
-                        marker.options.contextmenuItems.push('-');
-                        marker.options.contextmenuItems.push({
-                            icon: 'icons/Costs.png',
-                            text: 'Set marginal costs...',
-                            callback: function(e) {
-                                socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
-                                //marginal_costs_window(asset_id);
-                            }
-                        });
-                    }
-
-                    marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({
-                        // icon: 'icons/Costs.png',
-                        text: 'Set sector...',
-                        callback: function(e) {
-                            select_sector_menu(asset_id);
-                        }
-                    });
-                    // TODO: decide on seperators
-                    marker.options.contextmenuItems.push('-');
-                    marker.options.contextmenuItems.push({
-                        icon: 'icons/Delete.png',
-                        text: 'Delete',
-                        callback: function(e) {
-                            delete_asset_marker(marker);
-                        }
-                    });
-                }
-            }
-
-            marker.on('dragend', function(e) {
-                var marker = e.target;
-                var pos = marker.getLatLng();
-                socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
-                // console.log(e.oldLatLng.lat);
-                // console.log(pos.lat + ', ' + pos.lng );
-            });
-
-            // TODO replace this with map.on("draw:deleted") as then undo function works
-            // Now it deletes everything even when you press cancel.
-            marker.on('remove', function(e) {
-                // console.log('remove marker');
-                // marker.options.icon.tooltip('destroy');
-                $(".ui-tooltip-content").parents('div').remove();
-
-                if (deleting_objects == true) {
-                    // Remove polygon that belongs to marker, if one is present
-                    if (marker.polygon) {
-                       // all_layers = esdl_layer.getLayers();
-                       all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
-                       for (let i=0; i<all_layers.length; i++) {
-                            layer = all_layers[i];
-                            if (layer.id == asset_id && layer instanceof L.Polygon) {
-                                // esdl_layer.removeLayer(layer);
-                                remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
-                            }
-                       }
-                    }
-                    // remove connections manually:
-                    for (let i in marker.ports) {
-                        let from_id = marker.ports[i].id;
-                        for (let j in marker.ports[i].conn_to) {
-                            remove_single_connection(from_id, marker.ports[i].conn_to[j], marker.esid)
-                        }
-                    }
-                    socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
-                }
-            });
-
-            marker.on('click', function(e) {
-                var marker = e.target;
-                if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
-                        !e.originalEvent.metaKey) {
-                    if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
-                        // console.log('marker clicked');
-                        var marker = e.target;
-
-                        if (select_assets.is_select_mode()) {
-                            // One or more assets have been selected
-                            if (select_assets.is_selected(marker)) {
-                                // the current asset is part of this selection
-                                let asset_list = select_assets.get_selected_assets();
-                                object_properties_window(asset_list);
-                            } else  // the current asset is clicked but was not part of the selection
-                                object_properties_window(marker.id);
-                        } else
-                            object_properties_window(marker.id);
-                    }
-                }
-            });
-
-            set_marker_port_handlers(marker);
-            select_assets.add_asset_handler(marker);
-
-            // let extensions know they can update this layer.
-            // e.g. add a context menu item
-            for (let i=0; i<extensions.length; i++) {
-                updatefun = extensions[i];
-                updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'marker'});  // or should layer_type be split into asset/potential
-            }
-        }
-
         function select_area_bld_list(id) {
             var select = document.getElementById('area_bld_select');
             select.value = id;
@@ -663,115 +452,6 @@
                     }
                 }
             });
-        }
-
-        // ------------------------------------------------------------------------------------------------------------
-        //  Handlers for clicking on a pipe or cable
-        // ------------------------------------------------------------------------------------------------------------
-        function set_line_handlers(line) {
-            let line_id = line.id;
-            line.bindContextMenu({
-                contextmenu: true,
-                contextmenuWidth: 140,
-                contextmenuItems: [],
-                contextmenuInheritItems: false
-            });
-            line.options.contextmenuItems.push(
-                { text: 'Split', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor(e, line_id); } });
-            line.options.contextmenuItems.push(
-                { text: 'Split and connect', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor_connect(e, line_id); } });
-            line.options.contextmenuItems.push(
-                { text: 'Split and add joint', icon: 'icons/SplitLine.png', callback: function(e) { split_conductor_add_joint(e, line_id); } });
-            line.options.contextmenuItems.push('-');
-
-            // for (let p=0; p<line.ports.length; p++) {
-            //     let port_id = ''+line.ports[p].id;
-            //     line.options.contextmenuItems.push({
-            //         icon: 'icons/Connect.png',
-            //         text: 'Connect ' + line.ports[p].type + ' (' + port_id + '): ' + line.ports[p].name,
-            //         callback: function (e) { connect_asset(line_id, port_id); }
-            //     });
-            // }
-
-            // line.options.contextmenuItems.push('-');
-            line.options.contextmenuItems.push({
-                text: 'Set carrier',
-                icon: 'icons/SetCarrier.png',
-                callback: function(e) {
-                    select_carrier_menu(line_id);
-                }
-            });
-
-            line.options.contextmenuItems.push({
-                icon: 'icons/Delete.png',
-                text: 'Delete',
-                callback: function(e) {
-                    delete_asset_line(line);
-                }
-            });
-
-            line.on('remove', function(e) {
-                var layer = e.target;
-                if (layer.mouseOverArrowHead !== undefined) {
-                    map.removeLayer(layer.mouseOverArrowHead)
-                    delete layer.mouseOverArrowHead;
-                }
-
-                // TEST IF THIS IS BETTER
-                // if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
-                if (deleting_objects == true) {
-                    // remove connections
-                    console.log(line.ports);
-                    for (let i in line.ports) {
-                        let from_id = line.ports[i].id;
-                        for (let j in line.ports[i].conn_to) {
-                            remove_single_connection(from_id, line.ports[i].conn_to[j], line.esid)
-                        }
-                    }
-
-                    socket.emit('command', {cmd: 'remove_object', id: line.id});
-                }
-            });
-
-            line.on('click', function(e) {
-                if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
-                        !e.originalEvent.metaKey) {
-                    if (deleting_objects == false && editing_objects == false) {
-                        var line = e.target;
-
-                        if (select_assets.is_select_mode()) {
-                            // One or more assets have been selected
-                            if (select_assets.is_selected(line)) {
-                                // the current asset is part of this selection
-                                let asset_list = select_assets.get_selected_assets();
-                                object_properties_window(asset_list);
-                            } else  // the current asset is clicked but was not part of the selection
-                                object_properties_window(line.id);
-                        } else
-                            object_properties_window(line.id);
-                    }
-                }
-            });
-            line.on('edit', function(e) { // in edit mode dragging has ended: update connections
-                var layer = e.target;
-                //var pos = marker.getLatLng();
-                polyline_length = calculate_length(layer);
-                socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-                //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
-                // console.log(e.oldLatLng.lat);
-                // console.log(pos.lat + ', ' + pos.lng );
-            });
-
-            select_assets.add_asset_handler(line);
-            set_line_port_handlers(line);
-
-            // let extensions know they can update this layer.
-            // e.g. add a context menu item
-            for (let i=0; i<extensions.length; i++) {
-                updatefun = extensions[i];
-                updatefun({type: 'add_contextmenu', layer: line, layer_type: 'line'});
-            }
-
         }
 
         // ------------------------------------------------------------------------------------------------------------
@@ -1206,162 +886,9 @@
                 }
 
                 for (let i = 0; i<list.length; i++) {
-
-                    if ((list[i][0] == 'point' && list[i][1] == 'asset' && list[i][4] != 'Joint') ||
-                        (list[i][0] == 'polygon' && list[i][1] == 'asset' )) {
-                        capability = list[i][9];
-                        classname = 'circle ' + capability;
-                        if (!add_to_building) classname = 'zoom '+classname;
-                    } else if (list[i][1] == 'potential') {
-                        classname = 'circle Potential';
-                        if (!add_to_building) classname = 'zoom '+classname;
-                    } else {
-                        classname = '';
-                    }
-                    let img_class = "circle-img";
-                    if (!add_to_building) img_class = 'zoom '+img_class;
-                    if (list[i][1] == 'asset') {
-                        if (list[i][7] == 'o') {
-                            classname += ' Optional';       // will become 'Producer Optional'
-                        }
-                        if (list[i][7] == 'd') {
-                            classname += 'Disabled';        // will become 'ProducerDisabled'
-                            img_class += "-disabled";
-                        }
-                    }
-
-                    imgsrc = 'images/' + list[i][4] + '.png';
-                    if (!assets_for_icons.includes(list[i][4])) {
-                        imgsrc = drawTextImage(getAbbrevation(list[i][4]));
-                    }
-
-                    var divicon = L.divIcon({
-                        className: classname,
-                        html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
-                        iconSize: null
-                    });
-                    if (list[i][4] == 'Joint') {
-                        img_class = "circle-img-joint"
-                        if (!add_to_building) img_class = 'zoom '+img_class;
-                        classname = "Joint"
-                        if (!add_to_building) classname = 'zoom '+classname;
-                        divicon = L.divIcon({
-                            className: classname,
-                            html: '<div style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
-                            iconSize: null
-                        });
-                    }
-
-                    if (list[i][2] == null) list[i][2] = 'No name';
-					var title = list[i][4]+': '+list[i][2];
-                    if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][5][0], list[i][5][1]], {icon: divicon, title: title, riseOnHover: true});
-
-                        marker.title = title;
-                        marker.id = list[i][3];
-                        marker.esid = es_id;
-                        marker.name = list[i][2];
-                        marker.type = list[i][4];
-                        marker.asspot = list[i][1];
-                        marker.attrs = list[i][6];
-                        if (marker.asspot == 'asset') {
-                            marker.ports = list[i][8];
-                            marker.capability = list[i][9];
-                        }
-
-                        set_marker_handlers(marker);
-                        // esdl_layer.addLayer(marker);
-                        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-
-                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-                            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                                { permanent: true, className: 'marker-tooltip' });
-                    }
-                    if (list[i][0] == 'polygon') {
-                        var coords = list[i][5];
-                        let polygon_color;
-                        if (list[i][1] == 'asset') {
-                            polygon_color = colors[list[i][9]]
-                        } else {
-                            polygon_color = colors["Potential"]
-                        }
-                        var polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
-
-                        polygon.title = title;
-                        polygon.id = list[i][3];
-                        polygon.esid = es_id;
-                        polygon.name = list[i][2];
-                        polygon.type = list[i][4];
-                        polygon.asspot = list[i][1];
-                        polygon.attrs = list[i][6];
-                        // esdl_layer.addLayer(polygon);
-                        add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
-
-                        var polygon_center = calculate_array_polygon_center(coords);
-                        var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
-
-                        marker.title = title;
-                        marker.id = list[i][3];
-                        marker.esid = es_id;
-                        marker.name = list[i][2];
-                        marker.type = list[i][4];
-                        marker.asspot = list[i][1];
-                        marker.attrs = list[i][6];
-                        marker.polygon = true;
-                        polygon.marker = marker;
-                        if (marker.asspot == 'asset') {
-                            marker.ports = list[i][8];
-                            marker.capability = list[i][9];
-                        }
-
-                        set_marker_handlers(marker);
-                        // esdl_layer.addLayer(marker);
-                        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-
-                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-                            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                                { permanent: true, className: 'marker-tooltip' });
-                    }
-                    if (list[i][0] == 'line') {
-                        var coords = list[i][5];
-                        var lineType = list[i][4];
-                        var port_list = list[i][8];
-                        var line_color = colors[lineType];
-                        for (let p=0; p<port_list.length; p++) {
-                            let port_carrier_id = port_list[p]['carrier'];
-                            if (port_carrier_id) {
-                                line_color = carrier_info_mapping[port_carrier_id]['color'];
-                            }
-                        }
-                        let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
-                        if (list[i][7] == 'o') {   // Optional asset with dashed line
-                            line_options['dashArray'] = '3,10';
-                        }
-                        if (list[i][7] == 'd') {    // Disabled asset with grey dotted line
-                            line_options['dashArray'] = '2,4';
-                            line_options['color'] = '#808080';
-                        }
-                        var line = L.polyline(coords, line_options);
-
-                        // line.bindPopup(list[i][4]+': '+list[i][2]+ '('+ list[i][3] + ')');
-						line.title = title;
-                        line.id = list[i][3];
-                        line.esid = es_id;
-                        line.ports = list[i][8];
-                        line.type = list[i][4];
-                        line.asspot = list[i][1];
-                        line.attrs = list[i][6];
-                        line.name = list[i][2];     // "";
-                        line.color = line_color;    // TODO: improve?
-
-                        set_line_handlers(line);
-                        // esdl_layer.addLayer(line);
-                        add_object_to_layer(es_bld_id, 'esdl_layer', line);
-                        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-                            line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
-                                '                   ', {repeat: true});
-                    }
+                    add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
                 }
+
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
                 $('div[title]').tooltip({
                     content: function() {
@@ -1376,7 +903,9 @@
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
                     map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
-                } else {
+                }
+
+                if (!add_to_building) {
                     set_leaflet_sizes();
                 }
             });
@@ -2090,7 +1619,7 @@
                         <!-- Left nav -->
                         <ul class="nav navbar-nav mr-auto">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
-                                <ul class="dropdown-menu" >
+                                <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="new_ESDL();">
                                         <span class="menu-icon ui-icon ui-icon-document"></span>
                                         New ESDL...</a></li>
@@ -2138,6 +1667,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
                             </li>
 

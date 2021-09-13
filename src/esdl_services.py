@@ -260,7 +260,19 @@ class ESDLServices:
                 # print(r.text)
 
                 if service["result"][0]["action"] == "esdl":
-                    es, parse_info = esh.add_from_string(service["name"], r.text)
+                    if "encoding" in service["result"][0]:
+                        if service["result"][0]["encoding"] == "url_encoded":
+                            esdl_response = urllib.parse.quote(r.text)
+                        elif service["result"][0]["encoding"] == "base64_encoded":
+                            esdlstr_bytes = r.text.encode('ascii')
+                            esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
+                            esdl_response = esdlstr_base64_bytes.decode('ascii')
+                        else:
+                            esdl_response = r.text
+                    else:
+                        esdl_response = r.text
+
+                    es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
                     return True, None
                 elif service["result"][0]["action"] == "print":

@@ -191,6 +191,8 @@ def calc_possible_locations_in_area(shape, num_assets_in_area):
     bbox_height = bbox[3] - bbox[1]
 
     ny = round(math.sqrt(bbox_num_points * bbox_height / bbox_width))
+    if ny == 0:     # This occurred for a very 'thin' neighbourhood (BU03631007), with one asset
+        ny = 1
     nx = round(bbox_num_points / ny)
     delta_y = bbox_height / (ny + 1)
     delta_x = bbox_width / (nx + 1)
@@ -214,6 +216,7 @@ def choose_location(possible_locations):
 
 
 def update_asset_geometries_shape(area, shape):
+
     possible_locations = None
     if shape:
         num_assets_in_area = len(area.asset)

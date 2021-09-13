@@ -87,16 +87,19 @@ export default {
         ];
       }
     },
-    objectID: {
-      type: String,
-      default: '',
-    }
+    objectIDs: {
+      type: Array,
+      default: function() {
+        return [
+        ];
+      }
+    },
   },
   data() {
     return {
         visible: false,
         costInformation: this.costInfo,
-        objectIdentifier: this.objectID,
+        objectIdentifiers: this.objectIDs,
         costInformationColumns,
         costInformationProfileTypes,
         paginationConfig
@@ -112,7 +115,7 @@ export default {
       this.visible = true;
     },
     handleOk() {
-      window.socket.emit('DLA_set_cost_information', {'id': this.objectIdentifier}, this.costInformation);
+      window.socket.emit('DLA_set_cost_information', {'id': this.objectIdentifiers}, this.costInformation);
       this.visible = false;
     },
     handleFNEChange(val, key) {

@@ -1,6 +1,6 @@
 <template>
   <a-table :columns="costInformationColumns" :data-source="ci_filtered" size="middle" :pagination="paginationConfig" />
-  <CostInformationEdit v-model:costInfo="costInformation" v-model:objectID="objectIdentifier" />
+  <CostInformationEdit v-model:costInfo="costInformation" v-model:objectIDs="objectIdentifiers" />
 </template>
 
 <script>
@@ -27,15 +27,18 @@ export default {
         ];
       }
     },
-    objectID: {
-      type: String,
-      default: '',
-    }
+    objectIDs: {
+      type: Array,
+      default: function() {
+        return [
+        ];
+      },
+    },
   },
   data() {
     return {
        costInformation: this.costInfo,
-       objectIdentifier: this.objectID,
+       objectIdentifiers: this.objectIDs,
        costInformationColumns,
        paginationConfig
     }
@@ -46,7 +49,7 @@ export default {
     }
   },
   mounted() {
-    console.log(this.costInformation);
+    // console.log(this.costInformation);
   },
   methods: {
     deleteCostInformationType(key) {
