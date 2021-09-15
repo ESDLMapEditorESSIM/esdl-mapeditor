@@ -86,7 +86,7 @@ function set_marker_port_handlers(marker) {
                 if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue; // only show port that can be connected
                 let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
                 cnt_ports[ports[p].type]++;
-                let port_name = ports[p].type + ' - ' + ports[p].name;
+                let port_name = marker.name + '.' + ports[p].type + ' - ' + ports[p].name;
 
                 let carrier_id = null;
                 if (ports[p].carrier) {
@@ -395,17 +395,19 @@ function set_line_port_handlers(line) {
             let pixelSize = (map.getZoom() > 17) ? (map.getZoom() + 4) : (map.getZoom() / 2) + 2;
             pixelSize = (map.getZoom() > 23) ? (map.getZoom() + 12) : pixelSize;
             // only show when zoom level is appropriate or length is larger than 1km
-            let arrowHead = L.polylineDecorator(layer, {
-                        patterns: [
-                            {
-                                offset: '1%',
-                                repeat: '49%',
-                                endOffset: 5,
-                                symbol: L.Symbol.arrowHead({pixelSize: pixelSize, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
-                            }
-                        ]
-                    }).addTo(map);
-            line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
+            if (line.mouseOverArrowHead !== undefined) { // make sure we don't create two arrowHeads
+                let arrowHead = L.polylineDecorator(layer, {
+                            patterns: [
+                                {
+                                    offset: '1%',
+                                    repeat: '49%',
+                                    endOffset: 5,
+                                    symbol: L.Symbol.arrowHead({pixelSize: pixelSize, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
+                                }
+                            ]
+                        }).addTo(map);
+                line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
+            }
         }
 
         if (!editing_objects && !deleting_objects) {
@@ -419,8 +421,7 @@ function set_line_port_handlers(line) {
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
                 let class_name = 'Port '+ports[p].type+' LinePort';
-                let port_name = ports[p].type + ' - ' + ports[p].name;
-
+                let port_name = line.name + '.' + ports[p].type + ' - ' + ports[p].name;
                 let carrier_id = null;
                 if (ports[p].carrier) {
                     carrier_id = ports[p].carrier;
@@ -439,10 +440,42 @@ function set_line_port_handlers(line) {
                     iconSize: null
                 });
 
+
+                // shift port marker a bit on the line towards its center, so editing is easier when mouseover
+                let lat = coords[coords_index].lat;
+                let lng = coords[coords_index].lng;
+                let p2x = coords[coords_index].lat
+                let p2y = coords[coords_index].lng
+                if (p != '0') {
+                    p1x = coords[coords_index-1].lat
+                    p1y = coords[coords_index-1].lng
+                } else {
+                    p1x = coords[coords_index+1].lat
+                    p1y = coords[coords_index+1].lng
+                }
+                // calculate line length and calculate position of marker based on zoom level
+                // calculate how much 20px is at current zoom level in lat/lng coordinates
+                let t = map.latLngToContainerPoint(coords[coords_index]);
+                let marker_shift_px = 20; // default shift 20 pixels on screen
+                if (map.getZoom() < 18) {
+                    marker_shift_px = 10;
+                }
+                if (map.getZoom() > 20) {
+                    marker_shift_px = 25;
+                }
+                t.x = t.x + marker_shift_px;
+                let r = map.containerPointToLatLng(t);
+                let diff = coords[coords_index].distanceTo(r);
+                let d = coords[coords_index].distanceTo([p1x, p1y])
+                //let d = Math.sqrt(Math.pow(p2x-p1x, 2) + Math.pow(p2y - p1y, 2));
+                //let ratio = (d - 0.00005) / d; //0.999;  /// This is a magic number here!!
+                let ratio = Math.max(Math.min((d - diff) / d, 1.0), 0.0) ;
+                lat = (1-ratio) * p1x + ratio * p2x;
+                lng = (1-ratio) * p1y + ratio * p2y;
+
                 if (ports[p].marker === undefined) {
                     // marker not yet created
-
-                    let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                    let port_marker = L.marker([lat,lng], {icon: divicon, title: port_name, zIndexOffset:1000});
                     port_marker.addTo(map);
 
                     ports[p].active = false;
@@ -477,6 +510,9 @@ function set_line_port_handlers(line) {
                     // show already created marker
                     ports[p].active = false;
                     ports[p].marker.addTo(map);
+                    // update position based on zoom level
+                    ports[p].marker.setLatLng([lat, lng])
+
                 }
             }
             set_port_size_and_position();

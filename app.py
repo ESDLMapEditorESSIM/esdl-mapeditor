@@ -1667,7 +1667,7 @@ def process_command(message):
                                 port_list = []
                                 for p in from_asset.port:
                                     port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                              'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
+                                              'conn_to': [pt.id for pt in p.connectedTo], 'carrier': p.carrier.id if p.carrier else None})
                                 emit('update_asset', {'asset_id': from_asset.id, 'ports': port_list})
 
 
@@ -1702,7 +1702,7 @@ def process_command(message):
                                 for p in to_asset.port:
                                     port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
                                                       'conn_to': [pt.id for pt in p.connectedTo],
-                                                      'carrier': carrier_id})
+                                                      'carrier': p.carrier.id if p.carrier else None})
                                 emit('update_asset', {'asset_id': to_asset.id, 'ports': port_list})
 
                     # -------------------------------------------------------------------------------------------------------------
