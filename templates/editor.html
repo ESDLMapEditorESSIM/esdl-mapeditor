@@ -1347,8 +1347,8 @@
                     set_marker_handlers(layer);
                 }
                 if (layer instanceof L.Polyline) {
-                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
                     set_line_handlers(layer);
+                    update_line_color(layer);
                 }
             });
 

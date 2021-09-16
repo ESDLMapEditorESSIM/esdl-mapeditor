@@ -499,6 +499,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         line.type = asset_info[4];
         line.asspot = asset_info[1];
         line.attrs = asset_info[6];
+        line.state = asset_info[7];
         line.name = asset_info[2];     // "";
         line.color = line_color;    // TODO: improve?
   
@@ -508,4 +509,28 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
             line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
                 '                   ', {repeat: true});
     }
+}
+
+/**
+Refreshes the line color based on the (updated) data of the layer
+*/
+function update_line_color(line_layer) {
+    var line_color = colors[line_layer.type];
+    let port_list = layer.ports;
+    for (let p=0; p<port_list.length; p++) {
+        let port_carrier_id = port_list[p]['carrier'];
+        if (port_carrier_id) {
+            line_color = carrier_info_mapping[port_carrier_id]['color'];
+        }
+    }
+    let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
+    if (line_layer.state == 'o') {   // Optional asset with dashed line
+        line_options['dashArray'] = '3,10';
+    }
+    if (line_layer.state == 'd') {    // Disabled asset with grey dotted line
+        line_options['dashArray'] = '2,4';
+        line_options['color'] = '#808080';
+    }
+    line_layer.setStyle(line_options);
+    line_layer.color = line_color;
 }

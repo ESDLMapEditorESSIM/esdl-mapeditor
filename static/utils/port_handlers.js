@@ -395,7 +395,7 @@ function set_line_port_handlers(line) {
             let pixelSize = (map.getZoom() > 17) ? (map.getZoom() + 4) : (map.getZoom() / 2) + 2;
             pixelSize = (map.getZoom() > 23) ? (map.getZoom() + 12) : pixelSize;
             // only show when zoom level is appropriate or length is larger than 1km
-            if (line.mouseOverArrowHead !== undefined) { // make sure we don't create two arrowHeads
+            if (line.mouseOverArrowHead === undefined) { // make sure we don't create two arrowHeads
                 let arrowHead = L.polylineDecorator(layer, {
                             patterns: [
                                 {

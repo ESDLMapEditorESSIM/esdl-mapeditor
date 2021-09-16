@@ -299,7 +299,7 @@ function update_carrier_style_class(carrier_mapping) {
 
 // Copied colors from building_type_colors in area_building_layer.js
 // var conn_line_colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
-var conn_line_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+var conn_line_colors = ['#ff0000', '#0000ff', '#00ff00', '#800080', '#ffa500', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
 
 function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
