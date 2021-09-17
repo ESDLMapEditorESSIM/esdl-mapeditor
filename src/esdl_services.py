@@ -182,7 +182,7 @@ class ESDLServices:
                 area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
                 area_subscope = service_params["area_subscope"]
                 url = url.replace(area_subscope_tag, area_subscope)
-        elif service["type"] == "send_esdl":
+        elif service["type"].startswith("send_esdl"):
             esdlstr = esh.to_string(active_es_id)
 
             if service["body"] == "url_encoded":
@@ -239,7 +239,7 @@ class ESDLServices:
                                 body[param["parameter"]] = body_params[bp]
 
         query_params = service_params["query_parameters"]
-        config_service_params = service["query_parameters"]
+        config_service_params = service.get("query_parameters", {})
         if query_params:
             first_qp = True
             for key in query_params:
@@ -272,7 +272,7 @@ class ESDLServices:
             if service["http_method"] == "get":
                 r = requests.get(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"] == "json":
+                if service["type"].endswith("json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
