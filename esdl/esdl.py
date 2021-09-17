@@ -4559,13 +4559,17 @@ class ElectricityNetwork(EnergyNetwork):
 class ElectricityCable(AbstractConductor):
     """Describes a representation of an electricity cable. When defining the geometry of a cable by means of a line, the first point of the line refers to the first port and the last point of the line refers to the second port."""
     length = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    related = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, length=None, **kwargs):
+    def __init__(self, *, length=None, related=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if length is not None:
             self.length = length
+
+        if related:
+            self.related.extend(related)
 
 
 class HeatNetwork(EnergyNetwork):
@@ -4608,8 +4612,9 @@ class Pipe(AbstractConductor):
     length = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     roughness = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     diameter = EAttribute(eType=PipeDiameterEnum, unique=True, derived=False, changeable=True)
+    related = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, innerDiameter=None, outerDiameter=None, length=None, roughness=None, diameter=None, **kwargs):
+    def __init__(self, *, innerDiameter=None, outerDiameter=None, length=None, roughness=None, diameter=None, related=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4627,6 +4632,9 @@ class Pipe(AbstractConductor):
 
         if diameter is not None:
             self.diameter = diameter
+
+        if related:
+            self.related.extend(related)
 
 
 class GeothermalSource(HeatProducer):
@@ -4894,22 +4902,30 @@ class WaterBuffer(HeatStorage):
 
 class Joint(AbstractConductor):
     """A Joint is a means to connect AbstractConductors, such as Pipes and ElectricalCables. This helps when these conductors have opposite Ports."""
+    related = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, related=None, **kwargs):
 
         super().__init__(**kwargs)
+
+        if related:
+            self.related.extend(related)
 
 
 class Bus(AbstractConductor):
 
     voltage = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    related = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, voltage=None, **kwargs):
+    def __init__(self, *, voltage=None, related=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if voltage is not None:
             self.voltage = voltage
+
+        if related:
+            self.related.extend(related)
 
 
 class Sensor(AbstractSensor):
