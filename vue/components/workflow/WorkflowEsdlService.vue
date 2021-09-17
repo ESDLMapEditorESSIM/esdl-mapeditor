@@ -52,7 +52,11 @@ const loadEsdl = () => {
   let params = {};
   params["service_id"] = workflowStep.service.id;
 
-  params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
+  if (workflowStep["state_params"]) {
+    params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
+  } else {
+    params["query_parameters"] = {};
+  }
 
   window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });

@@ -20,6 +20,7 @@ const workflowStep = props.workflowStep;
 
 const { getParamsFromState, goToNextStep } = useWorkflow();
 
+// eslint-disable-next-line no-unused-vars
 const onSubmit = async () => {
   const requestParams = getParamsFromState(workflowStep.source.request_params);
   const params = {

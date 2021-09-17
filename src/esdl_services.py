@@ -138,7 +138,10 @@ class ESDLServices:
 
         # Find the currently active service.
         service = None
-        services_list = get_session('services_list')
+        # services_list = get_session('services_list')
+        user_email = get_session('user-email')
+        role = get_session('user-role')
+        services_list = self.get_user_services_list(user_email, role)
         for config_service in services_list:
             if config_service["id"] == service_params["service_id"]:
                 service = config_service

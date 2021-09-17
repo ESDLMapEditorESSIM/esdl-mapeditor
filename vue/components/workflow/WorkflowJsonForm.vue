@@ -22,6 +22,7 @@ import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
 import { defineProps } from "vue";
 import { workflowPostData } from "./lib/api.js";
+// eslint-disable-next-line no-unused-vars
 import { JsonForms } from "@jsonforms/vue";
 import {
   defaultStyles,
@@ -52,6 +53,7 @@ const buttonText = workflowStep.button || "Submit";
 
 const isLoading = ref(true);
 const schema = ref({});
+// eslint-disable-next-line no-unused-vars
 const formData = {};
 const dataToSubmit = {};
 

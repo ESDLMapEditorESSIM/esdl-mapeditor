@@ -82,3 +82,4 @@ environments/
 venv*/
 node_modules/
 
+credentials/client_secrets_remote*.json

@@ -11,6 +11,9 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import os
+
+EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 
 esdl_config = {
     "control_strategies": [
@@ -338,7 +341,7 @@ esdl_config = {
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
                 "name": "Energy Potential Scan",
-                "explanation": "This service allows you to run the EPS web service and view the EPS results.",
+                "explanation": "This workflow allows you to run the EPS web service and view the EPS results.",
                 "type": "vueworkflow",
                 "workflow": [
                     {
@@ -348,6 +351,7 @@ esdl_config = {
                         "options": [
                             {"name": "Create a new EPS project", "next_step": 1},
                             {"name": "Upload EPS file", "next_step": 2},
+                            {"name": "Aggregate EPS ESDL", "next_step": 12},
                             {"name": "Run EPS", "next_step": 4},
                             {"name": "Inspect results", "next_step": 6},
                         ],
@@ -357,7 +361,7 @@ esdl_config = {
                         "description": "",
                         "type": "custom",
                         "component": "eps-create-project",
-                        "url": "http://epsweb:3400/api/projects/",
+                        "url": f"{EPS_WEB_HOST}/api/projects/",
                         "previous_step": 0,
                         "next_step": 0,
                     },
@@ -365,9 +369,9 @@ esdl_config = {
                         "name": "Select existing project",
                         "description": "",
                         "type": "select-query",
-                        "multiple": false,
+                        "multiple": False,
                         "source": {
-                            "url": "http://epsweb:3400/api/projects/",
+                            "url": f"{EPS_WEB_HOST}/api/projects/",
                             "http_method": "get",
                             "choices_attr": "projects",
                             "label_fields": ["name"],
@@ -382,7 +386,7 @@ esdl_config = {
                         "description": "Note: When uploading a file with the same name as a previous file, the previous file will be overwritten!",
                         "type": "upload_file",
                         "target": {
-                            "url": "http://epsweb:3400/api/uploads/",
+                            "url": f"{EPS_WEB_HOST}/api/uploads/",
                             "request_params": {"project_id": "project.id"},
                             "response_params": {"name": "file_name"},
                         },
@@ -393,9 +397,9 @@ esdl_config = {
                         "name": "Select existing project",
                         "description": "",
                         "type": "select-query",
-                        "multiple": false,
+                        "multiple": False,
                         "source": {
-                            "url": "http://epsweb:3400/api/projects/",
+                            "url": f"{EPS_WEB_HOST}/api/projects/",
                             "http_method": "get",
                             "choices_attr": "projects",
                             "label_fields": ["name"],
@@ -410,7 +414,7 @@ esdl_config = {
                         "description": "",
                         "type": "custom",
                         "component": "eps-service",
-                        "url": "http://epsweb:3400/api/eps/",
+                        "url": f"{EPS_WEB_HOST}/api/eps/",
                         "target": {
                             "request_params": {"project_id": "project.id"},
                             "user_response_spec": {
@@ -428,9 +432,9 @@ esdl_config = {
                         "description": "",
                         "label": "Select EPS execution to inspect:",
                         "type": "select-query",
-                        "multiple": false,
+                        "multiple": False,
                         "source": {
-                            "url": "http://epsweb:3400/api/eps/",
+                            "url": f"{EPS_WEB_HOST}/api/eps/",
                             "http_method": "get",
                             "choices_attr": "executions",
                             "label_fields": ["project", "id", "success"],
@@ -471,7 +475,7 @@ esdl_config = {
                         "type": "progress",
                         "refresh": 30,
                         "source": {
-                            "url": "http://epsweb:3400/api/eps/progress",
+                            "url": f"{EPS_WEB_HOST}/api/eps/progress",
                             "request_params": {"execution_id": "execution.id"},
                             "progress_field": "latest_progress",
                             "message_field": "latest_message",
@@ -482,7 +486,7 @@ esdl_config = {
                         "name": "Download input file",
                         "type": "download_file",
                         "source": {
-                            "url": "http://epsweb:3400/api/eps/{execution_id}/input",
+                            "url": EPS_WEB_HOST + "/api/eps/{execution_id}/input",
                             "request_params": {"execution_id": "execution.id"},
                         },
                         "previous_step": 7,
@@ -499,9 +503,9 @@ esdl_config = {
                                 "Accept": "application/esdl+xml",
                                 "User-Agent": "ESDL Mapeditor/0.1",
                             },
-                            "url": "http://epsweb:3400/api/eps/<execution_id>/esdl",
-                            "auto": true,
-                            "clearLayers": true,
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl",
+                            "auto": True,
+                            "clearLayers": True,
                             "http_method": "get",
                             "type": "",
                             "result": [{"code": 200, "action": "esdl"}],
@@ -512,8 +516,8 @@ esdl_config = {
                                     "parameter_name": "execution_id",
                                 }
                             ],
-                            "with_jwt_token": true,
-                            "state_params": true,
+                            "with_jwt_token": True,
+                            "state_params": True,
                         },
                         "previous_step": 7,
                         "next_step": 11,
@@ -525,8 +529,30 @@ esdl_config = {
                         "component": "eps-inspect-result",
                         "previous_step": 10,
                         "custom_data": {
-                            "url": "http://epsweb:3400/api/eps/{execution_id}/pand/{pand_bagid}"
+                            "url": EPS_WEB_HOST + "/api/eps/{execution_id}/pand/{pand_bagid}"
                         },
+                    },
+                    {
+                        "name": "Aggregate ESDL buildings for ESSIM",
+                        "description": "",
+                        "type": "service",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
+                            "name": "Aggregate ESDL buildings for ESSIM",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "type": "send_esdl",
+                            "body": "base64_encoded",
+                            "url": "https://esdl-aggregator.esdl-beta.hesi.energy/aggregate",
+                            # "clearLayers": True,
+                            "http_method": "post",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        },
+                        "previous_step": 0,
+                        "next_step": 11,
                     },
                 ],
             }
