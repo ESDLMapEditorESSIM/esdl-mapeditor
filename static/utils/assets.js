@@ -209,10 +209,16 @@ function set_marker_handlers(marker) {
                         // the current asset is part of this selection
                         let asset_list = select_assets.get_selected_assets();
                         object_properties_window(asset_list);
-                    } else  // the current asset is clicked but was not part of the selection
+                    } else { // the current asset is clicked but was not part of the selection
                         object_properties_window(marker.id);
-                } else
+                        select_assets.deselect_all_assets();
+                        select_assets.toggle_selected(marker);
+                    }
+                } else {
                     object_properties_window(marker.id);
+                    select_assets.deselect_all_assets();
+                    select_assets.toggle_selected(marker);
+                }
             }
         } else {
             console.log('click with metakey');
@@ -311,10 +317,19 @@ function set_line_handlers(line) {
                         // the current asset is part of this selection
                         let asset_list = select_assets.get_selected_assets();
                         object_properties_window(asset_list);
-                    } else  // the current asset is clicked but was not part of the selection
+                        L.DomEvent.stopPropagation(e); // prevent click on map
+                    } else { // the current asset is clicked but was not part of the selection
                         object_properties_window(line.id);
-                } else
+                        select_assets.deselect_all_assets();
+                        select_assets.toggle_selected(line); // highlight selection
+                        L.DomEvent.stopPropagation(e);
+                    }
+                } else {
                     object_properties_window(line.id);
+                    select_assets.deselect_all_assets();
+                    select_assets.toggle_selected(line);
+                    L.DomEvent.stopPropagation(e);
+                }
             }
         }
     });
@@ -328,8 +343,8 @@ function set_line_handlers(line) {
         // console.log(pos.lat + ', ' + pos.lng );
     });
 
-    select_assets.add_asset_handler(line);
     set_line_port_handlers(line);
+    select_assets.add_asset_handler(line);
 
     // let extensions know they can update this layer.
     // e.g. add a context menu item
@@ -511,19 +526,31 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
     }
 }
 
+
+var debug_layer;
+function init_selection_pane(map) {
+    // panes allow us to play with the zIndex of layers
+    var overlay_pane = map.createPane('lineSelectionPane');
+    map.getPane('lineSelectionPane').style.zIndex = 350;
+}
+
+
 /**
 Refreshes the line color based on the (updated) data of the layer
 */
 function update_line_color(line_layer) {
+    debug_layer = line_layer;
     var line_color = colors[line_layer.type];
-    let port_list = layer.ports;
+    let port_list = line_layer.ports;
     for (let p=0; p<port_list.length; p++) {
         let port_carrier_id = port_list[p]['carrier'];
         if (port_carrier_id) {
             line_color = carrier_info_mapping[port_carrier_id]['color'];
         }
     }
-    let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
+    // default state
+    let line_options = {lineCap: 'round', color: line_color, weight: 3, draggable:true, title: title, className:"zoomline", dashArray:""};
+
     if (line_layer.state == 'o') {   // Optional asset with dashed line
         line_options['dashArray'] = '3,10';
     }
@@ -531,6 +558,36 @@ function update_line_color(line_layer) {
         line_options['dashArray'] = '2,4';
         line_options['color'] = '#808080';
     }
+
+    if (line_layer.mouseactive) { // mousemove
+        // thicker line
+        line_options['weight'] = 7;
+    }
+    if (line_layer.selected) {
+        //line_options['color'] = '#000000';
+        //line_options['dashArray'] = '15,5';
+        //line_options['weight'] = 25;
+        //line_options['lineCap'] = 'butt';
+        if (line_layer.selectline === undefined) {
+            let size_line = 4;
+            if (map.getZoom() > 15) size_line = '' + 2 * map.getZoom() - 27 + 10;
+            let selectline_options = {lineCap: 'round', color: 'red', weight: size_line, draggable:false, title: title, className:"overlayline",
+                                      dashArray:"", opacity: 0.9, pane: 'lineSelectionPane'};
+            //$('#mapid .zoomline').css({'stroke-width': size_line});
+            var selectline = L.polyline(line_layer.getLatLngs(), selectline_options);
+            line_layer.selectline = selectline;
+            add_object_to_layer(es_bld_id, 'esdl_layer', selectline);
+        }
+
+    } else {
+        if (line_layer.selectline) {
+            console.log('remove select line');
+            remove_object_from_layer(es_bld_id, 'esdl_layer', line_layer.selectline);
+            //line_layer.selectline.remove();
+            delete line_layer.selectline;
+        }
+    }
+
     line_layer.setStyle(line_options);
     line_layer.color = line_color;
 }

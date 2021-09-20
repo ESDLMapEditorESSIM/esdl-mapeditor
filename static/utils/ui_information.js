@@ -91,34 +91,50 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 //  Updates asset state
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_state(asset_id, new_state) {
-    let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
-    // if it's a joint, don't change appearance
-    if (asset_leaflet_obj.type == 'Joint') return;
-
-    let cll = asset_leaflet_obj.getElement().classList;
-
-    // because old state is unknown, remove everything
-    cll.remove('Optional');
-    cll.remove(asset_leaflet_obj.capability);
-    cll.remove(asset_leaflet_obj.capability + 'Disabled');
-
-    // remove the disabled if applicable
-    let html = asset_leaflet_obj.getIcon().options.html;
-    html = html.replace('circle-img-disabled', 'circle-img');
-
-    // add styling based on new state
-    if (new_state == 'ENABLED') cll.add(asset_leaflet_obj.capability);
-    if (new_state == 'OPTIONAL') {
-        cll.add(asset_leaflet_obj.capability);
-        cll.add('Optional');
-    }
-    if (new_state == 'DISABLED') {
-        cll.add(asset_leaflet_obj.capability + 'Disabled');
-        html = html.replace('circle-img', 'circle-img-disabled');
+    var asset_list;
+    if (!Array.isArray(asset_id)) {
+        asset_list = [asset_id];
+    } else {
+        asset_list = asset_id;
     }
 
-    // assign DivIcon html again
-    asset_leaflet_obj.getIcon().options.html = html;
+    for (let i=0; i<asset_list.length; i++) {
+        let asset_id = asset_list[i];
+        let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+        // if it's a joint, don't change appearance
+        if (asset_leaflet_obj.type == 'Joint') return;
+
+        if (asset_leaflet_obj instanceof L.Marker) {
+            let cll = asset_leaflet_obj.getElement().classList;
+            // because old state is unknown, remove everything
+            cll.remove('Optional');
+            cll.remove(asset_leaflet_obj.capability);
+            cll.remove(asset_leaflet_obj.capability + 'Disabled');
+
+            // remove the disabled if applicable
+            let html = asset_leaflet_obj.getIcon().options.html;
+            html = html.replace('circle-img-disabled', 'circle-img');
+
+            // add styling based on new state
+            if (new_state == 'ENABLED') cll.add(asset_leaflet_obj.capability);
+            if (new_state == 'OPTIONAL') {
+                cll.add(asset_leaflet_obj.capability);
+                cll.add('Optional');
+            }
+            if (new_state == 'DISABLED') {
+                cll.add(asset_leaflet_obj.capability + 'Disabled');
+                html = html.replace('circle-img', 'circle-img-disabled');
+            }
+
+            // assign DivIcon html again
+            asset_leaflet_obj.getIcon().options.html = html;
+        }
+        if (asset_leaflet_obj instanceof L.Polyline) {
+            // from assets.js
+            asset_leaflet_obj.state = new_state.toLowerCase().charAt(0); // first letter is used to determine state
+            update_line_color(asset_leaflet_obj);
+        }
+    }
 }
 
 

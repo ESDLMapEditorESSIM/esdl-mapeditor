@@ -383,12 +383,12 @@ function set_line_port_handlers(line) {
             if (layer.type === undefined) {
                 layer.type = 'ElectricityCable';
             }
-            layer.setStyle({
-                color: layer.color,
-                opacity: 1,
-                weight: 4
-            });
-            let lineType = layer.type;
+//            layer.setStyle({
+//                color: layer.color,
+//                opacity: 1,
+//                weight: 4
+//            });
+            //let lineType = layer.type;
             let lineColor = layer.color;
             // let lineColorHoover = colors[lineType + '_hoover']
             let lineColorHoover = lineColor;
@@ -523,15 +523,17 @@ function set_line_port_handlers(line) {
         let layer = e.target;
         layer.mouseactive = false;
         // remove line decoration
-        layer.setStyle({
-            color: layer.color,
-            opacity: 1,
-            weight: 3
-        });
+//        layer.setStyle({
+//            color: layer.color,
+//            opacity: 1,
+//            weight: 3
+//        });
         if (layer.mouseOverArrowHead !== undefined) {
             map.removeLayer(layer.mouseOverArrowHead)
             delete layer.mouseOverArrowHead;
         }
+        // from assets.js
+        update_line_color(layer);
 
         // remove port decoration
         let ports = layer.ports;

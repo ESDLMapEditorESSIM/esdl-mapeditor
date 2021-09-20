@@ -692,9 +692,10 @@
             $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
             /* Lines */
-            let size_line = '2px';
-            if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27 + 'px';
-            $('#mapid .zoomline').css({'stroke-width': size_line});
+            let size_line = 2;
+            if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
+            $('#mapid .zoomline').css({'stroke-width': size_line + 'px'});
+            $('#mapid .overlayline').css({'stroke-width': (size_line + 10) + 'px' });
 
             set_port_size_and_position();       /* Ports */
         }
@@ -1847,6 +1848,9 @@
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
     });
+
+    // use a pane to control line selection overlay with a different zIndex
+    init_selection_pane(map); // from asset.js
 
     select_assets.add_map_handler(map);
 
