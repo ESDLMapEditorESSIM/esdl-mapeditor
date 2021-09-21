@@ -5,5 +5,7 @@ credentials/client_secrets_local_docker.json
 credentials/client_secrets_mapeditor.hesi.energy.json
 credentials/*
 environments
+*.lock
+!yarn.lock
 node_modules
 tests

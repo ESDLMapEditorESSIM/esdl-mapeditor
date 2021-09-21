@@ -13,10 +13,7 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 # Build frontend dependencies.
-COPY yarn.lock /usr/src/app
-COPY package.json /usr/src/app
-COPY vue.config.js /usr/src/app
-COPY babel.config.js /usr/src/app
+COPY yarn.lock package.json vue.config.js babel.config.js /usr/src/app
 RUN yarn
 
 # Python dependencies.
