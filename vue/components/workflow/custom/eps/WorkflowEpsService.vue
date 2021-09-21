@@ -51,7 +51,7 @@ const props = defineProps({
 const { getParamsFromState, goToNextStep } = useWorkflow();
 const workflowStep = props.workflowStep;
 
-let formData = { nr_of_scenarios: 1 };
+let formData = { };
 
 // eslint-disable-next-line no-unused-vars
 const uischema = {
@@ -66,11 +66,6 @@ const uischema = {
       type: "Control",
       scope: "#/properties/file_name",
       label: "Project file"
-    },
-    {
-      type: "Control",
-      scope: "#/properties/nr_of_scenarios",
-      label: "Number of scenarios to generate",
     },
   ],
 };
@@ -95,8 +90,6 @@ getJsonForm();
 // eslint-disable-next-line no-unused-vars
 const onChange = (event) => {
   formData = event.data;
-  formData.nr_of_scenarios = +event.data.nr_of_scenarios
-  console.log(formData);
 };
 
 const message = ref("");
