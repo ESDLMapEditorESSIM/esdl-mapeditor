@@ -1,10 +1,13 @@
 FROM python:3.7-slim
 
 # Install external dependencies.
+RUN apt-get -y update
+RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl
+
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && apt-get install -y nodejs yarn gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
+    apt-get update && apt-get install -y nodejs yarn
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
@@ -24,6 +27,9 @@ RUN pip3.7 install -r requirements-uwsgi.txt
 COPY . /usr/src/app
 RUN yarn build-prod
 ENV PYTHONPATH=.:/usr/src/ap
+
+# Clean up.
+RUN rm -rf node_modules
 
 EXPOSE 8111
 
