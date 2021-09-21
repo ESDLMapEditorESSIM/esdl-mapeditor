@@ -22,7 +22,7 @@ RUN pip3.7 install -r requirements-uwsgi.txt
 
 # Add everything in the image.
 COPY . /usr/src/app
-RUN yarn build
+RUN yarn build-prod
 ENV PYTHONPATH=.:/usr/src/ap
 
 # Clean up.

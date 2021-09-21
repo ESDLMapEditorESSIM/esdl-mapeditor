@@ -25,7 +25,7 @@
 import { ref } from "vue";
 import { useWorkflow } from "../../../../composables/workflow.js";
 import { defineProps } from "vue";
-import { workflowGetJsonForm, workflowPostData } from "../../lib/api.js";
+import { workflowGetJsonForm, workflowPostData } from "../../utils/api.js";
 // eslint-disable-next-line no-unused-vars
 import { JsonForms } from "@jsonforms/vue";
 import {

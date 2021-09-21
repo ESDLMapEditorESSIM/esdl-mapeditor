@@ -25,7 +25,7 @@ import { genericErrorHandler } from "../../../../utils/errors.js";
 import { useWorkflow } from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
 import { default as NextOrClose } from "../../NextOrClose";
-import { workflowGetJsonForm } from "../../lib/api.js";
+import { workflowGetJsonForm } from "../../utils/api.js";
 // eslint-disable-next-line no-unused-vars
 import {
   defaultStyles,
