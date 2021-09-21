@@ -27,6 +27,7 @@ import { useWorkflow } from "../../../../composables/workflow.js";
 import { default as NextOrClose } from "../../NextOrClose";
 import { workflowGetJsonForm } from "../../utils/api.js";
 // eslint-disable-next-line no-unused-vars
+import { JsonForms } from "@jsonforms/vue";
 import {
   defaultStyles,
   mergeStyles,
