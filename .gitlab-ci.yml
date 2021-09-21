@@ -1,0 +1,38 @@
+# ASCII art brought to you by:
+# http://patorjk.com/software/taag/#p=display&f=Star%20Wars&t=Type%20Something%20
+
+stages:
+  - build
+  - deploy
+
+variables:
+  TAG: $CI_COMMIT_SHA
+  BRANCH: $CI_COMMIT_REF_SLUG
+  REGISTRY: ci.tno.nl
+  IMAGE_BASE: ci.tno.nl/GEIS/esdl-mapeditor
+
+image: docker:20.10
+
+services:
+  - docker:20.10-dind
+
+before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $REGISTRY
+
+# ______    __    __   __   __       _______
+#|   _  \  |  |  |  | |  | |  |     |       \
+#|  |_)  | |  |  |  | |  | |  |     |  .--.  |
+#|   _  <  |  |  |  | |  | |  |     |  |  |  |
+#|  |_)  | |  `--'  | |  | |  `----.|  '--'  |
+#|______/   \______/  |__| |_______||_______/
+
+build-eps:
+  stage: build
+  variables:
+    IMAGE: $IMAGE_BASE/esdl-mapeditor
+  script:
+    - docker pull $IMAGE:$BRANCH || true
+    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
+    # - docker build --no-cache --build-arg git_commit=$TAG . -f Dockerfile -t $IMAGE:$TAG -t $IMAGE:$BRANCH
+    - docker push $IMAGE:$TAG
+    - docker push $IMAGE:$BRANCH

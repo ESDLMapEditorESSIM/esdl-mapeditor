@@ -3,8 +3,8 @@ credentials/client_secrets_local.json
 credentials/client_secrets_local-docker.json
 credentials/client_secrets_local_docker.json
 credentials/client_secrets_mapeditor.hesi.energy.json
+credentials/*
 environments
 *.lock
-vue
 node_modules
 tests

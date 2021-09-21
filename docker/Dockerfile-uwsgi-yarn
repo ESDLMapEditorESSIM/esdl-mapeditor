@@ -1,0 +1,33 @@
+FROM python:3.7-slim
+
+# Install external dependencies.
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    apt-get update && apt-get install -y nodejs yarn gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+# Build frontend dependencies.
+COPY yarn.lock /usr/src/app
+COPY package.json /usr/src/app
+COPY vue.config.js /usr/src/app
+COPY babel.config.js /usr/src/app
+RUN yarn
+
+# Build Vue frontend.
+COPY vue /usr/src/app/vue
+RUN yarn build-prod
+
+# Python dependencies.
+COPY requirements-uwsgi.txt /usr/src/app/
+RUN pip3.7 install -r requirements-uwsgi.txt
+
+# Add everything in the image.
+COPY . /usr/src/app
+ENV PYTHONPATH=.:/usr/src/ap
+
+EXPOSE 8111
+
+CMD cd /usr/src/app && uwsgi docker/uwsgi-long-polling.ini
