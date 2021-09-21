@@ -39,7 +39,7 @@ const options = ref([]);
 const form = {};
 form[workflowStep.target_variable] = "";
 
-const { goToNextStep, getState } = useWorkflow();
+const { getParamsFromState, goToNextStep, getState } = useWorkflow();
 const state = getState();
 
 // Variable for indexing all choices by the value (which is rendered in HTML).
@@ -56,7 +56,8 @@ const onSubmit = () => {
   goToNextStep();
 };
 
-const request_params = {};
+
+const request_params = getParamsFromState(workflowStep.source.request_params);
 request_params["url"] = workflowStep.source.url;
 const queryString = new URLSearchParams(request_params).toString();
 
@@ -69,7 +70,7 @@ fetch(`workflow/get_data?${queryString}`)
     }
   })
   .then((data) => {
-    if (data == null || data == undefined) {
+    if (data == null) {
       alert("No data received.");
       return;
     }

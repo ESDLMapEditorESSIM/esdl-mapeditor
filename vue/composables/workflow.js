@@ -68,12 +68,15 @@ export function useWorkflow() {
      * result) to a value (the name in the state).
      */
     const getParamsFromState = (to_obtain_params) => {
-        const state = getState();
-        const params = {};
-        for (const [target_field, state_field] of Object.entries(to_obtain_params)) {
-            params[target_field] = getattrd(state, state_field);
+        if (to_obtain_params) {
+            const state = getState();
+            const params = {};
+            for (const [target_field, state_field] of Object.entries(to_obtain_params)) {
+                params[target_field] = getattrd(state, state_field);
+            }
+            return params;
         }
-        return params;
+        return {};
     }
 
     /**
