@@ -75,7 +75,6 @@ html/
 flask_session/
 node_modules
 yarn-error.log
-yarn.lock
 
 credentials/
 environments/
