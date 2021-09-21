@@ -3,7 +3,6 @@
 
 stages:
   - build
-  - deploy
 
 variables:
   TAG: $CI_COMMIT_SHA
@@ -26,7 +25,7 @@ before_script:
 #|  |_)  | |  `--'  | |  | |  `----.|  '--'  |
 #|______/   \______/  |__| |_______||_______/
 
-build-eps:
+build-mapeditor:
   stage: build
   variables:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
