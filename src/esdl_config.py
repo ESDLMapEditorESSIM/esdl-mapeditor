@@ -355,6 +355,7 @@ esdl_config = {
                             {"name": "Inspect results", "next_step": 6, "type": "primary"},
                             {"name": "Upload EPS file", "next_step": 2, "type": "default"},
                             {"name": "Download EPS address file", "next_step": 13, "type": "default"},
+                            {"name": "Aggregate ESDL buildings for ESSIM", "next_step": 12, "type": "default"},
                         ],
                     },
                     {
@@ -456,7 +457,6 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                                 "next_step": 10,
                             },
-                            {"name": "Aggregate ESDL buildings for ESSIM", "next_step": 12, "type": "default"},
                             {
                                 "name": "Inspect results on map",
                                 "type": "default",

@@ -2894,6 +2894,7 @@ def process_file_command(message):
                     info += line + "\n"
                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
         except Exception as e:
+            logger.exception(f"Error opening {filename}")
             send_alert("Error opening {}. Exception is: {}".format(filename, e))
             emit('clear_ui')
             return
