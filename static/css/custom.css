@@ -293,6 +293,13 @@ h6 {
     border: 3px solid black;
 }
 
+.notselectedline {
+    opacity: 0.3;
+}
+.selectedline {
+    opacity: 1.0;
+}
+
 /* Assets are supported with 1, 2 or 3 InPorts or OutPorts */
 /*
 .OutPort11 { margin-left: 16px; margin-top: -7px !important;}

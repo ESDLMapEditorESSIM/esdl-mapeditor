@@ -25,8 +25,13 @@ class SelectAssets {
         while (this.selected_assets.length) {
             let asset_id = this.selected_assets[0];
             let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
-            this.toggle_selected(asset_leaflet_obj);
-            this.enable_context_menu_items(asset_leaflet_obj);
+            if (asset_leaflet_obj === undefined) {
+                // make sure we don't end up in an endless loop...
+                this.selected_assets.splice(this.selected_assets.indexOf(asset_id), 1);
+            } else {
+                this.toggle_selected(asset_leaflet_obj);
+                this.enable_context_menu_items(asset_leaflet_obj);
+            }
         }
         this.select_mode = false;
     }

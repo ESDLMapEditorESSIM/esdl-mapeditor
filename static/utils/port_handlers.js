@@ -402,7 +402,12 @@ function set_line_port_handlers(line) {
                                     offset: '1%',
                                     repeat: '49%',
                                     endOffset: 5,
-                                    symbol: L.Symbol.arrowHead({pixelSize: pixelSize, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
+                                    symbol: L.Symbol.arrowHead({
+                                        pixelSize: pixelSize,
+                                        polygon: true,
+                                        pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1,
+                                            weight: 1, interactive: false}
+                                    })
                                 }
                             ]
                         }).addTo(map);
