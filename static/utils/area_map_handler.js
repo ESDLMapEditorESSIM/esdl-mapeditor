@@ -110,6 +110,13 @@ function add_area_map_handlers(socket, map) {
             if (layer instanceof L.Marker) {
                 // Update location of ports
                 update_marker_ports(layer);
+                if (layer.polygon) {
+                  // If an asset has an esdl.Point geometry and a surfaceArea attribute,
+                  // then it has been drawn as a circle, which is stored in the polygon attribute (which is also used
+                  // for assets that are drawn as a polygon).
+                  let circle = layer.polygon;
+                  circle.setLatLng(layer.getLatLng());
+                }
             }
             if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);

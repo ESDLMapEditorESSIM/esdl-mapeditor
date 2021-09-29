@@ -404,7 +404,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point') {
+    if (asset_info[0] == 'point' && !('surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -436,15 +436,22 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
                 { permanent: true, className: 'marker-tooltip' });
     }
-    if (asset_info[0] == 'polygon') {
-        var coords = asset_info[5];
+    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && 'surfaceArea' in asset_info[6])) {
+        // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
+        var coords = asset_info[5]
         let polygon_color;
         if (asset_info[1] == 'asset') {
             polygon_color = colors[asset_info[9]]
         } else {
             polygon_color = colors["Potential"]
         }
-        var polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
+        var polygon;
+        if (asset_info[0] == 'polygon') {
+            polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
+        } else {
+            let radius = Math.sqrt(asset_info[6]['surfaceArea'] / Math.PI)
+            polygon = L.circle(coords, {radius: radius, color: polygon_color, weight: 3, draggable:true, title: title});
+        }
   
         polygon.title = title;
         polygon.id = asset_info[3];
@@ -458,7 +465,10 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         if (spatial_buffers_plugin.show_spatial_buffers())
             spatial_buffers_plugin.add_spatial_buffers(polygon);
   
-        var polygon_center = calculate_array_polygon_center(coords);
+        var polygon_center = coords;        // Take the point location as a center or
+        if (asset_info[0] == 'polygon') {   // if its a polygon, calculate the center
+            polygon_center = calculate_array_polygon_center(coords);
+        }
         var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
   
         marker.title = title;
@@ -468,7 +478,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
         marker.attrs = asset_info[6];
-        marker.polygon = true;
+        marker.polygon = polygon;
         polygon.marker = marker;
         if (marker.asspot == 'asset') {
             marker.ports = asset_info[8];

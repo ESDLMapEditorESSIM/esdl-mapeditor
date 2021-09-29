@@ -1001,7 +1001,7 @@
                             marker.esid = es_id;
                             marker.name = list[i][1];
                             marker.type = list[i][3];
-                            marker.polygon = true;
+                            marker.polygon = polygon;
 
                             set_building_handlers(marker);
                             add_object_to_layer(es_id, 'esdl_layer', marker);
