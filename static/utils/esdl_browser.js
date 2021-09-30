@@ -199,6 +199,7 @@ class ESDLBrowser {
                     .attr('assetid', data.object.id)
                     .attr('name', data.attributes[i].name)
                     .attr('fragment', data.object.fragment)
+                    .attr('parent_asset_id', data.parent_asset_id) // parent asset id for gui updates
                     .change(function (e) { change_param(this);});
 
                 for (let j = 0; j< data.attributes[i].options.length; j++) {
