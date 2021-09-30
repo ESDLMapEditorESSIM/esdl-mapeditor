@@ -2930,17 +2930,26 @@ def process_command(message):
         pprint(tracker_stack.stack)
         esh = get_handler()
         tracker_stack.stop_recording()
-        tracker_stack.undo()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        if tracker_stack.can_undo():
+            tracker_stack.undo()
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        else:
+            send_alert("Nothing to undo at this time")
+
 
     if message['cmd'] == 'redo':
         print('Redo stack')
         pprint(tracker_stack.stack)
         esh = get_handler()
-        from esdl.undo import UndoRedoCommandStack
         tracker_stack.stop_recording()
-        tracker_stack.redo()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        if tracker_stack.can_redo():
+            tracker_stack.redo()
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        else:
+            send_alert("Nothing to redo at this time")
+
 
     tracker_stack.stop_recording()
     print("Undo/Redo size={}".format(len(tracker_stack.stack)))

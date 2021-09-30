@@ -11,16 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-#
-#  This work is licensed to you under the Apache License, Version 2.0.
-#  You may obtain a copy of the license at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Contributors:
-#      TNO         - Initial implementation
-#  Manager:
-#      TNO
+
 
 """
 Support functions for managing EObjects

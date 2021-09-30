@@ -19,9 +19,12 @@ from pyecore.resources import Resource
 from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Compound, Command, AbstractCommand
 from src.log import get_logger
 from dataclasses import dataclass
+from esdl.undo_pyecore_patch import patch_notification_system
 
 log = get_logger(__name__)
 
+#patch = PyEcoreNotificationPatch()
+patch_notification_system() # patch pyecores notification system, so notification is done before actual delete
 
 class LabelledAction(Command, UserList):
     """
@@ -96,7 +99,8 @@ class UndoRedoCommandStack(CommandStack):
             # the connectedTo relation between ports will be only recorded once, as undoing 2x this 'Add' command
             # gives problems
             if len(commands) == 1 and len(self.compound) > 0 and \
-                    commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo':
+                    commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo' and\
+                    commands[-1].owner == self.compound[-1].value: # p1.connectedTo[0] = p2 p1 == owner, value = p2
                 print('Ignore 2nd connectedTo', commands)
                 # todo add check if notifier is same as old
                 return # ignore 2nd connected to relation
@@ -136,6 +140,7 @@ class UndoRedoCommandStack(CommandStack):
         self._recording = False  # suppress generated notifications for redo
         print('Undo', self.peek_next_top)
         super().redo()
+        # TODO: add id's to uuid dict
         self._recording = True
 
     def can_undo(self):
@@ -147,6 +152,7 @@ class UndoRedoCommandStack(CommandStack):
             return
         self._recording = False # suppress generated notification for undo
         print('Undo', self.top)
+        # TODO: add id's to uuid dict
         super().undo()
         self._recording = True
 
@@ -161,7 +167,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         print('Ignoring (change=None)', notification)
         return
     print('Handling', notification)
-    if notification.kind == Kind.SET:
+    if notification.kind == Kind.SET:  # EValue.set()
         f: EStructuralFeature = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             print("  \ -- Ignoring opposite setters for", f.name)
@@ -176,14 +182,15 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
             if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
                 print("  \ -- Ignoring opposite unset for ", f.name)
                 return
-            unsetNotification = Delete(owner=notification.notifier)
+            unsetNotification = Delete(owner=notification.old)
             unsetNotification.feature = notification.feature
             #unsetNotification.references = {notification.feature: notification.old}
             #unsetNotification.previous_value = notification.new
             #unsetNotification.value = notification.old
+            unsetNotification.can_execute  # record all changes
             unsetNotification._executed = True
             stack.append(unsetNotification)
-    elif notification.kind == Kind.ADD:
+    elif notification.kind == Kind.ADD: # add an item to a collection
         addNotification = Add(owner=notification.notifier, feature=notification.feature, value=notification.new)
         addNotification.previous_value = notification.old
         addNotification.index = notification.notifier.eGet(notification.feature).index(notification.new)
