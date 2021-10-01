@@ -17,20 +17,12 @@
 </template>
 
 <script setup="props">
-import { ref } from "vue";
-import { genericErrorHandler } from "../../utils/errors.js";
-import { useWorkflow } from "../../composables/workflow.js";
-import { defineProps } from "vue";
-import { workflowPostData } from "./utils/api.js";
+import {defineProps, ref} from "vue";
+import {useWorkflow} from "../../composables/workflow.js";
+import {workflowGetData, workflowPostData} from "./utils/api.js";
 // eslint-disable-next-line no-unused-vars
-import { JsonForms } from "@jsonforms/vue";
-import {
-  defaultStyles,
-  mergeStyles,
-  vanillaRenderers,
-} from "@jsonforms/vue-vanilla";
+import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
 // eslint-disable-next-line no-unused-vars
-import spinner from "../Spinner.vue";
 import "@jsonforms/vue-vanilla/vanilla.css";
 
 // eslint-disable-next-line no-unused-vars
@@ -51,36 +43,24 @@ const workflowStep = props.workflowStep;
 // eslint-disable-next-line no-unused-vars
 const buttonText = workflowStep.button || "Submit";
 
-const isLoading = ref(true);
 const schema = ref({});
 // eslint-disable-next-line no-unused-vars
 const formData = {};
 const dataToSubmit = {};
+const isLoading = ref(true);
 
 const { goToNextStep } = useWorkflow();
 
-const request_params = {};
-request_params["url"] = workflowStep.url;
-const queryString = new URLSearchParams(request_params).toString();
-
-fetch(`workflow/get_options?${queryString}`)
-  .then((response) => {
-    if (response.ok) {
-      return response.json();
-    } else {
-      throw new Error("No data received - status " + response.status);
-    }
-  })
-  .then((data) => {
-    if (data == null || data == undefined) {
-      alert("No data received.");
-      return;
-    }
-    schema.value = data.definitions[workflowStep.schema_name];
-  })
-  .catch(genericErrorHandler)
-  .finally(() => (isLoading.value = false));
-
+const doGetData = async () => {
+  const data = await workflowGetData(workflowStep.url, {})
+        // if (data == null || data == undefined) {
+        //   alert("No data received.");
+        //   return;
+        // }
+  schema.value = data.definitions[workflowStep.schema_name];
+  isLoading.value = false;
+}
+doGetData();
 
 // eslint-disable-next-line no-unused-vars
 const onChange = (event) => {

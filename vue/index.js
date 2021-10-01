@@ -3,7 +3,7 @@
  * available functions that trigger mounting a Vue Component to some part of the
  * DOM.
  */
-import { createApp } from "vue";
+import {createApp} from "vue";
 import ControlStrategy from './apps/ControlStrategy';
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
@@ -12,35 +12,40 @@ import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
-import { createVueLControl, mountApp, mountSidebarComponent, mountSettingsComponent } from "./mounts";
+import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
 import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
-import { useWorkflow } from "./composables/workflow";
+import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
-import { useObject } from './composables/ObjectID';
+import {useObject} from './composables/ObjectID';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
+import Swal from "sweetalert2";
 
 
 // Vue.config.productionTip = false
 
-window.activate_service_workflow = (serviceIndex, service) => {
-    const { startNewWorkflow } = useWorkflow();
-    startNewWorkflow(serviceIndex, service);
-    mountSidebarComponent(Workflow);
-}
-
-window.continue_service_workflow = () => {
-    const { currentWorkflow } = useWorkflow();
+window.activate_service_workflow = async (serviceIndex, service) => {
+    const { startNewWorkflow, currentWorkflow } = useWorkflow();
     if (currentWorkflow.value) {
-        mountSidebarComponent(Workflow);
+        const result = await Swal.fire({
+          title: "Would you like to continue the currently active workflow?",
+          icon: 'question',
+          showDenyButton: true,
+          confirmButtonText: "Yes",
+          denyButtonText: "No, start from the beginning",
+        })
+        if (result.isDenied) {
+            startNewWorkflow(serviceIndex, service);
+        }
     } else {
-        alert("No workflow active.");
+        startNewWorkflow(serviceIndex, service);
     }
+    mountSidebarComponent(Workflow);
 }
 
 window.control_strategy_window = (object_id) => {

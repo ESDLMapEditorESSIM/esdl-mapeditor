@@ -14,72 +14,73 @@
 #  Manager:
 #      TNO
 
-from src.version import __long_version__ as mapeditor_version
-from warnings import warn
-from flask_executor import Executor
-from flask import Flask, render_template, session, request, send_from_directory, redirect, Response
-from flask_socketio import SocketIO, emit
-from flask_session import Session
-from flask_oidc import OpenIDConnect
-import jwt
-import requests
+import importlib
+import json
 import urllib
 import uuid
-import json
-import importlib
-import logging
 from datetime import datetime
 from pprint import pprint
+from warnings import warn
 
-from esdl.processing.ESDLAsset import get_asset_capability_type
-from src.assets_to_be_added import AssetsToBeAdded
-from src.essim_validation import validate_ESSIM
-from src.essim_kpis import ESSIM_KPIs
-from src.wms_layers import WMSLayers
-from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info, \
-    get_asset_geom_info, get_tooltip_asset_attrs
+import jwt
+import requests
+from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
+from flask_executor import Executor
+from flask_oidc import OpenIDConnect
+from flask_session import Session
+from flask_socketio import SocketIO, emit
+from pyecore.ecore import EDate
+
+import src.esdl_config as esdl_config
+import src.settings as settings
 from esdl import esdl
-from src.process_es_area_bld import process_energy_system, get_building_information
-from extensions.heatnetwork import HeatNetwork
-from extensions.ibis import IBISBedrijventerreinen
+from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
+from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
-from extensions.esdl_browser import ESDLBrowser
-from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid, delete_sessions_on_disk
-import src.esdl_config as esdl_config
-from src.esdl_helper import get_asset_from_port_id, get_asset_and_coord_from_port_id, generate_profile_info, get_port_profile_info
-from utils.datetime_utils import parse_date
-import src.settings as settings
-from src.edr_assets import EDRAssets
-from src.esdl_services import ESDLServices
-from extensions.profiles import Profiles
-from pyecore.ecore import EDate
-from src.user_logging import UserLogging
-from extensions.settings_storage import SettingsStorage
+from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
+from extensions.esdl_browser import ESDLBrowser
 from extensions.esdl_compare import ESDLCompare
+from extensions.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
+from extensions.essim_sensitivity import ESSIMSensitivity
+from extensions.etm_local import ETMLocal
+from extensions.heatnetwork import HeatNetwork
+from extensions.ibis import IBISBedrijventerreinen
+from extensions.ielgas import IELGAS
+from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
+from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
+from extensions.port_profile_viewer import PortProfileViewer
+from extensions.profiles import Profiles
+from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+from extensions.settings_storage import SettingsStorage
+from extensions.shapefile_converter import ShapefileConverter
+from extensions.spatial_operations import SpatialOperations
+from extensions.time_dimension import TimeDimension
 from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from src.log import get_logger
-from extensions.esdl_drive import ESDLDrive
-from extensions.es_statistics import ESStatisticsService
-from extensions.shapefile_converter import ShapefileConverter
-from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.time_dimension import TimeDimension
-from extensions.ielgas import IELGAS
-from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
-from extensions.etm_local import ETMLocal
-from extensions.port_profile_viewer import PortProfileViewer
-from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
-from src.datalayer_api import DataLayerAPI
-from src.view_modes import ViewModes
-from extensions.spatial_operations import SpatialOperations
 from src.asset_draw_toolbar import AssetDrawToolbar
+from src.assets_to_be_added import AssetsToBeAdded
+from src.datalayer_api import DataLayerAPI
+from src.edr_assets import EDRAssets
+from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
+    get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
+    update_carrier_conn_list
+from src.esdl_services import ESDLServices
+from src.essim_kpis import ESSIM_KPIs
+from src.essim_validation import validate_ESSIM
+from src.log import get_logger
+from src.process_es_area_bld import get_building_information, process_energy_system
+from src.user_logging import UserLogging
+from src.version import __long_version__ as mapeditor_version
+from src.view_modes import ViewModes
+from src.wms_layers import WMSLayers
+from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
@@ -208,7 +209,7 @@ def add_header(r: Response):
     Add headers to both force latest IE rendering engine or Chrome Frame,
     and also to cache the rendered page for 10 minutes.
     """
-    if r.content_type is 'image/png': # images are allowed to be cached.
+    if r.content_type == 'image/png': # images are allowed to be cached.
         return r
     r.headers["Pragma"] = "no-cache"
     r.headers["Expires"] = "0"
@@ -401,13 +402,13 @@ def download_esdl():
         #stream = esh.to_bytesio()
         my_es = esh.get_energy_system(es_id=active_es_id)
         esh.update_version(es_id=active_es_id)
-        if my_es.esdlVersion is None or my_es.esdlVersion is '':
+        if my_es.esdlVersion is None or my_es.esdlVersion == '':
             my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
         except:
             name = my_es.id
-        if name is None or name is '':
+        if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         logger.info('Sending file %s' % name)
@@ -2322,7 +2323,7 @@ def process_command(message):
             ptype = message['ptype']
         if 'direction' in message:
             direction = message['direction']
-            ptype = 'InPort' if direction is 'in' else 'OutPort'
+            ptype = 'InPort' if direction == 'in' else 'OutPort'
 
         asset = esh.get_by_id(es_edit.id, asset_id)
         if ptype == 'InPort':

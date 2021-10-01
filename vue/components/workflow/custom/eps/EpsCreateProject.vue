@@ -119,9 +119,9 @@ const onSubmit = async () => {
 
   const response = await workflowPostData(workflowStep.url, formData);
   if (response != null && response.ok) {
-    Swal.fire({
+    await Swal.fire({
       title: "EPS project created!",
-      text: "An EPS project is created and a KvK address file is being generated. Please wait about 10 minutes and check back in this workflow for the generated file.",
+      text: "An EPS project is created and a project file is being generated. Please wait about 10 minutes. When complete, the file will be found in the 'Run EPS' flow, as well as in the 'Download project files' flow.",
       icon: "success",
       confirmButtonText: "OK",
     });
@@ -133,7 +133,7 @@ const onSubmit = async () => {
       if (jsonResponse.message) {
         message = jsonResponse.message;
       }
-      Swal.fire({
+      await Swal.fire({
         title: "Error",
         text: message,
         icon: "error",

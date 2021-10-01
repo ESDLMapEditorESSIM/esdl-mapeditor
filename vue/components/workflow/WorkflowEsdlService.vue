@@ -19,11 +19,11 @@
 </template>
 
 <script setup="props">
-import { useWorkflow } from "../../composables/workflow.js";
-import { useEsdlLayers } from "../../composables/esdlLayers.js";
-import { defineProps } from 'vue'
+import {useWorkflow} from "../../composables/workflow.js";
+import {useEsdlLayers} from "../../composables/esdlLayers.js";
+import {defineProps} from 'vue'
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "./NextOrClose";
+import {default as NextOrClose} from "./NextOrClose";
 
 const props = defineProps({
   workflowStep: {
@@ -42,6 +42,7 @@ const workflowStep = props.workflowStep;
 const clearLayersAndLoadEsdl = () => {
   if (workflowStep.service.clearLayers) {
     clearEsdlLayers();
+    // Allow a second for the layers to be cleared.
     setTimeout(loadEsdl, 1000);
   } else {
     loadEsdl();

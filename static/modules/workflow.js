@@ -1,6 +1,9 @@
-import { render_button, render_btn_group } from './buttons.js';
-import { render_form, render_form_field, render_submit } from './form.js';
-import { download_binary_file_from_base64_str } from './files.js';
+/**
+ * This module is deprecated in favour of the vue workflow module.
+ */
+import {render_btn_group, render_button} from './buttons.js';
+import {render_form, render_form_field, render_submit} from './form.js';
+import {download_binary_file_from_base64_str} from './files.js';
 
 const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',

@@ -63,6 +63,9 @@ instance/
 venv/
 ENV/
 
+# Directory for cvustom env files.
+envs/
+
 # Editors
 .idea/
 

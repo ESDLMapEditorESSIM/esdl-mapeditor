@@ -350,12 +350,34 @@ esdl_config = {
                         "description": "How would you like to proceed?",
                         "type": "choice",
                         "options": [
-                            {"name": "Create a new EPS project", "next_step": 1, "type": "primary"},
+                            {
+                                "name": "Create a new EPS project",
+                                "next_step": 1,
+                                "type": "primary",
+                            },
                             {"name": "Run EPS", "next_step": 4, "type": "primary"},
-                            {"name": "Inspect results", "next_step": 6, "type": "primary"},
-                            {"name": "Upload EPS file", "next_step": 2, "type": "default"},
-                            {"name": "Download EPS address file", "next_step": 13, "type": "default"},
-                            {"name": "Aggregate ESDL buildings for ESSIM", "next_step": 12, "type": "default"},
+                            {
+                                "name": "Inspect results",
+                                "next_step": 6,
+                                "type": "primary",
+                            },
+                            {
+                                "name": "Download project file",
+                                "description": "If you want to inspect the KvK data or modify input data, you can download a project file.",
+                                "next_step": 13,
+                                "type": "default",
+                            },
+                            {
+                                "name": "Upload project file",
+                                "description": "A project file can be uploaded to serve as input for a new EPS run.",
+                                "next_step": 2,
+                                "type": "default",
+                            },
+                            {
+                                "name": "Aggregate ESDL buildings for ESSIM",
+                                "next_step": 12,
+                                "type": "default",
+                            },
                         ],
                     },
                     {
@@ -369,7 +391,7 @@ esdl_config = {
                     },
                     {
                         "name": "Select existing project",
-                        "description": "",
+                        "description": "Please select the project for which you would like to upload a project file.",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -384,8 +406,9 @@ esdl_config = {
                         "next_step": 3,
                     },
                     {
-                        "name": "Upload EPS data input file",
-                        "description": "Note: When uploading a file with the same name as a previous file, the previous file will be overwritten!",
+                        "name": "Upload project file",
+                        "description": "Note: When uploading a project file with the same name as a previous project "
+                        "file, the previous file will be overwritten!",
                         "type": "upload_file",
                         "target": {
                             "url": f"{EPS_WEB_HOST}/api/uploads/",
@@ -421,9 +444,12 @@ esdl_config = {
                             "request_params": {"project_id": "project.id"},
                             "user_response_spec": {
                                 "0": {"message": "Failed starting the EPS."},
-                                "200": {"message": "EPS started successfully!"},
+                                "200": {
+                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found "
+                                },
                                 "429": {
-                                    "message": "It is currently busy on the server. We cannot start an EPS execution at this time. Please try again at a later time."
+                                    "message": "It is currently busy on the server. We cannot start an EPS execution "
+                                    "at this time. Please try again at a later time. "
                                 },
                             },
                         },
@@ -453,6 +479,7 @@ esdl_config = {
                         "options": [
                             {
                                 "name": "Load EPS result",
+                                "descriptipn": "Load the results as ESDL on the map. Your current layers will be overwritten!",
                                 "type": "primary",
                                 "enable_if_state": "execution.success",
                                 "next_step": 10,
@@ -464,7 +491,7 @@ esdl_config = {
                                 "next_step": 11,
                             },
                             {
-                                "name": "Download input file",
+                                "name": "Download project file",
                                 "type": "default",
                                 "next_step": 9,
                             },
@@ -491,7 +518,9 @@ esdl_config = {
                         "previous_step": 7,
                     },
                     {
-                        "name": "Download input file",
+                        "name": "Download project file",
+                        "description": "The project file that was used as input to perform this EPS analysis can be "
+                        "downloaded here.",
                         "type": "download_file",
                         "source": {
                             "url": EPS_WEB_HOST + "/api/eps/{execution_id}/input",
@@ -501,7 +530,8 @@ esdl_config = {
                     },
                     {
                         "name": "Load EPS results",
-                        "description": "",
+                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS "
+                        "is loaded, please continue.",
                         "type": "service",
                         "state_params": {"execution_id": "execution.id"},
                         "service": {
@@ -537,12 +567,17 @@ esdl_config = {
                         "component": "eps-inspect-result",
                         "previous_step": 7,
                         "custom_data": {
-                            "url": EPS_WEB_HOST + "/api/eps/{execution_id}/pand/{pand_bagid}"
+                            "url": EPS_WEB_HOST
+                            + "/api/eps/{execution_id}/pand/{pand_bagid}"
                         },
                     },
                     {
                         "name": "Aggregate ESDL buildings for ESSIM",
-                        "description": "",
+                        "description": "The ESDL generated by the EPS contains every building individually. This "
+                        "causes unnecessarily long processing time if buildings have the same "
+                        "profiles. With this service, similar buildings are combined into aggregated "
+                        "buildings, which will make it faster to run ESSIM and easier to interpret "
+                        "results. Note: Only activate this if you have an ESDL active that you wish to aggregate. You will not be able to unaggregate the resulting ESDL, so you might want to export it before proceeding.",
                         "type": "service",
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
@@ -558,12 +593,12 @@ esdl_config = {
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
                         },
-                        "previous_step": 7,
-                        "next_step": 7,
+                        "previous_step": 0,
+                        "next_step": 0,
                     },
                     {
                         "name": "Select existing project",
-                        "description": "",
+                        "description": "Please select the project for which you would like to download a project file.",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -579,7 +614,7 @@ esdl_config = {
                     },
                     {
                         "name": "Select project file",
-                        "description": "",
+                        "description": "Please select the project file you would like to download.",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -595,11 +630,16 @@ esdl_config = {
                         "next_step": 15,
                     },
                     {
-                        "name": "Download input file",
+                        "name": "Download project file",
+                        "description": "By clicking the button below you can download the selected project file.",
                         "type": "download_file",
                         "source": {
-                            "url": EPS_WEB_HOST + "/api/projects/{project_id}/files/{file_name}",
-                            "request_params": {"project_id": "project.id", "file_name": "file_name.id"},
+                            "url": EPS_WEB_HOST
+                            + "/api/projects/{project_id}/files/{file_name}",
+                            "request_params": {
+                                "project_id": "project.id",
+                                "file_name": "file_name.id",
+                            },
                         },
                         "previous_step": 14,
                         "next_step": 0,

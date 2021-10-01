@@ -22,22 +22,15 @@
   <p v-else>
     Please right-click on a building and select "Show EPS results" to view detailed information.
   </p>
-  <next-or-close :workflow-step="workflowStep" />
 </template>
 
 <script setup="props">
-import { onUnmounted, ref, defineProps } from "vue";
+import {defineProps, onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "../../NextOrClose";
-import {
-  BuildOutlined,
-  NumberOutlined,
-  HomeOutlined,
-  TeamOutlined,
-} from "@ant-design/icons-vue";
-import { genericErrorHandler } from "../../../../utils/errors.js";
-import { useWorkflow } from "../../../../composables/workflow.js";
-import { useEsdlBuildings } from "../../../../composables/esdlBuildings.js";
+import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
+import {genericErrorHandler} from "../../../../utils/errors.js";
+import {useWorkflow} from "../../../../composables/workflow.js";
+import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
 
 const workflowStep = props.workflowStep;
 const { getFromState } = useWorkflow();

@@ -20,15 +20,15 @@ import uuid
 from typing import Any, Dict, List
 
 import requests
-from esdl import esdl
-from esdl.processing import ESDLAsset
-from extensions.session_manager import get_handler, get_session, set_session
-from extensions.settings_storage import SettingsStorage
 from flask import Flask
 from flask_socketio import SocketIO, emit
 
 import src.esdl_config as esdl_config
 import src.log as log
+from esdl import esdl
+from esdl.processing import ESDLAsset
+from extensions.session_manager import get_handler, get_session, set_session
+from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 
 logger = log.get_logger(__name__)
@@ -381,7 +381,7 @@ class ESDLServices:
                 logger.warning(r.content)
                 return False, str(r.content)
         except Exception as e:
-            logger.warning("Error accessing external ESDL service: " + str(e))
+            logger.exception("Error accessing external ESDL service: " + str(e))
             return False, None
 
         return False, None
