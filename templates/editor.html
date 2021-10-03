@@ -575,12 +575,19 @@
         }
 
         function change_param(obj) {
-            asset_id = $(obj).attr('assetid');
-            asset_fragment = $(obj).attr('fragment'); // in case there is no id present
-            asset_param_name = obj.name;
-            asset_param_value = obj.value;
+            let asset_id = $(obj).attr('assetid');
+            let asset_fragment = $(obj).attr('fragment'); // in case there is no id present
+            let asset_param_name = obj.name;
+            let asset_param_value = obj.value;
 
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
+
+            // If no asset ID was given and an asset reference is being edited, find the asset ID
+            if (!asset_id) {
+                let parent_asset_id = $(obj).attr('parent_asset_id');   // in case an asset reference is being edited
+                if (parent_asset_id) { asset_id = parent_asset_id; }
+            }
+            window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: asset_id, fragment: asset_fragment, name: asset_param_name, value: asset_param_value });
         }
 
         function connect_asset(feature_id, port_id) {

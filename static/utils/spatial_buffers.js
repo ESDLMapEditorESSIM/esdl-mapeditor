@@ -70,7 +70,9 @@ class SpatialBuffers {
     add_spatial_buffers(layer) {
         if ('dist' in layer.attrs) {
             for (const [cat, distance] of Object.entries(layer.attrs.dist)) {
-                this.create_buffer(layer, distance, user_settings.ui_settings.spatial_buffers.colors[cat], cat);
+                if (distance > 0) {
+                    this.create_buffer(layer, distance, user_settings.ui_settings.spatial_buffers.colors[cat], cat);
+                }
             }
         }
     }
@@ -84,6 +86,43 @@ class SpatialBuffers {
     redraw_spatial_buffers(layer) {
         this.remove_spatial_buffers(layer);
         this.add_spatial_buffers(layer);
+    }
+
+    update_buffer_distance_info(asset_id, attr_fragment, attr_name, attr_value) {
+        if (!asset_id) { return; }
+        let layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+
+        if ('dist' in layer.attrs) {
+            // changed existing, or added new item to existing list
+            let buffer_distance_fragment = attr_fragment.match(/\/@bufferDistance.\d+/g)[0];
+            let idx = parseInt(buffer_distance_fragment.split('.')[1]);
+            let number_of_buffer_distance_attrs = Object.keys(layer.attrs['dist']).length;
+            if (idx == number_of_buffer_distance_attrs) {
+                // new item added
+                if (attr_name == 'distance') { layer.attrs['dist']['UNDEFINED'] = attr_value; }
+                if (attr_name == 'type') { layer.attrs['dist'][attr_value] = 0; }
+            } else {
+                // changed an existing one
+                if (attr_name == 'distance') {
+                    let key = Object.keys(layer.attrs['dist'])[idx];
+                    layer.attrs['dist'][key] = parseInt(attr_value);
+                }
+                if (attr_name == 'type') {
+                    console.log(layer.attrs['dist']);
+                    let key = Object.keys(layer.attrs['dist'])[idx];
+                    layer.attrs['dist'][attr_value] = layer.attrs['dist'][key];
+                    delete layer.attrs['dist'][key];
+                    console.log(layer.attrs['dist']);
+                }
+            }
+        } else {
+            // new buffer_distance attribute added
+            let new_buffer_distance_object = {};
+            if (attr_name == 'distance') { new_buffer_distance_object['UNDEFINED'] = parseInt(attr_value); }
+            if (attr_name == 'type') { new_buffer_distance_object[attr_value] = 0; }
+            layers.attrs['dist'] = new_buffer_distance_object;
+        }
+        this.redraw_spatial_buffers(layer);
     }
 
     show_hide_spatial_buffer_information(visible) {

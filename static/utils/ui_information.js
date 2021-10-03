@@ -131,5 +131,11 @@ $(document).ready(function() {
         if (message.name === 'state') {
             update_asset_state(message.id, message.value);
         }
+
+        // See if it's a buffer distance of an asset...
+        let is_buffer_distance = message.fragment.match(/\/@bufferDistance/g);
+        if (is_buffer_distance) {
+            spatial_buffers_plugin.update_buffer_distance_info(message.id, message.fragment, message.name, message.value);
+        }
     });
 });
