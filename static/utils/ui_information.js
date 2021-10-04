@@ -64,6 +64,7 @@ function get_tooltip_text(tt_format, name, attrs) {
 //  Updates tooltip text after attribute changed
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_tooltip(asset_id, attribute_name, value) {
+    if (!asset_id) { return; }
     let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
 
     if (attribute_name == 'name') {
@@ -91,6 +92,7 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 //  Updates asset state
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_state(asset_id, new_state) {
+    if (!asset_id) { return; }
     let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
     // if it's a joint, don't change appearance
     if (asset_leaflet_obj.type == 'Joint') return;
@@ -129,7 +131,13 @@ $(document).ready(function() {
             update_asset_tooltip(message.id, message.name, message.value);
         }
         if (message.name === 'state') {
-            update_asset_state(message.id, message.value);
+            update_asset_state(essage.idm, message.value);
+        }
+
+        // See if it's a buffer distance of an asset...
+        let is_buffer_distance = message.fragment.match(/\/@bufferDistance/g);
+        if (is_buffer_distance) {
+            spatial_buffers_plugin.update_buffer_distance_info(message.id, message.fragment, message.name, message.value);
         }
     });
 });

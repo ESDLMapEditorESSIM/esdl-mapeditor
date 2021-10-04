@@ -190,6 +190,10 @@ def add_spatial_attributes(asset, attrs):
                         for bd in asset.bufferDistance:
                             attrs['dist'][bd.type.name] = bd.distance
 
+    # To be able to show a circle for assets that have a Point geometry and surfaceArea attribute
+    if asset.eIsSet('surfaceArea'):
+        attrs['surfaceArea'] = asset.surfaceArea
+
 
 def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
     port_list = []

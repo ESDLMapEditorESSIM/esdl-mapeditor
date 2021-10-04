@@ -107,8 +107,13 @@ class ESStatistics {
     generate_spatial_info(spatial_info) {
         if (Object.keys(spatial_info).length !== 0) {
             let $table = $('<table>').addClass('pure-table pure-table-striped').attr('id', 'es_info_table');
-            let $thead = $('<thead>').append($('<tr>').append($('<th>').text('Type')).append($('<th>')
-               .text('Number')).append($('<th>').text('Area (approx.)')).append($('<th>').text('Non-overlapping area (approx.)')));
+            let $thead = $('<thead>').append($('<tr>')
+                .append($('<th>').text('Type'))
+                .append($('<th>').text('Number'))
+                .append($('<th>').text('Area [m2] (approx.)')
+                  .attr('title', 'Area calculations are not perfect because circles must be approximated by a polygon'))
+                .append($('<th>').text('Non-overlapping area [m2] (approx.)')
+                  .attr('title', 'Area calculations are not perfect because circles must be approximated by a polygon')));
             let $tbody = $('<tbody>');
             $table.append($thead);
             $table.append($tbody);
