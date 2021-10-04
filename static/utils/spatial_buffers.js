@@ -78,8 +78,10 @@ class SpatialBuffers {
     }
 
     remove_spatial_buffers(layer) {
-        for (let i=0; i<layer.buffer_info.length; i++) {
-            layer.buffer_info[i].buffer.remove();
+        if (layer.buffer_info) {
+            for (let i=0; i<layer.buffer_info.length; i++) {
+                layer.buffer_info[i].buffer.remove();
+            }
         }
     }
 
@@ -91,6 +93,8 @@ class SpatialBuffers {
     update_buffer_distance_info(asset_id, attr_fragment, attr_name, attr_value) {
         if (!asset_id) { return; }
         let layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+
+        if (!layer) { console.log("update_buffer_distance_info: can't find layer"); return; }
 
         if ('dist' in layer.attrs) {
             // changed existing, or added new item to existing list

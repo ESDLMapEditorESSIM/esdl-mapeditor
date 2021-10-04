@@ -200,6 +200,7 @@ class ESDLBrowser {
                     .attr('name', data.attributes[i].name)
                     .attr('fragment', data.object.fragment)
                     .attr('parent_asset_id', data.parent_asset_id) // parent asset id for gui updates
+                    .attr('object_type', data.object.type) // object type
                     .change(function (e) { change_param(this);});
 
                 for (let j = 0; j< data.attributes[i].options.length; j++) {
@@ -226,6 +227,8 @@ class ESDLBrowser {
                             .attr('value', attr.value[j])
                             .attr('index', uid)
                             .attr('fragment', data.object.fragment)
+                            .attr('object_type', data.object.type) // object type
+                            .attr('parent_asset_id', data.parent_asset_id)
                             .change((e) => { this.update_list(e.target); }));
                         let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
                         let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
@@ -248,6 +251,8 @@ class ESDLBrowser {
                         .attr('name', data.attributes[i].name)
                         .attr('value', data.attributes[i].value)
                         .attr('fragment', data.object.fragment)
+                        .attr('object_type', data.object.type) // object type
+                        .attr('parent_asset_id', data.parent_asset_id)
                         .change(function(e) { change_param(this); });
                         // edate
                 }
@@ -264,9 +269,10 @@ class ESDLBrowser {
             $tr.append($td_value);
             if (data.attributes[i].many && !select_input) {
                 let $actions = $("<td>");
+                let $local_repr = $repr;
                 let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green'))
                     .click( function(e) {
-                              esdl_browser.add_attribute_row(data.object, data.attributes[i], $repr);
+                              esdl_browser.add_attribute_row(data.object, data.attributes[i], $local_repr);
                     });
                 $actions.append($addButton);
                 $tr.append($actions);
@@ -381,6 +387,7 @@ class ESDLBrowser {
 
     // add an attribute row (e.g. for list of EDoubles)
     add_attribute_row(parent_object_identifier, attr, parent_div) {
+        console.log(parent_div);
         let self=this;
         let uid = this.get_unique_id();
         let $itemdiv = $('<div>').attr('id', attr.name + uid);
@@ -392,6 +399,7 @@ class ESDLBrowser {
             .attr('value', attr.default)
             .attr('index', uid)
             .attr('fragment', parent_object_identifier.fragment)
+            .attr('parent_asset_id', parent_object_identifier.id)  // does this make sense at all? no object_type here...
             .change((e) => { this.update_list(e.target); }));
         let $delSpan = $('<span>').css('text-align', 'right').css('float', 'right');
         let $delButton = $('<button>').addClass('browse-btn-small').append($('<i>').addClass('fa fa-trash').addClass('small-icon').css('color', 'dark-grey'));
@@ -410,11 +418,11 @@ class ESDLBrowser {
     // get all the values from the list and put those in an array
     // and send it to the backend
     update_list(input_element) {
-        console.log(input_element);
-        let listitems = $('#itemlist [name='+input_element.name+']')
+        //console.log(input_element);
+        let listitems = $('#itemlist [name='+input_element.name+']');
         let object_value = [];
         for (let i=0;i<listitems.length;i++) {
-            object_value.push(listitems[i].value)
+            object_value.push(listitems[i].value);
         }
         console.log(object_value);
         let message = {
@@ -422,15 +430,25 @@ class ESDLBrowser {
             assetid: input_element.getAttribute('assetid'),
             name: input_element.getAttribute('name'),
             value: object_value,
-            fragment: input_element.getAttribute('fragment')
-            };
+            fragment: input_element.getAttribute('fragment'),
+            parent_asset_id: input_element.getAttribute('parent_asset_id'),
+            object_type: input_element.getAttribute('object_type')
+        };
         console.log(message);
         // change_param(message);
         // mimic change_param(), as it expects a dom element
         socket.emit('command', {cmd: 'set_asset_param', 'id': message.assetid, 'fragment': message.fragment, 'param_name': message.name, 'param_value': object_value});
+        window.PubSubManager.broadcast('ASSET_PROPERTIES',
+            { id: message.assetid,
+              parent_asset_id: message.parent_asset_id,
+              object_type: message.object_type,
+              fragment: message.fragment,
+              name: message.name,
+              value: message.value
+            });
     }
 
-    // after delete or add button click
+    // after delete or add button click of an attribute with many values (e.g. EDouble[])
     // update all list items and send to backend
     refresh_list(attribute) {
         console.log(attribute);
@@ -440,6 +458,7 @@ class ESDLBrowser {
             object_value.push(listitems[i].value);
         }
         socket.emit('command', {cmd: 'set_asset_param', 'id': attribute.assetid, 'fragment': attribute.fragment, 'param_name': attribute.name, 'param_value': object_value});
+        // does not broadcast yet, is this needed?
     }
 
     static identifier(esdl_object) {
@@ -453,7 +472,6 @@ class ESDLBrowser {
         if (JSON.stringify(last) !== JSON.stringify(parent_object_identifier)) {
             esdl_browser.history.push(parent_object_identifier);
         }
-        //let types = reference_data.types;
         if (types.length == 1) {
              socket.emit('esdl_browse_create_object', {'parent': parent_object_identifier, 'name': reference_data.name, 'type': types[0]});
         } else if (types.length > 1) {
