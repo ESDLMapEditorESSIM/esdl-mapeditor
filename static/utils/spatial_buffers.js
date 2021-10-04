@@ -120,7 +120,7 @@ class SpatialBuffers {
             let new_buffer_distance_object = {};
             if (attr_name == 'distance') { new_buffer_distance_object['UNDEFINED'] = parseInt(attr_value); }
             if (attr_name == 'type') { new_buffer_distance_object[attr_value] = 0; }
-            layers.attrs['dist'] = new_buffer_distance_object;
+            layer.attrs['dist'] = new_buffer_distance_object;
         }
         this.redraw_spatial_buffers(layer);
     }
