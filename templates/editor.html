@@ -98,6 +98,8 @@
 
     <script type="text/javascript" src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
 
+    <!-- <script type="text/javascript" src="https://unpkg.com/jsts@1.6.1/dist/jsts.min.js"></script> -->
+    <script src='https://unpkg.com/@turf/turf@6.3.0/turf.min.js'></script>
 {% if 'table-do-not-include-this' in role %}
     <link href="./plugins/multi-dropdown-with-search.css" rel="stylesheet" type="text/css" />
     <script src="./plugins/multi-dropdown-with-search.js" type="text/javascript"></script>
@@ -205,6 +207,7 @@
     <script type="text/javascript" src="./utils/select_asset.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
     <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
+    <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -572,12 +575,16 @@
         }
 
         function change_param(obj) {
-            asset_id = $(obj).attr('assetid');
-            asset_fragment = $(obj).attr('fragment'); // in case there is no id present
-            asset_param_name = obj.name;
-            asset_param_value = obj.value;
+            let asset_id = $(obj).attr('assetid');
+            let asset_fragment = $(obj).attr('fragment'); // in case there is no id present
+            let asset_param_name = obj.name;
+            let asset_param_value = obj.value;
 
             socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
+
+            let object_type = $(obj).attr('object_type'); // also use asset type
+            let parent_asset_id = $(obj).attr('parent_asset_id');   // in case an asset reference is being edited
+            window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: asset_id, object_type: object_type, parent_asset_id: parent_asset_id, fragment: asset_fragment, name: asset_param_name, value: asset_param_value });
         }
 
         function connect_asset(feature_id, port_id) {
@@ -888,6 +895,7 @@
                 for (let i = 0; i<list.length; i++) {
                     add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
                 }
+                spatial_buffers_plugin.bring_spatial_buffers_to_back();
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
                 $('div[title]').tooltip({
@@ -997,7 +1005,7 @@
                             marker.esid = es_id;
                             marker.name = list[i][1];
                             marker.type = list[i][3];
-                            marker.polygon = true;
+                            // marker.polygon = polygon;    // building has no polygon, but a geojson layer...
 
                             set_building_handlers(marker);
                             add_object_to_layer(es_id, 'esdl_layer', marker);

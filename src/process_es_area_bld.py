@@ -26,7 +26,7 @@ from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
-    get_tooltip_asset_attrs
+    get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
 from utils.RDWGSConverter import RDWGSConverter
@@ -504,23 +504,26 @@ def add_asset_to_asset_list(asset_list, asset):
             lon = geom.lon
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            attrs = get_tooltip_asset_attrs(asset, 'marker')
+            add_spatial_attributes(asset, attrs)
             asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon],
-                               tooltip_asset_attrs, state, port_list, capability_type])
+                               attrs, state, port_list, capability_type])
         if isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
                 coords.append([point.lat, point.lon])
-            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+            attrs = get_tooltip_asset_attrs(asset, 'line')
+            add_spatial_attributes(asset, attrs)
             asset_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__, coords,
-                               tooltip_asset_attrs, state, port_list])
+                               attrs, state, port_list])
         if isinstance(geom, esdl.Polygon):
             coords = ESDLGeometry.parse_esdl_subpolygon(geom.exterior, False)  # [lon, lat]
             coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
             capability_type = ESDLAsset.get_asset_capability_type(asset)
-            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
+            attrs = get_tooltip_asset_attrs(asset, 'polygon')
+            add_spatial_attributes(asset, attrs)
             asset_list.append(
-                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs, state,
+                ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, attrs, state,
                  port_list, capability_type])
 
 

@@ -64,7 +64,13 @@ function get_tooltip_text(tt_format, name, attrs) {
 //  Updates tooltip text after attribute changed
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_tooltip(asset_id, attribute_name, value) {
+    if (!asset_id) { return; }
+    // this iterates all the time over all layers, so not efficient
+    // is there any other way to check if an object has a representation on the map?
+    // e.g. a timeseries profile object cannot be found in a layer, but can be edited in the esdl browser
     let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+    if (!asset_leaflet_obj) return;
+
 
     if (attribute_name == 'name') {
         asset_leaflet_obj.name = value;
@@ -91,6 +97,7 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 //  Updates asset state
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_state(asset_id, new_state) {
+    if (!asset_id) { return; }
     let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
     // if it's a joint, don't change appearance
     if (asset_leaflet_obj.type == 'Joint') return;
@@ -130,6 +137,19 @@ $(document).ready(function() {
         }
         if (message.name === 'state') {
             update_asset_state(message.id, message.value);
+        }
+
+        // See if it's distance or type of an BufferDistance object. Those we can update in the gui
+        if ((message.name === 'distance' || message.name === 'type') && message.object_type === 'BufferDistance') {
+            //let is_buffer_distance = message.fragment.match(/\/@bufferDistance/g);
+            //if (is_buffer_distance) {
+            // we need a fragment to find out which buffer distance element is edited...
+            if (message.parent_asset_id && message.fragment) { // parent energyAsset id and fragment is required in this message
+                spatial_buffers_plugin.update_buffer_distance_info(message.parent_asset_id, message.fragment, message.name, message.value);
+            } else {
+                console.log('No parent asset id or fragment for updating buffer distances');
+            }
+            //}
         }
     });
 });

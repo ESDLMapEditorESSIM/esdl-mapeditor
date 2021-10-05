@@ -177,11 +177,13 @@ class ESDLBrowser:
         container_descr = self.get_container_dict(container)
         attributes = ESDLEcore.get_asset_attributes(esdl_object, self.esdl_doc)
         references = ESDLEcore.get_asset_references(esdl_object, self.esdl_doc, ESDLBrowser.generate_repr)
+        parent_asset_id = self.calculate_parent_energy_asset_id(esdl_object)
         return {'es_id': active_es_id,
                 'object': esdl_object_descr,
                 'attributes': attributes,
                 'references': references,
-                'container': container_descr}
+                'container': container_descr,
+                'parent_asset_id': parent_asset_id}
 
 
     def get_container_dict(self, container):
@@ -216,6 +218,21 @@ class ESDLBrowser:
         else:
             object_dict['id'] = esdl_object.id
         return object_dict
+
+    # added such that at any place in the ESDL tree, you can always find an EnergyAsset container that this
+    # esdl object belongs to. This is used in the front-end to find out which layer needs to be updated, and this
+    # layer is found by means of its id attribute in the ESDL.
+    def calculate_parent_energy_asset_id(self, esdl_object: EObject):
+        if isinstance(esdl_object, esdl.EnergyAsset):
+            return esdl_object.id
+        else:
+            # get container object
+            container_obj = esdl_object.eContainer()
+            if container_obj is not None:
+                return self.calculate_parent_energy_asset_id(container_obj)
+            else:
+                # e.g. in case of system information or areas, there is no associated EnergyAsset object defined
+                return None
 
     @staticmethod
     def generate_repr(item):
