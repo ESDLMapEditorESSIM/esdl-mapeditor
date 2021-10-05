@@ -189,9 +189,9 @@ class ESDLServices:
                 body["energysystem"] = urllib.parse.quote(esdlstr)
                 # print(body)
             elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('ascii')
+                esdlstr_bytes = esdlstr.encode('utf-8')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
+                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
             else:
                 body = esdlstr
         elif service["type"] == "simulation":

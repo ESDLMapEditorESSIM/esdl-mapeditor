@@ -1550,7 +1550,7 @@ def process_command(message):
                         asset.length = float(shape['length']) if 'length' in shape else 0.0
                         print(message)
                         # automatically connect the conductor to the ports that have been clicked
-                        if 'connect_ports' in message and message['connect_ports'] is not '':
+                        if 'connect_ports' in message and message['connect_ports'] != '':
                             connect_ports_msg = message['connect_ports']
                             start_port = None
                             end_port = None
@@ -2832,7 +2832,13 @@ def process_command(message):
 def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
-    esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+    try:
+        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+    except Exception as exc:
+        logger.exception("Exception when querying ESDL service")
+        esdl_service_ok = False
+        esdl_service_result = str(exc)
+
     logger.debug('emitting result to browser')
     if esdl_service_ok:
         if esdl_service_result is not None:

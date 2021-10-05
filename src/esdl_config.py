@@ -332,7 +332,6 @@ esdl_config = {
                         "with_jwt_token": False,
                         "state_params": True,
                     },
-                    "previous_step": 0,
                 },
             ],
         },
@@ -386,7 +385,6 @@ esdl_config = {
                         "type": "custom",
                         "component": "eps-create-project",
                         "url": f"{EPS_WEB_HOST}/api/projects/",
-                        "previous_step": 0,
                         "next_step": 0,
                     },
                     {
@@ -402,7 +400,6 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project_id",
-                        "previous_step": 0,
                         "next_step": 3,
                     },
                     {
@@ -415,7 +412,6 @@ esdl_config = {
                             "request_params": {"project_id": "project.id"},
                             "response_params": {"name": "file_name"},
                         },
-                        "previous_step": 2,
                         "next_step": 0,
                     },
                     {
@@ -431,7 +427,6 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "previous_step": 0,
                         "next_step": 5,
                     },
                     {
@@ -453,7 +448,6 @@ esdl_config = {
                                 },
                             },
                         },
-                        "previous_step": 4,
                     },
                     {
                         "name": "EPS execution",
@@ -469,7 +463,6 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "execution",
-                        "previous_step": 0,
                         "next_step": 7,
                     },
                     {
@@ -485,7 +478,7 @@ esdl_config = {
                                 "next_step": 10,
                             },
                             {
-                                "name": "Inspect results on map",
+                                "name": "Inspect EPS results",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
                                 "next_step": 11,
@@ -502,7 +495,6 @@ esdl_config = {
                                 "next_step": 8,
                             },
                         ],
-                        "previous_step": 0,
                     },
                     {
                         "name": "EPS execution progress",
@@ -515,7 +507,6 @@ esdl_config = {
                             "progress_field": "latest_progress",
                             "message_field": "latest_message",
                         },
-                        "previous_step": 7,
                     },
                     {
                         "name": "Download project file",
@@ -526,7 +517,6 @@ esdl_config = {
                             "url": EPS_WEB_HOST + "/api/eps/{execution_id}/input",
                             "request_params": {"execution_id": "execution.id"},
                         },
-                        "previous_step": 7,
                     },
                     {
                         "name": "Load EPS results",
@@ -556,16 +546,13 @@ esdl_config = {
                             ],
                             "with_jwt_token": True,
                             "state_params": True,
-                        },
-                        "previous_step": 7,
-                        "next_step": 7,
+                        }
                     },
                     {
                         "name": "Inspect EPS results",
                         "description": "",
                         "type": "custom",
                         "component": "eps-inspect-result",
-                        "previous_step": 7,
                         "custom_data": {
                             "url": EPS_WEB_HOST
                             + "/api/eps/{execution_id}/pand/{pand_bagid}"
@@ -593,7 +580,6 @@ esdl_config = {
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
                         },
-                        "previous_step": 0,
                         "next_step": 0,
                     },
                     {
@@ -609,7 +595,6 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "previous_step": 0,
                         "next_step": 14,
                     },
                     {
@@ -626,7 +611,6 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "file_name",
-                        "previous_step": 13,
                         "next_step": 15,
                     },
                     {
@@ -641,7 +625,6 @@ esdl_config = {
                                 "file_name": "file_name.id",
                             },
                         },
-                        "previous_step": 14,
                         "next_step": 0,
                     },
                 ],
