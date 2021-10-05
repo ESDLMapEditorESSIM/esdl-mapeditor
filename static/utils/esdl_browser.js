@@ -89,7 +89,6 @@ class ESDLBrowser {
                 esdl_browser.open_browser_identifier(parent_object_identifier);
             });
 
-
         $div.append($h1);
         $div.append($h4);
         $div.append($div2);
@@ -183,7 +182,6 @@ class ESDLBrowser {
         $table.append($thead)
         $table.append($tbody)
 
-
         for (let i=0; i<data.attributes.length; i++) {
             let $tr = $("<tr>");
             let name = data.attributes[i].name;
@@ -256,8 +254,6 @@ class ESDLBrowser {
                         .change(function(e) { change_param(this); });
                         // edate
                 }
-
-
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);
             if (data.attributes[i].required == true) {
@@ -271,8 +267,8 @@ class ESDLBrowser {
                 let $actions = $("<td>");
                 let $local_repr = $repr;
                 let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green'))
-                    .click( function(e) {
-                              esdl_browser.add_attribute_row(data.object, data.attributes[i], $local_repr);
+                    .click(function(e) {
+                        esdl_browser.add_attribute_row(data.object, data.attributes[i], $local_repr);
                     });
                 $actions.append($addButton);
                 $tr.append($actions);
@@ -297,7 +293,6 @@ class ESDLBrowser {
                     $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(ESDLBrowser.identifier(v)); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
 
-
                     $sub.append($a);
                     $sub.append($span);
 
@@ -312,7 +307,6 @@ class ESDLBrowser {
                     }
                     $repr.append($sub);
                     // actions
-
                 }
                 if (data.references[i].containment == true) {
                     let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle')
@@ -369,7 +363,6 @@ class ESDLBrowser {
                         $repr.append($spanSpacer);
                         $repr.append($delSpan);
                     }
-
                 }
             }
             let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);;
@@ -380,14 +373,11 @@ class ESDLBrowser {
             $tr.append($("<td>").append($actions))
             $tbody.append($tr)
         }
-
         return $div;
-
     }
 
     // add an attribute row (e.g. for list of EDoubles)
     add_attribute_row(parent_object_identifier, attr, parent_div) {
-        console.log(parent_div);
         let self=this;
         let uid = this.get_unique_id();
         let $itemdiv = $('<div>').attr('id', attr.name + uid);
@@ -480,8 +470,6 @@ class ESDLBrowser {
         }
     }
 
-
-
     // delete a reference (recursively!)
     del(ref_repr, ref_name, ref_identifier, parent_identifier, show_dialog) {
         if (show_dialog == false) {
@@ -505,7 +493,6 @@ class ESDLBrowser {
             $div.append($h1);
             $div.append($h4);
             $div.append($div3)
-
 
             if (dialog === undefined) {
                 console.log("ERROR: dialog not defined")
@@ -547,7 +534,6 @@ class ESDLBrowser {
                 esdl_browser.open_browser_identifier(parent_object_identifier);
             });
 
-
         $div.append($h1);
         $div.append($h4);
         $div.append($div2);
@@ -576,10 +562,7 @@ class ESDLBrowser {
         // (data.object, data.references[i], data.references[i].types)
 
         socket.emit('esdl_browse_list_references', {'parent': ESDLBrowser.identifier(object), 'name': reference.name});
-
     }
-
-
 
     initSocketIO() {
         let self = this;
@@ -605,7 +588,6 @@ class ESDLBrowser {
             dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
-
         });
 
         //esdl_browse_select_cross_reference
@@ -625,7 +607,6 @@ class ESDLBrowser {
             dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
             dialog.open();
-
         });
     }
 

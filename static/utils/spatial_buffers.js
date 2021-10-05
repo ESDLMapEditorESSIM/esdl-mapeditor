@@ -152,9 +152,6 @@ class SpatialBuffers {
         }
     }
 
-    //find_overlapping_spatial_buffers(esdl_layer) {
-    //}
-
     bring_spatial_buffers_to_back() {
         let esdl_layer = this.get_spatial_buffer_layer();
         esdl_layer.bringToBack();
