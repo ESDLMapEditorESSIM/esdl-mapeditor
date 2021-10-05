@@ -240,6 +240,8 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
         rev_point = list(reversed(line.point)) # reverse coordinates
         line.point.clear()
         line.point.extend(rev_point)
+        for p in line.point:
+            _shift_point(p)
 
     if isinstance(geometry, Point):
         _shift_point(geometry)

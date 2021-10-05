@@ -11,8 +11,10 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
+import io
 
-from flask import Flask, session
+from flask import Flask, session, request
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.session_manager import get_handler, get_session, set_session
@@ -52,6 +54,21 @@ class ShapefileConverter:
 
     def register(self):
         logger.info('Registering Shapefile converter extension')
+
+        @self.flask_app.route("/shapefile/upload", methods=['POST'])
+        def receive_zip_files():
+            file_info_list = list()
+            for i in range(5):
+                base64_file_contents = request.values.get(f'file_info[{i}][file]')
+                filename = request.values.get(f'file_info[{i}][filename]')
+                if base64_file_contents:
+                    file_info_list.append({
+                        "base64_file": base64_file_contents,
+                        "filename": filename
+                    })
+
+            self.executor.submit(self.process_zip_files, file_info_list=file_info_list, app_context=self.flask_app.app_context())
+            return {'message': 'ok'}, 201
 
         @self.socketio.on('shpcvrt_receive_files', namespace='/esdl')
         def receive_files(message):
@@ -137,14 +154,18 @@ class ShapefileConverter:
 
     def process_shapefile(self, area, filename, energy_asset):
         sf = shapefile.Reader(filename)
-        with open(filename + '.prj', 'r') as project_file:
-            data = project_file.read()
-            transformer = self.get_coordinate_transformer(wkt=data)
+        try:
+            with open(filename + '.prj', 'r') as project_file:
+                data = project_file.read()
+                transformer = self.get_coordinate_transformer(wkt=data)
+        except FileNotFoundError:
+            # File does not exist, try with default CRS transformation: RD -> WGS84
+            transformer = self.get_coordinate_transformer()
 
         print("File: ", filename)
         print("- Shapefile: ", sf)
         print("- Fields: ", sf.fields)
-        print("- Shaperecords: ", sf.shapeRecords())
+        print("- # Shaperecords: ", len(sf.shapeRecords()))
 
         self.to_esdl(area, sf, transformer, energy_asset)
 
@@ -293,3 +314,46 @@ class ShapefileConverter:
             if key.lower() in possible_names:
                 return value
         return default_value
+
+    def process_zip_files(self, file_info_list, app_context):
+        with app_context:
+            zipfile_row = 0
+            for file_info in file_info_list:
+                content_type, content_string = file_info['base64_file'].split(',')
+                content_decoded = base64.b64decode(content_string)
+                zip_str = io.BytesIO(content_decoded)
+
+                directory = tempfile.mkdtemp(prefix='shapefile')
+                print("Saving file to: {}".format(directory))
+
+                with zipfile.ZipFile(zip_str, 'r') as zip_ref:
+                    zip_ref.extractall(directory)
+
+                found_shape_files = []
+                row = 0
+                for shapefile_name in glob.glob(directory + os.path.sep + "/**/*.shp", recursive=True):
+                    found_shape_files.append(shapefile_name)
+                    self.shapefile_list.append({
+                        'zipfile_row': zipfile_row,
+                        'row': row,
+                        'shapefile_name': shapefile_name
+                    })
+                    row = row + 1
+
+                print(found_shape_files)
+                # TODO: Solve this = https://github.com/miguelgrinberg/flask-socketio/issues/40
+                #
+                # the emit function tries to send the event back to the sender of an originating event. Since there is
+                # no originating event in this case, you have to indicate who the addressee is.
+                #
+                # Are you storing the sid value for your clients? You need to add room=sid to the call, with the sid
+                # for the client you want to address. You can also pass the name of a room you created, or if you
+                # prefer, pass broadcast=True to send the event to all clients.
+                socketio_sid = get_session('socketio_sid')
+                emit('shpcvrt_files_in_zip',
+                     {"zipfile_row": zipfile_row, "files": found_shape_files},
+                     namespace='/esdl',
+                     room=socketio_sid
+                )
+
+                zipfile_row = zipfile_row + 1
