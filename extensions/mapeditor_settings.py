@@ -41,6 +41,16 @@ DEFAULT_USER_SETTING = {
         'asset_bar': {
             'visible_on_startup': True
         },
+        'spatial_buffers': {
+            'visible_on_startup': True,
+            'colors': {
+                'RISK': '#ff0000',                  # red
+                'ENVIRONMENT': '#00ff00',           # green
+                'NOISE': '#0000ff',                 # blue
+                'PARTICULATE_MATTER': '#000000',    # black
+                'NOX_EMISSIONS': '#ffff00',         # yellow
+            }
+        },
     },
 }
 
@@ -72,8 +82,6 @@ class MapEditorSettings:
         # Assumes the system setting is a list
         @self.socketio.on('mapeditor_system_settings_append_list', namespace='/esdl')
         def mapeditor_system_settings_append_list(info):
-            print('mapeditor_system_settings_get:')
-            print(info)
             setting_category = info['category']
             setting_name = info['name']
             setting_value = info['value']
@@ -84,7 +92,6 @@ class MapEditorSettings:
             name_list = cat[setting_name]
             name_list.append(setting_value)
             self.set_system_settings(sys_set)
-            print(sys_set)
 
         @self.socketio.on('mapeditor_system_settings_set_dict_value', namespace='/esdl')
         def mapeditor_system_settings_set_dict_value(info):
@@ -98,18 +105,14 @@ class MapEditorSettings:
             name_dict = cat[setting_name]
             name_dict[setting_key] = setting_value
             self.set_system_settings(sys_set)
-            print(sys_set)
 
         @self.socketio.on('mapeditor_system_settings_get', namespace='/esdl')
         def mapeditor_system_settings_get(info):
-            print('mapeditor_system_settings_get:')
-            print(info)
             setting_category = info['category']
             setting_name = info['name']
 
             sys_set = self.get_system_settings()
             cat = sys_set[setting_category]
-            print(cat[setting_name])
             return cat[setting_name]
 
         @self.socketio.on('mapeditor_user_ui_setting_get', namespace='/esdl')
@@ -119,7 +122,6 @@ class MapEditorSettings:
 
             user_email = get_session('user-email')
             res = self.get_user_ui_setting(user_email, category, name)
-            print(name + ': ' + str(res))
             return res
 
         @self.socketio.on('mapeditor_user_ui_setting_set', namespace='/esdl')

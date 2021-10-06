@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -47,7 +48,9 @@ class ESStatisticsService:
         url = 'http://' + settings.statistics_settings_config['host'] + ':' + settings.statistics_settings_config['port']\
               + settings.statistics_settings_config['path']
 
-        body = {"energysystem": urllib.parse.quote(esdl_str)}
+        esdlstr_bytes = esdl_str.encode('ascii')
+        esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+        body = {"energysystem": esdlstr_base64_bytes.decode('ascii')}
 
         headers = {
             "Accept": "application/json",
