@@ -1677,40 +1677,34 @@ def process_command(message):
                             double_line_mode = True
 
                         if capability == 'Producer':
-                            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                            asset.port.append(outp)
+                            asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                             if double_line_mode:
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                                asset.port.append(inp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
                         elif capability in ['Consumer', 'Storage']:
-                            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                            asset.port.append(inp)
+                            asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
                             if double_line_mode:
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Conversion':
-                            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                            asset.port.append(inp)
-                            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                            asset.port.append(outp)
+                            if object_type == "HeatPump" and double_line_mode:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
+                            else:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Transport':
                             if object_type == 'HeatExchange' or object_type == 'Transformer':
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='PrimIn')
-                                asset.port.append(inp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
                                 if double_line_mode:
-                                    outp = esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut')
-                                    asset.port.append(outp)
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
 
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='SecOut')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
                                 if double_line_mode:
-                                    inp = esdl.InPort(id=str(uuid.uuid4()), name='SecIn')
-                                    asset.port.append(inp)
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
                             else:
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                                asset.port.append(inp)
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else:
