@@ -216,7 +216,9 @@ function process_service_results(results) {
                 return $(this).attr('title');
             }
         });
-        sidebar.hide();
+
+        // Show Vue asset feedback window
+        asset_feedback_window(results['asset_feedback']);
     }
 
     if ('show_url' in results) {
