@@ -23,7 +23,7 @@ from pyecore.ordered_set_patch import pop as pop_patch
 def patch_notification_system():
 
     def remove(self, value, update_opposite=True):
-        print("######## patched remove() ##########", self)
+        print("######## patched remove() ##########", self.__class__, len(self))
         if self.is_ref:
             self._update_container(None, previous_value=value)
             if update_opposite:
@@ -38,7 +38,7 @@ def patch_notification_system():
     setattr(ECollection, 'remove', remove)
 
     def pop(self, index=None):
-        print("######## patched pop() ##########", self)
+        print("######## patched pop() ##########", self.__class__, len(self))
         if index is None:
             value = pop_patch(self)
         else:

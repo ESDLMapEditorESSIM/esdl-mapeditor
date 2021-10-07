@@ -58,6 +58,8 @@ class ESDLBrowser:
             # {'parent': {'id': parent_object.id, 'fragment': parent_object.fragment}, 'name': reference_data.name, 'type': types[0]}
             esh = get_handler()
             active_es_id = get_session('active_es_id')
+            stack = esh.change_tracker.get_tracker_stack(esh.get_energy_system(active_es_id))
+            stack.start_recording(combineCommands=True, label='Create {}'.format(message['type']))
             parent_object = self.get_object_from_identifier(message['parent'])
             reference_name = message['name']
             attribute = parent_object.eClass.findEStructuralFeature(reference_name)
@@ -79,6 +81,7 @@ class ESDLBrowser:
             if hasattr(new_object, 'name'):
                 new_object.name = 'New' + new_object.eClass.name
             browse_data = self.get_browse_to_data(new_object)
+            stack.stop_recording()
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_delete_ref', namespace='/esdl')
@@ -87,8 +90,15 @@ class ESDLBrowser:
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             reference_name = message['name']
+            stack = esh.change_tracker.get_tracker_stack(esh.get_energy_system(active_es_id))
             ref_object = self.get_object_from_identifier(message['ref_id'])
             parent_object = self.get_object_from_identifier(message['parent'])
+            stack.start_recording(combineCommands=True,
+                                  label='Delete {} {} of {}'.format(ref_object.eClass.name,
+                                      ref_object.name if hasattr(ref_object, 'name') else "",
+                                      parent_object.name if hasattr(parent_object, 'name') else parent_object.eClass.name
+                                    )
+                                  )
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
                 try:
@@ -115,6 +125,7 @@ class ESDLBrowser:
                     parent_object.eSet(reference, reference.get_default_value())
 
             browse_data = self.get_browse_to_data(parent_object)
+            stack.stop_recording()
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
 
@@ -142,14 +153,23 @@ class ESDLBrowser:
             #{'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             parent_object: EObject = self.get_object_from_identifier(message['parent'])
             reference = parent_object.eClass.findEStructuralFeature(message['name'])
-            #print(get_handler().get_resource(get_session('active_es_id')).uuid_dict)
+            esh = get_handler()
             xref = self.get_object_from_identifier(message['xref'])
+            stack = esh.change_tracker.get_tracker_stack(parent_object)
+            description = "{} {}.{} to {}".format(
+                "Add" if reference.many else "Set",
+                parent_object.name if hasattr(parent_object, 'name') else parent_object.eClass.name,
+                message['name'],
+                xref.name if hasattr(xref, 'name') else xref.eClass.name
+            )
+            stack.start_recording(combineCommands=True, label=description)
             if not reference.many:
                 parent_object.eSet(reference, xref)
             else:
                 eOrderedSet = parent_object.eGet(reference)
                 eOrderedSet.append(xref)
             browse_data = self.get_browse_to_data(parent_object)
+            stack.stop_recording()
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
     def get_object_from_identifier(self, identifier):

@@ -48,6 +48,7 @@ class LabelledAction(Command, UserList):
 
     def undo(self):
         for command in reversed(self):
+            print("undo action:", command)
             command.undo()
 
     def redo(self):
@@ -138,9 +139,32 @@ class UndoRedoCommandStack(CommandStack):
             print("Cannot redo while recording combined commands")
             return
         self._recording = False  # suppress generated notifications for redo
+        action = self.peek_next_top
         print('Undo', self.peek_next_top)
+        for command in action:
+            c: AbstractCommand = command
+            if isinstance(c, Delete) or isinstance(c, Remove):
+                value = c.value
+                if isinstance(c, Delete): value = c.owner
+                if c.feature.name != "connectedTo" and isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
+                    resource = value.eResource
+                    # do removing from uuid_dict before removing it from the eResource
+                    print("Redo: remove from to uuid_dict", value.id, value)
+                    if value.id in resource.uuid_dict:
+                        del resource.uuid_dict[value.id]
+
         super().redo()
-        # TODO: add id's to uuid dict
+        # for command in action:
+        #     c: AbstractCommand = command
+        #     value = c.value
+        #     if isinstance(c, Delete): value = c.owner
+        #     if isinstance(c, Set) or isinstance(c, Add):
+        #         if isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
+        #             resource = value.eResource
+        #             print("Redo: adding to uuid_dict", value.id, value)
+        #             resource.uuid_dict[value.id] = value
+
+
         self._recording = True
 
     def can_undo(self):
@@ -151,9 +175,30 @@ class UndoRedoCommandStack(CommandStack):
             print("Cannot undo while recording combined commands")
             return
         self._recording = False # suppress generated notification for undo
-        print('Undo', self.top)
-        # TODO: add id's to uuid dict
+        action = self.top
+        print('Undo', action)
+        # remove / add uuids before undo() such that we know which resource it belongs to and its uuid_dict
+        # for command in action:
+        #     c: AbstractCommand = command
+        #     value = c.value
+        #     if isinstance(c, Delete): value = c.owner
+        #     if isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
+        #         resource = value.eResource
+        #         if isinstance(c, Set) or isinstance(c, Add):
+        #             if value.id in resource.uuid_dict:
+        #                 del resource.uuid_dict[value.id]
+        #             print("Undo: remove from to uuid_dict", value.id, value)
         super().undo()
+        for command in action:
+            c: AbstractCommand = command
+            if isinstance(c, Delete) or isinstance(c, Remove):
+                value = c.value
+                if isinstance(c, Delete): value = c.owner
+                if c.feature.name != "connectedTo" and isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
+                    resource = value.eResource
+                    print("Undo: adding to uuid_dict", value.id, value)
+                    resource.uuid_dict[value.id] = value
+
         self._recording = True
 
 
@@ -164,7 +209,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         #print('Ignoring ', notification)
         return
     if notification.old is None and notification.new is None:
-        print('Ignoring (change=None)', notification)
+        print('\ -- Ignoring (change=None)', notification)
         return
     print('Handling', notification)
     if notification.kind == Kind.SET:  # EValue.set()
@@ -182,12 +227,19 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
             if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
                 print("  \ -- Ignoring opposite unset for ", f.name)
                 return
-            unsetNotification = Delete(owner=notification.old)
-            unsetNotification.feature = notification.feature
-            #unsetNotification.references = {notification.feature: notification.old}
-            #unsetNotification.previous_value = notification.new
-            #unsetNotification.value = notification.old
-            unsetNotification.can_execute  # record all changes
+            if not f.containment:
+                unsetNotification = Set(owner=notification.notifier, feature=notification.feature, value=notification.new)
+                unsetNotification.previous_value = notification.old
+                unsetNotification.can_execute
+                print("\ -- [(Un)Set], not delete")
+            else:
+                unsetNotification = Delete(owner=notification.old)
+                unsetNotification.feature = notification.feature
+                #unsetNotification.references = {notification.feature: notification.old}
+                #unsetNotification.previous_value = notification.new
+                #unsetNotification.value = notification.old
+                unsetNotification.can_execute  # record all changes
+                print("\ -- [Delete] ", "\n \ -- inv_refs:", unsetNotification.inverse_references, "\n \ --refs:", unsetNotification.references)
             unsetNotification._executed = True
             stack.append(unsetNotification)
     elif notification.kind == Kind.ADD: # add an item to a collection
@@ -206,9 +258,10 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
             removeNotification.value = notification.old
             if notification.feature.many:
                 removeNotification._collection = notification.notifier.eGet(notification.feature)
-                print("collection of {} is {}".format(notification.feature.name, removeNotification._collection))
+                print("\ -- [Remove] collection of {} has length {}".format(notification.feature.name, len(removeNotification._collection)))
                 try:
                     removeNotification.index = notification.notifier.eGet(notification.feature).index(notification.old)
+                    print(" \ -- [Remove] found index in collection ", removeNotification.index)
                 except KeyError:
                     removeNotification.index = 0
             removeNotification._executed = True
@@ -224,6 +277,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
 
 
 # observe every change in the model, but this works for *all* EObjects in memory... so this is not very handy.
+# so this is currently not used, as pyEcore has been changed to emit notifications at the resource level
 def monitor_esdl_changes(command_stack: UndoRedoCommandStack):
     observer = EObserver(notifyChanged=lambda x: handleNotification(command_stack, x))
     old_init = EObject.__init__

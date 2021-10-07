@@ -20,7 +20,7 @@ let auth_status = function() {
     $.get('/auth_status')
         .done(function (session) {
             console.log('Session status:', session);
-            setTimeout(auth_status, 60000);
+            setTimeout(auth_status, 10000);
             if (!session.valid) {
                 const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
                 if (answer) {
