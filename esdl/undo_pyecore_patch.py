@@ -46,7 +46,6 @@ def patch_notification_system():
 
         self.owner.notify(Notification(old=value,
                                        feature=self.feature,
-                                       #index=index,
                                        kind=Kind.REMOVE))
         if self.is_ref:
             self._update_container(None, previous_value=value)

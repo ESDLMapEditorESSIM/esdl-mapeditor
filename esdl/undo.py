@@ -115,10 +115,6 @@ class UndoRedoCommandStack(CommandStack):
 
         for command in commands:
             if isinstance(command, LabelledAction):
-                # make sure the new subcommands are set to executed, as we don't manually execute them, but automatically
-                # for cmd in command:
-                #     if cmd.can_execute:
-                #         cmd._executed = True
                 self.top = command
                 log.debug("Appended {} to the stack".format(command))
 
@@ -154,15 +150,7 @@ class UndoRedoCommandStack(CommandStack):
                         del resource.uuid_dict[value.id]
 
         super().redo()
-        # for command in action:
-        #     c: AbstractCommand = command
-        #     value = c.value
-        #     if isinstance(c, Delete): value = c.owner
-        #     if isinstance(c, Set) or isinstance(c, Add):
-        #         if isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
-        #             resource = value.eResource
-        #             print("Redo: adding to uuid_dict", value.id, value)
-        #             resource.uuid_dict[value.id] = value
+
 
 
         self._recording = True
@@ -177,23 +165,13 @@ class UndoRedoCommandStack(CommandStack):
         self._recording = False # suppress generated notification for undo
         action = self.top
         print('Undo', action)
-        # remove / add uuids before undo() such that we know which resource it belongs to and its uuid_dict
-        # for command in action:
-        #     c: AbstractCommand = command
-        #     value = c.value
-        #     if isinstance(c, Delete): value = c.owner
-        #     if isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
-        #         resource = value.eResource
-        #         if isinstance(c, Set) or isinstance(c, Add):
-        #             if value.id in resource.uuid_dict:
-        #                 del resource.uuid_dict[value.id]
-        #             print("Undo: remove from to uuid_dict", value.id, value)
         super().undo()
         for command in action:
             c: AbstractCommand = command
             if isinstance(c, Delete) or isinstance(c, Remove):
                 value = c.value
                 if isinstance(c, Delete): value = c.owner
+                # ignore connected to, since Ports are handled, so id's are already in uuid_dict
                 if c.feature.name != "connectedTo" and isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
                     resource = value.eResource
                     print("Undo: adding to uuid_dict", value.id, value)

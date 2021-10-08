@@ -29,9 +29,16 @@ class UndoRedoTestCase3(unittest.TestCase):
         philips.delete()
         tracker.stop_recording()
         print('Current stack', tracker.stack)
+        l = []
+        for action in tracker.stack:
+            for c in action:
+                if c.feature.name == "carrier":
+                    print("------   Carrier:", c)
+                    l.append(c)
+        self.assertEqual(2, len(l))
         tracker.undo()
         print('Stack after undo', tracker.stack)
-        print(esh.to_string(es.id))
+        #print(esh.to_string(es.id))
 
 if __name__ == '__main__':
     unittest.main()
