@@ -294,7 +294,7 @@ h6 {
 }
 
 .notselectedline {
-    opacity: 0.3;
+    opacity: 0.5;
 }
 .selectedline {
     opacity: 1.0;

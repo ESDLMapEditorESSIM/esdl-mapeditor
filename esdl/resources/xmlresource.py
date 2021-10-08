@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.
 It basically removes the xmi:version stuff from the serialization.
+It also adds parse_information that can be inspected for errors when reading an ESDL file.
 """
 class XMLResource(XMIResource):
     def __init__(self, uri=None, use_uuid=False):
@@ -77,7 +78,7 @@ class XMLResource(XMIResource):
     are 'older' and do not have a certain feature. By default XMIResource throws an exception when 
     an unknown attribute is found for a class. This version prints a warning and continues.
     """
-    def _decode_attribute(self, owner, key, value):
+    def _decode_attribute(self, owner, key, value, node):
         namespace, att_name = self.extract_namespace(key)
         prefix = self.reverse_nsmap[namespace] if namespace else None
         # This is a special case, we are working with uuids
@@ -94,9 +95,11 @@ class XMLResource(XMIResource):
                 return
             feature = self._find_feature(owner.eClass, att_name)
             if not feature:
-                #raise ValueError('Feature {0} does not exists for type {1}'
-                #                 .format(att_name, owner.eClass.name))
-                s = 'Attribute {0} does not exists for type {1} and is ignored.'.format(att_name, owner.eClass.name)
+                #raise ValueError(f'Feature {att_name} does not exists for '
+                #                 f'type {owner.eClass.name} '
+                #                 f'({node.tag} line {node.sourceline})')
+                s = 'Attribute \'{0}\' does not exists for type {1} and is ignored ({2} line {3}).'\
+                    .format(att_name, owner.eClass.name, node.tag, node.sourceline)
                 logger.warning(s)
                 self.parse_information.append(s)
             return feature

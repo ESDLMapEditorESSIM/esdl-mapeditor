@@ -538,7 +538,9 @@ function init_selection_pane(map) {
 /**
 Refreshes the line color based on the (updated) data of the layer
 */
+var ui_counter = 0;
 function update_line_color(line_layer) {
+    ui_counter++;
     debug_layer = line_layer;
     var line_color = colors[line_layer.type];
     let port_list = line_layer.ports;
@@ -561,7 +563,7 @@ function update_line_color(line_layer) {
         $('#mapid .zoomline').addClass('notselectedline'); // unhighlight all
         if (line_layer.selectline === undefined) {
             let size_line = 3;
-            if (map.getZoom() > 16) size_line = 2 * map.getZoom() - 27 + 6; //butt
+            if (map.getZoom() > 15) size_line = 2 * map.getZoom() - 27 + 6; //butt
             let selectline_options = {lineCap: 'round', color: "#000000", weight: size_line, draggable:false,
                                       title: title, className:"overlayline",
                                       dashArray:"", opacity: 1.0, pane: 'lineSelectionPane'};
