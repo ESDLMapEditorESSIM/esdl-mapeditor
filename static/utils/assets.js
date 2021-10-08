@@ -582,7 +582,7 @@ function update_line_color(line_layer) {
         //
     } else {
         if (line_layer.selectline) {
-            console.log('remove select line');
+            //console.log('remove select line');
             remove_object_from_layer(es_bld_id, 'esdl_layer', line_layer.selectline);
             //line_layer.selectline.remove();
             delete line_layer.selectline;
@@ -610,5 +610,5 @@ function update_line_color(line_layer) {
 
     line_layer.setStyle(line_options);
     line_layer.color = line_color;
-    console.log('line color', line_options['color'], line_color, line_layer.selected)
+    //console.log('line color', line_options['color'], line_color, line_layer.selected)
 }
