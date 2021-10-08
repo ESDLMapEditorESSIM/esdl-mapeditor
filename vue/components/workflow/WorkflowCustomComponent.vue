@@ -8,15 +8,17 @@
 </template>
 
 <script setup="props">
-import { default as WorkflowEpsInspectResult } from './custom/eps/WorkflowEpsInspectResult';
-import { default as WorkflowEpsService } from './custom/eps/WorkflowEpsService';
-import { default as EpsCreateProject } from './custom/eps/EpsCreateProject';
-import { defineProps } from 'vue'
+import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspectResult';
+import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService';
+import {default as EpsCreateProject} from './custom/eps/EpsCreateProject';
+import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures';
+import {defineProps} from 'vue'
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
   "eps-service": WorkflowEpsService,
   "eps-create-project": EpsCreateProject,
+  "eps-select-measures": EpsSelectMeasures,
 };
 const props = defineProps({
   workflowStep: {

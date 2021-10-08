@@ -466,7 +466,7 @@ esdl_config = {
                         "next_step": 7,
                     },
                     {
-                        "name": "Execution selected",
+                        "name": "Execution options",
                         "description": "How would you like to proceed?",
                         "type": "choice",
                         "options": [
@@ -493,6 +493,12 @@ esdl_config = {
                                 "type": "default",
                                 "disable_if_state": "execution.finished_on",
                                 "next_step": 8,
+                            },
+                            {
+                                "name": "Select EPS measures",
+                                "type": "default",
+                                "enable_if_state": "execution.finished_on",
+                                "next_step": 16,
                             },
                         ],
                     },
@@ -625,6 +631,13 @@ esdl_config = {
                                 "file_name": "file_name.id",
                             },
                         },
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select EPS measures",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-select-measures",
                         "next_step": 0,
                     },
                 ],

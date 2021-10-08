@@ -11,6 +11,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Checkbox,
     Col,
     Collapse,
     DatePicker,
@@ -55,6 +56,7 @@ export function mountApp(component, elementSelector) {
     // app.use(Badge);
     app.use(Button);
     app.use(Card);
+    app.use(Checkbox);
     app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
