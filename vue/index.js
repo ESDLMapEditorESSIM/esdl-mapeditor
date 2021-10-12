@@ -12,6 +12,7 @@ import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
+import AssetFeedback from './apps/AssetFeedback';
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -21,6 +22,7 @@ import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDra
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
+import {useAssetFeedbackList} from './composables/assetFeedback';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
@@ -69,7 +71,13 @@ window.edr_asset_window = () => {
 }
 
 window.search_assets_window = () => {
-    mountSidebarComponent(SearchAssets)
+    mountSidebarComponent(SearchAssets);
+}
+
+window.asset_feedback_window = (asset_feedback_info) => {
+    const { newAssetFeedbackList } = useAssetFeedbackList();
+    newAssetFeedbackList(asset_feedback_info);
+    mountSidebarComponent(AssetFeedback);
 }
 
 //window.activate_esdl_profiles = () => {
