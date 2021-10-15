@@ -38,9 +38,7 @@ class SelectAssets {
 
     add_map_handler(map) {
         map.on('click', function(e) {
-            if (just_selected_multiple_assets) {
-                just_selected_multiple_assets = false;    // catch event after box select
-            } else if (select_assets.select_mode) {
+            if (!e.originalEvent.shiftKey) { // box select uses Shift to do selection
                 select_assets.deselect_all_assets();
                 select_assets.select_mode = false;
             }
@@ -61,11 +59,14 @@ class SelectAssets {
 
     add_to_selected_list(asset_leaflet_obj) {
         this.selected_assets.push(asset_leaflet_obj.id);
+        // filter out duplicates as the current approach might fail in some corner cases
+        this.selected_assets = this.selected_assets.filter((v, i, a) => a.indexOf(v) === i);
         this.disable_context_menu_items(asset_leaflet_obj);
     }
 
     remove_from_selected_list(asset_leaflet_obj) {
-        this.selected_assets.splice(this.selected_assets.indexOf(asset_leaflet_obj.id), 1);
+        let index = this.selected_assets.indexOf(asset_leaflet_obj.id)
+        this.selected_assets.splice(index, 1);
         if (this.selected_assets.length == 0)
             this.select_mode = false;
         this.enable_context_menu_items(asset_leaflet_obj);
@@ -139,7 +140,6 @@ class SelectAssets {
 }
 
 var select_assets = new SelectAssets()
-var just_selected_multiple_assets = false;    // To catch map.click event after box select
 
 // -----------------------------
 //  BoxSelectAssets
@@ -156,7 +156,6 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
         // Postpone to next JS tick so internal click event handling
         // still see it as "moved".
         setTimeout(L.bind(this._resetState, this), 0);
-
         var bounds = new L.LatLngBounds(
             this._map.containerPointToLatLng(this._startPoint),
             this._map.containerPointToLatLng(this._point)
@@ -187,7 +186,6 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
                 }
             }
         }
-        just_selected_multiple_assets = true;
     }
 
 });

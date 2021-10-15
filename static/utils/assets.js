@@ -544,11 +544,13 @@ function update_line_color(line_layer) {
     debug_layer = line_layer;
     var line_color = colors[line_layer.type];
     let port_list = line_layer.ports;
-    for (let p=0; p<port_list.length; p++) {
-        let port_carrier_id = port_list[p]['carrier'];
-        if (port_carrier_id) {
-            line_color = carrier_info_mapping[port_carrier_id]['color'];
-            break;
+    if (port_list) { // find line color based on carrier if available
+        for (let p=0; p<port_list.length; p++) {
+            let port_carrier_id = port_list[p]['carrier'];
+            if (port_carrier_id) {
+                line_color = carrier_info_mapping[port_carrier_id]['color'];
+                break;
+            }
         }
     }
     // default state
