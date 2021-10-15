@@ -110,20 +110,22 @@ class UndoRedoCommandStack(CommandStack):
             self.compound.extend(commands)
             return
         if not self._recording:
-            #print('Ignoring ', commands)
+            print('!!!!!!!!!!!!!!Ignoring NOT RECORDING', commands)
             return
 
         for command in commands:
             if isinstance(command, LabelledAction):
                 self.top = command
-                log.debug("Appended {} to the stack".format(command))
+                #log.debug("Appended {} to the stack".format(command))
+                print("Appended {} to the stack".format(command))
 
             else:
                 if command.can_execute:
                     # command.execute()
                     command._executed = True
                     self.top = command
-                    log.debug("Appended {} to the stack".format(command))
+                    #log.debug("Appended {} to the stack".format(command))
+                    print("Appended {} to the stack".format(command))
                 else:
                     raise ValueError('Cannot execute command {}'.format(command))
 

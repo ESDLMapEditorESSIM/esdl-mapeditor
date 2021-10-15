@@ -385,7 +385,7 @@ class EnergySystemHandler:
     def generate_uuid():
         return str(uuid4())
 
-    def create_empty_energy_system(self, name, es_description, inst_title, area_title, esdlVersion=None):
+    def create_empty_energy_system(self, name, es_description, inst_title, area_title, esdlVersion=None) -> esdl.EnergySystem:
         es_id = str(uuid4())
         self.energy_system = esdl.EnergySystem(id=es_id, name=name, description=es_description, esdlVersion=esdlVersion)
 
