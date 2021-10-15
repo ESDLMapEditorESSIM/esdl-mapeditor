@@ -1474,9 +1474,6 @@ def process_command(message):
     #  session.modified = True
     # logger.debug (get_handler().instance[0].area.name)
 
-    tracker_stack = esh.change_tracker.get_tracker_stack(es_edit)
-    tracker_stack.start_recording(combineCommands=True, label=message['cmd'])
-
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
@@ -2925,25 +2922,6 @@ def process_command(message):
         esh = get_handler()
         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
 
-    if message['cmd'] == 'undo':
-        print('Undo stack')
-        pprint(tracker_stack.stack)
-        esh = get_handler()
-        tracker_stack.stop_recording()
-        tracker_stack.undo()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
-
-    if message['cmd'] == 'redo':
-        print('Redo stack')
-        pprint(tracker_stack.stack)
-        esh = get_handler()
-        from esdl.undo import UndoRedoCommandStack
-        tracker_stack.stop_recording()
-        tracker_stack.redo()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
-
-    tracker_stack.stop_recording()
-    print("Undo/Redo size={}".format(len(tracker_stack.stack)))
     set_handler(esh)
     session.modified = True
 

@@ -1552,13 +1552,6 @@
             socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
         }
 
-        function undo(e) {
-            socket.emit('command', {cmd: 'undo', es_id: active_layer_id});
-        }
-
-        function redo(e) {
-            socket.emit('command', {cmd: 'redo', es_id: active_layer_id});
-        }
     </script>
 
     <style>
@@ -1659,9 +1652,6 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="undo();"><div class="menu-icon" style="margin-top:0px"><i class="fa fa-undo" aria-hidden="true"></i></div>Undo</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="redo();"><div class="menu-icon" style="margin-top:0px"><i class="fa fa-redo" aria-hidden="true"></i></div>Redo</a></li>
-                                    <li class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
