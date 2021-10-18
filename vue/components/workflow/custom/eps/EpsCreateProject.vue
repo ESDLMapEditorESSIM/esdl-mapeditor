@@ -22,22 +22,16 @@
 </template>
 
 <script setup="props">
-import { ref } from "vue";
-import { useWorkflow } from "../../../../composables/workflow.js";
-import { defineProps } from "vue";
-import { workflowGetJsonForm, workflowPostData } from "../../utils/api.js";
-// eslint-disable-next-line no-unused-vars
-import { JsonForms } from "@jsonforms/vue";
-import {
-  defaultStyles,
-  mergeStyles,
-  vanillaRenderers,
-} from "@jsonforms/vue-vanilla";
-import "@jsonforms/vue-vanilla/vanilla.css";
-// eslint-disable-next-line no-unused-vars
-import spinner from "../../../Spinner.vue";
-import Swal from "sweetalert2";
+import {defineProps, ref} from "vue";
+import {useWorkflow} from "../../../../composables/workflow.js";
+import {workflowGetJsonForm, workflowPostData} from "../../utils/api.js";
 
+// eslint-disable-next-line no-unused-vars
+import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
+import "@jsonforms/vue-vanilla/vanilla.css"; // eslint-disable-next-line no-unused-vars
+import Swal from "sweetalert2"; // eslint-disable-next-line no-unused-vars
+import {default as Spinner} from "../../../Spinner"; // eslint-disable-next-line no-unused-vars
+import { JsonForms } from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
 const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });
 // eslint-disable-next-line no-unused-vars
@@ -105,7 +99,7 @@ const onChange = (event) => {
 const onSubmit = async () => {
   const neededKeys = ["kvk_api_key", "project_name", "business_parks"];
   const hasAllKeys = neededKeys.every((key) =>
-    Object.keys(formData).includes(key) && Boolean(formData[key])
+      Object.keys(formData).includes(key) && Boolean(formData[key])
   );
   if (!hasAllKeys) {
     Swal.fire({
@@ -118,18 +112,18 @@ const onSubmit = async () => {
   }
 
   const response = await workflowPostData(workflowStep.url, formData);
-  if (response != null && response.ok) {
-    await Swal.fire({
-      title: "EPS project created!",
-      text: "An EPS project is created and a project file is being generated. Please wait about 10 minutes. When complete, the file will be found in the 'Run EPS' flow, as well as in the 'Download project files' flow.",
-      icon: "success",
-      confirmButtonText: "OK",
-    });
-    goToNextStep();
-  } else {
-    if (response != null) {
+  if (response != null) {
+    if (response.ok) {
+      await Swal.fire({
+        title: "EPS project created!",
+        text: "An EPS project is created and a project file is being generated. Please wait about 10 minutes. When complete, the file can be downloaded and adjusted under 'Adjust EPS input' and selected as input for 'Run EPS'.",
+        icon: "success",
+        confirmButtonText: "OK",
+      });
+      goToNextStep();
+    } else {
       const jsonResponse = await response.json();
-      let message =  "An error occurred when creating the EPS project. Please try again later. Please contact us if the problem persists.";
+      let message = "An error occurred when creating the EPS project. Please try again later. Please contact us if the problem persists.";
       if (jsonResponse.message) {
         message = jsonResponse.message;
       }

@@ -75,7 +75,7 @@ const onSubmit = async () => {
   isLoading.value = true;
 
   try {
-    const response = workflowPostData(workflowStep.url, dataToSubmit);
+    const response = await workflowPostData(workflowStep.url, dataToSubmit);
     if (response != null && response.ok && workflowStep.auto) {
       goToNextStep();
     }

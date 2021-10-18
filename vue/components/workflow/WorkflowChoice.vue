@@ -5,7 +5,6 @@
       :key="option.name"
       class="choice-entry"
     >
-      <p v-if="option.description">{{ option.description }}</p>
       <a-button
         :type="option.type || 'primary'"
         block
@@ -14,6 +13,7 @@
       >
         {{ option.name }}
       </a-button>
+      <p v-if="option.description">{{ option.description }}</p>
     </div>
   </div>
 </template>
