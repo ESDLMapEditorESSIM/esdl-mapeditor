@@ -177,6 +177,24 @@ def get_tooltip_asset_attrs(asset, shape):
     return attrs_dict
 
 
+def add_spatial_attributes(asset, attrs):
+    user_settings = get_session('user_settings')
+
+    if user_settings:
+        if 'ui_settings' in user_settings:
+            if 'spatial_buffers' in user_settings['ui_settings']:
+                spatial_buffer_settings = user_settings['ui_settings']['spatial_buffers']
+                if 'visible_on_startup' in spatial_buffer_settings and spatial_buffer_settings['visible_on_startup']:
+                    if asset.bufferDistance:
+                        attrs['dist'] = dict()
+                        for bd in asset.bufferDistance:
+                            attrs['dist'][bd.type.name] = bd.distance
+
+    # To be able to show a circle for assets that have a Point geometry and surfaceArea attribute
+    if asset.eIsSet('surfaceArea'):
+        attrs['surfaceArea'] = asset.surfaceArea
+
+
 def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
     port_list = []
     conn_list = []

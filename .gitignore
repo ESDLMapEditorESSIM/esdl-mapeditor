@@ -63,6 +63,9 @@ instance/
 venv/
 ENV/
 
+# Directory for cvustom env files.
+envs/
+
 # Editors
 .idea/
 
@@ -75,10 +78,10 @@ html/
 flask_session/
 node_modules
 yarn-error.log
-yarn.lock
 
 credentials/
 environments/
 venv*/
 node_modules/
 
+credentials/client_secrets_remote*.json

@@ -1,5 +1,5 @@
-import { ref } from "vue";
-import { getattrd } from "../utils/utils";
+import {ref} from "vue";
+import {getattrd} from "../utils/utils";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -8,6 +8,7 @@ export const WorkflowStepTypes = Object.freeze({
     SELECT_QUERY: 'select-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
+    JSON_FORM: 'json_form',
     DOWNLOAD_FILE: 'download_file',
     UPLOAD_FILE: 'upload_file',
     GET_DATA: 'get_data',
@@ -67,12 +68,15 @@ export function useWorkflow() {
      * result) to a value (the name in the state).
      */
     const getParamsFromState = (to_obtain_params) => {
-        const state = getState();
-        const params = {};
-        for (const [target_field, state_field] of Object.entries(to_obtain_params)) {
-            params[target_field] = getattrd(state, state_field);
+        if (to_obtain_params) {
+            const state = getState();
+            const params = {};
+            for (const [target_field, state_field] of Object.entries(to_obtain_params)) {
+                params[target_field] = getattrd(state, state_field);
+            }
+            return params;
         }
-        return params;
+        return {};
     }
 
     /**
@@ -115,21 +119,20 @@ export class Workflow {
         this.service_index = service_index;
         this.service = service;
         this.workflowStep = service.workflow[0];
-        this.step_idx = 0;
+        this.prevWorkflowSteps = [];
         this.state = {};
     }
 
     /**
      * Go to the next step.
      */
-    doNext(stepIdx = null) {
-        if (stepIdx === null) {
-            this.stepIdx = this.workflowStep.next_step;
-        } else {
-            this.stepIdx = stepIdx
+    doNext(targetStepIdx = null) {
+        if (targetStepIdx === null || targetStepIdx === undefined) {
+            targetStepIdx = this.workflowStep.next_step;
         }
-        if (this.stepIdx >= 0) {
-            this.workflowStep = this.service.workflow[this.stepIdx];
+        if (targetStepIdx >= 0) {
+            this.prevWorkflowSteps.push(this.workflowStep);
+            this.workflowStep = this.service.workflow[targetStepIdx];
         }
     }
 
@@ -137,7 +140,12 @@ export class Workflow {
      * Go to the previous step.
      */
     doPrevious() {
-        this.stepIdx = this.workflowStep.previous_step;
-        this.workflowStep = this.service.workflow[this.stepIdx];
+        this.workflowStep = this.prevWorkflowSteps.pop();
+        // this.stepIdx = this.workflowStep.previous_step;
+        // this.workflowStep = this.service.workflow[this.stepIdx];
+    }
+
+    hasPreviousStep() {
+        return this.prevWorkflowSteps.length > 0;
     }
 }

@@ -110,6 +110,13 @@ function add_area_map_handlers(socket, map) {
             if (layer instanceof L.Marker) {
                 // Update location of ports
                 update_marker_ports(layer);
+                if (layer.polygon) {
+                  // If an asset has an esdl.Point geometry and a surfaceArea attribute,
+                  // then it has been drawn as a circle, which is stored in the polygon attribute (which is also used
+                  // for assets that are drawn as a polygon).
+                  let circle = layer.polygon;
+                  circle.setLatLng(layer.getLatLng());
+                }
             }
             if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                 polyline_length = calculate_length(layer);
@@ -138,6 +145,11 @@ function add_area_map_handlers(socket, map) {
                 // recalculate area
                 polygon_area = calculate_area(layer);
                 socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs(), polygon_area: polygon_area});
+            }
+
+            // if one or more risk buffers were drawn, 'move' those too by removing existing ones and adding new ones...
+            if ('buffer_info' in layer) {
+                spatial_buffers_plugin.redraw_spatial_buffers(layer);
             }
         });
     });
@@ -195,6 +207,12 @@ function add_area_map_handlers(socket, map) {
                 window.draw_control._toolbars.edit._save();
           	}
         }
+        // Refresh ESDL (Ctrl+R)
+        if (event.keyCode == 82 && event.ctrlKey && !event.altKey && !event.metaKey) { // Ctrl+H (72), R(82)
+            window.refresh_esdl();
+            event.preventDefault();
+            return true;
+        }
     });
 
     map.on('keydown', function(e){
@@ -204,6 +222,7 @@ function add_area_map_handlers(socket, map) {
             cancel_connection();
             map.contextmenu.hide();
             remove_tooltip(); // clear tooltips if they are sticky
+            select_assets.deselect_all_assets(); //from select_asset.js
         }
         // only react to events on the map
         //  a - start drawing assets (as markers)
@@ -211,21 +230,21 @@ function add_area_map_handlers(socket, map) {
         //  d - enter delete layers mode
         //  e - enter edit layers mode
         //  p - start drawing a pipe
-        if (document.activeElement.id === 'mapid' && event.key === 'p' /*&& event.metaKey*/) {
+        if (document.activeElement.id === 'mapid' && event.key === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // draw a pipe
             window.update_line_asset_menu('Pipe');
             window.draw_control._toolbars.draw._modes.polyline.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'c' /*&& event.metaKey*/) {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'c' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // draw a pipe
             window.update_line_asset_menu('ElectricityCable');
             window.draw_control._toolbars.draw._modes.polyline.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'a' /*&& event.metaKey*/) {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'a' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             // draw a pipe
             //window.update_line_asset_menu('ElectricityCable');
             window.draw_control._toolbars.draw._modes.marker.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'e') {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'e' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             window.draw_control._toolbars.edit._modes.edit.handler.enable();
-        } else if (document.activeElement.id === 'mapid' && event.key === 'd') {
+        } else if (document.activeElement.id === 'mapid' && event.key === 'd' && !event.ctrlKey && !event.altKey && !event.metaKey) {
             window.draw_control._toolbars.edit._modes.remove.handler.enable();
         }
     });

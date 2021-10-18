@@ -1,21 +1,26 @@
 <template>
   <div class="choice-list">
-    <a-button
+    <div
       v-for="option in options"
       :key="option.name"
-      :type="option.type || 'primary'"
-      block
-      :disabled="isOptionDisabled(option)"
-      @click="goToStep(option.next_step)"
+      class="choice-entry"
     >
-      {{ option.name }}
-    </a-button>
+      <p v-if="option.description">{{ option.description }}</p>
+      <a-button
+        :type="option.type || 'primary'"
+        block
+        :disabled="isOptionDisabled(option)"
+        @click="goToStep(option.next_step)"
+      >
+        {{ option.name }}
+      </a-button>
+    </div>
   </div>
 </template>
 
 <script setup="props">
-import { useWorkflow } from '../../composables/workflow';
-import { defineProps } from 'vue'
+import {useWorkflow} from '../../composables/workflow';
+import {defineProps} from 'vue'
 
 const props = defineProps({
   workflowStep: {
@@ -37,11 +42,11 @@ const isOptionDisabled = (option) => {
   }
   if (option.disable_if_state) {
     const stateField = getFromState(option.disable_if_state);
-    if (option.disable_invert) {
-      return !stateField;
-    } else {
-      return Boolean(stateField);
-    }
+    return Boolean(stateField);
+  }
+  if (option.enable_if_state) {
+    const stateField = getFromState(option.enable_if_state);
+    return !stateField;
   }
   return false;
 }
@@ -49,7 +54,11 @@ const isOptionDisabled = (option) => {
 </script>
 
 <style scoped>
-.choice-list button {
+.choice-list .choice-entry {
   margin-bottom: 10px;
+}
+.choice-list .choice-entry p {
+  margin-bottom: 0;
+  color: #777;
 }
 </style>

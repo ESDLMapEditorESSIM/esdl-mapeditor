@@ -88,7 +88,7 @@ class SelectAssets {
             cll.toggle('Selected');
         }
         if (asset_leaflet_obj instanceof L.Polyline) {
-            update_line_color(asset_leaflet_obj);
+            update_line_color(asset_leaflet_obj); // from assets.js
 //            if (asset_leaflet_obj.selected) {
 //                //asset_leaflet_obj.options.orig_color = asset_leaflet_obj.options.color;
 //                asset_leaflet_obj.setStyle({

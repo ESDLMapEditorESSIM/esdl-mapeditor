@@ -14,72 +14,73 @@
 #  Manager:
 #      TNO
 
-from src.version import __long_version__ as mapeditor_version
-from warnings import warn
-from flask_executor import Executor
-from flask import Flask, render_template, session, request, send_from_directory, redirect, Response
-from flask_socketio import SocketIO, emit
-from flask_session import Session
-from flask_oidc import OpenIDConnect
-import jwt
-import requests
+import importlib
+import json
 import urllib
 import uuid
-import json
-import importlib
-import logging
 from datetime import datetime
 from pprint import pprint
+from warnings import warn
 
-from esdl.processing.ESDLAsset import get_asset_capability_type
-from src.assets_to_be_added import AssetsToBeAdded
-from src.essim_validation import validate_ESSIM
-from src.essim_kpis import ESSIM_KPIs
-from src.wms_layers import WMSLayers
-from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEcore, ESDLQuantityAndUnits, ESDLEnergySystem
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from src.esdl_helper import energy_asset_to_ui, update_carrier_conn_list, asset_state_to_ui, get_connected_to_info, \
-    get_asset_geom_info, get_tooltip_asset_attrs
+import jwt
+import requests
+from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
+from flask_executor import Executor
+from flask_oidc import OpenIDConnect
+from flask_session import Session
+from flask_socketio import SocketIO, emit
+from pyecore.ecore import EDate
+
+import src.esdl_config as esdl_config
+import src.settings as settings
 from esdl import esdl
-from src.process_es_area_bld import process_energy_system, get_building_information
-from extensions.heatnetwork import HeatNetwork
-from extensions.ibis import IBISBedrijventerreinen
+from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
+from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
-from extensions.esdl_browser import ESDLBrowser
-from extensions.session_manager import set_handler, get_handler, get_session, set_session, del_session, schedule_session_clean_up, valid_session, get_session_for_esid, set_session_for_esid, delete_sessions_on_disk
-import src.esdl_config as esdl_config
-from src.esdl_helper import get_asset_from_port_id, get_asset_and_coord_from_port_id, generate_profile_info, get_port_profile_info
-from utils.datetime_utils import parse_date
-import src.settings as settings
-from src.edr_assets import EDRAssets
-from src.esdl_services import ESDLServices
-from extensions.profiles import Profiles
-from pyecore.ecore import EDate
-from src.user_logging import UserLogging
-from extensions.settings_storage import SettingsStorage
+from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
+from extensions.esdl_browser import ESDLBrowser
 from extensions.esdl_compare import ESDLCompare
+from extensions.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
+from extensions.essim_sensitivity import ESSIMSensitivity
+from extensions.etm_local import ETMLocal
+from extensions.heatnetwork import HeatNetwork
+from extensions.ibis import IBISBedrijventerreinen
+from extensions.ielgas import IELGAS
+from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
+from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
+from extensions.port_profile_viewer import PortProfileViewer
+from extensions.profiles import Profiles
+from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+from extensions.settings_storage import SettingsStorage
+from extensions.shapefile_converter import ShapefileConverter
+from extensions.spatial_operations import SpatialOperations
+from extensions.time_dimension import TimeDimension
 from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from src.log import get_logger
-from extensions.esdl_drive import ESDLDrive
-from extensions.es_statistics import ESStatisticsService
-from extensions.shapefile_converter import ShapefileConverter
-from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.time_dimension import TimeDimension
-from extensions.ielgas import IELGAS
-from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
-from extensions.etm_local import ETMLocal
-from extensions.port_profile_viewer import PortProfileViewer
-from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
-from src.datalayer_api import DataLayerAPI
-from src.view_modes import ViewModes
-from extensions.spatial_operations import SpatialOperations
 from src.asset_draw_toolbar import AssetDrawToolbar
+from src.assets_to_be_added import AssetsToBeAdded
+from src.datalayer_api import DataLayerAPI
+from src.edr_assets import EDRAssets
+from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
+    get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
+    update_carrier_conn_list
+from src.esdl_services import ESDLServices
+from src.essim_kpis import ESSIM_KPIs
+from src.essim_validation import validate_ESSIM
+from src.log import get_logger
+from src.process_es_area_bld import get_building_information, process_energy_system
+from src.user_logging import UserLogging
+from src.version import __long_version__ as mapeditor_version
+from src.view_modes import ViewModes
+from src.wms_layers import WMSLayers
+from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
@@ -133,7 +134,7 @@ logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
 socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
-get_logger('engineio').setLevel(logging.WARNING)  # don't print all the messages
+# logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
 # remove existing sessions when restarting, existing sessions will give errors
 # as associated ESDLs are not stored in the session and the OpenId connect info is wrong
@@ -208,7 +209,7 @@ def add_header(r: Response):
     Add headers to both force latest IE rendering engine or Chrome Frame,
     and also to cache the rendered page for 10 minutes.
     """
-    if r.content_type is 'image/png': # images are allowed to be cached.
+    if r.content_type == 'image/png': # images are allowed to be cached.
         return r
     r.headers["Pragma"] = "no-cache"
     r.headers["Expires"] = "0"
@@ -401,13 +402,13 @@ def download_esdl():
         #stream = esh.to_bytesio()
         my_es = esh.get_energy_system(es_id=active_es_id)
         esh.update_version(es_id=active_es_id)
-        if my_es.esdlVersion is None or my_es.esdlVersion is '':
+        if my_es.esdlVersion is None or my_es.esdlVersion == '':
             my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
         except:
             name = my_es.id
-        if name is None or name is '':
+        if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
         logger.info('Sending file %s' % name)
@@ -1597,7 +1598,7 @@ def process_command(message):
                         asset.length = float(shape['length']) if 'length' in shape else 0.0
                         print(message)
                         # automatically connect the conductor to the ports that have been clicked
-                        if 'connect_ports' in message and message['connect_ports'] is not '':
+                        if 'connect_ports' in message and message['connect_ports'] != '':
                             connect_ports_msg = message['connect_ports']
                             start_port = None
                             end_port = None
@@ -1663,8 +1664,12 @@ def process_command(message):
                                     carrier_id = start_port.carrier.id
                                     inp.carrier = start_port.carrier
                                     outp.carrier = start_port.carrier
-                                    if end_port is not None:
-                                        end_port.carrier = start_port.carrier
+                                    if end_port is not None and end_port.carrier is None:
+                                        if isinstance(end_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                            for p in end_port.energyasset.port:
+                                                p.carrier = start_port.carrier if p.carrier is None else p.carrier
+                                        else:
+                                            end_port.carrier = start_port.carrier
 
 
                             if end_port:
@@ -1676,8 +1681,13 @@ def process_command(message):
                                     carrier_id = end_port.carrier.id
                                     inp.carrier = end_port.carrier
                                     outp.carrier = end_port.carrier
-                                    if start_port is not None:
-                                        start_port.carrier = end_port.carrier
+                                    if start_port is not None and start_port.carrier is None:
+                                        if isinstance(start_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                            for p in start_port.energyasset.port:
+                                                p.carrier = end_port.carrier if p.carrier is None else p.carrier
+                                        else:
+                                            start_port.carrier = end_port.carrier
+
 
 
                             # send messages to update connections and start port / end port marker colors based on
@@ -1747,40 +1757,34 @@ def process_command(message):
                             double_line_mode = True
 
                         if capability == 'Producer':
-                            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                            asset.port.append(outp)
+                            asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                             if double_line_mode:
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                                asset.port.append(inp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
                         elif capability in ['Consumer', 'Storage']:
-                            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                            asset.port.append(inp)
+                            asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
                             if double_line_mode:
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Conversion':
-                            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                            asset.port.append(inp)
-                            outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                            asset.port.append(outp)
+                            if object_type == "HeatPump" and double_line_mode:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
+                            else:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Transport':
                             if object_type == 'HeatExchange' or object_type == 'Transformer':
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='PrimIn')
-                                asset.port.append(inp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
                                 if double_line_mode:
-                                    outp = esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut')
-                                    asset.port.append(outp)
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
 
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='SecOut')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
                                 if double_line_mode:
-                                    inp = esdl.InPort(id=str(uuid.uuid4()), name='SecIn')
-                                    asset.port.append(inp)
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
                             else:
-                                inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                                asset.port.append(inp)
-                                outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
-                                asset.port.append(outp)
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else:
@@ -2003,9 +2007,17 @@ def process_command(message):
 
                 # propagate carrier
                 if not port2.carrier and port1.carrier:
-                    port2.carrier = port1.carrier
+                    if isinstance(port2.energyasset, esdl.Joint):
+                        for p in port2.energyasset.port:    # porpagate carrier in case of a joint
+                            p.carrier = port1.carrier if p.carrier is None else p.carrier
+                    else:
+                        port2.carrier = port1.carrier
                 elif port2.carrier and not port1.carrier:
-                    port1.carrier = port2.carrier
+                    if isinstance(port1.energyasset, esdl.Joint):
+                        for p in port1.energyasset.port:    # porpagate carrier in case of a joint
+                            p.carrier = port1.carrier if p.carrier is None else p.carrier
+                    else:
+                        port1.carrier = port2.carrier
 
                 p1_carr_id = port1.carrier.id if port1.carrier else None
                 p2_carr_id = port2.carrier.id if port2.carrier else None
@@ -2412,7 +2424,7 @@ def process_command(message):
             ptype = message['ptype']
         if 'direction' in message:
             direction = message['direction']
-            ptype = 'InPort' if direction is 'in' else 'OutPort'
+            ptype = 'InPort' if direction == 'in' else 'OutPort'
 
         asset = esh.get_by_id(es_edit.id, asset_id)
         if ptype == 'InPort':
@@ -2930,7 +2942,13 @@ def process_command(message):
 def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
-    esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+    try:
+        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+    except Exception as exc:
+        logger.exception("Exception when querying ESDL service")
+        esdl_service_ok = False
+        esdl_service_result = str(exc)
+
     logger.debug('emitting result to browser')
     if esdl_service_ok:
         if esdl_service_result is not None:
@@ -2993,6 +3011,7 @@ def process_file_command(message):
                     info += line + "\n"
                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
         except Exception as e:
+            logger.exception(f"Error opening {filename}")
             send_alert("Error opening {}. Exception is: {}".format(filename, e))
             emit('clear_ui')
             return

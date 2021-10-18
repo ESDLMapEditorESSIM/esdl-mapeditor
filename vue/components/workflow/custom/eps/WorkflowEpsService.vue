@@ -7,34 +7,40 @@
   <div v-else>
     <p>Please select the "Run ESDL service" button below to start the EPS.</p>
 
-    <a-form :model="form" :label-col="{ span: 0 }">
-      <a-form-item label="Aggregate buildings">
-        <a-switch @change="setAggregateBuildings">
-          <template #checkedChildren><check-outlined /></template>
-          <template #unCheckedChildren><close-outlined /></template>
-        </a-switch>
-      </a-form-item>
-      <a-form-item label="Number of scenarios to generate">
-        <a-input-number :min="1" :max="5" :default-value="1" @change="setNrOfScenarios" />
-      </a-form-item>
-    </a-form>
+    <json-forms
+      :data="formData"
+      :schema="schema"
+      :uischema="uischema"
+      :renderers="renderers"
+      @change="onChange"
+    />
+
+    <hr>
+
     <a-button type="primary" @click="doPost"> Run ESDL service </a-button>
   </div>
 </template>
 
 <script setup="props">
-import { CheckOutlined, CloseOutlined } from "@ant-design/icons-vue";
 import { defineProps, ref } from "vue";
-import { genericErrorHandler } from "../../../utils/errors.js";
-import { useWorkflow } from "../../../composables/workflow.js";
+import { genericErrorHandler } from "../../../../utils/errors.js";
+import { useWorkflow } from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "../NextOrClose";
+import { default as NextOrClose } from "../../NextOrClose";
+import { workflowGetJsonForm } from "../../utils/api.js";
+// eslint-disable-next-line no-unused-vars
+import { JsonForms } from "@jsonforms/vue";
+import {
+  defaultStyles,
+  mergeStyles,
+  vanillaRenderers,
+} from "@jsonforms/vue-vanilla";
+import "@jsonforms/vue-vanilla/vanilla.css";
 
 // eslint-disable-next-line no-unused-vars
-const components = {
-  CheckOutlined,
-  CloseOutlined,
-};
+const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });
+// eslint-disable-next-line no-unused-vars
+const renderers = Object.freeze([...vanillaRenderers]);
 
 const props = defineProps({
   workflowStep: {
@@ -44,25 +50,49 @@ const props = defineProps({
   },
 });
 
+const { getParamsFromState, goToNextStep } = useWorkflow();
 const workflowStep = props.workflowStep;
 
-const isLoading = ref(false);
-const form = { nr_of_scenarios: 1, aggregate_buildings: false };
-
-// These 2 set functions should not be necessary, according to the docs. We should be
-// able to use v-model:value and things would work. Unfortunately it doesn't though,
-// but this works.
-// eslint-disable-next-line no-unused-vars
-const setAggregateBuildings = (checked) => {
-  form.aggregate_buildings = checked;
-};
+let formData = { };
 
 // eslint-disable-next-line no-unused-vars
-const setNrOfScenarios = (value) => {
-  form.nr_of_scenarios = value;
+const uischema = {
+  type: "VerticalLayout",
+  elements: [
+    {
+      type: "Control",
+      scope: "#/properties/project_name",
+      label: "Project",
+    },
+    {
+      type: "Control",
+      scope: "#/properties/file_name",
+      label: "Project file"
+    },
+  ],
 };
 
-const { getParamsFromState, goToNextStep } = useWorkflow();
+const isLoading = ref(true);
+const schema = ref({});
+const getJsonForm = async () => {
+  const request_params = getParamsFromState(
+    workflowStep.target["request_params"]
+  );
+  request_params["url"] = workflowStep.url;
+  const queryString = new URLSearchParams(request_params).toString();
+
+  try {
+    schema.value = await workflowGetJsonForm(queryString, "RunEpsSchemaForProject");
+  } finally {
+    isLoading.value = false;
+  }
+}
+getJsonForm();
+
+// eslint-disable-next-line no-unused-vars
+const onChange = (event) => {
+  formData = event.data;
+};
 
 const message = ref("");
 
@@ -71,15 +101,9 @@ const doPost = async () => {
   isLoading.value = true;
   window.show_loader();
 
-  // Build the target request parameters by getting the values from the state and the form.
-  const request_params = getParamsFromState(
-    workflowStep.target["request_params"]
-  );
-  request_params["nr_of_scenarios"] = form.nr_of_scenarios;
-  request_params["aggregate_buildings"] = form.aggregate_buildings;
   const params = {
-    remote_url: workflowStep.target.url,
-    request_params: request_params,
+    remote_url: workflowStep.url,
+    request_params: formData,
   };
 
   try {
@@ -118,7 +142,15 @@ const doPost = async () => {
 </script>
 
 <style scoped>
-.ant-form-item {
-  margin-bottom: 0;
+.vertical-layout-item {
+  padding-bottom: 5px;
+}
+
+.array-list-label {
+  font-size: 1rem;
+}
+
+.array-list-no-data {
+  background-color: rgb(238, 238, 238) !important;
 }
 </style>

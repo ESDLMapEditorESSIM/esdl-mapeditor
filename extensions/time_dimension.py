@@ -141,16 +141,12 @@ class TimeDimension:
 
         @self.socketio.on('time_dimension_get_settings', namespace='/esdl')
         def time_dimension_get_settings():
-            print('get_settings')
             user = get_session('user-email')
             user_settings = self.get_user_settings(user)
-            print(user_settings)
             return user_settings
 
         @self.socketio.on('time_dimension_set_settings', namespace='/esdl')
         def time_dimension_set_settings(user_settings):
-            print('set settings')
-            print(user_settings)
             user = get_session('user-email')
             self.set_user_settings(user, user_settings)
 

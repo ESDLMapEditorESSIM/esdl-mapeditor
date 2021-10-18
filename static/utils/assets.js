@@ -156,6 +156,7 @@ function set_marker_handlers(marker) {
         }
     }
 
+    marker.off('dragend')
     marker.on('dragend', function(e) {
         var marker = e.target;
         var pos = marker.getLatLng();
@@ -166,6 +167,7 @@ function set_marker_handlers(marker) {
 
     // TODO replace this with map.on("draw:deleted") as then undo function works
     // Now it deletes everything even when you press cancel.
+    marker.off('remove')
     marker.on('remove', function(e) {
         // console.log('remove marker');
         // marker.options.icon.tooltip('destroy');
@@ -184,6 +186,11 @@ function set_marker_handlers(marker) {
                     }
                }
             }
+
+            let layer = e.target;
+            if ('buffer_info' in layer)
+                spatial_buffers_plugin.remove_spatial_buffers(layer);
+
             // remove connections manually:
             for (let i in marker.ports) {
                 let from_id = marker.ports[i].id;
@@ -195,6 +202,7 @@ function set_marker_handlers(marker) {
         }
     });
 
+    marker.off('click');
     marker.on('click', function(e) {
         var marker = e.target;
         if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
@@ -282,8 +290,9 @@ function set_line_handlers(line) {
         }
     });
 
+    line.off('remove');
     line.on('remove', function(e) {
-        var layer = e.target;
+        let layer = e.target;
         if (layer.mouseOverArrowHead !== undefined) {
             map.removeLayer(layer.mouseOverArrowHead)
             delete layer.mouseOverArrowHead;
@@ -301,10 +310,14 @@ function set_line_handlers(line) {
                 }
             }
 
+            if ('buffer_info' in layer)
+                spatial_buffers_plugin.remove_spatial_buffers(layer);
+
             socket.emit('command', {cmd: 'remove_object', id: line.id});
         }
     });
 
+    line.off('click');
     line.on('click', function(e) {
         if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
                 !e.originalEvent.metaKey) {
@@ -333,6 +346,7 @@ function set_line_handlers(line) {
             }
         }
     });
+    line.off('edit');
     line.on('edit', function(e) { // in edit mode dragging has ended: update connections
         var layer = e.target;
         //var pos = marker.getLatLng();
@@ -411,7 +425,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point') {
+    if (asset_info[0] == 'point' && !('surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -436,20 +450,29 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+        if (spatial_buffers_plugin.show_spatial_buffers())
+            spatial_buffers_plugin.add_spatial_buffers(marker);
   
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
                 { permanent: true, className: 'marker-tooltip' });
     }
-    if (asset_info[0] == 'polygon') {
-        var coords = asset_info[5];
+    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && 'surfaceArea' in asset_info[6])) {
+        // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
+        var coords = asset_info[5]
         let polygon_color;
         if (asset_info[1] == 'asset') {
             polygon_color = colors[asset_info[9]]
         } else {
             polygon_color = colors["Potential"]
         }
-        var polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
+        var polygon;
+        if (asset_info[0] == 'polygon') {
+            polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
+        } else {
+            let radius = Math.sqrt(asset_info[6]['surfaceArea'] / Math.PI)
+            polygon = L.circle(coords, {radius: radius, color: polygon_color, weight: 3, draggable:true, title: title});
+        }
   
         polygon.title = title;
         polygon.id = asset_info[3];
@@ -460,8 +483,13 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         polygon.attrs = asset_info[6];
         // esdl_layer.addLayer(polygon);
         add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
+        if (spatial_buffers_plugin.show_spatial_buffers())
+            spatial_buffers_plugin.add_spatial_buffers(polygon);
   
-        var polygon_center = calculate_array_polygon_center(coords);
+        var polygon_center = coords;        // Take the point location as a center or
+        if (asset_info[0] == 'polygon') {   // if its a polygon, calculate the center
+            polygon_center = calculate_array_polygon_center(coords);
+        }
         var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
   
         marker.title = title;
@@ -471,7 +499,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
         marker.attrs = asset_info[6];
-        marker.polygon = true;
+        marker.polygon = polygon;
         polygon.marker = marker;
         if (marker.asspot == 'asset') {
             marker.ports = asset_info[8];
@@ -520,6 +548,9 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_line_handlers(line);
         add_object_to_layer(es_bld_id, 'esdl_layer', line);
+        if (spatial_buffers_plugin.show_spatial_buffers())
+            spatial_buffers_plugin.add_spatial_buffers(line);
+
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
                 '                   ', {repeat: true});
@@ -566,7 +597,7 @@ function update_line_color(line_layer) {
         if (line_layer.selectline === undefined) {
             let size_line = 3;
             if (map.getZoom() > 15) size_line = 2 * map.getZoom() - 27 + 6; //butt
-            let selectline_options = {lineCap: 'round', color: "#000000", weight: size_line, draggable:false,
+            let selectline_options = {lineCap: 'round', color: "#050505", weight: size_line, draggable:false,
                                       title: title, className:"overlayline",
                                       dashArray:"", opacity: 1.0, pane: 'lineSelectionPane'};
             //$('#mapid .zoomline').css({'stroke-width': size_line});

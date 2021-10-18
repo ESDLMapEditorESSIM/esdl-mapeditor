@@ -12,28 +12,29 @@
 #  Manager:
 #      TNO
 
+import base64
 import copy
 import json
 import urllib.parse
-import base64
 import uuid
+from typing import Any, Dict, List
 
 import requests
+from flask import Flask
+from flask_socketio import SocketIO, emit
 
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset
-from src.esdl_helper import energy_asset_to_ui
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
-from flask import Flask
-from flask_socketio import SocketIO, emit
 from src.esdl_helper import energy_asset_to_ui
 
 logger = log.get_logger(__name__)
 
 ESDL_SERVICES_CONFIG = "ESDL_SERVICES_CONFIG"
+"""The key the ESDL Services are stored with in the settings."""
 
 
 class ESDLServices:
@@ -71,7 +72,8 @@ class ESDLServices:
 
             return settings
 
-    def get_user_settings(self, user):
+    def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
+        """Get the user services from the settings storage. """
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
             esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
         else:
@@ -79,25 +81,45 @@ class ESDLServices:
             self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
         return esdl_services_settings
 
-    def restore_settings(self, user):
+    def get_role_based_services(self, roles: List[str]) -> List[Dict[str, Any]]:
+        """Get the services available for this user role from the config. """
+        role_based_esdl_services: Dict[str, Any] = esdl_config.esdl_config["role_based_esdl_services"]
+        selected_services = list()
+        for role in roles:
+            role_services = role_based_esdl_services.get(role, [])
+            selected_services.extend(role_services)
+        return selected_services
+
+    def restore_settings(self, user: str):
         esdl_services_settings = esdl_config.esdl_config["predefined_esdl_services"]
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
         return esdl_services_settings
 
-    def set_user_settings(self, user, settings):
+    def set_user_settings(self, user: str, settings):
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, settings)
 
-    def get_user_services_list(self, user, roles=[]):
+    def get_user_services_list(self, user: str, roles: List[str] = []) -> List[Dict[str, Any]]:
+        """
+        Get the full list of services for this user with the given roles. Both user and roles come from Keycloak.
+        """
         srvs_list = self.get_user_settings(user)
         # store the user services list in session for later use
         set_session('services_list', srvs_list)
 
-        my_list = copy.deepcopy(srvs_list)
-        for s in list(my_list):
-            if "required_role" in s and s["required_role"] not in roles:
-                my_list.remove(s)
+        # Start with user services, remove those services that the user does not have the role for.
+        final_services_list = copy.deepcopy(srvs_list)
+        for service in list(final_services_list):
+            if "required_role" in service and service["required_role"] not in roles:
+                final_services_list.remove(service)
 
-        return my_list
+        service_ids: List[str] = [service["id"] for service in final_services_list]
+        # Get role based services and add them, unless a service with matching ID exists.
+        role_based_services = self.get_role_based_services(roles)
+        for role_based_service in role_based_services:
+            if role_based_service["id"] not in service_ids:
+                final_services_list.append(role_based_service)
+
+        return final_services_list
 
     def array2list(self, ar):
         if isinstance(ar, list):
@@ -116,7 +138,10 @@ class ESDLServices:
 
         # Find the currently active service.
         service = None
-        services_list = get_session('services_list')
+        # services_list = get_session('services_list')
+        user_email = get_session('user-email')
+        role = get_session('user-role')
+        services_list = self.get_user_services_list(user_email, role)
         for config_service in services_list:
             if config_service["id"] == service_params["service_id"]:
                 service = config_service
@@ -157,16 +182,16 @@ class ESDLServices:
                 area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
                 area_subscope = service_params["area_subscope"]
                 url = url.replace(area_subscope_tag, area_subscope)
-        elif service["type"] == "send_esdl":
+        elif service["type"].startswith("send_esdl"):
             esdlstr = esh.to_string(active_es_id)
 
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
                 # print(body)
             elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('ascii')
+                esdlstr_bytes = esdlstr.encode('utf-8')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
+                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
             else:
                 body = esdlstr
         elif service["type"] == "simulation":
@@ -214,7 +239,7 @@ class ESDLServices:
                                 body[param["parameter"]] = body_params[bp]
 
         query_params = service_params["query_parameters"]
-        config_service_params = service["query_parameters"]
+        config_service_params = service.get("query_parameters", {})
         if query_params:
             first_qp = True
             for key in query_params:
@@ -247,7 +272,7 @@ class ESDLServices:
             if service["http_method"] == "get":
                 r = requests.get(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"] == "json":
+                if service["type"].endswith("json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
@@ -283,11 +308,17 @@ class ESDLServices:
                     area = instance[0].area
                     asset_str_list = json.loads(r.text)
 
+                    # Fix for services that return an ESDL string that represents one asset
+                    if isinstance(asset_str_list, str):
+                        asset_str_list = {
+                            "add_assets": [asset_str_list]
+                        }
+
                     try:
                         for asset_str in asset_str_list["add_assets"]:
                             asset = ESDLAsset.load_asset_from_string(asset_str)
                             esh.add_object_to_dict(active_es_id, asset)
-                            ESDLAsset.add_asset_to_area(es_edit, asset, area.id)
+                            ESDLAsset.add_object_to_area(es_edit, asset, area.id)
                             asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
                             emit(
                                 "add_esdl_objects",
@@ -356,7 +387,7 @@ class ESDLServices:
                 logger.warning(r.content)
                 return False, str(r.content)
         except Exception as e:
-            logger.warning("Error accessing external ESDL service: " + str(e))
+            logger.exception("Error accessing external ESDL service: " + str(e))
             return False, None
 
         return False, None
