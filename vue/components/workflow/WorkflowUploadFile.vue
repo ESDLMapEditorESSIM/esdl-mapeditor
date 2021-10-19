@@ -26,6 +26,7 @@ const workflowStep = props.workflowStep;
 const { getParamsFromState, getState, goToNextStep } = useWorkflow();
 const state = getState();
 
+// eslint-disable-next-line no-unused-vars
 const onSubmit = async () => {
   const file_input = document.getElementById(inputId);
   const file_reader = new FileReader();

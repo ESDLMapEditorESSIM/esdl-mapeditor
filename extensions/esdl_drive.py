@@ -207,7 +207,7 @@ class ESDLDrive:
             #token = self.oidc.get_access_token() -> does not work unfortunately
             token = get_session('jwt-token')
             if token is None:
-                print("Token is None!")
+                print("ESDLDrive: Token is None! Can't access without token.")
                 return {'status': 403, 'error': "ESDLDrive: Token not available, please reauthenticate"}
             headers = {'Authorization': 'Bearer ' + token}
             try:

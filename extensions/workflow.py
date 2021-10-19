@@ -18,7 +18,7 @@ import cgi
 import os
 
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request
 from flask_socketio import SocketIO
 
 from extensions.session_manager import get_session
@@ -27,19 +27,39 @@ from src.log import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_TIMEOUT = 30
+"""Default timeout for workflow requests."""
 
 class Workflow:
+    """
+    The workflow extension contains proxy endpoints, to allow the frontend to access defined services.
+    """
     def __init__(
         self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage
     ):
         self.flask_app = flask_app
-        self.socketio = socket
-        self.settings_storage = settings_storage
 
         self.register()
 
     def register(self):
         logger.info("Registering workflow extension")
+
+        @self.flask_app.route("/workflow/get_options")
+        def get_options():
+            url = request.args["url"]
+            other_args = dict(request.args)
+            del other_args["url"]
+            with_jwt_token = request.args.get("with_jwt_token", True)
+            jwt_token = get_session("jwt-token")
+            headers = (
+                {"Authorization": f"Bearer {jwt_token}"} if with_jwt_token else None
+            )
+            r = requests.options(url, params=other_args, headers=headers, timeout=DEFAULT_TIMEOUT)
+            try:
+                resp_json = r.json()
+            except Exception:
+                resp_json = []
+            return jsonify(resp_json), r.status_code
 
         @self.flask_app.route("/workflow/get_data")
         def get_data():
@@ -52,7 +72,7 @@ class Workflow:
                 {"Authorization": f"Bearer {jwt_token}"} if with_jwt_token else None
             )
             url = url.format(**other_args)
-            r = requests.get(url, headers=headers, params=other_args)
+            r = requests.get(url, headers=headers, params=other_args, timeout=DEFAULT_TIMEOUT)
             try:
                 resp_json = r.json()
             except Exception:
@@ -77,7 +97,7 @@ class Workflow:
 
             request_params = request.json.get("request_params")
             url = url.format(**request_params)
-            r = requests.post(url, json=request_params, headers=headers)
+            r = requests.post(url, json=request_params, headers=headers, timeout=DEFAULT_TIMEOUT)
             if r.status_code == 200:
                 # Get the filename from the header.
                 parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
@@ -90,6 +110,18 @@ class Workflow:
 
         @self.flask_app.route("/workflow/post_data", methods=["POST"])
         def post_data():
+            """Post provided data to external services.
+
+            Request JSON is expected to have the following format:
+            {
+                'remote_url': <The remote URL to send the data to>,
+                'request_params: {},
+            }
+
+            Returns:
+                [type]: [description]
+            """
+            logger.info(request.json)
             url = request.json["remote_url"]
             with_jwt_token = request.args.get("with_jwt_token", True)
             jwt_token = get_session("jwt-token")
@@ -98,7 +130,7 @@ class Workflow:
             )
 
             request_params = request.json.get("request_params")
-            r = requests.post(url, json=request_params, headers=headers)
+            r = requests.post(url, json=request_params, headers=headers, timeout=DEFAULT_TIMEOUT)
             try:
                 resp_json = r.json()
             except Exception:

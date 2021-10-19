@@ -702,7 +702,7 @@
             let size_line = 2;
             if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
             $('#mapid .zoomline').css({'stroke-width': size_line + 'px'});
-            $('#mapid .overlayline').css({'stroke-width': (size_line + 10) + 'px' });
+            $('#mapid .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
             set_port_size_and_position();       /* Ports */
         }
@@ -1078,10 +1078,12 @@
                             var popup = e.target.getPopup();
                             var this_map = e.sourceTarget._map;     // can be area map and building map
                             popup.setLatLng(e.latlng).openOn(this_map);
+                            e.target.setStyle({dashArray:'1', weight: linewidth+2});
                         });
 
                         line.on('mouseout', function(e) {
                             e.target.closePopup();
+                            e.target.setStyle({dashArray:'3,10', weight: linewidth});
                         });
 
                         line.on('mousemove', function (e) {
@@ -1668,7 +1670,7 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" onclick="undo();"><div class="menu-icon" style="margin-top:0px"><i class="fa fa-undo" aria-hidden="true"></i></div>Undo</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="redo();"><div class="menu-icon" style="margin-top:0px"><i class="fa fa-redo" aria-hidden="true"></i></div>Redo</a></li>
-                                    <li class="dropdown-divider"></li>
+                                    <li><div class="dropdown-divider"/></li>
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
@@ -1737,8 +1739,8 @@
                                 <ul class="dropdown-menu">
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="refresh_esdl();">
-                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px"><i class="fa fa-refresh fa-fw"></i></div>
-                                            Refresh view
+                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
+                                            Refresh view (Ctrl+R)
                                         </a>
                                     </li>
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
@@ -1843,7 +1845,9 @@
         timeDimensionOptions: {
             timeInterval: "2015-01-01T00:00+01:00/2016-01-01T00:00+01:00",
             period: "PT1H"
-        }
+        },
+        contextmenu: true,
+        contextmenuItems: [],
     });
 
     map.on('keyup', function(e) {

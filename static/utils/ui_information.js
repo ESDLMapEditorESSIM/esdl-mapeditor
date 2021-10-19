@@ -97,6 +97,7 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 //  Updates asset state
 // ------------------------------------------------------------------------------------------------------------
 function update_asset_state(asset_id, new_state) {
+    if (!asset_id) { return; }
     var asset_list;
     if (!Array.isArray(asset_id)) {
         asset_list = [asset_id];

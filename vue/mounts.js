@@ -1,13 +1,35 @@
 /**
  * Mounting functions, to mount Vue components somewhere in the MapEditor.
  */
-import { createApp } from "vue"
+import {createApp} from "vue"
 import VueComponentLControl from './components/leaflet/VueComponentLControl'
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
 // Import subset.
-import { Button, Card, Collapse, DatePicker, Dropdown, Input, Form, Modal, Select, Space, Table, Transfer, Tree, Upload, Row, Col, InputNumber, Radio, Switch, Divider } from 'ant-design-vue';
+import {
+    Breadcrumb,
+    Button,
+    Card,
+    Col,
+    Collapse,
+    DatePicker,
+    Divider,
+    Dropdown,
+    Form,
+    Input,
+    InputNumber,
+    Modal,
+    Radio,
+    Row,
+    Select,
+    Space,
+    Switch,
+    Table,
+    Transfer,
+    Tree,
+    Upload
+} from 'ant-design-vue';
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -53,5 +75,6 @@ export function mountApp(component, elementSelector) {
     app.use(Row);
     app.use(Col);
     app.use(Divider);
+    app.use(Breadcrumb);
     app.mount(elementSelector);
 }

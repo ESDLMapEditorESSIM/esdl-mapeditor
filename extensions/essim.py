@@ -12,21 +12,23 @@
 #  Manager:
 #      TNO
 
-from flask import Flask, jsonify, session, abort
-from flask_socketio import SocketIO, emit
-from flask_executor import Executor
-from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session, set_session, del_session
-from src.essim_kpis import ESSIM_KPIs
-import requests
-import urllib
-import json
-import uuid
 import base64
+import json
+import urllib
+import uuid
 from datetime import datetime
-import src.settings as settings
-from src.process_es_area_bld import process_energy_system
+
+import requests
+from flask import Flask, abort, jsonify, session
+from flask_executor import Executor
+from flask_socketio import SocketIO, emit
+
 import src.log as log
+import src.settings as settings
+from extensions.session_manager import del_session, get_handler, get_session, set_session
+from extensions.settings_storage import SettingsStorage
+from src.essim_kpis import ESSIM_KPIs
+from src.process_es_area_bld import process_energy_system
 
 logger = log.get_logger(__name__)
 
@@ -391,9 +393,9 @@ class ESSIM:
             if current_es_name == "":
                 current_es_name = "Untitled energysystem"
             esdlstr = esh.to_string(active_es_id)
-            esdlstr_bytes = esdlstr.encode('ascii')
+            esdlstr_bytes = esdlstr.encode('utf-8')
             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-            esdlstr_base64 = esdlstr_base64_bytes.decode('ascii')
+            esdlstr_base64 = esdlstr_base64_bytes.decode('utf-8')
 
             ESSIM_config = settings.essim_config
 

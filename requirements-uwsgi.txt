@@ -20,3 +20,7 @@ shapely-geojson==0.0.1
 si-prefix==1.2.2
 xmldiff==2.4
 uWSGI==2.0.19.1
+
+# Logging
+colorama==0.4.4
+structlog==21.1.0

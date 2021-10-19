@@ -11,6 +11,10 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import os
+
+EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
+ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 
 esdl_config = {
     "control_strategies": [
@@ -45,14 +49,14 @@ esdl_config = {
             "description": "Power in kW",
             "physicalQuantity": "POWER",
             "multiplier": "KILO",
-            "unit": "WATT"
+            "unit": "WATT",
         },
         {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1b",
             "description": "Power in MW",
             "physicalQuantity": "POWER",
             "multiplier": "MEGA",
-            "unit": "WATT"
+            "unit": "WATT",
         },
         {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1c",
@@ -213,7 +217,7 @@ esdl_config = {
                     {"scope": "MUNICIPALITY", "url_value": "gemeenten"},
                 ],
             },
-            "query_parameters": []
+            "query_parameters": [],
         },
         {
             "id": "42c584b1-43c1-4369-9001-c89ba80d8370",
@@ -276,10 +280,7 @@ esdl_config = {
                     "parameter_name": "environment",
                     "location": "body",
                     "type": "selection",
-                    "possible_values": [
-                        "pro",
-                        "beta"
-                    ],
+                    "possible_values": ["pro", "beta"],
                 }
             ],
             "result": [{"code": 200, "action": "print"}],
@@ -298,27 +299,23 @@ esdl_config = {
                     "source": {
                         "url": "http://10.30.2.1:3011/schema",
                         "http_method": "get",
-                        "label_fields": [
-                            "name"
-                        ],
-                        "value_field": "id"
+                        "label_fields": ["name"],
+                        "value_field": "id",
                     },
                     "target_variable": "schema",
-                    "next_step": 1
+                    "next_step": 1,
                 },
                 {
                     "name": "Schema validation",
                     "description": "",
                     "type": "service",
-                    "state_params": {
-                        "schemas": "schema.id"
-                    },
+                    "state_params": {"schemas": "schema.id"},
                     "service": {
                         "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb27",
                         "name": "Validate ESDL against scehema",
                         "headers": {
                             "User-Agent": "ESDL Mapeditor/0.1",
-                            "Content-Type": "application/xml"
+                            "Content-Type": "application/xml",
                         },
                         "url": "http://10.30.2.1:3011/validationToMessages/",
                         "http_method": "post",
@@ -327,22 +324,311 @@ esdl_config = {
                             {
                                 "name": "Schemas",
                                 "description": "ID of the schema to validate this ESDL against",
-                                "parameter_name": "schemas"
+                                "parameter_name": "schemas",
                             }
                         ],
                         "body": "",
-                        "result": [
-                            {
-                                "code": 200,
-                                "action": "asset_feedback"
-                            }
-                        ],
+                        "result": [{"code": 200, "action": "asset_feedback"}],
                         "with_jwt_token": False,
-                        "state_params": True
+                        "state_params": True,
                     },
-                    "previous_step": 0
-                }
-            ]
-        }
-    ]
+                },
+            ],
+        },
+    ],
+    "role_based_esdl_services": {
+        "eps": [
+            {
+                "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
+                "name": "Energy Potential Scan",
+                "explanation": "This workflow allows you to run the EPS web service and view the EPS results.",
+                "type": "vueworkflow",
+                "workflow": [
+                    {
+                        "name": "Begin",
+                        "description": "How would you like to proceed?",
+                        "type": "choice",
+                        "options": [
+                            {
+                                "name": "Create a new EPS project",
+                                "next_step": 1,
+                                "type": "primary",
+                            },
+                            {"name": "Run EPS", "next_step": 4, "type": "primary"},
+                            {
+                                "name": "Inspect results",
+                                "next_step": 6,
+                                "type": "primary",
+                            },
+                            {
+                                "name": "Download project file",
+                                "description": "If you want to inspect the KvK data or modify input data, you can download a project file.",
+                                "next_step": 13,
+                                "type": "default",
+                            },
+                            {
+                                "name": "Upload project file",
+                                "description": "A project file can be uploaded to serve as input for a new EPS run.",
+                                "next_step": 2,
+                                "type": "default",
+                            },
+                            {
+                                "name": "Aggregate ESDL buildings for ESSIM",
+                                "next_step": 12,
+                                "type": "default",
+                            },
+                        ],
+                    },
+                    {
+                        "name": "Create Project",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-create-project",
+                        "url": f"{EPS_WEB_HOST}/api/projects/",
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select existing project",
+                        "description": "Please select the project for which you would like to upload a project file.",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": f"{EPS_WEB_HOST}/api/projects/",
+                            "http_method": "get",
+                            "choices_attr": "projects",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "project_id",
+                        "next_step": 3,
+                    },
+                    {
+                        "name": "Upload project file",
+                        "description": "Note: When uploading a project file with the same name as a previous project "
+                        "file, the previous file will be overwritten!",
+                        "type": "upload_file",
+                        "target": {
+                            "url": f"{EPS_WEB_HOST}/api/uploads/",
+                            "request_params": {"project_id": "project.id"},
+                            "response_params": {"name": "file_name"},
+                        },
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select existing project",
+                        "description": "",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": f"{EPS_WEB_HOST}/api/projects/",
+                            "http_method": "get",
+                            "choices_attr": "projects",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "project",
+                        "next_step": 5,
+                    },
+                    {
+                        "name": "Run the EPS",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-service",
+                        "url": f"{EPS_WEB_HOST}/api/eps/",
+                        "target": {
+                            "request_params": {"project_id": "project.id"},
+                            "user_response_spec": {
+                                "0": {"message": "Failed starting the EPS."},
+                                "200": {
+                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found "
+                                },
+                                "429": {
+                                    "message": "It is currently busy on the server. We cannot start an EPS execution "
+                                    "at this time. Please try again at a later time. "
+                                },
+                            },
+                        },
+                    },
+                    {
+                        "name": "EPS execution",
+                        "description": "",
+                        "label": "Select EPS execution to inspect:",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": f"{EPS_WEB_HOST}/api/eps/",
+                            "http_method": "get",
+                            "choices_attr": "executions",
+                            "label_fields": ["project", "id", "success"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "execution",
+                        "next_step": 7,
+                    },
+                    {
+                        "name": "Execution selected",
+                        "description": "How would you like to proceed?",
+                        "type": "choice",
+                        "options": [
+                            {
+                                "name": "Load EPS result",
+                                "descriptipn": "Load the results as ESDL on the map. Your current layers will be overwritten!",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 10,
+                            },
+                            {
+                                "name": "Inspect EPS results",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 11,
+                            },
+                            {
+                                "name": "Download project file",
+                                "type": "default",
+                                "next_step": 9,
+                            },
+                            {
+                                "name": "View progress",
+                                "type": "default",
+                                "disable_if_state": "execution.finished_on",
+                                "next_step": 8,
+                            },
+                        ],
+                    },
+                    {
+                        "name": "EPS execution progress",
+                        "description": "",
+                        "type": "progress",
+                        "refresh": 30,
+                        "source": {
+                            "url": f"{EPS_WEB_HOST}/api/eps/progress",
+                            "request_params": {"execution_id": "execution.id"},
+                            "progress_field": "latest_progress",
+                            "message_field": "latest_message",
+                        },
+                    },
+                    {
+                        "name": "Download project file",
+                        "description": "The project file that was used as input to perform this EPS analysis can be "
+                        "downloaded here.",
+                        "type": "download_file",
+                        "source": {
+                            "url": EPS_WEB_HOST + "/api/eps/{execution_id}/input",
+                            "request_params": {"execution_id": "execution.id"},
+                        },
+                    },
+                    {
+                        "name": "Load EPS results",
+                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS "
+                        "is loaded, please continue.",
+                        "type": "service",
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b12",
+                            "name": "Visualize EPS",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl",
+                            "auto": True,
+                            "clearLayers": True,
+                            "http_method": "get",
+                            "type": "",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "query_parameters": [
+                                {
+                                    "name": "File Name",
+                                    "location": "url",
+                                    "parameter_name": "execution_id",
+                                }
+                            ],
+                            "with_jwt_token": True,
+                            "state_params": True,
+                        }
+                    },
+                    {
+                        "name": "Inspect EPS results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-inspect-result",
+                        "custom_data": {
+                            "url": EPS_WEB_HOST
+                            + "/api/eps/{execution_id}/pand/{pand_bagid}"
+                        },
+                    },
+                    {
+                        "name": "Aggregate ESDL buildings for ESSIM",
+                        "description": "The ESDL generated by the EPS contains every building individually. This "
+                        "causes unnecessarily long processing time if buildings have the same "
+                        "profiles. With this service, similar buildings are combined into aggregated "
+                        "buildings, which will make it faster to run ESSIM and easier to interpret "
+                        "results. Note: Only activate this if you have an ESDL active that you wish to aggregate. You will not be able to unaggregate the resulting ESDL, so you might want to export it before proceeding.",
+                        "type": "service",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
+                            "name": "Aggregate ESDL buildings for ESSIM",
+                            "headers": {
+                                "Content-Type": "application/json",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "type": "send_esdl_json",
+                            "body": "base64_encoded",
+                            "url": f"{ESDL_AGGREGATOR_HOST}/aggregate",
+                            "http_method": "post",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        },
+                        "next_step": 0,
+                    },
+                    {
+                        "name": "Select existing project",
+                        "description": "Please select the project for which you would like to download a project file.",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": f"{EPS_WEB_HOST}/api/projects/",
+                            "http_method": "get",
+                            "choices_attr": "projects",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "project",
+                        "next_step": 14,
+                    },
+                    {
+                        "name": "Select project file",
+                        "description": "Please select the project file you would like to download.",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": EPS_WEB_HOST + "/api/projects/{project_id}/files",
+                            "request_params": {"project_id": "project.id"},
+                            "http_method": "get",
+                            "choices_attr": "file_names",
+                            "label_fields": ["name"],
+                            "value_field": "id",
+                        },
+                        "target_variable": "file_name",
+                        "next_step": 15,
+                    },
+                    {
+                        "name": "Download project file",
+                        "description": "By clicking the button below you can download the selected project file.",
+                        "type": "download_file",
+                        "source": {
+                            "url": EPS_WEB_HOST
+                            + "/api/projects/{project_id}/files/{file_name}",
+                            "request_params": {
+                                "project_id": "project.id",
+                                "file_name": "file_name.id",
+                            },
+                        },
+                        "next_step": 0,
+                    },
+                ],
+            }
+        ]
+    },
 }
