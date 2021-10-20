@@ -119,6 +119,9 @@ class UndoRedoTestCase3(unittest.TestCase):
         if delete_command.can_execute:
             delete_command.execute()
         print(esh.to_string(es.id))
+        print('eContainer', hd.eContainer())
+        print('eContainmentFeature', hd.eContainmentFeature())
+        print('eRoot', hd.eRoot())
         tracker.stop_recording()
         print('Current stack')
         for a in tracker.stack:

@@ -746,6 +746,7 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+                auth_status(true);
             });
 
             socket.on('user_info', function(ui) {

@@ -147,7 +147,7 @@ def patch_notification_system():
             value._container = self.owner
             value._containment_feature = self.feature
         if previous_value:
-            print("NO CONTAINER FOR", previous_value._container, previous_value._containment_feature)
+            print("NO CONTAINER FOR", previous_value, previous_value._container, previous_value._containment_feature)
             #previous_value._container = None
             #previous_value._containment_feature = None
 
