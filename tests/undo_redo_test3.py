@@ -109,16 +109,22 @@ class UndoRedoTestCase3(unittest.TestCase):
         pipe2.port.append(p2ip)
         p1op.connectedTo.append(hdip)
         p2ip.connectedTo.append(hdop)
+        print(hdip.eClass.eAllReferences())
+        print(hdop.eClass.eAllReferences())
         print(esh.to_string(es.id))
-        #tracker = esh.change_tracker.get_tracker_stack(es)
-        #tracker.start_recording(combineCommands=True, label="delete heatingdemand")
+        tracker = esh.change_tracker.get_tracker_stack(es)
+        tracker.start_recording(combineCommands=True, label="delete heatingdemand")
         #hd.delete()
         delete_command = Delete(hd)
         if delete_command.can_execute:
             delete_command.execute()
         print(esh.to_string(es.id))
-        #tracker.stop_recording()
-        #print('Current stack', tracker.stack)
+        tracker.stop_recording()
+        print('Current stack')
+        for a in tracker.stack:
+            print(a.label,":")
+            for c in a:
+                print("- ", c)
         # check if carrier are removed
         # l = []
         # for action in tracker.stack:
@@ -128,12 +134,20 @@ class UndoRedoTestCase3(unittest.TestCase):
         #             l.append(c)
         # self.assertEqual(2, len(l))
         delete_command.undo()
+        # check if carrier are removed
+        l = []
+        for action in tracker.stack:
+            for c in action:
+                if c.feature.name == "carrier":
+                    print("------   Carrier:", c)
+                    l.append(c)
+        #print('Stack after undo', tracker.stack)
+        #print(esh.to_string(es.id))
         self.assertTrue(hdip.carrier is not None)
         self.assertTrue(hdop.carrier is not None)
         self.assertTrue(p1op.carrier is not None)
         self.assertTrue(p2ip.carrier is not None)
-        #print('Stack after undo', tracker.stack)
-        print(esh.to_string(es.id))
+
 
 
 if __name__ == '__main__':

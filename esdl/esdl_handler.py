@@ -22,6 +22,7 @@ from uuid import uuid4
 from io import BytesIO
 import src.log as log
 from esdl import support_functions
+from esdl.undo import ChangeTracker, UndoRedoCommandStack
 
 #logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = log.get_logger(__name__)
@@ -37,6 +38,9 @@ class EnergySystemHandler:
         self.esid_uri_dict = {}
 
         self._set_resource_factories()
+
+        # add support for undo/redo
+        self.change_tracker = ChangeTracker()
 
         # fix python builtin 'from' that is also used in ProfileElement as attribute
         # use 'start' instead of 'from' when using a ProfileElement
@@ -117,6 +121,7 @@ class EnergySystemHandler:
         else:
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
         self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
+        self.change_tracker.newTracker(self.energy_system)
         return self.energy_system, parse_info
 
     def add_uri(self, uri):
@@ -138,6 +143,7 @@ class EnergySystemHandler:
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         # Ewoud: precies, dus in False veranderd
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
+        self.change_tracker.newTracker(self.energy_system)
         return tmp_resource.contents[0], parse_info
 
     def load_from_string(self, esdl_string, name='from_string'):
@@ -160,6 +166,7 @@ class EnergySystemHandler:
             # set to False, otherwise all the ids are added again after loading, is not smart and is slow
             # is only here to make sure the id of the energy system is also in the uuid_dict
             self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
+            self.change_tracker.newTracker(self.energy_system)
             return self.energy_system, parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
@@ -387,6 +394,7 @@ class EnergySystemHandler:
         # add the current energy system
         self.resource.append(self.energy_system)
         self.esid_uri_dict[self.energy_system.id] = uri.normalize()
+        self.change_tracker.newTracker(self.energy_system)
 
         instance = esdl.Instance(id=str(uuid4()), name=inst_title)
         self.energy_system.instance.append(instance)

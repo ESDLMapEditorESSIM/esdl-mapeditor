@@ -184,6 +184,7 @@ class UndoRedoCommandStack(CommandStack):
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
+        print('!!! No eResource for', notification)
         return
     if not stack.is_recording():  # ignore all notifications when not recording
         #print('Ignoring ', notification)
