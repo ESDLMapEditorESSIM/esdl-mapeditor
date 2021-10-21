@@ -20,6 +20,7 @@ from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFe
 from pyecore.valuecontainer import ECollection
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 

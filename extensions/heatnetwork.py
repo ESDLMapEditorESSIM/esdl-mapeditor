@@ -52,8 +52,12 @@ class HeatNetwork:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 print('Duplicate EnergyAsset: %s' % message)
+                stack = esh.get_undo_redo_stack(es_id=active_es_id)
+                stack.start_recording(label="Duplicate asset")
                 duplicate = duplicate_energy_asset(esh, active_es_id, message['asset_id'])
+                stack.update_label("Duplicate {} {}".format(duplicate.eClass.name, duplicate.name or ""))
                 self.add_asset_and_emit(esh, active_es_id, duplicate, message['area_bld_id'])
+                stack.stop_recording()
 
         @self.socketio.on('reverse_conductor', namespace='/esdl')
         def reverse_conductor(message):
@@ -63,8 +67,10 @@ class HeatNetwork:
             print('Reverse conductor: %s' % message)
             asset_id = message['asset_id']
             conductor = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
+            stack = esh.get_undo_redo_stack(es_id=active_es_id)
+            stack.start_recording(label="Reverse {}".format(conductor.eClass.name))
             self.reverse_conductor(active_es_id, conductor)
-            resource = esh.get_resource(active_es_id)
+            stack.stop_recording()
 
     def add_asset_and_emit(self, esh: EnergySystemHandler, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():

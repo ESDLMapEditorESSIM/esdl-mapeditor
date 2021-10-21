@@ -346,16 +346,19 @@ function set_line_handlers(line) {
             }
         }
     });
-    line.off('edit');
-    line.on('edit', function(e) { // in edit mode dragging has ended: update connections
-        var layer = e.target;
-        //var pos = marker.getLatLng();
-        polyline_length = calculate_length(layer);
-        socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-        //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
-        // console.log(e.oldLatLng.lat);
-        // console.log(pos.lat + ', ' + pos.lng );
-    });
+
+    // EWOUD: this is not needed, during editing we don't need to communcate with the backend, only after editing
+    // this is needed. This is handled in area_map_handler.js in map.on('draw:edited')
+//    line.off('edit');
+//    line.on('edit', function(e) { // in edit mode dragging has ended: update connections
+//        var layer = e.target;
+//        //var pos = marker.getLatLng();
+//        //polyline_length = calculate_length(layer);
+//        //socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+//        //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+//        // console.log(e.oldLatLng.lat);
+//        // console.log(pos.lat + ', ' + pos.lng );
+//    });
 
     set_line_port_handlers(line);
     select_assets.add_asset_handler(line);

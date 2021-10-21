@@ -113,6 +113,8 @@ def set_control_strategy(asset, cs_info):
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
+    undo_redo = esh.get_undo_redo_stack(asset)
+    undo_redo.start_recording(label="Set control strategy of {}".format(asset.name or asset.eClass.name))
     
     control_strategy = asset.controlStrategy
     # If no control strategy yet or change of type
@@ -204,3 +206,5 @@ def set_control_strategy(asset, cs_info):
                 )
                 control_strategy.profile.element.append(profile_element)
             esh.add_object_to_dict(active_es_id, control_strategy.profile)
+
+    undo_redo.stop_recording()
