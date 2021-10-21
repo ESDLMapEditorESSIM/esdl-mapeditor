@@ -2963,9 +2963,38 @@ def process_command(message):
 
 
     tracker_stack.stop_recording()
+
+    # stack = [{'label': entry.label,
+    #           'data': [{'id': command.value.id, 'name': command.value.name, 'type': command.value.__class__.__name__}
+    #                    for command in entry.data]} for entry in tracker_stack.stack]
+    # emit('trackerstack_update', stack)
+    pprint(tracker_stack.stack)
+
     print("Undo/Redo size={}".format(len(tracker_stack.stack)))
     set_handler(esh)
     session.modified = True
+
+
+@socketio.on('trackerstack', namespace='/esdl')
+def trackerstack(params):
+    print('Returning trackerstack')
+    print(params)
+    esh = get_handler()
+    if esh is None:
+        logger.error('ERROR finding EnergySystemHandler, Session issue??')
+
+    active_es_id = get_session('active_es_id')
+    es_edit = esh.get_energy_system(es_id=active_es_id)
+    tracker_stack = esh.change_tracker.get_tracker_stack(es_edit)
+    pprint(tracker_stack.stack)
+    stack = [{'label': entry.label,
+              'data': [{'id': command.value.id if command.value else None, 'name': command.value.name if command.value else None, 'type': command.value.__class__.__name__ if command.value else None}
+                       for command in entry.data]} for entry in tracker_stack.stack]
+    if len(tracker_stack.stack):
+        print(tracker_stack.stack[0].__dir__())
+        print(tracker_stack.stack[0].data[0].__dir__())
+    print(stack)
+    return stack
 
 
 @executor.job

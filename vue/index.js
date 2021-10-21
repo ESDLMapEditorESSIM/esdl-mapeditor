@@ -16,9 +16,11 @@ import AssetFeedback from './apps/AssetFeedback';
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
+import UndoRedoControl from "./apps/UndoRedoControl";
 import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
 import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
+import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
@@ -101,6 +103,9 @@ window.environmental_profiles = () => {
 
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+
+createVueLControl(UndoRedoControl, {position: 'bottomright'});
+createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')

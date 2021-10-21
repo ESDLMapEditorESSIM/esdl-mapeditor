@@ -28,6 +28,7 @@ import {
     Table,
     Transfer,
     Tree,
+    Timeline,
     Upload
 } from 'ant-design-vue';
 
@@ -76,5 +77,6 @@ export function mountApp(component, elementSelector) {
     app.use(Col);
     app.use(Divider);
     app.use(Breadcrumb);
+    app.use(Timeline);
     app.mount(elementSelector);
 }
