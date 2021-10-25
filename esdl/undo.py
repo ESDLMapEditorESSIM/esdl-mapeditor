@@ -14,7 +14,7 @@
 from collections import UserList
 
 from pyecore.notification import EObserver, Notification, Kind
-from pyecore.ecore import EObject, EStructuralFeature, EReference
+from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
 from pyecore.resources import Resource
 from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, AbstractCommand
 
@@ -232,7 +232,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
             if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
                 print("  \ -- Ignoring opposite unset for ", f.name)
                 return
-            if not f.containment:
+            if isinstance(f, EAttribute) or not f.containment:
                 unsetNotification = Set(owner=notification.notifier, feature=notification.feature, value=notification.new)
                 unsetNotification.previous_value = notification.old
                 unsetNotification.can_execute

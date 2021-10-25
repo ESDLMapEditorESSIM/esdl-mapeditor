@@ -643,7 +643,6 @@ function update_line_color(line_layer) {
         // thicker line
         line_options['weight'] = 7;
     }
-
     line_layer.setStyle(line_options);
     line_layer.color = line_color;
     //console.log('line color', line_options['color'], line_color, line_layer.selected)

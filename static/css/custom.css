@@ -631,26 +631,26 @@ z-index for jstree context menu, sidebar has 2000
 
 .menu-icon#menu_compare {
     background-image: url(/icons/Compare.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_layers {
     background-image: url(/icons/Layers.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_import {
     background-image: url(/icons/Import.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_areageometry {
     background-image: url(/icons/AreaGeometry.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .simulations .btn {

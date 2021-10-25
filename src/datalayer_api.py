@@ -133,12 +133,14 @@ class DataLayerAPI:
             return asdict(response)
 
         @self.socketio.on('DLA_set_table_data', namespace='/esdl')
+        @undo_record_changes(label="Remove control strategy")
         def DLA_set_table_data(message):
             new_table_data = DLA_set_table_data_request(**message)
             print('DLA_set_table_data_request', new_table_data)
             self.datalayer.set_table(new_table_data)
 
         @self.socketio.on('DLA_delete_ref', namespace='/esdl')
+        @undo_record_changes(label="Remove control strategy")
         def DLA_delete_ref(message):
             delete_ref_message = DeleteRefMessage(**message)
             return self.datalayer.delete_ref(delete_ref_message)
@@ -189,6 +191,7 @@ class DataLayerAPI:
             return result
 
         @self.socketio.on('DLA_update_environmental_profiles_info', namespace='/esdl')
+        @undo_record_changes(label="Remove control strategy")
         def DLA_update_environmental_profiles_info(info):
             """
             Updates information about the Environmental profiles configured in the ESDL.
@@ -208,6 +211,7 @@ class DataLayerAPI:
             return asdict(self.datalayer.get_carrier(message['id']))
 
         @self.socketio.on('DLA_update_carrier_info', namespace='/esdl')
+        @undo_record_changes(label="Remove control strategy")
         def DLA_update_carrier_info(message):
             """
             Updates information about a carrier configured in the ESDL.
