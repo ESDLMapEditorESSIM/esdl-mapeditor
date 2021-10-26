@@ -2230,6 +2230,7 @@ def process_command(message):
             except Exception as e:
                 logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
+                traceback.print_exc()
 
         # update gui, only if necessary for EnergyAssets, and Ports
         # and EnergySystem ans

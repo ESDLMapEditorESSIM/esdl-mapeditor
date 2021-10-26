@@ -90,7 +90,7 @@ class ESDLBrowser:
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             reference_name = message['name']
-            stack = esh.change_tracker.get_tracker_stack(esh.get_energy_system(active_es_id))
+            stack = esh.get_undo_redo_stack(es_id=active_es_id)
             ref_object = self.get_object_from_identifier(message['ref_id'])
             parent_object = self.get_object_from_identifier(message['parent'])
             stack.start_recording(combineCommands=True,
