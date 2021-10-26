@@ -448,6 +448,17 @@ class EnergySystemHandler:
         es.version = str(major)
         return es.version
 
+    def get_undo_redo_stack(self, eobj:EObject = None, es_id: str = None) -> UndoRedoCommandStack:
+        """
+        Return the undo-redo stack of this EnergySystemHandler for a specific ESDL object (when eobj = not None)
+        or by the current active es_id (es_id is not None)
+        """
+        if self.change_tracker:
+            if eobj:
+                return self.change_tracker.get_tracker_stack(eobj=eobj)
+            elif es_id:
+                resource = self.get_resource(es_id)
+                return self.change_tracker.get_tracker_stack(resource=resource)
 
 
 

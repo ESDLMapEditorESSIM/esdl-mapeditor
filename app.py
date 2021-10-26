@@ -1111,12 +1111,16 @@ def update_coordinates(message):
 
     active_es_id = get_session('active_es_id')
     esh = get_handler()
+
     obj_id = message['id']
     coords = message['coordinates']
 
     object = esh.get_by_id(active_es_id, obj_id)
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
+        undo_redo = esh.get_undo_redo_stack(object)
+        undo_redo.start_recording(combineCommands=True,
+                                  label="Change location of {}".format(object.name or object.eClass.name))
         if isinstance(object, esdl.Note):
             geom = object.mapLocation
         else:
@@ -1129,9 +1133,9 @@ def update_coordinates(message):
             else:
                 object.geometry = point
         # elif isinstance(geom, esdl.Polygon):
-            # Do nothing in case of a polygon
-            # only update the connection locations and mappings based on the center of the polygon
-            # that is given as a parameter.
+        # Do nothing in case of a polygon
+        # only update the connection locations and mappings based on the center of the polygon
+        # that is given as a parameter.
 
         # update coordinates in asset_list
         asset_list = get_session_for_esid(active_es_id, 'asset_list')
@@ -1147,6 +1151,7 @@ def update_coordinates(message):
             # TODO: Check if this is still required
             if message['asspot'] == 'building':
                 send_alert("Assets in building with locations are not updated yet")
+        undo_redo.stop_recording()
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1159,6 +1164,9 @@ def update_line_coordinates(message):
     asset = esh.get_by_id(active_es_id, ass_id)
 
     if asset:
+        undo_redo = esh.get_undo_redo_stack(asset)
+        undo_redo.start_recording(combineCommands=True,
+                                  label="Change geometry of {}".format(asset.name or asset.eClass.name))
         ports = asset.port
         polyline_data = message['polyline']
         # logger.debug(polyline_data)
@@ -1181,7 +1189,7 @@ def update_line_coordinates(message):
                 break  # ready searching
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
-
+        undo_redo.stop_recording()
 
 @socketio.on('update-polygon-coord', namespace='/esdl')
 def update_polygon_coordinates(message):
@@ -1193,6 +1201,9 @@ def update_polygon_coordinates(message):
     asset = esh.get_by_id(active_es_id, ass_id)
 
     if asset:
+        undo_redo = esh.get_undo_redo_stack(asset)
+        undo_redo.start_recording(combineCommands=True,
+                                  label="Change geometry of {}".format(asset.name or asset.eClass.name))
         polygon_data = message['polygon']
         # logger.debug(polygon_data)
         # logger.debug(type(polygon_data))
@@ -1207,6 +1218,7 @@ def update_polygon_coordinates(message):
 
         polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
         update_polygon_asset_connection_locations(ass_id, polygon_center)
+        undo_redo.stop_recording()
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1476,8 +1488,8 @@ def process_command(message):
     #  session.modified = True
     # logger.debug (get_handler().instance[0].area.name)
 
-    tracker_stack = esh.change_tracker.get_tracker_stack(es_edit)
-    tracker_stack.start_recording(combineCommands=True, label=message['cmd'])
+    undo_redo = esh.get_undo_redo_stack(es_edit)
+    undo_redo.start_recording(combineCommands=True, label=message['cmd'])
 
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
@@ -1864,6 +1876,8 @@ def process_command(message):
                     for added_port in asset.port:
                         esh.add_object_to_dict(es_edit.id, added_port)
                 set_handler(esh)
+        # update label to human readable
+        undo_redo.update_label("Create new {}".format(object_type))
 
     if message['cmd'] == 'remove_object':
         # removes asset or potential from EnergySystem
@@ -1885,8 +1899,7 @@ def process_command(message):
             # remove from asset dict
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
-
-
+            undo_redo.update_label("Remove {}".format(asset.name or asset.eClass.name))
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
@@ -2939,11 +2952,11 @@ def process_command(message):
 
     if message['cmd'] == 'undo':
         print('Undo stack')
-        pprint(tracker_stack.stack)
+        pprint(undo_redo.stack)
         esh = get_handler()
-        tracker_stack.stop_recording()
-        if tracker_stack.can_undo():
-            tracker_stack.undo()
+        undo_redo.stop_recording()
+        if undo_redo.can_undo():
+            undo_redo.undo()
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
             call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
         else:
@@ -2951,26 +2964,25 @@ def process_command(message):
 
     if message['cmd'] == 'redo':
         print('Redo stack')
-        pprint(tracker_stack.stack)
+        pprint(undo_redo.stack)
         esh = get_handler()
-        tracker_stack.stop_recording()
-        if tracker_stack.can_redo():
-            tracker_stack.redo()
+        undo_redo.stop_recording()
+        if undo_redo.can_redo():
+            undo_redo.redo()
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
             call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to redo at this time")
 
-
-    tracker_stack.stop_recording()
+    undo_redo.stop_recording()
 
     # stack = [{'label': entry.label,
     #           'data': [{'id': command.value.id, 'name': command.value.name, 'type': command.value.__class__.__name__}
     #                    for command in entry.data]} for entry in tracker_stack.stack]
     # emit('trackerstack_update', stack)
-    pprint(tracker_stack.stack)
+    pprint(undo_redo.stack)
 
-    print("Undo/Redo size={}".format(len(tracker_stack.stack)))
+    print("Undo/Redo size={}".format(len(undo_redo.stack)))
     set_handler(esh)
     session.modified = True
 

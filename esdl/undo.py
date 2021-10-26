@@ -16,15 +16,17 @@ from collections import UserList
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference
 from pyecore.resources import Resource
-from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Compound, Command, AbstractCommand
+from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, AbstractCommand
+
 from src.log import get_logger
 from dataclasses import dataclass
 from esdl.undo_pyecore_patch import patch_notification_system
 
+from functools import wraps
+
 log = get_logger(__name__)
 
-#patch = PyEcoreNotificationPatch()
-patch_notification_system() # patch pyecores notification system, so notification is done before actual delete
+patch_notification_system() # patch pyecores notification system, so notification are always send
 
 class LabelledAction(Command, UserList):
     """
@@ -63,15 +65,26 @@ class LabelledAction(Command, UserList):
 
 
 
-
 class UndoRedoCommandStack(CommandStack):
-    def __init__(self):
+    """
+    Creates a undo and redo command stack for ESDL documents
+    Default maximum length of the stack is 100 (Labelled)Actions or Commands
+    Use -1 to create an unlimited stack.
+    """
+    def __init__(self, max_stack_length: int = 100):
         self._recording = False
         self._combineCommands = True
         self.compound = None
+        self.max_stack_length = max_stack_length
         super().__init__()
 
-    def start_recording(self, combineCommands=False, label=None):
+    def start_recording(self, combineCommands: bool = True, label: str = None):
+        """
+        Starts recording of changes in the loaded ESDL model
+
+        :param bool combineCommands: collect all actions into one single LabelledAction (default = True)
+        :param label: name of the label of the action that is recorded.
+        """
         self._recording = True
         self._combineCommands = combineCommands
         if combineCommands:
@@ -84,6 +97,7 @@ class UndoRedoCommandStack(CommandStack):
         self._combineCommands = False
         if self.compound and len(self.compound) > 0:
             self.append(self.compound)
+            self.compound = None
         self._recording = False
 
 
@@ -100,7 +114,7 @@ class UndoRedoCommandStack(CommandStack):
             # the connectedTo relation between ports will be only recorded once, as undoing 2x this 'Add' command
             # gives problems
             if len(commands) == 1 and len(self.compound) > 0 and \
-                    commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo' and\
+                    commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo' and \
                     commands[-1].owner == self.compound[-1].value: # p1.connectedTo[0] = p2 p1 == owner, value = p2
                 print('Ignore 2nd connectedTo', commands)
                 # todo add check if notifier is same as old
@@ -110,7 +124,7 @@ class UndoRedoCommandStack(CommandStack):
             self.compound.extend(commands)
             return
         if not self._recording:
-            print('!!!!!!!!!!!!!!Ignoring NOT RECORDING', commands)
+            print('Undo-redo: Ignoring command NOT RECORDING', commands)
             return
 
         for command in commands:
@@ -128,6 +142,12 @@ class UndoRedoCommandStack(CommandStack):
                     print("Appended {} to the stack".format(command))
                 else:
                     raise ValueError('Cannot execute command {}'.format(command))
+
+        # make sure the stack length is not larger than its max length
+        if self.max_stack_length > 0:
+            while len(self.stack) > self.max_stack_length and len(self.stack) > 1:
+                self.stack.pop(0)
+                self.stack_index = self.stack_index - 1
 
     def can_redo(self):
         return len(self.stack) - self.stack_index > 1
@@ -180,6 +200,10 @@ class UndoRedoCommandStack(CommandStack):
                     resource.uuid_dict[value.id] = value
 
         self._recording = True
+
+    def update_label(self, new_label: str) -> None:
+        if self.compound:
+            self.compound.label = new_label
 
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
@@ -301,8 +325,16 @@ class ChangeTracker:
         self.trackers.append(tracker)
         return tracker
 
-    def get_tracker_stack(self, eobj: EObject) -> UndoRedoCommandStack:
-        resource = eobj.eResource
+    def get_tracker_stack(self, eobj: EObject = None, resource: Resource = None) -> UndoRedoCommandStack:
+        """
+        Returns the CommandStack for the resource of eobj or the resource given by the resource parameter
+        One of the parameters is required.
+
+        :eobj: an EObject (any class in the ESDL)
+        :resource: the resource used to store the ESDL
+        """
+        if resource is None and eobj is not None:
+            resource = eobj.eResource
         if resource is None:
             raise Exception("Can't find stack for the resource of {} (of type {})".format(eobj, eobj.eClass.name))
         for t in self.trackers:
@@ -311,6 +343,9 @@ class ChangeTracker:
         raise ValueError("Can't find stack belonging to resource {} and object {}".format(resource.uri.plain, eobj))
 
     def delete(self, stack):
+        """
+        Deletes this stack and removes the listening of changes of this resource
+        """
         for t in self.trackers:
             t: Tracker = t
             if t.stack is stack:
