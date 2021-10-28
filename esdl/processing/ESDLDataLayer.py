@@ -56,7 +56,11 @@ class ESDLDataLayer:
             for obj_id in identifier['id']:
                 esdl_objects.append(self.get_object_from_identifier({'id': obj_id}))
         else:
-            esdl_objects = [self.get_object_from_identifier(identifier)]
+            esdl_object = self.get_object_from_identifier(identifier)
+            if esdl_object:
+                esdl_objects = [esdl_object]
+            else:
+                return None
 
         obj_infos = list()
         num_assets_selected = 0
@@ -265,7 +269,10 @@ class ESDLDataLayer:
             except KeyError:
                 logger.error('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
                 resource = esh.get_resource(active_es_id)
-                the_object = resource.resolve(identifier['fragment'])
+                try:
+                    the_object = resource.resolve(identifier['fragment'])
+                except KeyError:
+                    return None
         else:
             resource = esh.get_resource(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
