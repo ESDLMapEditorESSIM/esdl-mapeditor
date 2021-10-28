@@ -3935,8 +3935,9 @@ class HeatStorage(Storage):
     """Generic heat storage asset with min and max temperatures"""
     minStorageTemperature = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     maxStorageTemperature = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    volume = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, minStorageTemperature=None, maxStorageTemperature=None, **kwargs):
+    def __init__(self, *, minStorageTemperature=None, maxStorageTemperature=None, volume=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3945,6 +3946,9 @@ class HeatStorage(Storage):
 
         if maxStorageTemperature is not None:
             self.maxStorageTemperature = maxStorageTemperature
+
+        if volume is not None:
+            self.volume = volume
 
 
 class GasHeater(Conversion):
@@ -4224,8 +4228,9 @@ class GasStorage(Storage):
     minStoragePressure = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     maxStoragePressure = EAttribute(eType=EDouble, unique=True,
                                     derived=False, changeable=True, default_value=0.0)
+    volume = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, minStoragePressure=None, maxStoragePressure=None, **kwargs):
+    def __init__(self, *, minStoragePressure=None, maxStoragePressure=None, volume=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4234,6 +4239,9 @@ class GasStorage(Storage):
 
         if maxStoragePressure is not None:
             self.maxStoragePressure = maxStoragePressure
+
+        if volume is not None:
+            self.volume = volume
 
 
 class DrivenByDemand(ControlStrategy):
