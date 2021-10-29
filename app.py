@@ -2945,7 +2945,6 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         esh.remove_energy_system(es_id=remove_es_id)
 
-
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
         esh = get_handler()
@@ -2988,26 +2987,26 @@ def process_command(message):
     session.modified = True
 
 
-@socketio.on('trackerstack', namespace='/esdl')
-def trackerstack(params):
-    print('Returning trackerstack')
-    print(params)
+@socketio.on('undoredo_stack', namespace='/esdl')
+def undoredo_stack(params):
     esh = get_handler()
     if esh is None:
         logger.error('ERROR finding EnergySystemHandler, Session issue??')
 
     active_es_id = get_session('active_es_id')
     es_edit = esh.get_energy_system(es_id=active_es_id)
-    tracker_stack = esh.change_tracker.get_tracker_stack(es_edit)
-    pprint(tracker_stack.stack)
-    stack = [{'label': entry.label,
-              'data': [{'id': command.value.id if command.value else None, 'name': command.value.name if command.value else None, 'type': command.value.__class__.__name__ if command.value else None}
-                       for command in entry.data]} for entry in tracker_stack.stack]
-    if len(tracker_stack.stack):
-        print(tracker_stack.stack[0].__dir__())
-        print(tracker_stack.stack[0].data[0].__dir__())
-    print(stack)
-    return stack
+    undo_redo = esh.change_tracker.get_tracker_stack(es_edit)
+    pprint(undo_redo.stack)
+    stack = [{
+        'label': entry.label,
+        'commands': [{
+            'id': command.value.id if hasattr(command.value, "id") else None,
+            'name': command.value.name if hasattr(command.value, "name") else None,
+            'type': command.value.__class__.__name__,
+        } for command in entry.data if command.value is not None]
+    } for entry in undo_redo.stack]
+
+    return dict(stack=stack, stack_index=undo_redo.stack_index)
 
 
 @executor.job
