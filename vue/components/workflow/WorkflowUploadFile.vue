@@ -10,6 +10,8 @@
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
 import { defineProps } from 'vue'
+import { workflowPostData } from "./utils/api.js";
+import Swal from "sweetalert2";
 
 const props = defineProps({
   workflowStep: {
@@ -41,39 +43,30 @@ const onSubmit = async () => {
     // Add file upload specific fields.
     request_params['base64_file'] = file_reader.result;
     request_params['file_name'] = file_name;
-    const params = {
-        'remote_url': workflowStep.target.url,
-        'request_params': request_params,
-    }
-    window.show_loader();
 
     try {
       // Perform the request to the mapeditor backend, who will forward it to the service.
-      const response = await fetch("workflow/post_data", {
-        method: "POST",
-        body: JSON.stringify(params),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (response.ok) {
-        alert('Upload successful!');
+      const response = await workflowPostData(workflowStep.target.url, request_params);
+      if (response != null && response.ok) {
+        await Swal.fire({
+          title: "Upload successful!",
+          text: "The newly uploaded file can be used to start a new EPS run.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
         const response_params = workflowStep.target.response_params;
         if (response_params) {
           const response_json = await response.json();
           for (const [response_field, target_field] of Object.entries(response_params)) {
             state[target_field] = response_json[response_field];
           }
-
-        } 
+        }
         goToNextStep();
       } else {
         alert('Error while uploading file: ' + response.statusText)
       }
     } catch (e) {
       genericErrorHandler(e);
-    } finally {
-      window.hide_loader();
     }
   }
 

@@ -61,6 +61,7 @@ window.carriers_window = () => {
 }
 
 window.object_properties_window = (object_id) => {
+    console.log('object_properties_list', object_id)
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(ObjectProperties);

@@ -699,9 +699,10 @@
             $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
             /* Lines */
-            let size_line = '2px';
-            if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27 + 'px';
-            $('#mapid .zoomline').css({'stroke-width': size_line});
+            let size_line = 2;
+            if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
+            $('#mapid .zoomline').css({'stroke-width': size_line + 'px'});
+            $('#mapid .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
             set_port_size_and_position();       /* Ports */
         }
@@ -1055,10 +1056,10 @@
                         linewidth = 2;
                         if (con['from-port-carrier']) {          // same carrier specified
                             linecolor = carrier_info_mapping[con['from-port-carrier']]['color'];
-                            title = carrier_info_mapping[con['from-port-carrier']]['name'];
+                            title = "Carrier: " + carrier_info_mapping[con['from-port-carrier']]['name'];
                         } else {                                 // no carrier specified
                             linecolor = carrier_info_mapping[0]['color'];
-                            title = carrier_info_mapping[0]['name'];
+                            title = "Carrier: " + carrier_info_mapping[0]['name'];
                         }
                     } else {                                    // conflicting carriers
                         linewidth = 4;
@@ -1076,10 +1077,12 @@
                             var popup = e.target.getPopup();
                             var this_map = e.sourceTarget._map;     // can be area map and building map
                             popup.setLatLng(e.latlng).openOn(this_map);
+                            e.target.setStyle({dashArray:'1', weight: linewidth+2});
                         });
 
                         line.on('mouseout', function(e) {
                             e.target.closePopup();
+                            e.target.setStyle({dashArray:'3,10', weight: linewidth});
                         });
 
                         line.on('mousemove', function (e) {
@@ -1088,10 +1091,27 @@
                             var popup = e.target.getPopup();
                             popup.setLatLng(e.latlng).openOn(this_map);
                         });
+
+                        line.bindContextMenu({
+                            contextmenu: true,
+                            contextmenuWidth: 140,
+                            contextmenuItems: [],
+                            contextmenuInheritItems: false
+                        });
+                        line.options.contextmenuItems.push({
+                            icon: 'icons/Delete.png',
+                            text: 'Delete connection',
+                            callback: function(e) {
+                                console.log(e, line);
+                                socket.emit('command', {'cmd': 'remove_connection_portids', 'from_port_id': line.from_port_id, 'to_port_id': line.to_port_id });
+                            }
+                       });
                     }
                     // TODO: Should this be es_bld_is instead of es_id
                     line.es_id = es_id;
                     line.id = con['from-port-id'] + con['to-port-id']
+                    line.from_port_id = con['from-port-id'];
+                    line.to_port_id = con['to-port-id'];
                     add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
             });
@@ -1336,7 +1356,8 @@
                     set_marker_handlers(layer);
                 }
                 if (layer instanceof L.Polyline) {
-                    console.log('Update asset: Polyline not supported, since a line has one InPort and one OutPort');
+                    set_line_handlers(layer);
+                    update_line_color(layer);
                 }
             });
 
@@ -1534,6 +1555,11 @@
                 object.childNodes[1].classList.add("ui-icon");
             }
         };
+
+        function refresh_esdl(e) {
+            socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
+        }
+
     </script>
 
     <style>
@@ -1612,14 +1638,14 @@
 {% if 'mondaine' in role %}
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Load ESDL from Mondaine Hub</a></li>
+                                        Load ESDL from Mondaine Hub...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_store_ESDL();">
                                         <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
-                                        Save ESDL to Mondaine Hub</a></li>
+                                        Save ESDL to Mondaine Hub...</a></li>
 {% else %}
                                     <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
-                                        Load ESDL from ESDL Store</a></li>
+                                        Load ESDL from ESDL Store...</a></li>
 {% endif %}
 {% endif %}
 {% if esdl_drive_enabled %}
@@ -1634,12 +1660,12 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
-                                    <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
                             </li>
@@ -1647,11 +1673,11 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Services</a>
                                 <ul class="dropdown-menu">
 {% if statistics_service_enabled %}
-                                    <li><a class="dropdown-item" href="#" onclick="es_statistics.open_window();"><div class="menu-icon">&nbsp</div>Energy system statistics</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="es_statistics.open_window();"><div class="menu-icon">&nbsp</div>Energy system statistics...</a></li>
 {% endif %}
-                                    <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="esdl_services_info();"><div class="menu-icon">&nbsp;</div>External ESDL Services...</a></li>
 {% if boundary_service_enabled or ibis_service_enabled %}
-                                    <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information...</a></li>
 {% endif %}
 {% if essim_enabled and 'essim' in role %}
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>ESSIM
@@ -1700,6 +1726,12 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>
                                 <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="refresh_esdl();">
+                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
+                                            Refresh view (Ctrl+R)
+                                        </a>
+                                    </li>
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li>
@@ -1724,12 +1756,12 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
-                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon">&nbsp;</div>Settings</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon ui-icon-help" id="menu_doc">&nbsp;</div>Documentation</a></li>
+                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
@@ -1802,7 +1834,9 @@
         timeDimensionOptions: {
             timeInterval: "2015-01-01T00:00+01:00/2016-01-01T00:00+01:00",
             period: "PT1H"
-        }
+        },
+        contextmenu: true,
+        contextmenuItems: [],
     });
 
     map.on('keyup', function(e) {
@@ -1814,6 +1848,9 @@
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
     });
+
+    // use a pane to control line selection overlay with a different zIndex
+    init_selection_pane(map); // from asset.js
 
     select_assets.add_map_handler(map);
 

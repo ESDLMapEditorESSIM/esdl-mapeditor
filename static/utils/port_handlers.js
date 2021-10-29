@@ -86,7 +86,7 @@ function set_marker_port_handlers(marker) {
                 if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue; // only show port that can be connected
                 let class_name = 'Port '+ports[p].type+' '+css_joint_addition+ports[p].type+num_ports[ports[p].type].toString()+(cnt_ports[ports[p].type]+1).toString();
                 cnt_ports[ports[p].type]++;
-                let port_name = ports[p].type + ' - ' + ports[p].name;
+                let port_name = marker.name + '.' + ports[p].type + ' - ' + ports[p].name;
 
                 let carrier_id = null;
                 if (ports[p].carrier) {
@@ -119,7 +119,7 @@ function set_marker_port_handlers(marker) {
                     port_marker.on('mouseover', function(e) {
                         let layer = e.target;
                         layer.port_parent.active = true;
-
+                        highlight_connection(layer.port_parent);
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
@@ -128,6 +128,7 @@ function set_marker_port_handlers(marker) {
                             if (!layer.parent.mouseactive) {
                                 layer.removeFrom(map);
                                 remove_tooltip();
+                                unhighlight_connection(layer.port_parent)
                             }
                         }, 300);
     //                    layer.removeFrom(map);
@@ -135,8 +136,29 @@ function set_marker_port_handlers(marker) {
                     port_marker.on('click', function(e) {
                         remove_tooltip();
                         handle_connect(port_marker, e);
-
                     });
+
+// Following code to add context menu to port does not work, as the port is removed from the map when
+// a contextmenu item is shown and we get all kinds of errors when clicking, because map variable is not available
+//                    port_marker.bindContextMenu({
+//                        contextmenu: true,
+//                        contextmenuWidth: 140,
+//                        contextmenuItems: [],
+//                        contextmenuInheritItems: false
+//                    });
+//                    console.log(ports[p]);
+//                    for (let cn=0; cn<ports[p].conn_to.length;cn++) {
+//                        let conn_id = ports[p].id + ports[p].conn_to[cn];
+//                        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+//                        console.log(conn);
+//                        port_marker.options.contextmenuItems.push({
+//                            icon: 'icons/Delete.png',
+//                            text: 'Delete connection to ' + ports[p].conn_to[cn],
+//                            callback: function(e) { console.log(e) },
+//                            hideOnSelect: true
+//                        });
+//                    }
+
                 } else {
                     // show already created marker
                     ports[p].active = false;
@@ -156,10 +178,44 @@ function set_marker_port_handlers(marker) {
             setTimeout(function() {
                 if (ports[p].active === false && !layer.mouseactive) {
                     ports[p].marker.removeFrom(map);
+                    unhighlight_connection(ports[p])
                 }
             }, 300);
         }
     });
+}
+
+
+function highlight_connection(port) {
+    for (let i=0; i<port.conn_to.length;i++) {
+        let conn_id = port.id + port.conn_to[i];
+        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        if (conn === undefined) {
+            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+        }
+        if (conn && !conn.highlight) { // runs on mouseover, so is received multiple times
+            let curr_weight = conn.options.weight;
+            conn.previous_weight = curr_weight;
+            conn.setStyle({dashArray:'1', weight: curr_weight+2});
+            conn.highlight = true;
+        }
+    }
+}
+
+function unhighlight_connection(port) {
+    for (let i=0; i<port.conn_to.length;i++) {
+        let conn_id = port.id + port.conn_to[i];
+        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        if (conn === undefined) {
+            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+        }
+        if (conn && conn.highlight) {
+            conn.setStyle({dashArray:'3,10', weight: conn.previous_weight});
+            conn.highlight = false;
+        }
+    }
 }
 
 function handle_connect(port_marker, e) {
@@ -327,27 +383,36 @@ function set_line_port_handlers(line) {
             if (layer.type === undefined) {
                 layer.type = 'ElectricityCable';
             }
-            layer.setStyle({
-                color: layer.color,
-                opacity: 1,
-                weight: 4
-            });
-            let lineType = layer.type;
+//            layer.setStyle({
+//                color: layer.color,
+//                opacity: 1,
+//                weight: 4
+//            });
+            //let lineType = layer.type;
             let lineColor = layer.color;
             // let lineColorHoover = colors[lineType + '_hoover']
             let lineColorHoover = lineColor;
-            // only show when zoom level is appropriate and length is larger than 1km
-            let arrowHead = L.polylineDecorator(layer, {
-                        patterns: [
-                            {
-                                offset: '1%',
-                                repeat: '49%',
-                                endOffset: 5,
-                                symbol: L.Symbol.arrowHead({pixelSize: 12, polygon: true, pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1, weight: 1}})
-                            }
-                        ]
-                    }).addTo(map);
-            line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
+            let pixelSize = (map.getZoom() > 17) ? (map.getZoom() + 4) : (map.getZoom() / 2) + 2;
+            pixelSize = (map.getZoom() > 23) ? (map.getZoom() + 12) : pixelSize;
+            // only show when zoom level is appropriate or length is larger than 1km
+            if (line.mouseOverArrowHead === undefined) { // make sure we don't create two arrowHeads
+                let arrowHead = L.polylineDecorator(layer, {
+                            patterns: [
+                                {
+                                    offset: '1%',
+                                    repeat: '49%',
+                                    endOffset: 5,
+                                    symbol: L.Symbol.arrowHead({
+                                        pixelSize: pixelSize,
+                                        polygon: true,
+                                        pathOptions: {stroke: true, color: lineColorHoover, fillOpacity: 1,
+                                            weight: 1, interactive: false}
+                                    })
+                                }
+                            ]
+                        }).addTo(map);
+                line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
+            }
         }
 
         if (!editing_objects && !deleting_objects) {
@@ -361,8 +426,7 @@ function set_line_port_handlers(line) {
                 if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
 
                 let class_name = 'Port '+ports[p].type+' LinePort';
-                let port_name = ports[p].type + ' - ' + ports[p].name;
-
+                let port_name = line.name + '.' + ports[p].type + ' - ' + ports[p].name;
                 let carrier_id = null;
                 if (ports[p].carrier) {
                     carrier_id = ports[p].carrier;
@@ -381,10 +445,42 @@ function set_line_port_handlers(line) {
                     iconSize: null
                 });
 
+
+                // shift port marker a bit on the line towards its center, so editing is easier when mouseover
+                let lat = coords[coords_index].lat;
+                let lng = coords[coords_index].lng;
+                let p2x = coords[coords_index].lat
+                let p2y = coords[coords_index].lng
+                if (p != '0') {
+                    p1x = coords[coords_index-1].lat
+                    p1y = coords[coords_index-1].lng
+                } else {
+                    p1x = coords[coords_index+1].lat
+                    p1y = coords[coords_index+1].lng
+                }
+                // calculate line length and calculate position of marker based on zoom level
+                // calculate how much 20px is at current zoom level in lat/lng coordinates
+                let t = map.latLngToContainerPoint(coords[coords_index]);
+                let marker_shift_px = 20; // default shift 20 pixels on screen
+                if (map.getZoom() < 18) {
+                    marker_shift_px = 10;
+                }
+                if (map.getZoom() > 20) {
+                    marker_shift_px = 25;
+                }
+                t.x = t.x + marker_shift_px;
+                let r = map.containerPointToLatLng(t);
+                let diff = coords[coords_index].distanceTo(r);
+                let d = coords[coords_index].distanceTo([p1x, p1y])
+                //let d = Math.sqrt(Math.pow(p2x-p1x, 2) + Math.pow(p2y - p1y, 2));
+                //let ratio = (d - 0.00005) / d; //0.999;  /// This is a magic number here!!
+                let ratio = Math.max(Math.min((d - diff) / d, 1.0), 0.0) ;
+                lat = (1-ratio) * p1x + ratio * p2x;
+                lng = (1-ratio) * p1y + ratio * p2y;
+
                 if (ports[p].marker === undefined) {
                     // marker not yet created
-
-                    let port_marker = L.marker([coords[coords_index].lat, coords[coords_index].lng], {icon: divicon, title: port_name, zIndexOffset:1000});
+                    let port_marker = L.marker([lat,lng], {icon: divicon, title: port_name, zIndexOffset:1000});
                     port_marker.addTo(map);
 
                     ports[p].active = false;
@@ -396,6 +492,7 @@ function set_line_port_handlers(line) {
                     port_marker.on('mouseover', function(e) {
                         let layer = e.target;
                         layer.port_parent.active = true;
+                        highlight_connection(layer.port_parent);
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
@@ -404,6 +501,7 @@ function set_line_port_handlers(line) {
                             if (!layer.parent.mouseactive) {
                                 layer.removeFrom(map); // only remove if not mousemoved back to marker
                                 remove_tooltip();
+                                unhighlight_connection(layer.port_parent);
                             }
                         }, 300);
                     });
@@ -417,6 +515,9 @@ function set_line_port_handlers(line) {
                     // show already created marker
                     ports[p].active = false;
                     ports[p].marker.addTo(map);
+                    // update position based on zoom level
+                    ports[p].marker.setLatLng([lat, lng])
+
                 }
             }
             set_port_size_and_position();
@@ -427,15 +528,17 @@ function set_line_port_handlers(line) {
         let layer = e.target;
         layer.mouseactive = false;
         // remove line decoration
-        layer.setStyle({
-            color: layer.color,
-            opacity: 1,
-            weight: 3
-        });
+//        layer.setStyle({
+//            color: layer.color,
+//            opacity: 1,
+//            weight: 3
+//        });
         if (layer.mouseOverArrowHead !== undefined) {
             map.removeLayer(layer.mouseOverArrowHead)
             delete layer.mouseOverArrowHead;
         }
+        // from assets.js
+        update_line_color(layer);
 
         // remove port decoration
         let ports = layer.ports;
@@ -443,6 +546,7 @@ function set_line_port_handlers(line) {
             setTimeout(function() {
                 if (ports[p].active === false) {
                     ports[p].marker.removeFrom(map);
+                    unhighlight_connection(ports[p]);
                 }
             }, 300);
         }

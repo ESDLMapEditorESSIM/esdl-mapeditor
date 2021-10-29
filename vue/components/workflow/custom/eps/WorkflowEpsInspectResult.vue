@@ -31,6 +31,7 @@ import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-d
 import {genericErrorHandler} from "../../../../utils/errors.js";
 import {useWorkflow} from "../../../../composables/workflow.js";
 import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
+import {workflowGetData} from "../../utils/api.js";
 
 const workflowStep = props.workflowStep;
 const { getFromState } = useWorkflow();
@@ -62,29 +63,22 @@ onUnmounted(() => {
 
 const getEpsDetails = (asset_id) => {
   // window.continue_service_workflow();
-  window.socket.emit("DLA_get_object_properties", { id: asset_id }, (res) => {
+  window.socket.emit("DLA_get_object_properties", { id: asset_id }, async (res) => {
     isLoading.value = true;
     try {
       const attrs = res.attributes.Advanced;
       let pand_bagid;
       for (const attr of attrs) {
-        if (attr.name == "originalIdInSource") {
+        if (attr.name === "originalIdInSource") {
           pand_bagid = attr.value;
           break;
         }
       }
       const request_params = {};
-      request_params["url"] = workflowStep.custom_data.url;
       request_params["execution_id"] = getFromState("execution.id");
       request_params["pand_bagid"] = pand_bagid;
-      const queryString = new URLSearchParams(request_params).toString();
-      fetch(`workflow/get_data?${queryString}`)
-        .then((response) => response.json())
-        .then((data) => {
-          generateTreeData(data);
-        })
-        .catch(genericErrorHandler)
-        .finally(() => (isLoading.value = false));
+      const data = await workflowGetData(workflowStep.custom_data.url, request_params)
+      generateTreeData(data);
     } finally {
       isLoading.value = false;
     }

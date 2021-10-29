@@ -25,17 +25,20 @@ class SelectAssets {
         while (this.selected_assets.length) {
             let asset_id = this.selected_assets[0];
             let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
-            this.toggle_selected(asset_leaflet_obj);
-            this.enable_context_menu_items(asset_leaflet_obj);
+            if (asset_leaflet_obj === undefined) {
+                // make sure we don't end up in an endless loop...
+                this.selected_assets.splice(this.selected_assets.indexOf(asset_id), 1);
+            } else {
+                this.toggle_selected(asset_leaflet_obj);
+                this.enable_context_menu_items(asset_leaflet_obj);
+            }
         }
         this.select_mode = false;
     }
 
     add_map_handler(map) {
         map.on('click', function(e) {
-            if (just_selected_multiple_assets) {
-                just_selected_multiple_assets = false;    // catch event after box select
-            } else if (select_assets.select_mode) {
+            if (!e.originalEvent.shiftKey) { // box select uses Shift to do selection
                 select_assets.deselect_all_assets();
                 select_assets.select_mode = false;
             }
@@ -56,18 +59,21 @@ class SelectAssets {
 
     add_to_selected_list(asset_leaflet_obj) {
         this.selected_assets.push(asset_leaflet_obj.id);
+        // filter out duplicates as the current approach might fail in some corner cases
+        this.selected_assets = this.selected_assets.filter((v, i, a) => a.indexOf(v) === i);
         this.disable_context_menu_items(asset_leaflet_obj);
     }
 
     remove_from_selected_list(asset_leaflet_obj) {
-        this.selected_assets.splice(this.selected_assets.indexOf(asset_leaflet_obj.id), 1);
+        let index = this.selected_assets.indexOf(asset_leaflet_obj.id)
+        this.selected_assets.splice(index, 1);
         if (this.selected_assets.length == 0)
             this.select_mode = false;
         this.enable_context_menu_items(asset_leaflet_obj);
     }
 
     toggle_selected(asset_leaflet_obj) {
-        // console.log("asset was selected: ", asset_leaflet_obj.selected);
+        //console.log("asset was selected: ", asset_leaflet_obj.name, asset_leaflet_obj.selected);
         if (!asset_leaflet_obj.selected) {
             this.select_mode = true;
             asset_leaflet_obj.selected = true;
@@ -82,21 +88,23 @@ class SelectAssets {
             cll.toggle('Selected');
         }
         if (asset_leaflet_obj instanceof L.Polyline) {
-            if (asset_leaflet_obj.selected) {
-                asset_leaflet_obj.options.orig_color = asset_leaflet_obj.options.color;
-                asset_leaflet_obj.setStyle({
-                    color: "white",
-                    dashArray: "5,10"
-                });
-                asset_leaflet_obj.color = "#ffffff";
-            } else {
-                asset_leaflet_obj.setStyle({
-                    color: asset_leaflet_obj.options.orig_color,
-                    dashArray: ""
-                });
-                asset_leaflet_obj.color = asset_leaflet_obj.options.orig_color;
-                delete asset_leaflet_obj.options.orig_color;
-            }
+            update_line_color(asset_leaflet_obj); // from assets.js
+//            if (asset_leaflet_obj.selected) {
+//                //asset_leaflet_obj.options.orig_color = asset_leaflet_obj.options.color;
+//                asset_leaflet_obj.setStyle({
+//                    color: "white",
+//                    dashArray: "5,10"
+//                });
+//                //asset_leaflet_obj.color = "#ffffff";
+//            } else {
+//                //asset_leaflet_obj.setStyle({
+//                //    color: asset_leaflet_obj.options.orig_color,
+//                //    dashArray: ""
+//                //});
+//                //asset_leaflet_obj.color = asset_leaflet_obj.options.orig_color;
+//                //delete asset_leaflet_obj.options.orig_color;
+//                // from assets.js
+//            }
         }
     }
 
@@ -132,7 +140,6 @@ class SelectAssets {
 }
 
 var select_assets = new SelectAssets()
-var just_selected_multiple_assets = false;    // To catch map.click event after box select
 
 // -----------------------------
 //  BoxSelectAssets
@@ -149,7 +156,6 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
         // Postpone to next JS tick so internal click event handling
         // still see it as "moved".
         setTimeout(L.bind(this._resetState, this), 0);
-
         var bounds = new L.LatLngBounds(
             this._map.containerPointToLatLng(this._startPoint),
             this._map.containerPointToLatLng(this._point)
@@ -180,7 +186,6 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
                 }
             }
         }
-        just_selected_multiple_assets = true;
     }
 
 });

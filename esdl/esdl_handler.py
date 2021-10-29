@@ -21,6 +21,7 @@ from esdl import esdl
 from uuid import uuid4
 from io import BytesIO
 import src.log as log
+from esdl import support_functions
 
 #logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = log.get_logger(__name__)
@@ -39,187 +40,26 @@ class EnergySystemHandler:
 
         # fix python builtin 'from' that is also used in ProfileElement as attribute
         # use 'start' instead of 'from' when using a ProfileElement
-        # alias('start', esdl.ProfileElement.findEStructuralFeature('from'))
+        # and make sure that it is serialized back as 'from' instead of 'from_'
         esdl.ProfileElement.from_.name = 'from'
         setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
         alias('start', esdl.ProfileElement.from_)
-
+        # also for FromToIntItem
         esdl.FromToIntItem.from_.name = 'from'
         setattr(esdl.FromToIntItem, 'from', esdl.FromToIntItem.from_)
         alias('start', esdl.FromToIntItem.from_)
-
+        # also for FromToDoubleItem
         esdl.FromToDoubleItem.from_.name = 'from'
         setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
         alias('start', esdl.FromToDoubleItem.from_)
 
-        # add support for shallow copying or cloning an object
-        # it copies the object's attributes (e.g. clone an object), does only shallow copying
-        def clone(self):
-            """
-            Shallow copying or cloning an object
-            It only copies the object's attributes (e.g. clone an object)
-            Usage object.clone() or copy.copy(object) (as _copy__() is also implemented)
-            :param self:
-            :return: A clone of the object
-            """
-            newone = type(self)()
-            eclass = self.eClass
-            for x in eclass.eAllStructuralFeatures():
-                if isinstance(x, EAttribute):
-                    #logger.trace("clone: processing attribute {}".format(x.name))
-                    if x.many:
-                        eOrderedSet = newone.eGet(x.name)
-                        for v in self.eGet(x.name):
-                            eOrderedSet.append(v)
-                    else:
-                        newone.eSet(x.name, self.eGet(x.name))
-            return newone
+        # add support for cloning of EObjects and coppy.copy()
+        setattr(EObject, '__copy__', support_functions.clone)
+        setattr(EObject, 'clone', support_functions.clone)
 
-        setattr(EObject, '__copy__', clone)
-        setattr(EObject, 'clone', clone)
-
-        """
-        Deep copying an EObject.
-        Does not work yet for copying references from other resources than this one.
-        """
-        def deepcopy(self, memo=None):
-            #logger.debug("deepcopy: processing {}".format(self))
-            first_call = False
-            if memo is None:
-                memo = dict()
-                first_call = True
-            if self in memo:
-                return memo[self]
-
-            copy: EObject = self.clone()
-            #logger.debug("Shallow copy: {}".format(copy))
-            eclass: EClass = self.eClass
-            for x in eclass.eAllStructuralFeatures():
-                if isinstance(x, EReference):
-                    #logger.debug("deepcopy: processing reference {}".format(x.name))
-                    ref: EReference = x
-                    value: EStructuralFeature = self.eGet(ref)
-                    if value is None:
-                        continue
-                    if ref.containment:
-                        if ref.many and isinstance(value, ECollection):
-                            #clone all containment elements
-                            eAbstractSet = copy.eGet(ref.name)
-                            for ref_value in value:
-                                duplicate = ref_value.__deepcopy__(memo)
-                                eAbstractSet.append(duplicate)
-                        else:
-                            copy.eSet(ref.name, value.__deepcopy__(memo))
-                    #else:
-                    #    # no containment relation, but a reference
-                    #    # this can only be done after a full copy
-                    #    pass
-            # now copy should a full copy, but without cross references
-
-            memo[self] = copy
-
-            if first_call:
-                #logger.debug("copying references")
-                for k, v in memo.items():
-                    eclass: EClass = k.eClass
-                    for x in eclass.eAllStructuralFeatures():
-                        if isinstance(x, EReference):
-                            #logger.debug("deepcopy: processing x-reference {}".format(x.name))
-                            ref: EReference = x
-                            orig_value: EStructuralFeature = k.eGet(ref)
-                            if orig_value is None:
-                                continue
-                            if not ref.containment:
-                                opposite = ref.eOpposite
-                                if opposite and opposite.containment:
-                                    # do not handle eOpposite relations, they are handled automatically in pyEcore
-                                    continue
-                                if x.many:
-                                    eAbstractSet = v.eGet(ref.name)
-                                    for orig_ref_value in orig_value:
-                                        try:
-                                            copy_ref_value = memo[orig_ref_value]
-                                        except KeyError:
-                                            logger.warning(f'Cannot find reference of type {orig_ref_value.eClass.name} for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
-                                            copy_ref_value = orig_ref_value
-                                        eAbstractSet.append(copy_ref_value)
-                                else:
-                                    try:
-                                        copy_value = memo[orig_value]
-                                    except KeyError:
-                                        logger.warning(f'Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
-                                        copy_value = orig_value
-                                    v.eSet(ref.name, copy_value)
-            return copy
-        setattr(EObject, '__deepcopy__', deepcopy)
-        setattr(EObject, 'deepcopy', deepcopy)
-        # show deleted object from memory
-        # setattr(EObject, '__del__', lambda x: print('Deleted {}'.format(x.eClass.name)))
-
-        # def update_id(n: Notification):
-        #     if isinstance(n.feature, EAttribute):
-        #         #print(n)
-        #         if n.feature.name == 'id':
-        #             resource = n.notifier.eResource
-        #             if resource is not None and (n.kind != Kind.UNSET and n.kind != Kind.REMOVE):
-        #                 print('ADDING to UUID dict {}#{}, notification type {}'.format(n.notifier.eClass.name, n.feature.name, n.kind.name))
-        #                 resource.uuid_dict[n.new] = n.notifier
-        #                 if n.old is not None and n.old is not '':
-        #                     del resource.uuid_dict[n.old]
-        # observer = EObserver()
-        # observer.notifyChanged = update_id
-        #
-        # old_init = EObject.__init__
-        # def new_init(self, **kwargs):
-        #     observer.observe(self)
-        #     old_init(self, **kwargs)
-        #
-        # setattr(EObject, '__init__', new_init)
-
-        # Methods to automatically update the uuid_dict.
-        # Currently disabled, because it does not work in all circumstances
-        # This only works when the object which id is to be added to the dict is already part
-        # of the energysystem xml tree, otherwise there is no way of knowing to which uuid_dict it should be added.
-        # E.g.
-        # > asset = esdl.Asset(id='uuid)
-        # > asset.port.append(esdl.InPort(id='uuid)) # this does not work because asset is not part of the energy system yet
-        # > area.asset.append(asset) #works for asset, but not for port. In order to have port working too, this statement
-        # should be executed bofore adding the port...
-
-        # old_set = EObject.__setattr__
-        # def updated_set(self, feature, value):
-        #     old_set(self, feature, value)
-        #     #if feature == 'id':
-        #     #print('Feature :{}#{}, value={}, resource={}'.format(self.eClass.name, feature, value, '?'))
-        #     #if isinstance(feature, EReference):
-        #     if hasattr(value, 'id') and feature[0] != '_':
-        #         print('*****Update uuid_dict {}#{} for {}#id'.format(self.eClass.name, feature, value.eClass.name))
-        #         self.eResource.uuid_dict[value.id] = value
-        # setattr(EObject, '__setattr__', updated_set)
-        #
-        #
-        #
-        # old_append = EAbstractSet.append
-        # def updated_append(self, value, update_opposite=True):
-        #     old_append(self, value, update_opposite)
-        #     #print('EAbstractSet :{}, value={}, resource={}, featureEr={}'.format(self, value, value.eResource, self.feature.eResource))
-        #     if hasattr(value, 'id'):
-        #         if self.feature.eResource:
-        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
-        #             self.feature.eResource.uuid_dict[value.id] = value
-        #         elif value.eResource:
-        #             print('****Update uuid_dict AbstractSet-{}#id'.format(value.eClass.name))
-        #             value.eResource.uuid_dict[value.id] = value
-        #
-        # setattr(EAbstractSet, 'append', updated_append)
-
-
-
-
-        # def toJSON(self):
-        #     return json.dumps(self, default=lambda o: list(o),
-        #                       sort_keys=True, indent=4)
-        # setattr(EOrderedSet, 'toJSON', toJSON)
+        # add support for deepcopying EObjects and copy.deepcopy()
+        setattr(EObject, '__deepcopy__', support_functions.deepcopy)
+        setattr(EObject, 'deepcopy', support_functions.deepcopy)
 
         # have a nice __repr__ for some ESDL classes when printing ESDL objects (includes all Assets and EnergyAssets)
         esdl.EnergySystem.__repr__ = \
@@ -236,7 +76,7 @@ class EnergySystemHandler:
         self.rset.resource_factory['esdl'] = XMLResource
         self.rset.resource_factory['*'] = XMLResource
 
-    def load_file(self, uri_or_filename):
+    def load_file(self, uri_or_filename) -> (esdl.EnergySystem, []):
         """Loads a EnergySystem file or URI into a new resourceSet
         :returns EnergySystem and the parse warnings as a tuple (es, parse_info)"""
         if isinstance(uri_or_filename, str):
@@ -261,7 +101,7 @@ class EnergySystemHandler:
             uri = uri_or_filename
         return self.add_uri(uri)
 
-    def load_uri(self, uri):
+    def load_uri(self, uri) -> (esdl.EnergySystem, []):
         """Loads a new resource in a new resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
@@ -276,7 +116,7 @@ class EnergySystemHandler:
             self.esid_uri_dict[self.energy_system.id] = uri
         else:
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
-        self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
+        self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
         return self.energy_system, parse_info
 
     def add_uri(self, uri):
@@ -296,7 +136,8 @@ class EnergySystemHandler:
         else:
             self.esid_uri_dict[tmp_resource.contents[0].id] = uri.normalize()
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
-        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], True)
+        # Ewoud: precies, dus in False veranderd
+        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
         return tmp_resource.contents[0], parse_info
 
     def load_from_string(self, esdl_string, name='from_string'):
@@ -316,8 +157,9 @@ class EnergySystemHandler:
                 parse_info = self.resource.get_parse_information()
             self.validate()
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
-            # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
-            self.add_object_to_dict(self.energy_system.id, self.energy_system, True)
+            # set to False, otherwise all the ids are added again after loading, is not smart and is slow
+            # is only here to make sure the id of the energy system is also in the uuid_dict
+            self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
             return self.energy_system, parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
@@ -477,7 +319,7 @@ class EnergySystemHandler:
     # Using this function you can query for objects by ID
     # After loading an ESDL-file, all objects that have an ID defines are stored in resource.uuid_dict automatically
     # Note: If you add things later to the resource, it won't be added automatically to this dictionary though.
-    # Use get_by_id_slow() for that
+    # Use get_by_id_slow() for that or add them manually using add_object_to_dict()
     def get_by_id(self, es_id, object_id):
         if object_id in self.get_resource(es_id).uuid_dict:
             return self.get_resource(es_id).uuid_dict[object_id]
@@ -597,6 +439,8 @@ class EnergySystemHandler:
             major = 1
         es.version = str(major)
         return es.version
+
+
 
 
 class StringURI(URI):

@@ -152,16 +152,6 @@ h6 {
     border: 3px solid hsl(48, 100%, 37%);  /* #bc9500; */
 }
 
-.Optional {
-    border: 3px solid #000;
-    border-style: dashed;
-}
-
-.Selected {
-    border: 3px solid #ffffff;
-    border-style: dashed;
-}
-
 .ProducerDisabled {
     background: hsla(68, 10%, 33%, 50%);  /* #93a800; 50% transparency */
     border: 3px solid hsl(67, 100%, 24%);  /* #6b7a00; */
@@ -213,6 +203,27 @@ h6 {
     width: 40px;
     height: 40px;
     line-height: 40px;
+}
+
+.Optional {
+    border: 3px dashed #000;
+}
+
+.Selected {
+    /* border-width: 3px !important; */
+    border-color: #fefefe;
+}
+
+/*
+.Joint.TransportDisabled .circle-img-joint {
+    filter: invert(50%);
+}
+*/
+
+.Joint.Selected .circle-img-joint {
+   /* filter: invert(50%); */
+   border: 2px solid #fefefe;
+   border-radius: 20%;
 }
 
 .asset_feedback {
@@ -291,6 +302,13 @@ h6 {
 
 .OutPort {
     border: 3px solid black;
+}
+
+.notselectedline {
+    opacity: 0.65;
+}
+.selectedline {
+    opacity: 1.0;
 }
 
 /* Assets are supported with 1, 2 or 3 InPorts or OutPorts */

@@ -102,7 +102,6 @@ export async function workflowGetJsonForm(queryString, schemaName) {
  */
 function handleErrorResponse(e) {
     console.error(e);
-    console.error(typeof(e));
     if (e.status == 401) {
         const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
         if (answer) {

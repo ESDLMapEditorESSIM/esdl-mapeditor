@@ -16,7 +16,9 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from builtins import isinstance
 
+import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Port, InPort, OutPort, Polygon
 from esdl.processing import ESDLAsset
@@ -96,8 +98,42 @@ class HeatNetwork:
             #     if isinstance(p, OutPort):
             #         outPort: OutPort = p
             # for other in inPort.connectedTo:
+            for p in conductor.port:
+                if isinstance(p, esdl.InPort):
+                    inPort: esdl.InPort = p
+                elif isinstance(p, esdl.OutPort):
+                    outPort: esdl.OutPort = p
 
-            self.remove_connections(conductor, active_es_id)
+            # remove current existing connections from gui first
+            self.remove_connections_from_connlist(conductor, active_es_id)
+
+            newConnections = list() # of tuples
+            # update connections mapping such that it is connected correctly when reversed
+            for connectedInToOut in inPort.connectedTo:
+                # remove connection
+                inPort.connectedTo.remove(connectedInToOut)
+                connectedAsset = connectedInToOut.energyasset
+                inPortTo = self.findFirstPortOfType(connectedAsset, esdl.InPort)
+                if inPortTo is None:
+                    continue # can't flip this port
+                else:
+                    # add connections to list, so it wont intefere with algorithm
+                    newConnections.append((outPort, inPortTo))
+
+            for connectedOutToIn in outPort.connectedTo:
+                outPort.connectedTo.remove(connectedOutToIn)
+                connectedAsset = connectedOutToIn.energyasset
+                outPortTo = self.findFirstPortOfType(connectedAsset, esdl.OutPort)
+                if outPortTo is None:
+                    continue  # can't flip this port
+                else:
+                    newConnections.append((inPort, outPortTo))
+
+            # now add the actual connections
+            for c in newConnections:
+                c[0].connectedTo.append(c[1])
+
+            # create new connection list
             connections = self.update_conn_list(conductor, active_es_id)
             # send update_esdl_object message (to be invented) to refresh gui
             emit('delete_esdl_object', {'asset_id': conductor.id})
@@ -147,7 +183,7 @@ class HeatNetwork:
             return ['point', 'asset', asset.name, asset.id, type(asset).__name__,
                 [asset.geometry.lat,asset.geometry.lon], tooltip_asset_attrs, state, port_list, capability_type]
 
-    def remove_connections(self, asset: EnergyAsset, active_es_id: str):
+    def remove_connections_from_connlist(self, asset: EnergyAsset, active_es_id: str):
         check_list = list()
         for port in asset.port:
             from_id = port.id
@@ -155,10 +191,12 @@ class HeatNetwork:
             for to_port in to_ports:
                 to_id = to_port.id
                 check_list.append({'from-port-id': from_id, 'to-port-id': to_id})
+                check_list.append({'from-port-id': to_id, 'to-port-id': from_id}) # sometimes they are reversed
                 emit('remove_single_connection', {'from-port-id': from_id, 'to-port-id': to_id, 'es_id': active_es_id})
 
         # update conn_list
         conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        l = len(conn_list)
 
         def identical(conn):  # define if a connection is identical to the one we want to delete
             for item in check_list:
@@ -168,6 +206,7 @@ class HeatNetwork:
                     return True
             return False
         conn_list[:] = [conn for conn in conn_list if not identical(conn)]
+        print("removed {} connections".format(l - len(conn_list)))
 
 
 
@@ -190,7 +229,7 @@ class HeatNetwork:
                      'to-asset-coord': to_coords
                      })
         conn_list.extend(connections)
-        print(connections)
+        #print(connections)
         return connections # only return the newly added connections
 
 
@@ -210,6 +249,12 @@ class HeatNetwork:
         return from_coords
 
     ######
+    def findFirstPortOfType(self, connectedAsset: esdl.EnergyAsset, portType):
+        for p in connectedAsset.port:
+            if isinstance(p, portType):
+                return p
+
+
 def _shift_point(point: Point):
         point.lat = point.lat - DEFAULT_SHIFT_LAT
         point.lon = point.lon - DEFAULT_SHIFT_LON

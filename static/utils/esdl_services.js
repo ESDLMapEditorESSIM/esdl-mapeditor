@@ -18,6 +18,8 @@ var esdl_services_information;
 
 function set_esdl_services_information(info) {
     esdl_services_information = info;
+
+    update_service_contextmenus(info);
 }
 
 // function query_esdl_service(index) {
@@ -43,11 +45,18 @@ function query_esdl_service(service, state_params) {
     let q_params = service['query_parameters'];
     for (let i = 0; i < q_params.length; i++) {
         let parameter_name = q_params[i]['parameter_name'];
-        let ptype = q_params[i]['type'];
+        let ptype = '';
+        if ('type' in q_params[i]) {
+            ptype = q_params[i]['type'];
+        }
 
         let parameter_value = undefined;
-        if (state_params != null) {
-            parameter_value = state_params[parameter_name];
+        if (ptype == 'constant' && 'value' in q_params[i]) {
+            parameter_value = q_params[i]['value'];
+        } else if (state_params != null) {
+            if (parameter_name in state_params) {
+                parameter_value = state_params[parameter_name];
+            }
         } else {
             if (ptype == 'integer' || ptype == 'string') {
                 parameter_value = document.getElementById(parameter_name + '_' + ptype).value;
@@ -81,7 +90,10 @@ function query_esdl_service(service, state_params) {
         }
     }
 
-    document.getElementById('query_service_button').style.display = 'none';
+    // Only for services that are triggered from the sidebar, hide the query button
+    if (service['type'] !== "map_context_menu") {
+        document.getElementById('query_service_button').style.display = 'none';
+    }
     show_loader();
     socket.emit('command', { cmd: 'query_esdl_service', params: params });
 
@@ -469,9 +481,11 @@ function esdl_services_info() {
 
     if (esdl_services_information) {
         let table = '<table>';
-        for (i = 0; i < esdl_services_information.length; i++) {
+        for (let i = 0; i < esdl_services_information.length; i++) {
             // id, name
-            table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
+            if (esdl_services_information[i]['type'] !== "map_context_menu") {
+                table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
+            }
         }
         table += '</table>';
         sidebar_ctr.innerHTML += table;
@@ -505,3 +519,26 @@ function service_render_error(service_index, text = null) {
         </div>
     `;
 }
+
+function update_service_contextmenus(services_list) {
+    // For now, remove all contextmenu items
+    map.contextmenu.removeAllItems();
+    for (let i = 0; i < services_list.length; i++) {
+        if (services_list[i]['type'] == "map_context_menu") {
+            map.contextmenu.addItem({
+                text: services_list[i]['name'],
+                icon: resource_uri + 'icons/service.png',
+                callback: function(e) {
+                  console.log(e);
+                  let state = {
+                    lat: e.latlng.lat.toString(),
+                    lng: e.latlng.lng.toString(),
+                  };
+                  let service = services_list[i];
+                  query_esdl_service(service, state);
+                }
+            });
+        }
+    }
+}
+

@@ -23,13 +23,22 @@ import esdl
 
 
 def test():
-    stack = UndoRedoCommandStack()  # keep track of all undo-redo stuff using notifications\
-    monitor_esdl_changes(stack)
+    stack = UndoRedoCommandStack()  # keep track of all undo-redo stuff using notifications
+
+    #monitor_esdl_changes(stack)
 
     esh = EnergySystemHandler()
     esdl.EnergySystem.__repr__ = lambda x: '{}(name={})'.format(x.eClass.name, x.name)
-    es, _ = esh.load_file('Left.esdl')
+    es, _ = esh.load_file('esdl\Left.esdl')
     es: esdl.EnergySystem = es
+    es2, _ = esh.import_file('esdl\Right1.esdl')
+    print(esh.rset.resources)
+    resource = esh.get_resource(es.id)
+    print(resource.uri.plain)
+    from esdl.undo import ResourceObserver
+    ro = ResourceObserver(command_stack=stack)
+
+    ro.observe(resource)
 
     stack.start_recording(combineCommands=True)
     #changeESName = Set(owner=es, feature='name', value="Please undo me!")
@@ -77,6 +86,16 @@ def test():
     stack.undo()
     print('Area assets after undo', area.asset)
     print('Area name after undo:' + area.name)
+
+    r2Stack = UndoRedoCommandStack()
+    ResourceObserver(r2Stack).observe(esh.get_resource(es_id=es2.id))
+    r2Stack.start_recording()
+    stack.start_recording(combineCommands=True)
+    es2.name = 'test'
+    stack.stop_recording()
+    r2Stack.stop_recording()
+    r2Stack.undo()
+    print(es2.name)
 
 
     # print(stack.stack)
