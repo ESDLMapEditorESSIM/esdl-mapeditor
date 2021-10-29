@@ -493,7 +493,7 @@ esdl_config = {
                                 "name": "Select EPS measures",
                                 "type": "default",
                                 "enable_if_state": "execution.finished_on",
-                                "next_step": 16,
+                                "next_step": 17,
                             },
                             # {
                             #     "name": "View progress",
@@ -530,8 +530,7 @@ esdl_config = {
                     {
                         # 10
                         "name": "Load EPS results",
-                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS "
-                        "is loaded, please continue.",
+                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS is loaded, please continue.",
                         "type": "service",
                         "state_params": {"execution_id": "execution.id"},
                         "service": {
@@ -555,7 +554,6 @@ esdl_config = {
                                 }
                             ],
                             "with_jwt_token": True,
-                            "state_params": True,
                         }
                     },
                     {
@@ -663,11 +661,60 @@ esdl_config = {
                         "next_step": 0,
                     },
                     {
+                        # 17
                         "name": "Select EPS measures",
                         "description": "",
                         "type": "custom",
                         "component": "eps-select-measures",
-                        "next_step": 0,
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b14",
+                            "name": "Select EPS measures",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl/variant",
+                            "http_method": "post",
+                            "type": "json",
+                            "query_parameters": [
+                                {
+                                    "name": "Execution ID",
+                                    "parameter_name": "execution_id",
+                                    "location": "url",
+                                },
+                                {
+                                    "parameter_name": "isolation_roof",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "isolation_facade",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "isolation_glass",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "wtw",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "led",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "heat_pump",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "pv",
+                                    "location": "body",
+                                },
+                            ],
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        }
                     },
                 ],
             }
