@@ -3,6 +3,7 @@
  */
 import {createApp} from "vue"
 import VueComponentLControl from './components/leaflet/VueComponentLControl'
+import VueGridLayout from 'vue-grid-layout'
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
@@ -76,5 +77,6 @@ export function mountApp(component, elementSelector) {
     app.use(Col);
     app.use(Divider);
     app.use(Breadcrumb);
+    app.use(VueGridLayout)
     app.mount(elementSelector);
 }

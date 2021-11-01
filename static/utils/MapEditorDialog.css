@@ -1,0 +1,45 @@
+/**
+ *  This work is based on original code developed and copyrighted by TNO 2020.
+ *  Subsequent contributions are licensed to you by the developers of such code and are
+ *  made available to the Project under one or several contributor license agreements.
+ *
+ *  This work is licensed to you under the Apache License, Version 2.0.
+ *  You may obtain a copy of the license at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Contributors:
+ *      TNO         - Initial implementation
+ *  Manager:
+ *      TNO
+ */
+
+.leaflet-control-dialog
+  .leaflet-control-dialog-inner
+  .leaflet-control-dialog-minimize {
+  position: absolute;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  top: 0px;
+  right: 40px;
+  padding: 4px;
+  font-size: 12px;
+  line-height: 12px;
+  color: #666;
+}
+
+.leaflet-control-dialog
+  .leaflet-control-dialog-inner
+  .leaflet-control-dialog-maximize {
+  position: absolute;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  top: 0px;
+  right: 20px;
+  padding: 4px;
+  font-size: 12px;
+  line-height: 12px;
+  color: #666;
+}

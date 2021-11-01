@@ -13,6 +13,7 @@ import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
+import KPIDashboard from './apps/KPIDashboard';
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -109,3 +110,7 @@ mountApp(AboutBox, '#vue_show_about_box')
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
     });
+
+window.activate_kpi_dashboard_window = () => {
+    mountApp(KPIDashboard, '#kpi_dashboard_window');
+}

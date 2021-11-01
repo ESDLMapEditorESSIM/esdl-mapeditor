@@ -209,6 +209,11 @@
     <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
     <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" integrity="sha512-lQP1BiSutAy+g9L+bDr1v9758SFLCJ1fK+6tXzu5M22G7/pigzb+01L31Cu1TUlWYr3lnQ4XQVmQfnpTZVW1Og==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
+    <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
+    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
+
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
     <script type="text/javascript" src="./utils/app_settings.js"></script>
@@ -1756,6 +1761,7 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
+                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
@@ -1936,6 +1942,16 @@
 
     dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
+
+    let kpi_dashboard_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false
+    };
+    var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
