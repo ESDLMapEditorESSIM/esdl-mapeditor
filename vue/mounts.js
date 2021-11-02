@@ -77,6 +77,6 @@ export function mountApp(component, elementSelector) {
     app.use(Col);
     app.use(Divider);
     app.use(Breadcrumb);
-    app.use(VueGridLayout)
+    app.use(VueGridLayout);
     app.mount(elementSelector);
 }

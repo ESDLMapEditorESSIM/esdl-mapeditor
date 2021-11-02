@@ -9,11 +9,13 @@
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
+    "@j-t-mcc/vue3-chartjs": "^1.2.0",
     "@jsonforms/core": "^2.5.2",
     "@jsonforms/vue": "^2.5.2",
     "@jsonforms/vue-vanilla": "^2.5.2",
     "ant-design-vue": "2.0.0-rc.3",
     "axios": "^0.20.0",
+    "chart.js": "^3.6.0",
     "core-js": "^3.6.5",
     "reqwest": "^2.0.5",
     "sass-loader": "^10.0.2",

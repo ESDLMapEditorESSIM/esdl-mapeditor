@@ -2,6 +2,7 @@
   <h1>
     KPI Dashboard
   </h1>
+
   <grid-layout
     v-model:layout="layout"
     :col-num="12"
@@ -23,34 +24,36 @@
       :i="item.i"
     >
       <span class="text">{{ itemTitle(item) }}</span>
+      <DChart />
     </grid-item>
   </grid-layout>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, defineComponent } from 'vue'
+import DChart from '../components/kpipanels/DChart.vue'
 
 const layout = ref([
-    {"x":0,"y":0,"w":2,"h":2,"i":"0", static: false},
-    {"x":2,"y":0,"w":2,"h":4,"i":"1", static: true},
-    {"x":4,"y":0,"w":2,"h":5,"i":"2", static: false},
-    {"x":6,"y":0,"w":2,"h":3,"i":"3", static: false},
-    {"x":8,"y":0,"w":2,"h":3,"i":"4", static: false},
-    {"x":10,"y":0,"w":2,"h":3,"i":"5", static: false},
-    {"x":0,"y":5,"w":2,"h":5,"i":"6", static: false},
-    {"x":2,"y":5,"w":2,"h":5,"i":"7", static: false},
-    {"x":4,"y":5,"w":2,"h":5,"i":"8", static: false},
-    {"x":6,"y":3,"w":2,"h":4,"i":"9", static: true},
-    {"x":8,"y":4,"w":2,"h":4,"i":"10", static: false},
-    {"x":10,"y":4,"w":2,"h":4,"i":"11", static: false},
-    {"x":0,"y":10,"w":2,"h":5,"i":"12", static: false},
-    {"x":2,"y":10,"w":2,"h":5,"i":"13", static: false},
-    {"x":4,"y":8,"w":2,"h":4,"i":"14", static: false},
-    {"x":6,"y":8,"w":2,"h":4,"i":"15", static: false},
-    {"x":8,"y":10,"w":2,"h":5,"i":"16", static: false},
-    {"x":10,"y":4,"w":2,"h":2,"i":"17", static: false},
-    {"x":0,"y":9,"w":2,"h":3,"i":"18", static: false},
-    {"x":2,"y":6,"w":2,"h":2,"i":"19", static: false}
+    {"x":0,"y":0,"w":3,"h":5,"i":"0", static: false},
+    {"x":3,"y":0,"w":3,"h":5,"i":"1", static: false},
+    {"x":6,"y":0,"w":3,"h":5,"i":"2", static: false},
+    {"x":0,"y":5,"w":3,"h":5,"i":"3", static: false},
+    {"x":3,"y":5,"w":3,"h":5,"i":"4", static: false},
+    {"x":6,"y":5,"w":3,"h":5,"i":"5", static: false},
+    {"x":0,"y":10,"w":3,"h":5,"i":"6", static: false},
+    {"x":3,"y":10,"w":3,"h":5,"i":"7", static: false},
+    {"x":6,"y":10,"w":3,"h":5,"i":"8", static: false},
+    {"x":0,"y":15,"w":3,"h":5,"i":"9", static: false},
+    {"x":3,"y":15,"w":3,"h":5,"i":"10", static: false},
+    {"x":6,"y":15,"w":3,"h":5,"i":"11", static: false},
+    {"x":0,"y":20,"w":3,"h":5,"i":"12", static: false},
+    {"x":3,"y":20,"w":3,"h":5,"i":"13", static: false},
+    {"x":6,"y":20,"w":3,"h":5,"i":"14", static: false},
+    {"x":0,"y":25,"w":3,"h":5,"i":"15", static: false},
+    {"x":3,"y":25,"w":3,"h":5,"i":"16", static: false},
+    {"x":6,"y":25,"w":3,"h":5,"i":"17", static: false},
+    {"x":0,"y":30,"w":3,"h":5,"i":"18", static: false},
+    {"x":3,"y":30,"w":3,"h":5,"i":"19", static: false}
 ])
 
 const itemTitle = (item) => {
@@ -60,8 +63,6 @@ const itemTitle = (item) => {
   }
   return result;
 }
-
-
 
 </script>
 
@@ -74,6 +75,7 @@ const itemTitle = (item) => {
 .vue-grid-item:not(.vue-grid-placeholder) {
   background: #ccc;
   border: 1px solid black;
+  padding: 5px;
 }
 
 .vue-grid-item .resizing {
