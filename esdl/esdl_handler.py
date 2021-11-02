@@ -184,7 +184,7 @@ class EnergySystemHandler:
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
-        uri = StringURI(name + '.esdl', esdl_string)
+        uri = StringURI(name + '_' + str(uuid4()) + '.esdl', esdl_string)
         # self.add_uri(uri)
         try:
             tmp_resource = self.rset.get_resource(uri)
