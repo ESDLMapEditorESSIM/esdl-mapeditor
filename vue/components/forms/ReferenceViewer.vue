@@ -26,7 +26,7 @@
     </a-button>
   </a-col>
   <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
-  <TableEditor v-if="ref.type == 'Table'" :parent-object-id="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
+  <TableEditor v-if="ref.type == 'Table'" :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
   <!-- <span v-else>Other editor</span> -->
   <!-- </a-modal> -->
 </template>
@@ -137,7 +137,6 @@ export default {
     tableUpdate: function(ref, data) {
       //console.log('RV table update data', ref, data);
       // forward event to ObjectProperties, where the ref data original comes from
-      
 
       // TODO: this needs to move to the Table editor: as this is table specific for now
       const updateData = {
