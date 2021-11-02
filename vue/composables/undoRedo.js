@@ -7,11 +7,13 @@ export function useUndoRedo() {
 
   const undo = () => window.socket.emit('command', {cmd: 'undo', es_id: window.active_layer_id});
   const redo = () => window.socket.emit('command', {cmd: 'redo', es_id: window.active_layer_id});
+  const undoRedoUntil = (idx) => window.socket.emit('command', {cmd: 'undo_redo_until', target_idx: idx, es_id: window.active_layer_id});
 
   return {
     showUndoRedoControl,
     toggleShowUndoRedoControl,
     undo,
     redo,
+    undoRedoUntil,
   }
 }

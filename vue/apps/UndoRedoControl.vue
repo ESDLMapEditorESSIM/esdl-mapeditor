@@ -2,16 +2,16 @@
   <div v-show="showUndoRedoControl" class="my-control leaflet-undo-redo">
     <h1>
       UndoRedo
-      <a-button type="dashed" shape="circle" size="small" @click="toggleShowUndoRedoControl">
+      <a-button type="dashed" shape="circle" title="Close" size="small" @click="toggleShowUndoRedoControl">
         <template #icon><i class="fas fa-times" /></template>
       </a-button>
-      <a-button type="default" shape="circle" size="small" @click="loadUndoRedo">
+      <a-button type="default" shape="circle" title="Refresh" size="small" @click="loadUndoRedoStack">
         <template #icon><i class="fas fa-sync-alt" /></template>
       </a-button>
-      <a-button type="primary" shape="circle" size="small" @click="redo">
+      <a-button type="primary" shape="circle" title="Redo" size="small" @click="redo">
         <template #icon><i class="fas fa-redo" /></template>
       </a-button>
-      <a-button type="primary" shape="circle" size="small" @click="undo">
+      <a-button type="primary" shape="circle" title="Undo" size="small" @click="undo">
         <template #icon><i class="fas fa-undo" /></template>
       </a-button>
     </h1>
@@ -20,10 +20,10 @@
       <a-timeline v-else>
         <a-timeline-item v-for="(entry, idx) in stack" :key="entry.label" :color="labelToColor(entry.label)" :class="{active: isActiveIndex(idx), undone: isUndone(idx)}">
           <strong>{{ entry.label }}</strong>
-          <a-button v-show="!isActiveIndex(idx)" type="link" shape="circle" size="small">
+          <a-button v-show="!isActiveIndex(idx)" type="link" shape="circle" title="Undo/Redo to this point" size="small" @click="undoRedoUntil(idx)">
             <template #icon><i class="fas fa-arrow-left" /></template>
           </a-button>
-          <a-button v-show="canHighlight(entry)" type="link" shape="circle" size="small" @click="highlight(entry)">
+          <a-button v-show="canHighlight(entry)" type="link" shape="circle" title="Highlight asset" size="small" @click="highlight(entry)">
             <template #icon><i class="fas fa-search" /></template>
           </a-button>
         </a-timeline-item>
@@ -39,31 +39,43 @@ import Spinner from "../components/Spinner";
 import { useUndoRedo } from "../composables/undoRedo.js";
 
 // eslint-disable-next-line no-unused-vars
-const { showUndoRedoControl, toggleShowUndoRedoControl, undo, redo } = useUndoRedo();
+const { showUndoRedoControl, toggleShowUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
 
 const stack = ref([]);
 const stack_index = ref(null);
 const isLoading = ref(false);
 
-function loadUndoRedo() {
+/**
+ * Loads the undo redo stack and subscribes to any updates.
+ */
+function loadUndoRedoStack() {
+  if (!window.socket) {
+    setTimeout(loadUndoRedoStack, 2000);
+    return
+  }
   isLoading.value = true;
-  window.socket.emit('undoredo_stack', {}, (res) => {
-    console.log("Received undo/redo stack")
-    console.log(res);
+  window.socket.emit('undo_redo_stack', {}, (res) => {
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     isLoading.value = false;
   });
 }
-function subscribeUndoRedo() {
-  window.socket.on('undoredo_update', function (res) {
-    console.log("Undo/redo update")
-    console.log(res)
-    stack.value = res
+
+function subscribeUndoRedoStack() {
+  if (!window.socket) {
+    setTimeout(subscribeUndoRedoStack, 2000);
+    return
+  }
+  window.socket.on('undo_redo_stack_update', function (res) {
+    stack.value = res.stack;
+    stack_index.value = res.stack_index;
+    scrollDown();
   });
 }
-setTimeout(loadUndoRedo, 2000);
-setTimeout(subscribeUndoRedo, 2000);
+
+// Load stack and subscribe.
+loadUndoRedoStack();
+subscribeUndoRedoStack();
 
 // eslint-disable-next-line no-unused-vars
 function labelToColor(label) {
@@ -94,7 +106,7 @@ function highlight(entry) {
       }
     }
   }
-  alert("Not found");
+  alert("The selected asset could not be found in this ESDL.");
 }
 
 /**
@@ -117,12 +129,13 @@ function isUndone(idx) {
 }
 
 onUpdated(() => {
-  console.log("Here");
-  const contentDiv = document.getElementById("undo-redo-content");
-  console.log(contentDiv);
-  contentDiv.scrollTop = contentDiv.scrollHeight;
+  scrollDown();
 })
 
+function scrollDown() {
+  const contentDiv = document.getElementById("undo-redo-content");
+  contentDiv.scrollTop = contentDiv.scrollHeight;
+}
 </script>
 
 <style lang="scss">
@@ -132,6 +145,7 @@ onUpdated(() => {
   height: 400px;
   background: white;
   overflow: hidden;
+  resize: both;
 
   h1 {
     padding: 8px;
@@ -140,7 +154,7 @@ onUpdated(() => {
   #undo-redo-content {
     height: 90%;
     overflow: scroll;
-    padding: 0 8px 8px 8px;
+    padding: 5px 8px 8px 8px;
   }
 
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);

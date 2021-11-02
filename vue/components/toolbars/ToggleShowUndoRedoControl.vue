@@ -6,7 +6,7 @@
     >
       &nbsp;
     </div>
-    Show/hide undo/redo control
+    Show/hide undo/redo view
   </a>
 </template>
 

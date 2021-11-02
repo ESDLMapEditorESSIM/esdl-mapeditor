@@ -24,14 +24,16 @@
 
 from functools import wraps
 
+from flask_socketio import emit
+
 from extensions.session_manager import get_handler, get_session
 
 
 def undo_record_changes(label: str):
     """
      Wraps undo_record_changes, such that changes are automatically recorded
-     In a seperate file to avoid cyclic imports
-     Label is required
+     In a seperate file to avoid cyclic imports.
+     Label is required.
     """
     def internal_recording(fn):
         @wraps(fn)
@@ -42,6 +44,7 @@ def undo_record_changes(label: str):
             stack.start_recording(label=label)
             result = fn(*args, **kwargs)
             stack.stop_recording()
+            emit('undo_redo_stack_update', stack.serialize())
             return result
         return wrapped_record_changes
     return internal_recording

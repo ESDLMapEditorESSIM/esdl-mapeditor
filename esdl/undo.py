@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 from collections import UserList
+from typing import Optional, TypedDict
 
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
@@ -27,6 +28,32 @@ from functools import wraps
 log = get_logger(__name__)
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
+
+
+class UndoRedoCommandDict(TypedDict):
+    """
+    A part of a stack entry.
+    """
+    id: Optional[str]
+    name: Optional[str]
+    type: str
+
+
+class UndoRedoStackEntryDict(TypedDict):
+    """
+    An entry in the undo redo stack.
+    """
+    label: str
+    commands: list[UndoRedoCommandDict]
+
+
+class UndoRedoSerializedStack(TypedDict):
+    """
+    An entry in the undo redo stack.
+    """
+    stack_index: int
+    stack: list[UndoRedoStackEntryDict]
+
 
 class LabelledAction(Command, UserList):
     """
@@ -64,7 +91,6 @@ class LabelledAction(Command, UserList):
         return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
 
-
 class UndoRedoCommandStack(CommandStack):
     """
     Creates a undo and redo command stack for ESDL documents
@@ -100,14 +126,12 @@ class UndoRedoCommandStack(CommandStack):
             self.compound = None
         self._recording = False
 
-
     def add_undo_step(self, label=None):
         if self.compound is not None:
             self._combineCommands = False
             self.append(self.compound)
             self._combineCommands = True
         self.compound = LabelledAction(label)
-
 
     def append(self, *commands):
         if self._combineCommands:
@@ -172,9 +196,6 @@ class UndoRedoCommandStack(CommandStack):
                         del resource.uuid_dict[value.id]
 
         super().redo()
-
-
-
         self._recording = True
 
     def can_undo(self):
@@ -204,6 +225,22 @@ class UndoRedoCommandStack(CommandStack):
     def update_label(self, new_label: str) -> None:
         if self.compound:
             self.compound.label = new_label
+
+    def serialize(self) -> UndoRedoSerializedStack:
+        """
+        Return the stack in a format that can be serialized and sent as JSON to the frontend.
+        """
+        return dict(
+            stack_index=self.stack_index,
+            stack=[{
+                'label': entry.label,
+                'commands': [{
+                    'id': command.value.id if hasattr(command.value, "id") else None,
+                    'name': command.value.name if hasattr(command.value, "name") else None,
+                    'type': command.value.__class__.__name__,
+                } for command in entry.data if command.value is not None]
+            } for entry in self.stack]
+        )
 
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
@@ -353,4 +390,6 @@ class ChangeTracker:
                 t.resource.listeners.remove(t.observer)
                 del t.observer
                 #del t.resource # needed?
+
+
 

@@ -2974,21 +2974,34 @@ def process_command(message):
         else:
             send_alert("Nothing to redo at this time")
 
+    if message['cmd'] == 'undo_redo_until':
+        target_idx = message['target_idx']
+        esh = get_handler()
+        undo_redo.stop_recording()
+        diff = undo_redo.stack_index - target_idx
+        while diff > 0 and undo_redo.can_undo():
+            undo_redo.undo()
+            diff -= 1
+        while diff < 0 and undo_redo.can_redo():
+            undo_redo.redo()
+            diff += 1
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+
     undo_redo.stop_recording()
 
-    # stack = [{'label': entry.label,
-    #           'data': [{'id': command.value.id, 'name': command.value.name, 'type': command.value.__class__.__name__}
-    #                    for command in entry.data]} for entry in tracker_stack.stack]
-    # emit('trackerstack_update', stack)
-    pprint(undo_redo.stack)
+    # Normally this emit is done with the undo_record_changes decorator, but this function is a bit too messy for that.
+    emit('undo_redo_stack_update', undo_redo.serialize())
 
     print("Undo/Redo size={}".format(len(undo_redo.stack)))
     set_handler(esh)
     session.modified = True
 
 
-@socketio.on('undoredo_stack', namespace='/esdl')
-def undoredo_stack(params):
+@socketio.on('undo_redo_stack', namespace='/esdl')
+def undo_redo_stack(_):
+    """
+    Return the undo redo stack.
+    """
     esh = get_handler()
     if esh is None:
         logger.error('ERROR finding EnergySystemHandler, Session issue??')
@@ -2996,17 +3009,8 @@ def undoredo_stack(params):
     active_es_id = get_session('active_es_id')
     es_edit = esh.get_energy_system(es_id=active_es_id)
     undo_redo = esh.change_tracker.get_tracker_stack(es_edit)
-    pprint(undo_redo.stack)
-    stack = [{
-        'label': entry.label,
-        'commands': [{
-            'id': command.value.id if hasattr(command.value, "id") else None,
-            'name': command.value.name if hasattr(command.value, "name") else None,
-            'type': command.value.__class__.__name__,
-        } for command in entry.data if command.value is not None]
-    } for entry in undo_redo.stack]
-
-    return dict(stack=stack, stack_index=undo_redo.stack_index)
+    serialized_stack = undo_redo.serialize()
+    return serialized_stack
 
 
 @executor.job
