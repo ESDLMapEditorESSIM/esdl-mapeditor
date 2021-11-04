@@ -2,7 +2,9 @@
   <h1>
     KPI Dashboard
   </h1>
-
+  <a-button type="primary" @click="getDashboardList">
+    getDashboardList
+  </a-button>
   <grid-layout
     v-model:layout="layout"
     :col-num="12"
@@ -16,14 +18,12 @@
     <grid-item
       v-for="item in layout"
       :key="item.i"
-      :static="item.static"
       :x="item.x"
       :y="item.y"
       :w="item.w"
       :h="item.h"
       :i="item.i"
     >
-      <span class="text">{{ itemTitle(item) }}</span>
       <DChart />
     </grid-item>
   </grid-layout>
@@ -34,35 +34,39 @@ import { ref, defineComponent } from 'vue'
 import DChart from '../components/kpipanels/DChart.vue'
 
 const layout = ref([
-    {"x":0,"y":0,"w":3,"h":5,"i":"0", static: false},
-    {"x":3,"y":0,"w":3,"h":5,"i":"1", static: false},
-    {"x":6,"y":0,"w":3,"h":5,"i":"2", static: false},
-    {"x":0,"y":5,"w":3,"h":5,"i":"3", static: false},
-    {"x":3,"y":5,"w":3,"h":5,"i":"4", static: false},
-    {"x":6,"y":5,"w":3,"h":5,"i":"5", static: false},
-    {"x":0,"y":10,"w":3,"h":5,"i":"6", static: false},
-    {"x":3,"y":10,"w":3,"h":5,"i":"7", static: false},
-    {"x":6,"y":10,"w":3,"h":5,"i":"8", static: false},
-    {"x":0,"y":15,"w":3,"h":5,"i":"9", static: false},
-    {"x":3,"y":15,"w":3,"h":5,"i":"10", static: false},
-    {"x":6,"y":15,"w":3,"h":5,"i":"11", static: false},
-    {"x":0,"y":20,"w":3,"h":5,"i":"12", static: false},
-    {"x":3,"y":20,"w":3,"h":5,"i":"13", static: false},
-    {"x":6,"y":20,"w":3,"h":5,"i":"14", static: false},
-    {"x":0,"y":25,"w":3,"h":5,"i":"15", static: false},
-    {"x":3,"y":25,"w":3,"h":5,"i":"16", static: false},
-    {"x":6,"y":25,"w":3,"h":5,"i":"17", static: false},
-    {"x":0,"y":30,"w":3,"h":5,"i":"18", static: false},
-    {"x":3,"y":30,"w":3,"h":5,"i":"19", static: false}
+    {"x":0,"y":0,"w":3,"h":5,"i":"0"},
+    {"x":3,"y":0,"w":3,"h":5,"i":"1"},
+    {"x":6,"y":0,"w":3,"h":5,"i":"2"},
+    {"x":0,"y":5,"w":3,"h":5,"i":"3"},
+    {"x":3,"y":5,"w":3,"h":5,"i":"4"},
+    {"x":6,"y":5,"w":3,"h":5,"i":"5"},
+    {"x":0,"y":10,"w":3,"h":5,"i":"6"},
+    {"x":3,"y":10,"w":3,"h":5,"i":"7"},
+    {"x":6,"y":10,"w":3,"h":5,"i":"8"},
+    {"x":0,"y":15,"w":3,"h":5,"i":"9"},
+    {"x":3,"y":15,"w":3,"h":5,"i":"10"},
+    {"x":6,"y":15,"w":3,"h":5,"i":"11"},
+    {"x":0,"y":20,"w":3,"h":5,"i":"12"},
+    {"x":3,"y":20,"w":3,"h":5,"i":"13"},
+    {"x":6,"y":20,"w":3,"h":5,"i":"14"},
+    {"x":0,"y":25,"w":3,"h":5,"i":"15"},
+    {"x":3,"y":25,"w":3,"h":5,"i":"16"},
+    {"x":6,"y":25,"w":3,"h":5,"i":"17"},
+    {"x":0,"y":30,"w":3,"h":5,"i":"18"},
+    {"x":3,"y":30,"w":3,"h":5,"i":"19"}
 ])
 
-const itemTitle = (item) => {
-  let result = item.i;
-  if (item.static) {
-      result += " - Static";
+const getDashboardList = async () => {
+  console.log('getDashboardList');
+  const response = await fetch("kpi_dashboards");
+  console.log(response);
+  if (response.ok) {
+    const data = await response.json();
+    console.log(data);
   }
-  return result;
-}
+};
+
+getDashboardList();
 
 </script>
 
