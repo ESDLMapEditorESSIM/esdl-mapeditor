@@ -29,7 +29,7 @@ export function useEsdlLayers() {
 
         for (const id in esdlLayers) {
             const esdlLayer = esdlLayers[id];
-            if ((exceptId != null && exceptId != id) || esdlLayer.title != 'Untitled EnergySystem') {
+            if ((exceptId != null && exceptId !== id) || esdlLayer.title !== 'Untitled EnergySystem') {
                 window.remove_esdl_layer(id);
             }
         }

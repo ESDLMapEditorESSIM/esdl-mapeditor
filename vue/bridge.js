@@ -8,6 +8,7 @@ export const MessageNames = Object.freeze({
     USER_SETTINGS: 'USER_SETTINGS',
     ASSET_PROPERTIES: 'ASSET_PROPERTIES',
     CARRIER_COLORS: 'CARRIER_COLORS',
+    PROJECT_LOADED: 'PROJECT_LOADED',
 });
 
 export const PubSubManager = {
@@ -16,6 +17,7 @@ export const PubSubManager = {
     'USER_SETTINGS': [],
     'ASSET_PROPERTIES': [],
     'CARRIER_COLORS': [],
+    'PROJECT_LOADED': [],
   },
 
   subscribe: function(name, callback) {

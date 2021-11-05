@@ -857,6 +857,13 @@
                 // title_div.innerHTML = '<b>' + title + '<b>';
             });
 
+            PubSubManager.subscribe("PROJECT_LOADED", (name, message) => {
+                console.log(message);
+                // Project loaded event from Vue.
+                window.energy_project = message;
+                add_layer_control();
+            })
+
             socket.on('set_active_layer_id', function(id) {
                 // console.log('add_draw_control');
                 active_layer_id = id;
