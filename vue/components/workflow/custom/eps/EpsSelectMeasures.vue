@@ -1,5 +1,18 @@
 <template>
   <p>Please select EPS measures to apply to the ESDL.</p>
+  <p>
+    Please note that the "Warmtepomp" measure also implies all isolation measures, as well as "Warmteterugwinning uit
+    ventilatie" and PV. Those cannot be deselected if "Warmtepomp" is selected.
+  </p>
+  <div :style="{ borderBottom: '1px solid #E9E9E9' }">
+    <a-checkbox
+      v-model:checked="checkAll"
+      :indeterminate="indeterminate"
+      @change="onCheckAllChange"
+    >
+      Check all
+    </a-checkbox>
+  </div>
   <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" />
   <br>
   <a-button type="primary" @click="loadEsdl"> Run ESDL service </a-button>
@@ -8,7 +21,6 @@
 <script setup="props">
 import {defineProps, ref, watch} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
-// eslint-disable-next-line no-unused-vars
 // eslint-disable-next-line no-unused-vars
 import "@jsonforms/vue-vanilla/vanilla.css";
 
@@ -33,8 +45,18 @@ const EpsMeasures = Object.freeze({
     PV: "PV",
 });
 
+const indeterminate = ref(false);
+const checkAll = ref(true);
+
 const plainOptions = [EpsMeasures.LED, EpsMeasures.DAKISOLATIE, EpsMeasures.GEVELISOLATIE, EpsMeasures.GLASISOLATIE, EpsMeasures.WTW, EpsMeasures.WARMTEPOMP, EpsMeasures.PV];
 const selectedMeasures = ref([...plainOptions]);
+
+// eslint-disable-next-line no-unused-vars
+const onCheckAllChange = () => {
+  indeterminate.value = false;
+  selectedMeasures.value = [...plainOptions];
+};
+
 
 // eslint-disable-next-line no-unused-vars
 const loadEsdl = () => {
@@ -67,10 +89,12 @@ watch(selectedMeasures,
         for (const preq of warmtepompPreqs) {
           if (!value.includes(preq)) {
             value.push(preq);
+            alert("Cannot remove " + preq + " because Warmtepomp is selected.")
           }
         }
       }
-      console.log(value);
+      indeterminate.value = !!value.length && value.length < plainOptions.length;
+      checkAll.value = value.length === plainOptions.length;
     }
 )
 </script>
