@@ -521,7 +521,6 @@ function service_render_error(service_index, text = null) {
 }
 
 function update_service_contextmenus(services_list) {
-    console.log(services_list);
     // For now, remove all contextmenu items
     map.contextmenu.removeAllItems();
     for (let i = 0; i < services_list.length; i++) {

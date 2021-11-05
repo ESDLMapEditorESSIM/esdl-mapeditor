@@ -13,7 +13,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+import base64
 import importlib
 import json
 import urllib
@@ -25,16 +25,15 @@ from warnings import warn
 import jwt
 import requests
 from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
-from flask_executor import Executor
 from flask_oidc import OpenIDConnect
-from flask_session import Session
 from flask_socketio import SocketIO, emit
-from pyecore.ecore import EDate
+from pyecore.ecore import EDate, EObject
 
+from src import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
-from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler
+from esdl import EnergySystem, esdl
+from esdl.esdl_handler import EnergySystemHandler, StringURI
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
@@ -81,6 +80,7 @@ from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from utils.datetime_utils import parse_date
+from variation import Project
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
@@ -119,32 +119,10 @@ def is_running_in_uwsgi():
 # ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
-app = Flask(__name__)
-app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
-app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-# app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
-app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
-app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged for tasks run in threads
+app = create_app(__name__)
 
 logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
-
-socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
-# logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
-
-# remove existing sessions when restarting, existing sessions will give errors
-# as associated ESDLs are not stored in the session and the OpenId connect info is wrong
-delete_sessions_on_disk(app.config['SESSION_FILE_DIR'])
-
-# fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
-Session(app)
-
-
-executor = Executor(app)
 
 #extensions
 schedule_session_clean_up()
@@ -1431,11 +1409,14 @@ def get_marginal_costs_for_asset(asset_id):
     return None
 
 
-def str2float(string):
+def str2float(string) -> float:
+    """
+    Converts a string into a float. If it fails, returns 0.0 (so always returns).
+    """
     try:
         f = float(string)
         return f
-    except:
+    except ValueError:
         return 0.0
 
 
@@ -3106,6 +3087,26 @@ def process_file_command(message):
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
 
+    if message['cmd'] == 'load_energy_project':
+        base64_file = message['base64_file']
+        file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
+        logger.info(file_content)
+        filename = message['filename']
+        logger.info(filename)
+        uri = StringURI(filename + '.project', file_content)
+        esh = get_handler()
+        rset = esh.rset
+
+        try:
+            project_resource = rset.get_resource(uri)
+            project: Project = project_resource.contents[0]
+            variant_names = [v.name for v in project.variants]
+            print(f'Loaded project {project.name}, containing {len(project.variants)} variants: {variant_names}')
+            return variant_names
+        except Exception as e:
+            logger.error("Error loading {}: {}".format(filename, e))
+            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']
         filename = message['filename']
@@ -3336,6 +3337,8 @@ def default_error_handler(e):
     logger.error('Socket IO arguments: {}'.format(request.event["args"]))
     traceback.print_exc()
 
+# Import events from blueprints. This is a temporary measure until we can manage to import from the blueprint itself.
+from extensions.projects import events
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application

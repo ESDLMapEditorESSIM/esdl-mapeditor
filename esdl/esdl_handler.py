@@ -10,12 +10,14 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from typing import Optional, Tuple
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
-from pyecore.valuecontainer import ECollection
 from pyecore.utils import alias
-from pyecore.resources.resource import HttpURI
+from pyecore.resources.resource import HttpURI, Resource
+
+from esdl.energy_projects import EnergyProjectHandlerMixin
 from esdl.resources.xmlresource import XMLResource
 from esdl import esdl
 from uuid import uuid4
@@ -24,11 +26,13 @@ import src.log as log
 from esdl import support_functions
 from esdl.undo import ChangeTracker, UndoRedoCommandStack
 
-#logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = log.get_logger(__name__)
 
 
-class EnergySystemHandler:
+class EnergySystemHandler(EnergyProjectHandlerMixin):
+    """
+    The handler for energy systems. Also manages other resources through mixins.
+    """
 
     def __init__(self, energy_system=None):
         if energy_system is not None:
@@ -187,7 +191,7 @@ class EnergySystemHandler:
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
-    def add_from_string(self, name, esdl_string):
+    def add_from_string(self, name, esdl_string) -> Tuple[esdl.EnergySystem, list[str]]:
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
@@ -202,13 +206,13 @@ class EnergySystemHandler:
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
+            self.change_tracker.newTracker(tmp_es)
             return tmp_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
             raise
 
-
-    def to_string(self, es_id=None):
+    def to_string(self, es_id=None) -> str:
         # to use strings as resources, we simulate a string as being a URI
         uri = StringURI('to_string_'+str(uuid4())+'.esdl')
         if es_id is None:
@@ -224,7 +228,7 @@ class EnergySystemHandler:
         # return the string
         return uri.getvalue()
 
-    def to_bytesio(self):
+    def to_bytesio(self) -> BytesIO:
         """Returns a BytesIO stream for the energy system"""
         uri = StringURI('bytes_io_to_string.esdl')
         self.resource.save(uri)
@@ -303,14 +307,21 @@ class EnergySystemHandler:
             del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
 
-    def get_energy_systems(self):
+    def get_energy_systems(self) -> list[esdl.EnergySystem]:
+        """
+        Retrieve all energy systems in the handler.
+
+        Goes through the resource set and filters out energy systems.
+        """
         es_list = []
         # for esid in self.esid_uri_dict:
         #    uri = self.esid_uri_dict[esid]
         #    es_list.append(self.rset.resources[uri])
 
         for key in self.rset.resources.keys():
-            es_list.append(self.rset.resources[key].contents[0])
+            resource_contents = self.rset.resources[key].contents[0]
+            if isinstance(resource_contents, esdl.EnergySystem):
+                es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
     def validate(self, es=None):
@@ -429,7 +440,6 @@ class EnergySystemHandler:
         self.load_from_string(state['energySystem'])
         print('done')
 
-
     def update_version(self, es_id) -> str:
         """
         Increments the version of this Energy System and returns it
@@ -460,9 +470,13 @@ class EnergySystemHandler:
                 resource = self.get_resource(es_id)
                 return self.change_tracker.get_tracker_stack(resource=resource)
 
-
-
 class StringURI(URI):
+    """
+    A subclass of URI, that also contains the contents of the resource in memory. This
+    can be provided in the text parameter. It implements the proper interface for
+    reading the resource, so that the resource set can read in the energy system from
+    memory.
+    """
     def __init__(self, uri, text=None):
         super(StringURI, self).__init__(uri)
         if text is not None:

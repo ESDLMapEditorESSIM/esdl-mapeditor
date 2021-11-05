@@ -25,6 +25,7 @@ import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
+import LoadProjectFileButton from './components/toolbars/LoadProjectFileButton';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
@@ -110,6 +111,8 @@ createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
 mountApp(AboutBox, '#vue_show_about_box')
+
+createApp(LoadProjectFileButton).mount('#vue_load_project_file')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

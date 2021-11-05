@@ -30,9 +30,9 @@ class XMLResource(XMIResource):
         self._later = []
         self.prefixes = {}
         self.reverse_nsmap = {}
-        self.parse_information = []
+        self.parse_information: list[str] = []
 
-    def get_parse_information(self):
+    def get_parse_information(self) -> list[str]:
         return self.parse_information
 
     def save(self, output=None, options=None):
