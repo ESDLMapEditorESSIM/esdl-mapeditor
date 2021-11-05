@@ -73,7 +73,7 @@ envs/
 *.esdl
 !tests/esdl/*.esdl
 download/
-projects/
+/projects/
 html/
 flask_session/
 node_modules
