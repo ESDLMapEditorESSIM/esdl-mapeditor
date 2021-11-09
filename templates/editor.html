@@ -209,6 +209,11 @@
     <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
     <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" integrity="sha512-lQP1BiSutAy+g9L+bDr1v9758SFLCJ1fK+6tXzu5M22G7/pigzb+01L31Cu1TUlWYr3lnQ4XQVmQfnpTZVW1Og==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
+    <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
+    <script type="text/javascript" src="./utils/table_editor.js"></script>
+
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
     <script type="text/javascript" src="./utils/app_settings.js"></script>
@@ -1665,6 +1670,7 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="table_editor.open()"><div class="menu-icon ui-icon ui-icon-calculator">&nbsp;</div>ESDL table editor...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
@@ -1941,6 +1947,16 @@
 
     dialog = L.control.dialog(dialog_options);
     map.addControl(dialog);
+
+    let table_editor_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false
+    };
+    var table_editor = new TableEditorDialog(table_editor_dialog_options);
+    map.addControl(table_editor);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);

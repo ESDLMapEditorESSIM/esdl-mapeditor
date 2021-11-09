@@ -81,6 +81,7 @@ from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
+from src.table_editor import TableEditor
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -179,6 +180,7 @@ ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
+TableEditor(app, socketio, esdl_doc, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
