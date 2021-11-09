@@ -374,6 +374,11 @@
                 delete line.mouseOverArrowHead;
             }
 
+            if (line.selectline) { // remove highlight if selected
+                remove_object_from_layer(es_bld_id, 'esdl_layer', line.selectline);
+                delete line.selectline;
+            }
+
             // remove connections
             console.log(line.ports);
             for (let i in line.ports) {

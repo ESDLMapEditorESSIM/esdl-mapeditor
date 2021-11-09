@@ -165,6 +165,12 @@ function set_marker_handlers(marker) {
         // console.log(pos.lat + ', ' + pos.lng );
     });
 
+    marker.on('contextmenu', function(e) {
+        // remove tooltip of marker when pressing right mouse button
+        // otherwise it hides the contextmenu when moving over tooltip
+        remove_tooltip();
+    });
+
     // TODO replace this with map.on("draw:deleted") as then undo function works
     // Now it deletes everything even when you press cancel.
     marker.off('remove')
