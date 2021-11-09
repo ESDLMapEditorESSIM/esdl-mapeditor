@@ -38,7 +38,7 @@ class TableEditor:
 
         @self.flask_app.route('/table_editor/asset_data/<asset_type>')
         def table_editor_get_asset_types(asset_type):
-            logger.info(asset_type)
+            logger.info(f"Retreiving information for table editor for assets with type {asset_type}")
             asset_attr_list = self.datalayer.get_object_parameters_by_asset_type(asset_type)
             table_editor_info = dict()
             table_editor_info['column_info'] = self._get_column_info(asset_attr_list)
@@ -57,7 +57,7 @@ class TableEditor:
                 column = dict()
                 column['name'] = camelCaseToWords(attr_info['name'])
                 column['prop'] = attr_info['name']
-                column['autosize'] = True
+                column['autoSize'] = True
 
                 if attr_info['type'] == 'EEnum':
                     options = list()
@@ -69,6 +69,20 @@ class TableEditor:
 
         return column_info
 
+    def _find_id_in_attr_info(self, asset_attr_info):
+        """
+        As the asset ID attribute can be in Basic/Advanced/... category (depends on a user setting), we need to
+        search for it
+        :param asset_attr_info: dict[category] with attribute lists
+        :return: value of ID
+        """
+        for cat in asset_attr_info:
+            attr_list = asset_attr_info[cat]
+            for attr in attr_list:
+                if attr['name'] == 'id':
+                    return attr['value']
+        return None
+
     def _get_row_info(self, asset_attr_list):
         """
         :param asset_attr_list: list with all attribute information of all assets for the given asset type
@@ -79,6 +93,7 @@ class TableEditor:
         for asset_attr_info in asset_attr_list:
             basic_attrs = asset_attr_info['Basic']
             row = dict()
+            row['id'] = self._find_id_in_attr_info(asset_attr_info)
             for attr_info in basic_attrs:
                 row[attr_info['name']] = attr_info['value']
             row_info.append(row)

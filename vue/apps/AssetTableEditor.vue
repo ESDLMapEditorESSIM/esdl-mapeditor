@@ -25,7 +25,7 @@
       }"
       resize="true"
       range="true"
-      @beforeCellFocus="beforeFocus"
+      @afteredit="process_changes"
     />
   </div>
 </template>
@@ -51,7 +51,6 @@ function get_asset_type_list() {
   let active_es_asset_layers = active_es_asset_info.getLayers();
 
   asset_list.value = active_es_asset_layers;
-  console.log(asset_list.value);
   // create list of unique asset types
   asset_types_list.value = [...new Set(asset_list.value.map(asset=>asset.type))];
 }
@@ -59,10 +58,9 @@ get_asset_type_list();
 
 const get_asset_data = async (asset_type) => {
   const response = await fetch("/table_editor/asset_data/" + asset_type);
-  console.log(response);
   if (response.ok) {
     const table_editor_info = await response.json();
-    console.log(table_editor_info);
+    // console.log(table_editor_info);
 
     columns.value = table_editor_info['column_info']
     for (const col_info of columns.value) {
@@ -72,12 +70,15 @@ const get_asset_data = async (asset_type) => {
       }
     }
     rows.value = table_editor_info['row_info']
+    window.hide_loader();
+  } else {
+    window.hide_loader();
+    console.log('Error getting asset data');
   }
-  console.log(columns.value);
 }
 
 function selected_asset_changed(asset_type) {
-  console.log(asset_type);
+  window.show_loader();
   get_asset_data(asset_type);
 }
 
@@ -87,102 +88,74 @@ const gridEditors = ref({
   select_grid_plain: VGridVueEditor(SelectGridPlain),
 });
 
-const columns = ref([
-        { name: "Name", prop: "name" },
-        { name: "Details", prop: "details" },
-        {
-          name: "Button",
-          prop: "button"
-        },
-        // { name: "Editor", prop: "editor", size: 200, editor: "myEditor" },
-        {
-          name: "Dropdown Ant",
-          prop: "dropdown_ant",
-          autosize: true,
-          editor: "select_grid_ant",
-          cellTemplate: VGridVueTemplate(SelectGridAntViewer),
-          options: [
-            {
-              value: "jack",
-              label: "Jack",
-            },
-            {
-              value: "lucy",
-              label: "Lucy",
-            },
-            {
-              value: "disabled",
-              label: "Disabled",
-              disabled: true,
-            },
-            {
-              value: "yiminghe",
-              label: "Yiminghe",
-            },
-          ],
-        },
-        {
-          name: "Dropdown Plain",
-          prop: "dropdown_plain",
-          autosize: true,
-          editor: "select_grid_plain",
-        },
-]);
+function process_changes(e) {
+  /*
+    e.detail.xxx, where xxx is:
+    - in case of multiple changes:
+      - models: dict with rowIndex as key
+        {1: Proxy {id:..., name:..., power:..., prodType:..., state:...}}
+      - data: dict with rowIndex as key
+        {1: {power: 200000, state: ENABLED}, 2: {power: 200000, state: ENABLED}}
 
-const rows = ref([
-        {
-          name: "Row 1a",
-          details: "Item 1",
-          button: 5,
-          // editor: 2,
-          dropdown_ant: "lucy",
-          dropdown_plain: "lucy",
-        },
-        {
-          name: "Row 2",
-          details: "Item 2",
-          button: 7,
-          // editor: 3,
-          dropdown_ant: "jack",
-          dropdown_plain: "jack",
-        },
-        {
-          name: "Row 3",
-          details: "Item 3",
-          button: 7,
-          // editor: 3,
-          dropdown_ant: "jack",
-          dropdown_plain: "jack",
-        },
-        {
-          name: "Row 4",
-          details: "Item 4",
-          button: 7,
-          // editor: 3,
-          dropdown_ant: "jack",
-          dropdown_plain: "jack",
-        },
-        {
-          name: "Row 5",
-          details: "Item 5",
-          button: 7,
-          // editor: 3,
-          dropdown_ant: "jack",
-          dropdown_plain: "jack",
-        },
-        {
-          name: "Row 6",
-          details: "Item 6",
-          button: 7,
-          // editor: 3,
-          dropdown_ant: "jack",
-          dropdown_plain: "jack",
-        },
-]);
+    - in case of a single change:
+      - model ({id:..., name:..., power:..., prodType:..., state:...})
+      - rowIndex
+      - prop ('power')
+      - value ('3000')
+  */
 
-function beforeFocus(e) {
-  e.preventDefault();
+  let changes = e.detail;
+
+  if ('model' in changes) {
+    /* Single change */
+    if ('id' in changes.model) {
+      window.socket.emit("command", {
+        cmd: "set_asset_param",
+        id: changes.model['id'],
+        param_name: changes['prop'],
+        param_value: changes['val'],
+      });
+      window.PubSubManager.broadcast('ASSET_PROPERTIES', {
+        id: changes.model['id'],
+        name: changes['prop'],
+        value: changes['val'],
+      });
+    } else {
+      console.log("Can't find object ID in row data of revolist datagrid");
+    }
+  } else if ('models' in changes) {
+    /* Multiple changes */
+    for (const [rowIndex, row] of Object.entries(changes['models'])) {
+      if ('id' in row) {
+        let id = row['id'];
+        let data = changes['data'][rowIndex];
+        for (const [attr, value] of Object.entries(data)) {
+          window.socket.emit("command", {
+            cmd: "set_asset_param",
+            id: id,
+            param_name: attr,
+            param_value: value,
+          });
+          window.PubSubManager.broadcast('ASSET_PROPERTIES', {
+            id: id,
+            name: attr,
+            value: value,
+          });
+        }
+      } else {
+        console.log("Can't find object ID in row data of revolist datagrid");
+      }
+    }
+  } else {
+    console.log("Don't understand format of change handler in revolist datagrid");
+  }
 }
+
+const columns = ref([
+        { name: "Please select an asset type from the select menu above", prop: "action", size: 500 },
+]);
+
+const rows = ref([]);
 
 </script>
 

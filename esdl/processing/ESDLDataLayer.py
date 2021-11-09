@@ -114,7 +114,7 @@ class ESDLDataLayer:
             obj_info = self.get_object_info(asset)
 
             attrs = obj_info['attributes']
-            refs = obj_info['references']
+            refs = []  # Leave out references for now as these can't be edited (yet): obj_info['references']
             self._convert_attributes_to_primitive_types(attrs)
 
             view_mode = ViewModes.get_instance()
