@@ -214,6 +214,8 @@
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
 
+    <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
+
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
     <script type="text/javascript" src="./utils/app_settings.js"></script>
@@ -1637,7 +1639,7 @@
                                         New ESDL...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputFile').click();">
                                         <span class="menu-icon ui-icon ui-icon-folder-open"></span>
-                                        Load ESDL...</a></li>
+                                        Load ESDL(s)...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportFile').click();">
                                         <div class="menu-icon" id="menu_import"></div>
                                         Import ESDL...</a></li>
@@ -1784,8 +1786,8 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);">
-<!--            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" multiple> -->
+<!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
+            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
 
 
