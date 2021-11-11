@@ -941,8 +941,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         # e.g. also copy over the pipe material
         new_cond1 = conductor.deepcopy()
         new_cond2 = conductor.deepcopy()
+        if new_cond1.name == new_cond1.eClass.name + '_' + new_cond1.id[:4]:
+            new_cond1.name = new_cond1.eClass.name + '_' + new_cond1_id[:4]
+            new_cond2.name = new_cond2.eClass.name + '_' + new_cond2_id[:4]
+        else:
+            new_cond2.name = new_cond1.name + '_b'
+            new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear() # remove existing port, as we add previous used ports later
+        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
         new_cond2.id = new_cond2_id
         new_cond2.port.clear()
         esh.add_object_to_dict(active_es_id, new_cond1)
