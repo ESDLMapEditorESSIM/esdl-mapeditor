@@ -602,7 +602,7 @@ function update_line_color(line_layer) {
         $('#mapid .zoomline').addClass('notselectedline'); // unhighlight all
         if (line_layer.selectline === undefined) {
             let size_line = 3;
-            if (map.getZoom() > 15) size_line = 2 * map.getZoom() - 27 + 6; //butt
+            if (map.getZoom() > 12) size_line = 2 * map.getZoom() - 27 + 6; //butt
             let selectline_options = {lineCap: 'round', color: "#050505", weight: size_line, draggable:false,
                                       title: title, className:"overlayline",
                                       dashArray:"", opacity: 1.0, pane: 'lineSelectionPane'};

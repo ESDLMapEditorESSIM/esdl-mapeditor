@@ -67,7 +67,7 @@ function loas_esdl_files(event) {
             },
             error: function(xhr, ajaxOptions, thrownError) {
                hide_loader();
-               alert('Error occurred in loas_esdl_files: ' + xhr.status + ' - ' + thrownError);
+               alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError);
             }
         });
     });
