@@ -35,8 +35,8 @@
         <i class="fa fa-plus small-icon" /><span>&nbsp;Add row</span>
       </a-button>
     </div>
-    <p v-if="error">
-      {{ error.message }}
+    <p v-if="Object.keys(error).length !== 0">
+      Error: {{ error.message }}
     </p>
   </a-modal>
 </template>
@@ -51,10 +51,7 @@ export default {
         return {};
       },
     },
-    parentObjectID: {
-      type: String,
-      default: "",
-    },
+    parentObjectID: String,
     visible: Boolean,
     title: {
       type: String,
@@ -69,7 +66,7 @@ export default {
   data() {
     return {
       loading: true,
-      error: false,
+      error: {},
       table: {},
       colList: [],
       backendData: {},

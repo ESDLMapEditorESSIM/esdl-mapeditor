@@ -40,7 +40,7 @@ const doPost = async () => {
   );
 
   // Perform the request to the mapeditor backend, who will forward it to the service.
-  const response = workflowPostData(workflowStep.target.url, request_params);
+  const response = await workflowPostData(workflowStep.target.url, request_params);
   if (response != null) {
     // Give a user response if a spec is defined.
     const user_response_spec = workflowStep.target.user_response_spec;

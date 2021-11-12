@@ -36,6 +36,7 @@ import {
   vanillaRenderers,
 } from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
+import { workflowPostData } from "../../utils/api.js";
 
 // eslint-disable-next-line no-unused-vars
 const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });
@@ -82,7 +83,14 @@ const getJsonForm = async () => {
   const queryString = new URLSearchParams(request_params).toString();
 
   try {
-    schema.value = await workflowGetJsonForm(queryString, "RunEpsSchemaForProject");
+    const schema_def = await workflowGetJsonForm(queryString, "RunEpsSchemaForProject");
+    if (schema_def.properties.file_name.enum.length === 0) {
+      alert("Cannot start EPS for this project, as there is no project file generated or uploaded.");
+    } else {
+      schema.value = schema_def;
+    }
+  } catch {
+    alert("Failed loading the EPS form. Please make sure a project file is generated or uploaded.");
   } finally {
     isLoading.value = false;
   }
@@ -99,43 +107,32 @@ const message = ref("");
 // eslint-disable-next-line no-unused-vars
 const doPost = async () => {
   isLoading.value = true;
-  window.show_loader();
-
-  const params = {
-    remote_url: workflowStep.url,
-    request_params: formData,
-  };
 
   try {
     // Perform the request to the mapeditor backend, who will forward it to the service.
-    const response = await fetch("workflow/post_data", {
-      method: "POST",
-      body: JSON.stringify(params),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    // Give a user response if a spec is defined.
-    const user_response_spec = workflowStep.target.user_response_spec;
-    if (user_response_spec) {
-      let user_response = user_response_spec[response.status.toString()];
-      if (user_response) {
-        message.value = user_response.message;
-      } else if (response.ok) {
-        message.value = "Request complete.";
-      } else {
-        message.value =
-          "Error while performing request: " + response.statusText;
+    const response = await workflowPostData(workflowStep.url, formData);
+    if (response != null) {
+      // Give a user response if a spec is defined.
+      const user_response_spec = workflowStep.target.user_response_spec;
+      if (user_response_spec) {
+        let user_response = user_response_spec[response.status.toString()];
+        if (user_response) {
+          message.value = user_response.message;
+        } else if (response.ok) {
+          message.value = "Request complete.";
+        } else {
+          message.value =
+              "Error while performing request: " + response.statusText;
+        }
       }
-    }
 
-    if (response.ok && workflowStep.auto) {
-      goToNextStep();
+      if (response.ok && workflowStep.auto) {
+        goToNextStep();
+      }
     }
   } catch (e) {
     genericErrorHandler(e);
   } finally {
-    window.hide_loader();
     isLoading.value = false;
   }
 };

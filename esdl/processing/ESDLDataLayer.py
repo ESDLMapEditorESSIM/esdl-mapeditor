@@ -56,7 +56,11 @@ class ESDLDataLayer:
             for obj_id in identifier['id']:
                 esdl_objects.append(self.get_object_from_identifier({'id': obj_id}))
         else:
-            esdl_objects = [self.get_object_from_identifier(identifier)]
+            esdl_object = self.get_object_from_identifier(identifier)
+            if esdl_object:
+                esdl_objects = [esdl_object]
+            else:
+                return None
 
         obj_infos = list()
         num_assets_selected = 0
@@ -101,6 +105,23 @@ class ESDLDataLayer:
                 'selected_asset_type': selected_asset_type
             }
             return common_obj_data
+
+    def get_object_parameters_by_asset_type(self, asset_type):
+        asset_list = self.get_esdl_objects_of_type(asset_type)
+
+        attrs_per_asset_list = list()
+        for asset in asset_list:
+            obj_info = self.get_object_info(asset)
+
+            attrs = obj_info['attributes']
+            refs = []  # Leave out references for now as these can't be edited (yet): obj_info['references']
+            self._convert_attributes_to_primitive_types(attrs)
+
+            view_mode = ViewModes.get_instance()
+            cat_attrs = view_mode.categorize_object_attributes_and_references(asset, attrs, refs)
+            attrs_per_asset_list.append(cat_attrs)
+
+        return attrs_per_asset_list
 
     def set_object_parameters_by_identifier(self, identifier: Identifier, parameters):
         esdl_object = self.get_object_from_identifier(identifier)
@@ -265,12 +286,30 @@ class ESDLDataLayer:
             except KeyError:
                 logger.error('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
                 resource = esh.get_resource(active_es_id)
-                the_object = resource.resolve(identifier['fragment'])
+                try:
+                    the_object = resource.resolve(identifier['fragment'])
+                except KeyError:
+                    return None
         else:
             resource = esh.get_resource(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
 
         return the_object
+
+    def get_esdl_objects_of_type(self, asset_type):
+        asset_list = list()
+        active_es_id = get_session('active_es_id')
+        esh = get_handler()
+        es = esh.get_energy_system(active_es_id)
+
+        # module = importlib.import_module('esdl.esdl')
+        # esdl_asset_class = getattr(module, asset_type)
+
+        for asset in es.instance[0].area.asset:
+            if isinstance(asset, esdl.getEClassifier(asset_type)):
+                asset_list.append(asset)
+
+        return asset_list
 
     def get_object_info(self, esdl_object):
         esdl_object_descr = self.get_object_dict(esdl_object)

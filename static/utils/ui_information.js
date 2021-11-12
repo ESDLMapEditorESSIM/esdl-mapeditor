@@ -102,7 +102,6 @@ function update_asset_state(asset_id_or_list, new_state) {
     if (!Array.isArray(asset_id_or_list)) {
         asset_list = [asset_id_or_list];
     }
-
     for (let i=0; i<asset_list.length; i++) {
         let asset_id = asset_list[i];
         let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);

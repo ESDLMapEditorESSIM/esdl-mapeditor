@@ -1220,6 +1220,11 @@
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
 
+"@revolist/vue3-datagrid@^3.0.97":
+  version "3.0.97"
+  resolved "https://registry.yarnpkg.com/@revolist/vue3-datagrid/-/vue3-datagrid-3.0.97.tgz#66bfb2fa32166209f2845730765ef956c8d5d044"
+  integrity sha512-/mJdO0aRYTVhG8Q6k/GBgDGeLkM0c6nZ+HHhgN0KfjP+JaP1fS+BlrmbqAsnhjDuQ6PIGoW1Ix1ddXd4kBaEBg==
+
 "@simonwep/pickr@~1.7.0":
   version "1.7.4"
   resolved "https://registry.yarnpkg.com/@simonwep/pickr/-/pickr-1.7.4.tgz#b14fcd945890388b870cd6db4d6c78d531f25141"
