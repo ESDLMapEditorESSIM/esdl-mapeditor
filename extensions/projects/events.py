@@ -48,6 +48,7 @@ def activate_project_variant(message):
     # Get the asked for variant.
     # TODO: Move to more generic place.
     base_variant = energy_project.variants[0]
+    logger.info(base_variant)
     found_variant = None
     for variant in base_variant.variant:
         logger.info(variant)
@@ -63,6 +64,6 @@ def activate_project_variant(message):
     # Now using the add_from_string so that it gets properly added to the resource set.
     uri = StringURI('to_string_' + str(uuid4()) + '.esdl')
     resource = XMLResource(uri)
-    resource.append(snapshot)
+    resource.append(snapshot.deepcopy())
     resource.save()
     esh.add_from_string(found_variant.name, uri.getvalue())
