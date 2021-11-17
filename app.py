@@ -216,9 +216,10 @@ def add_header(r: Response):
     """
     if r.content_type == 'image/png': # images are allowed to be cached.
         return r
-    r.headers["Pragma"] = "no-cache"
-    r.headers["Expires"] = "0"
-    r.headers['Cache-Control'] = 'public, max-age=0'
+    if settings.FLASK_DEBUG:    # only prevent caching when debugging
+        r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
+        r.headers['Cache-Control'] = 'public, max-age=0'
     return r
 
 
