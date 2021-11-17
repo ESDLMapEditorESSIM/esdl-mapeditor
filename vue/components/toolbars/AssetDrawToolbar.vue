@@ -104,6 +104,11 @@ export default {
 
       window.remove_tooltip();
 
+      // Disable the leaflet draw toolbars, such that the shown icon can be updated
+      window.draw_control._toolbars.draw._modes.polyline.handler.disable();
+      window.draw_control._toolbars.draw._modes.polygon.handler.disable();
+      window.draw_control._toolbars.draw._modes.marker.handler.disable();
+
       window.draw_control.setDrawingOptions({
           marker: {
               icon: new marker_class_name()
