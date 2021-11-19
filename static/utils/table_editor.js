@@ -14,14 +14,17 @@
  *      TNO
  */
 
+import MapEditorDialog from "./MapEditorDialog.js";
+
 class TableEditorDialog extends MapEditorDialog {
 
   open() {
     let jqueryNode = $('<div>').attr('id', 'table_editor_window').css('height', '100%');
     this.setContent(jqueryNode.get(0));
-    activate_table_editor_window();
+    window.activate_table_editor_window();
 
     return super.open();
   }
-
 }
+
+export default TableEditorDialog;

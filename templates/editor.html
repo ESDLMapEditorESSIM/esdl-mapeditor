@@ -210,9 +210,7 @@
     <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
-    <script type="text/javascript" src="./utils/table_editor.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
 
@@ -1835,7 +1833,6 @@
 </html>
 
 <script>
-
     var osmUrl = location.protocol + '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 25, maxNativeZoom:19, attribution: osmAttrib });
@@ -1965,15 +1962,19 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    var table_editor = new TableEditorDialog(table_editor_dialog_options);
-    map.addControl(table_editor);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
 {% endif %}
 
     notesToolbarControl().addTo(map);
+</script>
 
+<script type="module">
+    import TableEditorDialog from "./utils/table_editor.js";
+
+    const table_editor = new TableEditorDialog(table_editor_dialog_options);
+    map.addControl(table_editor);
 </script>
 
 {% if debug %}

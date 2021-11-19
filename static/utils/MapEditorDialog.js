@@ -14,11 +14,17 @@
  *      TNO
  */
 
+const L = window.L;
+const map = window.map;
+
 class MapEditorDialog extends L.Control.Dialog {
+  onClose = null;
 
   initialize(options) {
-    this.options = JSON.parse(JSON.stringify(this.options));
-    L.setOptions(this, options);
+    if (options) {
+      this.onClose = options.onClose;
+    }
+    super.initialize(options);
 
     this.state = 'custom';   /* alternatives: maximized, minimized */
   }
@@ -57,6 +63,9 @@ class MapEditorDialog extends L.Control.Dialog {
     this._map.off('resize', () => {
       this._handleMapResize();
     });
+    if (this.onClose) {
+      this.onClose();
+    }
 
     return super.close()
   }
@@ -79,13 +88,16 @@ class MapEditorDialog extends L.Control.Dialog {
   _handleMaximize() {
     let map_size = this._map.getSize();
     super.setLocation([ 10, 50 ]);
+    // NOTE: Make sure to set the maxSize option large enough.
     super.setSize([ map_size.x - 300, map_size.y - 120 ]);
 
     this.state = 'maximized';
   }
 
   _handleMapResize() {
-    if (this.state == 'minimized') this._handleMinimize();
-    if (this.state == 'maximized') this._handleMaximize();
+    if (this.state === 'minimized') this._handleMinimize();
+    if (this.state === 'maximized') this._handleMaximize();
   }
-};
+}
+
+export default MapEditorDialog;

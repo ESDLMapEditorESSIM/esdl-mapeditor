@@ -43,3 +43,8 @@
   line-height: 12px;
   color: #666;
 }
+
+.leaflet-control-dialog .leaflet-control-dialog-inner .leaflet-control-dialog-contents {
+  padding: 0;
+  margin: 0;
+}

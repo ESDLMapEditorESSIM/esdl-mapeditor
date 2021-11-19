@@ -15,12 +15,9 @@
   -->
 
 <template>
-  <div v-show="showUndoRedoControl" class="my-control leaflet-undo-redo">
+  <div v-show="showUndoRedoControl" class="leaflet-undo-redo">
     <h1>
       UndoRedo
-      <a-button type="dashed" shape="circle" title="Close" size="small" @click="toggleShowUndoRedoControl">
-        <template #icon><i class="fas fa-times" /></template>
-      </a-button>
       <a-button type="default" shape="circle" title="Refresh" size="small" @click="loadUndoRedoStack">
         <template #icon><i class="fas fa-sync-alt" /></template>
       </a-button>
@@ -34,12 +31,12 @@
     <div id="undo-redo-content">
       <spinner v-if="isLoading" />
       <a-timeline v-else>
-        <a-timeline-item v-for="(entry, idx) in stack" :key="entry.label" :color="labelToColor(entry.label)" :class="{active: isActiveIndex(idx), undone: isUndone(idx)}">
+        <a-timeline-item v-for="(entry, idx) in stack" :key="entry.label" :color="typeToColor(entry.type)" :class="{active: isActiveIndex(idx), undone: isUndone(idx)}">
           <strong>{{ entry.label }}</strong>
           <a-button v-show="!isActiveIndex(idx)" type="link" shape="circle" title="Undo/Redo to this point" size="small" @click="undoRedoUntil(idx)">
             <template #icon><i class="fas fa-arrow-left" /></template>
           </a-button>
-          <a-button v-show="canHighlight(entry)" type="link" shape="circle" title="Highlight asset" size="small" @click="highlight(entry)">
+          <a-button v-show="!isUndone(idx) && canHighlight(entry)" type="link" shape="circle" title="Highlight asset" size="small" @click="highlight(entry)">
             <template #icon><i class="fas fa-search" /></template>
           </a-button>
         </a-timeline-item>
@@ -71,6 +68,7 @@ function loadUndoRedoStack() {
   }
   isLoading.value = true;
   window.socket.emit('undo_redo_stack', {}, (res) => {
+    console.log(res);
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     isLoading.value = false;
@@ -94,11 +92,11 @@ loadUndoRedoStack();
 subscribeUndoRedoStack();
 
 // eslint-disable-next-line no-unused-vars
-function labelToColor(label) {
-  if (label.toLowerCase().startsWith('create')) {
+function typeToColor(type) {
+  if (type.toLowerCase() === 'add') {
     return 'green';
   }
-  if (label.toLowerCase().startsWith('remove')) {
+  if (type.toLowerCase() === 'remove') {
     return 'red';
   }
   return 'blue';
@@ -106,7 +104,7 @@ function labelToColor(label) {
 
 // eslint-disable-next-line no-unused-vars
 function canHighlight(entry) {
-  return !entry.label.toLowerCase().startsWith("remove");
+  return entry.type.toLowerCase() !== 'remove';
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -156,12 +154,8 @@ function scrollDown() {
 
 <style lang="scss">
 .leaflet-undo-redo {
-  z-index: 2000;
-  width: 300px;
-  height: 400px;
   background: white;
   overflow: hidden;
-  resize: both;
 
   h1 {
     padding: 8px;
@@ -172,9 +166,6 @@ function scrollDown() {
     overflow: scroll;
     padding: 5px 8px 8px 8px;
   }
-
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
-  border-radius: 5px;
 
   h1 button {
     float: right;
