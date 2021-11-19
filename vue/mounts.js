@@ -31,6 +31,7 @@ import {
     Timeline,
     Upload
 } from 'ant-design-vue';
+import MapEditorDialog from "../static/utils/MapEditorDialog";
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -50,33 +51,38 @@ export function createVueLControl(component, options) {
     lcontrol.addTo(window.map).mount(component);
 }
 
+export function createVueMapEditorDialog(component, options) {
+    const mapEditorDialog = new MapEditorDialog();
+    mapEditorDialog.initialize(options);
+    mapEditorDialog.addTo(window.map);
+    mountApp(component, mapEditorDialog._contentNode);
+    return mapEditorDialog;
+}
+
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
-    // app.use(Antd);
-    // app.use(Badge);
+
     app.use(Button);
+    app.use(Breadcrumb);
     app.use(Card);
+    app.use(Col);
     app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
+    app.use(Divider);
     app.use(Dropdown);
     app.use(Input);
     app.use(InputNumber);
     app.use(Form);
     app.use(Modal);
+    app.use(Row);
     app.use(Select);
     app.use(Space);
-    app.use(Table);
-    app.use(Transfer);
-    app.use(Col);
-    app.use(Row);
     app.use(Switch);
+    app.use(Table);
+    app.use(Timeline);
+    app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
-    app.use(Row);
-    app.use(Col);
-    app.use(Divider);
-    app.use(Breadcrumb);
-    app.use(Timeline);
     app.mount(elementSelector);
 }

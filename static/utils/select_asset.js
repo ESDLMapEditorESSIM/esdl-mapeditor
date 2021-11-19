@@ -61,6 +61,7 @@ class SelectAssets {
         this.selected_assets.push(asset_leaflet_obj.id);
         // filter out duplicates as the current approach might fail in some corner cases
         this.selected_assets = this.selected_assets.filter((v, i, a) => a.indexOf(v) === i);
+        //this.disable_context_menu_items(asset_leaflet_obj);
 
         // only disable contect menu when more than 1 is selected
         if (this.selected_assets.length == 2) {

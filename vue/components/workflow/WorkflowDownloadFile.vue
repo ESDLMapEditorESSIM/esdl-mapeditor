@@ -7,6 +7,8 @@ import { download_binary_file_from_base64_str_with_type } from "../../utils/file
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
 import { defineProps } from 'vue'
+import { workflowPostData } from "./utils/api.js";
+import {checkAndRefreshAuthStatus} from "../../utils/status";
 
 const props = defineProps({
   workflowStep: {
@@ -31,24 +33,25 @@ const onSubmit = async () => {
 
   try {
     // Perform the request to the mapeditor backend, who will forward it to the service.
-    const response = await fetch("workflow/download_file", {
-      method: "POST",
-      body: JSON.stringify(params),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await response.json()
-    download_binary_file_from_base64_str_with_type(
-      data["base64file"],
-      data["filename"],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
-    goToNextStep();
+    const is_logged_in = await checkAndRefreshAuthStatus();
+    if (is_logged_in) {
+      const response = await fetch("workflow/download_file", {
+        method: "POST",
+        body: JSON.stringify(params),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json()
+      download_binary_file_from_base64_str_with_type(
+          data["base64file"],
+          data["filename"],
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      goToNextStep();
+    }
   } catch (e) {
     genericErrorHandler(e);
-  } finally {
-    window.hide_loader();
   }
 };
 </script>

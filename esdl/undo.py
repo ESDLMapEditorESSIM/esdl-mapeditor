@@ -44,6 +44,7 @@ class UndoRedoStackEntryDict(TypedDict):
     An entry in the undo redo stack.
     """
     label: str
+    type: Optional[str]
     commands: list[UndoRedoCommandDict]
 
 
@@ -230,16 +231,28 @@ class UndoRedoCommandStack(CommandStack):
         """
         Return the stack in a format that can be serialized and sent as JSON to the frontend.
         """
+        stack = []
+        for entry in self.stack:
+            commands: list[UndoRedoCommandDict] = [{
+                'id': command.value.id if hasattr(command.value, "id") else None,
+                'name': command.value.name if hasattr(command.value, "name") else None,
+                'type': command.__class__.__name__,
+            } for command in entry.data if command.value is not None]
+            # To find the kind of action the user did, we look at the last command in the set.
+            # For a delete, we first remove everything that is attached and the last action is to remove what
+            # the user wanted gone. For an add, we just add.
+            entry_type = None
+            if commands:
+                entry_type = commands[-1]['type']
+            dict_entry: UndoRedoStackEntryDict = {
+                'label': entry.label,
+                'type': entry_type,
+                'commands': commands,
+            }
+            stack.append(dict_entry)
         return dict(
             stack_index=self.stack_index,
-            stack=[{
-                'label': entry.label,
-                'commands': [{
-                    'id': command.value.id if hasattr(command.value, "id") else None,
-                    'name': command.value.name if hasattr(command.value, "name") else None,
-                    'type': command.value.__class__.__name__,
-                } for command in entry.data if command.value is not None]
-            } for entry in self.stack]
+            stack=stack,
         )
 
 

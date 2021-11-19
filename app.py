@@ -18,6 +18,7 @@ import importlib
 import json
 import urllib
 import uuid
+import traceback
 from datetime import datetime
 from pprint import pprint
 from warnings import warn
@@ -79,6 +80,8 @@ from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
+from src.table_editor import TableEditor
+from src.esdl_file_io import ESDLFileIO
 from utils.datetime_utils import parse_date
 from variation import Project
 
@@ -156,6 +159,8 @@ ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
+TableEditor(app, socketio, esdl_doc, settings_storage)
+ESDLFileIO(app, socketio, executor)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -915,8 +920,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         # e.g. also copy over the pipe material
         new_cond1 = conductor.deepcopy()
         new_cond2 = conductor.deepcopy()
+        if new_cond1.name == new_cond1.eClass.name + '_' + new_cond1.id[:4]:
+            new_cond1.name = new_cond1.eClass.name + '_' + new_cond1_id[:4]
+            new_cond2.name = new_cond2.eClass.name + '_' + new_cond2_id[:4]
+        else:
+            new_cond2.name = new_cond1.name + '_b'
+            new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear() # remove existing port, as we add previous used ports later
+        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
         new_cond2.id = new_cond2_id
         new_cond2.port.clear()
         esh.add_object_to_dict(active_es_id, new_cond1)

@@ -345,6 +345,7 @@ esdl_config = {
                 "type": "vueworkflow",
                 "workflow": [
                     {
+                        # 0
                         "name": "Begin",
                         "description": "How would you like to proceed?",
                         "type": "choice",
@@ -354,23 +355,16 @@ esdl_config = {
                                 "next_step": 1,
                                 "type": "primary",
                             },
-                            {"name": "Run EPS", "next_step": 4, "type": "primary"},
                             {
-                                "name": "Inspect results",
-                                "next_step": 6,
-                                "type": "primary",
-                            },
-                            {
-                                "name": "Download project file",
-                                "description": "If you want to inspect the KvK data or modify input data, you can download a project file.",
+                                "name": "Adjust EPS input",
                                 "next_step": 13,
                                 "type": "default",
                             },
+                            {"name": "Run EPS", "next_step": 4, "type": "primary"},
                             {
-                                "name": "Upload project file",
-                                "description": "A project file can be uploaded to serve as input for a new EPS run.",
-                                "next_step": 2,
-                                "type": "default",
+                                "name": "Inspect EPS results",
+                                "next_step": 6,
+                                "type": "primary",
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
@@ -380,6 +374,7 @@ esdl_config = {
                         ],
                     },
                     {
+                        # 1
                         "name": "Create Project",
                         "description": "",
                         "type": "custom",
@@ -388,6 +383,7 @@ esdl_config = {
                         "next_step": 0,
                     },
                     {
+                        # 2
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to upload a project file.",
                         "type": "select-query",
@@ -403,6 +399,7 @@ esdl_config = {
                         "next_step": 3,
                     },
                     {
+                        # 3
                         "name": "Upload project file",
                         "description": "Note: When uploading a project file with the same name as a previous project "
                         "file, the previous file will be overwritten!",
@@ -415,6 +412,7 @@ esdl_config = {
                         "next_step": 0,
                     },
                     {
+                        # 4
                         "name": "Select existing project",
                         "description": "",
                         "type": "select-query",
@@ -430,6 +428,7 @@ esdl_config = {
                         "next_step": 5,
                     },
                     {
+                        # 5
                         "name": "Run the EPS",
                         "description": "",
                         "type": "custom",
@@ -440,7 +439,7 @@ esdl_config = {
                             "user_response_spec": {
                                 "0": {"message": "Failed starting the EPS."},
                                 "200": {
-                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found "
+                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Inspect results'."
                                 },
                                 "429": {
                                     "message": "It is currently busy on the server. We cannot start an EPS execution "
@@ -450,6 +449,7 @@ esdl_config = {
                         },
                     },
                     {
+                        # 6
                         "name": "EPS execution",
                         "description": "",
                         "label": "Select EPS execution to inspect:",
@@ -466,6 +466,7 @@ esdl_config = {
                         "next_step": 7,
                     },
                     {
+                        # 7
                         "name": "Execution selected",
                         "description": "How would you like to proceed?",
                         "type": "choice",
@@ -488,15 +489,16 @@ esdl_config = {
                                 "type": "default",
                                 "next_step": 9,
                             },
-                            {
-                                "name": "View progress",
-                                "type": "default",
-                                "disable_if_state": "execution.finished_on",
-                                "next_step": 8,
-                            },
+                            # {
+                            #     "name": "View progress",
+                            #     "type": "default",
+                            #     "disable_if_state": "execution.finished_on",
+                            #     "next_step": 8,
+                            # },
                         ],
                     },
                     {
+                        # 8
                         "name": "EPS execution progress",
                         "description": "",
                         "type": "progress",
@@ -509,6 +511,7 @@ esdl_config = {
                         },
                     },
                     {
+                        # 9
                         "name": "Download project file",
                         "description": "The project file that was used as input to perform this EPS analysis can be "
                         "downloaded here.",
@@ -519,6 +522,7 @@ esdl_config = {
                         },
                     },
                     {
+                        # 10
                         "name": "Load EPS results",
                         "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS "
                         "is loaded, please continue.",
@@ -549,6 +553,7 @@ esdl_config = {
                         }
                     },
                     {
+                        # 11
                         "name": "Inspect EPS results",
                         "description": "",
                         "type": "custom",
@@ -559,12 +564,13 @@ esdl_config = {
                         },
                     },
                     {
+                        # 12
                         "name": "Aggregate ESDL buildings for ESSIM",
                         "description": "The ESDL generated by the EPS contains every building individually. This "
                         "causes unnecessarily long processing time if buildings have the same "
                         "profiles. With this service, similar buildings are combined into aggregated "
                         "buildings, which will make it faster to run ESSIM and easier to interpret "
-                        "results. Note: Only activate this if you have an ESDL active that you wish to aggregate. You will not be able to unaggregate the resulting ESDL, so you might want to export it before proceeding.",
+                        "results. Note: This will create a new ESDL layer.",
                         "type": "service",
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
@@ -583,6 +589,27 @@ esdl_config = {
                         "next_step": 0,
                     },
                     {
+                        # 13
+                        "name": "Adjust EPS input",
+                        "description": "",
+                        "type": "choice",
+                        "options": [
+                            {
+                                "name": "Download project file",
+                                "description": "If you want to inspect the KvK data or modify input data, you can download a project file.",
+                                "next_step": 14,
+                                "type": "primary",
+                            },
+                            {
+                                "name": "Upload project file",
+                                "description": "A project file can be uploaded to serve as input for a new EPS run.",
+                                "next_step": 2,
+                                "type": "primary",
+                            },
+                        ],
+                    },
+                    {
+                        # 14
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to download a project file.",
                         "type": "select-query",
@@ -595,9 +622,10 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "next_step": 14,
+                        "next_step": 15,
                     },
                     {
+                        # 15
                         "name": "Select project file",
                         "description": "Please select the project file you would like to download.",
                         "type": "select-query",
@@ -611,9 +639,10 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "file_name",
-                        "next_step": 15,
+                        "next_step": 16,
                     },
                     {
+                        # 16
                         "name": "Download project file",
                         "description": "By clicking the button below you can download the selected project file.",
                         "type": "download_file",

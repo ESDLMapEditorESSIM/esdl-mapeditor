@@ -13,7 +13,14 @@ import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
-import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
+import AssetTableEditor from './apps/AssetTableEditor';
+import {
+    createVueLControl,
+    createVueMapEditorDialog,
+    mountApp,
+    mountSettingsComponent,
+    mountSidebarComponent
+} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import UndoRedoControl from "./apps/UndoRedoControl";
@@ -30,6 +37,7 @@ import LoadProjectFileButton from './components/toolbars/LoadProjectFileButton';
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
+import {useUndoRedo} from "./composables/undoRedo";
 
 
 // Vue.config.productionTip = false
@@ -105,7 +113,15 @@ window.environmental_profiles = () => {
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 
-createVueLControl(UndoRedoControl, {position: 'bottomright'});
+const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
+const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
+    initOpen: false,
+    size: [300, 500],
+    maxSize: [2000, 1200],
+    onClose: () => showUndoRedoControl.value = false,
+});
+mapEditorDialog._handleMinimize();
+undoRedoMapEditorDialog.value = mapEditorDialog;
 createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
 
 createVueLControl(AssetDrawToolbar, {});
@@ -117,3 +133,7 @@ createApp(LoadProjectFileButton).mount('#vue_load_project_file')
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
     });
+
+window.activate_table_editor_window = () => {
+    mountApp(AssetTableEditor, '#table_editor_window');
+}

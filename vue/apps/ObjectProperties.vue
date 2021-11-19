@@ -1,27 +1,45 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
-  <h1 v-if="!isLoading">
-    <span
-      v-if="!obj_properties.multi_select_info"
-      :title="obj_properties.object.doc"
-    >
-      {{ obj_properties.object.name }}
-    </span>
-    <span
-      v-if="obj_properties.multi_select_info"
-    >
-      {{ obj_properties.multi_select_info.num_assets_selected }} assets selected of type:
-      {{ obj_properties.multi_select_info.selected_asset_type }}
-    </span>
-  </h1>
-  <template v-else>
-    <h2>
+  <template v-if="!isLoading && !noResult">
+    <h1>
+      <span
+        v-if="!obj_properties.multi_select_info"
+        :title="obj_properties.object.doc"
+      >
+        {{ obj_properties.object.name }}
+      </span>
+      <span
+        v-if="obj_properties.multi_select_info"
+      >
+        {{ obj_properties.multi_select_info.num_assets_selected }} assets selected of type:
+        {{ obj_properties.multi_select_info.selected_asset_type }}
+      </span>
+    </h1>
+  </template>
+  <template v-if="isLoading && !noResult">
+    <h1>
       <span>
         Collecting information...
       </span>
-    </h2>
+    </h1>
     <spinner />
   </template>
-  <div v-if="!isLoading" id="object-properties">
+  <div v-if="!isLoading && !noResult" id="object-properties">
     <a-row :gutter="[0, 24]">
       <a-col :span="24">
         <a-collapse v-model:activeKey="activePanels" default-active-key="Basic">
@@ -93,7 +111,7 @@
                 <a-col v-if="!multipleAssetsSelected && !isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
                   <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer
-                      :parentObjectID="currentObjectIDs[0]"
+                      :parent-object-i-d="currentObjectIDs[0]"
                       :reference="attr"
                       @update="updateRef($event, attr)"
                     />
@@ -127,6 +145,24 @@
       </a-col>
     </a-row>
   </div>
+  <template v-if="noResult">
+    <h1>
+      <span>
+        Error retrieving information...
+      </span>
+    </h1>
+    <a-card style="width: 100%">
+      <p>
+        No information could be found for the selected object in the currently active energy system. This is
+        most probably caused by the fact that you have multiple energy systems loaded and you're selecting an
+        object on the map that belongs to (one of) the inactive energy system(s).
+      </p>
+      <p>
+        Please change the active energy system in the ESDL layers control box at the top right side of the map
+        and click on the object on the map again.
+      </p>
+    </a-card>
+  </template>
 </template>
 
 <script>
@@ -158,6 +194,7 @@ export default {
       obj_properties: {},
       activePanels: ["Basic"],
       isLoading: true,
+      noResult: false,
       ignoredRefs
     };
   },
@@ -195,9 +232,13 @@ export default {
           // console.log(tmp_coid);
           // console.log(currentObjectID.value);
           console.log(res);
-          this.obj_properties = res;
           this.isLoading = false;
-          currentObjectID.value = tmp_coid;
+          if (res) {
+            this.obj_properties = res;
+            currentObjectID.value = tmp_coid;
+          } else {
+            this.noResult = true;
+          }
         }
       );
     },

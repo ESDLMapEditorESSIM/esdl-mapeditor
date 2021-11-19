@@ -15,8 +15,8 @@ dev-local:
 
 docker-build:
 	docker-compose -f docker/docker-compose.yml build
-docker-dev: docker-watch-daemon
-	docker-compose -f docker/docker-compose.yml up mapeditor
+docker-dev:
+	docker-compose -f docker/docker-compose.yml up
 docker-down:
 	docker-compose -f docker/docker-compose.yml down
 docker-watch:
