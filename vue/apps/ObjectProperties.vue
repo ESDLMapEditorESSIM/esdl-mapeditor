@@ -1,3 +1,19 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
   <template v-if="!isLoading && !noResult">
     <h1>
@@ -95,7 +111,7 @@
                 <a-col v-if="!multipleAssetsSelected && !isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
                   <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer
-                      :parentObjectID="currentObjectIDs[0]"
+                      :parent-object-i-d="currentObjectIDs[0]"
                       :reference="attr"
                       @update="updateRef($event, attr)"
                     />

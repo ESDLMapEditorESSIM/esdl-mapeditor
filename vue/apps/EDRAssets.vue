@@ -1,3 +1,19 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
   <h1>
     EDR Assets
@@ -47,8 +63,8 @@
       >
         <a-select-option
           v-for="asset in filtered_asset_list"
-          :value="asset.id"
           :key="asset.id"
+          :value="asset.id"
           :title="asset.title"
         >
           {{ asset.title }}
@@ -88,9 +104,6 @@ export default {
       isLoading: true
     }
   },
-  mounted() {
-    this.getDataSocketIO();
-  },
   computed: {
     filtered_asset_list: function() {
       if (this.selected_asset_type != 'No filter' && this.selected_asset_type != undefined) {
@@ -99,6 +112,9 @@ export default {
         return this.asset_list;
       }
     }
+  },
+  mounted() {
+    this.getDataSocketIO();
   },
   methods: {
     getDataSocketIO: function() {
