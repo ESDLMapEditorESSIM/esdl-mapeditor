@@ -3263,6 +3263,9 @@ def initialize_app():
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
+    if executor._shutdown:
+        logger.warning("Executor was shutdown. Restarting")
+        executor.init_app(app)
     call_process_energy_system.submit(esh, None, None) # run in a seperate thread
 
 

@@ -1760,6 +1760,13 @@
                                             Show/hide KPIs
                                         </a>
                                     </li>
+                                    <li id="vue_toggle_show_undo_redo_control"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
+                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
+                                            Show/hide KPIs
+                                        </a>
+                                    </li>
                                     <li id="vue_toggle_long_process_view"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="clear_layers(active_layer_id, 'sim_layer');">
@@ -1787,7 +1794,7 @@
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
-            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" multiple>
+            <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
 
 

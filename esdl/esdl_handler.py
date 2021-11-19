@@ -202,6 +202,7 @@ class EnergySystemHandler:
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
+            self.change_tracker.newTracker(tmp_es)
             return tmp_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
