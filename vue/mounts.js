@@ -52,13 +52,15 @@ export function createVueLControl(component, options) {
 
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
-    // app.use(Antd);
-    // app.use(Badge);
+
+    // Components from ant-design-vue
+    app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
     app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
+    app.use(Divider);
     app.use(Dropdown);
     app.use(Input);
     app.use(InputNumber);
@@ -73,10 +75,8 @@ export function mountApp(component, elementSelector) {
     app.use(Switch);
     app.use(Tree);
     app.use(Upload);
-    app.use(Row);
-    app.use(Col);
-    app.use(Divider);
-    app.use(Breadcrumb);
+
     app.use(VueGridLayout);
+
     app.mount(elementSelector);
 }

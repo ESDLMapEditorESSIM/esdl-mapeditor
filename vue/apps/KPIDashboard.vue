@@ -2,9 +2,10 @@
   <h1>
     KPI Dashboard
   </h1>
-  <a-button type="primary" @click="getDashboardList">
-    getDashboardList
-  </a-button>
+  <a-space>
+    <load-dashboard :dashboards-info="dashboards_info" />
+    <save-dashboard :dashboards-info="dashboards_info" :dashboard-data="dashboard_data" />
+  </a-space>
   <grid-layout
     v-model:layout="layout"
     :col-num="12"
@@ -24,61 +25,81 @@
       :h="item.h"
       :i="item.i"
     >
-      <DChart />
+      <JSChart :chart_options_prop="item.chart_options"/>
     </grid-item>
   </grid-layout>
 </template>
 
 <script setup>
 import { ref, defineComponent } from 'vue'
-import DChart from '../components/kpipanels/DChart.vue'
+import JSChart from '../components/kpidashboard/JSChart.vue'
+import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
+import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
+
+const dashboards_info = ref([]);
 
 const layout = ref([
-    {"x":0,"y":0,"w":3,"h":5,"i":"0"},
-    {"x":3,"y":0,"w":3,"h":5,"i":"1"},
-    {"x":6,"y":0,"w":3,"h":5,"i":"2"},
-    {"x":0,"y":5,"w":3,"h":5,"i":"3"},
-    {"x":3,"y":5,"w":3,"h":5,"i":"4"},
-    {"x":6,"y":5,"w":3,"h":5,"i":"5"},
-    {"x":0,"y":10,"w":3,"h":5,"i":"6"},
-    {"x":3,"y":10,"w":3,"h":5,"i":"7"},
-    {"x":6,"y":10,"w":3,"h":5,"i":"8"},
-    {"x":0,"y":15,"w":3,"h":5,"i":"9"},
-    {"x":3,"y":15,"w":3,"h":5,"i":"10"},
-    {"x":6,"y":15,"w":3,"h":5,"i":"11"},
-    {"x":0,"y":20,"w":3,"h":5,"i":"12"},
-    {"x":3,"y":20,"w":3,"h":5,"i":"13"},
-    {"x":6,"y":20,"w":3,"h":5,"i":"14"},
-    {"x":0,"y":25,"w":3,"h":5,"i":"15"},
-    {"x":3,"y":25,"w":3,"h":5,"i":"16"},
-    {"x":6,"y":25,"w":3,"h":5,"i":"17"},
-    {"x":0,"y":30,"w":3,"h":5,"i":"18"},
-    {"x":3,"y":30,"w":3,"h":5,"i":"19"}
+//    {"x":0,"y":0,"w":3,"h":5,"i":"0", type:"doughnut", chart_options:{}},
+//    {"x":3,"y":0,"w":3,"h":5,"i":"1", type:"doughnut", chart_options:{}},
+//    {"x":6,"y":0,"w":3,"h":5,"i":"2", type:"doughnut", chart_options:{}},
+//    {"x":0,"y":5,"w":3,"h":5,"i":"3", type:"doughnut", chart_options:{}},
+//    {"x":3,"y":5,"w":3,"h":5,"i":"4", type:"doughnut", chart_options:{}},
+//    {"x":6,"y":5,"w":3,"h":5,"i":"5", type:"doughnut", chart_options:{}},
 ])
 
+const dashboard_data = ref({
+  name: 'test dashboard',
+  layout: layout,
+});
+
 const getDashboardList = async () => {
-  console.log('getDashboardList');
   const response = await fetch("kpi_dashboards");
-  console.log(response);
   if (response.ok) {
     const data = await response.json();
-    console.log(data);
+    dashboards_info.value = data;
+  } else {
+    // TODO: Handle error
   }
 };
-
 getDashboardList();
+
+const getAllKPIData = () => {
+  let all_kpi_data = window.get_all_kpi_info();
+  let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
+  console.log(kpi_data);
+
+  let kpi_nr = 0;
+  for (let kpi_name in kpi_data) {
+    let kpi_info = kpi_data[kpi_name];
+    let chart_options = window.createChartOptions(kpi_info);
+    chart_options.title = kpi_name;
+
+    layout.value.push({
+      x: (kpi_nr % 3) * 3,
+      y: Math.floor(kpi_nr / 3) * 5,
+      w: 3,
+      h: 5,
+      i: kpi_nr,
+      type: chart_options.type,
+      chart_options: chart_options
+    });
+
+    kpi_nr = kpi_nr + 1;
+  }
+};
+getAllKPIData();
 
 </script>
 
 <style scoped>
 
 .vue-grid-layout {
-  background: #eee;
+  background: #fff;
 }
 
 .vue-grid-item:not(.vue-grid-placeholder) {
-  background: #ccc;
-  border: 1px solid black;
+  background: #fff;
+  border: 1px solid #ccc;
   padding: 5px;
 }
 

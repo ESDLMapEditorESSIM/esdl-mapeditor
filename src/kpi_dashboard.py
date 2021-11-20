@@ -21,7 +21,7 @@ import src.log as log
 
 logger = log.get_logger(__name__)
 
-KPI_DASHBOARD_SETTING = 'kpi_dashboards'
+KPI_DASHBOARD_SETTING = 'KPI_DASHBOARDS'
 
 
 class KPIDashboard:
@@ -124,7 +124,7 @@ class KPIDashboard:
                 if g['setting_type'] == SettingType.SYSTEM.value:
                     g['readonly'] = False
         possible_groups.extend(self._create_dashboard_groups_for_projects(user_group))
-        message[KPI_DASHBOARD_SETTING] = all_dashboards
+        message["dashboards"] = all_dashboards
         # logger.debug(message)
         return message
 
@@ -146,7 +146,7 @@ default_dashboard_groups = {
 }
 
 default_system_dashboards = {
-    "id": {
+    "c64e52af-474f-43af-bda7-15a06682b655": {
         "setting_type": SettingType.SYSTEM.value,
         "name": "Default dashboard",
         "description": "",
