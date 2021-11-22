@@ -1,10 +1,17 @@
 <template>
   <h1>
-    KPI Dashboard
+    KPI Dashboard - {{ dashboard_config.name }}
   </h1>
   <a-space>
-    <load-dashboard :dashboards-info="dashboards_info" />
-    <save-dashboard :dashboards-info="dashboards_info" :dashboard-data="dashboard_data" />
+    <load-dashboard
+      :dashboards-info="dashboards_info"
+      :dashboard-id="dashboard_config.id"
+      @update:dashboardID="handleLoadDashboard"
+    />
+    <save-dashboard
+      :dashboards-info="dashboards_info"
+      @handle-save="handleSaveDashboard"
+    />
   </a-space>
   <grid-layout
     v-model:layout="layout"
@@ -25,7 +32,7 @@
       :h="item.h"
       :i="item.i"
     >
-      <JSChart :chart_options_prop="item.chart_options"/>
+      <JSChart :chart_options_prop="item.chart_options" />
     </grid-item>
   </grid-layout>
 </template>
@@ -37,19 +44,13 @@ import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
 
 const dashboards_info = ref([]);
+const layout = ref([]);
 
-const layout = ref([
-//    {"x":0,"y":0,"w":3,"h":5,"i":"0", type:"doughnut", chart_options:{}},
-//    {"x":3,"y":0,"w":3,"h":5,"i":"1", type:"doughnut", chart_options:{}},
-//    {"x":6,"y":0,"w":3,"h":5,"i":"2", type:"doughnut", chart_options:{}},
-//    {"x":0,"y":5,"w":3,"h":5,"i":"3", type:"doughnut", chart_options:{}},
-//    {"x":3,"y":5,"w":3,"h":5,"i":"4", type:"doughnut", chart_options:{}},
-//    {"x":6,"y":5,"w":3,"h":5,"i":"5", type:"doughnut", chart_options:{}},
-])
-
-const dashboard_data = ref({
-  name: 'test dashboard',
-  layout: layout,
+const dashboard_config = ref({
+  id: '',
+  name: 'New dashboard',
+  group: '',
+  layout: layout.value,
 });
 
 const getDashboardList = async () => {
@@ -57,6 +58,7 @@ const getDashboardList = async () => {
   if (response.ok) {
     const data = await response.json();
     dashboards_info.value = data;
+    console.log(data);
   } else {
     // TODO: Handle error
   }
@@ -66,7 +68,7 @@ getDashboardList();
 const getAllKPIData = () => {
   let all_kpi_data = window.get_all_kpi_info();
   let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
-  console.log(kpi_data);
+  // console.log(kpi_data);
 
   let kpi_nr = 0;
   for (let kpi_name in kpi_data) {
@@ -88,6 +90,32 @@ const getAllKPIData = () => {
   }
 };
 getAllKPIData();
+
+const load_db_with_id = ref("");
+
+const handleLoadDashboard = (dashboard_id) => {
+  console.log(dashboard_id);
+
+  window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
+    if (response) {
+      console.log(response);
+      dashboard_config.value = response;
+      layout.value = response.layout;       // TODO: any better way?
+    } else {
+      console.log('Error: empty response');
+    }
+  });
+}
+
+const handleSaveDashboard = (res) => {
+  console.log(res);
+
+  dashboard_config.value.id = res.id;
+  dashboard_config.value.name = res.name;
+  dashboard_config.value.group = res.group;
+
+  window.socket.emit('kpi_dashboard_save', dashboard_config.value);
+}
 
 </script>
 

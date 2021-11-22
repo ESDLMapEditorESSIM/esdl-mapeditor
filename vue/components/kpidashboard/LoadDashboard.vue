@@ -4,29 +4,34 @@
       Load dashboard
     </a-button>
     <a-modal v-model:visible="visible" title="Load dashboard" width="750px" @ok="handleOk">
-      <a-select
-        v-model:value="dashboard_id"
-        show-search
-        placeholder="Select dashboard..."
-        style="width: 100%"
-      >
-        <a-select-opt-group
-          v-for="db_group in dashboardList"
-          :key="db_group.name"
+      <a-card>
+        <span>
+          Select the existing dashboard configuration to overwrite from the list below
+        </span>
+        <a-select
+          v-model:value="dashboard_id"
+          show-search
+          placeholder="Select dashboard..."
+          style="width: 100%"
         >
-          <template #label>
-            <span>
-              {{ db_group.name }}
-            </span>
-          </template>
-          <a-select-option
-            v-for="db in db_group.dashboards"
-            :key="db.id"
+          <a-select-opt-group
+            v-for="db_group in dashboardList"
+            :key="db_group.name"
           >
-            {{ db.name }}
-          </a-select-option>
-        </a-select-opt-group>
-      </a-select>
+            <template #label>
+              <span>
+                {{ db_group.name }}
+              </span>
+            </template>
+            <a-select-option
+              v-for="db in db_group.dashboards"
+              :key="db.id"
+            >
+              {{ db.name }}
+            </a-select-option>
+          </a-select-opt-group>
+        </a-select>
+      </a-card>
     </a-modal>
   </div>
 </template>
@@ -44,13 +49,16 @@ export default {
         return {};
       }
     },
+    dashboardID: {
+      type: String,
+      default: ""
+    }
   },
-  emits: ['load'],
+  emits: ['update:dashboardID'],
   data() {
     return {
         visible: false,
-        dashboard_id: '',
-//        dashboard_list: [],
+        dashboard_id: this.dashboardID,
     }
   },
   computed: {
@@ -60,12 +68,13 @@ export default {
       if (this.dashboardsInfo.length == 0)
         return [];
       for (let g=0; g<this.dashboardsInfo.groups.length; g++) {
+        console.log(this.dashboardsInfo.groups[g]);
         let group = {
           name: this.dashboardsInfo.groups[g].name,
           dashboards: [],
         };
         for (const [db_id, db_info] of Object.entries(this.dashboardsInfo.dashboards)) {
-          console.log(db_id, db_info);
+          console.log(db_info);
           if (db_info.setting_type == this.dashboardsInfo.groups[g].setting_type) {
             if (db_info.setting_type == 'project') {
               if (db_info.project_name != this.dashboardsInfo.groups[g].project_name) continue;
@@ -89,7 +98,7 @@ export default {
     },
     handleOk() {
       this.visible = false;
-      this.$emit('load', this.dashboard_id);
+      this.$emit('update:dashboardID', this.dashboard_id);
     },
     createDashboardList() {
 

@@ -43,26 +43,39 @@ class KPIDashboard:
         def get_kpi_dashboards():
             return self.get_dashboards()
 
-        @self.socketio.on('kpi_dashboard_set____', namespace='/esdl')
-        def kpi_dashboard_set____():
-            user = get_session('user-email')
+        # @self.socketio.on('kpi_dashboard_set____', namespace='/esdl')
+        # def kpi_dashboard_set____():
+        #     user = get_session('user-email')
 
-    def add_dashboard(self, dashboard_id, dashboard_settings):
-        setting_type = SettingType(dashboard_settings['setting_type'])
-        project_name = dashboard_settings['project_name']
-        identifier = self._get_identifier(setting_type, project_name)
+        @self.socketio.on('kpi_dashboard_load', namespace='/esdl')
+        def kpi_dashboard_load(dashboard_info):
+            dashboard_id = dashboard_info['dashboard_id']
+            print(dashboard_id)
+            return self.get_dashboard(dashboard_id)
 
-        if identifier is not None and self.settings_storage.has(setting_type, identifier, KPI_DASHBOARD_SETTING):
-            dashboards = self.settings_storage.get(setting_type, identifier, KPI_DASHBOARD_SETTING)
-        else:
-            dashboards = dict()
-        dashboards[dashboard_id] = dashboard_settings
-        self.settings_storage.set(setting_type, identifier, KPI_DASHBOARD_SETTING, dashboards)
+        @self.socketio.on('kpi_dashboard_save', namespace='/esdl')
+        def kpi_dashboard_save(dashboard_info):
+            dashboard_id = dashboard_info['id']
+            dashboard_name = dashboard_info['name']
+            group = dashboard_info['group']
+            self.save_dashboard(dashboard_id, dashboard_name, group, dashboard_info)
+
+    # def add_dashboard(self, dashboard_id, dashboard_settings):
+    #     setting_type = SettingType(dashboard_settings['setting_type'])
+    #     project_name = dashboard_settings['project_name']
+    #     identifier = self._get_identifier(setting_type, project_name)
+    #
+    #     if identifier is not None and self.settings_storage.has(setting_type, identifier, KPI_DASHBOARD_SETTING):
+    #         dashboards = self.settings_storage.get(setting_type, identifier, KPI_DASHBOARD_SETTING)
+    #     else:
+    #         dashboards = dict()
+    #     dashboards[dashboard_id] = dashboard_settings
+    #     self.settings_storage.set(setting_type, identifier, KPI_DASHBOARD_SETTING, dashboards)
 
     def remove_dashboard(self, dashboard_id):
         # as we only have an ID, we don't know if it is a user, project or system setting
         # get the whole list, so we can find out the setting_type
-        dashboard_settings = self.get_layers()[KPI_DASHBOARD_SETTING][dashboard_id]
+        dashboard_settings = self.get_dashboards()[KPI_DASHBOARD_SETTING][dashboard_id]
         setting_type = SettingType(dashboard_settings['setting_type'])
         identifier = self._get_identifier(setting_type, dashboard_settings['project_name'])
         if identifier is None:
@@ -89,6 +102,31 @@ class KPIDashboard:
         else:
             return None
         return identifier
+
+    def get_dashboard(self, dashboard_id):
+        # Check if id is of a system dashboard
+        if self.settings_storage.has_system(KPI_DASHBOARD_SETTING):
+            system_dashboards = self.settings_storage.get_system(KPI_DASHBOARD_SETTING)
+            if dashboard_id in system_dashboards:
+                return system_dashboards[dashboard_id]['dashboard_config']
+
+        user = get_session('user-email')
+        user_group = get_session('user-group')
+        role = get_session('user-role')
+        if user is not None and self.settings_storage.has_user(user, KPI_DASHBOARD_SETTING):
+            user_dashboards = self.settings_storage.get_user(user, KPI_DASHBOARD_SETTING)
+            if dashboard_id in user_dashboards:
+                return user_dashboards[dashboard_id]['dashboard_config']
+
+        if user_group is not None:
+            for group in user_group:
+                identifier = self._get_identifier(SettingType.PROJECT, group)
+                if self.settings_storage.has_project(identifier, KPI_DASHBOARD_SETTING):
+                    project_dashboards = self.settings_storage.get_project(identifier, KPI_DASHBOARD_SETTING)
+                    if dashboard_id in project_dashboards:
+                        return project_dashboards[dashboard_id]['dashboard_config']
+
+        return None
 
     def get_dashboards(self):
         # gets the default list and adds the user dashboards
@@ -127,6 +165,54 @@ class KPIDashboard:
         message["dashboards"] = all_dashboards
         # logger.debug(message)
         return message
+
+    def save_dashboard(self, dashboard_id, dashboard_name, group, dashboard_config):
+        user = get_session('user-email')
+
+        if group == 'Personal dashboards':
+            print("save personal")
+            if user is not None and self.settings_storage.has_user(user, KPI_DASHBOARD_SETTING):
+                user_dashboards = self.settings_storage.get_user(user, KPI_DASHBOARD_SETTING)
+            else:
+                user_dashboards = dict()
+            user_dashboards[dashboard_id] = {
+                "setting_type": SettingType.USER.value,
+                "project_name": "user",
+                "name": dashboard_name,
+                "dashboard_config": dashboard_config
+            }
+            self.settings_storage.set_user(user, KPI_DASHBOARD_SETTING, user_dashboards)
+        elif group == 'Standard dashboards':
+            mapeditor_role = get_session('user-mapeditor-role')
+            if 'mapeditor-admin' in mapeditor_role:
+                system_dashboards = self.settings_storage.get_system(KPI_DASHBOARD_SETTING)
+                system_dashboards[dashboard_id] = {
+                    "setting_type": SettingType.SYSTEM.value,
+                    "project_name": "system",
+                    "name": dashboard_name,
+                    "dashboard_config": dashboard_config
+                }
+                self.settings_storage.set_system(KPI_DASHBOARD_SETTING, system_dashboards)
+                print("save system")
+            else:
+                logger.info('No admin rights, cannot save system dashboard')
+        else:
+            if group[:23] == "Project dashboards for ":
+                group_name = group[23:]
+                print(group_name)
+
+                identifier = self._get_identifier(SettingType.PROJECT, group_name)
+                if self.settings_storage.has_project(identifier, KPI_DASHBOARD_SETTING):
+                    project_dashboards = self.settings_storage.get_project(identifier, KPI_DASHBOARD_SETTING)
+                else:
+                    project_dashboards = dict()
+                project_dashboards[dashboard_id] = {
+                    "setting_type": SettingType.PROJECT.value,
+                    "project_name": group_name,
+                    "name": dashboard_name,
+                    "dashboard_config": dashboard_config
+                }
+                self.settings_storage.set_project(group_name, KPI_DASHBOARD_SETTING, dashboard_config)
 
     def _create_dashboard_groups_for_projects(self, groups):
         project_list = list()

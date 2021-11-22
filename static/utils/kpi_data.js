@@ -7,7 +7,7 @@ function get_bg_color(idx) {
         'rgba(153, 102, 255, 0.2)',
         'rgba(255, 159, 64, 0.2)'
     ];
-    return colors[idx];
+    return colors[idx % colors.length];
 }
 
 function createChartOptions(kpi_info) {
@@ -15,7 +15,7 @@ function createChartOptions(kpi_info) {
     // energy system. It allows side-by-side comparison of different energy system scenarios. The format of the
     // data is shown below
 
-    console.log(kpi_info);
+    // console.log(kpi_info);
     // Example KPI object (with just one energy system)
     //    0:
     //        distribution: Array(3)
@@ -95,7 +95,7 @@ function createChartOptions(kpi_info) {
                 }
             }
         }
-        console.log(distr_labels_dict);
+        // console.log(distr_labels_dict);
 
         // Fill in energy system data
         for (let i=0; i<kpi_info.length; i++) {
