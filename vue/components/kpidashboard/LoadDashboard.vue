@@ -68,13 +68,13 @@ export default {
       if (this.dashboardsInfo.length == 0)
         return [];
       for (let g=0; g<this.dashboardsInfo.groups.length; g++) {
-        console.log(this.dashboardsInfo.groups[g]);
+        // console.log(this.dashboardsInfo.groups[g]);
         let group = {
           name: this.dashboardsInfo.groups[g].name,
           dashboards: [],
         };
         for (const [db_id, db_info] of Object.entries(this.dashboardsInfo.dashboards)) {
-          console.log(db_info);
+          // console.log(db_info);
           if (db_info.setting_type == this.dashboardsInfo.groups[g].setting_type) {
             if (db_info.setting_type == 'project') {
               if (db_info.project_name != this.dashboardsInfo.groups[g].project_name) continue;
@@ -85,7 +85,7 @@ export default {
         }
         db_list.push(group);
       }
-      console.log(db_list);
+      // console.log(db_list);
       return db_list;
     }
   },

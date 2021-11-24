@@ -13,28 +13,37 @@
       @handle-save="handleSaveDashboard"
     />
   </a-space>
-  <grid-layout
-    v-model:layout="layout"
-    :col-num="12"
-    :row-height="30"
-    is-draggable
-    is-resizable
-    vertical-compact
-    responsive
-    use-css-transforms
+  <div
+    v-if="layout.length"
   >
-    <grid-item
-      v-for="item in layout"
-      :key="item.i"
-      :x="item.x"
-      :y="item.y"
-      :w="item.w"
-      :h="item.h"
-      :i="item.i"
+    <grid-layout
+      v-model:layout="layout"
+      :col-num="12"
+      :row-height="30"
+      is-draggable
+      is-resizable
+      vertical-compact
+      responsive
+      use-css-transforms
     >
-      <JSChart :chart_options_prop="item.chart_options" />
-    </grid-item>
-  </grid-layout>
+      <grid-item
+        v-for="item in layout"
+        :key="item.i"
+        :x="item.x"
+        :y="item.y"
+        :w="item.w"
+        :h="item.h"
+        :i="item.i"
+      >
+        <JSChart :chart-options-prop="item.chart_options" />
+      </grid-item>
+    </grid-layout>
+  </div>
+  <div v-else>
+    <a-card>
+      No dashboard loaded yet
+    </a-card>
+  </div>
 </template>
 
 <script setup>
@@ -44,13 +53,13 @@ import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
 
 const dashboards_info = ref([]);
-const layout = ref([]);
+const layout = ref([]);     // this is the information used (and changed!) in the vue components
 
 const dashboard_config = ref({
   id: '',
   name: 'New dashboard',
   group: '',
-  layout: layout.value,
+  layout: [],     // this is the information stored as settings in the database
 });
 
 const getDashboardList = async () => {
@@ -76,7 +85,7 @@ const getAllKPIData = () => {
     let chart_options = window.createChartOptions(kpi_info);
     chart_options.title = kpi_name;
 
-    layout.value.push({
+    dashboard_config.value.layout.push({
       x: (kpi_nr % 3) * 3,
       y: Math.floor(kpi_nr / 3) * 5,
       w: 3,
@@ -88,27 +97,42 @@ const getAllKPIData = () => {
 
     kpi_nr = kpi_nr + 1;
   }
+  layout.value = [...dashboard_config.value.layout];
 };
 getAllKPIData();
 
 const load_db_with_id = ref("");
 
 const handleLoadDashboard = (dashboard_id) => {
-  console.log(dashboard_id);
-
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
-      console.log(response);
       dashboard_config.value = response;
-      layout.value = response.layout;       // TODO: any better way?
+      layout.value = [...response.layout];
     } else {
       console.log('Error: empty response');
     }
   });
 }
 
+// To keep the dashboard information in the vue component and in the database settings in sync
+// Assume order in layout array doesn't change...     Maybe add id to panel data, use i attribute?
+const copyDashboardLayoutToSettings = () => {
+  for (let i=0; i<layout.value.length; i++) {
+    if (dashboard_config.value.layout[i].i != layout.value[i].i) {
+      console.log('ERROR: Dashboard panel IDs are not the same!');
+    } else {
+      dashboard_config.value.layout[i].x = layout.value[i].x;
+      dashboard_config.value.layout[i].y = layout.value[i].y;
+      dashboard_config.value.layout[i].w = layout.value[i].w;
+      dashboard_config.value.layout[i].h = layout.value[i].h;
+      dashboard_config.value.layout[i].type = layout.value[i].type;
+    }
+  }
+}
+
 const handleSaveDashboard = (res) => {
   console.log(res);
+  copyDashboardLayoutToSettings();
 
   dashboard_config.value.id = res.id;
   dashboard_config.value.name = res.name;
