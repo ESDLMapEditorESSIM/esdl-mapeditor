@@ -1,7 +1,10 @@
 import base64
 
 # from app import send_alert
+from typing import Optional
 from uuid import uuid4
+
+from flask_socketio import emit
 
 from esdl.resources.xmlresource import XMLResource
 
@@ -18,6 +21,9 @@ logger = log.get_logger(__name__)
 
 @socketio.on('load_energy_project', namespace='/esdl')
 def load_energy_project(message):
+    """
+    Load energy project from file.
+    """
     base64_file = message['base64_file']
     file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
     filename = message['filename']
@@ -34,6 +40,16 @@ def load_energy_project(message):
     except Exception as e:
         logger.error("Error loading {}: {}".format(filename, e))
         # send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+
+
+@socketio.on('get_active_energy_project', namespace='/esdl')
+def get_active_energy_project(message):
+    esh = get_handler()
+    project: Optional[Project] = esh.get_energy_project()
+    variant_names = [v.name for v in project.variants]
+
+    print(f'Returning project {project.name}, containing {len(project.variants)} variants: {variant_names}')
+    return serialize_project(project)
 
 
 @socketio.on('activate_project_variant', namespace='/esdl')
@@ -59,7 +75,6 @@ def activate_project_variant(message):
         return
 
     snapshot = base_variant.snapshot
-    logger.info(snapshot)
     # TODO: This can probably be done nicer than first writing to string.
     # Now using the add_from_string so that it gets properly added to the resource set.
     uri = StringURI('to_string_' + str(uuid4()) + '.esdl')

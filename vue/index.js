@@ -28,11 +28,13 @@ import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawTo
 import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
+import ToggleProjectView from './components/toolbars/ToggleProjectView'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/toolbars/LoadProjectFileButton';
+import ProjectView from './apps/ProjectView';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
@@ -128,7 +130,9 @@ createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
 mountApp(AboutBox, '#vue_show_about_box')
 
+createApp(ToggleProjectView).mount('#vue_toggle_show_project_view')
 createApp(LoadProjectFileButton).mount('#vue_load_project_file')
+createApp(ProjectView).mount('#vue_project_view_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

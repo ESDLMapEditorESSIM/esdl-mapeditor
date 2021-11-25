@@ -257,11 +257,6 @@ function add_layer_control() {
                 }
             });
 
-        const energy_project = window.energy_project;
-        if (energy_project) {
-            build_esdl_variants_jstree(div);
-        }
-
         $('.vakata-context').css('z-index', 20000);
 
 //        div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
@@ -373,130 +368,130 @@ function get_esdl_layer_control_tree_data() {
     return [group];
 }
 
-function build_esdl_variants_jstree(div) {
-    let $esdl_variant_control_tree = $('<div>').attr('id', 'esdl_variants_lct');
-    $(div).append($esdl_variant_control_tree);
-
-    $esdl_variant_control_tree
-        .on('ready.jstree', function () {
-            const tree = $('#esdl_variants_lct').jstree(true);
-        })
-        .on('load_node.jstree', function (e, data) {
-            console.log(data);
-            const tree = $('#esdl_variants_lct').jstree(true);
-            const root_node = data.node;
-            for (let ch = 0; ch < root_node.children_d.length; ch++) {
-                const child = tree.get_node(root_node.children_d[ch]);
-                console.log(child);
-                // if (child.type === 'layer') {
-                //     layer_data = child.data;
-                //     if (map.hasLayer(esdl_list[layer_data.es_id].layers[laYer_data.layer_name]))
-                //         tree.check_node(child);
-                // }
-            }
-        })
-        .on('check_node.jstree', function (e, data) {
-            const tree = $('#esdl_variants_lct').jstree(true);
-            const node = data.node;
-            console.log(data);
-            console.log(node);
-
-            window.socket.emit('activate_project_variant', {'name': node.name});
-                // for (let c=0; c<node.children.length; c++) {
-                //     child = tree.get_node(node.children[c]);
-                //     if (tree.is_checked(child)) {
-                //         show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
-                //     }
-                // }
-        })
-        .on('uncheck_node.jstree', function (e, data) {
-            const tree = $('#esdl_variants_lct').jstree(true);
-            const node = data.node;
-                // for (let c=0; c<node.children.length; c++) {
-                //     child = tree.get_node(node.children[c]);
-                //     if (tree.is_checked(child)) {
-                //         hide_esdl_layer_from_map(child.data.es_id, child.data.layer_name);
-                //     }
-                // }
-        })
-        .jstree({
-            "core": {
-                "data": get_esdl_variants_control_tree_data(),
-                // so that create works for contextmenu plugin
-                "check_callback": true,
-                "dblclick_toggle": false
-            },
-            "plugins": ["checkbox", "contextmenu", "types", "conditionalselect"],
-            "checkbox": {
-                "three_state": false,
-                "whole_node": false,
-                "tie_selection": false      // uncouple selecting and checking
-            },
-            "conditionalselect": function (node, e) {
-                console.log(node);
-
-                window.socket.emit('activate_project_variant', {id: node.id});
-                // for (let c=0; c<node.children.length; c++) {
-                //     child = tree.get_node(node.children[c]);
-                //     if (tree.is_checked(child)) {
-                //         show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
-                //     }
-                // }
-            },
-            "types": {
-                "esdl-variant": {
-                    "icon": "fas fa-bezier-curve layer-node"
-                },
-            }
-        });
-}
-
-function get_esdl_variants_control_tree_data() {
-    const energy_project = window.energy_project;
-    console.log(energy_project);
-    const base_variant = energy_project.base_variant;
-    let children = [];
-
-    for (const variant of base_variant.children) {
-
-        // let esdl_sublayers = [
-        //     { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}},
-        //     { text: 'Assets', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'esdl_layer'}},
-        //     { text: 'Connections', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'connection_layer'}},
-        //     { text: 'Buildings', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'bld_layer'}},
-        //     { text: 'Potentials', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'pot_layer'}},
-        //     { text: 'KPIs', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'kpi_layer'}},
-        //     { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}},
-        //     { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
-        // ];
-        //
-        console.log('adding variant with name: '+ variant.name);
-
-        let esdl_layer = {
-            id: variant.name,
-            text: variant.name,
-            type: "esdl-variant",
-            state: {"checked": false},
-            // children: esdl_sublayers
-        }
-
-        children.push(esdl_layer);
-    }
-
-    let group = {
-        id : "group_project_variants",
-        text: "Project Variants",
-        icon: "",
-        type: "group",
-        state: {
-            opened : true
-        },
-        children: children,
-        li_attr: {},
-        "a_attr": {
-            "class": "no_checkbox"
-        }
-    }
-
-    return [group];
-}
+// function build_esdl_variants_jstree(div) {
+//     let $esdl_variant_control_tree = $('<div>').attr('id', 'esdl_variants_lct');
+//     $(div).append($esdl_variant_control_tree);
+//
+//     $esdl_variant_control_tree
+//         .on('ready.jstree', function () {
+//             const tree = $('#esdl_variants_lct').jstree(true);
+//         })
+//         .on('load_node.jstree', function (e, data) {
+//             console.log(data);
+//             const tree = $('#esdl_variants_lct').jstree(true);
+//             const root_node = data.node;
+//             for (let ch = 0; ch < root_node.children_d.length; ch++) {
+//                 const child = tree.get_node(root_node.children_d[ch]);
+//                 console.log(child);
+//                 // if (child.type === 'layer') {
+//                 //     layer_data = child.data;
+//                 //     if (map.hasLayer(esdl_list[layer_data.es_id].layers[laYer_data.layer_name]))
+//                 //         tree.check_node(child);
+//                 // }
+//             }
+//         })
+//         .on('check_node.jstree', function (e, data) {
+//             const tree = $('#esdl_variants_lct').jstree(true);
+//             const node = data.node;
+//             console.log(data);
+//             console.log(node);
+//
+//             window.socket.emit('activate_project_variant', {'name': node.name});
+//                 // for (let c=0; c<node.children.length; c++) {
+//                 //     child = tree.get_node(node.children[c]);
+//                 //     if (tree.is_checked(child)) {
+//                 //         show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
+//                 //     }
+//                 // }
+//         })
+//         .on('uncheck_node.jstree', function (e, data) {
+//             const tree = $('#esdl_variants_lct').jstree(true);
+//             const node = data.node;
+//                 // for (let c=0; c<node.children.length; c++) {
+//                 //     child = tree.get_node(node.children[c]);
+//                 //     if (tree.is_checked(child)) {
+//                 //         hide_esdl_layer_from_map(child.data.es_id, child.data.layer_name);
+//                 //     }
+//                 // }
+//         })
+//         .jstree({
+//             "core": {
+//                 "data": get_esdl_variants_control_tree_data(),
+//                 // so that create works for contextmenu plugin
+//                 "check_callback": true,
+//                 "dblclick_toggle": false
+//             },
+//             "plugins": ["checkbox", "contextmenu", "types", "conditionalselect"],
+//             "checkbox": {
+//                 "three_state": false,
+//                 "whole_node": false,
+//                 "tie_selection": false      // uncouple selecting and checking
+//             },
+//             "conditionalselect": function (node, e) {
+//                 console.log(node);
+//
+//                 window.socket.emit('activate_project_variant', {id: node.id});
+//                 // for (let c=0; c<node.children.length; c++) {
+//                 //     child = tree.get_node(node.children[c]);
+//                 //     if (tree.is_checked(child)) {
+//                 //         show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
+//                 //     }
+//                 // }
+//             },
+//             "types": {
+//                 "esdl-variant": {
+//                     "icon": "fas fa-bezier-curve layer-node"
+//                 },
+//             }
+//         });
+// }
+//
+// function get_esdl_variants_control_tree_data() {
+//     const energy_project = window.energy_project;
+//     console.log(energy_project);
+//     const base_variant = energy_project.base_variant;
+//     let children = [];
+//
+//     for (const variant of base_variant.children) {
+//
+//         // let esdl_sublayers = [
+//         //     { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}},
+//         //     { text: 'Assets', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'esdl_layer'}},
+//         //     { text: 'Connections', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'connection_layer'}},
+//         //     { text: 'Buildings', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'bld_layer'}},
+//         //     { text: 'Potentials', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'pot_layer'}},
+//         //     { text: 'KPIs', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'kpi_layer'}},
+//         //     { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}},
+//         //     { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
+//         // ];
+//         //
+//         console.log('adding variant with name: '+ variant.name);
+//
+//         let esdl_layer = {
+//             id: variant.name,
+//             text: variant.name,
+//             type: "esdl-variant",
+//             state: {"checked": false},
+//             // children: esdl_sublayers
+//         }
+//
+//         children.push(esdl_layer);
+//     }
+//
+//     let group = {
+//         id : "group_project_variants",
+//         text: "Project Variants",
+//         icon: "",
+//         type: "group",
+//         state: {
+//             opened : true
+//         },
+//         children: children,
+//         li_attr: {},
+//         "a_attr": {
+//             "class": "no_checkbox"
+//         }
+//     }
+//
+//     return [group];
+// }

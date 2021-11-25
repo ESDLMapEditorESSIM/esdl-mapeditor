@@ -1613,7 +1613,7 @@
 
 </head>
 <body class="flexbox-parent">
-    <div class="flexbox-item topmenu">
+    <div class="topmenu">
         <div class="header">
             <div class="header-logo" ><img src="favicon.ico" height="20"></div>
             <div class="header-title" ><b>ESDL Map Editor - </b></div>
@@ -1641,6 +1641,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportFile').click();">
                                         <div class="menu-icon" id="menu_import"></div>
                                         Import ESDL...</a></li>
+                                    <li id="vue_load_project_file"></li>
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>
@@ -1758,6 +1759,7 @@
                                             Show/hide KPIs
                                         </a>
                                     </li>
+                                    <li id="vue_toggle_show_project_view"></li>
                                     <li id="vue_toggle_show_undo_redo_control"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
@@ -1809,7 +1811,11 @@
             <select id="area_bld_select"></select>
         </div>
     </div>
-    <div id="mapid" class="flexbox-item flexbox-item-grow" style="z-index:10"></div>
+
+    <div class="flexbox-content">
+        <div id="vue_project_view_root"></div>
+        <div id="mapid" class="flexbox-item-grow" style="z-index:10"></div>
+    </div>
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
