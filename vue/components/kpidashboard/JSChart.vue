@@ -1,53 +1,59 @@
 <template>
-  <div v-if="chart_options">
-    <span>
-      {{ chart_options.title }}
-    </span>
-    <div style="position: absolute; top: 3px; right: 3px;">
-      <a-button @click="changeToPieChart">Pie</a-button>
-    </div>
-    <div style="position: relative; height: 90%; width: 90%;">
-      <vue3-chart-js
-        :id="chart_options.id"
-        ref="chartRef"
-        :type="chart_options.type"
-        :data="chart_options.data"
-        :options="chart_options.options"
-      />
-    </div>
+  <span>
+    {{ chart_options.title }}
+  </span>
+  <div style="position: absolute; top: 3px; right: 20px;">
+    <span @click="changeToPieChart"><i class="fas fa-chart-pie" /></span>
+  </div>
+  <div style="position: relative; height: 90%; width: 90%;">
+    <vue3-chart-js
+      :id="chart_options.id"
+      ref="chartRef"
+      :type="chart_options.type"
+      :data="chart_options.data"
+      :options="chart_options.options"
+    />
   </div>
 </template>
 
-<script setup>
-import { ref, defineProps, watch } from 'vue'
+<script>
+// import { ref } from 'vue'
 import Vue3ChartJs from '@j-t-mcc/vue3-chartjs'
 
-const chartRef = ref(null);
+// const chartRef = ref(null);
 
-const props = defineProps({
-  chartOptionsProp: {
-    type: Object,
-    default: function() {
-      return {};
+export default {
+  name: 'JSChart',
+  components: {
+    Vue3ChartJs,
+  },
+  props: {
+    chartOptionsProp: {
+      type: Object,
+      default: function() {
+        return {};
+      }
+    },
+  },
+  data() {
+    return {
+      chart_options: this.changeProps(this.chartOptionsProp),
+      chartRef: {}
     }
   },
-});
-
-const changeProps = (prop) => {
-  if ('options' in prop) {
-    prop.options.maintainAspectRatio = false;
-  }
-  return prop;
+  methods: {
+    changeProps(prop) {
+      let co = prop;
+      if ('options' in co) {
+        co.options.maintainAspectRatio = false;
+      }
+      return co;
+    },
+    changeToPieChart() {
+      console.log(this.chartRef);
+      this.chart_options.type = "pie";
+      this.chartRef.update(250);
+    }
+  },
 }
-var chart_options = ref({});
-
-watch(() => props.chartOptionsProp, (prop_value, prev_prop_value) => {
-  chart_options.value = changeProps(prop_value);
-});
-
-const changeToPieChart = () => {
-  chart_options.value.options.type = "pie";
-  chartRef.value.update(250);
-}
-
 </script>

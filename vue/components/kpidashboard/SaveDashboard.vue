@@ -141,6 +141,7 @@ export default {
       this.visible = true;
     },
     handleOk() {
+      this.handleSave();
       this.visible = false;
       // this.$emit('save', this.dashboard_id);
     },

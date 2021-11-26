@@ -12,6 +12,12 @@
       :dashboards-info="dashboards_info"
       @handle-save="handleSaveDashboard"
     />
+    <a-button type="primary" @click="addTextPanel">
+      Add Text panel
+    </a-button>
+    <a-button type="primary" @click="addImagePanel">
+      Add Image panel
+    </a-button>
   </a-space>
   <div
     v-if="layout.length"
@@ -35,7 +41,19 @@
         :h="item.h"
         :i="item.i"
       >
-        <JSChart :chart-options-prop="item.chart_options" />
+        <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
+        <JSChart
+          v-if="item.type == 'jschart'"
+          :chart-options-prop="item.chart_options"
+        />
+        <TextPanel
+          v-if="item.type == 'textpanel'"
+          :options="item.options"
+        />
+        <ImagePanel
+          v-if="item.type == 'imagepanel'"
+          :options="item.options"
+        />
       </grid-item>
     </grid-layout>
   </div>
@@ -49,11 +67,15 @@
 <script setup>
 import { ref, defineComponent } from 'vue'
 import JSChart from '../components/kpidashboard/JSChart.vue'
+import TextPanel from '../components/kpidashboard/TextPanel.vue'
+import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
 
 const dashboards_info = ref([]);
 const layout = ref([]);     // this is the information used (and changed!) in the vue components
+
+var new_panel_id = 0;  // to store the id that new panels should use
 
 const dashboard_config = ref({
   id: '',
@@ -79,7 +101,7 @@ const getAllKPIData = () => {
   let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
   // console.log(kpi_data);
 
-  let kpi_nr = 0;
+  let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
   for (let kpi_name in kpi_data) {
     let kpi_info = kpi_data[kpi_name];
     let chart_options = window.createChartOptions(kpi_info);
@@ -90,24 +112,30 @@ const getAllKPIData = () => {
       y: Math.floor(kpi_nr / 3) * 5,
       w: 3,
       h: 5,
-      i: kpi_nr,
-      type: chart_options.type,
+      i: new_panel_id,
+      type: 'jschart',
       chart_options: chart_options
     });
 
     kpi_nr = kpi_nr + 1;
+    new_panel_id = new_panel_id + 1;
   }
   layout.value = [...dashboard_config.value.layout];
 };
 getAllKPIData();
 
-const load_db_with_id = ref("");
-
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
+      console.log(response);
       dashboard_config.value = response;
       layout.value = [...response.layout];
+      for (let i=0; i<layout.value.length; i++) {
+        if (layout.value[i].i >= new_panel_id) {
+          new_panel_id = layout.value[i].i + 1;
+        }
+      }
+      console.log(new_panel_id);
     } else {
       console.log('Error: empty response');
     }
@@ -139,6 +167,63 @@ const handleSaveDashboard = (res) => {
   dashboard_config.value.group = res.group;
 
   window.socket.emit('kpi_dashboard_save', dashboard_config.value);
+}
+
+const removeItem = (item_index) => {
+  // Note: the item.i doesn't necessarily
+  const index = layout.value.map(item => item.i).indexOf(item_index);
+  layout.value.splice(index, 1);
+
+  const db_index = dashboard_config.value.layout.map(item => item.i).indexOf(item_index);
+  dashboard_config.value.layout.splice(db_index, 1);
+}
+
+const findFreeRow = () => {
+  let free_row_nr = 0;
+  for (let i=0; i<layout.value.length; i++) {
+    if (layout.value[i].y + layout.value[i].h > free_row_nr) {
+      free_row_nr = layout.value[i].y + layout.value[i].h;
+    }
+  }
+  return free_row_nr;
+}
+
+const addTextPanel = () => {
+  let panel_config = {
+    x: 0,
+    y: findFreeRow(),
+    w: 3,
+    h: 5,
+    i: new_panel_id,
+    type: 'textpanel',
+    options: {
+      'title': 'New title',
+      'text': 'New text',
+    }
+  };
+  layout.value.push(panel_config);
+  dashboard_config.value.layout.push(panel_config);
+
+  new_panel_id = new_panel_id + 1;
+}
+
+const addImagePanel = () => {
+  let panel_config = {
+    x: 0,
+    y: findFreeRow(),
+    w: 3,
+    h: 5,
+    i: new_panel_id,
+    type: 'imagepanel',
+    options: {
+      'title': 'New title',
+      'base64_image_data': '',
+    }
+  };
+  layout.value.push(panel_config);
+  dashboard_config.value.layout.push(panel_config);
+
+  new_panel_id = new_panel_id + 1;
 }
 
 </script>
@@ -203,6 +288,13 @@ const handleSaveDashboard = (res) => {
   background-origin: content-box;
   box-sizing: border-box;
   cursor: pointer;
+}
+
+.remove {
+    position: absolute;
+    right: 2px;
+    top: 0;
+    cursor: pointer;
 }
 
 </style>
