@@ -1,9 +1,9 @@
 <template>
-  <span>
+  <h3>
     {{ chart_options.title }}
-  </span>
+  </h3>
   <div style="position: absolute; top: 3px; right: 20px;">
-    <span @click="changeToPieChart"><i class="fas fa-chart-pie" /></span>
+    <span class="chart-icon" @click="changeToPieChart"><i class="fas fa-chart-pie" /></span>
   </div>
   <div style="position: relative; height: 90%; width: 90%;">
     <vue3-chart-js
@@ -57,3 +57,12 @@ export default {
   },
 }
 </script>
+
+<style>
+
+.chart-icon i {
+  cursor: default;
+  color: lightgrey;
+}
+
+</style>

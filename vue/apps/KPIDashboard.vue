@@ -18,6 +18,9 @@
     <a-button type="primary" @click="addImagePanel">
       Add Image panel
     </a-button>
+    <a-button type="primary" @click="addTitelPanel">
+      Add Titel panel
+    </a-button>
   </a-space>
   <div
     v-if="layout.length"
@@ -54,6 +57,10 @@
           v-if="item.type == 'imagepanel'"
           :options="item.options"
         />
+        <TitlePanel
+          v-if="item.type == 'titlepanel'"
+          :options="item.options"
+        />
       </grid-item>
     </grid-layout>
   </div>
@@ -68,6 +75,7 @@
 import { ref, defineComponent } from 'vue'
 import JSChart from '../components/kpidashboard/JSChart.vue'
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
+import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
 import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
@@ -89,7 +97,6 @@ const getDashboardList = async () => {
   if (response.ok) {
     const data = await response.json();
     dashboards_info.value = data;
-    console.log(data);
   } else {
     // TODO: Handle error
   }
@@ -127,7 +134,6 @@ getAllKPIData();
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
-      console.log(response);
       dashboard_config.value = response;
       layout.value = [...response.layout];
       for (let i=0; i<layout.value.length; i++) {
@@ -135,7 +141,6 @@ const handleLoadDashboard = (dashboard_id) => {
           new_panel_id = layout.value[i].i + 1;
         }
       }
-      console.log(new_panel_id);
     } else {
       console.log('Error: empty response');
     }
@@ -154,12 +159,15 @@ const copyDashboardLayoutToSettings = () => {
       dashboard_config.value.layout[i].w = layout.value[i].w;
       dashboard_config.value.layout[i].h = layout.value[i].h;
       dashboard_config.value.layout[i].type = layout.value[i].type;
+      if (dashboard_config.value.layout[i].type != 'jschart') {
+        // Don't copy JSChart config as JSChart completely changes the config during visualisation
+        dashboard_config.value.layout[i].options = layout.value[i].options;
+      }
     }
   }
 }
 
 const handleSaveDashboard = (res) => {
-  console.log(res);
   copyDashboardLayoutToSettings();
 
   dashboard_config.value.id = res.id;
@@ -218,6 +226,24 @@ const addImagePanel = () => {
     options: {
       'title': 'New title',
       'base64_image_data': '',
+    }
+  };
+  layout.value.push(panel_config);
+  dashboard_config.value.layout.push(panel_config);
+
+  new_panel_id = new_panel_id + 1;
+}
+
+const addTitelPanel = () => {
+  let panel_config = {
+    x: 0,
+    y: findFreeRow(),
+    w: 12,
+    h: 2,
+    i: new_panel_id,
+    type: 'titlepanel',
+    options: {
+      'title': 'New title',
     }
   };
   layout.value.push(panel_config);
@@ -290,11 +316,12 @@ const addImagePanel = () => {
   cursor: pointer;
 }
 
-.remove {
+.vue-grid-item .remove {
     position: absolute;
     right: 2px;
     top: 0;
     cursor: pointer;
+    color: lightgrey;
 }
 
 </style>

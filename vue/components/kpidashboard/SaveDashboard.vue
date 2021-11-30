@@ -41,7 +41,7 @@
                 </template>
                 <a-select-option
                   v-for="db in db_group.dashboards"
-                  :key="db_group.name + '___' + db.id"
+                  :key="db_group.name + '__' + db.id + '__' + db.name"
                 >
                   {{ db.name }}
                 </a-select-option>
@@ -75,9 +75,6 @@
           </a-select>
         </a-card>
       </template>
-      <a-button @click="handleSave">
-        Save
-      </a-button>
     </a-modal>
   </div>
 </template>
@@ -109,7 +106,6 @@ export default {
   },
   computed: {
     dashboardList() {
-      console.log(this.dashboardsInfo);
       let db_list = [];
       if (this.dashboardsInfo.length == 0)
         return [];
@@ -119,7 +115,7 @@ export default {
           dashboards: [],
         };
         for (const [db_id, db_info] of Object.entries(this.dashboardsInfo.dashboards)) {
-          console.log(db_id, db_info);
+          // console.log(db_id, db_info);
           if (db_info.setting_type == this.dashboardsInfo.groups[g].setting_type) {
             if (db_info.setting_type == 'project') {
               if (db_info.project_name != this.dashboardsInfo.groups[g].project_name) continue;
@@ -130,7 +126,7 @@ export default {
         }
         db_list.push(group);
       }
-      console.log(db_list);
+      // console.log(db_list);
       return db_list;
     }
   },
@@ -149,13 +145,13 @@ export default {
       return option.props.title.toLowerCase().indexOf(input.toLowerCase()) >= 0;
     },
     handleSave() {
-      console.log(this.dashboardData);
       if (this.save_as_new_or_existing == 'new') {
         this.dashboard_id = uuidv4();
       } else {
         let tmp_db_id = this.dashboard_id;   // format is: group_name__db_id
         this.dashboard_group = tmp_db_id.split('__')[0];
         this.dashboard_id = tmp_db_id.split('__')[1];
+        this.dashboard_name = tmp_db_id.split('__')[2];
       }
       this.$emit('handle-save', {
         id: this.dashboard_id,

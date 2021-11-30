@@ -1,11 +1,13 @@
 <template>
-  <h3>
-    {{ options.title }}
-  </h3>
+  <div>
+    <h3>
+      {{ options.title }}
+    </h3>
+  </div>
   <div style="position: absolute; top: 3px; right: 20px;">
     <span class="settings" @click="showImageSettings"><i class="fa fa-edit" /></span>
   </div>
-  <div style="position: relative; height: 90%; width: 90%;">
+  <div class="panel_image_div">
     <img
       v-if="options.base64_image_data"
       :src="options.base64_image_data"
@@ -85,11 +87,31 @@ const selectedFile = () => {
 .settings {
   cursor: default;
 }
+.settings i {
+  color: lightgrey;
+}
+
+.panel_image_div {
+  position: relative;
+  height: 90%;
+  width: 90%;
+  margin: 4px;
+  bottom: 4px;
+  box-sizing: border-box;
+}
 
 .panel_image {
   border_radius: 8px;
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border: 0;
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  margin: auto;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 </style>

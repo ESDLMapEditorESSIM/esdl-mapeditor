@@ -61,5 +61,8 @@ const handleOk = () => {
 .settings {
   cursor: default;
 }
+.settings i {
+  color: lightgrey;
+}
 
 </style>
