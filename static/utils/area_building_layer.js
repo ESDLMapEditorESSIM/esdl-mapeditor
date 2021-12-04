@@ -814,6 +814,7 @@ function selectAreaKPI(selectObject) {
 // ------------------------------------------------------------------------------------------------------------
 function createBuildingLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Building Legend';
 
@@ -838,6 +839,7 @@ function createBuildingLegendDiv() {
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Area Legend';
 
