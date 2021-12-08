@@ -123,7 +123,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                 }
             }
         }
-    };
+    }
     if (layer_type === "area") {
         if (!get_area_color) { get_area_color = get_area_default_color; }
     }
@@ -486,7 +486,7 @@ function set_area_handlers(area) {
     area.on('dragend', function(e) {
         var area = e.target;
         // var pos = area.getLatLng();
-        // socket.emit('update-coord', {id: area.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+        // socketio.emit('update-coord', {id: area.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
     });
 
     // area.on('remove', function(e) {
@@ -834,7 +834,7 @@ function createBuildingLegendDiv() {
     first_kpi_name = Object.keys(building_KPIs)[0];
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(first_kpi_name);
     return legendDiv;
-};
+}
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
@@ -854,7 +854,7 @@ function createAreaLegendDiv() {
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
     return legendDiv;
-};
+}
 
 function removeBuildingLegend() {
     if (buildingLegend) {

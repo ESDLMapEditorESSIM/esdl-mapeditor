@@ -12,7 +12,6 @@
 #  Manager:
 #      TNO
 
-import logging
 import logging.config
 
 from typing import List, Any

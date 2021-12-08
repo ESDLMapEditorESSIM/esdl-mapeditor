@@ -86,7 +86,7 @@
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
     <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
-    <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
+    <!--script type="text/javascript" src="./plugins/socketio.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
 
     <link href="./plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
@@ -460,7 +460,7 @@
                         var marker = e.target;
                         var id = marker.id;
 
-                        // socket.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
+                        // socketio.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
                         object_properties_window(id);
                     }
                 }
@@ -725,14 +725,14 @@
             return (user_roles.includes(role))
         }
 
-        var socket;
+        var socketio;
 
         // ------------------------------------------------------------------------------------------------------------
-        //  Document is ready loading --> all functionality to react on incoming socket messages
+        //  Document is ready loading --> all functionality to react on incoming socketio messages
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socketio.io"});
 
             // add_handler();
             add_geojson_listener(socket, map);
@@ -751,11 +751,12 @@
                 console.log('connected');
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
                 // let extensions know client is connected
-                // and socket variable is available
+                // and socketio variable is available
                 for (let i=0; i<extensions.length; i++) {
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+                window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
             });
 
             socket.on('user_info', function(ui) {
@@ -1135,7 +1136,7 @@
 
 
             /* not used anymore (Ewoud)
-            socket.on('add_new_conn', function(connection) {
+            socketio.on('add_new_conn', function(connection) {
                 var new_conn = connection['new_conn'];
                 var es_id = connection['es_id'];
                 add_to_building = connection['add_to_building'];
@@ -1320,7 +1321,7 @@
                 sidebar.show();
             });
 
-			// socket.on('conductor_info', function(asset_info) {
+			// socketio.on('conductor_info', function(asset_info) {
 				// console.log('Conductor info: ')
 				// console.log(asset_info);
 				// asset_id = asset_info['id'];
@@ -1813,7 +1814,7 @@
     </div>
 
     <div class="flexbox-content">
-        <div id="vue_project_view_root"></div>
+        <div id="vue_side_pane_root"></div>
         <div id="mapid" class="flexbox-item-grow" style="z-index:10"></div>
     </div>
 

@@ -26,7 +26,7 @@ class Vesta {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for Vesta plugin")
+        console.log("Registering socketio io bindings for Vesta plugin")
 
         socket.on('vesta_restrictions_data', function(vesta_data) {
 //            console.log(vesta_data);

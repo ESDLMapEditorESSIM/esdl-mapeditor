@@ -20,7 +20,7 @@
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ETMLocal plugin")
+        console.log("Registering socketio io bindings for ETMLocal plugin")
     }
 
     show_info(id, data) {

@@ -305,7 +305,7 @@ function set_line_handlers(line) {
         }
 
         // TEST IF THIS IS BETTER
-        // if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
+        // if (clear_layer == false) socketio.emit('command', {cmd: 'remove_object', id: line.id});
         if (deleting_objects == true) {
             // remove connections
             console.log(line.ports);
@@ -360,8 +360,8 @@ function set_line_handlers(line) {
 //        var layer = e.target;
 //        //var pos = marker.getLatLng();
 //        //polyline_length = calculate_length(layer);
-//        //socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-//        //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+//        //socketio.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+//        //socketio.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
 //        // console.log(e.oldLatLng.lat);
 //        // console.log(pos.lat + ', ' + pos.lng );
 //    });

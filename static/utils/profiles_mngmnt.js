@@ -34,7 +34,7 @@ class Profiles {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for Profiles")
+        console.log("Registering socketio io bindings for Profiles")
         var self = this;
 
         socket.on('update_profiles_list', function(profiles_list) {
@@ -344,7 +344,7 @@ class Profiles {
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
-        };
+        }
 
         function highlight(e) {
             dropArea.classList.add('highlight');

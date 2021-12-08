@@ -365,7 +365,7 @@ class ESDLBrowser {
                     }
                 }
             }
-            let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);;
+            let $td_key = $("<td>").text(camelCaseToWords(name)).attr('title',doc);
             let $td_value = $("<td>").append($repr);
 
             $tr.append($td_key)
@@ -566,7 +566,7 @@ class ESDLBrowser {
 
     initSocketIO() {
         let self = this;
-        console.log("Registering socket io bindings for ESDLBrowser")
+        console.log("Registering socketio io bindings for ESDLBrowser")
 
         socket.on('esdl_browse_to', function(data) {
             //console.log("ESDL_Brower: browse_to SocketIO call");

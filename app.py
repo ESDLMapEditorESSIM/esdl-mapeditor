@@ -30,10 +30,13 @@ from flask_oidc import OpenIDConnect
 from flask_socketio import SocketIO, emit
 from pyecore.ecore import EDate, EObject
 
+from esdlproject import ESDLProject
+from src.tno.projects.emits import emit_active_esdl_project
+from src.tno.projects.types import serialize_esdl_project
 from src import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
-from esdl import EnergySystem, esdl
+from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler, StringURI
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
@@ -56,7 +59,7 @@ from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettin
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
-from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
+from extensions.session_manager import del_session, get_project_manager, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
@@ -83,7 +86,6 @@ from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from utils.datetime_utils import parse_date
-from variation import Project
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
@@ -378,18 +380,19 @@ def logout():
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
-    esh = get_handler()
+    esh = get_project_manager()
     active_es_id = get_session('active_es_id')
 
     try:
         #stream = esh.to_bytesio()
-        my_es = esh.get_energy_system(es_id=active_es_id)
-        esh.update_version(es_id=active_es_id)
-        if my_es.esdlVersion is None or my_es.esdlVersion == '':
-            my_es.esdlVersion = esdl_doc.get_esdl_version()
+        my_es = esh.get_active_energy_system()
+        # TODO: Version increment
+        # esh.update_version(es_id=active_es_id)
+        # if my_es.esdlVersion is None or my_es.esdlVersion == '':
+        #     my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
-        except:
+        except Exception:
             name = my_es.id
 
         if name is None or name == '':
@@ -399,7 +402,7 @@ def download_esdl():
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
-        content = esh.to_string(es_id=active_es_id)
+        content = esh.to_string(es_id=my_es.id)
 
         #wrapped_io = FileWrapper(stream)
         #logger.debug(content)
@@ -486,7 +489,7 @@ def load_ESDL_EnergySystem(store_id):
         emit('store_item_metadata', store_item)
 
         try:
-            esh = get_handler()
+            esh = get_project_manager()
             es, parse_info = esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
             if len(parse_info) > 0:
                 info = ''
@@ -511,7 +514,7 @@ def import_ESDL_EnergySystem(store_id):
         emit('store_item_metadata', store_item)
 
         try:
-            esh = get_handler()
+            esh = get_project_manager()
             imported_es, parse_info = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
             if len(parse_info) > 0:
                 info = ''
@@ -611,7 +614,7 @@ def send_alert(message):
 # FIXME: pyecore
 def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     processed_assets.append(asset_id)
 
@@ -804,7 +807,7 @@ def update_asset_connection_locations(ass_id, lat, lon):
 
 def update_transport_connection_locations(ass_id, asset, coords):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
     # logger.debug('Updating locations')
@@ -847,10 +850,9 @@ def connect_ports(port1, port2):
 def split_conductor(conductor, location, mode, conductor_container):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
-    esh = get_handler()
+    esh = get_project_manager()
 
     geometry = conductor.geometry
-    conductor_type = type(conductor).__name__
     conductor_id = conductor.id
     middle_point = esdl.Point(lat=location['lat'], lon=location['lng']) #no elevation?
 
@@ -862,7 +864,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         #find piece of line where user clicked
         points = geometry.point
         begin_point = points[0]
-        first_point = points[0] # make an additional copy
+        first_point = points[0]  # make an additional copy
         # Ewoud: this code is not so nice since it manipulates the original geometry.point with points.pop(0) later on
         # this should be fixed, but not now (not time)
 
@@ -880,7 +882,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         for point in points:
             p1 = {'x': begin_point.lat, 'y': begin_point.lon}
             p2 = {'x': point.lat, 'y': point.lon}
-            p =  {'x': location['lat'], 'y': location['lng']}
+            p = {'x': location['lat'], 'y': location['lng']}
             dist = ESDLGeometry.distance_point_to_line(p, p1, p2)
             if dist < min_dist:
                 min_dist = dist
@@ -1099,7 +1101,7 @@ def update_coordinates(message):
     # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
 
     obj_id = message['id']
     coords = message['coordinates']
@@ -1149,7 +1151,7 @@ def update_line_coordinates(message):
     ass_id = message['id']
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, ass_id)
 
     if asset:
@@ -1186,7 +1188,7 @@ def update_polygon_coordinates(message):
     ass_id = message['id']
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, ass_id)
 
     if asset:
@@ -1226,7 +1228,7 @@ def get_control_strategies(es):
 
 def get_control_strategy_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     return asset.controlStrategy
 
@@ -1240,7 +1242,7 @@ def get_control_strategy_for_asset(asset_id):
 
 def add_control_strategy_for_asset(asset_id, cs):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     es = esh.get_energy_system(es_id=active_es_id)
 
     services = es.services
@@ -1259,7 +1261,7 @@ def add_control_strategy_for_asset(asset_id, cs):
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
 
     module = importlib.import_module('esdl.esdl')
     class_ = getattr(module, control_strategy)
@@ -1284,7 +1286,7 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
 
 def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
@@ -1305,7 +1307,7 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
 
 def add_curtailment_control_strategy_for_asset(asset_id, max_power):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
@@ -1322,7 +1324,7 @@ def add_curtailment_control_strategy_for_asset(asset_id, max_power):
 
 def get_storage_marginal_costs(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     es = esh.get_energy_system(es_id=active_es_id)
 
@@ -1349,7 +1351,7 @@ def get_storage_marginal_costs(asset_id):
 
 def get_curtailment_max_power(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     es = esh.get_energy_system(es_id=active_es_id)
 
@@ -1366,7 +1368,7 @@ def get_curtailment_max_power(asset_id):
 
 def remove_control_strategy_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     cs = asset.controlStrategy
     if cs:
@@ -1386,7 +1388,7 @@ def remove_control_strategy_for_asset(asset_id):
 # ---------------------------------------------------------------------------------------------------------------------
 def set_marginal_costs_for_asset(asset_id, marginal_costs):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     asset_name = asset.name
     if not asset_name:
@@ -1409,7 +1411,7 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
 
 def get_marginal_costs_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    esh = get_project_manager()
     asset = esh.get_by_id(active_es_id, asset_id)
     ci = asset.costInformation
     if ci:
@@ -1446,8 +1448,8 @@ def get_first_last_of_line(line):
 
 
 @executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename, es_title, app_context, force_update_es_id, zoom)
+def call_process_energy_system(force_update_es_id=None, zoom=True):
+    process_energy_system(force_update_es_id, zoom)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1470,7 +1472,7 @@ def process_command(message):
         send_alert('Serious error: no active es id found. Please report')
         return
 
-    esh = get_handler()
+    esh = get_project_manager()
     if esh is None:
         logger.error('ERROR finding EnergySystemHandler, Session issue??')
     area_bld_list = get_session_for_esid(active_es_id, 'area_bld_list')
@@ -1478,7 +1480,7 @@ def process_command(message):
     es_edit = esh.get_energy_system(es_id=active_es_id)
     # test to see if this should be moved down:
     #  session.modified = True
-    # logger.debug (get_handler().instance[0].area.name)
+    # logger.debug (get_project_manager().instance[0].area.name)
 
     undo_redo = esh.get_undo_redo_stack(es_edit)
     undo_redo.start_recording(combineCommands=True, label=message['cmd'])
@@ -1488,7 +1490,6 @@ def process_command(message):
         asset_id = message['asset_id']
         object_type = message['object']
         asset_name = message['asset_name']
-        asset = None
 
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
@@ -2367,7 +2368,7 @@ def process_command(message):
                             send_alert('Invalid datetime format')
 
         if quap_type == 'predefined_qau':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            # socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, predefined_qau: predefined_qau});
             predefined_qau = message["predefined_qau"]
             for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
@@ -2386,13 +2387,13 @@ def process_command(message):
             qau_ref = esdl.QuantityAndUnitReference(reference=qau)
             esdl_profile.profileQuantityAndUnit = qau_ref
         elif quap_type == 'custom_qau':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            # socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
             custom_qau = message["custom_qau"]
             qau = ESDLQuantityAndUnits.build_qau_from_dict(custom_qau)
             esdl_profile.profileQuantityAndUnit = qau
         elif quap_type == 'profiletype':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            # socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, profile_type: profile_type});
             profile_type = message['profile_type']
             esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
@@ -2510,7 +2511,7 @@ def process_command(message):
         emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
     if message['cmd'] == 'remove_connection':
-        # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
+        # socketio.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
         #                         to_asset_id: to_asset_id, to_port_id: to_port_id});
         from_asset_id = message['from_asset_id']
         from_port_id = message['from_port_id']
@@ -2556,11 +2557,11 @@ def process_command(message):
         update_carrier_conn_list()
 
     if message['cmd'] == 'add_carrier':
-        # en_carr: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
-        # el_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
-        # g_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
-        # h_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp});
-        # en_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
+        # en_carr: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
+        # el_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
+        # g_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
+        # h_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp});
+        # en_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
         carr_type = message['type']
         carr_name = message['name']
         carr_id = str(uuid.uuid4())
@@ -2670,7 +2671,7 @@ def process_command(message):
         emit('curtailment_strategy_window', {'asset_id': asset_id, 'max_power': max_power})
 
     if message['cmd'] == 'set_control_strategy':
-        # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
+        # socketio.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
         strategy = message['strategy']
         asset_id = message['asset_id']
 
@@ -2795,7 +2796,6 @@ def process_command(message):
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
-        esh = get_handler()
         ESDLEnergySystem.remove_sector(es_edit, id)
         sector_list = ESDLEnergySystem.get_sector_list(es_edit)
         emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
@@ -2910,7 +2910,7 @@ def process_command(message):
         if received_esdls:
             for received_esdl in received_esdls:
                 filename = 'ESDL from '+received_esdl['sender']
-                esh = get_handler()
+                esh = get_project_manager()
 
                 try:
                     result, parse_info = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
@@ -2920,7 +2920,7 @@ def process_command(message):
                             info += line + "\n"
                         send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
 
-                    call_process_energy_system.submit(esh, filename)  # run in seperate thread
+                    call_process_energy_system.submit(filename=filename)  # run in seperate thread
                     esdl_api.remove_esdls_for_user(user_email)
                 except Exception as e:
                     logger.error("Error loading {}: {}".format(filename, e))
@@ -2939,36 +2939,36 @@ def process_command(message):
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
-        esh = get_handler()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        esh = get_project_manager()
+        call_process_energy_system.submit(force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'undo':
         print('Undo stack')
         pprint(undo_redo.stack)
-        esh = get_handler()
+        esh = get_project_manager()
         undo_redo.stop_recording()
         if undo_redo.can_undo():
             undo_redo.undo()
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-            call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+            call_process_energy_system.submit(force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to undo at this time")
 
     if message['cmd'] == 'redo':
         print('Redo stack')
         pprint(undo_redo.stack)
-        esh = get_handler()
+        esh = get_project_manager()
         undo_redo.stop_recording()
         if undo_redo.can_redo():
             undo_redo.redo()
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-            call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+            call_process_energy_system.submit(force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to redo at this time")
 
     if message['cmd'] == 'undo_redo_until':
         target_idx = message['target_idx']
-        esh = get_handler()
+        esh = get_project_manager()
         undo_redo.stop_recording()
         diff = undo_redo.stack_index - target_idx
         while diff > 0 and undo_redo.can_undo():
@@ -2977,7 +2977,7 @@ def process_command(message):
         while diff < 0 and undo_redo.can_redo():
             undo_redo.redo()
             diff += 1
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        call_process_energy_system.submit(force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
 
     undo_redo.stop_recording()
 
@@ -2994,20 +2994,19 @@ def undo_redo_stack(_):
     """
     Return the undo redo stack.
     """
-    esh = get_handler()
+    esh = get_project_manager()
     if esh is None:
         logger.error('ERROR finding EnergySystemHandler, Session issue??')
 
-    active_es_id = get_session('active_es_id')
-    es_edit = esh.get_energy_system(es_id=active_es_id)
-    undo_redo = esh.change_tracker.get_tracker_stack(es_edit)
+    es_edit = esh.get_active_energy_system()
+    undo_redo = esh.changeTracker.get_tracker_stack(es_edit)
     serialized_stack = undo_redo.serialize()
     return serialized_stack
 
 
 @executor.job
 def query_esdl_services(params):
-    esh = get_handler()
+    esh = get_project_manager()
     logger.debug('calling service')
     try:
         esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
@@ -3026,7 +3025,7 @@ def query_esdl_services(params):
             message += ': ' + esdl_service_result
         send_alert(message)
     # logger.debug('processing energy system')
-    call_process_energy_system.submit(esh)
+    call_process_energy_system.submit()
 
 
 @socketio.on('set_active_es_id', namespace='/esdl')
@@ -3057,7 +3056,7 @@ def process_file_command(message):
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
-        call_process_energy_system.submit(esh, filename)
+        call_process_energy_system.submit(filename)
 
         del_session('store_item_metadata')
         emit('store_item_metadata', {})
@@ -3089,7 +3088,7 @@ def process_file_command(message):
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
-        call_process_energy_system.submit(esh, filename) # run in seperate thread
+        call_process_energy_system.submit(filename) # run in seperate thread
         #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
         #thread.start()
 
@@ -3105,12 +3104,12 @@ def process_file_command(message):
         filename = message['filename']
         logger.info(filename)
         uri = StringURI(filename + '.project', file_content)
-        esh = get_handler()
+        esh = get_project_manager()
         rset = esh.rset
 
         try:
             project_resource = rset.get_resource(uri)
-            project: Project = project_resource.contents[0]
+            project: ESDLProject = project_resource.contents[0]
             variant_names = [v.name for v in project.variants]
             print(f'Loaded project {project.name}, containing {len(project.variants)} variants: {variant_names}')
             return variant_names
@@ -3121,17 +3120,23 @@ def process_file_command(message):
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']
         filename = message['filename']
-        esh = get_handler()
+        esh = get_project_manager()
 
         try:
-            imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-            call_process_energy_system.submit(esh, filename)  # run in seperate thread
-            set_session('active_es_id', imported_es.id)
+            uri = StringURI(filename, file_content)
+            # TODO: Look at parse info?
+            es_variant = esh.add_energy_system(uri)
+            # imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content)
+            # if len(parse_info) > 0:
+            #     info = ''
+            #     for line in parse_info:
+            #         info += line + "\n"
+            #     send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+            esh.set_active_variant(es_variant)
+            emit_active_esdl_project()
+            call_process_energy_system.submit(filename)  # run in seperate thread
+            # set_session('active_es_id', imported_es.id)
+            # TODO: This seems unused.
             set_session('es_filename', filename)
         except Exception as e:
             logger.error("Error loading {}: {}".format(filename, e))
@@ -3177,7 +3182,7 @@ def process_file_command(message):
             set_session("es_info_list", es_info_list)
             emit('clear_ui')
             emit('clear_esdl_layer_list')
-            call_process_energy_system.submit(esh, None, title)
+            call_process_energy_system.submit(es_title=title)
         else:
             send_alert('Error loading ESDL file with id {} from store'.format(store_id))
 
@@ -3191,8 +3196,8 @@ def process_file_command(message):
             else:
                 title = 'Store id: ' + store_id
 
-            esh = get_handler()
-            call_process_energy_system.submit(esh, None, title)  # run in seperate thread
+            esh = get_project_manager()
+            call_process_energy_system.submit(es_title=title)
             set_session('active_es_id', imported_es.id)
             set_session('es_filename', title)
 
@@ -3203,7 +3208,7 @@ def process_file_command(message):
 
         tags = ['map']
 
-        esh = get_handler()
+        esh = get_project_manager()
         store_item_metadata = get_session('store_item_metadata')
         if store_item_metadata:
             store_id = store_item_metadata['id']
@@ -3219,7 +3224,7 @@ def process_file_command(message):
     user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
 
 #    if message['cmd'] == 'save_esdl':
-#        esh = get_handler()
+#        esh = get_project_manager()
 #        try:
 #            write_energysystem_to_file('./static/EnergySystem.esdl', esh)
 #            # TODO: do we need to flush??
@@ -3228,7 +3233,7 @@ def process_file_command(message):
 #            send_alert('Error saving ESDL file to filesystem - exception: '+str(e))
 
 #    if message['cmd'] == 'download_esdl':
-#        esh = get_handler()
+#        esh = get_project_manager()
 #        name = get_session('es_title').replace(' ', '_')
 #
 #        send_ESDL_as_file(esh, name)
@@ -3243,19 +3248,12 @@ def initialize_app():
     session.permanent = True
     logger.info('Client connected: {}'.format(request.sid))
 
-    if 'client_id' in session:
-        logger.info('Energysystem in memory - reloading client data')
-        esh = get_handler()
-    else:
-        logger.info('No energysystem in memory - generating empty energysystem')
-        esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
-                                       esdlVersion=esdl_doc.get_esdl_version())
+    esh = get_project_manager()
 
     # TODO: discuss how to set active_es_id for the first time after a client connects
     es_list = esh.get_energy_systems()
     if es_list:
-        last_es = es_list[-1]
+        last_es = esh.get_active_energy_system()
         set_session('active_es_id', last_es.id)
     else:
         logger.error("No energy systems in esh list - Edwin and Ewoud discuss!!")
@@ -3264,7 +3262,8 @@ def initialize_app():
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
-    call_process_energy_system.submit(esh, None, None) # run in a seperate thread
+    emit_active_esdl_project()
+    call_process_energy_system.submit()  # run in a seperate thread
 
 
 @socketio.on('connect', namespace='/esdl')
@@ -3348,8 +3347,6 @@ def default_error_handler(e):
     logger.error('Socket IO arguments: {}'.format(request.event["args"]))
     traceback.print_exc()
 
-# Import events from blueprints. This is a temporary measure until we can manage to import from the blueprint itself.
-from extensions.projects import events
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application

@@ -32,7 +32,7 @@ class AppSettings {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for AppSettings");
+        console.log("Registering socketio io bindings for AppSettings");
 
         socket.on('tmp', function(data) {
             console.log(data);

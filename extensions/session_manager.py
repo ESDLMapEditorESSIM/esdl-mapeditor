@@ -11,19 +11,20 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
-from flask import session
 from esdl.esdl_handler import EnergySystemHandler
+from flask import session
 from datetime import datetime
-import esdl.processing.EcoreDocumentation as esdl_doc
 import threading
 import time
 import src.log as log
 import os, glob
 
+from src.tno.projects.ProjectManager import ProjectManager
+
 logger = log.get_logger(__name__)
 managed_sessions = dict()
 ESH_KEY = 'esh'
+PM_KEY = 'pm'
 LAST_ACCESSED_KEY = 'last-accessed'
 SESSION_TIMEOUT = 60*60*24  # 1 day
 CLEANUP_INTERVAL = 60*60  # every hour
@@ -39,7 +40,6 @@ def get_handler():
         else:
             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
             esh = EnergySystemHandler()
-            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
             set_handler(esh)
         return esh
     else:
@@ -56,6 +56,34 @@ def set_handler(esh):
     logger.debug('Set ESH client_id={}'.format(client_id))
     set_session(ESH_KEY, esh)
 
+
+def get_project_manager() -> ProjectManager:
+    """
+    Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
+    """
+    global managed_sessions
+    client_id = session['client_id']
+    if client_id in managed_sessions:
+        if ESH_KEY in managed_sessions[client_id]:
+            esh = managed_sessions[client_id][ESH_KEY]
+            logger.debug('Retrieve ESH client_id={}'.format(client_id))
+        else:
+            logger.warning('No EnergySystemHandler in session. Returning empty energy system')
+            esh = ProjectManager()
+            set_handler(esh)
+        return esh
+    else:
+        logger.warning('Session has timed-out. Returning empty energy system')
+        esh = ProjectManager()
+        set_handler(esh)
+        return esh
+
+
+def set_project_manager(pm: ProjectManager):
+    global managed_sessions
+    client_id = session['client_id']
+    logger.debug('Set ESH client_id={}'.format(client_id))
+    set_session(ESH_KEY, pm)
 
 def valid_session():
     if 'client_id' in session:

@@ -4,7 +4,7 @@ from typing import Optional
 from pyecore.resources import Resource, URI
 
 from esdl.resource_handler import ResourceHandlerBase
-from variation import Project
+from esdlproject import ESDLProject as Project
 
 
 @dataclass
@@ -12,6 +12,7 @@ class EnergyProjectData:
     """
     Relevant data for an energy project in the resource set.
     """
+
     energy_project: Project
     uri: URI
     resource: Resource
@@ -53,4 +54,3 @@ class EnergyProjectHandlerMixin(ResourceHandlerBase):
         energy_project_data = self.get_energy_project_data()
         if energy_project_data:
             self.rset.remove_resource(energy_project_data)
-

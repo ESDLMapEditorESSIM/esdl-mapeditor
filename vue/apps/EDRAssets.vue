@@ -119,7 +119,7 @@ export default {
   methods: {
     getDataSocketIO: function() {
       // console.log(currentObjectID.value);
-      // window.socket.emit('edr_assets', (res) => {
+      // window.socketio.emit('edr_assets', (res) => {
       const path = '/edr_assets';
       axios.get(path)
         .then((res) => {

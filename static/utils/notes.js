@@ -20,7 +20,7 @@ class Notes {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESDL Notes extension")
+        console.log("Registering socketio io bindings for ESDL Notes extension")
 
         // ------------------------------------------------------------------------------------------------------------
         //  Add notes on the map

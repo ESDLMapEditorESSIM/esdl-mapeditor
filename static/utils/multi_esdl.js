@@ -222,13 +222,29 @@ function remove_bld_layer(bld_id) {
 }
 
 function show_esdl_layer_on_map(es_id, layer_name) {
-    if (!map.hasLayer(esdl_list[es_id].layers[layer_name]))
-        esdl_list[es_id].layers[layer_name].addTo(map);
+    if (layer_name) {
+        if (!map.hasLayer(esdl_list[es_id].layers[layer_name])) {
+            esdl_list[es_id].layers[layer_name].addTo(map);
+        }
+    } else {
+        const es = esdl_list[es_id];
+        for (const layerName of Object.keys(es.layers)) {
+            show_esdl_layer_on_map(es_id, layerName);
+        }
+    }
 }
 
 function hide_esdl_layer_from_map(es_id, layer_name) {
-    if (map.hasLayer(esdl_list[es_id].layers[layer_name]))
-        esdl_list[es_id].layers[layer_name].removeFrom(map);
+    if (layer_name) {
+        if (map.hasLayer(esdl_list[es_id].layers[layer_name])) {
+            esdl_list[es_id].layers[layer_name].removeFrom(map);
+        }
+    } else {
+        const es = esdl_list[es_id];
+        for (const layerName of Object.keys(es.layers)) {
+            hide_esdl_layer_from_map(es_id, layerName);
+        }
+    }
 }
 
 function clear_esdl_layer_list() {

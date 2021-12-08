@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+from pyecore.ecore import EObject
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 from lxml.etree import QName, Element, ElementTree
 import logging
@@ -30,9 +30,29 @@ class XMLResource(XMIResource):
         self._later = []
         self.prefixes = {}
         self.reverse_nsmap = {}
-        self.parse_information: list[str] = []
+        self.parse_information = []
 
-    def get_parse_information(self) -> list[str]:
+    def set_content(self, root):
+        if not isinstance(root, EObject):
+            raise ValueError('The resource requires an EObject type, '
+                             f'but received {type(root)} instead.')
+        if len(self.contents) > 0 and self.contents[0]:
+            self.remove(self.contents[0])
+        self.contents.insert(0, root)
+        root._eresource = self
+        if root._container is not None:
+            container = root._container
+            feature = root._containment_feature
+            if feature.many:
+                container.eGet(feature).remove(root)
+            else:
+                container.eSet(feature, None)
+            root._container = None # as root is added to the resource, there is no container anymore
+
+    def __str__(self):
+        return f'XMLResource(uri={self.uri}, content[0]={self.contents[0].name if len(self.contents) > 0 else None})'
+
+    def get_parse_information(self):
         return self.parse_information
 
     def save(self, output=None, options=None):
@@ -103,3 +123,4 @@ class XMLResource(XMIResource):
                 logger.warning(s)
                 self.parse_information.append(s)
             return feature
+

@@ -26,7 +26,7 @@
     </a-button>
   </a-col>
   <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
-  <TableEditor v-if="ref.type == 'Table'" :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
+  <TableEditor v-if="ref.type == 'Table'" :parent-object-i-d="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
   <!-- <span v-else>Other editor</span> -->
   <!-- </a-modal> -->
 </template>

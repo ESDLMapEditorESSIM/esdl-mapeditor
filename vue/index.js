@@ -34,7 +34,7 @@ import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/toolbars/LoadProjectFileButton';
-import ProjectView from './apps/ProjectView';
+import SidePane from './apps/SidePane';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
@@ -132,7 +132,7 @@ mountApp(AboutBox, '#vue_show_about_box')
 
 createApp(ToggleProjectView).mount('#vue_toggle_show_project_view')
 createApp(LoadProjectFileButton).mount('#vue_load_project_file')
-createApp(ProjectView).mount('#vue_project_view_root')
+createApp(SidePane).mount('#vue_side_pane_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

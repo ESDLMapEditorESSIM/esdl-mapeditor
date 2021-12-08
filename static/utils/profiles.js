@@ -87,7 +87,7 @@ function add_profile_to_port() {
                 profile_class: profile_class, qaup_type: qaup_type, profile_type: profile_type});
         }
     }
-    // socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: multiplier,
+    // socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: multiplier,
     //     profile_type: profile_type, profile_class: profile_class_id});
 }
 

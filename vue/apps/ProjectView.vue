@@ -1,49 +1,95 @@
 <template>
-  <div id="project_view" :class="{project_view_hidden: !showProjectView}">
-    <ul class="tabs">
-      <li>
-        <button @click="toggleProjectView">
-          <span class="fas fa-project-diagram" />
-          Project
-        </button>
-      </li>
-    </ul>
-    <div id="project_view_contents">
-      <div id="project_tree" />
-      <vue-js-tree v-if="treeData != null" tree-id="project_tree" :data="treeData"
-                   :contextmenus-by-type="contextmenusByType" :type-settings="treeTypeSettings"
-      />
-      <p v-else class="text-only">No project loaded.</p>
+  <div id="project_view">
+    <div id="project_tree" />
+    <vue-js-tree v-if="treeData != null" :tree-id="treeId"
+                 :data="treeData" :contextmenus-by-type="contextmenusByType"
+                 :type-settings="treeTypeSettings" :event-handlers-by-name="eventHandlersByName"
+    />
+    <div v-else>
+      <p class="text-only">No project loaded.</p>
+      <div style="margin-top: 15px">
+        <button @click="getESDLProject">Refresh project</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import {onMounted, computed} from 'vue'
+import {computed, watchEffect} from 'vue'
+// eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
-import {useEnergyProjects} from "../composables/energyProjects";
+import {useESDLProjects} from "../composables/esdlProjects";
+import {useSocketIO} from "../composables/socketio";
 
-const {energyProject, getActiveEnergyProject, showProjectView, toggleProjectView} = useEnergyProjects();
+const {esdlProject, getESDLProject, showProjectView} = useESDLProjects();
+const {socket} = useSocketIO();
 
-// onMounted(() => {
-//   getActiveEnergyProject();
-// })
+const treeId = window.uuidv4();
+const baseTree = window.baseTree;
+const $ = window.$;
+
+const getTree = () => $('#' + treeId).jstree(true);
+
+const treeData = computed(() => {
+  if (esdlProject.value) {
+    const baseVariants = esdlProject.value.base_variants;
+    // const variants = baseVariant.children;
+    const baseVariantJstreeDatas = [];
+    for (const baseVariant of baseVariants) {
+      const baseVariantJstreeData = baseVariantToJstreeData(baseVariant);
+      baseVariantJstreeDatas.push(baseVariantJstreeData)
+    }
+
+    const projectData = {
+      text: esdlProject.value.name, type: 'project', state: {opened: true},
+      children: [...baseVariantJstreeDatas],
+      a_attr: {
+        "class": "no_checkbox"
+      }
+    };
+    return [
+      get_base_layers_control_tree_data(),
+      projectData,
+    ];
+  } else {
+    return null;
+  }
+});
+
+function baseVariantToJstreeData(baseVariant) {
+  const variantsData = [];
+  for (const variant of baseVariant.variants) {
+    const variantTreeData = variantToJstreeData(variant);
+    variantsData.push(variantTreeData);
+  }
+  return {
+    baseVariantId: baseVariant.id,
+    text: baseVariant.name,
+    children: variantsData,
+    type: "base_variant",
+    a_attr: {
+      "class": "no_checkbox"
+    },
+  }
+}
 
 function variantToJstreeData(variant) {
   const children = [];
   for (const child of variant.children) {
-    const variantTreeData = variantToJstreeData(child);
+    const variantTreeData = baseVariantToJstreeData(child);
     children.push(variantTreeData);
   }
-  console.log(variant.changes);
   for (const change of variant.changes) {
     const changeTreeData = changeToJstreeData(change);
     children.push(changeTreeData);
   }
   return {
+    baseVariantId: variant['base_variant_id'],
+    esId: variant.es_id,
     text: variant.name,
     children: children,
     type: "variant",
+    state: {"checked": variant.active},
   }
 }
 
@@ -75,38 +121,18 @@ function changeToJstreeData(change) {
   }
 }
 
-const treeData = computed(() => {
-  if (energyProject.value) {
-    console.log(energyProject.value);
-    const baseVariant = energyProject.value.base_variant;
-    console.log(baseVariant);
-    // const variants = baseVariant.children;
-    const variantJstreeData = variantToJstreeData(baseVariant);
-    return [
-      {text: energyProject.value.name, type: 'project'},
-      variantJstreeData
-      // {
-      //   'text': baseVariant.name,
-      //   'state': {
-      //     'opened': true,
-      //   },
-      //   'children': [
-      //     {'text': 'Child 1'},
-      //     'Child 2'
-      //   ]
-      // }
-    ];
-  } else {
-    return null;
-  }
-});
-
 const treeTypeSettings = {
+  project: {
+    icon: 'fas fa-project-diagram',
+  },
+  base_variant: {
+    icon: 'fas fa-bezier-curve'
+  },
   variant: {
     icon: 'fas fa-bezier-curve'
   },
-  project: {
-    icon: 'fas fa-project-diagram'
+  base_layer: {
+    icon: "fas fa-layer-group layer-node"
   },
 }
 
@@ -114,7 +140,7 @@ const contextmenusByType = {
   "project": (node, tree) => {
     return {
       'rename': {
-        'label': 'Rename Energy Project',
+        'label': 'Rename ESDL Project',
         'icon': 'far fa-edit',
         'action': function () {
           tree.edit(node);
@@ -128,19 +154,10 @@ const contextmenusByType = {
         'label': 'Add as ESDL layer',
         'icon': 'fas fa-plus',
         'action': function () {
+          // TODO: Make work
           window.socket.emit('activate_project_variant', {id: node.original.text}, () => {
             window.socket.emit('process_loaded_energysystems');
           });
-        }
-      },
-      'create': {
-        'label': 'Create new Variant',
-        'icon': 'fas fa-plus',
-        'action': function () {
-          tree.create_node(node.id, {
-            text: "New variant",
-            type: "variant",
-          }, "last", () => tree.open_node(node));
         }
       },
       'rename': {
@@ -150,69 +167,144 @@ const contextmenusByType = {
           tree.edit(node);
         }
       },
-      'delete' : {
-        'label' : 'Remove Variant',
+      'delete': {
+        'label': 'Remove Variant',
         'icon': 'fa fa-trash-o',
-        'action' : function () {
-          tree.delete_node(node.id);
+        'action': function () {
+          const msg = {name: node.original.text, base_variant_id: node.original.baseVariantId};
+          socket.value.emit("delete_variant", msg);
+        }
+      },
+    }
+  },
+  "base_variant": (node, tree) => {
+    return {
+      'create': {
+        'label': 'Create new Variant',
+        'icon': 'fas fa-plus',
+        'action': function () {
+          const msg = {base_variant_id: node.original.baseVariantId};
+          socket.value.emit("create_variant", msg);
+        }
+      },
+      'rename': {
+        'label': 'Rename Base Variant',
+        'icon': 'far fa-edit',
+        'action': function () {
+          tree.edit(node);
+        }
+      },
+      'delete': {
+        'label': 'Remove Base Variant',
+        'icon': 'fa fa-trash-o',
+        'action': function () {
+          socket.value.emit("delete_base_variant", {id: node.original.baseVariantId});
         }
       },
     }
   },
 }
+
+const eventHandlersByName = [{
+  eventName: 'ready.jstree',
+  handler: function () {
+    console.log("Ready!");
+  }
+}, {
+  eventName: 'select_node.jstree',
+  handler: function (e, data) {
+    console.log("Select node");
+    const type = data.node.type;
+    const original = data.node.original;
+    if (type === 'variant') {
+      socket.value.emit("set_active_variant", {base_variant_id: original.baseVariantId, name: original.text});
+    } else if (type === 'base_layer') {
+      const map = window.map;
+      const treeElement = $("#" + treeId.value);
+      const baseLayerGroup = treeElement.jstree("get_node", 'group_es_layers');
+      console.log(baseLayerGroup);
+      if (baseLayerGroup)
+        for (let bl = 0; bl < baseLayerGroup.children.length; bl++) {
+          const base_layer = baseLayerGroup.children[bl];
+          const bl_node = treeElement.jstree("get_node", base_layer);
+          if (treeElement.jstree(true).is_selected(bl_node)) {
+            if (!map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
+              map.addLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
+            }
+          } else {
+            if (map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
+              map.removeLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
+            }
+          }
+        }
+    }
+  }
+}, {
+  eventName: 'check_node.jstree',
+  handler: function (e, data) {
+    let node = data.node;
+    if (node.type === 'variant') {
+      window.show_esdl_layer_on_map(node.original.esId);
+    }
+  }
+}, {
+  eventName: 'uncheck_node.jstree',
+  handler: function (e, data) {
+    let node = data.node;
+    if (node.type === 'variant') {
+      window.hide_esdl_layer_from_map(node.original.esId);
+    }
+  }
+}];
+
+function get_base_layers_control_tree_data() {
+  let children = [];
+
+  for (let i = 0; i < baseTree['children'].length; i++) {
+    let state = {};
+    if (i === 0) {
+      state = {"checked": true};
+    }
+
+    let child = {
+      id: baseTree['children'][i].label,
+      text: baseTree['children'][i].label,
+      type: "base_layer",
+      data: {
+        baseTreeIndex: i
+      },
+      state: state,
+    }
+    children.push(child);
+  }
+
+  let group = {
+    id: "group_base_layers",
+    text: "Base layers",
+    type: "group",
+    state: {
+      opened: true
+    },
+    children: children,
+    a_attr: {
+      "class": "no_checkbox"
+    }
+  }
+
+  return group;
+}
+
 </script>
 
-<style lang="scss">
+<style scoped lang="scss">
 #project_view {
-  display: flex;
-  height: 100%;
-  margin-right: 1px;
-  border-right: 1px solid #efeff1;
-  box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
-  transition: max-width .2s ease-in;
-  min-width: 200px;
-  max-width: 500px;
-  resize: both;
+  padding: 8px 5px 8px 2px;
+  overflow: scroll;
+  //resize: horizontal;
+  width: 100%;
 
-  &.project_view_hidden {
-    min-width: 20px;
-    max-width: 20px;
-  }
-
-  ul.tabs {
-    padding: 8px 0 0 0;
-    margin: 0;
-    writing-mode: sideways-lr;
-    text-align: right;
-    border-right: 1px solid #efeff1;
-    box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
-    background-color: #ffeffe;
-
-    li {
-      display: block;
-
-      button {
-        background: none;
-        border: none;
-
-        &:hover {
-          cursor: pointer;
-        }
-
-        padding: 0;
-      }
-    }
-  }
-
-  #project_view_contents {
-    padding: 8px 5px 8px 2px;
-    overflow: scroll;
-    width: 100%;
-    resize: horizontal;
-
-    .text-only {
-      padding-left: 8px;
-    }
+  .text-only {
+    padding-left: 8px;
   }
 }
 

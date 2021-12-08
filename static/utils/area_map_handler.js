@@ -77,7 +77,7 @@ function esdl_layer_created_event_handler(event) {
     }
     if (type === 'polygon' || type === 'rectangle') {
         // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
-        // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
+        // socketio.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: selected_area_bld_id, polygon: layer.getLatLngs()});
         // area_layer.addLayer(layer, true);
 
         selection = document.getElementById("asset_menu").selectedIndex;
@@ -254,7 +254,7 @@ function add_area_map_handlers(socket, map) {
 //    });
 
 
-};
+}
 
 function enable_esdl_layer_created_event_handler() {
     map.on(L.Draw.Event.CREATED, esdl_layer_created_event_handler);

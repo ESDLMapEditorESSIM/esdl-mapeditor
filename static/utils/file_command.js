@@ -184,7 +184,7 @@ function save_ESDL(e, prefix) {
 }
 
 function send_cmd_store_ESDL() {
-    // socket.emit('file_command', {cmd: 'store_esdl'});
+    // socketio.emit('file_command', {cmd: 'store_esdl'});
     esdl_store_save_window();
 }
 

@@ -111,7 +111,7 @@ function add_building_map_handlers(mp) {
         }
         if (type === 'polygon' || type === 'rectangle') {
             // TODO: What to do with drawing polygon for an ESDL Area (e.g. a 'bedrijventerrein')
-            // socket.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: bld_edit_id, polygon: layer.getLatLngs()});
+            // socketio.emit('command', {cmd: 'set_area_bld_polygon', area_bld_id: bld_edit_id, polygon: layer.getLatLngs()});
             // area_layer.addLayer(layer, true);
 
             selection = document.getElementById("bld_asset_menu").selectedIndex;

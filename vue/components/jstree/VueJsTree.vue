@@ -19,7 +19,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, onMounted} from "vue";
+import {defineProps, onMounted, watchEffect} from "vue";
 
 const props = defineProps({
   treeId: String,
@@ -27,19 +27,33 @@ const props = defineProps({
   // Mapping from type to context menu.
   contextmenusByType: Object,
   typeSettings: Object,
+  eventHandlersByName: Object,
 })
 
 const $ = window.$;
 
-const getTree = () => $('#' + props.treeId).jstree(true);
+const getTreeElement = () => $('#' + props.treeId);
+const getTree = () => getTreeElement().jstree(true);
 
 onMounted(() => {
-  $('#' + props.treeId).jstree({
+  const treeElement = getTreeElement();
+  for (const eventHandlerByName of props.eventHandlersByName) {
+    const eventName = eventHandlerByName.eventName;
+    const handler = eventHandlerByName.handler;
+    treeElement.on(eventName, handler);
+  }
+  treeElement.jstree({
     core: {
       data: props.data,
       check_callback: true,
     },
-    plugins: ["contextmenu", "types"],
+    plugins: ["contextmenu", "types", "checkbox"],
+    checkbox: {
+      "three_state": false,
+      "whole_node": false,
+      // uncouple selecting and checking
+      "tie_selection": false
+    },
     contextmenu: {
       items: (node) => {
         const contextmenusByType = props.contextmenusByType || {};
@@ -54,4 +68,19 @@ onMounted(() => {
     types: props.typeSettings,
   });
 });
+
+watchEffect(() => {
+  // Refresh tree with new data.
+  if (props.data && getTree() && getTree().refresh) {
+    getTree().settings.core.data = props.data;
+    getTree().refresh();
+  }
+});
+
 </script>
+
+<style>
+.no_checkbox>i.jstree-checkbox {
+  display: none;
+}
+</style>

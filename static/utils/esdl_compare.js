@@ -31,7 +31,7 @@ class ESDLCompare {
     }
 
     open_window() {
-    //        socket.emit();
+    //        socketio.emit();
 
         let data = '';
         let content = this.generateContent(data);
@@ -57,7 +57,7 @@ class ESDLCompare {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESDLCompare")
+        console.log("Registering socketio io bindings for ESDLCompare")
 
         socket.on('esdl_compare_window', function(data) {
             //console.log("ESDL_Brower: browse_to SocketIO call");
@@ -101,7 +101,7 @@ class ESDLCompare {
             map.on('dialog:resizeend', ESDLCompare.handle_dialog_resize_move);
             map.on('dialog:moving', ESDLCompare.handle_dialog_resize_move);
             map.on('dialog:closed', function(e) {
-                // socket.emit('esdl_compare_closed');
+                // socketio.emit('esdl_compare_closed');
                 console.log('ESDL compare window closed');
             });
             return esdl_compare_window;
@@ -121,7 +121,7 @@ function compare_esdl() {
 
     document.getElementById('esdl_compare_button').style.display = 'none';
     socket.emit('esdl_compare', {esdl1: esdl_1, esdl2: esdl_2});
-//    socket.emit('esdl_compare', esdl_1, esdl_2);
+//    socketio.emit('esdl_compare', esdl_1, esdl_2);
 }
 
 function process_compare_results(results) {

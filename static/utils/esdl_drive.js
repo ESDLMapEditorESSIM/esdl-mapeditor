@@ -486,7 +486,7 @@ class ESDLDrive {
         function preventDefaults(e) {
           e.preventDefault();
           e.stopPropagation();
-        };
+        }
 
         function highlight(e) {
           dropArea.classList.add('highlight');
@@ -698,7 +698,7 @@ class ESDLDrive {
 
 
      initSocketIO() {
-        console.log("Registering socket io bindings for ESDL Drive CDO repo")
+        console.log("Registering socketio io bindings for ESDL Drive CDO repo")
         var self = this;
         socket.on('cdo_file_open', function(data) {
             self.file_open_dialog();

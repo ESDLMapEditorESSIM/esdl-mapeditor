@@ -15,6 +15,7 @@
 import uuid
 import random
 
+from esdl.esdl_handler import EnergySystemHandler
 from sys import getsizeof
 from flask import session
 from flask_socketio import emit
@@ -23,17 +24,22 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
+from extensions.session_manager import get_project_manager, set_handler, get_handler, get_session, set_project_manager, \
+    set_session_for_esid, \
+    set_session, \
     get_session_for_esid
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
+from src.tno.projects.ProjectManager import ProjectManager
 from utils.RDWGSConverter import RDWGSConverter
 import shapely
 import math
 import re
+from src.log import get_logger
 
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Generic functions
@@ -530,7 +536,7 @@ def add_asset_to_asset_list(asset_list, asset):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Process building and process area
 # ---------------------------------------------------------------------------------------------------------------------
-def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
+def process_building(esh: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
@@ -672,7 +678,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                         ['point', 'potential', potential.name, potential.id, type(potential).__name__, [lat, lon]])
 
 
-def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
+def process_area(esh: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
     area_bld_list.append(['Area', area.id, area.name, level])
 
     # process subareas
@@ -778,103 +784,106 @@ def get_building_information(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+def process_energy_system(filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    try:
     # emit('clear_ui')
-    print("Processing energysystems in esh")
-    print("active_es_id at start: {}".format(get_session('active_es_id')))
+        print("Processing energysystems in esh")
+        logger.info("Processing energysystems in esh", filename=filename, es_title=es_title)
+        print("active_es_id at start: {}".format(get_session('active_es_id')))
 
-    # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
-    # set_session('active_es_id', main_es.id)     # TODO: check if required here?
-    es_list = esh.get_energy_systems()
-    es_info_list = get_session("es_info_list")
+        # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
+        # set_session('active_es_id', main_es.id)     # TODO: check if required here?
+        esh = get_project_manager()
+        es_list = esh.get_energy_systems()
+        es_info_list = get_session("es_info_list")
 
-    if force_update_es_id == "all":
-        emit('clear_esdl_layer_list')
+        if force_update_es_id == "all":
+            emit('clear_esdl_layer_list')
 
-    for es in es_list:
-        asset_list = []
-        building_list = []
-        area_bld_list = []
-        conn_list = []
+        for es in es_list:
+            asset_list = []
+            building_list = []
+            area_bld_list = []
+            conn_list = []
 
-        if not isinstance(es, esdl.EnergySystem):
-            print("- Detected ESDL without an EnergySystem, is of type {}. Ignoring.".format(es.eClass.name))
-            continue
+            if not isinstance(es, esdl.EnergySystem):
+                print("- Detected ESDL without an EnergySystem, is of type {}. Ignoring.".format(es.eClass.name))
+                continue
 
-        if es.id is None:
-            es.id = str(uuid.uuid4())
+            if es.id is None:
+                es.id = str(uuid.uuid4())
 
-        if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
-            print("- Processing energysystem with id {}".format(es.id))
-            name = es.name
-            if not name:
-                title = 'Untitled Energysystem'
+            if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
+                print("- Processing energysystem with id {}".format(es.id))
+                name = es.name
+                if not name:
+                    title = 'Untitled Energysystem'
+                else:
+                    title = name
+
+                emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
+                emit('set_active_layer_id', es.id)
+
+                area = es.instance[0].area
+                find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+                carrier_list = ESDLEnergySystem.get_carrier_list(es)
+                emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+                sector_list = ESDLEnergySystem.get_sector_list(es)
+                if sector_list:
+                    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+
+                # KPIs that are connected to top-level area are visualized in a KPI dialog
+                print('- Processing KPIs')
+                area_kpis = ESDLEnergySystem.process_area_KPIs(area)
+                area_name = area.name
+                if not area_name:
+                    area_name = title
+                if area_kpis:
+                    emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
+
+                # measures can contain assets that still need to be added to the energysystem
+                assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
+                if assets_to_be_added:
+                    emit('ATBA_assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
+
+                # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
+                add_missing_coordinates(area)
+                print('- Processing area')
+                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+                notes_list = get_notes_list(es)
+
+                emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
+                emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
+                emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
+                emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
+                emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
+
+                set_session_for_esid(es.id, 'conn_list', conn_list)
+                set_session_for_esid(es.id, 'asset_list', asset_list)
+                set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
+
+                # TODO: update asset_list???
+                es_info_list[es.id] = {
+                    "processed": True
+                }
+
+                # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
+                # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
+                # Be aware: process_energy_system is called in a seperate thread, active_es_id is also changed in the functions
+                # calling process_energy_system!
+                if get_session('active_es_id') != es.id:
+                    set_session('active_es_id', es.id)
             else:
-                title = name
+                print("- Energysystem with id {} already processed".format(es.id))
 
-            emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
-            emit('set_active_layer_id', es.id)
+        # set_handler(esh)
+        set_project_manager(esh)
+        # emit('set_active_layer_id', main_es.id)
 
-            area = es.instance[0].area
-            find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
-            carrier_list = ESDLEnergySystem.get_carrier_list(es)
-            emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-            sector_list = ESDLEnergySystem.get_sector_list(es)
-            if sector_list:
-                emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+        print("active_es_id at end: {}".format(get_session('active_es_id')))
 
-            # KPIs that are connected to top-level area are visualized in a KPI dialog
-            print('- Processing KPIs')
-            area_kpis = ESDLEnergySystem.process_area_KPIs(area)
-            area_name = area.name
-            if not area_name:
-                area_name = title
-            if area_kpis:
-                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
-
-            # measures can contain assets that still need to be added to the energysystem
-            assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
-            if assets_to_be_added:
-                emit('ATBA_assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
-
-            # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
-            add_missing_coordinates(area)
-            print('- Processing area')
-            process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
-            notes_list = get_notes_list(es)
-
-            emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
-            emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
-            emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
-            emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
-            emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
-
-            set_session_for_esid(es.id, 'conn_list', conn_list)
-            set_session_for_esid(es.id, 'asset_list', asset_list)
-            set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
-
-            # TODO: update asset_list???
-            es_info_list[es.id] = {
-                "processed": True
-            }
-
-            # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
-            # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
-            # Be aware: process_energy_system is called in a seperate thread, active_es_id is also changed in the functions
-            # calling process_energy_system!
-            if get_session('active_es_id') != es.id:
-                set_session('active_es_id', es.id)
-        else:
-            print("- Energysystem with id {} already processed".format(es.id))
-
-    set_handler(esh)
-    # emit('set_active_layer_id', main_es.id)
-
-    print("active_es_id at end: {}".format(get_session('active_es_id')))
-
-    #session.modified = True
-    print('session variables set', session)
-    # print('es_id: ', get_session('es_id'))
-
-
-
+        #session.modified = True
+        print('session variables set', session)
+        # print('es_id: ', get_session('es_id'))
+    except Exception:
+        logger.exception("Exception while processing energy system")

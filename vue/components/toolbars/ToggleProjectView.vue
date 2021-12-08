@@ -11,12 +11,12 @@
 </template>
 
 <script>
-import { useEnergyProjects } from "../../composables/energyProjects.js";
+import { useESDLProjects } from "../../composables/esdlProjects.js";
 
 export default {
   name: "ToggleProjectView",
   setup() {
-    const { toggleProjectView, showProjectView } = useEnergyProjects();
+    const { toggleProjectView, showProjectView } = useESDLProjects();
 
     return {
       toggleProjectView,

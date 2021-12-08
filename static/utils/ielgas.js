@@ -195,8 +195,8 @@ class IELGAS {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for IELGAS");
-        // socket.emit('initialize_ielgas_extension');
+        console.log("Registering socketio io bindings for IELGAS");
+        // socketio.emit('initialize_ielgas_extension');
 
         socket.on('ielgas_monitor_asset_data', function(ielgas_data) {
             if (ielgas.chart) {

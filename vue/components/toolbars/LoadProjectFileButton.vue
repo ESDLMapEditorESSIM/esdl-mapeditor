@@ -10,7 +10,7 @@
 
 <script setup>
 
-import {useEnergyProjects} from "../../composables/energyProjects";
+import {useESDLProjects} from "../../composables/esdlProjects";
 import {MessageNames, PubSubManager as PubsubManager} from "../../bridge";
 
 console.log("Yellow");
@@ -32,7 +32,7 @@ function loadProjectFile(file) {
       const base64_file = file_reader.result;
 
       window.socket.emit('load_energy_project', {base64_file: base64_file, filename: file_name}, (responseProject) => {
-        const {energyProject} = useEnergyProjects();
+        const {energyProject} = useESDLProjects();
         console.log(responseProject);
         if (responseProject) {
           energyProject.value = responseProject;

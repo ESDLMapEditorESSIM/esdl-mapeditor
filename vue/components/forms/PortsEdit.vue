@@ -1,26 +1,25 @@
 <template>
-  <a-table :columns="portColumns" :data-source="ports" :rowKey="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig" >
+  <a-table :columns="portColumns" :data-source="ports" :row-key="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig">
     <template #expandedRowRender="{ record }">
-      <a-divider orientation="left" id="table-divider">Connected To:</a-divider>
-      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :rowKey="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
+      <a-divider id="table-divider" orientation="left">Connected To:</a-divider>
+      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :row-key="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
         <template #operation="{ record }">
           <div class="editable-row-operations">
             <span>
               <a @click="deleteConnection(record.opid+'&&'+record.pid)">
-                <i class="fa fa-trash"/>
+                <i class="fa fa-trash" />
               </a>
             </span>
           </div>
         </template>  
       </a-table>  
       <!-- <a-divider id="table-divider"/> -->
-      
     </template>
     <template #operation="{ record }">
       <div class="editable-row-operations">
         <span>
           <a @click="deletePort(record.pid)">
-            <i class="fa fa-trash"/>
+            <i class="fa fa-trash" />
           </a>
         </span>
       </div>      
@@ -91,11 +90,11 @@ export default {
       paginationConfig
     }
   },
+  computed: {    
+  },
   mounted() {
 
     // console.log(this.ports);
-  },
-  computed: {    
   },
   methods: {
     deletePort(port_id) {

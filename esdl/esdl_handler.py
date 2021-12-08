@@ -10,21 +10,20 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from typing import Optional, Tuple
+from io import BytesIO
+from typing import Tuple
+from uuid import uuid4
 
+from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI
-from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
+from pyecore.resources.resource import HttpURI
 from pyecore.utils import alias
-from pyecore.resources.resource import HttpURI, Resource
 
+from esdl import esdl, support_functions
 from esdl.energy_projects import EnergyProjectHandlerMixin
 from esdl.resources.xmlresource import XMLResource
-from esdl import esdl
-from uuid import uuid4
-from io import BytesIO
-import src.log as log
-from esdl import support_functions
 from esdl.undo import ChangeTracker, UndoRedoCommandStack
+import src.log as log
 
 logger = log.get_logger(__name__)
 
@@ -35,6 +34,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
     """
 
     def __init__(self, energy_system=None):
+        super().__init__()
         if energy_system is not None:
             self.energy_system = energy_system
         self.resource = None
@@ -346,7 +346,6 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
             logger.error('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
             #print(self.get_resource(es_id).uuid_dict)
             raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
-            return None
 
     def add_object_to_dict(self, es_id: str, esdl_object: EObject, recursive=False):
         if recursive:
@@ -470,6 +469,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
             elif es_id:
                 resource = self.get_resource(es_id)
                 return self.change_tracker.get_tracker_stack(resource=resource)
+
 
 class StringURI(URI):
     """

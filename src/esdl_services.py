@@ -98,10 +98,13 @@ class ESDLServices:
     def set_user_settings(self, user: str, settings):
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, settings)
 
-    def get_user_services_list(self, user: str, roles: List[str] = []) -> List[Dict[str, Any]]:
+    def get_user_services_list(self, user: str, roles: List[str] = None) -> List[Dict[str, Any]]:
         """
         Get the full list of services for this user with the given roles. Both user and roles come from Keycloak.
         """
+        if roles is None:
+            roles = []
+
         srvs_list = self.get_user_settings(user)
         # store the user services list in session for later use
         set_session('services_list', srvs_list)
@@ -297,7 +300,7 @@ class ESDLServices:
                     else:
                         esdl_response = r.text
 
-                    es, parse_info = esh.add_from_string(service["name"], esdl_response)
+                    esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
                     return True, None
                 elif service["result"][0]["action"] == "print":

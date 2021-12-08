@@ -21,7 +21,7 @@ class Port_profile_viewer{
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for Port profile viewer plugin");
+        console.log("Registering socketio io bindings for Port profile viewer plugin");
     }
 
     show_window() {

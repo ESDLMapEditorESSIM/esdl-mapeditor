@@ -19,13 +19,9 @@ from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
 from pyecore.resources import Resource
 from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, AbstractCommand
 
-from src.log import get_logger
 from dataclasses import dataclass
 from esdl.undo_pyecore_patch import patch_notification_system
 
-from functools import wraps
-
-log = get_logger(__name__)
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
 
@@ -155,7 +151,6 @@ class UndoRedoCommandStack(CommandStack):
         for command in commands:
             if isinstance(command, LabelledAction):
                 self.top = command
-                #log.debug("Appended {} to the stack".format(command))
                 print("Appended {} to the stack".format(command))
 
             else:
@@ -163,7 +158,6 @@ class UndoRedoCommandStack(CommandStack):
                     # command.execute()
                     command._executed = True
                     self.top = command
-                    #log.debug("Appended {} to the stack".format(command))
                     print("Appended {} to the stack".format(command))
                 else:
                     raise ValueError('Cannot execute command {}'.format(command))
@@ -363,10 +357,14 @@ class ChangeTracker:
     def __init__(self):
         self.trackers = []
 
-    def newTracker(self, eobj: EObject) -> Tracker:
-        resource = eobj.eResource
-        if resource is None:
+    def newTracker(self, eobj: EObject = None, resource: Resource = None) -> Tracker:
+        if eobj:
+            resource = eobj.eResource
+        elif resource:
+            pass
+        else:
             raise Exception("Can't create new tracker: Resource is None")
+
         print("Tracking changes for resource with URI {}".format(resource.uri.plain))
         stack = UndoRedoCommandStack()
         ro = ResourceObserver(command_stack=stack)
@@ -403,6 +401,3 @@ class ChangeTracker:
                 t.resource.listeners.remove(t.observer)
                 del t.observer
                 #del t.resource # needed?
-
-
-

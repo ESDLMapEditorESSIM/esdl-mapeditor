@@ -122,7 +122,7 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
     },
 
 //    getSimulationData: function(date) {
-//        socket.emit('get_simulation_data', date.toISOString(), (geojson_data) => {
+//        socketio.emit('get_simulation_data', date.toISOString(), (geojson_data) => {
 //            // console.log(geojson_data);
 //            var data = JSON.parse(geojson_data);
 //

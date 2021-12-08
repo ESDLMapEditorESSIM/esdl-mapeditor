@@ -9,6 +9,7 @@ export const MessageNames = Object.freeze({
     ASSET_PROPERTIES: 'ASSET_PROPERTIES',
     CARRIER_COLORS: 'CARRIER_COLORS',
     PROJECT_LOADED: 'PROJECT_LOADED',
+    SOCKET_CONNECTED: 'SOCKET_CONNECTED',
 });
 
 export const PubSubManager = {
@@ -18,10 +19,10 @@ export const PubSubManager = {
     'ASSET_PROPERTIES': [],
     'CARRIER_COLORS': [],
     'PROJECT_LOADED': [],
+    'SOCKET_CONNECTED': [],
   },
 
   subscribe: function(name, callback) {
-    console.log(`Adding subscriber for ${name}`)
     this.subscriptions[name].push({ callback: callback });
   },
 
