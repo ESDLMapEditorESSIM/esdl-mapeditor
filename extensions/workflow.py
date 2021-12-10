@@ -12,13 +12,12 @@
 #  Manager:
 #      TNO
 
-import jwt
 import base64
 import cgi
 import os
 
 import requests
-from flask import Flask, Response, jsonify, request
+from flask import Flask, jsonify, request
 from flask_socketio import SocketIO
 
 from extensions.session_manager import get_session
