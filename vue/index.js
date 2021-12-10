@@ -28,12 +28,12 @@ import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawTo
 import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
-import ToggleProjectView from './components/toolbars/ToggleProjectView'
+import ToggleProjectView from './components/projects/ToggleProjectView'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
-import LoadProjectFileButton from './components/toolbars/LoadSaveProjectButtons';
+import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import SidePane from './apps/SidePane';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'

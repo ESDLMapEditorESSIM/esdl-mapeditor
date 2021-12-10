@@ -40,7 +40,8 @@ onMounted(() => {
   for (const eventHandlerByName of props.eventHandlersByName) {
     const eventName = eventHandlerByName.eventName;
     const handler = eventHandlerByName.handler;
-    treeElement.on(eventName, handler);
+    // Add tree element as extra parameter.
+    treeElement.on(eventName, (e, data) => handler(e, data, getTreeElement()));
   }
   treeElement.jstree({
     core: {
@@ -73,14 +74,14 @@ watchEffect(() => {
   // Refresh tree with new data.
   if (props.data && getTree() && getTree().refresh) {
     getTree().settings.core.data = props.data;
-    getTree().refresh();
+    getTree().refresh(false, true);
   }
 });
 
 </script>
 
 <style>
-.no_checkbox>i.jstree-checkbox {
+.no_checkbox > i.jstree-checkbox {
   display: none;
 }
 </style>

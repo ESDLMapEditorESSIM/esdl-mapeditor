@@ -1,3 +1,19 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
   <div id="project_view">
     <div id="project_tree" />
@@ -15,17 +31,21 @@
 </template>
 
 <script setup>
-import {computed, watchEffect} from 'vue'
+import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useESDLProjects} from "../composables/esdlProjects";
 import {useSocketIO} from "../composables/socketio";
+import {
+  addBaseLayerToMap, baseLayerDefinitions,
+  getBaseLayerByLabel,
+  removeBaseLayerFromMap
+} from "../components/projects/baseLayers";
 
 const {esdlProject, getESDLProject, showProjectView} = useESDLProjects();
 const {socket} = useSocketIO();
 
 const treeId = window.uuidv4();
-const baseTree = window.baseTree;
 const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
@@ -216,40 +236,30 @@ const eventHandlersByName = [{
     const original = data.node.original;
     if (type === 'variant') {
       socket.value.emit("set_active_variant", {base_variant_id: original.baseVariantId, name: original.text});
-    } else if (type === 'base_layer') {
-      const map = window.map;
-      const treeElement = $("#" + treeId.value);
-      const baseLayerGroup = treeElement.jstree("get_node", 'group_es_layers');
-      if (baseLayerGroup)
-        for (let bl = 0; bl < baseLayerGroup.children.length; bl++) {
-          const base_layer = baseLayerGroup.children[bl];
-          const bl_node = treeElement.jstree("get_node", base_layer);
-          if (treeElement.jstree(true).is_selected(bl_node)) {
-            if (!map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
-              map.addLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
-            }
-          } else {
-            if (map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
-              map.removeLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
-            }
-          }
-        }
     }
   }
 }, {
   eventName: 'check_node.jstree',
   handler: function (e, data) {
-    let node = data.node;
-    if (node.type === 'variant') {
-      window.show_esdl_layer_on_map(node.original.esId);
+    const type = data.node.type;
+    const original = data.node.original;
+    if (type === 'variant') {
+      window.show_esdl_layer_on_map(original.esId);
+    } else if (type === 'base_layer') {
+      const baseLayer = getBaseLayerByLabel(original.text);
+      addBaseLayerToMap(baseLayer);
     }
   }
 }, {
   eventName: 'uncheck_node.jstree',
   handler: function (e, data) {
-    let node = data.node;
-    if (node.type === 'variant') {
-      window.hide_esdl_layer_from_map(node.original.esId);
+    const type = data.node.type;
+    const original = data.node.original;
+    if (type === 'variant') {
+      window.hide_esdl_layer_from_map(original.esId);
+    } else if (type === 'base_layer') {
+      const baseLayer = getBaseLayerByLabel(original.text);
+      removeBaseLayerFromMap(baseLayer);
     }
   }
 }];
@@ -257,22 +267,20 @@ const eventHandlersByName = [{
 function get_base_layers_control_tree_data() {
   let children = [];
 
-  for (let i = 0; i < baseTree['children'].length; i++) {
+  for (const baseLayer of baseLayerDefinitions) {
     let state = {};
-    if (i === 0) {
-      state = {"checked": true};
+    if (baseLayer.enabled) {
+      state.checked = true;
     }
 
-    let child = {
-      id: baseTree['children'][i].label,
-      text: baseTree['children'][i].label,
+    const child = {
+      id: baseLayer.label,
+      text: baseLayer.label,
       type: "base_layer",
-      data: {
-        baseTreeIndex: i
-      },
       state: state,
     }
     children.push(child);
+    console.log(child);
   }
 
   let group = {
