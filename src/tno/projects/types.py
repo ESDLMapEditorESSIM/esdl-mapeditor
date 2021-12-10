@@ -63,7 +63,7 @@ def serialize_high_level_change(change: HighLevelChange) -> dict:
         type="HighLevelChange",
         label=change.label,
         # changedAt=change.changedAt,
-        changes=[serialize_abstract_change(change) for change in change.changes],
+        changes=[serialize_abstract_change(change) for change in change.change],
     )
 
 

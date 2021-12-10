@@ -208,12 +208,10 @@ const contextmenusByType = {
 const eventHandlersByName = [{
   eventName: 'ready.jstree',
   handler: function () {
-    console.log("Ready!");
   }
 }, {
   eventName: 'select_node.jstree',
   handler: function (e, data) {
-    console.log("Select node");
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
@@ -222,7 +220,6 @@ const eventHandlersByName = [{
       const map = window.map;
       const treeElement = $("#" + treeId.value);
       const baseLayerGroup = treeElement.jstree("get_node", 'group_es_layers');
-      console.log(baseLayerGroup);
       if (baseLayerGroup)
         for (let bl = 0; bl < baseLayerGroup.children.length; bl++) {
           const base_layer = baseLayerGroup.children[bl];

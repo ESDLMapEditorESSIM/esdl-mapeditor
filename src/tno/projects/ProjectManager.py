@@ -11,6 +11,7 @@ from esdl.esdl_handler import EnergySystemHandler, StringURI
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker, LabelledAction, UndoRedoCommandStack
 from esdlproject import Add, BaseVariant, ESDLProject, HighLevelChange, Set, Variant
+from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 from src.log import get_logger
 
 logger = get_logger(__name__)
@@ -36,6 +37,7 @@ class ProjectManager:
 
         self.rset = ResourceSet()
         self.changeTracker = ChangeTracker()
+        self.active_variant = None
         self.base_variant_resources = []
         self.rset.resource_factory["esdl"] = XMLResource
         self.rset.resource_factory["project"] = XMLResource
@@ -57,7 +59,6 @@ class ProjectManager:
         self.project.baseVariant.append(baseVariant)
         variant1 = Variant(name="Untitled variant")
         baseVariant.variant.append(variant1)
-        self.active_variant = variant1
         es = create_empty_energysystem(
             "New Energy System", None, "Instance1", "Untitled Area"
         )
@@ -68,6 +69,7 @@ class ProjectManager:
         tracker = self.changeTracker.newTracker(resource=self.active_resource)
         self.undoredo_stack = tracker.stack
         baseVariant.energysystemRef = es
+        self.set_active_variant(variant1)
 
     def get_active_energy_system(self) -> esdl.EnergySystem:
         if len(self.active_resource.contents) == 0:
@@ -100,6 +102,71 @@ class ProjectManager:
             get_base_variant_index(baseVariant), es_resource
         )
         return es_variant
+
+    def covertActionToVariantChanges(self, action: LabelledAction, variant: Variant):
+        print(
+            f'Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})')
+        hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
+        variant.change.append(hlc)
+        changeList = []
+        for command in action:
+            command: pyecore_commands.AbstractCommand
+            change = None
+            print(f'------ Handling {command}, {self.active_resource}')
+            if isinstance(command, pyecore_commands.Add):
+                if isinstance(command.value, EObject):  # could also be a numeric change or string change
+                    if command.feature.containment:  # isinstance(command.feature, EReference):
+                        # value = command.value.serialized_deepcopy(resource=self.active_resource) #clone()
+                        value, x_ref_changes = deepcopy_eobject_change(command.value)
+                        # TODO make deepcopy() work
+                        change = Add(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
+                                     objectValue=value)
+                        changeList.extend(x_ref_changes)
+                    else:
+                        # this is a x-reference, zo add it to the changeList, to add it as last, otherwise
+                        # some x-ref targets might not be available when deserializing
+                        print(
+                            f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
+                        change = Add(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
+                                     stringValue=command.value.eURIFragment())
+                        changeList.append(change)
+                        change = None
+                else:
+                    # TODO add numbers/enums to list
+                    print(f'TODO Add: convert {command.value} to something')
+            # variant.changes.append(change)
+            if isinstance(command, pyecore_commands.Set):
+                if isinstance(command.value, EObject):  # could also be a numeric change or string change
+                    if command.feature.containment:
+                        value, x_ref_changes = deepcopy_eobject_change(command.value)
+                        change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
+                                     objectValue=value)
+                        changeList.extend(x_ref_changes)
+                    else:
+                        print(
+                            f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
+                        refValue = command.value.eURIFragment()
+                        change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
+                                     stringValue=refValue)
+                else:  # enums / strings / numbers
+                    stringValue = command.feature.eType.to_debug_string(command.value)
+                    change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
+                                 stringValue=stringValue)
+            if isinstance(command, pyecore_commands.Remove):
+                if isinstance(command.value, EObject):  # could also be a numeric change or string change
+                    if command.feature.containment:
+                        # change = Delete(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
+                        pass
+                    else:
+                        # change = Remove(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
+                        pass
+            if change:  # in case of x-ref: add it to the changeList instead directly in this list
+                hlc.change.append(change)
+        if len(changeList) > 0:  # add last, to make sure that x-ref targets are present
+            cleanedChangeList = filterDoubleConnectedTo(changeList)
+            print(
+                f'------ Adding cross-references of size {len(cleanedChangeList)}, (removed {len(changeList) - len(cleanedChangeList)} duplicates)')
+            hlc.change.extend(cleanedChangeList)  # add x-references from deepcopy()
 
     def set_active_variant(self, variant: Variant):
         if self.active_variant == variant:
@@ -207,7 +274,7 @@ class ProjectManager:
 
     def processChange(self, change):
         resource = self.active_resource
-        print(f"Processing {change.eClass.name}, applying it to {resource.uri}")
+        print(f'Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}')
         if isinstance(change, Set):
             if change.objectValue is not None:
                 print(f"\- Set change applied to {change.ownerFragment}")
@@ -422,12 +489,6 @@ class ProjectManager:
                 return resource
         return None
 
-    def get_energy_systems(self, es_id=None) -> list[esdl.EnergySystem]:
-        es_list = []
-        for resource in self.base_variant_resources:
-            es_list.append(resource.contents[0])
-        return es_list
-
     def get_energy_system(self, es_id=None) -> esdl.EnergySystem:
         if es_id is None:
             return self.get_active_energy_system()
@@ -455,10 +516,16 @@ class ProjectManager:
         # Use get_by_id_slow() for that or add them manually using add_object_to_dict()
 
     def get_by_id(self, es_id, object_id):
-        if object_id in self.get_resource(es_id).uuid_dict:
-            return self.get_resource(es_id).uuid_dict[object_id]
-        else:
-            raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
+        """
+        Get entity from ESDL by ID from the active energy system.
+        """
+        es = self.get_active_energy_system()
+        # TODO: This is relatively slow. We need to migrate to a better solution (use uuid_dict again?).
+        for entity in es.eAllContents():
+            if hasattr(entity, "id") and entity.id == object_id:
+                return entity
+
+        raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
 
     def add_object_to_dict(self, es_id: str, esdl_object: EObject, recursive=False):
         if recursive:
@@ -533,78 +600,6 @@ def get_variant_path_list(variant: Variant) -> List[Variant]:
         variant_list.append(current_variant.parentVariant)
         current_variant = current_variant.parentVariant
     return variant_list
-
-
-def covertActionToVariantChanges(action: LabelledAction, variant: Variant):
-    print(
-        f"Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})"
-    )
-    hlc = HighLevelChange(
-        label=action.label, changedAt=datetime.now()
-    )  # EDate.from_string("2021-10-27T12:00:00")
-    variant.change.append(hlc)
-    for command in action:
-        command: pyecore_commands.AbstractCommand
-        if isinstance(command, pyecore_commands.Add):
-            if isinstance(
-                    command.value, EObject
-            ):  # could also be a numeric change or string change
-                if (
-                        command.feature.containment
-                ):  # isinstance(command.feature, EReference):
-                    value = command.value.clone()
-                    # TODO make deepcopy() work
-                    change = Add(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        objectValue=value,
-                    )
-                else:
-                    # setting reference: change value to proxy
-                    print(
-                        f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} "
-                    )
-                    # value = EProxy(path=command.value.eURIFragment(), resource=command.value.eResource)
-                    change = Add(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        stringValue=command.value.eURIFragment(),
-                    )
-            else:
-                print(f"TODO Add: convert {command.value} to something")
-        # variant.changes.append(change)
-        if isinstance(command, pyecore_commands.Set):
-            # change = Set(feature=command.feature, value=command.value , oldValue=command.previous_value)
-            value = command.value
-            if isinstance(
-                    command.value, EObject
-            ):  # could also be a numeric change or string change
-                if command.feature.containment:
-                    value = command.value.deepcopy()
-                    change = Set(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        objectValue=value,
-                    )
-                else:
-                    # setting reference: change value to proxy
-                    print(
-                        f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} "
-                    )
-                    refValue = command.value.eURIFragment()
-                    change = Set(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        stringValue=refValue,
-                    )
-            else:  # enums / strings / numbers
-                stringValue = command.feature.eType.to_debug_string(command.value)
-                change = Set(
-                    ownerFragment=command.owner.eURIFragment(),
-                    feature=command.feature.name,
-                    stringValue=stringValue,
-                )
-        hlc.change.append(change)
 
 
 def get_base_variant_index(baseVariant: BaseVariant) -> int:

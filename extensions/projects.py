@@ -17,9 +17,12 @@ from typing import TypedDict
 
 from uuid import uuid4
 
+from src import executor
+
 from esdl.resources.xmlresource import XMLResource
 
 from esdl.esdl_handler import StringURI
+from src.process_es_area_bld import process_energy_system
 from src.tno.projects.emits import emit_active_esdl_project
 from src.tno.projects.types import serialize_esdl_project
 from extensions.session_manager import get_handler, get_project_manager
@@ -83,19 +86,10 @@ def load_energy_project(message):
     base64_file = message['base64_file']
     file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
     filename = message['filename']
-    uri = StringURI(filename + '.project', file_content)
     pm = get_project_manager()
-    rset = pm.rset
-
-    try:
-        project_resource = rset.get_resource(uri)
-        project: ESDLProject = project_resource.contents[0]
-        variant_names = [v.name for v in project.variants]
-        print(f'Loaded project {project.name}, containing {len(project.variants)} variants: {variant_names}')
-        return serialize_esdl_project(pm, project)
-    except Exception as e:
-        logger.error("Error loading {}: {}".format(filename, e))
-        # send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+    uri = StringURI(filename + '.project', file_content)
+    pm.load(uri)
+    return serialize_esdl_project(pm, pm.project)
 
 
 @socketio.on('get_active_energy_project', namespace='/esdl')
@@ -119,6 +113,7 @@ def set_active_variant(message):
     variant = pm.find_variant(message['base_variant_id'], message['name'])
     if variant:
         pm.set_active_variant(variant)
+    executor.submit(process_energy_system, force_update_es_id=pm.get_active_energy_system().id)
 
 
 class LoadVariantRequest(TypedDict):

@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Union, List, Optional
 from uuid import uuid4
@@ -7,11 +6,13 @@ from pyecore.ecore import EObject, EReference, EProxy, EClass, EStructuralFeatur
 from pyecore.resources import ResourceSet, URI, Resource
 from pyecore import commands as pyecore_commands
 
-from esdl import esdl
+from esdl import esdl, support_functions
 from esdl.esdl_handler import StringURI, EnergySystemHandler
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker, UndoRedoCommandStack, LabelledAction
-from esdlproject import Variant, ESDLProject, BaseVariant, HighLevelChange, Add, Set
+from esdlproject import Variant, ESDLProject, BaseVariant, HighLevelChange, Add, Set, AbstractChange, DetailedChange, \
+    Delete, Remove
+from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 
 
 def create_empty_energysystem(name, es_description, inst_title, area_title) -> esdl.EnergySystem:
@@ -40,6 +41,7 @@ class ProjectManager:
         """
         # import ESH to have deepcopy and copy available.
         esh = EnergySystemHandler()
+        setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)
 
         self.rset = ResourceSet()
         self.rset.resource_factory['esdl'] = XMLResource
@@ -63,8 +65,7 @@ class ProjectManager:
         self.active_variant = variant1
         es = create_empty_energysystem("New Energy System", None, "Instance1", "Untitled Area")
         self.active_resource.append(es)
-        self.base_variant_resources[self.get_base_variant_index(baseVariant)].append(
-            es.deepcopy())  # store base variant
+        self.base_variant_resources[self.get_base_variant_index(baseVariant)].append(es.deepcopy()) # store base variant
         tracker = self.changeTracker.newTracker(resource=self.active_resource)
         self.undoredo_stack = tracker.stack
         baseVariant.energysystemRef = es
@@ -101,39 +102,43 @@ class ProjectManager:
 
     def covertActionToVariantChanges(self, action: LabelledAction, variant: Variant):
         print(f'Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})')
-        hlc = HighLevelChange(label=action.label,
-                              changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
+        hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
         variant.change.append(hlc)
+        changeList = []
         for command in action:
             command: pyecore_commands.AbstractCommand
+            change = None
+            print(f'------ Handling {command}, {self.active_resource}')
             if isinstance(command, pyecore_commands.Add):
                 if isinstance(command.value, EObject): # could also be a numeric change or string change
                     if command.feature.containment: #isinstance(command.feature, EReference):
-                        value = command.value.clone()
+                        #value = command.value.serialized_deepcopy(resource=self.active_resource) #clone()
+                        value, x_ref_changes = deepcopy_eobject_change(command.value)
                         # TODO make deepcopy() work
                         change = Add(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                      objectValue=value)
+                        changeList.extend(x_ref_changes)
                     else:
-                        # setting reference: change value to proxy
+                        # this is a x-reference, zo add it to the changeList, to add it as last, otherwise
+                        # some x-ref targets might not be available when deserializing
                         print(f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
-                        #value = EProxy(path=command.value.eURIFragment(), resource=command.value.eResource)
                         change = Add(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                      stringValue=command.value.eURIFragment())
+                        changeList.append(change)
+                        change = None
                 else:
+                    # TODO add numbers/enums to list
                     print(f'TODO Add: convert {command.value} to something')
             # variant.changes.append(change)
             if isinstance(command, pyecore_commands.Set):
-                # change = Set(feature=command.feature, value=command.value , oldValue=command.previous_value)
-                value = command.value
                 if isinstance(command.value, EObject): # could also be a numeric change or string change
                     if command.feature.containment:
-                        value = command.value.deepcopy()
+                        value, x_ref_changes = deepcopy_eobject_change(command.value)
                         change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                      objectValue=value)
+                        changeList.extend(x_ref_changes)
                     else:
-                        # setting reference: change value to proxy
-                        print(
-                            f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
+                        print(f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
                         refValue = command.value.eURIFragment()
                         change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                      stringValue=refValue)
@@ -141,7 +146,20 @@ class ProjectManager:
                     stringValue = command.feature.eType.to_debug_string(command.value)
                     change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                  stringValue=stringValue)
-            hlc.change.append(change)
+            if isinstance(command, pyecore_commands.Remove):
+                if isinstance(command.value, EObject): # could also be a numeric change or string change
+                    if command.feature.containment:
+                        #change = Delete(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
+                        pass
+                    else:
+                        #change = Remove(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
+                        pass
+            if change: # in case of x-ref: add it to the changeList instead directly in this list
+                hlc.change.append(change)
+        if len(changeList) > 0:  # add last, to make sure that x-ref targets are present
+            cleanedChangeList = filterDoubleConnectedTo(changeList)
+            print(f'------ Adding cross-references of size {len(cleanedChangeList)}, (removed {len(changeList) - len(cleanedChangeList)} duplicates)')
+            hlc.change.extend(cleanedChangeList)  # add x-references from deepcopy()
 
     def create_variant(self, parentVariant: Union[BaseVariant, Variant], variant_name: str) -> Variant:
         new_variant = Variant(name=variant_name)
@@ -236,9 +254,6 @@ class ProjectManager:
             parent = self.get_parent_variant(variant)
             parent.variant.remove(variant)
 
-
-
-
     def applyVariantChanges(self, variant: Variant) -> None:
         for highlevelchange in variant.change:
             if isinstance(highlevelchange, HighLevelChange):
@@ -251,7 +266,7 @@ class ProjectManager:
 
     def processChange(self, change):
         resource = self.active_resource
-        print(f'Processing {change.eClass.name}, applying it to {resource.uri}')
+        print(f'Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}')
         if isinstance(change, Set):
             if change.objectValue is not None:
                 print(f'\- Set change applied to {change.ownerFragment}')

@@ -1,21 +1,30 @@
 <template>
   <a class="dropdown-item" href="#">
     <div class="menu-icon fas fa-project-diagram" />
-    <input id="upload-file" type="file" name="upload-file" hidden @change="onChange" @input="onInput">
+    <input id="upload-file" type="file" name="upload-file" hidden @change="onLoadProject">
     <label for="upload-file" refs="upload-file" class="file-btn">
       Load project...
+    </label>
+  </a>
+  <a class="dropdown-item" href="#">
+    <div class="menu-icon fas fa-project-diagram" />
+    <input id="upload-file" type="file" name="upload-file" hidden @change="onSaveProject">
+    <label for="upload-file" refs="upload-file" class="file-btn">
+      Save project..
     </label>
   </a>
 </template>
 
 <script setup>
-
 import {useESDLProjects} from "../../composables/esdlProjects";
-import {MessageNames, PubSubManager as PubsubManager} from "../../bridge";
 
-console.log("Yellow");
+function onSaveProject(event) {
+  console.log(event);
+  // const files = event.target.files;
+  // loadProjectFile(files[0]);
+}
 
-function onChange(event) {
+function onLoadProject(event) {
   const files = event.target.files;
   loadProjectFile(files[0]);
 }
@@ -32,10 +41,10 @@ function loadProjectFile(file) {
       const base64_file = file_reader.result;
 
       window.socket.emit('load_energy_project', {base64_file: base64_file, filename: file_name}, (responseProject) => {
-        const {energyProject} = useESDLProjects();
+        const {esdlProject} = useESDLProjects();
         console.log(responseProject);
         if (responseProject) {
-          energyProject.value = responseProject;
+          esdlProject.value = responseProject;
         } else {
           alert("Failed loading energy project file.");
         }

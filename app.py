@@ -3096,26 +3096,7 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-
-    if message['cmd'] == 'load_energy_project':
-        base64_file = message['base64_file']
-        file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
-        logger.info(file_content)
-        filename = message['filename']
-        logger.info(filename)
-        uri = StringURI(filename + '.project', file_content)
-        esh = get_project_manager()
-        rset = esh.rset
-
-        try:
-            project_resource = rset.get_resource(uri)
-            project: ESDLProject = project_resource.contents[0]
-            variant_names = [v.name for v in project.variants]
-            print(f'Loaded project {project.name}, containing {len(project.variants)} variants: {variant_names}')
-            return variant_names
-        except Exception as e:
-            logger.error("Error loading {}: {}".format(filename, e))
-            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+        emit_active_esdl_project()
 
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']
@@ -3250,13 +3231,7 @@ def initialize_app():
 
     esh = get_project_manager()
 
-    # TODO: discuss how to set active_es_id for the first time after a client connects
-    es_list = esh.get_energy_systems()
-    if es_list:
-        last_es = esh.get_active_energy_system()
-        set_session('active_es_id', last_es.id)
-    else:
-        logger.error("No energy systems in esh list - Edwin and Ewoud discuss!!")
+    last_es = esh.get_active_energy_system()
 
     es_info_list = {}
     set_session("es_info_list", es_info_list)

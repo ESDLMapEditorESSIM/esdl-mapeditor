@@ -227,6 +227,7 @@ function show_esdl_layer_on_map(es_id, layer_name) {
             esdl_list[es_id].layers[layer_name].addTo(map);
         }
     } else {
+        console.log(esdl_list);
         const es = esdl_list[es_id];
         for (const layerName of Object.keys(es.layers)) {
             show_esdl_layer_on_map(es_id, layerName);
