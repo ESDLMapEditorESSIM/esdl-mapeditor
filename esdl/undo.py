@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 from collections import UserList
+from typing import Optional, TypedDict
 
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
@@ -23,6 +24,7 @@ from esdl.undo_pyecore_patch import patch_notification_system
 
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
+
 
 class LabelledAction(Command, UserList):
     """
@@ -60,7 +62,6 @@ class LabelledAction(Command, UserList):
         return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
 
-
 class UndoRedoCommandStack(CommandStack):
     """
     Creates a undo and redo command stack for ESDL documents
@@ -91,7 +92,7 @@ class UndoRedoCommandStack(CommandStack):
 
     def stop_recording(self):
         self._combineCommands = False
-        if self.compound is not None:
+        if self.compound is not None and len(self.compound) > 0:
             self.append(self.compound)
             self.compound = None
         self._recording = False
@@ -198,7 +199,6 @@ class UndoRedoCommandStack(CommandStack):
     def update_label(self, new_label: str) -> None:
         if self.compound:
             self.compound.label = new_label
-
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
@@ -344,7 +344,7 @@ class ChangeTracker:
         self.trackers.append(tracker)
         return tracker
 
-    def get_tracker_stack(self, eobj: EObject = None, resource: Resource = None) -> UndoRedoCommandStack:
+    def get_tracker(self, eobj: EObject = None, resource: Resource = None) -> Optional[Tracker]:
         """
         Returns the CommandStack for the resource of eobj or the resource given by the resource parameter
         One of the parameters is required.
@@ -358,7 +358,20 @@ class ChangeTracker:
             raise Exception("Can't find stack for the resource of {} (of type {})".format(eobj, eobj.eClass.name))
         for t in self.trackers:
             if t.resource == resource:
-                return t.stack
+                return t
+        return None
+
+    def get_tracker_stack(self, eobj: EObject = None, resource: Resource = None) -> UndoRedoCommandStack:
+        """
+        Returns the CommandStack for the resource of eobj or the resource given by the resource parameter
+        One of the parameters is required.
+
+        :eobj: an EObject (any class in the ESDL)
+        :resource: the resource used to store the ESDL
+        """
+        tracker = self.get_tracker(eobj, resource)
+        if tracker:
+            return tracker.stack
         raise ValueError("Can't find stack belonging to resource {} and object {}".format(resource.uri.plain, eobj))
 
     def delete(self, stack):

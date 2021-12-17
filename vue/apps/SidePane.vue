@@ -1,5 +1,4 @@
 <template>
-  <!--  TODO: Make dependant on all tabs.-->
   <div id="side_pane" :class="{side_pane_hidden: !showProjectView}">
     <ul class="tabs">
       <li>

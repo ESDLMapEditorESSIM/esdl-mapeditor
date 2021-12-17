@@ -32,7 +32,7 @@ from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
-from src.tno.projects.ProjectManager import ProjectManager
+from esdlproject.ProjectManager import ProjectManager
 from utils.RDWGSConverter import RDWGSConverter
 import shapely
 import math
@@ -536,7 +536,7 @@ def add_asset_to_asset_list(asset_list, asset):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Process building and process area
 # ---------------------------------------------------------------------------------------------------------------------
-def process_building(esh: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
+def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
@@ -576,7 +576,7 @@ def process_building(esh: ProjectManager, es_id, asset_list, building_list, area
     # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
+            process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
         else:
             # Create a list of ports for this asset
             port_list = []
@@ -618,7 +618,7 @@ def process_building(esh: ProjectManager, es_id, asset_list, building_list, area
                 if conn_to:
                     for pc in conn_to:
                         in_different_buildings = False
-                        pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset['asset'].containingBuilding:
@@ -678,22 +678,22 @@ def process_building(esh: ProjectManager, es_id, asset_list, building_list, area
                         ['point', 'potential', potential.name, potential.id, type(potential).__name__, [lat, lon]])
 
 
-def process_area(esh: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
+def process_area(pm: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
     area_bld_list.append(['Area', area.id, area.name, level])
 
     # process subareas
     for ar in area.area:
-        process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, ar, level+1)
+        process_area(pm, es_id, asset_list, building_list, area_bld_list, conn_list, ar, level + 1)
 
     # process assets in area
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
-            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level+1)
+            process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level + 1)
         if isinstance(asset, esdl.EnergyAsset):
             add_asset_to_asset_list(asset_list, asset)
 
             for p in asset.port:
-                p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
+                p_asset = get_asset_and_coord_from_port_id(pm, es_id, p.id)
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to_ids = [cp.id for cp in p.connectedTo]
                 p_carr_id = None
@@ -701,7 +701,7 @@ def process_area(esh: ProjectManager, es_id, asset_list, building_list, area_bld
                     p_carr_id = p.carrier.id
                 if conn_to_ids:
                     for pc in p.connectedTo:
-                        pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, es_id, pc.id)
                         pc_asset_coord = None
                         if pc_asset['asset'].containingBuilding:
                             bld_pc_asset = pc_asset['asset'].containingBuilding
@@ -784,21 +784,13 @@ def get_building_information(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+def process_energy_system(zoom=True):
     try:
-    # emit('clear_ui')
-        print("Processing energysystems in esh")
-        logger.info("Processing energysystems in esh", filename=filename, es_title=es_title)
-        print("active_es_id at start: {}".format(get_session('active_es_id')))
+        logger.info("Processing active energy system")
 
-        # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
-        # set_session('active_es_id', main_es.id)     # TODO: check if required here?
-        esh = get_project_manager()
-        es = esh.get_active_energy_system()
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
         es_info_list = get_session("es_info_list")
-
-        if force_update_es_id == "all":
-            emit('clear_esdl_layer_list')
 
         asset_list = []
         building_list = []
@@ -806,14 +798,10 @@ def process_energy_system(filename=None, es_title=None, app_context=None, force_
         conn_list = []
 
         if not isinstance(es, esdl.EnergySystem):
-            print("- Detected ESDL without an EnergySystem, is of type {}. Ignoring.".format(es.eClass.name))
-            return
+            raise RuntimeError("Active energy system is not of type esdl.EnergySystem!")
 
-        if es.id is None:
-            es.id = str(uuid.uuid4())
-
-        if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
-            print("- Processing energysystem with id {}".format(es.id))
+        if es.id not in es_info_list:
+            logger.info(f"- Processing energysystem with id {es.id}")
             name = es.name
             if not name:
                 title = 'Untitled Energysystem'
@@ -848,7 +836,7 @@ def process_energy_system(filename=None, es_title=None, app_context=None, force_
             # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
             add_missing_coordinates(area)
             print('- Processing area')
-            process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+            process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
             notes_list = get_notes_list(es)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
@@ -861,22 +849,14 @@ def process_energy_system(filename=None, es_title=None, app_context=None, force_
             set_session_for_esid(es.id, 'asset_list', asset_list)
             set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
 
-            # TODO: update asset_list???
             es_info_list[es.id] = {
                 "processed": True
             }
-
-            # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
-            # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
-            # Be aware: process_energy_system is called in a seperate thread, active_es_id is also changed in the functions
-            # calling process_energy_system!
-            if get_session('active_es_id') != es.id:
-                set_session('active_es_id', es.id)
         else:
             print("- Energysystem with id {} already processed".format(es.id))
 
         # set_handler(esh)
-        set_project_manager(esh)
+        set_project_manager(pm)
         # emit('set_active_layer_id', main_es.id)
 
         print("active_es_id at end: {}".format(get_session('active_es_id')))

@@ -67,7 +67,7 @@ function loadUndoRedoStack() {
     return
   }
   isLoading.value = true;
-  window.socket.emit('undo_redo_stack', {}, (res) => {
+  window.socket.emit('get_undo_redo_stack', {}, (res) => {
     console.log(res);
     stack.value = res.stack;
     stack_index.value = res.stack_index;
@@ -80,7 +80,7 @@ function subscribeUndoRedoStack() {
     setTimeout(subscribeUndoRedoStack, 2000);
     return
   }
-  window.socket.on('undo_redo_stack_update', function (res) {
+  window.socket.on('update_undo_redo_stack', function (res) {
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     scrollDown();

@@ -19,7 +19,7 @@ import time
 import src.log as log
 import os, glob
 
-from src.tno.projects.ProjectManager import ProjectManager
+from esdlproject.ProjectManager import ProjectManager
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
@@ -45,6 +45,7 @@ def get_handler():
     else:
         logger.warning('Session has timed-out. Returning empty energy system')
         esh = EnergySystemHandler()
+        from app import esdl_doc
         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
         set_handler(esh)
         return esh
@@ -64,26 +65,27 @@ def get_project_manager() -> ProjectManager:
     global managed_sessions
     client_id = session['client_id']
     if client_id in managed_sessions:
-        if ESH_KEY in managed_sessions[client_id]:
-            esh = managed_sessions[client_id][ESH_KEY]
-            logger.debug('Retrieve ESH client_id={}'.format(client_id))
+        if PM_KEY in managed_sessions[client_id]:
+            pm = managed_sessions[client_id][PM_KEY]
+            logger.debug('Retrieve pm client_id={}'.format(client_id))
         else:
-            logger.warning('No EnergySystemHandler in session. Returning empty energy system')
-            esh = ProjectManager()
-            set_handler(esh)
-        return esh
+            logger.warning('No Project Manager in session. Returning empty project manager')
+            pm = ProjectManager()
+            set_project_manager(pm)
+        return pm
     else:
-        logger.warning('Session has timed-out. Returning empty energy system')
-        esh = ProjectManager()
-        set_handler(esh)
-        return esh
+        logger.warning('Session has timed-out. Returning empty project manager')
+        pm = ProjectManager()
+        set_project_manager(pm)
+        return pm
 
 
 def set_project_manager(pm: ProjectManager):
     global managed_sessions
     client_id = session['client_id']
-    logger.debug('Set ESH client_id={}'.format(client_id))
-    set_session(ESH_KEY, pm)
+    logger.debug('Set PM client_id={}'.format(client_id))
+    set_session(PM_KEY, pm)
+
 
 def valid_session():
     if 'client_id' in session:

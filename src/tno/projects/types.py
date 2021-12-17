@@ -31,14 +31,15 @@ def serialize_variant(pm: ProjectManager, variant: Variant) -> dict:
     """
     resource = pm.get_base_variant_resource(variant)
     es = resource.contents[0]
-    active_es = pm.get_active_energy_system()
+    active_variant = pm.active_variant
     return dict(
+        id=variant.id,
         base_variant_id=variant.baseVariant.id,
         name=variant.name,
         description=variant.description,
         nr_of_changes=len(variant.change),
         es_id=es.id,
-        active=active_es.id == es.id,
+        active=active_variant.id == variant.id,
         children=[serialize_variant(pm, variant) for variant in variant.variant],
         changes=[serialize_abstract_change(change) for change in variant.change],
     )

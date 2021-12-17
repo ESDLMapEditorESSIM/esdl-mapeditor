@@ -25,9 +25,7 @@ const props = defineProps({
   treeId: String,
   data: Object,
   plugins: Array,
-  // Mapping from type to context menu.
-  contextmenusByType: Object,
-  typeSettings: Object,
+  treeTypeSpecs: Array,
   eventHandlersByName: Object,
 })
 
@@ -35,6 +33,18 @@ const $ = window.$;
 
 const getTreeElement = () => $('#' + props.treeId);
 const getTree = () => getTreeElement().jstree(true);
+
+const types = {};
+const contextMenusByType = {};
+
+for (const treeTypeSpec of props.treeTypeSpecs) {
+  types[treeTypeSpec.type] = {
+    icon: treeTypeSpec.icon,
+  }
+  if (treeTypeSpec.contextMenus) {
+    contextMenusByType[treeTypeSpec.type] = treeTypeSpec.contextMenus;
+  }
+}
 
 onMounted(() => {
   const treeElement = getTreeElement();
@@ -58,8 +68,7 @@ onMounted(() => {
     },
     contextmenu: {
       items: (node) => {
-        const contextmenusByType = props.contextmenusByType || {};
-        const nodeContextMenu = contextmenusByType[node.type]
+        const nodeContextMenu = contextMenusByType[node.type];
         if (nodeContextMenu) {
           return nodeContextMenu(node, getTree());
         }
@@ -67,7 +76,7 @@ onMounted(() => {
       },
       select_node: false,
     },
-    types: props.typeSettings,
+    types: types,
   });
 });
 

@@ -1633,16 +1633,10 @@
                         <ul class="nav navbar-nav mr-auto">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="new_ESDL();">
-                                        <span class="menu-icon ui-icon ui-icon-document"></span>
-                                        New ESDL...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputFile').click();">
-                                        <span class="menu-icon ui-icon ui-icon-folder-open"></span>
-                                        Load ESDL(s)...</a></li>
+                                    <li id="vue_load_project_file"></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportFile').click();">
                                         <div class="menu-icon" id="menu_import"></div>
                                         Import ESDL...</a></li>
-                                    <li id="vue_load_project_file"></li>
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>

@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_project_manager, get_session
 import src.settings as settings
 import requests
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
@@ -37,8 +37,7 @@ class BAG:
         def get_bag_contours(info):
             with self.flask_app.app_context():
                 print("getting bag information")
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
+                pm = get_project_manager()
 
                 area_id = info["id"]
                 area_polygon = { 'type': 'polygon', 'coordinates': info["polygon"] }
@@ -49,7 +48,7 @@ class BAG:
                 # wkt_string = 'POLYGON ((4.359093904495239 52.012174264626445, 4.357388019561768 52.01154692445308, 4.357978105545044 52.01078750089633, 4.360188245773315 52.01160635705717, 4.362355470657349 52.012478026181434, 4.360767602920532 52.012847820073766, 4.359093904495239 52.012174264626445))'
                 # wkt_quoted = urllib.parse.quote(wkt_string)
 
-                es_edit = esh.get_energy_system(es_id=active_es_id)
+                es_edit = pm.get_active_energy_system()
                 instance = es_edit.instance
                 top_area = instance[0].area
                 target_area = ESDLEnergySystem.find_area(top_area, area_id)

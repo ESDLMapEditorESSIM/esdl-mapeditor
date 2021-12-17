@@ -14,22 +14,27 @@ const showProjectView = ref(true);
 
 const {socket} = useSocketIO();
 
+function setEsdlProject(responseProject) {
+    console.log("Setting ESDL Project:", responseProject);
+    esdlProject.value = responseProject;
+}
+
 watchEffect(() => {
     if (socket.value) {
         socket.value.on('update_active_esdl_project', (responseProject) => {
-            console.log("updating active esdl project")
             if (responseProject) {
-                esdlProject.value = responseProject;
+                setEsdlProject(responseProject);
             }
+            window.hide_loader();
         });
     }
 });
 
 export function useESDLProjects() {
     function getESDLProject() {
-        socket.value.emit('get_active_energy_project', {}, (responseProject) => {
+        socket.value.emit('get_active_esdl_project', {}, (responseProject) => {
             if (responseProject) {
-                esdlProject.value = responseProject;
+                setEsdlProject(responseProject);
             }
         });
     }

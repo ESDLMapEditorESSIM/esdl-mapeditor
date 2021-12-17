@@ -71,25 +71,25 @@ class MapEditorDialog extends L.Control.Dialog {
   }
   
   _handleMinimize() {
-    let map_size = map.getSize();
+    const map_size = map.getContainer().getBoundingClientRect();
     let height = 600;
-    if (map_size.y < 1000) {
-      height = map_size.y - 200;
+    if (map_size.height < 1000) {
+      height = map_size.height - 200;
       if (height < 0) height = 100;
     }
     let width = 300;
 
-    super.setLocation([ map_size.y - height - 20, map_size.x - width - 20 ]);
+    super.setLocation([ map_size.height - height - 20, map_size.width - width - 20 ]);
     super.setSize([ width, height ]);
 
     this.state = 'minimized';
   }
 
   _handleMaximize() {
-    let map_size = this._map.getSize();
+    const map_size = map.getContainer().getBoundingClientRect();
     super.setLocation([ 10, 50 ]);
     // NOTE: Make sure to set the maxSize option large enough.
-    super.setSize([ map_size.x - 300, map_size.y - 120 ]);
+    super.setSize([ map_size.width - 300, map_size.height - 120 ]);
 
     this.state = 'maximized';
   }

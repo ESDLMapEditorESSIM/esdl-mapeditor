@@ -26,7 +26,8 @@ from functools import wraps
 
 from flask_socketio import emit
 
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager, get_session
+from src.tno.undoredo.types import serialize_command_stack
 
 
 def undo_record_changes(label: str):
@@ -38,13 +39,14 @@ def undo_record_changes(label: str):
     def internal_recording(fn):
         @wraps(fn)
         def wrapped_record_changes(*args, **kwargs):
-            esh = get_handler()
-            active_es_id = get_session('active_es_id')
-            stack = esh.get_undo_redo_stack(es_id=active_es_id)
+            pm = get_project_manager()
+            # active_es_id = get_session('active_es_id')
+            # stack = pm.get_undo_redo_stack(es_id=active_es_id)
+            stack = pm.get_undo_redo_stack()
             stack.start_recording(label=label)
             result = fn(*args, **kwargs)
             stack.stop_recording()
-            emit('undo_redo_stack_update', stack.serialize())
+            emit('update_undo_redo_stack', serialize_command_stack(stack))
             return result
         return wrapped_record_changes
     return internal_recording

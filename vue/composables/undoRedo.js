@@ -10,6 +10,7 @@ export function useUndoRedo() {
         undoRedoMapEditorDialog.value.close();
       } else {
         undoRedoMapEditorDialog.value.open();
+        undoRedoMapEditorDialog.value._handleMinimize();
       }
       showUndoRedoControl.value = !showUndoRedoControl.value;
     }

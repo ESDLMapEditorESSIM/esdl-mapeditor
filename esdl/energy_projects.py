@@ -47,7 +47,7 @@ class EnergyProjectHandlerMixin(ResourceHandlerBase):
             return energy_project_data.energy_project
         return None
 
-    def load_energy_project(self):
+    def load_esdl_project(self):
         """
         Loads energy project and overwrites the currently active energy project.
         """

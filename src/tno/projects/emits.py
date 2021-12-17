@@ -19,5 +19,15 @@ from src.tno.projects.types import serialize_esdl_project
 
 
 def emit_active_esdl_project():
+    """
+    Send the entire active ESDL project to the frontend.
+    """
     pm = get_project_manager()
     emit('update_active_esdl_project', serialize_esdl_project(pm, pm.project))
+
+
+def emit_clear_frontend_esdls():
+    """
+    Clears all known ESDLs in the frontend.
+    """
+    emit('clear_esdl_layer_list')

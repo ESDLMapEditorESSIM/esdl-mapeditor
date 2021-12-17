@@ -1,4 +1,8 @@
 <template>
+  <a class="dropdown-item" href="#" @click="onNewProject">
+    <span class="menu-icon ui-icon ui-icon-document" />
+    New Project...
+  </a>
   <a class="dropdown-item" href="#">
     <div class="menu-icon fas fa-project-diagram" />
     <input id="upload-project-file" type="file" name="upload-file" hidden @change="onLoadProject">
@@ -18,6 +22,11 @@
 <script setup>
 import {useESDLProjects} from "../../composables/esdlProjects";
 import {download_binary_file_from_base64_str_with_type} from "../../utils/files";
+import {useSocketIO} from "../../composables/socketio";
+
+const {esdlProject} = useESDLProjects();
+
+const {socket} = useSocketIO();
 
 async function loadProjectFile(file) {
   const file_reader = new FileReader();
@@ -31,7 +40,7 @@ async function loadProjectFile(file) {
       const base64_file = file_reader.result;
       const params = {base64_file: base64_file, filename: file_name};
 
-      const response = await fetch("projects/load_energy_project", {
+      const response = await fetch("projects/load_esdl_project", {
         method: "POST",
         body: JSON.stringify(params),
         headers: {
@@ -39,10 +48,9 @@ async function loadProjectFile(file) {
         },
       });
       if (response.ok) {
-        const {esdlProject} = useESDLProjects();
         const responseProject = await response.json()
-        console.log(responseProject);
         if (responseProject) {
+          window.clear_esdl_layer_list();
           esdlProject.value = responseProject;
         }
       } else {
@@ -65,9 +73,8 @@ function onLoadProject(event) {
 // eslint-disable-next-line no-unused-vars
 async function onSaveProject() {
   window.show_loader();
-  console.log("Saving project file")
   try {
-    const response = await fetch("projects/save_energy_project", {
+    const response = await fetch("projects/save_esdl_project", {
       method: "GET",
     });
     if (response.ok) {
@@ -84,10 +91,34 @@ async function onSaveProject() {
     window.hide_loader();
   }
 }
+
+
+// eslint-disable-next-line no-unused-vars
+async function onNewProject() {
+  const answer = confirm("This creates a new project. Any unsaved changes will be overwritten.");
+  if (answer) {
+    window.show_loader();
+    try {
+      socket.value.emit("new_esdl_project", {}, (responseProject) => {
+        if (responseProject) {
+          window.clear_esdl_layer_list();
+          esdlProject.value = responseProject;
+        }
+      })
+    } finally {
+      window.hide_loader();
+    }
+  }
+}
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 label {
   margin-bottom: 0;
+}
+.dropdown-item {
+  input, label {
+    cursor: pointer;
+  }
 }
 </style>

@@ -22,7 +22,7 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
 from extensions.profiles import Profiles
-from src.tno.projects.ProjectManager import ProjectManager
+from esdlproject.ProjectManager import ProjectManager
 
 
 def generate_profile_info(profile_list):
@@ -124,8 +124,8 @@ def get_asset_from_port_id(esh: ProjectManager, es_id, pid):
     return port.eContainer()
 
 
-def get_asset_and_coord_from_port_id(esh: ProjectManager, es_id, pid):
-    port = esh.get_by_id(es_id, pid)
+def get_asset_and_coord_from_port_id(pm: ProjectManager, es_id, pid):
+    port = pm.get_by_id(es_id, pid)
     asset = port.eContainer()
     if asset.geometry:
         coord = get_asset_geom_info(asset)

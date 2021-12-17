@@ -20,7 +20,7 @@ from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, get_or_create_esi_qau
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_project_manager, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
 from extensions.vue_backend.cost_information import get_cost_information
@@ -277,8 +277,8 @@ class ESDLDataLayer:
         return types
 
     def get_object_from_identifier(self, identifier: Identifier):
-        active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        esh = get_project_manager()
+        active_es_id = esh.get_active_energy_system().id
         if 'id' in identifier:
             object_id = identifier['id']
             try:

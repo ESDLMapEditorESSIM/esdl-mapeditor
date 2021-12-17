@@ -40,6 +40,7 @@ def create_app(name):
 
     # Initialize blueprints.
     from extensions.projects import projects as projects_blueprint
+    import extensions.undoredo  # noqa
     app.register_blueprint(projects_blueprint)
 
     return app
