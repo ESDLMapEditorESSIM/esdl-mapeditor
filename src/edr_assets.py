@@ -63,7 +63,12 @@ class EDRAssets:
                         if not asset_type in asset_type_list:
                             asset_type_list.append(asset_type)
 
-                        asset = {'id': a["id"], 'title': a["title"], 'asset_type': asset_type, 'description': a["description"]}
+                        asset = {
+                            'id': a["id"],
+                            'title': a["title"],
+                            'asset_type': asset_type,
+                            'description': a["description"] if 'description' in a else '',
+                        }
                         asset_list.append(asset)
 
                     asset_type_list.sort()
