@@ -45,6 +45,7 @@ class Variant(EObject, metaclass=MetaEClass):
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     change = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     parentVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
@@ -52,7 +53,7 @@ class Variant(EObject, metaclass=MetaEClass):
     baseVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshotRef = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, baseVariant=None, snapshotRef=None):
+    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, baseVariant=None, snapshotRef=None, id=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -66,6 +67,9 @@ class Variant(EObject, metaclass=MetaEClass):
 
         if lastChanged is not None:
             self.lastChanged = lastChanged
+
+        if id is not None:
+            self.id = id
 
         if change:
             self.change.extend(change)

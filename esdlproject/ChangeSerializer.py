@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import List, Tuple
 
 from pyecore.ecore import EObject, EClass, EReference
@@ -10,20 +9,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@dataclass
-class DeepCopyChanges:
-    deepcopy: EObject
-    referenceChanges: List[AbstractChange] = field(default_factory=list)
-
 
 def deepcopy_eobject_change(eobject: EObject,
                             memo=None,
                             changeList:List[AbstractChange] = None) -> Tuple[EObject, List[AbstractChange]]:
     """
     Deepcopies an EObject, but removes the references, as these need to be serialized correctly. This serialization is
-    done by creating DetailedChanges for each reference as a Set or Add Change to set these references after the
+    done by creating an AbstractChange for each reference as a Set or Add Change to set these references after the
     EObject has been loaded.
-    See also code of deepcopy() of an EObject in support_functions.py
+    See also code of deepcopy() of an EObject in support_functions.py that does copy the references too
     """
 
     first_call = False

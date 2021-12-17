@@ -24,6 +24,7 @@ import {defineProps, onMounted, watchEffect} from "vue";
 const props = defineProps({
   treeId: String,
   data: Object,
+  plugins: Array,
   // Mapping from type to context menu.
   contextmenusByType: Object,
   typeSettings: Object,
@@ -48,7 +49,7 @@ onMounted(() => {
       data: props.data,
       check_callback: true,
     },
-    plugins: ["contextmenu", "types", "checkbox"],
+    plugins: props.plugins,
     checkbox: {
       "three_state": false,
       "whole_node": false,

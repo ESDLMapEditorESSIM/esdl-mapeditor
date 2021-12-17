@@ -16,8 +16,7 @@
 
 <template>
   <div id="project_view">
-    <div id="project_tree" />
-    <vue-js-tree v-if="treeData != null" :tree-id="treeId"
+    <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
                  :data="treeData" :contextmenus-by-type="contextmenusByType"
                  :type-settings="treeTypeSettings" :event-handlers-by-name="eventHandlersByName"
     />
@@ -45,7 +44,7 @@ import {
 const {esdlProject, getESDLProject, showProjectView} = useESDLProjects();
 const {socket} = useSocketIO();
 
-const treeId = window.uuidv4();
+const treeId = "project_tree"
 const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);

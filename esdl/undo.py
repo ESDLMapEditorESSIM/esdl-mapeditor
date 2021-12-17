@@ -12,7 +12,6 @@
 #  Manager:
 #      TNO
 from collections import UserList
-from typing import Optional, TypedDict
 
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
@@ -24,33 +23,6 @@ from esdl.undo_pyecore_patch import patch_notification_system
 
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
-
-
-class UndoRedoCommandDict(TypedDict):
-    """
-    A part of a stack entry.
-    """
-    id: Optional[str]
-    name: Optional[str]
-    type: str
-
-
-class UndoRedoStackEntryDict(TypedDict):
-    """
-    An entry in the undo redo stack.
-    """
-    label: str
-    type: Optional[str]
-    commands: list[UndoRedoCommandDict]
-
-
-class UndoRedoSerializedStack(TypedDict):
-    """
-    An entry in the undo redo stack.
-    """
-    stack_index: int
-    stack: list[UndoRedoStackEntryDict]
-
 
 class LabelledAction(Command, UserList):
     """
@@ -88,6 +60,7 @@ class LabelledAction(Command, UserList):
         return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
 
+
 class UndoRedoCommandStack(CommandStack):
     """
     Creates a undo and redo command stack for ESDL documents
@@ -118,10 +91,11 @@ class UndoRedoCommandStack(CommandStack):
 
     def stop_recording(self):
         self._combineCommands = False
-        if self.compound and len(self.compound) > 0:
+        if self.compound is not None:
             self.append(self.compound)
             self.compound = None
         self._recording = False
+
 
     def add_undo_step(self, label=None):
         if self.compound is not None:
@@ -129,6 +103,7 @@ class UndoRedoCommandStack(CommandStack):
             self.append(self.compound)
             self._combineCommands = True
         self.compound = LabelledAction(label)
+
 
     def append(self, *commands):
         if self._combineCommands:
@@ -191,6 +166,9 @@ class UndoRedoCommandStack(CommandStack):
                         del resource.uuid_dict[value.id]
 
         super().redo()
+
+
+
         self._recording = True
 
     def can_undo(self):
@@ -221,34 +199,6 @@ class UndoRedoCommandStack(CommandStack):
         if self.compound:
             self.compound.label = new_label
 
-    def serialize(self) -> UndoRedoSerializedStack:
-        """
-        Return the stack in a format that can be serialized and sent as JSON to the frontend.
-        """
-        stack = []
-        for entry in self.stack:
-            commands: list[UndoRedoCommandDict] = [{
-                'id': command.value.id if hasattr(command.value, "id") else None,
-                'name': command.value.name if hasattr(command.value, "name") else None,
-                'type': command.__class__.__name__,
-            } for command in entry.data if command.value is not None]
-            # To find the kind of action the user did, we look at the last command in the set.
-            # For a delete, we first remove everything that is attached and the last action is to remove what
-            # the user wanted gone. For an add, we just add.
-            entry_type = None
-            if commands:
-                entry_type = commands[-1]['type']
-            dict_entry: UndoRedoStackEntryDict = {
-                'label': entry.label,
-                'type': entry_type,
-                'commands': commands,
-            }
-            stack.append(dict_entry)
-        return dict(
-            stack_index=self.stack_index,
-            stack=stack,
-        )
-
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
@@ -266,9 +216,17 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             print("  \ -- Ignoring opposite setters for", f.name)
             return
-        setNotification = Set(owner=notification.notifier, feature=notification.feature, value=notification.new)
-        setNotification.previous_value = notification.old
+        value = notification.new
+        previous_value = notification.old
+        if isinstance(value, EObject):
+            value = notification.new.deepcopy() if notification.new else None
+            previous_value = notification.old.deepcopy() if notification.old else None
+        setNotification = Set(owner=notification.notifier, feature=notification.feature,
+                              value=value)
+        setNotification.previous_value = previous_value
         setNotification._executed = True
+        if isinstance(f, EReference): # store uri fragment, because we deepcopy, so that info is gone
+            setNotification.valueURIFragment = notification.new.eURIFragment()
         stack.append(setNotification)
     elif notification.kind == Kind.UNSET: # remove reference
         if notification.old is not None:
@@ -288,6 +246,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
                 #unsetNotification.previous_value = notification.new
                 #unsetNotification.value = notification.old
                 unsetNotification.can_execute  # record all changes
+                #unsetNotification.ownerURIFragment = notification.old.eURIFragment()
                 print("\ -- [Delete] ", "\n \ -- inv_refs:", unsetNotification.inverse_references, "\n \ --refs:", unsetNotification.references)
             unsetNotification._executed = True
             stack.append(unsetNotification)
@@ -297,8 +256,6 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         addNotification.index = notification.notifier.eGet(notification.feature).index(notification.new)
         addNotification._collection = notification.notifier.eGet(notification.feature)
         addNotification._executed = True
-        # special case: port.connectedTo generates 2 events, but only one is needed
-        #if stack.top
         stack.append(addNotification)
     elif notification.kind == Kind.REMOVE: # remove eobject from collection
         if notification.old is not None:
@@ -313,8 +270,22 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
                     print(" \ -- [Remove] found index in collection ", removeNotification.index)
                 except KeyError:
                     removeNotification.index = 0
+                # old.eURIFragment() does not work as it is removed from the tree, but in our patching we still have
+                # a reference to the container and we can build up this reference manually
+                removeNotification.refURIFragment = notification.old.eContainer().eURIFragment() + '/@' + notification.old.eContainmentFeature().name + '.' + str(removeNotification.index)
+            else:
+                removeNotification.refURIFragment = notification.old.eContainer().eURIFragment() + '/@' + notification.old.eContainmentFeature().name
             removeNotification._executed = True
-            stack.append(removeNotification)
+            try:
+                ownerFragment = notification.notifier.eURIFragment()
+                removeNotification.ownerFragment = ownerFragment
+                stack.append(removeNotification)
+            except KeyError:
+                print("***************************************************** Not adding this remove, as the owner has been removed from the tree already")
+                pass #ignore this notification, as owner is not part of the tree anymore
+
+
+            #removeNotification.refURIFragment = notification.old.eURIFragment()
     # elif notification.kind == Kind.REMOVE_MANY: # delete containment relation / object
     #     # check if this works at all...
     #     deleteNotification = Delete(owner=notification.notifier)
@@ -401,3 +372,4 @@ class ChangeTracker:
                 t.resource.listeners.remove(t.observer)
                 del t.observer
                 #del t.resource # needed?
+

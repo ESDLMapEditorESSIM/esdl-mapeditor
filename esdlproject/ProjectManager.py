@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Union, List, Optional
 from uuid import uuid4
 
-from pyecore.ecore import EObject, EReference, EProxy, EClass, EStructuralFeature
+from pyecore.ecore import EObject, EReference, EProxy, EClass, EStructuralFeature, EAttribute
 from pyecore.resources import ResourceSet, URI, Resource
 from pyecore import commands as pyecore_commands
 
@@ -60,7 +60,7 @@ class ProjectManager:
         self.project_resource.append(self.project)
         baseVariant = BaseVariant(name="Base variant", id=str(uuid4()))
         self.project.baseVariant.append(baseVariant)
-        variant1 = Variant(name="Untitled variant")
+        variant1 = Variant(name="Untitled variant", id=str(uuid4()))
         baseVariant.variant.append(variant1)
         self.active_variant = variant1
         es = create_empty_energysystem("New Energy System", None, "Instance1", "Untitled Area")
@@ -100,6 +100,24 @@ class ProjectManager:
         """ Returns the unique index in the baseVariant list"""
         return baseVariant.eContainer().__getattribute__(baseVariant.eContainmentFeature().name).index(baseVariant)
 
+    def get_variant_by_id(self, id: str) -> Optional[Variant]:
+        for bv in self.project.baseVariant:
+            bv: BaseVariant
+            result = self._get_variant_by_id_dfs(bv.variant, id)
+            if result is not None:
+                return result
+        return None
+
+    def _get_variant_by_id_dfs(self, v: List[Variant], id: str) -> Optional[Variant]:
+        if len(v) > 0:
+            for variant in v:
+                if variant.id == id:
+                    return variant
+                result = self._get_variant_by_id_dfs(variant.variant, id)
+                if result is not None:
+                    return result
+        return None
+
     def covertActionToVariantChanges(self, action: LabelledAction, variant: Variant):
         print(f'Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})')
         hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
@@ -131,29 +149,39 @@ class ProjectManager:
                     print(f'TODO Add: convert {command.value} to something')
             # variant.changes.append(change)
             if isinstance(command, pyecore_commands.Set):
-                if isinstance(command.value, EObject): # could also be a numeric change or string change
+                if isinstance(command.value, EObject) or isinstance(command.previous_value, EObject): # could also be a numeric change or string change
                     if command.feature.containment:
                         value, x_ref_changes = deepcopy_eobject_change(command.value)
                         change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
                                      objectValue=value)
                         changeList.extend(x_ref_changes)
                     else:
-                        print(f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
-                        refValue = command.value.eURIFragment()
+                        if command.value:
+                            print(f'convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ')
+                            refValue = command.valueURIFragment #command.value.eURIFragment() -> See undo.py:230
+                        else:
+                            refValue = ""
                         change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
-                                     stringValue=refValue)
+                                         stringValue=refValue)
                 else: # enums / strings / numbers
-                    stringValue = command.feature.eType.to_debug_string(command.value)
+                    previousValue = None
+                    if command.value is None:
+                        stringValue = ""
+                    else:
+                        stringValue = command.feature.eType.to_string(command.value)
+                    if command.previous_value:
+                        previousValue = command.feature.eType.to_string(command.previous_value)
                     change = Set(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name,
-                                 stringValue=stringValue)
+                                 stringValue=stringValue, previousValue=previousValue)
             if isinstance(command, pyecore_commands.Remove):
                 if isinstance(command.value, EObject): # could also be a numeric change or string change
                     if command.feature.containment:
-                        #change = Delete(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
-                        pass
+                        change = Delete(ownerFragment=command.refURIFragment)
                     else:
-                        #change = Remove(ownerFragment=command.owner.eURIFragment(), feature=command.feature.name, stringValue=command.value.eURIFragment())
-                        pass
+                        #owner = command.owner.eURIFragment()
+                        owner = command.ownerFragment
+                        ref = command.refURIFragment
+                        change = Remove(ownerFragment=owner, feature=command.feature.name, stringValue=ref)
             if change: # in case of x-ref: add it to the changeList instead directly in this list
                 hlc.change.append(change)
         if len(changeList) > 0:  # add last, to make sure that x-ref targets are present
@@ -162,7 +190,7 @@ class ProjectManager:
             hlc.change.extend(cleanedChangeList)  # add x-references from deepcopy()
 
     def create_variant(self, parentVariant: Union[BaseVariant, Variant], variant_name: str) -> Variant:
-        new_variant = Variant(name=variant_name)
+        new_variant = Variant(name=variant_name, id=str(uuid4()))
         parentVariant.variant.append(new_variant)
         return new_variant
 
@@ -272,9 +300,18 @@ class ProjectManager:
                 print(f'\- Set change applied to {change.ownerFragment}')
                 owner = resource.resolve(change.ownerFragment)
                 owner.eSet(change.feature, change.objectValue.deepcopy())
-            elif change.objectReference:
-                # todo
-                pass
+            elif change.stringValue is not None:
+                owner = resource.resolve(change.ownerFragment)
+                feature:EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
+                if isinstance(feature, EAttribute):
+                    owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
+                else:  # eReference and not many
+                    if change.stringValue == "":
+                        owner.eSet(change.feature, None)
+                    else:
+                        target = resource.resolve(change.stringValue)
+                        owner.eSet(change.feature, target)
+
         elif isinstance(change, Add):
             if change.objectValue is not None:
                 print(f'\- Add change applied to {change.ownerFragment}')
@@ -299,6 +336,25 @@ class ProjectManager:
                 else:
                     print(f'\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}')
                     abstractList.append(change.stringValue)
+        elif isinstance(change, Remove):
+            # remove a value or reference from a list
+            owner: EObject = resource.resolve(change.ownerFragment)
+            feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
+            abstractList = owner.eGet(change.feature)
+            if isinstance(feature, EReference):
+                try:
+                    ref = resource.resolve(change.stringValue)
+                    abstractList.remove(ref)
+                except Exception:
+                    print(f"\- ###: Cannot execute change, resolving of {change.stringValue} failed")
+                    pass
+            else:
+                # stringvalue is a value (enum, string, int, etc)
+                abstractList.remove(feature.eType.from_string(change.stringValue))
+        elif isinstance(change, Delete):
+            owner: EObject = resource.resolve(change.ownerFragment)
+            owner.delete()
+
 
     def get_variant_path_list(self, variant: Variant) -> List[Variant]:
         """ calculates the variants between this variant and its base variant"""

@@ -23,48 +23,49 @@ from pyecore.ordered_set_patch import pop as pop_patch
 
 def patch_notification_system():
 
-    # def remove(self, value, update_opposite=True):
-    #     print("\t\t######## patched ECollection.remove() ##########", self.__class__, len(self))
-    #     # send notification before actual removal
-    #     self.owner.notify(Notification(old=value,
-    #                                    feature=self.feature,
-    #                                    kind=Kind.REMOVE))
-    #
-    #     if self.is_ref:
-    #         self._update_container(None, previous_value=value)
-    #         if update_opposite:
-    #             self._update_opposite(value, self.owner, remove=True)
-    #
-    #     super(OrderedSet, self).remove(value)
+    def remove(self, value, update_opposite=True):
+        #print("\t\t######## patched ECollection.remove() ##########", self.__class__, len(self))
+        # send notification before actual removal
+        self.owner.notify(Notification(old=value,
+                                       feature=self.feature,
+                                       kind=Kind.REMOVE))
 
-    ## update remove
-    #setattr(ECollection, 'remove', remove)
+        if self.is_ref:
+            self._update_container(None, previous_value=value)
+            if update_opposite:
+                self._update_opposite(value, self.owner, remove=True)
 
-    # def pop(self, index=None):
-    #     print("\t\t######## patched ECollection.pop() ##########", self.__class__, len(self))
-    #
-    #     if index is None:
-    #         peek = self.items[-1]
-    #     else:
-    #         peek = self.items[index]
-    #
-    #     self.owner.notify(Notification(old=peek,
-    #                                    feature=self.feature,
-    #                                    kind=Kind.REMOVE))
-    #
-    #     if index is None:
-    #         value = pop_patch(self)
-    #     else:
-    #         value = pop_patch(self, index)
-    #
-    #     if self.is_ref:
-    #         self._update_container(None, previous_value=value)
-    #         self._update_opposite(value, self.owner, remove=True)
-    #
-    #     return value
-    #
-    # setattr(ECollection, 'pop', pop)
-    # # TODO: also check EList.__setitem()
+        super(OrderedSet, self).remove(value)
+
+    # update remove
+    setattr(ECollection, 'remove', remove)
+
+    def pop(self, index=None):
+        #print("\t\t######## patched ECollection.pop() ##########", self.__class__, len(self))
+        if index is None:
+            peek = self.items[-1]
+        else:
+            peek = self.items[index]
+
+        # send notification before actually removing, such that we can find the index of the element for our
+        # undo-redo information
+        self.owner.notify(Notification(old=peek,
+                                       feature=self.feature,
+                                       kind=Kind.REMOVE))
+
+        if index is None:
+            value = pop_patch(self)
+        else:
+            value = pop_patch(self, index)
+
+        if self.is_ref:
+            self._update_container(None, previous_value=value)
+            self._update_opposite(value, self.owner, remove=True)
+
+        return value
+
+    setattr(ECollection, 'pop', pop)
+    # TODO: also check EList.__setitem()
 
 
     # def delete(self, recursive=True):
@@ -147,7 +148,12 @@ def patch_notification_system():
             value._container = self.owner
             value._containment_feature = self.feature
         if previous_value:
-            print("NO CONTAINER FOR", previous_value, previous_value._container, previous_value._containment_feature)
+            # keep the container reference, so we can find out to what resource this object belongs to
+            # and that notifications are send for these changes.
+            # TODO: reset the previous_value._container after processing the notification
+            # (see also patch in XMLResource to fix this manually)
+            #print("NO CONTAINER FOR", previous_value, previous_value._container, previous_value._containment_feature)
+            pass
             #previous_value._container = None
             #previous_value._containment_feature = None
 
