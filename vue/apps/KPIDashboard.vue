@@ -45,9 +45,11 @@
         :i="item.i"
       >
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
-        <JSChart
+        <KPIChartOrTable
           v-if="item.type == 'jschart'"
           :chart-options-prop="item.chart_options"
+          :kpi-name="item.kpi_name"
+          :kpi-type="item.kpi_type"
         />
         <TextPanel
           v-if="item.type == 'textpanel'"
@@ -73,7 +75,7 @@
 
 <script setup>
 import { ref, defineComponent } from 'vue'
-import JSChart from '../components/kpidashboard/JSChart.vue'
+import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
 import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
 import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
@@ -121,7 +123,9 @@ const getAllKPIData = () => {
       h: 5,
       i: new_panel_id,
       type: 'jschart',
-      chart_options: chart_options
+      chart_options: chart_options,
+      kpi_name: kpi_name,
+      kpi_type: kpi_info.type
     });
 
     kpi_nr = kpi_nr + 1;

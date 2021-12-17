@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h3>
+    <h3 class="panel_title">
       {{ options.title }}
     </h3>
   </div>
@@ -83,6 +83,11 @@ const selectedFile = () => {
 </script>
 
 <style>
+
+.panel_title {
+    font-weight: bold;
+    color: darkblue;
+}
 
 .settings {
   cursor: default;

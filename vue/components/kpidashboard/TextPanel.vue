@@ -1,5 +1,5 @@
 <template>
-  <h3>
+  <h3 class="panel_title">
     {{ options.title }}
   </h3>
   <div style="position: absolute; top: 3px; right: 20px;">
@@ -58,9 +58,15 @@ const handleOk = () => {
 
 <style>
 
+.panel_title {
+    font-weight: bold;
+    color: darkblue;
+}
+
 .settings {
   cursor: default;
 }
+
 .settings i {
   color: lightgrey;
 }
