@@ -11,7 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+import base64
+import urllib
 
 from flask import Flask, jsonify, abort
 from flask_socketio import SocketIO
@@ -38,6 +39,7 @@ class EDRAssets:
         self.settings_storage = settings_storage
         self.current_asset_string = ''
         self.EDR_config = settings.edr_config
+        self.ESDLDrive_config = settings.esdl_drive_config
 
         self.register()
 
@@ -46,7 +48,8 @@ class EDRAssets:
 
         @self.flask_app.route('/edr_assets')
         def get_edr_assets():
-            edr_url = self.EDR_config['EDR_host'] + '/store/tagged?take=500&tag=asset'
+            edr_url = self.ESDLDrive_config['hostname'] + \
+                      "/store/edr/query?addESDL=false&addImageData=false&esdlType=EnergyAsset&maxResults=-1"
             # logger.debug('accessing URL: '+edr_url)
 
             try:
@@ -56,13 +59,9 @@ class EDRAssets:
                     asset_list = []
                     asset_type_list = []
                     for a in result:
-                        asset_type = None
-                        tags = a["tags"]
-                        for t in tags:
-                            if ASSET_TYPE_TAG_PREFIX in t:
-                                asset_type = t[len(ASSET_TYPE_TAG_PREFIX):]
-                                if not asset_type in asset_type_list:
-                                    asset_type_list.append(asset_type)
+                        asset_type = a['esdlType']
+                        if not asset_type in asset_type_list:
+                            asset_type_list.append(asset_type)
 
                         asset = {'id': a["id"], 'title': a["title"], 'asset_type': asset_type, 'description': a["description"]}
                         asset_list.append(asset)
@@ -82,28 +81,24 @@ class EDRAssets:
                 abort(500, 'Error accessing EDR API')
 
     def get_asset_from_EDR(self, edr_asset_id):
-        url = self.EDR_config['EDR_host'] + self.EDR_config['EDR_path'] + edr_asset_id + '?format=xml'
+        url = self.ESDLDrive_config['hostname'] + "/store/edr/query?addESDL=true&path=" + \
+              urllib.parse.quote(edr_asset_id, safe='')
         print('EDR url: ', url)
-
         headers = {
-            'Content-Type': "application/json",
-            'Accept': "application/xml",
+            'Accept': "application/json",
             'User-Agent': "ESDL Mapeditor/0.1"
-            # 'Cache-Control': "no-cache",
-            # 'Host': ESSIM_config['ESSIM_host'],
-            # 'accept-encoding': "gzip, deflate",
-            # 'Connection': "keep-alive",
-            # 'cache-control': "no-cache"
         }
 
         try:
             r = requests.get(url, headers=headers)
-            # print(r)
-            # print(r.content)
             if r.status_code == 200:
-                result = r.text
+                result = json.loads(r.text)
                 # print(result)
-                self.current_asset_string = result
+                esdl_str_b64 = result[0]['esdl']
+                esdl_str_b64_bytes = esdl_str_b64.encode('utf-8')
+                esdl_str_bytes = base64.b64decode(esdl_str_b64_bytes)
+                esdl_str = esdl_str_bytes.decode('utf-8')
+                self.current_asset_string = esdl_str
                 # self.current_asset = ESDLAsset.load_asset_from_string(result)
                 return self.current_asset_string
             else:
