@@ -72,12 +72,20 @@ const dropzoneFile = ref("");
 
 const drop = (e) => {
   dropzoneFile.value = e.dataTransfer.files[0];
-  fileToBase64String(dropzoneFile.value);
+  if (dropzoneFile.value.size > 100000) {
+    alert("Maximal image size is 100 kB. Please resize the image before uploading...");
+  } else {
+    fileToBase64String(dropzoneFile.value);
+  }
 };
 
 const selectedFile = () => {
   dropzoneFile.value = document.querySelector(".dropzoneFile").files[0];
-  fileToBase64String(dropzoneFile.value);
+  if (dropzoneFile.value.size > 100000) {
+    alert("Maximal image size is 100 kB. Please resize the image before uploading...");
+  } else {
+    fileToBase64String(dropzoneFile.value);
+  }
 };
 
 </script>

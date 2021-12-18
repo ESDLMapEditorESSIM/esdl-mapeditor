@@ -1,7 +1,7 @@
 <template>
   <div>
     <a-button type="primary" @click="showModal">
-      Save dashboard
+      <i class="fas fa-save" />
     </a-button>
     <a-modal v-model:visible="visible" title="Save dashboard" width="750px" @ok="handleOk">
       <a-card style="width: 100%">

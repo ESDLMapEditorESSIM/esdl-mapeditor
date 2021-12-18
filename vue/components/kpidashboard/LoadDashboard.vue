@@ -1,7 +1,7 @@
 <template>
   <div>
     <a-button type="primary" @click="showModal">
-      Load dashboard
+      <i class="fas fa-folder-open" />
     </a-button>
     <a-modal v-model:visible="visible" title="Load dashboard" width="750px" @ok="handleOk">
       <a-card>

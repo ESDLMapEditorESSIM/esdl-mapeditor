@@ -1,27 +1,45 @@
 <template>
-  <h1>
-    KPI Dashboard - {{ dashboard_config.name }}
-  </h1>
-  <a-space>
-    <load-dashboard
-      :dashboards-info="dashboards_info"
-      :dashboard-id="dashboard_config.id"
-      @update:dashboardID="handleLoadDashboard"
-    />
-    <save-dashboard
-      :dashboards-info="dashboards_info"
-      @handle-save="handleSaveDashboard"
-    />
-    <a-button type="primary" @click="addTextPanel">
-      Add Text panel
-    </a-button>
-    <a-button type="primary" @click="addImagePanel">
-      Add Image panel
-    </a-button>
-    <a-button type="primary" @click="addTitelPanel">
-      Add Titel panel
-    </a-button>
-  </a-space>
+  <a-row>
+    <a-col span="20">
+      <h1>
+        KPI Dashboard - {{ dashboard_config.name }}
+      </h1>
+    </a-col>
+    <a-col span="4">
+      <a-space style="float: right">
+        <load-dashboard
+          :dashboards-info="dashboards_info"
+          :dashboard-id="dashboard_config.id"
+          @update:dashboardID="handleLoadDashboard"
+        />
+        <save-dashboard
+          :dashboards-info="dashboards_info"
+          @handle-save="handleSaveDashboard"
+        />
+
+        <div class="demo-dropdown-wrap">
+          <a-dropdown :trigger="['click']" placement="bottomRight" @click="handleButtonClick">
+            <a-button type="primary">
+              <i class="fas fa-plus" />
+            </a-button>
+            <template #overlay>
+              <a-menu @click="handleAddPanel">
+                <a-menu-item key="Text">
+                  Add Text panel
+                </a-menu-item>
+                <a-menu-item key="Image">
+                  Add Image panel
+                </a-menu-item>
+                <a-menu-item key="Title">
+                  Add Title panel
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
+      </a-space>
+    </a-col>
+  </a-row>
   <div
     v-if="layout.length"
   >
@@ -71,6 +89,30 @@
       No dashboard loaded yet
     </a-card>
   </div>
+
+  <template>
+    <a-dropdown :trigger="['hover']">
+      <div
+        :style="{
+          textAlign: 'center',
+          background: '#f7f7f7',
+          height: '200px',
+          lineHeight: '200px',
+          color: '#777',
+        }"
+      >
+        Right Click on here
+      </div>
+      <template #overlay>
+        <a-menu>
+          <a-menu-item key="1">1st menu item</a-menu-item>
+          <a-menu-item key="2">2nd menu item</a-menu-item>
+          <a-menu-item key="3">3rd menu item</a-menu-item>
+        </a-menu>
+      </template>
+    </a-dropdown>
+  </template>
+
 </template>
 
 <script setup>
@@ -238,7 +280,7 @@ const addImagePanel = () => {
   new_panel_id = new_panel_id + 1;
 }
 
-const addTitelPanel = () => {
+const addTitlePanel = () => {
   let panel_config = {
     x: 0,
     y: findFreeRow(),
@@ -254,6 +296,13 @@ const addTitelPanel = () => {
   dashboard_config.value.layout.push(panel_config);
 
   new_panel_id = new_panel_id + 1;
+}
+
+const handleAddPanel = (e) => {
+  console.log(e);
+  if (e.key == "Text") addTextPanel();
+  if (e.key == "Image") addImagePanel();
+  if (e.key == "Title") addTitlePanel();
 }
 
 </script>
