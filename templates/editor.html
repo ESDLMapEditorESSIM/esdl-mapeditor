@@ -1949,7 +1949,9 @@
         minSize: [ 100, 100 ],
         maxSize: [ 4000, 2000 ],
         anchor: [ 10, 50 ],
-        initOpen: false
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
     };
     var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
     map.addControl(kpi_dashboard);

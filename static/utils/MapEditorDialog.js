@@ -17,36 +17,58 @@
 class MapEditorDialog extends L.Control.Dialog {
 
   initialize(options) {
+    console.log(options);
+    console.log(this.options);
+
     this.options = JSON.parse(JSON.stringify(this.options));
     L.setOptions(this, options);
 
-    this.state = 'custom';   /* alternatives: maximized, minimized */
+    console.log(this.options);
+
+    if (!this.options.allowable_states) {
+      this.options.allowable_states = ['custom', 'maximized', 'minimized'];
+    }
+
+    if (!this.options.state) {
+      this.options.state = 'custom';   /* alternatives: maximized, minimized */
+    }
   }
 
   _initLayout() {
     super._initLayout();
-    
+
+    if (this.options.state == 'minimized') {
+      this._handleMinimize();
+    }
+    if (this.options.state == 'maximized') {
+      this._handleMaximize();
+    }
+
     let innerContainer = this._innerContainer;
     
     var className = "leaflet-control-dialog";
-    var minimizeNode = (this._minimizeNode = L.DomUtil.create(
-      "div",
-      className + "-minimize"
-    ));
-    var minimizeIcon = L.DomUtil.create("i", "fa fa-window-minimize");
-    minimizeNode.appendChild(minimizeIcon);
-    L.DomEvent.on(minimizeNode, "click", this._handleMinimize, this);
 
-    var maximizeNode = (this._maximizeNode = L.DomUtil.create(
-      "div",
-      className + "-maximize"
-    ));
-    var maximizeIcon = L.DomUtil.create("i", "fa fa-window-maximize");
-    maximizeNode.appendChild(maximizeIcon);
-    L.DomEvent.on(maximizeNode, "click", this._handleMaximize, this);
+    if (this.options.allowable_states.includes('minimized')) {
+      var minimizeNode = (this._minimizeNode = L.DomUtil.create(
+        "div",
+        className + "-minimize"
+      ));
+      var minimizeIcon = L.DomUtil.create("i", "fa fa-window-minimize");
+      minimizeNode.appendChild(minimizeIcon);
+      L.DomEvent.on(minimizeNode, "click", this._handleMinimize, this);
+      innerContainer.appendChild(minimizeNode);
+    }
 
-    innerContainer.appendChild(minimizeNode);
-    innerContainer.appendChild(maximizeNode);
+    if (this.options.allowable_states.includes('maximized')) {
+      var maximizeNode = (this._maximizeNode = L.DomUtil.create(
+        "div",
+        className + "-maximize"
+      ));
+      var maximizeIcon = L.DomUtil.create("i", "fa fa-window-maximize");
+      maximizeNode.appendChild(maximizeIcon);
+      L.DomEvent.on(maximizeNode, "click", this._handleMaximize, this);
+      innerContainer.appendChild(maximizeNode);
+    }
 
     this._map.on('resize', () => {
       this._handleMapResize();
@@ -73,7 +95,7 @@ class MapEditorDialog extends L.Control.Dialog {
     super.setLocation([ map_size.y - height - 20, map_size.x - width - 20 ]);
     super.setSize([ width, height ]);
 
-    this.state = 'minimized';
+    this.options.state = 'minimized';
   }
 
   _handleMaximize() {
@@ -81,11 +103,11 @@ class MapEditorDialog extends L.Control.Dialog {
     super.setLocation([ 10, 50 ]);
     super.setSize([ map_size.x - 300, map_size.y - 120 ]);
 
-    this.state = 'maximized';
+    this.options.state = 'maximized';
   }
 
   _handleMapResize() {
-    if (this.state == 'minimized') this._handleMinimize();
-    if (this.state == 'maximized') this._handleMaximize();
+    if (this.options.state == 'minimized') this._handleMinimize();
+    if (this.options.state == 'maximized') this._handleMaximize();
   }
 };
