@@ -17,13 +17,8 @@
 class MapEditorDialog extends L.Control.Dialog {
 
   initialize(options) {
-    console.log(options);
-    console.log(this.options);
-
     this.options = JSON.parse(JSON.stringify(this.options));
     L.setOptions(this, options);
-
-    console.log(this.options);
 
     if (!this.options.allowable_states) {
       this.options.allowable_states = ['custom', 'maximized', 'minimized'];
