@@ -265,17 +265,21 @@ class ProjectManager:
             variant_list = self.get_variant_path_list(variant)
             variant_list.reverse()
             # check for snapshot
+
+            new_snapshot = self.save_variant_snapshot(self.active_variant)
+            self.active_tracker = self.changeTracker.get_tracker(new_snapshot)
+            is_loading_new_variant = False
+            if self.active_tracker is None:
+                self.active_tracker = self.changeTracker.newTracker(new_snapshot)
+                is_loading_new_variant = True
             # add changes to stack, clear stack
             for v in variant_list:
                 print(
                     f"set_active_variant(): Replaying variant {v.name} @ {v.eURIFragment()}"
                 )
-                self.applyVariantChanges(v)
 
-            new_snapshot = self.save_variant_snapshot(self.active_variant)
-            self.active_tracker = self.changeTracker.get_tracker(new_snapshot)
-            if self.active_tracker is None:
-                self.active_tracker = self.changeTracker.newTracker(new_snapshot)
+                self.applyVariantChanges(v, is_loading_new_variant, self.active_variant.snapshotRef.eResource)
+
 
     def _delete_variant_recursive(self, variant: Variant):
         for subvariant in variant.variant:
@@ -319,18 +323,22 @@ class ProjectManager:
             parent = self.get_parent_variant(variant)
             parent.variant.remove(variant)
 
-    def applyVariantChanges(self, variant: Variant) -> None:
+    def applyVariantChanges(self, variant: Variant, record_changes: bool, resource: XMLResource) -> None:
+        tracker = self.changeTracker.get_tracker(resource=resource)
         for highlevelchange in variant.change:
             if isinstance(highlevelchange, HighLevelChange):
+                if record_changes:
+                    tracker.stack.start_recording(label=highlevelchange.label)
                 print(f"Handling High level change {highlevelchange.label}")
                 for change in highlevelchange.change:
-                    self.processChange(change)
-
+                    self.processChange(change, resource)
+                if record_changes:
+                    tracker.stack.stop_recording()
             else:
                 print(f"Fixme: ignoring DetailedChanges at this level")
 
-    def processChange(self, change):
-        resource = self.active_resource
+    def processChange(self, change, resource: XMLResource):
+        #resource = self.active_resource
         print(f'Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}')
         if isinstance(change, Set):
             if change.objectValue is not None:

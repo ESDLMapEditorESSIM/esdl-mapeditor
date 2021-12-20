@@ -34,7 +34,7 @@ def serialize_variant(pm: ProjectManager, variant: Variant) -> dict:
     active_variant = pm.active_variant
     return dict(
         id=variant.id,
-        base_variant_id=variant.baseVariant.id,
+        base_variant_id=variant.baseVariant.id if variant.baseVariant else variant.parentVariant.baseVariant.id,
         name=variant.name,
         description=variant.description,
         nr_of_changes=len(variant.change),
