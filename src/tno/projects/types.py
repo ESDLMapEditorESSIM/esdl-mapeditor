@@ -38,7 +38,7 @@ def serialize_variant(pm: ProjectManager, variant: Variant) -> dict:
         name=variant.name,
         description=variant.description,
         nr_of_changes=len(variant.change),
-        es_id=es.id,
+        es_id=variant.snapshotRef.id if variant.snapshotRef else None,
         active=active_variant.id == variant.id,
         children=[serialize_variant(pm, variant) for variant in variant.variant],
         changes=[serialize_abstract_change(change) for change in variant.change],

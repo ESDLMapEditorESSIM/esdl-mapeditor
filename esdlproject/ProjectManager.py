@@ -92,8 +92,8 @@ class ProjectManager:
         """
         if len(self.active_resource.contents) == 0:
             self.set_active_variant(self.project.baseVariant[0].variant[0])
-        # return self.active_variant.snapshotRef
-        return self.active_resource.contents[0]
+        return self.active_variant.snapshotRef
+        # return self.active_resource.contents[0]
 
     def add_energy_system(self, uri: StringURI) -> Variant:
         """
@@ -419,14 +419,17 @@ class ProjectManager:
 
         if variant.snapshotRef is not None:
             return variant.snapshotRef
+            # TODO: Check with Ewoud if we need to clean up, or not.
             # resource = variant.snapshotRef.eResource
             # print(f'Removing resource {resource.uri}, as this is an old snapshot reference')
             # variant.snapshotRef = None
             # self.rset.remove_resource(resource)
         snapshot_resource = self.rset.create_resource(StringURI(f'Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl'))
         print(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
-        snapshot_resource.append(self.get_active_energy_system().deepcopy())
+        es = self.active_resource.contents[0]
+        snapshot_resource.append(es.deepcopy())
         variant.snapshotRef = snapshot_resource.contents[0] # link to snapshot resource energy system
+        variant.snapshotRef.id = str(uuid4())
         #print(f'self.active_resource should not have any content: {self.active_resource.contents}')
         return variant.snapshotRef
 
@@ -449,6 +452,14 @@ class ProjectManager:
             base_variant_resource = self.get_base_variant_resource(bv)
             bv.energysystem = base_variant_resource.contents[0].deepcopy()
             bv.energysystemRef = None
+            for variant in bv.variant:
+                if variant.snapshotRef:
+                    variant_tracker = self.changeTracker.get_tracker(variant.snapshotRef)
+                    if variant_tracker:
+                        variant_stack = variant_tracker.stack
+                        for action in variant_stack.stack:
+                            self.covertActionToVariantChanges(action, variant)
+                    variant.snapshotRef = None
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)
@@ -579,9 +590,9 @@ class ProjectManager:
             resource = self.active_resource
             return self.changeTracker.get_tracker_stack(resource=resource)
         else:
-            # return self.active_tracker.stack
-            resource = self.active_resource
-            return self.changeTracker.get_tracker_stack(resource=resource)
+            return self.active_tracker.stack
+            # resource = self.active_resource
+            # return self.changeTracker.get_tracker_stack(resource=resource)
 
     def get_by_id(self, es_id, object_id):
         """

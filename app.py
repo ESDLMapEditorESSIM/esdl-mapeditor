@@ -59,7 +59,8 @@ from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, get_project_manager, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_project_manager, set_session, \
+    set_session_for_esid, valid_session
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -1502,7 +1503,7 @@ def process_command(message):
                     area_list = []
                     boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
                     area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
-                    pm.add_object_to_dict(active_es_id, new_area)
+                    # pm.add_object_to_dict(active_es_id, new_area)
                     emit('geojson', {"layer": "area_layer", "geojson": area_list})
                 else:
                     send_alert('Can not add an area with another shap than a Polygon')
@@ -1856,7 +1857,7 @@ def process_command(message):
                 # if hasattr(asset, 'port'):
                 #     for added_port in asset.port:
                 #         esh.add_object_to_dict(es_edit.id, added_port)
-                set_handler(pm)
+                set_project_manager(pm)
         # update label to human readable
         undo_redo.update_label("Create new {}".format(object_type))
 
@@ -2975,7 +2976,7 @@ def process_command(message):
     emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
     print("Undo/Redo size={}".format(len(undo_redo.stack)))
-    set_handler(pm)
+    set_project_manager(pm)
     session.modified = True
 
 

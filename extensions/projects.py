@@ -17,6 +17,7 @@ from typing import TypedDict
 from uuid import uuid4
 
 from flask import Blueprint, jsonify, request
+from flask_socketio import emit
 
 from esdl.esdl_handler import StringURI
 from esdlproject import ESDLProject, Variant
@@ -26,6 +27,8 @@ import src.log as log
 from src.process_es_area_bld import process_energy_system
 from src.tno.projects.emits import emit_active_esdl_project
 from src.tno.projects.types import serialize_esdl_project
+from src.tno.undoredo.emits import emit_update_undo_redo_stack
+from src.tno.undoredo.types import serialize_command_stack
 
 logger = log.get_logger(__name__)
 
@@ -78,6 +81,7 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
+    emit_update_undo_redo_stack(pm.active_tracker.stack)
     return serialize_esdl_project(pm, pm.project)
 
 
@@ -106,6 +110,7 @@ def set_active_variant(message: SetActiveVariantRequest):
         pm.set_active_variant(variant)
         executor.submit(process_energy_system)
         emit_active_esdl_project()
+        emit_update_undo_redo_stack(pm.active_tracker.stack)
     else:
         logger.warning("No variant with given ID found!", variant_id=message["id"])
 
