@@ -110,12 +110,15 @@ class UndoRedoCommandStack(CommandStack):
         if self._combineCommands:
             # the connectedTo relation between ports will be only recorded once, as undoing 2x this 'Add' command
             # gives problems
-            if len(commands) == 1 and len(self.compound) > 0 and \
-                    commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo' and \
+            if len(commands) == 1 and len(self.compound) > 0:
+                if commands[-1].feature.name == 'connectedTo' and self.compound[-1].feature.name == 'connectedTo' and \
                     commands[-1].owner == self.compound[-1].value: # p1.connectedTo[0] = p2 p1 == owner, value = p2
-                print('Ignore 2nd connectedTo', commands)
-                # todo add check if notifier is same as old
-                return # ignore 2nd connected to relation
+                    print('Ignore 2nd connectedTo', commands)
+                    # todo add check if notifier is same as old
+                    return # ignore 2nd controlStrategy/energyAsset bi-directional relation
+                elif commands[-1].feature.name == 'controlStrategy' and self.compound[-1].feature.name == 'energyAsset' and \
+                    commands[-1].owner == self.compound[-1].value:
+                    print('Ignore ControlStrategy bi-directional relation')
             # only adding multiple commands to the compound
             print("Adding combined command {} to action '{}'".format(commands, self.compound.label))
             self.compound.extend(commands)

@@ -25,7 +25,7 @@
 #  Manager:
 #      TNO
 from io import BytesIO
-from typing import Tuple
+from typing import Tuple, List
 from uuid import uuid4
 
 from pyecore.ecore import EObject
@@ -206,7 +206,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
-    def add_from_string(self, name, esdl_string) -> Tuple[esdl.EnergySystem, list[str]]:
+    def add_from_string(self, name, esdl_string) -> Tuple[esdl.EnergySystem, List[str]]:
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
@@ -322,7 +322,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
             del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
 
-    def get_energy_systems(self) -> list[esdl.EnergySystem]:
+    def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """
         Retrieve all energy systems in the handler.
 

@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, List
 
 from esdl.undo import UndoRedoCommandStack
 
@@ -32,7 +32,7 @@ class UndoRedoStackEntryDict(TypedDict):
     """
     label: str
     type: Optional[str]
-    commands: list[UndoRedoCommandDict]
+    commands: List[UndoRedoCommandDict]
 
 
 class UndoRedoSerializedStack(TypedDict):
@@ -40,7 +40,7 @@ class UndoRedoSerializedStack(TypedDict):
     An entry in the undo redo stack.
     """
     stack_index: int
-    stack: list[UndoRedoStackEntryDict]
+    stack: List[UndoRedoStackEntryDict]
 
 
 def serialize_command_stack(command_stack: UndoRedoCommandStack) -> UndoRedoSerializedStack:
@@ -49,7 +49,7 @@ def serialize_command_stack(command_stack: UndoRedoCommandStack) -> UndoRedoSeri
     """
     stack = []
     for entry in command_stack.stack:
-        commands: list[UndoRedoCommandDict] = [{
+        commands: List[UndoRedoCommandDict] = [{
             'id': command.value.id if hasattr(command.value, "id") else None,
             'name': command.value.name if hasattr(command.value, "name") else None,
             'type': command.__class__.__name__,
