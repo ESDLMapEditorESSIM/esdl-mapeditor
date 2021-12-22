@@ -757,6 +757,7 @@
                     updatefun({type: 'client_connected'});
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
+                auth_status(true); // Check immediately if we have an autorized session
             });
 
             socket.on('user_info', function(ui) {

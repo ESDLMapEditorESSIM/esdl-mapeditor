@@ -90,6 +90,12 @@ class UndoRedoCommandStack(CommandStack):
     def is_recording(self):
         return self._recording
 
+    def pause_recording(self):
+        self._recording = False
+
+    def continue_recording(self):
+        self._recording = True
+
     def stop_recording(self):
         self._combineCommands = False
         if self.compound is not None and len(self.compound) > 0:
@@ -116,9 +122,9 @@ class UndoRedoCommandStack(CommandStack):
                     print('Ignore 2nd connectedTo', commands)
                     # todo add check if notifier is same as old
                     return # ignore 2nd controlStrategy/energyAsset bi-directional relation
-                elif commands[-1].feature.name == 'controlStrategy' and self.compound[-1].feature.name == 'energyAsset' and \
-                    commands[-1].owner == self.compound[-1].value:
-                    print('Ignore ControlStrategy bi-directional relation')
+                # elif commands[-1].feature.name == 'controlStrategy' and self.compound[-1].feature.name == 'energyAsset' and \
+                #     commands[-1].owner == self.compound[-1].value:
+                #     print('Ignore ControlStrategy bi-directional relation')
             # only adding multiple commands to the compound
             print("Adding combined command {} to action '{}'".format(commands, self.compound.label))
             self.compound.extend(commands)
@@ -222,8 +228,11 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         value = notification.new
         previous_value = notification.old
         if isinstance(value, EObject):
+            #value = notification.new.deepcopy() if notification.new else None
+            stack.pause_recording() # disable handling of events during deepcopy()
             value = notification.new.deepcopy() if notification.new else None
             previous_value = notification.old.deepcopy() if notification.old else None
+            stack.continue_recording()
         setNotification = Set(owner=notification.notifier, feature=notification.feature,
                               value=value)
         setNotification.previous_value = previous_value
