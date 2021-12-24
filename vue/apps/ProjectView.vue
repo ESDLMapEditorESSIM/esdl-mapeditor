@@ -34,16 +34,19 @@ import {computed} from 'vue'
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useESDLProjects} from "../composables/esdlProjects";
 import {useSocketIO} from "../composables/socketio";
-import {
+import {useMultiEsdl} from "../composables/multiEsdl";
+import {useBaseLayers,} from "../composables/baseLayers";
+
+const {
   addBaseLayerToMap,
   baseLayerDefinitions,
   getBaseLayerByLabel,
   removeBaseLayerFromMap
-} from "../components/projects/baseLayers";
-
+} = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject, showProjectView} = useESDLProjects();
 const {socket} = useSocketIO();
+const {isEsdlShownOnMap, showEsdlLayerOnMap, hideEsdlLayerFromMap, esdlList} = useMultiEsdl();
 
 const treeId = "project_tree"
 const $ = window.$;
@@ -100,7 +103,7 @@ function baseVariantToJstreeData(baseVariant) {
 function variantToJstreeData(variant) {
   const children = [];
   for (const child of variant.children) {
-    const variantTreeData = baseVariantToJstreeData(child);
+    const variantTreeData = variantToJstreeData(child);
     children.push(variantTreeData);
   }
   for (const change of variant.changes) {
@@ -109,7 +112,6 @@ function variantToJstreeData(variant) {
   }
   return {
     id: variant.id,
-    baseVariantId: variant.base_variant_id,
     esId: variant.es_id,
     text: variant.name,
     children: children,
@@ -117,7 +119,7 @@ function variantToJstreeData(variant) {
     a_attr: {
       "class": variant.active ? "bold" : "",
     },
-    state: {"checked": window.is_esdl_shown_on_map(variant.es_id)},
+    state: {"checked": variant.active || isEsdlShownOnMap(variant.es_id), opened: children.length > 0},
   }
 }
 
@@ -130,9 +132,13 @@ function changeToJstreeData(change) {
     }
   }
   let text = change.type;
-  if (change.label) {
-    text = change.label;
+  if (change.feature) {
+    text += " on " + change.feature
   }
+  if (change.object_value_type) {
+     text += ": " + change.object_value_type;
+  }
+
   let icon = null
   if (change.type === "HighLevelChange") {
     icon = "far fa-object-group"
@@ -228,6 +234,14 @@ class VariantTreeSpec {
 
   contextMenus(node, tree) {
     return {
+      'create': {
+        'label': 'Create new Variant',
+        'icon': 'fas fa-plus',
+        'action': function () {
+          const msg = {parent_variant_id: node.original.id};
+          socket.value.emit("create_child_variant", msg);
+        }
+      },
       'rename': {
         'label': 'Rename Variant',
         'icon': 'far fa-edit',
@@ -243,7 +257,7 @@ class VariantTreeSpec {
         'label': 'Remove Variant',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          const msg = {name: node.original.text, base_variant_id: node.original.baseVariantId};
+          const msg = {id: node.original.id};
           socket.value.emit("delete_variant", msg);
         }
       },
@@ -280,19 +294,23 @@ const eventHandlersByName = [{
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      socket.value.emit("set_active_variant", {id: original.id});
       const tree = treeElement.jstree(true);
       tree.check_node(data.node);
+      if (!original.active) {
+        window.show_loader();
+        socket.value.emit("set_active_variant", {id: original.id});
+      }
     }
   }
 }, {
   eventName: 'check_node.jstree',
   handler: function (e, data) {
+    console.log("Checking node");
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      if (original.esId in window.esdl_list) {
-        window.show_esdl_layer_on_map(original.esId);
+      if (original.esId in esdlList.value) {
+        showEsdlLayerOnMap(original.esId);
       } else {
         // TODO: Just get the energy system from this variant, it should not be necessary to also activate it.
         socket.value.emit("set_active_variant", {id: original.id});
@@ -308,7 +326,7 @@ const eventHandlersByName = [{
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      window.hide_esdl_layer_from_map(original.esId);
+      hideEsdlLayerFromMap(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
       removeBaseLayerFromMap(baseLayer);

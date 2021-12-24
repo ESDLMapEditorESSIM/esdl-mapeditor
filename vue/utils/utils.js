@@ -19,3 +19,7 @@ export function getattrd(obj, name) {
         return null;
     }
 }
+
+export function isDebug() {
+    return window.DEBUG;
+}

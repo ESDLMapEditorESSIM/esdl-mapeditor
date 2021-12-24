@@ -52,6 +52,8 @@ async function loadProjectFile(file) {
         if (responseProject) {
           window.clear_esdl_layer_list();
           esdlProject.value = responseProject;
+          // This triggers all work necessary to update the frontend.
+          // socket.value.emit("set_active_variant", {id: responseProject.active_variant_id});
         }
       } else {
         alert("Failed loading energy project file.");

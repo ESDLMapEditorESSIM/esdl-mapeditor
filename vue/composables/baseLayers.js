@@ -18,7 +18,7 @@ const L = window.L;
 const map = window.map;
 
 
-export const baseLayerDefinitions = [
+const baseLayerDefinitions = [
     {
         label: 'OpenStreetMap',
         layer: window.osm,
@@ -58,30 +58,39 @@ export const baseLayerDefinitions = [
 // Enable when layer_control.js is phased out.
 // addBaseLayerToMap(baseLayerDefinitions[0]);
 
-/**
- * Return base layer definition by label.
- * @param label
- * @returns {{label: string, layer}|{label: string, layer}|{label: string, layer}|{label: string, layer: *}|null}
- */
-export function getBaseLayerByLabel(label) {
-    for (const baseLayer of baseLayerDefinitions) {
-        if (baseLayer.label === label) {
-            return baseLayer;
+export function useBaseLayers() {
+    /**
+     * Return base layer definition by label.
+     * @param label
+     * @returns {{label: string, layer}|{label: string, layer}|{label: string, layer}|{label: string, layer: *}|null}
+     */
+    function getBaseLayerByLabel(label) {
+        for (const baseLayer of baseLayerDefinitions) {
+            if (baseLayer.label === label) {
+                return baseLayer;
+            }
+        }
+        return null;
+    }
+
+    function addBaseLayerToMap(baseLayer) {
+        if (!map.hasLayer(baseLayer.layer)) {
+            map.addLayer(baseLayer.layer);
+            baseLayer.enabled = true;
         }
     }
-    return null;
-}
 
-export function addBaseLayerToMap(baseLayer) {
-    if (!map.hasLayer(baseLayer.layer)) {
-        map.addLayer(baseLayer.layer);
-        baseLayer.enabled = true;
+    function removeBaseLayerFromMap(baseLayer) {
+        if (map.hasLayer(baseLayer.layer)) {
+            map.removeLayer(baseLayer.layer);
+            baseLayer.enabled = false;
+        }
     }
-}
 
-export function removeBaseLayerFromMap(baseLayer) {
-    if (map.hasLayer(baseLayer.layer)) {
-        map.removeLayer(baseLayer.layer);
-        baseLayer.enabled = false;
+    return {
+        getBaseLayerByLabel,
+        addBaseLayerToMap,
+        removeBaseLayerFromMap,
+        baseLayerDefinitions,
     }
 }

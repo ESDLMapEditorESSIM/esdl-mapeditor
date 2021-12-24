@@ -16,11 +16,17 @@
 
 import { ref } from "vue";
 import {MessageNames, PubSubManager} from "../bridge";
+import {isDebug} from "../utils/utils";
 
 export const socket = ref(null);
 
 PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => {
     socket.value = incomingSocket;
+    if (isDebug()) {
+        incomingSocket.onAny((event, ...args) => {
+            console.log(`<<< ${event}`);
+        });
+    }
 });
 
 

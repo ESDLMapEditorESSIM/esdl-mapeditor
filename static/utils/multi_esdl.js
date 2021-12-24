@@ -234,23 +234,6 @@ function show_esdl_layer_on_map(es_id, layer_name) {
     }
 }
 
-/**
- * Return whether or not any of the layers of the ESDL is shown on the map.
- * @param es_id
- * @returns {boolean}
- */
-function is_esdl_shown_on_map(es_id) {
-    if (es_id in esdl_list) {
-        const es = esdl_list[es_id];
-        for (const layerName of Object.keys(es.layers)) {
-            if (window.map.hasLayer(esdl_list[es_id].layers[layerName])) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 function hide_esdl_layer_from_map(es_id, layer_name) {
     if (layer_name) {
         if (map.hasLayer(esdl_list[es_id].layers[layer_name])) {

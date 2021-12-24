@@ -10,6 +10,7 @@ def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> dict:
         name=project.name,
         description=project.description,
         base_variants=[serialize_base_variant(pm, base_variant) for base_variant in project.baseVariant],
+        active_variant_id=pm.active_variant.id,
     )
 
 
@@ -34,7 +35,6 @@ def serialize_variant(pm: ProjectManager, variant: Variant) -> dict:
     active_variant = pm.active_variant
     return dict(
         id=variant.id,
-        base_variant_id=variant.baseVariant.id if variant.baseVariant else variant.parentVariant.baseVariant.id,
         name=variant.name,
         description=variant.description,
         nr_of_changes=len(variant.change),
@@ -74,6 +74,6 @@ def serialize_detailed_change(change: DetailedChange) -> dict:
     """
     return dict(
         type=change.__class__.__name__,
-        value=change.stringValue,
-        # changedAt=change.changedAt,
+        feature=change.feature,
+        object_value_type=change.objectValue.__class__.__name__ if change.objectValue else None,
     )

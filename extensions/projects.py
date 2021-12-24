@@ -14,21 +14,19 @@
 
 import base64
 from typing import TypedDict
-from uuid import uuid4
 
 from flask import Blueprint, jsonify, request
-from flask_socketio import emit
 
 from esdl.esdl_handler import StringURI
-from esdlproject import ESDLProject, Variant
+from esdlproject import ESDLProject
+from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session
 from src import executor, socketio
 import src.log as log
-from src.process_es_area_bld import process_energy_system
+from src.process_es_area_bld import call_process_energy_system, process_energy_system
 from src.tno.projects.emits import emit_active_esdl_project
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
-from src.tno.undoredo.types import serialize_command_stack
 
 logger = log.get_logger(__name__)
 
@@ -158,8 +156,19 @@ class CreateVariantRequest(TypedDict):
 def create_variant(message: CreateVariantRequest):
     pm = get_project_manager()
     base_variant = pm.get_base_variant_by_id(message['base_variant_id'])
-    variant = Variant(name=f"Untitled variant {len(base_variant.variant) + 1}", id=str(uuid4()))
-    base_variant.variant.append(variant)
+    create_new_variant(base_variant)
+    emit_active_esdl_project()
+
+
+class CreateChildVariantRequest(TypedDict):
+    parent_variant_id: str
+
+
+@socketio.on('create_child_variant', namespace='/esdl')
+def create_child_variant(message: CreateChildVariantRequest):
+    pm = get_project_manager()
+    parent_variant = pm.get_variant_by_id(message['parent_variant_id'])
+    create_new_variant(parent_variant)
     emit_active_esdl_project()
 
 
@@ -185,7 +194,7 @@ class RenameVariantRequest(TypedDict):
 @socketio.on("rename_variant", namespace="/esdl")
 def rename_project(message: RenameVariantRequest):
     """
-    Load energy project from file.
+    Rename energy project.
     """
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])

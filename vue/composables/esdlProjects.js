@@ -25,7 +25,6 @@ watchEffect(() => {
             if (responseProject) {
                 setEsdlProject(responseProject);
             }
-            window.hide_loader();
         });
     }
 });

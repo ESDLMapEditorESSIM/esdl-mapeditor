@@ -12,10 +12,8 @@
 #  Manager:
 #      TNO
 
-import uuid
 import random
 
-from esdl.esdl_handler import EnergySystemHandler
 from sys import getsizeof
 from flask import session
 from flask_socketio import emit
@@ -28,6 +26,7 @@ from extensions.session_manager import get_project_manager, set_handler, get_han
     set_session_for_esid, \
     set_session, \
     get_session_for_esid
+from src import executor
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint
@@ -779,12 +778,30 @@ def get_building_information(building):
     }
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-#  Initialization after new or load energy system
-#  If this function is run through process_energy_system.submit(filename, es_title) it is executed
-#  in a separate thread.
-# ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(zoom=True):
+@executor.job
+def call_process_energy_system(force_update_es_id=None, zoom=True):
+    """
+    Process energy system, wrapped in an executor job to be run in the background.
+
+    TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
+    """
+    try:
+        process_energy_system(force_update_es_id, zoom)
+    except Exception as e:
+        # Exceptions get swallowed by the executor. Log it here.
+        logger.exception(str(e))
+
+
+def process_energy_system(force_update_es_id=None, zoom=True):
+    """
+    Initialization after an update to the energy system.
+
+    If this function is run through process_energy_system.submit(filename, es_title) it is executed
+    in a separate thread.
+
+    TODO: Properly handle with force_update_es_id that does not match the active ES ID. Not sure yet how to handle it though.
+    """
+
     try:
         logger.info("Processing active energy system")
 
@@ -800,7 +817,7 @@ def process_energy_system(zoom=True):
         if not isinstance(es, esdl.EnergySystem):
             raise RuntimeError("Active energy system is not of type esdl.EnergySystem!")
 
-        if es.id not in es_info_list:
+        if force_update_es_id == es.id or es.id not in es_info_list:
             logger.info(f"- Processing energysystem with id {es.id}")
             name = es.name
             if not name:
@@ -855,14 +872,8 @@ def process_energy_system(zoom=True):
         else:
             print("- Energysystem with id {} already processed".format(es.id))
 
-        # set_handler(esh)
-        set_project_manager(pm)
-        # emit('set_active_layer_id', main_es.id)
+        emit('set_active_layer_id', es.id)
 
-        print("active_es_id at end: {}".format(get_session('active_es_id')))
-
-        #session.modified = True
         print('session variables set', session)
-        # print('es_id: ', get_session('es_id'))
     except Exception:
         logger.exception("Exception while processing energy system")
