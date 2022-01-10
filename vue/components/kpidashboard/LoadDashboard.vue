@@ -63,7 +63,7 @@ export default {
   },
   computed: {
     dashboardList() {
-      console.log(this.dashboardsInfo);
+      // console.log(this.dashboardsInfo);
       let db_list = [];
       if (this.dashboardsInfo.length == 0)
         return [];

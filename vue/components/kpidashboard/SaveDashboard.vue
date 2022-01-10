@@ -5,6 +5,8 @@
     </a-button>
     <a-modal v-model:visible="visible" title="Save dashboard" width="750px" @ok="handleOk">
       <a-card style="width: 100%">
+        dashboardID: "{{ dashboardID }}"
+        dashboard_id: "{{ dashboard_id }}"
         <a-radio-group v-model:value="save_as_new_or_existing">
           <a-radio key="new" value="new" class="radiostyle">
             Save as a new dashboard
@@ -92,13 +94,17 @@ export default {
       default: function() {
         return {};
       }
+    },
+    dashboardID: {
+      type: String,
+      default: ""
     }
   },
   emits: ['handle-save'],
   data() {
     return {
         visible: false,
-        dashboard_id: '',
+        dashboard_id: this.createDashBoardID(this.dashboardID),
         save_as_new_or_existing: '',
         dashboard_name: '',
         dashboard_group: '',
@@ -135,11 +141,30 @@ export default {
   methods: {
     showModal() {
       this.visible = true;
+      console.log(this.dashboardID);
+      console.log(this.dashboard_id);
     },
     handleOk() {
       this.handleSave();
       this.visible = false;
       // this.$emit('save', this.dashboard_id);
+    },
+    createDashBoardID(id) {
+      console.log(id);
+      if (this.dashboardsInfo.length == 0)
+        return "";
+      for (let g=0; g<this.dashboardsInfo.groups.length; g++) {
+        let group_name = this.dashboardsInfo.group[g].name;
+        for (const [db_id, db_info] of Object.entries(this.dashboardsInfo.dashboards)) {
+          console.log(db_id, db_info);
+          if (db_info.setting_type == this.dashboardsInfo.groups[g].setting_type) {
+            if (db_info.setting_type == 'project') {
+              if (db_info.project_name != this.dashboardsInfo.groups[g].project_name) continue;
+            }
+            db_info.id = db_id;
+          }
+        }
+      }
     },
     filter_dashboards: function(input, option) {
       return option.props.title.toLowerCase().indexOf(input.toLowerCase()) >= 0;

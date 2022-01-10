@@ -2,23 +2,24 @@
   <a-row>
     <a-col span="20">
       <h1>
-        KPI Dashboard - {{ dashboard_config.name }}
+        KPI Dashboard - {{ dashboard_config.name }} - id:"{{ id }}"
       </h1>
     </a-col>
     <a-col span="4">
       <a-space style="float: right">
         <load-dashboard
           :dashboards-info="dashboards_info"
-          :dashboard-id="dashboard_config.id"
+          :dashboard-id="id"
           @update:dashboardID="handleLoadDashboard"
         />
         <save-dashboard
           :dashboards-info="dashboards_info"
+          :dashboard-id="id"
           @handle-save="handleSaveDashboard"
         />
 
         <div class="demo-dropdown-wrap">
-          <a-dropdown :trigger="['click']" placement="bottomRight" @click="handleButtonClick">
+          <a-dropdown :trigger="['click']" placement="bottomRight">
             <a-button type="primary">
               <i class="fas fa-plus" />
             </a-button>
@@ -65,7 +66,7 @@
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
         <KPIChartOrTable
           v-if="item.type == 'jschart'"
-          :chart-options-prop="item.chart_options"
+          :chart-options-prop="item.options"
           :kpi-name="item.kpi_name"
           :kpi-type="item.kpi_type"
         />
@@ -89,34 +90,10 @@
       No dashboard loaded yet
     </a-card>
   </div>
-
-  <template>
-    <a-dropdown :trigger="['hover']">
-      <div
-        :style="{
-          textAlign: 'center',
-          background: '#f7f7f7',
-          height: '200px',
-          lineHeight: '200px',
-          color: '#777',
-        }"
-      >
-        Right Click on here
-      </div>
-      <template #overlay>
-        <a-menu>
-          <a-menu-item key="1">1st menu item</a-menu-item>
-          <a-menu-item key="2">2nd menu item</a-menu-item>
-          <a-menu-item key="3">3rd menu item</a-menu-item>
-        </a-menu>
-      </template>
-    </a-dropdown>
-  </template>
-
 </template>
 
 <script setup>
-import { ref, defineComponent } from 'vue'
+import { ref, defineComponent, toRefs } from 'vue'
 import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
 import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
@@ -135,6 +112,8 @@ const dashboard_config = ref({
   group: '',
   layout: [],     // this is the information stored as settings in the database
 });
+
+var { id } = toRefs(dashboard_config);
 
 const getDashboardList = async () => {
   const response = await fetch("kpi_dashboards");
@@ -158,14 +137,15 @@ const getAllKPIData = () => {
     let chart_options = window.createChartOptions(kpi_info);
     chart_options.title = kpi_name;
 
-    dashboard_config.value.layout.push({
+    // dashboard_config.value.layout.push({
+    layout.value.push({
       x: (kpi_nr % 3) * 3,
       y: Math.floor(kpi_nr / 3) * 5,
       w: 3,
       h: 5,
       i: new_panel_id,
       type: 'jschart',
-      chart_options: chart_options,
+      options: chart_options,
       kpi_name: kpi_name,
       kpi_type: kpi_info.type
     });
@@ -173,15 +153,17 @@ const getAllKPIData = () => {
     kpi_nr = kpi_nr + 1;
     new_panel_id = new_panel_id + 1;
   }
-  layout.value = [...dashboard_config.value.layout];
+  dashboard_config.value.layout = [...layout.value];
 };
 getAllKPIData();
 
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
+      layout.value = response.layout;
       dashboard_config.value = response;
-      layout.value = [...response.layout];
+      console.log(dashboard_config.value);
+      id = dashboard_config.value.id;
       for (let i=0; i<layout.value.length; i++) {
         if (layout.value[i].i >= new_panel_id) {
           new_panel_id = layout.value[i].i + 1;
@@ -200,6 +182,9 @@ const copyDashboardLayoutToSettings = () => {
     if (dashboard_config.value.layout[i].i != layout.value[i].i) {
       console.log('ERROR: Dashboard panel IDs are not the same!');
     } else {
+      // Why is the following true???
+      // dashboard_config.value.layout[i] contains changes in options (for the jschart component)
+      // layout.value[i] contains changes in basic attributes (x, y, w, h, ...)
       dashboard_config.value.layout[i].x = layout.value[i].x;
       dashboard_config.value.layout[i].y = layout.value[i].y;
       dashboard_config.value.layout[i].w = layout.value[i].w;
@@ -208,6 +193,11 @@ const copyDashboardLayoutToSettings = () => {
       if (dashboard_config.value.layout[i].type != 'jschart') {
         // Don't copy JSChart config as JSChart completely changes the config during visualisation
         dashboard_config.value.layout[i].options = layout.value[i].options;
+      } else {
+        // Only copy the chart/table type
+        // dashboard_config.value.layout[i].options.type = layout.value[i].options.type;
+        // copy the other way around???
+        layout.value[i].options.type = dashboard_config.value.layout[i].options.type;
       }
     }
   }
@@ -299,7 +289,6 @@ const addTitlePanel = () => {
 }
 
 const handleAddPanel = (e) => {
-  console.log(e);
   if (e.key == "Text") addTextPanel();
   if (e.key == "Image") addImagePanel();
   if (e.key == "Title") addTitlePanel();

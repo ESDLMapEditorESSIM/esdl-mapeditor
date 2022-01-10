@@ -95,14 +95,17 @@ export default {
     changeChartType(type) {
       this.createTableData(this.chart_options);
       if (type == 'pie' || type == 'doughnut') {
+        // for a pie or doughnut chart remove the axis and scales
         delete(this.chart_options.options.scales);
       } else {
-        // restore original properties
+        // restore original properties, such that axis and scales can be rendered again
         this.chart_options = this.changeProps(this.chartOptionsProp);
       }
       this.chart_options.type = type;
     },
     changeToPieChart() {
+      // This implementation doesn't work. As a work-around the :key="chart_options.type" has been added to
+      // the vue component. Apparently the component re-renders when its key changes.
       console.log(this.$refs.chartRef);
       this.$refs.chartRef.options.title = "other title";
       this.$data.chart_options.type = 'pie'
