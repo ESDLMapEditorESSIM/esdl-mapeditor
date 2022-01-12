@@ -49,16 +49,21 @@ export default {
         return {};
       }
     },
-    dashboardID: {
+    dashboardId: {
       type: String,
       default: ""
     }
   },
-  emits: ['update:dashboardID'],
+  emits: ['update:dashboardId'],
   data() {
     return {
         visible: false,
-        dashboard_id: this.dashboardID,
+        dashboard_id: this.dashboardId,
+    }
+  },
+  watch: {
+    dashboardId: function(new_value) {
+      this.dashboard_id = this.dashboardId;
     }
   },
   computed: {
@@ -89,19 +94,13 @@ export default {
       return db_list;
     }
   },
-  mounted() {
-    // this.dashboard_list = this.createDashboardList();
-  },
   methods: {
     showModal() {
       this.visible = true;
     },
     handleOk() {
       this.visible = false;
-      this.$emit('update:dashboardID', this.dashboard_id);
-    },
-    createDashboardList() {
-
+      this.$emit('update:dashboardId', this.dashboard_id);
     },
     filter_dashboards: function(input, option) {
       return option.props.title.toLowerCase().indexOf(input.toLowerCase()) >= 0;

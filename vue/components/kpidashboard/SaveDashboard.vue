@@ -5,8 +5,6 @@
     </a-button>
     <a-modal v-model:visible="visible" title="Save dashboard" width="750px" @ok="handleOk">
       <a-card style="width: 100%">
-        dashboardID: "{{ dashboardID }}"
-        dashboard_id: "{{ dashboard_id }}"
         <a-radio-group v-model:value="save_as_new_or_existing">
           <a-radio key="new" value="new" class="radiostyle">
             Save as a new dashboard
@@ -95,7 +93,7 @@ export default {
         return {};
       }
     },
-    dashboardID: {
+    dashboardId: {
       type: String,
       default: ""
     }
@@ -104,14 +102,20 @@ export default {
   data() {
     return {
         visible: false,
-        dashboard_id: this.createDashBoardID(this.dashboardID),
+        dashboard_id: this.createDashBoardID(this.dashboardId),
         save_as_new_or_existing: '',
         dashboard_name: '',
         dashboard_group: '',
     }
   },
+  watch: {
+    dashboardId: function(new_value) {
+      this.dashboard_id = this.createDashBoardID(new_value);
+    }
+  },
   computed: {
     dashboardList() {
+      // Lists the groups with a list of dashboards per group
       let db_list = [];
       if (this.dashboardsInfo.length == 0)
         return [];
@@ -141,8 +145,6 @@ export default {
   methods: {
     showModal() {
       this.visible = true;
-      console.log(this.dashboardID);
-      console.log(this.dashboard_id);
     },
     handleOk() {
       this.handleSave();
@@ -150,21 +152,22 @@ export default {
       // this.$emit('save', this.dashboard_id);
     },
     createDashBoardID(id) {
-      console.log(id);
       if (this.dashboardsInfo.length == 0)
         return "";
       for (let g=0; g<this.dashboardsInfo.groups.length; g++) {
-        let group_name = this.dashboardsInfo.group[g].name;
+        let group_name = this.dashboardsInfo.groups[g].name;
         for (const [db_id, db_info] of Object.entries(this.dashboardsInfo.dashboards)) {
-          console.log(db_id, db_info);
           if (db_info.setting_type == this.dashboardsInfo.groups[g].setting_type) {
             if (db_info.setting_type == 'project') {
               if (db_info.project_name != this.dashboardsInfo.groups[g].project_name) continue;
             }
-            db_info.id = db_id;
+            if (id == db_id) {
+              return group_name + '__' + db_id + '__' + db_info.name;
+            }
           }
         }
       }
+      console.log('ERROR: Did should not happen, no dashboard found!');
     },
     filter_dashboards: function(input, option) {
       return option.props.title.toLowerCase().indexOf(input.toLowerCase()) >= 0;
@@ -173,7 +176,7 @@ export default {
       if (this.save_as_new_or_existing == 'new') {
         this.dashboard_id = uuidv4();
       } else {
-        let tmp_db_id = this.dashboard_id;   // format is: group_name__db_id
+        let tmp_db_id = this.dashboard_id;   // format is: group_name__db_id__name
         this.dashboard_group = tmp_db_id.split('__')[0];
         this.dashboard_id = tmp_db_id.split('__')[1];
         this.dashboard_name = tmp_db_id.split('__')[2];

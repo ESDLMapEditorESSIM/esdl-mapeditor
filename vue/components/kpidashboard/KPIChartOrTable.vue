@@ -30,10 +30,7 @@
 </template>
 
 <script>
-// import { ref } from 'vue'
 import Vue3ChartJs from '@j-t-mcc/vue3-chartjs'
-
-// const chartRef = ref(null);
 
 export default {
   name: 'KPIChartOrTable',
@@ -59,7 +56,6 @@ export default {
     }
   },
   mounted() {
-    console.log(this.chartOptionsProp);
     this.createTableData(this.chart_options);
   },
   methods: {
@@ -102,16 +98,10 @@ export default {
         this.chart_options = this.changeProps(this.chartOptionsProp);
       }
       this.chart_options.type = type;
+
+      // The :key="chart_options.type" has been added to the vue component.
+      // The component re-renders when its key changes.
     },
-    changeToPieChart() {
-      // This implementation doesn't work. As a work-around the :key="chart_options.type" has been added to
-      // the vue component. Apparently the component re-renders when its key changes.
-      console.log(this.$refs.chartRef);
-      this.$refs.chartRef.options.title = "other title";
-      this.$data.chart_options.type = 'pie'
-      this.$refs.chartRef.type = 'pie'
-      this.$refs.chartRef.update(250);
-    }
   },
 }
 </script>

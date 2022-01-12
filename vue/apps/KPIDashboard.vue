@@ -2,19 +2,19 @@
   <a-row>
     <a-col span="20">
       <h1>
-        KPI Dashboard - {{ dashboard_config.name }} - id:"{{ id }}"
+        KPI Dashboard - {{ dashboard_config.name.value }}
       </h1>
     </a-col>
     <a-col span="4">
       <a-space style="float: right">
         <load-dashboard
           :dashboards-info="dashboards_info"
-          :dashboard-id="id"
-          @update:dashboardID="handleLoadDashboard"
+          :dashboard-id="dashboard_config.id.value"
+          @update:dashboardId="handleLoadDashboard"
         />
         <save-dashboard
           :dashboards-info="dashboards_info"
-          :dashboard-id="id"
+          :dashboard-id="dashboard_config.id.value"
           @handle-save="handleSaveDashboard"
         />
 
@@ -65,10 +65,11 @@
       >
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
         <KPIChartOrTable
-          v-if="item.type == 'jschart'"
+          v-if="item.type == 'charttable'"
           :chart-options-prop="item.options"
           :kpi-name="item.kpi_name"
           :kpi-type="item.kpi_type"
+          :key="item.kpi_type"
         />
         <TextPanel
           v-if="item.type == 'textpanel'"
@@ -94,11 +95,17 @@
 
 <script setup>
 import { ref, defineComponent, toRefs } from 'vue'
+// eslint-disable-next-line no-unused-vars
 import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
+// eslint-disable-next-line no-unused-vars
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
+// eslint-disable-next-line no-unused-vars
 import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
+// eslint-disable-next-line no-unused-vars
 import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
+// eslint-disable-next-line no-unused-vars
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
+// eslint-disable-next-line no-unused-vars
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
 
 const dashboards_info = ref([]);
@@ -106,14 +113,12 @@ const layout = ref([]);     // this is the information used (and changed!) in th
 
 var new_panel_id = 0;  // to store the id that new panels should use
 
-const dashboard_config = ref({
-  id: '',
-  name: 'New dashboard',
-  group: '',
-  layout: [],     // this is the information stored as settings in the database
-});
-
-var { id } = toRefs(dashboard_config);
+const dashboard_config = {
+  id: ref(''),
+  name: ref('New dashboard'),
+  group: ref(''),
+  layout: ref([]),     // this is the information stored as settings in the database
+};
 
 const getDashboardList = async () => {
   const response = await fetch("kpi_dashboards");
@@ -137,14 +142,13 @@ const getAllKPIData = () => {
     let chart_options = window.createChartOptions(kpi_info);
     chart_options.title = kpi_name;
 
-    // dashboard_config.value.layout.push({
     layout.value.push({
       x: (kpi_nr % 3) * 3,
       y: Math.floor(kpi_nr / 3) * 5,
       w: 3,
       h: 5,
       i: new_panel_id,
-      type: 'jschart',
+      type: 'charttable',
       options: chart_options,
       kpi_name: kpi_name,
       kpi_type: kpi_info.type
@@ -153,17 +157,21 @@ const getAllKPIData = () => {
     kpi_nr = kpi_nr + 1;
     new_panel_id = new_panel_id + 1;
   }
-  dashboard_config.value.layout = [...layout.value];
+  dashboard_config.layout.value = [...layout.value];
 };
 getAllKPIData();
 
+// eslint-disable-next-line no-unused-vars
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
+      layout.value = [];
       layout.value = response.layout;
-      dashboard_config.value = response;
-      console.log(dashboard_config.value);
-      id = dashboard_config.value.id;
+      dashboard_config.id.value = response.id;
+      dashboard_config.name.value = response.name;
+      dashboard_config.group.value = response.group;
+      dashboard_config.layout.value = response.layout;
+
       for (let i=0; i<layout.value.length; i++) {
         if (layout.value[i].i >= new_panel_id) {
           new_panel_id = layout.value[i].i + 1;
@@ -179,47 +187,56 @@ const handleLoadDashboard = (dashboard_id) => {
 // Assume order in layout array doesn't change...     Maybe add id to panel data, use i attribute?
 const copyDashboardLayoutToSettings = () => {
   for (let i=0; i<layout.value.length; i++) {
-    if (dashboard_config.value.layout[i].i != layout.value[i].i) {
+    if (dashboard_config.layout.value[i].i != layout.value[i].i) {
       console.log('ERROR: Dashboard panel IDs are not the same!');
     } else {
       // Why is the following true???
-      // dashboard_config.value.layout[i] contains changes in options (for the jschart component)
+      // dashboard_config.layout.value[i] contains changes in options (for the jschart component)
       // layout.value[i] contains changes in basic attributes (x, y, w, h, ...)
-      dashboard_config.value.layout[i].x = layout.value[i].x;
-      dashboard_config.value.layout[i].y = layout.value[i].y;
-      dashboard_config.value.layout[i].w = layout.value[i].w;
-      dashboard_config.value.layout[i].h = layout.value[i].h;
-      dashboard_config.value.layout[i].type = layout.value[i].type;
-      if (dashboard_config.value.layout[i].type != 'jschart') {
+      dashboard_config.layout.value[i].x = layout.value[i].x;
+      dashboard_config.layout.value[i].y = layout.value[i].y;
+      dashboard_config.layout.value[i].w = layout.value[i].w;
+      dashboard_config.layout.value[i].h = layout.value[i].h;
+      dashboard_config.layout.value[i].type = layout.value[i].type;
+      if (dashboard_config.layout.value[i].type != 'charttable') {
         // Don't copy JSChart config as JSChart completely changes the config during visualisation
-        dashboard_config.value.layout[i].options = layout.value[i].options;
+        dashboard_config.layout.value[i].options = layout.value[i].options;
       } else {
         // Only copy the chart/table type
-        // dashboard_config.value.layout[i].options.type = layout.value[i].options.type;
+        // dashboard_config.layout.value[i].options.type = layout.value[i].options.type;
         // copy the other way around???
-        layout.value[i].options.type = dashboard_config.value.layout[i].options.type;
+        layout.value[i].options.type = dashboard_config.layout.value[i].options.type;
       }
     }
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleSaveDashboard = (res) => {
   copyDashboardLayoutToSettings();
 
-  dashboard_config.value.id = res.id;
-  dashboard_config.value.name = res.name;
-  dashboard_config.value.group = res.group;
+  dashboard_config.id.value = res.id;
+  dashboard_config.name.value = res.name;
+  dashboard_config.group.value = res.group;
 
-  window.socket.emit('kpi_dashboard_save', dashboard_config.value);
+  let message = {
+    id: res.id,
+    name: res.name,
+    group: res.group,
+    layout: dashboard_config.layout.value
+  };
+
+  window.socket.emit('kpi_dashboard_save', message);
 }
 
+// eslint-disable-next-line no-unused-vars
 const removeItem = (item_index) => {
   // Note: the item.i doesn't necessarily
   const index = layout.value.map(item => item.i).indexOf(item_index);
   layout.value.splice(index, 1);
 
-  const db_index = dashboard_config.value.layout.map(item => item.i).indexOf(item_index);
-  dashboard_config.value.layout.splice(db_index, 1);
+  const db_index = dashboard_config.layout.value.map(item => item.i).indexOf(item_index);
+  dashboard_config.layout.value.splice(db_index, 1);
 }
 
 const findFreeRow = () => {
@@ -246,7 +263,7 @@ const addTextPanel = () => {
     }
   };
   layout.value.push(panel_config);
-  dashboard_config.value.layout.push(panel_config);
+  dashboard_config.layout.value.push(panel_config);
 
   new_panel_id = new_panel_id + 1;
 }
@@ -265,7 +282,7 @@ const addImagePanel = () => {
     }
   };
   layout.value.push(panel_config);
-  dashboard_config.value.layout.push(panel_config);
+  dashboard_config.layout.value.push(panel_config);
 
   new_panel_id = new_panel_id + 1;
 }
@@ -283,11 +300,12 @@ const addTitlePanel = () => {
     }
   };
   layout.value.push(panel_config);
-  dashboard_config.value.layout.push(panel_config);
+  dashboard_config.layout.value.push(panel_config);
 
   new_panel_id = new_panel_id + 1;
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleAddPanel = (e) => {
   if (e.key == "Text") addTextPanel();
   if (e.key == "Image") addImagePanel();
