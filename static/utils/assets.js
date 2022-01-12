@@ -165,6 +165,12 @@ function set_marker_handlers(marker) {
         // console.log(pos.lat + ', ' + pos.lng );
     });
 
+    marker.on('contextmenu', function(e) {
+        // remove tooltip of marker when pressing right mouse button
+        // otherwise it hides the contextmenu when moving over tooltip
+        remove_tooltip();
+    });
+
     // TODO replace this with map.on("draw:deleted") as then undo function works
     // Now it deletes everything even when you press cancel.
     marker.off('remove')
@@ -596,7 +602,7 @@ function update_line_color(line_layer) {
         $('#mapid .zoomline').addClass('notselectedline'); // unhighlight all
         if (line_layer.selectline === undefined) {
             let size_line = 3;
-            if (map.getZoom() > 15) size_line = 2 * map.getZoom() - 27 + 6; //butt
+            if (map.getZoom() > 12) size_line = 2 * map.getZoom() - 27 + 6; //butt
             let selectline_options = {lineCap: 'round', color: "#050505", weight: size_line, draggable:false,
                                       title: title, className:"overlayline",
                                       dashArray:"", opacity: 1.0, pane: 'lineSelectionPane'};

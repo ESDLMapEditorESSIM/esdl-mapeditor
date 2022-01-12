@@ -272,7 +272,7 @@ class ESDLServices:
             if service["http_method"] == "get":
                 r = requests.get(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"].endswith("json") or service["body_config"]["type"] == "json":
+                if service["type"].endswith("json") or ("body_config" in service and service["body_config"]["type"] == "json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
