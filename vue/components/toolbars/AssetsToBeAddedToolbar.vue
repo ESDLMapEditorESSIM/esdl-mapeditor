@@ -9,7 +9,7 @@
         <td v-for="asset in assetList" :key="asset.id" class="icon">
           <div :title="asset.type" :class="'circle '+asset.cap" @click="buttonClick(asset)">
             <div class="image-div" style="font-size:0px">
-              <img class="circle-img" :src="'images/' + asset.type + '.png'">
+              <img class="asset-icon circle-img" :src="'images/' + asset.type + '.png'" draggable="false">
             </div>
           </div>
           <span class="badge">{{ asset.count }}</span>
@@ -134,6 +134,10 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.asset-icon {
+   cursor: pointer;
 }
 
 </style>
