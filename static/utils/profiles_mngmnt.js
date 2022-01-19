@@ -369,7 +369,7 @@ class Profiles {
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
-        };
+        }
 
         function highlight(e) {
             dropArea.classList.add('highlight');
@@ -500,11 +500,13 @@ class Profiles {
         $div.append($('<p>').append($group_select));
         profiles_plugin.create_group_select($group_select);
 
-        if (profiles_plugin.profiles_settings.profiles_servers.length > 1) {
-          let $profiles_server_select = $('<div>');
-          $div.append($('<p>').append($profiles_server_select));
-          profiles_plugin.create_profiles_server_select($profiles_server_select);
+        let $profiles_server_select = $('<div>');
+        let profile_server_select_hidden='';
+        if (profiles_plugin.profiles_settings.profiles_servers.length == 1) {
+          profile_server_select_hidden = ' hidden';
         }
+        $div.append($('<p'+profile_server_select_hidden+'>').append($profiles_server_select));
+        profiles_plugin.create_profiles_server_select($profiles_server_select);
 
         let $profile_aggr_type = $('<div>');
         $div.append($('<p>').append($profile_aggr_type));
