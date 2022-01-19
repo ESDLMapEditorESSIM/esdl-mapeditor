@@ -253,23 +253,20 @@ class Profiles:
                 client.create_database(database)
             client.write_points(points=json_body, database=database, batch_size=100)
 
-            profile_server_host = None
-            datasource = None
-            if profiles_server_index != 0:  # Only non standard profiles server
-                if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
-                    protocol = "https://"
-                else:
-                    protocol = "http://"
-                profiles_server_host = protocol + \
-                                       profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
-                                       ":" + \
-                                       profiles_settings['profiles_servers'][profiles_server_index]['port']
-                datasource = get_panel_service_datasource(
-                    database=database,
-                    host=profiles_server_host,
-                    username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                    password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                )
+            if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
+                protocol = "https://"
+            else:
+                protocol = "http://"
+            profiles_server_host = protocol + \
+                                   profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
+                                   ":" + \
+                                   profiles_settings['profiles_servers'][profiles_server_index]['port']
+            datasource = get_panel_service_datasource(
+                database=database,
+                host=profiles_server_host,
+                username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+            )
 
             # Store profile information in settings
             group = self.csv_files[uuid]['group']
@@ -317,6 +314,7 @@ class Profiles:
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': True})
         except Exception as e:
+            logger.exception("Error processing CSV")
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': False, 'error': str(e)})
 
@@ -492,6 +490,7 @@ class Profiles:
                 "username": settings.profile_database_config['upload_user'],
                 "password": settings.profile_database_config['upload_password'],
                 "database": settings.profile_database_config['database'],
+                "ssl_enabled": True if settings.profile_database_config['protocol'] == 'https' else False,
             }]
             self.settings_storage.set_system(PROFILES_SETTINGS, profiles_settings)
         return profiles_settings
