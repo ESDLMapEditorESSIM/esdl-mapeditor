@@ -9,7 +9,7 @@
       <a-space style="float: right">
         <load-dashboard
           :dashboards-info="dashboards_info"
-          :dashboard-id="dashboard_config.id.value"
+          :dashboard-id="v"
           @update:dashboardId="handleLoadDashboard"
         />
         <save-dashboard
@@ -46,6 +46,7 @@
   >
     <grid-layout
       v-model:layout="layout"
+      :key="dashboard_config.id.value"
       :col-num="12"
       :row-height="30"
       is-draggable
