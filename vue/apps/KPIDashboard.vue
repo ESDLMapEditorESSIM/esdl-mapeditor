@@ -34,6 +34,9 @@
                 <a-menu-item key="Title">
                   Add Title panel
                 </a-menu-item>
+                <a-menu-item key="Sankey">
+                  Add Sankey panel
+                </a-menu-item>
               </a-menu>
             </template>
           </a-dropdown>
@@ -45,8 +48,8 @@
     v-if="layout.length"
   >
     <grid-layout
-      v-model:layout="layout"
       :key="dashboard_config.id.value"
+      v-model:layout="layout"
       :col-num="12"
       :row-height="30"
       is-draggable
@@ -67,10 +70,10 @@
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
         <KPIChartOrTable
           v-if="item.type == 'charttable'"
+          :key="item.kpi_type"
           :chart-options-prop="item.options"
           :kpi-name="item.kpi_name"
           :kpi-type="item.kpi_type"
-          :key="item.kpi_type"
         />
         <TextPanel
           v-if="item.type == 'textpanel'"
@@ -84,6 +87,10 @@
           v-if="item.type == 'titlepanel'"
           :options="item.options"
         />
+        <SankeyPanel
+          v-if="item.type == 'sankeypanel'"
+          :options="item.options"
+        />
       </grid-item>
     </grid-layout>
   </div>
@@ -95,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, defineComponent, toRefs } from 'vue'
+import { ref } from 'vue'
 // eslint-disable-next-line no-unused-vars
 import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
 // eslint-disable-next-line no-unused-vars
@@ -104,6 +111,8 @@ import TextPanel from '../components/kpidashboard/TextPanel.vue'
 import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
 // eslint-disable-next-line no-unused-vars
 import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
+// eslint-disable-next-line no-unused-vars
+import SankeyPanel from '../components/kpidashboard/SankeyPanel.vue'
 // eslint-disable-next-line no-unused-vars
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 // eslint-disable-next-line no-unused-vars
@@ -306,11 +315,30 @@ const addTitlePanel = () => {
   new_panel_id = new_panel_id + 1;
 }
 
+const addSankeyPanel = () => {
+  let panel_config = {
+    x: 0,
+    y: findFreeRow(),
+    w: 12,
+    h: 8,
+    i: new_panel_id,
+    type: 'sankeypanel',
+    options: {
+      'title': 'New title',
+    }
+  };
+  layout.value.push(panel_config);
+  dashboard_config.layout.value.push(panel_config);
+
+  new_panel_id = new_panel_id + 1;
+}
+
 // eslint-disable-next-line no-unused-vars
 const handleAddPanel = (e) => {
   if (e.key == "Text") addTextPanel();
   if (e.key == "Image") addImagePanel();
   if (e.key == "Title") addTitlePanel();
+  if (e.key == "Sankey") addSankeyPanel();
 }
 
 </script>
