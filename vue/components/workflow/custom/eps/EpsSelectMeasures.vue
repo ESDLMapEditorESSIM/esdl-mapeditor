@@ -25,6 +25,7 @@ import {defineProps, ref, watch} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
 import "@jsonforms/vue-vanilla/vanilla.css";
+import {diff, symDiff} from "../../../../utils/utils";
 
 const props = defineProps({
   workflowStep: {
@@ -88,19 +89,37 @@ const loadEsdl = () => {
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 };
 
+const warmtepompPreqs = [EpsMeasures.DAKISOLATIE, EpsMeasures.GEVELISOLATIE, EpsMeasures.GLASISOLATIE, EpsMeasures.WTW];
+
 watch(selectedMeasures,
-    (value) => {
-      if (value.includes('Warmtepomp')) {
-        const warmtepompPreqs = [EpsMeasures.DAKISOLATIE, EpsMeasures.GEVELISOLATIE, EpsMeasures.GLASISOLATIE, EpsMeasures.WTW];
-        for (const preq of warmtepompPreqs) {
-          if (!value.includes(preq)) {
-            value.push(preq);
-            alert("Cannot remove " + preq + " because Warmtepomp is selected.")
+    (newMeasures, oldMeasures) => {
+      console.log(newMeasures);
+      console.log(oldMeasures);
+      const isChecking = newMeasures.length > oldMeasures.length;
+      console.log(isChecking);
+      const changedValue = symDiff(newMeasures, oldMeasures)[0];
+      console.log(changedValue);
+      if (changedValue === EpsMeasures.WARMTEPOMP) {
+          for (const preq of warmtepompPreqs) {
+            if (isChecking) {
+              if (!newMeasures.includes(preq)) {
+                newMeasures.push(preq);
+              }
+            } else {
+              const idx = newMeasures.indexOf(preq);
+              if (idx > 0) {
+                newMeasures.splice(idx, 1);
+              }
+            }
           }
+      } else if (warmtepompPreqs.includes(changedValue)) {
+        const idx = newMeasures.indexOf(EpsMeasures.WARMTEPOMP);
+        if (idx > 0) {
+          newMeasures.splice(idx, 1);
         }
       }
-      indeterminate.value = !!value.length && value.length < plainOptions.length;
-      checkAll.value = value.length === plainOptions.length;
+      indeterminate.value = !!newMeasures.length && newMeasures.length < plainOptions.length;
+      checkAll.value = newMeasures.length === plainOptions.length;
     }
 )
 </script>
