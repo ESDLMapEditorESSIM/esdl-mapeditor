@@ -4,7 +4,7 @@
     Please note that the "Warmtepomp" measure also implies all isolation measures, as well as "Warmteterugwinning uit
     ventilatie" and PV. Those cannot be deselected if "Warmtepomp" is selected.
   </p>
-  <div :style="{ borderBottom: '1px solid #E9E9E9' }">
+  <div>
     <a-checkbox
       v-model:checked="checkAll"
       :indeterminate="indeterminate"
@@ -13,8 +13,10 @@
       Check all
     </a-checkbox>
   </div>
-  <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" />
-  <br>
+  <hr>
+  <div id="eps-measures-checkbox-group">
+    <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" />
+  </div>
   <a-button type="primary" @click="loadEsdl"> Run ESDL service </a-button>
 </template>
 
@@ -52,9 +54,13 @@ const plainOptions = [EpsMeasures.LED, EpsMeasures.DAKISOLATIE, EpsMeasures.GEVE
 const selectedMeasures = ref([...plainOptions]);
 
 // eslint-disable-next-line no-unused-vars
-const onCheckAllChange = () => {
+const onCheckAllChange = (e) => {
   indeterminate.value = false;
-  selectedMeasures.value = [...plainOptions];
+  if (e.target.checked) {
+    selectedMeasures.value = [...plainOptions];
+  } else {
+    selectedMeasures.value = []
+  }
 };
 
 
@@ -100,7 +106,18 @@ watch(selectedMeasures,
 </script>
 
 <style scoped>
-.ant-checkbox-wrapper {
+hr {
+  margin-top: 7px;
+  margin-bottom: 7px;
+}
+button {
+  margin-top: 7px;
+}
+</style>
+
+<style>
+#eps-measures-checkbox-group .ant-checkbox-group-item {
   display: block;
 }
 </style>
+
