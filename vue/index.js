@@ -33,7 +33,7 @@ import Swal from "sweetalert2";
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
     if (currentWorkflow.value) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
@@ -49,6 +49,7 @@ window.activate_service_workflow = async (serviceIndex, service) => {
         startNewWorkflow(serviceIndex, service);
     }
     mountSidebarComponent(Workflow);
+    window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {

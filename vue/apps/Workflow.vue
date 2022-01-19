@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div v-if="currentWorkflow" id="app">
     <template v-if="currentWorkflow.hasPreviousStep()">
       <a-button
         type="link"

@@ -100,6 +100,10 @@ export function useWorkflow() {
         currentWorkflow.value.doNext(stepIdx);
     }
 
+    const closeWorkflow = () => {
+        currentWorkflow.value = null;
+    }
+
     return {
         currentWorkflow,
         goToStep,
@@ -109,6 +113,7 @@ export function useWorkflow() {
         getFromState,
         getParamsFromState,
         startNewWorkflow,
+        closeWorkflow,
         startOver,
     }
 }
