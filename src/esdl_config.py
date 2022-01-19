@@ -479,6 +479,12 @@ esdl_config = {
                                 "next_step": 10,
                             },
                             {
+                                "name": "Select EPS measures",
+                                "type": "primary",
+                                "enable_if_state": "execution.finished_on",
+                                "next_step": 17,
+                            },
+                            {
                                 "name": "Inspect EPS results",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
@@ -488,12 +494,6 @@ esdl_config = {
                                 "name": "Download project file",
                                 "type": "default",
                                 "next_step": 9,
-                            },
-                            {
-                                "name": "Select EPS measures",
-                                "type": "default",
-                                "enable_if_state": "execution.finished_on",
-                                "next_step": 17,
                             },
                             # {
                             #     "name": "View progress",
