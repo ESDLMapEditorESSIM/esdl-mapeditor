@@ -353,6 +353,8 @@ const handleAddPanel = (e) => {
   background: #fff;
   border: 1px solid #ccc;
   padding: 5px;
+  display: flex;
+  flex-direction: column;
 }
 
 .vue-grid-item .resizing {

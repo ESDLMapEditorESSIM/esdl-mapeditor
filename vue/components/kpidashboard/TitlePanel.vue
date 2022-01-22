@@ -1,12 +1,8 @@
 <template>
-  <div class="title">
-    <span>
-      {{ options.title }}
-    </span>
-  </div>
-  <div style="position: absolute; top: 3px; right: 20px;">
-    <span class="settings" @click="showTitleSettings"><i class="fas fa-edit" /></span>
-  </div>
+  <span class="title">
+    {{ options.title }}
+  </span>
+  <span class="settings" @click="showTitleSettings"><i class="fas fa-edit" /></span>
 
   <a-modal v-model:visible="title_settings_visible" title="Edit title" width="750px" @ok="handleOk">
     <a-row>
@@ -36,10 +32,12 @@ const props = defineProps({
 
 const emit = defineEmit(['updateTitleSettings']);
 
+// eslint-disable-next-line no-unused-vars
 const showTitleSettings = () => {
   title_settings_visible.value = true;
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   title_settings_visible.value = false;
   emit('updateTitleSettings', props.options);
@@ -51,7 +49,11 @@ const handleOk = () => {
 
 .settings {
   cursor: default;
+  position: absolute;
+  top: 3px;
+  right: 20px;
 }
+
 .settings i {
   color: lightgrey;
 }
@@ -59,12 +61,10 @@ const handleOk = () => {
 .title {
   display: flex;
   justify-content: center;
-  position: relative;
-}
-
-.title span {
   font-size: 40px;
   font-weight: bold;
+  overflow: hidden;
+  object-fit: contain;
 }
 
 </style>

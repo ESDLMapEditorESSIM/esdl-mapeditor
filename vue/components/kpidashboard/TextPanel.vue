@@ -1,11 +1,11 @@
 <template>
-  <h3 class="panel_title">
-    {{ options.title }}
-  </h3>
-  <div style="position: absolute; top: 3px; right: 20px;">
+  <div>
+    <h3 class="panel_title">
+      {{ options.title }}
+    </h3>
     <span class="settings" @click="showTextSettings"><i class="fas fa-edit" /></span>
   </div>
-  <div style="position: relative; height: 90%; width: 90%;">
+  <div class="text-panel-text">
     {{ options.text }}
   </div>
 
@@ -45,10 +45,12 @@ const props = defineProps({
 
 const emit = defineEmit(['updateTextSettings']);
 
+// eslint-disable-next-line no-unused-vars
 const showTextSettings = () => {
   text_settings_visible.value = true;
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   text_settings_visible.value = false;
   emit('updateTextSettings', props.options);
@@ -65,10 +67,17 @@ const handleOk = () => {
 
 .settings {
   cursor: default;
+  position: absolute;
+  top: 3px;
+  right: 20px;
 }
 
 .settings i {
   color: lightgrey;
+}
+
+.text-panel-text {
+  overflow: auto
 }
 
 </style>

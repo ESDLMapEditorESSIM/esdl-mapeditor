@@ -3,17 +3,13 @@
     <h3 class="panel_title">
       {{ options.title }}
     </h3>
-  </div>
-  <div style="position: absolute; top: 3px; right: 20px;">
     <span class="settings" @click="showImageSettings"><i class="fa fa-edit" /></span>
   </div>
-  <div class="panel_image_div">
-    <img
-      v-if="options.base64_image_data"
-      :src="options.base64_image_data"
-      class="panel_image"
-    >
-  </div>
+  <img
+    v-if="options.base64_image_data"
+    :src="options.base64_image_data"
+    class="panel_image"
+  >
 
   <a-modal v-model:visible="image_settings_visible" title="Edit image" width="750px" @ok="handleOk">
     <a-row>
@@ -36,6 +32,7 @@
 
 <script setup>
 import { ref, defineProps, defineEmit } from 'vue'
+// eslint-disable-next-line no-unused-vars
 import DropZone from './Dropzone.vue'
 
 const image_settings_visible = ref(false);
@@ -51,6 +48,7 @@ const props = defineProps({
 
 const emit = defineEmit(['updateImageSettings']);
 
+// eslint-disable-next-line no-unused-vars
 const showImageSettings = () => {
   image_settings_visible.value = true;
 }
@@ -63,6 +61,7 @@ const fileToBase64String = (file) => {
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   image_settings_visible.value = false;
   emit('updateImageSettings', props.options);
@@ -70,6 +69,7 @@ const handleOk = () => {
 
 const dropzoneFile = ref("");
 
+// eslint-disable-next-line no-unused-vars
 const drop = (e) => {
   dropzoneFile.value = e.dataTransfer.files[0];
   if (dropzoneFile.value.size > 100000) {
@@ -79,6 +79,7 @@ const drop = (e) => {
   }
 };
 
+// eslint-disable-next-line no-unused-vars
 const selectedFile = () => {
   dropzoneFile.value = document.querySelector(".dropzoneFile").files[0];
   if (dropzoneFile.value.size > 100000) {
@@ -99,32 +100,19 @@ const selectedFile = () => {
 
 .settings {
   cursor: default;
+  position: absolute;
+  top: 3px;
+  right: 20px;
 }
+
 .settings i {
   color: lightgrey;
 }
 
-.panel_image_div {
-  position: relative;
-  height: 90%;
-  width: 90%;
-  margin: 4px;
-  bottom: 4px;
-  box-sizing: border-box;
-}
-
 .panel_image {
   border_radius: 8px;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  border: 0;
-  position: absolute;
-  top: 0; right: 0; bottom: 0; left: 0;
-  margin: auto;
-  padding: 4px;
-  box-sizing: border-box;
+  overflow: hidden;
+  object-fit: contain;
 }
 
 </style>

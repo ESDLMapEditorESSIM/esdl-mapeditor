@@ -8,25 +8,24 @@
     <span v-if="chart_options.type != 'bar'" class="chart-icon" @click="changeChartType('bar')"><i class="fas fa-chart-bar" /></span>
   </div>
 
-  <div style="position: relative; height: 90%; width: 90%; overflow: hidden;">
-    <vue3-chart-js
-      v-if="chart_options.type != 'table'"
-      :id="chart_options.id"
-      ref="chartRef"
-      :key="chart_options.type"
-      :type="chart_options.type"
-      :data="chart_options.data"
-      :options="chart_options.options"
-    />
-    <a-table
-      v-else
-      :columns="table_columns"
-      :data-source="table_data"
-      size="middle"
-      style="width: 100%"
-    >
-    </a-table>
-  </div>
+  <vue3-chart-js
+    v-if="chart_options.type != 'table'"
+    :id="chart_options.id"
+    ref="chartRef"
+    :key="chart_options.type"
+    class="chart-or-table"
+    :type="chart_options.type"
+    :data="chart_options.data"
+    :options="chart_options.options"
+  />
+  <a-table
+    v-else
+    class="chart-or-table"
+    :columns="table_columns"
+    :data-source="table_data"
+    size="middle"
+    style="width: 100%"
+  />
 </template>
 
 <script>
@@ -56,7 +55,7 @@ export default {
     }
   },
   mounted() {
-    this.createTableData(this.chart_options);
+    this.createTableData();
   },
   methods: {
     changeProps(prop) {
@@ -66,7 +65,7 @@ export default {
       }
       return co;
     },
-    createTableData(options) {
+    createTableData() {
       this.table_columns = [];
       this.table_data = [];
 
@@ -86,10 +85,9 @@ export default {
           value: data.datasets[0].data[i]
         });
       }
-
     },
     changeChartType(type) {
-      this.createTableData(this.chart_options);
+      this.createTableData();
       if (type == 'pie' || type == 'doughnut') {
         // for a pie or doughnut chart remove the axis and scales
         delete(this.chart_options.options.scales);
@@ -117,6 +115,11 @@ export default {
   cursor: default;
   color: lightgrey;
   margin: 0px 3px 0px 3px;
+}
+
+.chart-or-table {
+  overflow: hidden;
+  object-fit: contain;
 }
 
 </style>

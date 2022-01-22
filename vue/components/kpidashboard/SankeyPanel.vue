@@ -1,15 +1,11 @@
 <template>
-  <h3 class="panel_title">
-    {{ options.title }}
-  </h3>
-  <div style="position: absolute; top: 3px; right: 20px;">
+  <div>
+    <h3 class="panel_title">
+      {{ options.title }}
+    </h3>
     <span class="settings" @click="showTextSettings"><i class="fas fa-edit" /></span>
   </div>
-  <div style="position: relative; height: 90%; width: 90%;">
-    <div class="chart">
-      <canvas id="chart" />
-    </div>
-  </div>
+  <canvas id="chart" class="sankey-chart-div" />
 
   <a-modal v-model:visible="sankey_settings_visible" title="Edit text" width="750px" @ok="handleOk">
     <a-row>
@@ -108,10 +104,18 @@ onMounted(() => {
 
 .settings {
   cursor: default;
+  position: absolute;
+  top: 3px;
+  right: 20px;
 }
 
 .settings i {
   color: lightgrey;
+}
+
+.sankey-chart-div {
+  overflow: hidden;
+  object-fit: contain;
 }
 
 </style>
