@@ -14,6 +14,7 @@ import AboutBox from './apps/AboutBox';
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import KPIDashboard from './apps/KPIDashboard';
+import AssetTableEditor from './apps/AssetTableEditor';
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -33,7 +34,7 @@ import Swal from "sweetalert2";
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
     if (currentWorkflow.value) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
@@ -49,6 +50,7 @@ window.activate_service_workflow = async (serviceIndex, service) => {
         startNewWorkflow(serviceIndex, service);
     }
     mountSidebarComponent(Workflow);
+    window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -110,6 +112,10 @@ mountApp(AboutBox, '#vue_show_about_box')
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
     });
+
+window.activate_table_editor_window = () => {
+    mountApp(AssetTableEditor, '#table_editor_window');
+}
 
 window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');

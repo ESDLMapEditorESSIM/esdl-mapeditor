@@ -10,7 +10,7 @@
           <td v-for="asset in capabilityList" :key="asset" class="icon">
             <div :title="asset" :class="'circle '+capability" @click="buttonClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -20,7 +20,7 @@
           <td v-for="asset in EDRAssets" :key="asset.edr_asset_id" class="icon">
             <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -30,7 +30,7 @@
           <td v-for="asset in recentEDRAssets" :key="asset.edr_asset_id" class="icon">
             <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -104,6 +104,11 @@ export default {
 
       window.remove_tooltip();
 
+      // Disable the leaflet draw toolbars, such that the shown icon can be updated
+      window.draw_control._toolbars.draw._modes.polyline.handler.disable();
+      window.draw_control._toolbars.draw._modes.polygon.handler.disable();
+      window.draw_control._toolbars.draw._modes.marker.handler.disable();
+
       window.draw_control.setDrawingOptions({
           marker: {
               icon: new marker_class_name()
@@ -160,6 +165,10 @@ to
    height: 40px;
    text-align: center;
    padding: 20px 0px 0px 20px;
+}
+
+.asset-icon {
+   cursor: pointer;
 }
 
 </style>

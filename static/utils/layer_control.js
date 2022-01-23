@@ -260,7 +260,7 @@ function add_layer_control() {
         $('.vakata-context').css('z-index', 20000);
 
 //        div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
-        div.onmousedown = div.ondblclick = L.DomEvent.stopPropagation;
+        div.onmousedown = div.ondblclick = div.oncontextmenu = L.DomEvent.stopPropagation;
         return div;
     };
 

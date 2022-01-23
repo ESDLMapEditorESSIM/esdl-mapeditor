@@ -58,6 +58,7 @@ export function mountApp(component, elementSelector) {
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
+    app.use(Col);
     app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
@@ -68,13 +69,12 @@ export function mountApp(component, elementSelector) {
     app.use(Form);
     app.use(Menu);
     app.use(Modal);
+    app.use(Row);
     app.use(Select);
     app.use(Space);
+    app.use(Switch);
     app.use(Table);
     app.use(Transfer);
-    app.use(Col);
-    app.use(Row);
-    app.use(Switch);
     app.use(Tree);
     app.use(Upload);
 

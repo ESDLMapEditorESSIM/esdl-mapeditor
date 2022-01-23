@@ -40,7 +40,7 @@ class MapEditorDialog extends L.Control.Dialog {
     }
 
     let innerContainer = this._innerContainer;
-    
+
     var className = "leaflet-control-dialog";
 
     if (this.options.allowable_states.includes('minimized')) {

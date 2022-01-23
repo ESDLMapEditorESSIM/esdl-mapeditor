@@ -17,7 +17,7 @@ from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
-from extensions.panel_service import create_panel
+from extensions.panel_service import create_panel, get_panel_service_datasource
 from influxdb import InfluxDBClient
 import copy
 import src.log as log
@@ -30,7 +30,8 @@ import src.settings as settings
 logger = log.get_logger(__name__)
 
 
-PROFILES_SETTING = 'PROFILES'
+PROFILES_LIST = 'PROFILES'                  # To store profiles
+PROFILES_SETTINGS = 'PROFILES_SETTINGS'     # To store information about profiles servers, ...
 profiles = None
 
 
@@ -48,9 +49,12 @@ class Profiles:
             exit(1)
 
         # add initial profiles when not in the system settings
-        if not self.settings_storage.has_system(PROFILES_SETTING):
-            self.settings_storage.set_system(PROFILES_SETTING, default_profiles)
+        if not self.settings_storage.has_system(PROFILES_LIST):
+            self.settings_storage.set_system(PROFILES_LIST, default_profiles)
             logger.info('Updated default profile list in settings storage')
+
+        # create system profile settings when not yet available
+        self.get_profiles_system_settings()
 
         global profiles
         if profiles:
@@ -123,9 +127,19 @@ class Profiles:
 
         @self.socketio.on('test_profile', namespace='/esdl')
         def click_test_profile(profile_info):
-            embedUrl = create_panel(profile_info["profile_uiname"], "", None, profile_info["database"],
-                                    profile_info["measurement"], profile_info["field"], profile_info["filters"], None,
-                                    "sum", profile_info["start_datetime"], profile_info["end_datetime"])
+            embedUrl = create_panel(
+                graph_title=profile_info["profile_uiname"],
+                axis_title="",
+                host=None,
+                database=profile_info["database"],
+                measurement=profile_info["measurement"],
+                field=profile_info["field"],
+                filters=profile_info["filters"],
+                qau=None,
+                prof_aggr_type="sum",
+                start_datetime=profile_info["start_datetime"],
+                end_datetime=profile_info["end_datetime"]
+            )
             return embedUrl
 
         @self.socketio.on('profile_csv_upload', namespace='/esdl')
@@ -167,6 +181,11 @@ class Profiles:
                     else:
                         #print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
                         emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
+
+        @self.socketio.on('get_profiles_settings', namespace='/esdl')
+        def get_profiles_settings():
+            with self.flask_app.app_context():
+                return self.get_profiles_settings()
 
     def update_profiles_list(self):
         emit('update_profiles_list', self.get_profiles())
@@ -213,34 +232,89 @@ class Profiles:
                     "fields": fields
                 })
 
-            database = settings.profile_database_config['database']
-            client = InfluxDBClient(
-                host=settings.profile_database_config['host'],
-                port=settings.profile_database_config['port'],
-                username=settings.profile_database_config['upload_user'],
-                password=settings.profile_database_config['upload_password'],
-                database=database
-            )
-            if database not in client.get_list_database():
+            with self.flask_app.app_context():
+                profiles_settings = self.get_profiles_settings()
+                profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
+
+                database = profiles_settings['profiles_servers'][profiles_server_index]['database']
+                client = InfluxDBClient(
+                    host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
+                    port=profiles_settings['profiles_servers'][profiles_server_index]['port'],
+                    username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                    password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                    database=database,
+                    ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
+                )
+
+            available_databases = client.get_list_database()
+            # if database not in client.get_list_database():
+            if not(any(db['name'] == database for db in available_databases)):
                 logger.debug('Database does not exist, creating a new one')
                 client.create_database(database)
-
             client.write_points(points=json_body, database=database, batch_size=100)
+
+            if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
+                protocol = "https://"
+            else:
+                protocol = "http://"
+            profiles_server_host = protocol + \
+                                   profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
+                                   ":" + \
+                                   profiles_settings['profiles_servers'][profiles_server_index]['port']
+            datasource = get_panel_service_datasource(
+                database=database,
+                host=profiles_server_host,
+                username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+            )
 
             # Store profile information in settings
             group = self.csv_files[uuid]['group']
             prof_aggr_type = self.csv_files[uuid]['prof_aggr_type']
             for i in range(1, num_fields):
                 field = column_names[i]
-                profile = self.create_new_profile(group, measurement+'_'+field, 1, database, measurement,
-                                               field, "", start_datetime, end_datetime)
-                profile["embedUrl"] = create_panel(group + " - " + field, "", None, database, measurement, field, [], None,
-                                                   prof_aggr_type, start_datetime, end_datetime)
+
+                # Stop if empty column was found
+                if field.strip() == '':
+                    break
+                # Create a dictionary with all relevant information about the new profile
+                profile = self.create_new_profile(
+                    group=group,
+                    uiname=measurement+'_'+field,
+                    multiplier=1,
+                    database=database,
+                    measurement=measurement,
+                    field=field,
+                    profile_type="",
+                    start_datetime=start_datetime,
+                    end_datetime=end_datetime
+                )
+                if profiles_server_index != 0:  # Only non standard profiles server
+                    profile['host'] = profiles_settings['profiles_servers'][profiles_server_index]['host']
+                    profile['port'] = profiles_settings['profiles_servers'][profiles_server_index]['port']
+
+                # Create a grafana panel for visualization and add the embedURL to the dictionary
+                profile["embedUrl"] = create_panel(
+                    graph_title=group + " - " + field,
+                    axis_title="",
+                    datasource=datasource,
+                    host=profiles_server_host,
+                    database=database,
+                    measurement=measurement,
+                    field=field,
+                    filters=[],
+                    qau=None,
+                    prof_aggr_type=prof_aggr_type,
+                    start_datetime=start_datetime,
+                    end_datetime=end_datetime
+                )
+                # Store the new profile in the profiles settings
                 self.add_profile(str(uuid4()), profile)
 
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': True})
         except Exception as e:
+            logger.exception("Error processing CSV")
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                      'success': False, 'error': str(e)})
 
@@ -251,12 +325,12 @@ class Profiles:
         setting_type = SettingType(profile['setting_type'])
         project_name = profile['project_name']
         identifier = self._get_identifier(setting_type, project_name)
-        if identifier is not None and self.settings_storage.has(setting_type, identifier, PROFILES_SETTING):
-            profiles = self.settings_storage.get(setting_type, identifier, PROFILES_SETTING)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
+            profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
         else:
             profiles = dict()
         profiles[profile_id] = profile
-        self.settings_storage.set(setting_type, identifier, PROFILES_SETTING, profiles)
+        self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
         self.update_profiles_list()
 
     def remove_profile(self, profile_id):
@@ -271,12 +345,12 @@ class Profiles:
         identifier = self._get_identifier(setting_type, proj_name)
         if identifier is None:
             return
-        if self.settings_storage.has(setting_type, identifier, PROFILES_SETTING):
+        if self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
             # update profile dict
-            profiles = self.settings_storage.get(setting_type, identifier, PROFILES_SETTING)
+            profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
             print('Deleting profile {}'.format(profiles[profile_id]))
             del(profiles[profile_id])
-            self.settings_storage.set(setting_type, identifier, PROFILES_SETTING, profiles)
+            self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -297,8 +371,8 @@ class Profiles:
     def get_profiles(self):
         # gets the default list and adds the user profiles
         all_profiles = dict()
-        if self.settings_storage.has_system(PROFILES_SETTING):
-            all_profiles.update(self.settings_storage.get_system(PROFILES_SETTING))
+        if self.settings_storage.has_system(PROFILES_LIST):
+            all_profiles.update(self.settings_storage.get_system(PROFILES_LIST))
 
         user = get_session('user-email')
         user_group = get_session('user-group')
@@ -308,16 +382,16 @@ class Profiles:
         # print('Groups: ', user_group)
         # print('Roles: ', role)
         # print('Mapeditor roles: ', mapeditor_role)
-        if user is not None and self.settings_storage.has_user(user, PROFILES_SETTING):
+        if user is not None and self.settings_storage.has_user(user, PROFILES_LIST):
             # add user profiles if available
-            all_profiles.update(self.settings_storage.get_user(user, PROFILES_SETTING))
+            all_profiles.update(self.settings_storage.get_user(user, PROFILES_LIST))
 
         if user_group is not None:
             for group in user_group:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
-                if self.settings_storage.has_project(identifier, PROFILES_SETTING):
+                if self.settings_storage.has_project(identifier, PROFILES_LIST):
                     # add project profiles if available
-                    all_profiles.update(self.settings_storage.get_project(identifier, PROFILES_SETTING))
+                    all_profiles.update(self.settings_storage.get_project(identifier, PROFILES_LIST))
 
         # generate message
         message = copy.deepcopy(default_profile_groups)
@@ -376,6 +450,50 @@ class Profiles:
             "embedUrl": None
         }
         return profile
+    
+    def get_profiles_settings(self):
+        profiles_settings = dict()
+        if self.settings_storage.has_system(PROFILES_SETTINGS):
+            profiles_settings.update(self.settings_storage.get_system(PROFILES_SETTINGS))
+
+        user = get_session('user-email')
+        user_group = get_session('user-group')
+        role = get_session('user-role')
+        mapeditor_role = get_session('user-mapeditor-role')
+
+        if user is not None and self.settings_storage.has_user(user, PROFILES_SETTINGS):
+            # add user profiles settings if available
+            profiles_settings.update(self.settings_storage.get_user(user, PROFILES_SETTINGS))
+
+        if user_group is not None:
+            for group in user_group:
+                identifier = self._get_identifier(SettingType.PROJECT, group)
+                if self.settings_storage.has_project(identifier, PROFILES_SETTINGS):
+                    # add project profiles server settings if available
+                    # Note: this is a a specific implementation for a dict element with a list of servers. When
+                    #       additional settings must be added, this implementation must be extended.
+                    project_profiles_settings = self.settings_storage.get_project(identifier, PROFILES_SETTINGS)
+                    if 'profiles_servers' in project_profiles_settings:
+                        profiles_settings['profiles_servers'].extend(project_profiles_settings['profiles_servers'])
+
+        return profiles_settings
+
+    def get_profiles_system_settings(self):
+        if self.settings_storage.has_system(PROFILES_SETTINGS):
+            profiles_settings = self.settings_storage.get_system(PROFILES_SETTINGS)
+        else:
+            profiles_settings = dict()
+            profiles_settings["profiles_servers"] = [{
+                "name": "Standard profiles server",
+                "host": settings.profile_database_config['host'],
+                "port": settings.profile_database_config['port'],
+                "username": settings.profile_database_config['upload_user'],
+                "password": settings.profile_database_config['upload_password'],
+                "database": settings.profile_database_config['database'],
+                "ssl_enabled": True if settings.profile_database_config['protocol'] == 'https' else False,
+            }]
+            self.settings_storage.set_system(PROFILES_SETTINGS, profiles_settings)
+        return profiles_settings
 
 
 default_profile_groups = {

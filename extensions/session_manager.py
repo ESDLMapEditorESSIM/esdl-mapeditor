@@ -35,7 +35,7 @@ def get_handler():
     if client_id in managed_sessions:
         if ESH_KEY in managed_sessions[client_id]:
             esh = managed_sessions[client_id][ESH_KEY]
-            logger.debug('Retrieve ESH client_id={}, es.name={}'.format(client_id, esh.get_energy_system().name))
+            logger.debug('Retrieve ESH client_id={}'.format(client_id))
         else:
             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
             esh = EnergySystemHandler()
@@ -53,7 +53,7 @@ def get_handler():
 def set_handler(esh):
     global managed_sessions
     client_id = session['client_id']
-    logger.debug('Set ESH client_id={}, es.name={}'.format(client_id, esh.get_energy_system().name))
+    logger.debug('Set ESH client_id={}'.format(client_id))
     set_session(ESH_KEY, esh)
 
 

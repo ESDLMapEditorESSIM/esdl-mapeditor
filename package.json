@@ -13,6 +13,7 @@
     "@jsonforms/core": "^2.5.2",
     "@jsonforms/vue": "^2.5.2",
     "@jsonforms/vue-vanilla": "^2.5.2",
+    "@revolist/vue3-datagrid": "^3.0.97",
     "ant-design-vue": "2.0.0-rc.3",
     "axios": "^0.20.0",
     "chart.js": "^3.6.0",
