@@ -9,7 +9,7 @@
       <a-space style="float: right">
         <load-dashboard
           :dashboards-info="dashboards_info"
-          :dashboard-id="v"
+          :dashboard-id="dashboard_config.id.value"
           @update:dashboardId="handleLoadDashboard"
         />
         <save-dashboard
