@@ -200,9 +200,9 @@ class ESDLServices:
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
             elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('ascii')
+                esdlstr_bytes = esdlstr.encode('utf-8')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
+                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
             else:
                 body = esdlstr
 
@@ -214,9 +214,9 @@ class ESDLServices:
                 if service["body_config"]["encoding"] == "url_encoded":
                     body = urllib.parse.quote(esdlstr)
                 if service["body_config"]["encoding"] == "base64_encoded":
-                    esdlstr_bytes = esdlstr.encode('ascii')
+                    esdlstr_bytes = esdlstr.encode('utf-8')
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                    body = esdlstr_base64_bytes.decode('ascii')
+                    body = esdlstr_base64_bytes.decode('utf-8')
             if service["body_config"]["type"] == "json":
                 body = {}
                 for param in service["body_config"]['parameters']:
@@ -227,9 +227,9 @@ class ESDLServices:
                         if param["encoding"] == "url_encoded":
                             body[param["parameter"]] = urllib.parse.quote(esdlstr)
                         if param["encoding"] == "base64_encoded":
-                            esdlstr_bytes = esdlstr.encode('ascii')
+                            esdlstr_bytes = esdlstr.encode('utf-8')
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                            body[param["parameter"]] = esdlstr_base64_bytes.decode('ascii')
+                            body[param["parameter"]] = esdlstr_base64_bytes.decode('utf-8')
                     if param["type"] == "value":
                         body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
@@ -289,9 +289,9 @@ class ESDLServices:
                         if service["result"][0]["encoding"] == "url_encoded":
                             esdl_response = urllib.parse.quote(r.text)
                         elif service["result"][0]["encoding"] == "base64_encoded":
-                            esdlstr_bytes = r.text.encode('ascii')
+                            esdlstr_bytes = r.text.encode('utf-8')
                             esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
-                            esdl_response = esdlstr_base64_bytes.decode('ascii')
+                            esdl_response = esdlstr_base64_bytes.decode('utf-8')
                         else:
                             esdl_response = r.text
                     else:
