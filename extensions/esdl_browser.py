@@ -292,4 +292,18 @@ class ESDLBrowser:
             return item.name
         #if hasattr(item, 'id') and item.id is not None:
         #    return item.eClass.name + ' (id=' + item.id + ')'
+
+        if isinstance(item, esdl.Material):
+            if item.name is not None:
+                return item.name
+
+        if isinstance(item, esdl.CompoundMatter):
+            component_names = list()
+            for comp in item.component:
+                if comp.matter and comp.matter.name:
+                    component_names.append(comp.matter.name)
+                else:
+                    component_names.append('Unknown')
+            return '-'.join(component_names)
+
         return item.eClass.name
