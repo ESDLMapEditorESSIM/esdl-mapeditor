@@ -84,7 +84,6 @@ export default {
       const path = '/DLA_get_asset_toolbar_info';
       axios.get(path)
         .then((res) => {
-          console.log(res);
           this.assetList = res["data"]["assets_per_cap_dict"];
           this.EDRAssets = res["data"]["edr_assets"];
           this.recentEDRAssets = res["data"]["recent_edr_assets"];
@@ -155,7 +154,7 @@ export default {
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
     border-radius: 5px;
 }
-to
+
 .leaflet-asset-draw-toolbar p {
   margin-bottom: 0;
 }

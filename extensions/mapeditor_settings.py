@@ -41,6 +41,9 @@ DEFAULT_USER_SETTING = {
         'asset_bar': {
             'visible_on_startup': True
         },
+        'services_toolbar': {
+            'visible_on_startup': False
+        },
         'spatial_buffers': {
             'visible_on_startup': True,
             'colors': {

@@ -501,6 +501,17 @@ function esdl_services_info() {
     sidebar.show();
 }
 
+function show_esdl_service_sidebar(id) {
+    for (let i=0; i<esdl_services_information.length; i++) {
+        if (esdl_services_information[i].id == id) {
+            let sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = '<div id="service_settings_div"></div>'
+            show_service_settings(i);
+            sidebar.show();
+        }
+    }
+}
+
 /**
  * Render when an error has occurred in one of the services.
  * 

@@ -72,6 +72,26 @@ class ESDLServices:
 
             return settings
 
+        @self.flask_app.route('/get_toolbar_services')
+        def get_toolbar_services():
+            services_list = list()
+
+            user = get_session('user-email')
+            services = self.get_user_settings(user)
+
+            for service in services:
+                if 'show_on_toolbar' in service:
+                    if service['show_on_toolbar']:
+                        svc = dict()
+                        svc['id'] = service['id']
+                        svc['name'] = service['name']
+                        svc['icon_url'] = '/icons/service.png'
+                        if service['icon']:
+                            if service['icon']['type'] == 'filename':
+                                svc['icon_url'] = '/icons/' + service['icon']['filename']
+                        services_list.append(svc);
+            return {'services_list': services_list}
+
     def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
         """Get the user services from the settings storage. """
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
