@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="!isLoading"
+    v-if="!isLoading && serviceList.length > 0"
     v-show="showServicesToolbar"
     class="my-control leaflet-services-toolbar"
   >
