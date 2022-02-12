@@ -47,7 +47,7 @@ export default {
   },
   methods: {
     getServicesList: function() {
-      console.log('getServicesList');
+      // console.log('getServicesList');
       const path = '/get_toolbar_services';
       axios.get(path)
         .then((res) => {

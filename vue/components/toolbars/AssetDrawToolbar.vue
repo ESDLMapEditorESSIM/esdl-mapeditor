@@ -80,7 +80,7 @@ export default {
   },
   methods: {
     getAssetList: function() {
-      console.log('getAssetList');
+      // console.log('getAssetList');
       const path = '/DLA_get_asset_toolbar_info';
       axios.get(path)
         .then((res) => {
