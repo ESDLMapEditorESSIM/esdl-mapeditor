@@ -144,25 +144,40 @@ getDashboardList();
 const getAllKPIData = () => {
   let all_kpi_data = window.get_all_kpi_info();
   let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
-  // console.log(kpi_data);
+  console.log(kpi_data);
 
   let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
   for (let kpi_name in kpi_data) {
     let kpi_info = kpi_data[kpi_name];
-    let chart_options = window.createChartOptions(kpi_info);
-    chart_options.title = kpi_name;
+    if (kpi_info[0]['type'] == 'Sankey') {
+      layout.value.push({
+        x: (kpi_nr % 3) * 3,
+        y: Math.floor(kpi_nr / 3) * 5,
+        w: 3,
+        h: 5,
+        i: new_panel_id,
+        type: 'sankeypanel',
+        options: {
+          'title': kpi_name,
+          'data': kpi_info[0]['flows'],
+        },
+      });
+    } else {
+        let chart_options = window.createChartOptions(kpi_info);
+        chart_options.title = kpi_name;
 
-    layout.value.push({
-      x: (kpi_nr % 3) * 3,
-      y: Math.floor(kpi_nr / 3) * 5,
-      w: 3,
-      h: 5,
-      i: new_panel_id,
-      type: 'charttable',
-      options: chart_options,
-      kpi_name: kpi_name,
-      kpi_type: kpi_info.type
-    });
+        layout.value.push({
+          x: (kpi_nr % 3) * 3,
+          y: Math.floor(kpi_nr / 3) * 5,
+          w: 3,
+          h: 5,
+          i: new_panel_id,
+          type: 'charttable',
+          options: chart_options,
+          kpi_name: kpi_name,
+          kpi_type: kpi_info.type
+        });
+    }
 
     kpi_nr = kpi_nr + 1;
     new_panel_id = new_panel_id + 1;

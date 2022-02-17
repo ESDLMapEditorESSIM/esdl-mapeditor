@@ -5,7 +5,7 @@
     </h3>
     <span class="settings" @click="showTextSettings"><i class="fas fa-edit" /></span>
   </div>
-  <canvas id="chart" class="sankey-chart-div" />
+  <canvas :id="chart_id" class="sankey-chart-div" />
 
   <a-modal v-model:visible="sankey_settings_visible" title="Edit text" width="750px" @ok="handleOk">
     <a-row>
@@ -21,8 +21,8 @@
 
 <script setup>
 import { ref, defineProps, defineEmit, onMounted } from 'vue'
-import {Chart} from 'chart.js';
-import {SankeyController, Flow} from 'chartjs-chart-sankey';
+import { Chart } from 'chart.js';
+import { SankeyController, Flow } from 'chartjs-chart-sankey';
 
 Chart.register(SankeyController, Flow);
 
@@ -36,6 +36,9 @@ const props = defineProps({
     }
   },
 });
+
+// Randomly create an id, so that multiple panels can be used.
+const chart_id = ref('chart' + window.uuidv4().substring(0,4));
 
 const emit = defineEmit(['updateSankeySettings']);
 
@@ -51,20 +54,12 @@ const handleOk = () => {
 }
 
 const createSankey = () => {
-  var ctx = document.getElementById("chart").getContext("2d");
+  let ctx = document.getElementById(chart_id.value).getContext("2d");
 
-  var colors = {
-    Import: "gray",
-    PVInstallation: "green",
-    HeatingDemand: "red",
-    GenericProducer: "black",
-    Battery: "blue",
-    ElectricityNetwork: "orange",
-    GasHeater: "purple"
-  };
+  let colors = ["green", "red", "blue", "orange", "purple", "yellow", "gray", "black", "brown"];
 
-  function getColor(name) {
-    return colors[name] || "green";
+  function getColor(nr) {
+    return colors[nr % colors.length];
   }
 
   new Chart(ctx, {
@@ -72,17 +67,10 @@ const createSankey = () => {
     data: {
       datasets: [
         {
-          data: [
-            { from: "GenericProducer", to: "GasHeater", flow: 7.5 },
-            { from: "GasHeater", to: "HeatingDemand", flow: 6.7 },
-            { from: "HeatPump", to: "HeatingDemand", flow: 43.3 },
-            { from: "PVInstallation", to: "ElectricityNetwork", flow: 50 },
-            { from: "Import", to: "ElectricityNetwork", flow: 1 },
-            { from: "ElectricityNetwork", to: "Battery", flow: 40.2 },
-            { from: "ElectricityNetwork", to: "HeatPump", flow: 10.8 },
-          ],
-          colorFrom: c => getColor(c.dataset.data[c.dataIndex].from),
-          colorTo: c => getColor(c.dataset.data[c.dataIndex].to)
+          data: props.options.data,
+          colorFrom: c => getColor(c.dataIndex),
+          colorTo: c => getColor(c.dataIndex),
+          colorMode: 'gradient',
         }
       ]
     }
