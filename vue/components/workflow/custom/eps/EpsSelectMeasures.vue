@@ -25,7 +25,7 @@ import {defineProps, ref, watch} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
 import "@jsonforms/vue-vanilla/vanilla.css";
-import {diff, symDiff} from "../../../../utils/utils";
+import {symDiff} from "../../../../utils/utils";
 
 const props = defineProps({
   workflowStep: {
@@ -93,22 +93,13 @@ const warmtepompPreqs = [EpsMeasures.DAKISOLATIE, EpsMeasures.GEVELISOLATIE, Eps
 
 watch(selectedMeasures,
     (newMeasures, oldMeasures) => {
-      console.log(newMeasures);
-      console.log(oldMeasures);
       const isChecking = newMeasures.length > oldMeasures.length;
-      console.log(isChecking);
       const changedValue = symDiff(newMeasures, oldMeasures)[0];
-      console.log(changedValue);
       if (changedValue === EpsMeasures.WARMTEPOMP) {
           for (const preq of warmtepompPreqs) {
             if (isChecking) {
               if (!newMeasures.includes(preq)) {
                 newMeasures.push(preq);
-              }
-            } else {
-              const idx = newMeasures.indexOf(preq);
-              if (idx > 0) {
-                newMeasures.splice(idx, 1);
               }
             }
           }

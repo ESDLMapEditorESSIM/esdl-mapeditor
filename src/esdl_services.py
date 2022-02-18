@@ -36,6 +36,8 @@ logger = log.get_logger(__name__)
 ESDL_SERVICES_CONFIG = "ESDL_SERVICES_CONFIG"
 """The key the ESDL Services are stored with in the settings."""
 
+ESDL_SERVICE_TIMEOUT = 120
+
 
 class ESDLServices:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -150,7 +152,7 @@ class ESDLServices:
             if config_service["type"] in ("workflow", "vueworkflow"):
                 for step in config_service["workflow"]:
                     if (
-                        step["type"] in ("service", "custom")
+                        step["type"] in ("service", "ustom")
                     ):
                         if "service" in step and step["service"]["id"] == service_params["service_id"]:
                             service = step["service"]
@@ -270,13 +272,13 @@ class ESDLServices:
 
         try:
             if service["http_method"] == "get":
-                r = requests.get(url, headers=headers)
+                r = requests.get(url, headers=headers, timeout=ESDL_SERVICE_TIMEOUT)
             elif service["http_method"] == "post":
                 if service["type"].endswith("json") or ("body_config" in service and service["body_config"]["type"] == "json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
-                r = requests.post(url, headers=headers, **kwargs)
+                r = requests.post(url, headers=headers, timeout=ESDL_SERVICE_TIMEOUT, **kwargs)
             else:
                 # Should not happen, there should always be a method.
                 return False, None

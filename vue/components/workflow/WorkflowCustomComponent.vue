@@ -12,6 +12,7 @@ import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspe
 import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService';
 import {default as EpsCreateProject} from './custom/eps/EpsCreateProject';
 import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures';
+import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures';
 import {defineProps} from 'vue'
 
 const components = {
@@ -19,6 +20,7 @@ const components = {
   "eps-service": WorkflowEpsService,
   "eps-create-project": EpsCreateProject,
   "eps-select-measures": EpsSelectMeasures,
+  "eps-custom-measures": EpsCustomMeasures,
 };
 const props = defineProps({
   workflowStep: {

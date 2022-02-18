@@ -485,6 +485,12 @@ esdl_config = {
                                 "next_step": 17,
                             },
                             {
+                                "name": "Custom energy saving measures",
+                                "type": "default",
+                                "enable_if_state": "execution.finished_on",
+                                "next_step": 18,
+                            },
+                            {
                                 "name": "Inspect EPS results",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
@@ -715,6 +721,14 @@ esdl_config = {
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
                         }
+                    },
+                    {
+                        # 18
+                        "name": "Custom energy saving measures",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-custom-measures",
+                        "state_params": {"execution_id": "execution.id"},
                     },
                 ],
             }
