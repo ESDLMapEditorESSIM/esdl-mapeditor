@@ -16,40 +16,78 @@
 
 <template>
   <p>Please configure custom energy saving measures to apply to the ESDL.</p>
-  <hr>
   <p v-if="isLoading">Loading...</p>
-  <div v-for="building in buildings" v-else :key="building.id" :data-esdl-id="building.id">
-    <h4>{{ building.name }}</h4>
-    <a-table :data-source="formState[building.id].table" :columns="columns" :pagination="false" />
-    <a-form layout="vertical" :model="formState" :label-col="{ span: 0 }">
-      <a-form-item label="Aardgasgebruik gebouw schalingsfactor" :min="0" :step="scalingFactorStepSize">
-        <a-input-number v-model:value="formState[building.id].pand_energiegebruik_aardgas_gebouw_schalingsfactor" />
-      </a-form-item>
-      <a-form-item label="Aardgasgebruik proces schalingsfactor" :min="0" :step="scalingFactorStepSize">
-        <a-input-number v-model:value="formState[building.id].pand_energiegebruik_aardgas_proces_schalingsfactor" />
-      </a-form-item>
-      <a-form-item label="Elektriciteitsgebruik gebouw schalingsfactor" :min="0" :step="scalingFactorStepSize">
-        <a-input-number v-model:value="formState[building.id].pand_energiegebruik_elektriciteit_gebouw_schalingsfactor" />
-      </a-form-item>
-      <a-form-item label="Elektriciteitsgebruik proces schalingsfactor" :min="0" :step="scalingFactorStepSize">
-        <a-input-number v-model:value="formState[building.id].pand_energiegebruik_elektriciteit_proces_schalingsfactor" />
-      </a-form-item>
-      <a-form-item label="Elektriciteit warmtepomp (kWh)" :min="0" :step="scalingFactorStepSize">
-        <a-input-number v-model:value="formState[building.id].pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh" />
-      </a-form-item>
-      <a-form-item label="Elektriciteit proceselektrificatie warmte (kWh)" :min="0" :step="scalingFactorStepSize">
-        <a-input-number
-          v-model:value="formState[building.id].pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh"
-        />
-      </a-form-item>
-    </a-form>
+  <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>
+  <div v-else>
+    <a-select
+      v-model:value="selectedBuildingId"
+      show-search
+      placeholder="Select a building"
+      style="width: 300px"
+      @change="selectBuilding"
+    >
+      <a-select-option
+        v-for="building in buildings"
+        :key="building.id"
+      >
+        {{ building.name }}
+      </a-select-option>
+    </a-select>
+    <hr>
+    <div v-if="selectedBuilding">
+      <h4>{{ selectedBuilding.name }}</h4>
+      <a-table :data-source="formState[selectedBuilding.id].table" :columns="columns" :pagination="false" />
+      <br>
+      <a-form layout="vertical" :model="formState" :label-col="{ span: 0 }">
+        <a-form-item label="Aardgasgebruik gebouw schalingsfactor">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_aardgas_gebouw_schalingsfactor"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+        <a-form-item label="Aardgasgebruik proces schalingsfactor">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_aardgas_proces_schalingsfactor"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+        <a-form-item label="Elektriciteitsgebruik gebouw schalingsfactor">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_elektriciteit_gebouw_schalingsfactor"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+        <a-form-item label="Elektriciteitsgebruik proces schalingsfactor">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_elektriciteit_proces_schalingsfactor"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+        <a-form-item label="Elektriciteit warmtepomp (kWh)">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+        <a-form-item label="Elektriciteit proceselektrificatie warmte (kWh)">
+          <a-input-number
+            v-model:value="formState[selectedBuilding.id].pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh"
+            :step="scalingFactorStepSize" style="width: 300px;"
+          />
+        </a-form-item>
+      </a-form>
+    </div>
+    <a-button type="primary" @click="onSubmit"> Apply measures</a-button>
   </div>
-  <a-button type="primary" @click="onSubmit"> Apply measures</a-button>
 </template>
 
 <script setup="props">
 import {defineProps, ref} from "vue";
 import {doGet, doPost} from "../../../../utils/api";
+import {useWorkflow} from "../../../../composables/workflow";
+import Swal from "sweetalert2";
+
+const { goToPreviousStep } = useWorkflow();
 
 const props = defineProps({
   workflowStep: {
@@ -59,23 +97,26 @@ const props = defineProps({
   },
 });
 
-const scalingFactorStepSize = '0.001';
+const scalingFactorStepSize = 0.001;
+
+const selectedBuildingId = ref(null);
+const selectedBuilding = ref(null);
 
 const formState = ref({});
 
 const isLoading = ref(true);
 const buildings = ref([]);
 
-// const EpsKPIs = Object.freeze({
-//   pand_energiegebruik_aardgas_gebouw_huidig_m3: "pand_energiegebruik_aardgas_gebouw_huidig_m3",
-//   pand_energiegebruik_aardgas_proces_huidig_m3: "pand_energiegebruik_aardgas_proces_huidig_m3",
-//   pand_energiegebruik_elektriciteit_gebouw_huidig_kWh: "pand_energiegebruik_elektriciteit_gebouw_huidig_kWh",
-//   pand_energiegebruik_elektriciteit_proces_huidig_kWh: "pand_energiegebruik_elektriciteit_proces_huidig_kWh",
-//   pand_energiegebruik_aardgas_gebouw_scenario_m3: "pand_energiegebruik_aardgas_gebouw_scenario_m3",
-//   pand_energiegebruik_aardgas_proces_scenario_m3: "pand_energiegebruik_aardgas_proces_scenario_m3",
-//   pand_energiegebruik_elektriciteit_gebouw_scenario_kWh: "pand_energiegebruik_elektriciteit_gebouw_scenario_kWh",
-//   pand_energiegebruik_elektriciteit_proces_scenario_kWh: "pand_energiegebruik_elektriciteit_proces_scenario_kWh",
-// });
+
+function selectBuilding() {
+  for (const building of buildings.value) {
+    if (building.id === selectedBuildingId.value) {
+      selectedBuilding.value = building;
+      return;
+    }
+  }
+  selectedBuilding.value = null;
+}
 
 const columns = [
   {
@@ -122,11 +163,6 @@ const doGetData = async () => {
             value: pand_energiegebruik_aardgas_proces_huidig_m3.toLocaleString(),
           },
           {
-            key: "pand_energiegebruik_aardgas_proces_scenario_m3",
-            name: "Scenario aardgasgebruik proces",
-            value: kpis.pand_energiegebruik_aardgas_proces_scenario_m3.toLocaleString(),
-          },
-          {
             key: "pand_energiegebruik_elektriciteit_gebouw_huidig_kWh",
             name: "Huidig elektriciteitsgebruik gebouw",
             value: pand_energiegebruik_elektriciteit_gebouw_huidig_kWh.toLocaleString(),
@@ -155,7 +191,13 @@ doGetData();
 const onSubmit = async () => {
   await doPost("measures/apply", formState.value);
   window.refresh_esdl();
-  doGetData();
+  Swal.fire({
+    title: "Custom measures applied!",
+    text: "Selected custom measures have been applied to the currently active ESDL.",
+    icon: "success",
+    confirmButtonText: "OK",
+  });
+  goToPreviousStep();
 }
 </script>
 

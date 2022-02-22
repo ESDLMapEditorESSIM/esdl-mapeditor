@@ -367,6 +367,11 @@ esdl_config = {
                                 "type": "primary",
                             },
                             {
+                                "name": "Custom energy saving measures",
+                                "type": "default",
+                                "next_step": 18,
+                            },
+                            {
                                 "name": "Aggregate ESDL buildings for ESSIM",
                                 "next_step": 12,
                                 "type": "default",
@@ -483,12 +488,6 @@ esdl_config = {
                                 "type": "primary",
                                 "enable_if_state": "execution.finished_on",
                                 "next_step": 17,
-                            },
-                            {
-                                "name": "Custom energy saving measures",
-                                "type": "default",
-                                "enable_if_state": "execution.finished_on",
-                                "next_step": 18,
                             },
                             {
                                 "name": "Inspect EPS results",

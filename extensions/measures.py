@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 import enum
-from typing import TypedDict, Union
+from typing import Optional, TypedDict, Union
 
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO
@@ -23,6 +23,10 @@ from extensions.settings_storage import SettingsStorage
 from src.log import get_logger
 
 logger = get_logger(__name__)
+
+
+KWH_TO_MJ_FACTOR = 3.6
+ENERGY_GAS_MJ_PER_M3 = 31.7
 
 
 class Measures:
@@ -61,87 +65,131 @@ class Measures:
         @self.flask_app.route("/measures/apply", methods=["POST"])
         def apply_measures():
             measures_to_apply: dict[str, BuildingMeasuresDict] = request.json
-            logger.info(measures_to_apply)
 
             buildings = _get_buildings_in_active_es()
-            building_dicts: list[BuildingDict] = []
             for building in buildings:
                 building_measures = measures_to_apply.get(building.id, None)
                 if building_measures is None:
                     continue
 
+                new_elektriciteit_warmtepomp_kwh = building_measures[
+                    "pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh"
+                ]
+                kpi_dict = _building_kpis_to_dict(building)
+                energiegebruik_warmtepomp_scenario_kpi = kpi_dict.get(
+                    "pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh"
+                )
+                # Calculate the difference between initial and new value, to modify the KPI.
+                warmtepomp_kwh_diff = new_elektriciteit_warmtepomp_kwh - energiegebruik_warmtepomp_scenario_kpi.value
+                energiegebruik_warmtepomp_scenario_kpi.value = new_elektriciteit_warmtepomp_kwh
+
+                elektrificatie_proceswarmte_kwh = building_measures[
+                    "pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh"
+                ]
+                elektrificatie_proceswarmte_mj = elektrificatie_proceswarmte_kwh * KWH_TO_MJ_FACTOR
+                elektrificatie_proceswarmte_m3_reduction = elektrificatie_proceswarmte_mj / ENERGY_GAS_MJ_PER_M3
+
                 _scale_building(
                     building,
+                    kpi_dict,
                     EpsKPIs.pand_energiegebruik_aardgas_gebouw_huidig_m3,
                     EpsKPIs.pand_energiegebruik_aardgas_gebouw_scenario_m3,
+                    EpsEnergyAssetNames.gebouwgebonden_gasgebruik,
                     building_measures[
                         "pand_energiegebruik_aardgas_gebouw_schalingsfactor"
                     ],
                 )
                 _scale_building(
                     building,
+                    kpi_dict,
                     EpsKPIs.pand_energiegebruik_aardgas_proces_huidig_m3,
                     EpsKPIs.pand_energiegebruik_aardgas_proces_scenario_m3,
+                    EpsEnergyAssetNames.procesgebonden_gasgebruik,
                     building_measures[
                         "pand_energiegebruik_aardgas_proces_schalingsfactor"
                     ],
+                    -elektrificatie_proceswarmte_m3_reduction
                 )
                 _scale_building(
                     building,
+                    kpi_dict,
                     EpsKPIs.pand_energiegebruik_elektriciteit_gebouw_huidig_kWh,
                     EpsKPIs.pand_energiegebruik_elektriciteit_gebouw_scenario_kWh,
+                    EpsEnergyAssetNames.gebouwgebonden_elektriciteitsgebruik,
                     building_measures[
                         "pand_energiegebruik_elektriciteit_gebouw_schalingsfactor"
                     ],
+                    warmtepomp_kwh_diff,
                 )
                 _scale_building(
                     building,
+                    kpi_dict,
                     EpsKPIs.pand_energiegebruik_elektriciteit_proces_huidig_kWh,
                     EpsKPIs.pand_energiegebruik_elektriciteit_proces_scenario_kWh,
+                    EpsEnergyAssetNames.procesgebonden_elektriciteitsgebruik,
                     building_measures[
                         "pand_energiegebruik_elektriciteit_proces_schalingsfactor"
                     ],
+                    elektrificatie_proceswarmte_kwh,
                 )
-                # TODO: Elektriciteit warmtepomp plus elektriciteit proceselektrificatie warmte
-                elektriciteit_warmtepomp_kwh = building_measures["pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh"]
-                elektrificatie_warmte_kwh = building_measures["pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh"]
 
-            return jsonify(building_dicts), 200
+            return jsonify({}), 200
 
 
 def _scale_building(
-    building: esdl.AbstractBuilding, huidig_kpi_name, scenario_kpi_name, scaling_factor
+    building: esdl.AbstractBuilding,
+    kpi_dict: dict[str, esdl.KPI],
+    huidig_kpi_name: str,
+    scenario_kpi_name: str,
+    asset_name: str,
+    scaling_factor: float,
+    scenario_fixed_modification: Optional[float] = None,
 ):
     """
     Scale a building's profiles, based on a current and scenario KPI.
     """
-    kpi_dict = _building_kpis_to_dict(building)
     huidig_kpi = kpi_dict.get(huidig_kpi_name)
     scenario_kpi = kpi_dict.get(scenario_kpi_name)
 
-    current_factor = scenario_kpi.value / huidig_kpi.value if huidig_kpi.value > 0 else 0
-
-    energy_assets_dict = _building_energy_assets_to_dict(building)
-    gebouwgebonden_elektriciteitsgebruik_asset = energy_assets_dict.get(
-        EpsEnergyAssetNames.gebouwgebonden_elektriciteitsgebruik.value, None
+    # Calculate the factor with which the current profile multiplier was calculated, to be able to scale it.
+    current_factor = (
+        scenario_kpi.value / huidig_kpi.value if huidig_kpi.value > 0 else 0
     )
-    if gebouwgebonden_elektriciteitsgebruik_asset is None:
-        logger.warning("???")
-        return
-
-    for port in gebouwgebonden_elektriciteitsgebruik_asset.port:
-        for profile in port.profile:
-            base = profile.multiplier / current_factor if current_factor > 0 else profile.multiplier
-            profile.multiplier = base * scaling_factor
 
     if huidig_kpi is None or scenario_kpi is None:
-        logger.warning("???")
+        logger.warning("KPI's missing. Is this a valid EPS ESDL?")
         return
     scenario_kpi.value = huidig_kpi.value * scaling_factor
+    if scenario_fixed_modification:
+        # Apply the fixed modification.
+        scenario_kpi.value += scenario_fixed_modification
+    # Calculate new scaling factor after the fixed addition.
+    final_scaling_factor = (
+        scenario_kpi.value / huidig_kpi.value if huidig_kpi.value > 0 else 0
+    )
+
+    energy_assets_dict = _building_energy_assets_to_dict(building)
+    asset = energy_assets_dict.get(asset_name, None)
+    if asset is None:
+        # Nothing to scale.
+        return
+
+    for port in asset.port:
+        for profile in port.profile:
+            # Scale the multiplier based on the original factor, and the scaling factor (which contains any fixed modification).
+            base = (
+                profile.multiplier / current_factor
+                if current_factor > 0
+                else profile.multiplier
+            )
+            profile.multiplier = base * final_scaling_factor
 
 
 class EpsEnergyAssetNames(str, enum.Enum):
     gebouwgebonden_elektriciteitsgebruik = "Gebouwgebonden elektriciteitsgebruik"
+    procesgebonden_elektriciteitsgebruik = "Procesgebonden elektriciteitsgebruik"
+    gebouwgebonden_gasgebruik = "Gebouwgebonden gasgebruik"
+    procesgebonden_gasgebruik = "Procesgebonden gasgebruik"
 
 
 class EpsKPIs(str, enum.Enum):
@@ -213,7 +261,7 @@ def _building_kpis_to_dict(building: esdl.AbstractBuilding) -> dict[str, esdl.KP
 
 
 def _building_energy_assets_to_dict(
-        building: esdl.AbstractBuilding,
+    building: esdl.AbstractBuilding,
 ) -> dict[str, esdl.EnergyAsset]:
     """
     Find all KPIs of a building, and returns it as a dict, indexed by the name.
