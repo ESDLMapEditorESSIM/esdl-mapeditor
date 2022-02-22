@@ -727,7 +727,26 @@ esdl_config = {
                         "description": "",
                         "type": "custom",
                         "component": "eps-custom-measures",
-                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b15",
+                            "name": "Custom EPS measures",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/custom_measures/",
+                            "http_method": "post",
+                            "type": "send_esdl_json",
+                            "body": "base64_encoded",
+                            "query_parameters": [
+                                {
+                                    "parameter_name": "measures_to_apply",
+                                    "location": "body",
+                                },
+                            ],
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        }
                     },
                 ],
             }

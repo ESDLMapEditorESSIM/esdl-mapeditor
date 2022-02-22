@@ -64,7 +64,6 @@ const onCheckAllChange = (e) => {
   }
 };
 
-
 // eslint-disable-next-line no-unused-vars
 const loadEsdl = () => {
   const params = {};
@@ -83,7 +82,6 @@ const loadEsdl = () => {
   params["query_parameters"]['led'] = selectedMeasures.value.includes(EpsMeasures.LED);
   params["query_parameters"]['heat_pump'] = selectedMeasures.value.includes(EpsMeasures.WARMTEPOMP);
   params["query_parameters"]['pv'] = selectedMeasures.value.includes(EpsMeasures.PV);
-  console.log(params);
 
   window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });

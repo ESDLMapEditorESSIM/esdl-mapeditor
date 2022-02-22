@@ -134,7 +134,7 @@ const columns = [
 const doGetData = async () => {
   isLoading.value = true;
   try {
-    const response = await doGet("measures/get_buildings");
+    const response = await doGet("eps_workflow/get_buildings");
     if (!response) {
       alert("No buildings received.");
       return
@@ -188,15 +188,18 @@ const doGetData = async () => {
 }
 doGetData();
 
+const workflowStep = props.workflowStep;
+
 const onSubmit = async () => {
-  await doPost("measures/apply", formState.value);
-  window.refresh_esdl();
-  Swal.fire({
-    title: "Custom measures applied!",
-    text: "Selected custom measures have been applied to the currently active ESDL.",
-    icon: "success",
-    confirmButtonText: "OK",
-  });
+
+  const params = {};
+  params["service_id"] = workflowStep.service.id;
+  params["query_parameters"] = {};
+
+  params["query_parameters"]['measures_to_apply'] = formState.value;
+
+  window.socket.emit("command", { cmd: "query_esdl_service", params: params });
+
   goToPreviousStep();
 }
 </script>
