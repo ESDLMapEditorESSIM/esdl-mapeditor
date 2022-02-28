@@ -11,8 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import enum
-from typing import TypedDict, Union
+from typing import Union
 
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
@@ -47,13 +46,13 @@ class EpsWorkflow:
         @self.flask_app.route("/eps_workflow/get_buildings")
         def get_buildings():
             buildings = _get_buildings_in_active_es()
-            building_dicts: list[BuildingDict] = []
+            building_dicts: list[dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
                 kpis_value_dict: dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
-                building_dict: BuildingDict = dict(
+                building_dict = dict(
                     id=building.id,
                     name=building.name,
                     kpis=kpis_value_dict,
@@ -63,11 +62,11 @@ class EpsWorkflow:
             return jsonify(building_dicts), 200
 
 
-class BuildingDict(TypedDict):
-    id: str
-    name: str
-    kpis: dict[str, Union[int, float, str]]
-
+# class BuildingDict(TypedDict):
+#     id: str
+#     name: str
+#     kpis: dict[str, Union[int, float, str]]
+#
 
 def _get_buildings_in_active_es() -> list[esdl.AbstractBuilding]:
     """
