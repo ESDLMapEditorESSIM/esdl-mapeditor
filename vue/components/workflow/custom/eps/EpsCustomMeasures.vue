@@ -83,9 +83,8 @@
 
 <script setup="props">
 import {defineProps, ref} from "vue";
-import {doGet, doPost} from "../../../../utils/api";
+import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
-import Swal from "sweetalert2";
 
 const { goToPreviousStep } = useWorkflow();
 
@@ -97,7 +96,7 @@ const props = defineProps({
   },
 });
 
-const scalingFactorStepSize = 0.001;
+const scalingFactorStepSize = 0.0001;
 
 const selectedBuildingId = ref(null);
 const selectedBuilding = ref(null);
@@ -131,6 +130,10 @@ const columns = [
   },
 ];
 
+function roundFactor(value) {
+  return Math.round(value / scalingFactorStepSize) * scalingFactorStepSize;
+}
+
 const doGetData = async () => {
   isLoading.value = true;
   try {
@@ -146,10 +149,10 @@ const doGetData = async () => {
       const pand_energiegebruik_elektriciteit_gebouw_huidig_kWh = kpis.pand_energiegebruik_elektriciteit_gebouw_huidig_kWh;
       const pand_energiegebruik_elektriciteit_proces_huidig_kWh = kpis.pand_energiegebruik_elektriciteit_proces_huidig_kWh;
 
-      const pand_energiegebruik_aardgas_gebouw_schalingsfactor = pand_energiegebruik_aardgas_gebouw_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3 / pand_energiegebruik_aardgas_gebouw_huidig_m3 : 0;
-      const pand_energiegebruik_aardgas_proces_schalingsfactor = pand_energiegebruik_aardgas_proces_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_proces_scenario_m3 / pand_energiegebruik_aardgas_proces_huidig_m3 : 0;
-      const pand_energiegebruik_elektriciteit_gebouw_schalingsfactor = pand_energiegebruik_elektriciteit_gebouw_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_gebouw_scenario_kWh / pand_energiegebruik_elektriciteit_gebouw_huidig_kWh : 0;
-      const pand_energiegebruik_elektriciteit_proces_schalingsfactor = pand_energiegebruik_elektriciteit_proces_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_proces_scenario_kWh / pand_energiegebruik_elektriciteit_proces_huidig_kWh : 0;
+      const pand_energiegebruik_aardgas_gebouw_schalingsfactor = roundFactor(pand_energiegebruik_aardgas_gebouw_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3 / pand_energiegebruik_aardgas_gebouw_huidig_m3 : 0);
+      const pand_energiegebruik_aardgas_proces_schalingsfactor = roundFactor(pand_energiegebruik_aardgas_proces_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_proces_scenario_m3 / pand_energiegebruik_aardgas_proces_huidig_m3 : 0);
+      const pand_energiegebruik_elektriciteit_gebouw_schalingsfactor = roundFactor(pand_energiegebruik_elektriciteit_gebouw_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_gebouw_scenario_kWh / pand_energiegebruik_elektriciteit_gebouw_huidig_kWh : 0);
+      const pand_energiegebruik_elektriciteit_proces_schalingsfactor = roundFactor(pand_energiegebruik_elektriciteit_proces_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_proces_scenario_kWh / pand_energiegebruik_elektriciteit_proces_huidig_kWh : 0);
       formState.value[building.id] = {
         table: [
           {
@@ -177,7 +180,7 @@ const doGetData = async () => {
         pand_energiegebruik_aardgas_proces_schalingsfactor: pand_energiegebruik_aardgas_proces_schalingsfactor,
         pand_energiegebruik_elektriciteit_gebouw_schalingsfactor: pand_energiegebruik_elektriciteit_gebouw_schalingsfactor,
         pand_energiegebruik_elektriciteit_proces_schalingsfactor: pand_energiegebruik_elektriciteit_proces_schalingsfactor,
-        pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh: kpis.pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh,
+        pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh: roundFactor(kpis.pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh),
         pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh: 0,
       };
     }

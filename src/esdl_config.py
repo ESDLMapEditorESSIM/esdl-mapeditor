@@ -362,14 +362,33 @@ esdl_config = {
                             },
                             {"name": "Run EPS", "next_step": 4, "type": "primary"},
                             {
-                                "name": "Inspect EPS results",
-                                "next_step": 6,
+                                "name": "Load EPS result",
                                 "type": "primary",
+                                "next_step": 6,
                             },
                             {
-                                "name": "Custom energy saving measures",
+                                "name": "Select EPS measures",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 17,
+                            },
+                            {
+                                "name": "Explore EPS results",
                                 "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 11,
+                            },
+                            {
+                                "name": "Apply custom energy saving measures",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
                                 "next_step": 18,
+                            },
+                            {
+                                "name": "Configure your own assets",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 19,
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
@@ -455,9 +474,9 @@ esdl_config = {
                     },
                     {
                         # 6
-                        "name": "EPS execution",
+                        "name": "Select EPS execution",
                         "description": "",
-                        "label": "Select EPS execution to inspect:",
+                        "label": "Choose the EPS execution from which to load the results.",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -468,45 +487,14 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "execution",
-                        "next_step": 7,
+                        "next_step": 10,
                     },
                     {
                         # 7
-                        "name": "Execution selected",
-                        "description": "How would you like to proceed?",
-                        "type": "choice",
-                        "options": [
-                            {
-                                "name": "Load EPS result",
-                                "descriptipn": "Load the results as ESDL on the map. Your current layers will be overwritten!",
-                                "type": "primary",
-                                "enable_if_state": "execution.success",
-                                "next_step": 10,
-                            },
-                            {
-                                "name": "Select EPS measures",
-                                "type": "primary",
-                                "enable_if_state": "execution.finished_on",
-                                "next_step": 17,
-                            },
-                            {
-                                "name": "Inspect EPS results",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 11,
-                            },
-                            {
-                                "name": "Download project file",
-                                "type": "default",
-                                "next_step": 9,
-                            },
-                            # {
-                            #     "name": "View progress",
-                            #     "type": "default",
-                            #     "disable_if_state": "execution.finished_on",
-                            #     "next_step": 8,
-                            # },
-                        ],
+                        "name": "Configure your own assets",
+                        "description": "",
+                        "type": "text",
+                        "text": "At this point of the workflow you can safely add any assets and connections, to model your energy system.",
                     },
                     {
                         # 8
@@ -545,11 +533,11 @@ esdl_config = {
                                 "Accept": "application/esdl+xml",
                                 "User-Agent": "ESDL Mapeditor/0.1",
                             },
-                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl",
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl/variant",
                             "auto": True,
                             "clearLayers": True,
-                            "http_method": "get",
-                            "type": "",
+                            "http_method": "post",
+                            "type": "json",
                             "result": [{"code": 200, "action": "esdl"}],
                             "query_parameters": [
                                 {
@@ -563,7 +551,7 @@ esdl_config = {
                     },
                     {
                         # 11
-                        "name": "Inspect EPS results",
+                        "name": "Explore EPS results",
                         "description": "",
                         "type": "custom",
                         "component": "eps-inspect-result",

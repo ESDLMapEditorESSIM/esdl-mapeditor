@@ -16,6 +16,7 @@ export const WorkflowStepTypes = Object.freeze({
     // Call a global JS function.
     CALL_JS_FUNCTION: 'call_js_function',
     PROGRESS: 'progress',
+    TEXT: 'text',
     // Custom component.
     CUSTOM: 'custom',
 });
@@ -100,6 +101,12 @@ export function useWorkflow() {
         currentWorkflow.value.doNext(stepIdx);
     }
 
+    const goToFirstStep = () => {
+        while (currentWorkflow.value.hasPreviousStep()) {
+            goToPreviousStep();
+        }
+    }
+
     const closeWorkflow = () => {
         currentWorkflow.value = null;
     }
@@ -107,6 +114,7 @@ export function useWorkflow() {
     return {
         currentWorkflow,
         goToStep,
+        goToFirstStep,
         goToNextStep,
         goToPreviousStep,
         getState,
