@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from typing import Union
+from typing import Dict, List, Union
 
 from flask import Flask, jsonify
 from flask_socketio import SocketIO
@@ -46,10 +46,10 @@ class EpsWorkflow:
         @self.flask_app.route("/eps_workflow/get_buildings")
         def get_buildings():
             buildings = _get_buildings_in_active_es()
-            building_dicts: list[dict] = []
+            building_dicts: List[Dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
-                kpis_value_dict: dict[str, Union[int, float, str]] = {}
+                kpis_value_dict: Dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
                 building_dict = dict(
@@ -68,7 +68,7 @@ class EpsWorkflow:
 #     kpis: dict[str, Union[int, float, str]]
 #
 
-def _get_buildings_in_active_es() -> list[esdl.AbstractBuilding]:
+def _get_buildings_in_active_es() -> List[esdl.AbstractBuilding]:
     """
     Retrieve all buildings in the active energy system.
     """
@@ -76,18 +76,18 @@ def _get_buildings_in_active_es() -> list[esdl.AbstractBuilding]:
     esh = get_handler()
     es = esh.get_energy_system(es_id=active_es_id)
     area = es.instance[0].area
-    buildings: list[esdl.AbstractBuilding] = []
+    buildings: List[esdl.AbstractBuilding] = []
     for asset in area.asset:
         if isinstance(asset, esdl.AbstractBuilding):
             buildings.append(asset)
     return buildings
 
 
-def _building_kpis_to_dict(building: esdl.AbstractBuilding) -> dict[str, esdl.KPI]:
+def _building_kpis_to_dict(building: esdl.AbstractBuilding) -> Dict[str, esdl.KPI]:
     """
     Find all KPIs of a building, and returns it as a dict, indexed by the name.
     """
-    kpis: dict[str, esdl.KPI] = {}
+    kpis: Dict[str, esdl.KPI] = {}
     if building.KPIs is not None:
         for kpi in building.KPIs.kpi:
             kpis[kpi.name] = kpi
