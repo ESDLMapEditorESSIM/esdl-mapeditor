@@ -390,7 +390,7 @@ esdl_config = {
                                 "name": "Configure your own assets",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
-                                "next_step": 19,
+                                "next_step": 7,
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
