@@ -17,7 +17,7 @@
   <div id="eps-measures-checkbox-group">
     <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" />
   </div>
-  <a-button type="primary" @click="loadEsdl"> Run ESDL service </a-button>
+  <a-button type="primary" @click="loadEsdl"> Retrieve ESDL for selected measures </a-button>
 </template>
 
 <script setup="props">
@@ -35,7 +35,7 @@ const props = defineProps({
   },
 });
 
-const { getParamsFromState } = useWorkflow();
+const { getParamsFromState, goToPreviousStep } = useWorkflow();
 const workflowStep = props.workflowStep;
 
 const EpsMeasures = Object.freeze({
@@ -85,6 +85,7 @@ const loadEsdl = () => {
 
   window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
+  goToPreviousStep();
 };
 
 const warmtepompPreqs = [EpsMeasures.DAKISOLATIE, EpsMeasures.GEVELISOLATIE, EpsMeasures.GLASISOLATIE, EpsMeasures.WTW];

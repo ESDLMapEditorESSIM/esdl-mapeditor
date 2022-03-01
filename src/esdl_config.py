@@ -362,7 +362,7 @@ esdl_config = {
                             },
                             {"name": "Run EPS", "next_step": 4, "type": "primary"},
                             {
-                                "name": "Load EPS result",
+                                "name": "Load EPS",
                                 "type": "primary",
                                 "next_step": 6,
                             },
@@ -380,8 +380,10 @@ esdl_config = {
                             },
                             {
                                 "name": "Apply custom energy saving measures",
+                                "description": "This functionality is still under development.",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
+                                "disabled": True,
                                 "next_step": 18,
                             },
                             {
@@ -494,7 +496,7 @@ esdl_config = {
                         "name": "Configure your own assets",
                         "description": "",
                         "type": "text",
-                        "text": "At this point of the workflow you can safely add any assets and connections, to model your energy system.",
+                        "text": "At this point of the workflow you can safely add any assets and connections, to model your energy system. Please make sure that you have selected the EPS measures you are interested in, and that you have applied any custom measures if applicable. Selecting different EPS measures will result in a new ESDL being generated, such that your previous changes will not be preserved.",
                     },
                     {
                         # 8
@@ -522,8 +524,8 @@ esdl_config = {
                     },
                     {
                         # 10
-                        "name": "Load EPS results",
-                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS is loaded, please continue.",
+                        "name": "Load EPS",
+                        "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied.W hen the EPS is loaded, please continue.",
                         "type": "service",
                         "state_params": {"execution_id": "execution.id"},
                         "service": {
