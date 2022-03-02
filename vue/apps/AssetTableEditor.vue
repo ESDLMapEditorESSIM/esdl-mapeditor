@@ -88,6 +88,42 @@ const gridEditors = ref({
   select_grid_plain: VGridVueEditor(SelectGridPlain),
 });
 
+function change_basic_attribute(id, attr, value) {
+  window.socket.emit("command", {
+    cmd: "set_asset_param",
+    id: id,
+    param_name: attr,
+    param_value: value,
+  });
+  window.PubSubManager.broadcast('ASSET_PROPERTIES', {
+    id: id,
+    name: attr,
+    value: value,
+  });
+}
+
+function check_cost_info(attr) {
+  for (const col_info of columns.value) {
+    console.log(col_info);
+    if (col_info['prop'] == attr) {
+      if ('ref' in col_info) {
+        if (col_info['ref'].startsWith('costInformation')) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function change_cost_attribute(id, attr, value) {
+  window.socket.emit("change_cost_attr", {
+    id: id,
+    attr: attr,
+    value: value,
+  });
+}
+
 function process_changes(e) {
   /*
     e.detail.xxx, where xxx is:
@@ -105,21 +141,16 @@ function process_changes(e) {
   */
 
   let changes = e.detail;
+  console.log(changes);
 
   if ('model' in changes) {
     /* Single change */
     if ('id' in changes.model) {
-      window.socket.emit("command", {
-        cmd: "set_asset_param",
-        id: changes.model['id'],
-        param_name: changes['prop'],
-        param_value: changes['val'],
-      });
-      window.PubSubManager.broadcast('ASSET_PROPERTIES', {
-        id: changes.model['id'],
-        name: changes['prop'],
-        value: changes['val'],
-      });
+      if (check_cost_info(changes['prop'])) {
+        change_cost_attribute(changes.model['id'], changes['prop'], changes['val']);
+      } else {
+        change_basic_attribute(changes.model['id'], changes['prop'], changes['val']);
+      }
     } else {
       console.log("Can't find object ID in row data of revolist datagrid");
     }
@@ -130,17 +161,11 @@ function process_changes(e) {
         let id = row['id'];
         let data = changes['data'][rowIndex];
         for (const [attr, value] of Object.entries(data)) {
-          window.socket.emit("command", {
-            cmd: "set_asset_param",
-            id: id,
-            param_name: attr,
-            param_value: value,
-          });
-          window.PubSubManager.broadcast('ASSET_PROPERTIES', {
-            id: id,
-            name: attr,
-            value: value,
-          });
+          if (check_cost_info(attr)) {
+            change_cost_attribute(id, attr, value);
+          } else {
+            change_basic_attribute(id, attr, value);
+          }
         }
       } else {
         console.log("Can't find object ID in row data of revolist datagrid");
