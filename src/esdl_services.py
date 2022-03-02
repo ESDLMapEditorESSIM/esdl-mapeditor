@@ -387,7 +387,7 @@ class ESDLServices:
                 )
                 logger.warning(r)
                 logger.warning(r.content)
-                return False, str(r.content)
+                return False, r
         except Exception as e:
             logger.exception("Error accessing external ESDL service: " + str(e))
             return False, None

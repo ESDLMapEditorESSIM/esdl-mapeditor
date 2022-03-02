@@ -2972,6 +2972,12 @@ def query_esdl_services(params):
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):
             message += ': ' + esdl_service_result
+        elif isinstance(esdl_service_result, requests.Response):
+            status_code = esdl_service_result.status_code
+            reason = esdl_service_result.reason
+            message += f': {status_code} - {reason}.'
+            if status_code == 401:
+                message += " Please refresh the page."
         send_alert(message)
     # logger.debug('processing energy system')
     call_process_energy_system.submit(esh)
