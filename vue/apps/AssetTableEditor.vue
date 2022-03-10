@@ -19,9 +19,10 @@
       :source="rows"
       :columns="columns"
       :editors="gridEditors"
-      :rowHeaders="rowHeaders"
-      :autoSizeColumn="{
+      :row-headers="rowHeaders"
+      :auto-size-column="{
         mode: 'autoSizeOnTextOverlap',
+        allColumns: true,
       }"
       resize="true"
       range="true"
@@ -32,7 +33,7 @@
 
 <script setup>
 
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import VGrid, {
   VGridVueEditor,
   VGridVueTemplate,
@@ -58,9 +59,10 @@ get_asset_type_list();
 
 const get_asset_data = async (asset_type) => {
   const response = await fetch("/table_editor/asset_data/" + asset_type);
+
   if (response.ok) {
     const table_editor_info = await response.json();
-    // console.log(table_editor_info);
+    console.log(table_editor_info);
 
     columns.value = table_editor_info['column_info']
     for (const col_info of columns.value) {
@@ -70,11 +72,10 @@ const get_asset_data = async (asset_type) => {
       }
     }
     rows.value = table_editor_info['row_info']
-    window.hide_loader();
   } else {
-    window.hide_loader();
-    console.log('Error getting asset data');
+    console.error('Error getting asset data', response);
   }
+  window.hide_loader();
 }
 
 function selected_asset_changed(asset_type) {
