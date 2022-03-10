@@ -34,7 +34,7 @@ class Profiles {
             profiles_plugin.profiles_list = profiles_list;
         });
         socket.emit('get_profiles_settings', function(profiles_settings) {
-            console.log(profiles_settings);
+            // console.log(profiles_settings);
             profiles_plugin.profiles_settings = profiles_settings;
         });
     }

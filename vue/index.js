@@ -22,6 +22,8 @@ import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetD
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
+import ServicesToolbar from './components/toolbars/ServicesToolbar'
+import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
@@ -103,10 +105,13 @@ window.environmental_profiles = () => {
 
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+mountApp(AboutBox, '#vue_show_about_box')
+
+createVueLControl(ServicesToolbar, {position: 'topleft'});
+createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-mountApp(AboutBox, '#vue_show_about_box')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

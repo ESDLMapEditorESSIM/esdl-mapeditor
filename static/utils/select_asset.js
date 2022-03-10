@@ -140,7 +140,7 @@ class SelectAssets {
     disable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if (option != '-')
+            if ((option != '-') && (option.text != 'Delete'))
                 option['disabled'] = true;
         }
     }
