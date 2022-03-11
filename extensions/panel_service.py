@@ -29,13 +29,22 @@ def send_alert(message):
     emit('alert', message, namespace='/esdl')
 
 
-def get_panel_service_datasource(database, host=None):
+def get_panel_service_datasource(database, host=None, username=None, password=None):
+    """
+    Create or get the name of the grafana datasource belonging to the database / host combination
+    If you don't specify a host, the defaults from the config are taken (influxdb that is part of the MapEditor stack)
+    """
     if host:
         ps_influxdb_host = host
+        ps_influxdb_user = username
+        ps_influxdb_password = password
     else:
         ps_influxdb_host = settings.panel_service_config['profile_database_protocol'] + "://" + \
                        settings.panel_service_config['profile_database_host'] + ":" + \
                        settings.panel_service_config['profile_database_port']
+        ps_influxdb_user = settings.panel_service_config["profile_database_upload_user"]
+        ps_influxdb_password = settings.panel_service_config["profile_database_upload_password"]
+
     logger.debug("Get_panel_service_datasource: db=" + database + " host="+ps_influxdb_host)
 
     # Try to find the datasource
@@ -58,14 +67,18 @@ def get_panel_service_datasource(database, host=None):
     # Create a datasource if it's not available
     if not ps_influxdb_name:
         logger.debug("No datasource found, creating new one")
-        ps_influxdb_name = "PS_"+settings.panel_service_config['profile_database_host']+"_"+database
+
+        host_for_datasource_name = ps_influxdb_host.replace("//", "").replace(":", "-")
+        ps_influxdb_name = "PS_" + host_for_datasource_name + "_" + database
         payload = {
             "name": ps_influxdb_name,
             "url": ps_influxdb_host,
-            "database_name": database,
-            "basic_auth_user": settings.panel_service_config["profile_database_upload_user"],
-            "basic_auth_password": settings.panel_service_config["profile_database_upload_password"]
+            "database_name": database
         }
+        if ps_influxdb_user:
+            payload["basic_auth_user"] = ps_influxdb_user
+        if ps_influxdb_password:
+            payload["basic_auth_password"] = ps_influxdb_password
 
         try:
             r = requests.post(url, json=payload)
@@ -84,11 +97,16 @@ def get_panel_service_datasource(database, host=None):
     return ps_influxdb_name
 
 
-def create_panel(graph_title, axis_title, host, database, measurement, field, filters, qau, prof_aggr_type, start_datetime, end_datetime):
-    ps_influxdb_name = get_panel_service_datasource(database, host)
-    if not ps_influxdb_name:
-        logger.error("Could not find or create a datasource")
-        return None
+def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof_aggr_type, start_datetime, end_datetime, host=None, database=None, datasource=None):
+    if host is None and database is None and datasource is None:
+        logger.error("Specify either host and database or datasource")
+    if not datasource:
+        ps_influxdb_name = get_panel_service_datasource(database, host)
+        if not ps_influxdb_name:
+            logger.error("Could not find or create a datasource")
+            return None
+    else:
+        ps_influxdb_name = datasource
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
     if not isinstance(filters, list):
         filters = [filters]

@@ -66,7 +66,7 @@ DEFAULT_BOUNDARIES_YEAR = 2019
 
 
 def is_valid_boundary_id(id):
-    return re.match('PV[0-9]{2,2}|RES[0-9]{2,2}|GM[0-9]{4,4}|WK[0-9]{6,6}|BU[0-9]{8,8}|[0-9]{2,2}', id.upper())
+    return re.match('PV[0-9]{2,2}|ES[0-9]{2,2}|GM[0-9]{4,4}|WK[0-9]{6,6}|BU[0-9]{8,8}|[0-9]{2,2}', id.upper())
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ class BoundaryService:
             add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
 
             if not is_valid_boundary_id(identifier):
-                send_alert("Not a valid identifier. Try identifiers like PV27(Noord-Holland) or GM0060 (Ameland)")
+                send_alert("Not a valid identifier. Try identifiers like PV27 (Noord-Holland) or GM0060 (Ameland)")
                 return
 
             active_es_id = get_session('active_es_id')

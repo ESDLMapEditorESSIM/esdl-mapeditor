@@ -72,6 +72,26 @@ class ESDLServices:
 
             return settings
 
+        @self.flask_app.route('/get_toolbar_services')
+        def get_toolbar_services():
+            services_list = list()
+
+            user = get_session('user-email')
+            services = self.get_user_settings(user)
+
+            for service in services:
+                if 'show_on_toolbar' in service:
+                    if service['show_on_toolbar']:
+                        svc = dict()
+                        svc['id'] = service['id']
+                        svc['name'] = service['name']
+                        svc['icon_url'] = '/icons/service.png'
+                        if service['icon']:
+                            if service['icon']['type'] == 'filename':
+                                svc['icon_url'] = '/icons/' + service['icon']['filename']
+                        services_list.append(svc);
+            return {'services_list': services_list}
+
     def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
         """Get the user services from the settings storage. """
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
@@ -200,9 +220,9 @@ class ESDLServices:
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
             elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('ascii')
+                esdlstr_bytes = esdlstr.encode('utf-8')
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('ascii')
+                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
             else:
                 body = esdlstr
 
@@ -214,9 +234,9 @@ class ESDLServices:
                 if service["body_config"]["encoding"] == "url_encoded":
                     body = urllib.parse.quote(esdlstr)
                 if service["body_config"]["encoding"] == "base64_encoded":
-                    esdlstr_bytes = esdlstr.encode('ascii')
+                    esdlstr_bytes = esdlstr.encode('utf-8')
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                    body = esdlstr_base64_bytes.decode('ascii')
+                    body = esdlstr_base64_bytes.decode('utf-8')
             if service["body_config"]["type"] == "json":
                 body = {}
                 for param in service["body_config"]['parameters']:
@@ -227,9 +247,9 @@ class ESDLServices:
                         if param["encoding"] == "url_encoded":
                             body[param["parameter"]] = urllib.parse.quote(esdlstr)
                         if param["encoding"] == "base64_encoded":
-                            esdlstr_bytes = esdlstr.encode('ascii')
+                            esdlstr_bytes = esdlstr.encode('utf-8')
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                            body[param["parameter"]] = esdlstr_base64_bytes.decode('ascii')
+                            body[param["parameter"]] = esdlstr_base64_bytes.decode('utf-8')
                     if param["type"] == "value":
                         body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
@@ -272,7 +292,7 @@ class ESDLServices:
             if service["http_method"] == "get":
                 r = requests.get(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"].endswith("json") or service["body_config"]["type"] == "json":
+                if service["type"].endswith("json") or ("body_config" in service and service["body_config"]["type"] == "json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
@@ -289,9 +309,9 @@ class ESDLServices:
                         if service["result"][0]["encoding"] == "url_encoded":
                             esdl_response = urllib.parse.quote(r.text)
                         elif service["result"][0]["encoding"] == "base64_encoded":
-                            esdlstr_bytes = r.text.encode('ascii')
+                            esdlstr_bytes = r.text.encode('utf-8')
                             esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
-                            esdl_response = esdlstr_base64_bytes.decode('ascii')
+                            esdl_response = esdlstr_base64_bytes.decode('utf-8')
                         else:
                             esdl_response = r.text
                     else:

@@ -96,20 +96,17 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 // ------------------------------------------------------------------------------------------------------------
 //  Updates asset state
 // ------------------------------------------------------------------------------------------------------------
-function update_asset_state(asset_id, new_state) {
-    if (!asset_id) { return; }
-    var asset_list;
-    if (!Array.isArray(asset_id)) {
-        asset_list = [asset_id];
-    } else {
-        asset_list = asset_id;
+function update_asset_state(asset_id_or_list, new_state) {
+    if (!asset_id_or_list) { return; }
+    var asset_list = asset_id_or_list;
+    if (!Array.isArray(asset_id_or_list)) {
+        asset_list = [asset_id_or_list];
     }
-
     for (let i=0; i<asset_list.length; i++) {
         let asset_id = asset_list[i];
         let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
         // if it's a joint, don't change appearance
-        if (asset_leaflet_obj.type == 'Joint') return;
+        if (asset_leaflet_obj.type == 'Joint') continue;
 
         if (asset_leaflet_obj instanceof L.Marker) {
             let cll = asset_leaflet_obj.getElement().classList;

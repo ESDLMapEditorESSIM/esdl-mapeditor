@@ -22,6 +22,8 @@ import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetD
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
+import ServicesToolbar from './components/toolbars/ServicesToolbar'
+import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
@@ -33,7 +35,7 @@ import Swal from "sweetalert2";
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
     if (currentWorkflow.value) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
@@ -49,6 +51,7 @@ window.activate_service_workflow = async (serviceIndex, service) => {
         startNewWorkflow(serviceIndex, service);
     }
     mountSidebarComponent(Workflow);
+    window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -102,10 +105,13 @@ window.environmental_profiles = () => {
 
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+mountApp(AboutBox, '#vue_show_about_box')
+
+createVueLControl(ServicesToolbar, {position: 'topleft'});
+createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-mountApp(AboutBox, '#vue_show_about_box')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

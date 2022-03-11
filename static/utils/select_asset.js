@@ -61,7 +61,15 @@ class SelectAssets {
         this.selected_assets.push(asset_leaflet_obj.id);
         // filter out duplicates as the current approach might fail in some corner cases
         this.selected_assets = this.selected_assets.filter((v, i, a) => a.indexOf(v) === i);
-        this.disable_context_menu_items(asset_leaflet_obj);
+        //this.disable_context_menu_items(asset_leaflet_obj);
+
+        // only disable contect menu when more than 1 is selected
+        if (this.selected_assets.length == 2) {
+            this.disable_context_menu_items(find_layer_by_id(active_layer_id, 'esdl_layer', this.selected_assets[0]))
+            this.disable_context_menu_items(asset_leaflet_obj);
+        } else if (this.selected_assets.length > 2) {
+            this.disable_context_menu_items(asset_leaflet_obj);
+        }
     }
 
     remove_from_selected_list(asset_leaflet_obj) {
@@ -132,7 +140,7 @@ class SelectAssets {
     disable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if (option != '-')
+            if ((option != '-') && (option.text != 'Delete'))
                 option['disabled'] = true;
         }
     }

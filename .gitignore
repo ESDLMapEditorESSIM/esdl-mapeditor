@@ -86,3 +86,11 @@ node_modules/
 
 credentials/client_secrets_remote*.json
 package-lock.json
+
+# All formerly remotely downloaded files are now served locally. Add these exceptions to the .gitignore
+# because these URLs end with dist which is excluded from git.
+!static/vendor/unpkg.com/leaflet@1.6.0/dist
+!static/vendor/rawgit.com/socib/Leaflet.TimeDimension/master/dist
+!static/vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist
+!static/vendor/cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist
+!static/vendor/cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist

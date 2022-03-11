@@ -18,6 +18,7 @@ import importlib
 import json
 import urllib
 import uuid
+import traceback
 from datetime import datetime
 from pprint import pprint
 from warnings import warn
@@ -81,6 +82,7 @@ from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
+from src.esdl_file_io import ESDLFileIO
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -160,7 +162,7 @@ ESDLMerge(app, socketio, executor)
 essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
-Vesta(app, socketio, settings_storage)
+# Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
@@ -180,6 +182,7 @@ edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
+ESDLFileIO(app, socketio, executor)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -213,9 +216,10 @@ def add_header(r: Response):
     """
     if r.content_type == 'image/png': # images are allowed to be cached.
         return r
-    r.headers["Pragma"] = "no-cache"
-    r.headers["Expires"] = "0"
-    r.headers['Cache-Control'] = 'public, max-age=0'
+    if settings.FLASK_DEBUG:    # only prevent caching when debugging
+        r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
+        r.headers['Cache-Control'] = 'public, max-age=0'
     return r
 
 
@@ -938,8 +942,14 @@ def split_conductor(conductor, location, mode, conductor_container):
         # e.g. also copy over the pipe material
         new_cond1 = conductor.deepcopy()
         new_cond2 = conductor.deepcopy()
+        if new_cond1.name == new_cond1.eClass.name + '_' + new_cond1.id[:4]:
+            new_cond1.name = new_cond1.eClass.name + '_' + new_cond1_id[:4]
+            new_cond2.name = new_cond2.eClass.name + '_' + new_cond2_id[:4]
+        else:
+            new_cond2.name = new_cond1.name + '_b'
+            new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear() # remove existing port, as we add previous used ports later
+        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
         new_cond2.id = new_cond2_id
         new_cond2.port.clear()
         esh.add_object_to_dict(active_es_id, new_cond1)
@@ -2216,6 +2226,7 @@ def process_command(message):
             except Exception as e:
                 logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
+                traceback.print_exc()
 
         # update gui, only if necessary for EnergyAssets, and Ports
         # and EnergySystem ans

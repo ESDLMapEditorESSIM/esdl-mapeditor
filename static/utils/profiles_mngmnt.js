@@ -23,6 +23,8 @@ class Profiles {
     constructor() {
         this.initSocketIO();
         this.profiles_list = null;
+        this.profiles_settings = null;
+        this.current_profile_server_index = 0;
         this.files = {};
         this.blob = {};
         this.chunkSize = 100*1024; // 100kb chunks
@@ -30,6 +32,10 @@ class Profiles {
         socket.emit('get_profiles_list', function(profiles_list) {
             // console.log(profiles_plugin);
             profiles_plugin.profiles_list = profiles_list;
+        });
+        socket.emit('get_profiles_settings', function(profiles_settings) {
+            // console.log(profiles_settings);
+            profiles_plugin.profiles_settings = profiles_settings;
         });
     }
 
@@ -146,6 +152,14 @@ class Profiles {
                 .append($('<td>').append($('<input>').attr('id', 'input_prof_enddt').attr('value', '')))
             );
             $tbody.append($('<tr>')
+                .append($('<td>').append('Host'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_host').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
+                .append($('<td>').append('Port'))
+                .append($('<td>').append($('<input>').attr('id', 'input_prof_port').attr('value', '')))
+            );
+            $tbody.append($('<tr>')
                 .append($('<td>').append('Embed URL'))
                 .append($('<td>').append($('<input>').attr('id', 'input_prof_embedurl').attr('value', '')))
             );
@@ -190,6 +204,8 @@ class Profiles {
             profile_type: $('#input_prof_type').val(),
             start_datetime: $('#input_prof_startdt').val(),
             end_datetime: $('#input_prof_enddt').val(),
+            host: $('#input_prof_host').val(),
+            port: $('#input_prof_port').val(),
             embedUrl: $('#input_prof_embedurl').val(),
             group: $('#add_to_group_select').val()
         };
@@ -208,6 +224,8 @@ class Profiles {
                 profile_type: $('#input_prof_type').val(),
                 start_datetime: $('#input_prof_startdt').val(),
                 end_datetime: $('#input_prof_enddt').val(),
+                host: $('#input_prof_host').val(),
+                port: $('#input_prof_port').val(),
                 embedUrl: $('#input_prof_embedurl').val(),
                 group: $('#add_to_group_select').val()
             };
@@ -228,6 +246,8 @@ class Profiles {
                 profile_type: $('#input_prof_type').val(),
                 start_datetime: $('#input_prof_startdt').val(),
                 end_datetime: $('#input_prof_enddt').val(),
+                host: $('#input_prof_host').val(),
+                port: $('#input_prof_port').val(),
                 embedUrl: $('#input_prof_embedurl').val(),
                 group: $('#add_to_group_select').val()
             };
@@ -253,6 +273,8 @@ class Profiles {
         $('#input_prof_type').attr('value', '');
         $('#input_prof_startdt').attr('value', '');
         $('#input_prof_enddt').attr('value', '');
+        $('#input_prof_host').attr('value', '');
+        $('#input_prof_port').attr('value', '');
         $('#input_prof_embedurl').attr('value', '');
 
         $('#profile_graph').html('');
@@ -271,6 +293,8 @@ class Profiles {
         $('#input_prof_type').attr('value', profile_info.profileType);
         $('#input_prof_startdt').attr('value', profile_info.start_datetime);
         $('#input_prof_enddt').attr('value', profile_info.end_datetime);
+        $('#input_prof_host').attr('value', profile_info.host);
+        $('#input_prof_port').attr('value', profile_info.port);
         $('#input_prof_embedurl').attr('value', profile_info.embedUrl);
 
         let $select = $('#add_to_group_select');
@@ -315,7 +339,8 @@ class Profiles {
             $('#csv-message').text('Uploading CSV files')
             let selected_group = $('#profile_group_select').val();
             let profile_aggr_type = profiles_plugin.get_selected_profile_type_radio();
-            handleFiles(this.files, selected_group, profile_aggr_type);
+            let profiles_server_index = $('#profiles_server_select').val();
+            handleFiles(this.files, selected_group, profile_aggr_type, profiles_server_index);
         });
         $form.append($p1);
         $form.append($input);
@@ -344,7 +369,7 @@ class Profiles {
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
-        };
+        }
 
         function highlight(e) {
             dropArea.classList.add('highlight');
@@ -361,8 +386,9 @@ class Profiles {
             $('#csv-message').text('Uploading CSV files')
             let selected_group = $('#profile_group_select').val();
             let profile_aggr_type = profiles_plugin.get_selected_profile_type_radio();
+            let profiles_server_index = $('#profiles_server_select').val();
 
-            handleFiles(files, selected_group, profile_aggr_type);
+            handleFiles(files, selected_group, profile_aggr_type, profiles_server_index);
         }
 
         self.uploadProgress = [];
@@ -384,7 +410,7 @@ class Profiles {
         }
         self.updateProgress = updateProgress;
 
-        function handleFiles(files, selected_group, prof_aggr_type) {
+        function handleFiles(files, selected_group, prof_aggr_type, profiles_server_index) {
             files = [...files];
             files.forEach(function (file) {
                 let extension = file.name.split('.').pop();
@@ -392,14 +418,14 @@ class Profiles {
                     let uuid = uuidv4();
                     self.files[uuid] = file;
                     initializeProgress(uuid);
-                    uploadFile(file, uuid, selected_group, prof_aggr_type);
+                    uploadFile(file, uuid, selected_group, prof_aggr_type, profiles_server_index);
                 } else {
                     alert("Not a csv file: " + file.name);
                 }
             });
         }
 
-        function uploadFile(file, uuid, selected_group, prof_aggr_type) {
+        function uploadFile(file, uuid, selected_group, prof_aggr_type, profiles_server_index) {
             console.log("Uploading ", file);
 
             let reader = new FileReader();
@@ -407,7 +433,8 @@ class Profiles {
                 // reading finished
                 self.blob[uuid] = reader.result;
                 socket.emit('profile_csv_upload', {'message_type': 'start', 'uuid': uuid, 'name':  file.name, 'size': file.size,
-                                        'content': '', 'filetype': file.type, 'group': selected_group, 'prof_aggr_type': prof_aggr_type });
+                                        'content': '', 'filetype': file.type, 'group': selected_group, 'prof_aggr_type': prof_aggr_type,
+                                        'profiles_server_index': profiles_server_index});
             };
             reader.onerror = function() {
                 console.log(reader.error);
@@ -452,6 +479,18 @@ class Profiles {
         return radio;
     }
 
+    create_profiles_server_select(div) {
+        div.append($('<p>').text('Select a profiles server to which you want to upload the profiles'));
+        let $select = $('<select>').attr('id', 'profiles_server_select');
+        let profiles_servers = profiles_plugin.profiles_settings.profiles_servers;
+        for (let ps=0; ps<profiles_servers.length; ps++) {
+            let $option = $('<option>').val(ps).text(profiles_servers[ps].name);
+            if (ps == profiles_plugin.current_profile_server_index) $option.attr('selected', 'selected');
+            $select.append($option);
+        }
+        div.append($select);
+    }
+
     upload_profiles_window_contents() {
         let $div = $('<div>').attr('id', 'upload_profiles_window_div');
         $div.append($('<h1>').text('Upload profiles'));
@@ -460,6 +499,14 @@ class Profiles {
         let $group_select = $('<div>');
         $div.append($('<p>').append($group_select));
         profiles_plugin.create_group_select($group_select);
+
+        let $profiles_server_select = $('<div>');
+        let profile_server_select_hidden='';
+        if (profiles_plugin.profiles_settings.profiles_servers.length == 1) {
+          profile_server_select_hidden = ' hidden';
+        }
+        $div.append($('<p'+profile_server_select_hidden+'>').append($profiles_server_select));
+        profiles_plugin.create_profiles_server_select($profiles_server_select);
 
         let $profile_aggr_type = $('<div>');
         $div.append($('<p>').append($profile_aggr_type));

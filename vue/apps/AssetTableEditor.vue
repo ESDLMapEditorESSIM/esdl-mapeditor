@@ -27,6 +27,7 @@
       resize="true"
       range="true"
       @afteredit="process_changes"
+      @beforecellfocus="before_cell_focus"
     />
   </div>
 </template>
@@ -174,6 +175,23 @@ function process_changes(e) {
     }
   } else {
     console.log("Don't understand format of change handler in revolist datagrid");
+  }
+}
+
+function before_cell_focus(e) {
+  console.log(e);
+  let asset_id = e.detail.model.id;
+
+  let active_es_id = window.active_layer_id;
+  let active_es_asset_info = window.get_layers(active_es_id, 'esdl_layer');
+  let active_es_asset_layers = active_es_asset_info.getLayers();
+
+  for (let i=0; i<active_es_asset_layers.length; i++) {
+    if (active_es_asset_layers[i].id == asset_id) {
+      // window.map.setView(active_es_asset_layers[i].getLatLng(), 20);
+      window.select_assets.deselect_all_assets();
+      window.select_assets.toggle_selected(active_es_asset_layers[i]);
+    }
   }
 }
 
