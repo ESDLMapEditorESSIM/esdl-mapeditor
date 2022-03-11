@@ -13,16 +13,16 @@
     </a-select-option>
   </a-select>
 
-  <div id="grid_div">
+  <div v-if="selected_asset_type && !isLoading"
+       id="grid_div"
+  >
     <v-grid
       theme="compact"
       :source="rows"
       :columns="columns"
       :editors="gridEditors"
-      :row-headers="rowHeaders"
       :auto-size-column="{
         mode: 'autoSizeOnTextOverlap',
-        allColumns: true,
       }"
       resize="true"
       range="true"
@@ -30,6 +30,8 @@
       @beforecellfocus="before_cell_focus"
     />
   </div>
+  <h3 v-else-if="isLoading">Loading...</h3>
+  <h3 v-else>Please select an asset type from the select menu above.</h3>
 </template>
 
 <script setup>
@@ -46,6 +48,7 @@ import SelectGridPlain from "../components/revogrid/SelectGridPlain.vue";
 const asset_list = ref([]);
 const asset_types_list = ref([]);
 const selected_asset_type = ref();
+const isLoading = ref(false);
 
 function get_asset_type_list() {
   let active_es_id = window.active_layer_id;
@@ -63,9 +66,9 @@ const get_asset_data = async (asset_type) => {
 
   if (response.ok) {
     const table_editor_info = await response.json();
-    console.log(table_editor_info);
+    // console.log(table_editor_info);
+    columns.value = table_editor_info['column_info'];
 
-    columns.value = table_editor_info['column_info']
     for (const col_info of columns.value) {
       if ('options' in col_info) {
         col_info['editor'] = "select_grid_ant";
@@ -76,15 +79,18 @@ const get_asset_data = async (asset_type) => {
   } else {
     console.error('Error getting asset data', response);
   }
+  isLoading.value = false;
   window.hide_loader();
 }
 
 function selected_asset_changed(asset_type) {
   window.show_loader();
+  // Use this to unrender the previous vgrid, so that it doesn't conflict with the new data.
+  isLoading.value = true;
   get_asset_data(asset_type);
 }
 
-const rowHeaders = ref({ size: 100 });
+// const rowHeaders = ref({ size: 100 });
 const gridEditors = ref({
   select_grid_ant: VGridVueEditor(SelectGridAnt),
   select_grid_plain: VGridVueEditor(SelectGridPlain),
@@ -106,7 +112,6 @@ function change_basic_attribute(id, attr, value) {
 
 function check_cost_info(attr) {
   for (const col_info of columns.value) {
-    console.log(col_info);
     if (col_info['prop'] == attr) {
       if ('ref' in col_info) {
         if (col_info['ref'].startsWith('costInformation')) {
@@ -195,10 +200,7 @@ function before_cell_focus(e) {
   }
 }
 
-const columns = ref([
-        { name: "Please select an asset type from the select menu above", prop: "action", size: 500 },
-]);
-
+const columns = ref([]);
 const rows = ref([]);
 
 </script>

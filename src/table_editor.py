@@ -60,7 +60,7 @@ class TableEditor:
 
         @self.flask_app.route('/table_editor/asset_data/<asset_type>')
         def table_editor_get_asset_types(asset_type):
-            logger.info(f"Retreiving information for table editor for assets with type {asset_type}")
+            logger.info(f"Retrieving information for table editor for assets with type {asset_type}")
             asset_info_list = self.datalayer.get_object_parameters_by_asset_type(asset_type)
             self.filter_cost_information(asset_info_list)
             table_editor_info = dict()
@@ -146,7 +146,10 @@ class TableEditor:
                 column = dict()
                 column['name'] = camelCaseToWords(attr_info['name'])
                 column['prop'] = attr_info['name']
-                column['autoSize'] = True
+
+                if attr_info['type'] == 'EString':
+                    # Revogrid only supports autosizing text fields.
+                    column['autoSize'] = True
 
                 if attr_info['type'] == 'EEnum':
                     options = list()
@@ -161,14 +164,12 @@ class TableEditor:
                 column = dict()
                 column['name'] = ci['uiname']
                 column['prop'] = ci['name']
-                column['autoSize'] = True
                 column['ref'] = 'costInformation.' + ci['name']
                 column_info.append(column)
 
                 column = dict()
                 column['name'] = ci['uiname'] + ' unit'
                 column['prop'] = ci['name'] + '_unit'
-                column['autoSize'] = True
                 column['options'] = cost_information_unit_list
                 column['ref'] = 'costInformation.' + ci['name'] + '_unit'
                 column_info.append(column)
