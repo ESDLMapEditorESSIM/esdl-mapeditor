@@ -698,7 +698,9 @@
                 for (let i = 0; i<list.length; i++) {
                     add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
                 }
-                spatial_buffers_plugin.bring_spatial_buffers_to_back();
+                if (!add_to_building) {
+                    spatial_buffers_plugin.bring_spatial_buffers_to_back();
+                }
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
                 $('div[title]').tooltip({
