@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from flask import Flask
 from flask_socketio import SocketIO
+from threading import BoundedSemaphore
 
 from esdl import Asset
 import esdl
@@ -54,6 +55,7 @@ class TableEditor:
         self.settings_storage = settings_storage
         self.datalayer = ESDLDataLayer(esdl_doc)
         self.register()
+        self.bounded_semaphore = BoundedSemaphore()
 
     def register(self):
         logger.info("Registering TableEditor")
@@ -97,42 +99,48 @@ class TableEditor:
             asset['cost_information'] = new_cost_information
 
     def set_cost_attr(self, asset: Asset, attr_name, value):
-        print(f"Setting {attr_name} to {value} for asset ID {asset.id}")
-        ci = asset.costInformation
-        if not ci:
-            ci = asset.costInformation = esdl.CostInformation(id=str(uuid4()))
+        # print(f"request semaphore {asset.id}:{attr_name}-{value}")
+        with self.bounded_semaphore:
+            # print(f"got semaphore {asset.id}:{attr_name}-{value}")
+            # print(f"Setting {attr_name} to {value} for asset ID {asset.id}")
+            ci = asset.costInformation
+            if not ci:
+                ci = asset.costInformation = esdl.CostInformation(id=str(uuid4()))
 
-        try:
-            attr = ci.eGet(attr_name)
-            if attr:
-                # Singlevalue was found and value must be set
-                attr.value = str2float(value)
-            else:
-                # Singlevalue was NOT found and value must be set
-                ci.eSet(attr_name, esdl.SingleValue(id=str(uuid4()), value=str2float(value)))
-        except AttributeError:
-            if attr_name.endswith('_unit'):
-                attr = ci.eGet(attr_name[:-5])
+            try:
+                attr = ci.eGet(attr_name)
                 if attr:
-                    # Singlevalue was found and unit must be set
-                    qau = attr.profileQuantityAndUnit
-                    if not qau:
-                        qau = attr.profileQuantityAndUnit = esdl.QuantityAndUnitType(
+                    # Singlevalue was found and value must be set
+                    attr.value = str2float(value)
+
+                else:
+                    # Singlevalue was NOT found and value must be set
+                    ci.eSet(attr_name, esdl.SingleValue(id=str(uuid4()), value=str2float(value)))
+            except AttributeError:
+                if attr_name.endswith('_unit'):
+                    attr = ci.eGet(attr_name[:-5])
+                    if attr:
+                        # Singlevalue was found and unit must be set
+                        qau = attr.profileQuantityAndUnit
+                        if not qau:
+                            qau = attr.profileQuantityAndUnit = esdl.QuantityAndUnitType(
+                                id=str(uuid4()),
+                                physicalQuantity=esdl.PhysicalQuantityEnum.COST
+                            )
+                        _change_cost_unit(qau, value)
+                    else:
+                        # Singlevalue was NOT found and unit must be set
+                        sv = esdl.SingleValue(id=str(uuid4()))
+                        sv.profileQuantityAndUnit = esdl.QuantityAndUnitType(
                             id=str(uuid4()),
                             physicalQuantity=esdl.PhysicalQuantityEnum.COST
                         )
-                    _change_cost_unit(qau, value)
+                        _change_cost_unit(sv.profileQuantityAndUnit, value)
+                        ci.eSet(attr_name[:-5], sv)
                 else:
-                    # Singlevalue was NOT found and unit must be set
-                    sv = esdl.SingleValue(id=str(uuid4()))
-                    sv.profileQuantityAndUnit = esdl.QuantityAndUnitType(
-                        id=str(uuid4()),
-                        physicalQuantity=esdl.PhysicalQuantityEnum.COST
-                    )
-                    _change_cost_unit(sv.profileQuantityAndUnit, value)
-                    ci.eSet(attr_name, sv)
-            else:
-                raise Exception('Unknown attribute for setting costInformation via the TableEditor')
+                    raise Exception('Unknown attribute for setting costInformation via the TableEditor')
+
+            # print(f"release semaphore {asset.id}:{attr_name}-{value}")
 
     def _get_column_info(self, asset_info_list):
         """
