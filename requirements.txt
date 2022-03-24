@@ -25,3 +25,6 @@ structlog==21.1.0
 
 # Development
 watchdog==0.9.0
+
+# Temp fix for error cannot import name ‘json’ from itsdangerous
+itsdangerous==2.0.1

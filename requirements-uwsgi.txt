@@ -24,3 +24,6 @@ uWSGI==2.0.19.1
 # Logging
 colorama==0.4.4
 structlog==21.1.0
+
+# Temp fix for error cannot import name ‘json’ from itsdangerous
+itsdangerous==2.0.1
