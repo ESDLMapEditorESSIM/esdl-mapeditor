@@ -48,7 +48,7 @@ class EDRAssets:
 
         @self.flask_app.route('/edr_assets')
         def get_edr_assets():
-            edr_url = self.ESDLDrive_config['hostname'] + \
+            edr_url = self.EDR_config['hostname'] + \
                       "/store/edr/query?addESDL=false&addImageData=false&esdlType=EnergyAsset&maxResults=-1"
             # logger.debug('accessing URL: '+edr_url)
 
@@ -86,7 +86,7 @@ class EDRAssets:
                 abort(500, 'Error accessing EDR API')
 
     def get_asset_from_EDR(self, edr_asset_id):
-        url = self.ESDLDrive_config['hostname'] + "/store/edr/query?addESDL=true&path=" + \
+        url = self.EDR_config['hostname'] + "/store/edr/query?addESDL=true&path=" + \
               urllib.parse.quote(edr_asset_id, safe='')
         print('EDR url: ', url)
         headers = {
