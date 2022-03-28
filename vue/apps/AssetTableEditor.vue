@@ -124,10 +124,17 @@ function check_cost_info(attr) {
 }
 
 function change_cost_attribute(id, attr, value) {
+  console.log("change_cost_attr", attr, value);
   window.socket.emit("change_cost_attr", {
     id: id,
     attr: attr,
     value: value,
+  });
+}
+
+function change_multiple_attributes(changed_attr_list) {
+  window.socket.emit("change_multiple_attributes", {
+    changed_attr_list: changed_attr_list
   });
 }
 
@@ -148,7 +155,7 @@ function process_changes(e) {
   */
 
   let changes = e.detail;
-  console.log(changes);
+  // console.log(changes);
 
   if ('model' in changes) {
     /* Single change */
@@ -163,21 +170,19 @@ function process_changes(e) {
     }
   } else if ('models' in changes) {
     /* Multiple changes */
+    let changed_attr_list = [];
     for (const [rowIndex, row] of Object.entries(changes['models'])) {
       if ('id' in row) {
         let id = row['id'];
         let data = changes['data'][rowIndex];
         for (const [attr, value] of Object.entries(data)) {
-          if (check_cost_info(attr)) {
-            change_cost_attribute(id, attr, value);
-          } else {
-            change_basic_attribute(id, attr, value);
-          }
+          changed_attr_list.push({id: id, attr: attr, value: value});
         }
       } else {
         console.log("Can't find object ID in row data of revolist datagrid");
       }
     }
+    change_multiple_attributes(changed_attr_list);
   } else {
     console.log("Don't understand format of change handler in revolist datagrid");
   }

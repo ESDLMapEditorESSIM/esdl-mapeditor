@@ -82,6 +82,53 @@ class TableEditor:
 
             self.set_cost_attr(asset, attr, value)
 
+        @self.socketio.on('change_multiple_attributes', namespace='/esdl')
+        def change_multiple_attributes(info):
+            changed_attr_list = info['changed_attr_list']
+            esh = get_handler()
+            active_es_id = get_session('active_es_id')
+            for mutation in changed_attr_list:
+                asset = esh.get_by_id(active_es_id, mutation['id'])
+                # print(mutation)
+                param_name = mutation['attr']
+                param_value = mutation['value']
+
+                try:
+                    attribute = asset.eClass.findEStructuralFeature(param_name)
+                    if attribute is not None:
+                        if attribute.many:
+                            collection = asset.eGet(param_name)
+                            collection.clear()  # TODO no support for multi-select of enums
+                            # print('after clear', collection)
+                            if not isinstance(param_value, list):
+                                param_value = [param_value]
+                            for item in param_value:
+                                parsed_value = attribute.eType.from_string(item)
+                                collection.append(parsed_value)
+                        else:
+                            if param_value == "" or param_value is None:
+                                parsed_value = attribute.eType.default_value
+                            else:
+                                parsed_value = attribute.eType.from_string(param_value)
+                            if attribute.name == 'id':
+                                esh.remove_object_from_dict(active_es_id, asset)
+                                asset.eSet(param_name, parsed_value)
+                                esh.add_object_to_dict(active_es_id, asset)
+                            else:
+                                asset.eSet(param_name, parsed_value)
+
+                    else:
+                        try:
+                            self.set_cost_attr(asset, mutation['attr'], mutation['value'])
+                        except AttributeError:
+                            logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
+                                                                                                          asset.name,
+                                                                                                          str(e)))
+                except Exception as e:
+                    logger.error(
+                        'Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name,
+                                                                                              param_value))
+
     def filter_cost_information(self, asset_info_list):
         set_ci = set()
         for asset in asset_info_list:
