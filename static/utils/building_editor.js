@@ -59,12 +59,10 @@ function open_building_editor(dialog, building_info) {
         maxBounds: [[0,0],[500,500]]
     });
 
-    L.imageOverlay('images/BuildingBackground.png', [[0,0],[500,500]]).addTo(bld_map);
-
     bld_map = add_building_map_handlers(bld_map);
 
     var bounds = [[0,0], [500,500]];
-    var bld_background = L.imageOverlay('', bounds);
+    var bld_background = L.imageOverlay('images/BuildingBackground.png', bounds);
     bld_map.fitBounds(bounds);
 
     create_new_bld_layer(bld_edit_id, 'Building', bld_map);
