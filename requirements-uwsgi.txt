@@ -23,6 +23,7 @@ uWSGI==2.0.19.1
 
 # There is an issue in the latest version, which occurs because our version of Flask is outdated.
 itsdangerous==2.0.1
+markupsafe==2.0.1
 
 # Logging
 colorama==0.4.4
