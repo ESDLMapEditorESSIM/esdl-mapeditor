@@ -27,3 +27,9 @@ structlog==21.1.0
 
 # Temp fix for error cannot import name ‘json’ from itsdangerous
 itsdangerous==2.0.1
+
+# Temp fix for error cannot import name 'escape' from 'jinja2'
+Jinja2==3.0.3
+
+# Temp fix for cannot import name 'BaseResponse' from 'werkzeug.wrappers'
+werkzeug==2.0.2
