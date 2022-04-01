@@ -1,12 +1,16 @@
-all: requirements
+all: requirements yarn
 	docker-compose -f docker/docker-compose.yml build
 
+pip-compile:
+	pip-compile
 requirements:
 	pip install -r requirements.txt
+yarn:
+	yarn
 
 dev:
 	python app.py
-watch:
+watch: yarn
 	yarn && yarn run watch
 
 dev-local:
