@@ -123,8 +123,6 @@
     <script type="text/javascript" src="./utils/profiles.js"></script>
     <script type="text/javascript" src="./utils/asset_from_edr.js"></script>
     <script type="text/javascript" src="./utils/esdl_services.js"></script>
-    <script type="module" src="./modules/workflow.js"></script>
-    <script type="module" src="./modules/register.js"></script>
     <script type="text/javascript" src="./utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src="./utils/esdl_store.js"></script>
     <script type="text/javascript" src="./utils/esdl_compare.js"></script>
@@ -1255,7 +1253,9 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                process_service_results(results)
+                if (results.esdl_service_result) {
+                    process_service_results(results.esdl_service_result)
+                }
             });
 
         });

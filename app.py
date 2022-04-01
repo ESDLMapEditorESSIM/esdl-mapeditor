@@ -2958,16 +2958,21 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+        esdl_service_ok, esdl_service_result, es = esdl_services.call_esdl_service(params)
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
+        es = None
 
     logger.debug('emitting result to browser')
     if esdl_service_ok:
-        if esdl_service_result is not None:
-            emit('esdl_service_result', esdl_service_result)
+        result = dict(
+            esdl_service_result=esdl_service_result,
+            es_id=es.id if es is not None else None,
+            es_name=es.name if es is not None else None,
+        )
+        emit('esdl_service_result', result)
     else:
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):

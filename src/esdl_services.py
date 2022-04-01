@@ -17,7 +17,7 @@ import copy
 import json
 import urllib.parse
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from flask import Flask
@@ -149,7 +149,7 @@ class ESDLServices:
         else:
             return ar
 
-    def call_esdl_service(self, service_params):
+    def call_esdl_service(self, service_params) -> Tuple[bool, Optional[dict], Optional[esdl.EnergySystem]]:
         """Actually call an ESDL service."""
 
         esh = get_handler()
@@ -179,7 +179,7 @@ class ESDLServices:
                             break
 
         if service is None:
-            return False, None
+            return False, None, None
 
         url = service["url"]
         headers = service["headers"]
@@ -301,7 +301,7 @@ class ESDLServices:
                 r = requests.post(url, headers=headers, timeout=ESDL_SERVICE_TIMEOUT, **kwargs)
             else:
                 # Should not happen, there should always be a method.
-                return False, None
+                return False, None, None
 
             if r.status_code == 200 or r.status_code == 201:
                 # print(r.text)
@@ -321,9 +321,9 @@ class ESDLServices:
 
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
-                    return True, None
+                    return True, None, es
                 elif service["result"][0]["action"] == "print":
-                    return True, json.loads(r.text)
+                    return True, json.loads(r.text), None
                 elif service["result"][0]["action"] == "add_assets":
                     es_edit = esh.get_energy_system(es_id=active_es_id)
                     instance = es_edit.instance
@@ -356,9 +356,9 @@ class ESDLServices:
                             )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
-                        return False, None
+                        return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, None
                 elif service["result"][0]["action"] == "add_notes":
                     es_edit = esh.get_energy_system(es_id=active_es_id)
                     esi = es_edit.energySystemInformation
@@ -384,9 +384,9 @@ class ESDLServices:
                         emit('add_notes', {'es_id': active_es_id, 'notes_list': notes_list})
                     else:
                         logger.error("Service with id "+service_params["service_id"]+" did not return a esdl.Notes object")
-                        return False, None
+                        return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, es_edit
                 elif service["result"][0]["action"] == "asset_feedback":
                     service_results = json.loads(r.text)
 
@@ -395,9 +395,9 @@ class ESDLServices:
                         asset_results_dict[sr['assetID']] = sr['messages']
                     return True, {
                         "asset_feedback": asset_results_dict
-                    }
+                    }, None
                 elif service["result"][0]["action"] == "show_message":
-                    return True, {"message": service["result"][0]["message"]}
+                    return True, {"message": service["result"][0]["message"]}, None
             else:
                 logger.warning(
                     "Error running ESDL service - response "
@@ -407,9 +407,9 @@ class ESDLServices:
                 )
                 logger.warning(r)
                 logger.warning(r.content)
-                return False, r
+                return False, r, None
         except Exception as e:
             logger.exception("Error accessing external ESDL service: " + str(e))
-            return False, None
+            return False, None, None
 
-        return False, None
+        return False, None, None

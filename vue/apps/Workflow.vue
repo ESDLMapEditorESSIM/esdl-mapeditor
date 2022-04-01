@@ -13,9 +13,25 @@
       >
         <a-breadcrumb-item v-for="prevStep in currentWorkflow.prevWorkflowSteps" :key="prevStep.id">{{ prevStep.name }}</a-breadcrumb-item>
       </a-breadcrumb>
-
-      <hr>
     </template>
+    <a-button
+      @click="persistWorkflow()"
+    >
+      <i class="fas fa-save small-icon" />
+    </a-button>
+    <a-select
+      @change="activatePersistedWorkflow"
+    >
+      <a-select-option
+        v-for="workflow in savedWorkflows"
+        :key="workflow.uuid"
+        :value="workflow.uuid"
+      >
+        {{ workflow.name }}
+      </a-select-option>
+    </a-select>
+
+    <hr>
 
     <h1>{{ currentWorkflow.service.name }}</h1>
     <h3>{{ currentWorkflow.workflowStep.name }}</h3>
@@ -102,11 +118,13 @@ import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonFo
 
 export default {
   setup() {
-    const { currentWorkflow, goToStep, goToPreviousStep } = useWorkflow();
+    const { currentWorkflow, goToStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow } = useWorkflow();
+
     return {
       currentWorkflow,
       goToStep,
       goToPreviousStep,
+      persistWorkflow,
       WorkflowStepTypes,
       WorkflowUploadFile,
       WorkflowHttpPost,
@@ -118,6 +136,8 @@ export default {
       WorkflowText,
       WorkflowDownloadFile,
       WorkflowJsonForm,
+      savedWorkflows,
+      activatePersistedWorkflow
     };
   },
 };
