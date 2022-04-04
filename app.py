@@ -1598,11 +1598,21 @@ def process_command(message):
                         else:
                             asset.surfaceArea = polygon_area
 
+                # Set port existence booleans
+                no_out_port = True
+                no_in_port = True
+                for p in asset.port:
+                    if isinstance(p, esdl.OutPort):
+                        no_out_port = False
+                    if isinstance(p, esdl.InPort):
+                        no_in_port = False
+
                 if not isinstance(asset, esdl.AbstractBuilding):
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with a polyline geometry and an InPort and an OutPort
                     # -------------------------------------------------------------------------------------------------------------
                     if object_type in ['ElectricityCable', 'Pipe']:
+                        # Assume pipes and cables never have ports (coming out of the EDR)
                         inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                         asset.port.append(inp)
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
@@ -1677,12 +1687,12 @@ def process_command(message):
                                     inp.carrier = start_port.carrier
                                     outp.carrier = start_port.carrier
                                     if end_port is not None and end_port.carrier is None:
-                                        if isinstance(end_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                        # in case of a joint: set the carrier for all ports
+                                        if isinstance(end_port.energyasset, esdl.Joint):
                                             for p in end_port.energyasset.port:
                                                 p.carrier = start_port.carrier if p.carrier is None else p.carrier
                                         else:
                                             end_port.carrier = start_port.carrier
-
 
                             if end_port:
                                 if isinstance(end_port, esdl.InPort):
@@ -1694,13 +1704,12 @@ def process_command(message):
                                     inp.carrier = end_port.carrier
                                     outp.carrier = end_port.carrier
                                     if start_port is not None and start_port.carrier is None:
-                                        if isinstance(start_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                        # in case of a joint: set the carrier for all ports
+                                        if isinstance(start_port.energyasset, esdl.Joint):
                                             for p in start_port.energyasset.port:
                                                 p.carrier = end_port.carrier if p.carrier is None else p.carrier
                                         else:
                                             start_port.carrier = end_port.carrier
-
-
 
                             # send messages to update connections and start port / end port marker colors based on
                             # the carriers
@@ -1724,7 +1733,6 @@ def process_command(message):
                                                       'conn_to': [pt.id for pt in p.connectedTo],
                                                       'carrier': p.carrier.id if p.carrier else None})
                                 emit('update_asset', {'asset_id': from_asset.id, 'ports': port_list})
-
 
                             if end_port:
                                 conn_message = {'from-port-id': from_port2.id,
@@ -1751,6 +1759,7 @@ def process_command(message):
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
                     # -------------------------------------------------------------------------------------------------------------
                     elif object_type in ['CHP', 'FuelCell']:
+                        # Assume CHPs and FuelCells never have ports (coming out of the EDR)
                         inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                         asset.port.append(inp)
 
@@ -1768,14 +1777,19 @@ def process_command(message):
                         if view_modes.get_user_settings(user_email)['mode'] == 'CHESS':
                             double_line_mode = True
 
+                        # For producers, consumers (and storage) check if a port already exists (coming from the EDR)
                         if capability == 'Producer':
-                            asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
-                            if double_line_mode:
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                        elif capability in ['Consumer', 'Storage']:
-                            asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                            if double_line_mode:
+                            if no_out_port:
                                 asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
+                            if double_line_mode:
+                                if no_in_port:
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                        elif capability in ['Consumer', 'Storage']:
+                            if no_in_port:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                            if double_line_mode:
+                                if no_out_port:
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Conversion':
                             if object_type == "HeatPump" and double_line_mode:
                                 asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
