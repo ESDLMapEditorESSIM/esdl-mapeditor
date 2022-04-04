@@ -71,7 +71,7 @@ from src.datalayer_api import DataLayerAPI
 from src.edr_assets import EDRAssets
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
-    update_carrier_conn_list
+    update_carrier_conn_list, add_spatial_attributes
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
@@ -1018,6 +1018,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                               'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond1)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond1, 'line')
+        add_spatial_attributes(new_cond1, tooltip_asset_attrs)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__,
                                         coords1, tooltip_asset_attrs, state, port_list])
         coords2 = []
@@ -1031,6 +1032,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                               'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond2)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond2, 'line')
+        add_spatial_attributes(new_cond2, tooltip_asset_attrs)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__,
                                         coords2, tooltip_asset_attrs, state, port_list])
 
@@ -1856,6 +1858,7 @@ def process_command(message):
                     state = asset_state_to_ui(asset)
                     if isinstance(geometry, esdl.Point):
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        [shape['coordinates']['lat'], shape['coordinates']['lng']],
                                                        tooltip_asset_attrs, state, port_list, capability_type])
@@ -1864,6 +1867,7 @@ def process_command(message):
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(
                             ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
                              tooltip_asset_attrs, state, port_list, capability_type])
@@ -1872,6 +1876,7 @@ def process_command(message):
                         for point in geometry.point:
                             coords.append([point.lat, point.lon])
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        coords, tooltip_asset_attrs, state, port_list])
 

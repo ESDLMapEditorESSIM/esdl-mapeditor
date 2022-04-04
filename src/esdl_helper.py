@@ -239,6 +239,7 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
 
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            add_spatial_attributes(asset, tooltip_asset_attrs)
             return ['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon], tooltip_asset_attrs,
                     state, port_list, capability_type], conn_list
         elif isinstance(geom, esdl.Line):
@@ -246,6 +247,7 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
             for point in geom.point:
                 coords.append([point.lat, point.lon])
             tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+            add_spatial_attributes(asset, tooltip_asset_attrs)
             return ['line', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs, state,
                     port_list], conn_list
         elif isinstance(geom, esdl.Polygon):
@@ -255,6 +257,7 @@ def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
                 capability_type = ESDLAsset.get_asset_capability_type(asset)
                 # print(coords)
                 tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
+                add_spatial_attributes(asset, tooltip_asset_attrs)
                 return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs,
                         state, port_list, capability_type], conn_list
         else:
