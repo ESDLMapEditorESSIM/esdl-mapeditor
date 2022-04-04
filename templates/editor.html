@@ -1705,13 +1705,15 @@
     }).addTo(map);
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["AggregatedBuilding", "ATES", "Battery", "Building", "Bus", "CHP", "CheckValve", "CoolingDemand",
-        "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
-        "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer",
-        "GenericConversion", "GenericProducer", "GenericTransport", "GeothermalSource", "HConnection", "HeatingDemand",
-        "HeatExchange", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "Pipe",
-        "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSource", "ResidualHeatSourcePotential",
-        "SinkConsumer", "SourceProducer", "Transformer", "UTES", "Valve", "WindTurbine", "EVChargingStation", "Sensor"];
+    var assets_for_icons = ["AggregatedBuilding", "ATES", "Battery", "Building", "Bus", "CheckValve", "CHP",
+        "CoolingDemand", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
+        "EVChargingStation", "Export", "FermentationPlant",  "FuelCell", "GasHeater", "GasNetwork",
+        "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
+        "GeothermalSource", "HConnection", "HeatExchange", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage",
+        "Import", "Joint", "MobilityDemand", "Pipe", "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVPark",
+        "ResidualHeatSource", "ResidualHeatSourcePotential", "Sensor", "SinkConsumer", "SolarCollector",
+        "SourceProducer", "Transformer", "UTES", "Valve", "WaterBuffer", "WindPark", "WindTurbine"
+    ];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
