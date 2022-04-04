@@ -1601,11 +1601,12 @@ def process_command(message):
                 # Set port existence booleans
                 no_out_port = True
                 no_in_port = True
-                for p in asset.port:
-                    if isinstance(p, esdl.OutPort):
-                        no_out_port = False
-                    if isinstance(p, esdl.InPort):
-                        no_in_port = False
+                if isinstance(asset, esdl.EnergyAsset):
+                    for p in asset.port:
+                        if isinstance(p, esdl.OutPort):
+                            no_out_port = False
+                        if isinstance(p, esdl.InPort):
+                            no_in_port = False
 
                 if not isinstance(asset, esdl.AbstractBuilding):
                     # -------------------------------------------------------------------------------------------------------------
