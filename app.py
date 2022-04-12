@@ -63,7 +63,7 @@ from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
-from extensions.vesta import Vesta
+# from extensions.vesta import Vesta
 from extensions.workflow import Workflow
 from extensions.eps_workflow import EpsWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
@@ -310,7 +310,7 @@ def editor():
         mondaine_hub_enabled = not(settings.mondaine_hub_config["hostname"] is None or settings.mondaine_hub_config["hostname"] == "")
         store_enabled = esdl_store_enabled or mondaine_hub_enabled
         esdl_drive_enabled = not(settings.esdl_drive_config["hostname"] is None or settings.esdl_drive_config["hostname"] == "")
-        edr_enabled = not(settings.edr_config["EDR_host"] is None or settings.edr_config["EDR_host"] == "")
+        edr_enabled = not(settings.edr_config["host"] is None or settings.edr_config["host"] == "")
         essim_enabled = not(settings.essim_config["ESSIM_host"] is None or settings.essim_config["ESSIM_host"] == "")
         boundary_service_enabled = not(settings.boundaries_config["host"] is None or settings.boundaries_config["host"] == "")
         statistics_service_enabled = not(settings.statistics_settings_config["host"] is None or settings.statistics_settings_config["host"] == "")
