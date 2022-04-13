@@ -24,7 +24,7 @@ function new_ESDL() {
     table = '<table>';
     table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="new_name"></td></tr>';
     table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
-    table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
+    table += '<tr><td width=180>Instance name</td><td><input type="text" width="60" id="new_instance_name"></td></tr>';
     table += '<tr><td width=180></td><td></td></tr>';
     table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
     table += '</table>';
@@ -38,11 +38,11 @@ function new_ESDL() {
 function click_new_ESDL_button(obj) {
     new_name = document.getElementById('new_name').value;
     new_description = document.getElementById('new_description').value;
-    new_email = document.getElementById('new_email').value;
+    new_instance_name = document.getElementById('new_instance_name').value;
     new_top_area_name = document.getElementById('new_area_name').value;
 
     socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
-        email: new_email, top_area_name: new_top_area_name});
+        instance_name: new_instance_name, top_area_name: new_top_area_name});
 }
 
 function open_ESDL(event) {
