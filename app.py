@@ -999,6 +999,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # remove conductor from container (area or building) and add new two conductors
         assets = conductor_container.asset
         assets.remove(conductor)
+        esh.remove_object_from_dict(active_es_id, conductor)
         conductor_container.asset.append(new_cond1)
         conductor_container.asset.append(new_cond2)
 
@@ -1109,6 +1110,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # now send new objects to UI
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')   # clear current active layer connections
+        emit('delete_esdl_object', {'asset_id': conductor.id}) # remove original condutor from map
         emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
     else:
         send_alert('UNSUPPORTED: Conductor is not of type esdl.Line!')
