@@ -1916,6 +1916,12 @@ def process_command(message):
             # remove from asset dict
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
+            conn_list = get_session_for_esid(active_es_id, 'conn_list')
+            print(obj_id, 'before', conn_list)
+            conn_list[:] = [c for c in conn_list
+                            if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
+            print('after', conn_list)
+
 
 
         else:

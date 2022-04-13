@@ -152,7 +152,7 @@ function delete_asset(asset) {
             }
         } else if (asset instanceof L.Polyline) {
             if (asset.mouseOverArrowHead !== undefined) {
-                map.removeLayer(asset.mouseOverArrowHead)
+                remove_object_from_layer(es_bld_id, 'connection_layer', asset.mouseOverArrowHead);
                 delete asset.mouseOverArrowHead;
             }
 
@@ -320,12 +320,14 @@ function set_marker_handlers(marker) {
         }
     }
 
+    // TODO: after editing the layers in LeafletDraw, these events are removed and need to be added again
     marker.off('dragend')
     marker.on('dragend', function(e) {
         var marker = e.target;
         var pos = marker.getLatLng();
-        socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
         update_marker_ports(marker);
+        socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+
         // console.log(e.oldLatLng.lat);
         // console.log(pos.lat + ', ' + pos.lng );
     });
@@ -465,7 +467,7 @@ function set_line_handlers(line) {
     line.on('remove', function(e) {
         let layer = e.target;
         if (layer.mouseOverArrowHead !== undefined) {
-            map.removeLayer(layer.mouseOverArrowHead)
+            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
 

@@ -321,8 +321,9 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
-                socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
                 update_marker_ports(marker);
+                socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
+
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works
