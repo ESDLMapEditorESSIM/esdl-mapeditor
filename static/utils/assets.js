@@ -595,7 +595,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point' && !('surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'point' && !(asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -620,14 +620,17 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-        if (spatial_buffers_plugin.show_spatial_buffers())
-            spatial_buffers_plugin.add_spatial_buffers(marker);
-  
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                { permanent: true, className: 'marker-tooltip' });
+
+        if (asset_info[1] == 'asset') {
+            if (spatial_buffers_plugin.show_spatial_buffers())
+                spatial_buffers_plugin.add_spatial_buffers(marker);
+
+            if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                    { permanent: true, className: 'marker-tooltip' });
+        }
     }
-    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
         var coords = asset_info[5]
         let polygon_color;
