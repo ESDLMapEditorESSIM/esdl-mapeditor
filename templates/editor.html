@@ -1273,10 +1273,12 @@
             var selected_asset = select_box.options[select_box.selectedIndex].value;
 
             var line_assets = ["ElectricityCable", "Pipe"];
-            var area_assets = ["Area", "PVPark", "WindPark"];
+            var polygon_assets = ["PVPark", "WindPark"];
             if (line_assets.includes(selected_asset)) {
                 if (menu_id == 'asset_menu') update_line_asset_menu(selected_asset);
                 dc._toolbars.draw._modes.polyline.handler.enable();
+            } else if (selected_asset == "Area") {
+                dc._toolbars.draw._modes.polygon.handler.enable();
             } else {
                 var marker_class_name = window[selected_asset + "Marker"];
 
@@ -1285,7 +1287,7 @@
                         icon: new marker_class_name()
                     }
                 });
-                if (area_assets.includes(selected_asset)) {
+                if (polygon_assets.includes(selected_asset)) {
                     socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
                     dc._toolbars.draw._modes.polygon.handler.enable();
                 } else {
@@ -1312,8 +1314,8 @@
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
-                console.log('selectmenuchange');
-                console.log(draw_control);
+                // console.log('selectmenuchange');
+                // console.log(draw_control);
                 initiate_draw_asset(draw_control, 'asset_menu');
             });
 

@@ -3020,13 +3020,13 @@ def process_file_command(message):
     if message['cmd'] == 'new_esdl':
         name = message['name']
         description = message['description']
-        email = message['email']
+        instance_name = message['instance_name']
         top_area_name = message['top_area_name']
         if top_area_name == '': top_area_name = 'Untitled area'
         if name == '': name = 'New Energy System'
         filename = 'Unknown'
         esh = EnergySystemHandler()
-        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name, esdlVersion=esdl_doc.get_esdl_version())
+        es = esh.create_empty_energy_system(name, description, instance_name, top_area_name, esdlVersion=esdl_doc.get_esdl_version())
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -3037,7 +3037,6 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        set_session('es_email', email)
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
