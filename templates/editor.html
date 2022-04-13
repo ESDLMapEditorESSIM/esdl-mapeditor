@@ -322,6 +322,7 @@
                 var marker = e.target;
                 var pos = marker.getLatLng();
                 socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
+                update_marker_ports(marker);
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works
@@ -1362,6 +1363,14 @@
         };
 
         function refresh_esdl(e) {
+            drawState.reset();
+            sidebar.hide();
+            window.draw_control._toolbars.draw._modes.polyline.handler.stopDrawing()
+            window.draw_control._toolbars.draw._modes.polygon.handler.stopDrawing()
+            window.draw_control._toolbars.draw._modes.marker.handler.stopDrawing();
+            window.draw_control._toolbars.draw._modes.rectangle.handler.stopDrawing();
+            window.draw_control._toolbars.edit._modes.edit.handler.disable();
+            window.draw_control._toolbars.edit._modes.remove.handler.disable();
             socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
         }
 
