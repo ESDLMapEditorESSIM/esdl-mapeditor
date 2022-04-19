@@ -3022,8 +3022,9 @@ def process_file_command(message):
         description = message['description']
         instance_name = message['instance_name']
         top_area_name = message['top_area_name']
-        if top_area_name == '': top_area_name = 'Untitled area'
         if name == '': name = 'New Energy System'
+        if instance_name == '': instance_name = 'Untitled instance'
+        if top_area_name == '': top_area_name = 'Untitled area'
         filename = 'Unknown'
         esh = EnergySystemHandler()
         es = esh.create_empty_energy_system(name, description, instance_name, top_area_name, esdlVersion=esdl_doc.get_esdl_version())
