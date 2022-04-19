@@ -166,7 +166,8 @@ class ESDLDrive {
                                     var inst = $.jstree.reference(data.reference),
                                         obj = inst.get_node(data.reference);
                                     //console.log(obj);
-                                    $('#treebrowser').jstree(true).refresh_node(obj.id);
+                                    // refresh parent, as that will refresh the children
+                                    $('#treebrowser').jstree(true).refresh_node(obj.parent);
                                 }
                             };
                         }
@@ -175,8 +176,13 @@ class ESDLDrive {
                             delete tmp.create;
                         }
                         if (this.get_type(node) === 'folder' && !node.original.writable) {
-								tmp.ccp._disabled = true;
-							}
+                            tmp.ccp._disabled = true;
+						}
+						if (this.get_type(node) !== 'folder' && !node.original.writable) {
+                            tmp.rename._disabled = true;
+                            tmp.remove._disabled = true;
+                            tmp.ccp.submenu.cut._disabled = true;
+						}
                         if (this.get_type(node) === 'folder' && !node.original.deletable) {
                             // don't show rename and remove on folders that are not deletable
                             tmp.rename._disabled = true;
@@ -215,8 +221,11 @@ class ESDLDrive {
                         alert(response.json.error);
                         data.instance.refresh();
                     } else {
-                        data.node.original.writable = true;
                         data.instance.set_id(data.node, response.json.id);
+                        for(let key in response.json) {
+                            // update node to match properties from backend, e.g. writable
+						    data.node.original[key] = response.json[key];
+						}
                     }
                 });
             })
