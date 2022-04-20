@@ -137,7 +137,7 @@ function roundFactor(value) {
 const doGetData = async () => {
   isLoading.value = true;
   try {
-    const response = await doGet("eps_workflow/get_buildings");
+    const response = await doGet("dice_workflow/get_buildings");
     if (!response) {
       alert("No buildings received.");
       return

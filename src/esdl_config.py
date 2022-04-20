@@ -397,6 +397,11 @@ esdl_config = {
                                 "next_step": 12,
                                 "type": "default",
                             },
+                            {
+                                "name": "Export ESSIM results",
+                                "next_step": 19,
+                                "type": "default",
+                            },
                         ],
                     },
                     {
@@ -737,6 +742,13 @@ esdl_config = {
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
                         }
+                    },
+                    {
+                        # 19
+                        "name": "Export ESSIM results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-export-essim",
                     },
                 ],
             }

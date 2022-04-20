@@ -65,7 +65,7 @@ from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.eps_workflow import EpsWorkflow
+from extensions.dice_workflow import DiceWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
@@ -165,7 +165,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage)
-EpsWorkflow(app, socketio, settings_storage)
+DiceWorkflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
