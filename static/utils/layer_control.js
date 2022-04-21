@@ -127,13 +127,11 @@ function add_layer_control() {
         $(div).append($esdl_layer_control_tree);
 
         $esdl_layer_control_tree
-            .on('select_node.jstree', function(e, data) {
-                // console.log('select_node event');
-                // console.log(data);
-                let node = data.node;
-                // Execute select_active_layer here instead of in the conditionalselect event handler, such that
-                // making an ESDL layer invisible doesn't set it to the active layer without moving the blue bar
-                select_active_layer(node.id);
+            .on('select_node.jstree', function(node, selected, event) {
+                if (selected.event !== undefined) { // undefined when manually selecting this node (e.g. initialization)
+                    console.log('set active layer to ', selected.node.text, selected.node.id);
+                    select_active_layer(selected.node.id);
+                }
             })
             .on('ready.jstree', function() {
                 let tree = $('#esdl_lct').jstree(true);
@@ -234,14 +232,9 @@ function add_layer_control() {
                     "tie_selection": false      // uncouple selecting and checking
                 },
                 "conditionalselect" : function (node, e) {
-                    console.log(node.state);
-                    if (node.type === 'esdl-file') {
-                        // console.log('Selected an ESDL file with id: '+node.id);
-                        // This code is also triggered when an ESDL layer is hidden, so it activates an ESDL layer too
-                        // select_active_layer(node.id);
-                        // The next line checks the checkbox when clicking the title, but prevent the checkbox
-                        // from being clicked itself --> results in check-uncheck
-                        // $('#esdl_lct').jstree(true).check_node(e.target);
+                    if(node.type === 'esdl-file') {
+                        // only allow node type == esdl-file to be selected, others are not
+                        // handling of selection event is in select_node event
                         return true;
                     } else
                         return false;
