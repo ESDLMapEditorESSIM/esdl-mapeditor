@@ -1,4 +1,4 @@
-__version__ = "22.4.1"
-__long_version__ = "22.4.1-g930b9d9-main"
-__git_commit__ = "930b9d9a757da2347a4d2a0648eb09af624546a7"
+__version__ = "22.4.2"
+__long_version__ = "22.4.2-g0abbaa1-main"
+__git_commit__ = "0abbaa13174c868ba920dc0926480e29009705be"
 __git_branch__ = "main"
