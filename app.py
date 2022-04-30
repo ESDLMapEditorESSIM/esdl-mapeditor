@@ -69,6 +69,7 @@ from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
 from src.edr_assets import EDRAssets
+from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
     update_carrier_conn_list, add_spatial_attributes
@@ -83,6 +84,7 @@ from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
+from src.release_notes import ReleaseNotes
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -183,6 +185,8 @@ AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
+ReleaseNotes(app, socketio, settings_storage)
+ESDL2Shapefile(app)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -435,6 +439,7 @@ def download_esdl():
         import traceback
         traceback.print_exc()
         return "Error sending ESDL file, due to {}".format(e)
+
 
 
 @app.route('/<path:path>')

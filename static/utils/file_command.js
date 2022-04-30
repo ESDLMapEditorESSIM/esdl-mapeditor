@@ -114,20 +114,17 @@ function click_import_ESDL_button(obj) {
     show_loader();
 }
 
-// Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
-// if we set the window.location.href directly...
-var $idown;  // Keep it outside of the function, so it's initialized once.
 function save_ESDL(e, prefix) {
-    let url = prefix+'/esdl'
-    //if ($idown) {
-    //    $idown.attr('src',url);
-    //} else {
-    //    $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
-    //}
-    // The following code does a HTML5 download request.
-    // From stackoverflow:
-    // simply setting the window.url to the download url does not work as it navigates away from the current
-    // page, releasing the websocket connection.
+    let url = prefix+'/esdl';
+    download_file(e, url);
+}
+
+function export_as_shapefiles(e, prefix) {
+    let url = prefix+'/esdl2shapefile';
+    download_file(e, url);
+}
+
+function download_file(e, url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';

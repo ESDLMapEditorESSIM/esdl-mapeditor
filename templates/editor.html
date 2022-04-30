@@ -1471,6 +1471,10 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Save to ESDL Drive...</a></li>
 {% endif %}
+                                    <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Export as shapefiles</a></li>
+
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1579,6 +1583,7 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+                                    <li id="vue_show_release_notes"></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
