@@ -94,4 +94,8 @@ class ReleaseNotes:
             })
             return ""
         else:
+            if last_seen_version_settings["version"] != __version__:
+                self.mapeditor_settings.set_user_setting(user, LATEST_SEEN_VERSION_SETTINGS, {
+                    "version": __version__
+                })
             return last_seen_version_settings["version"]
