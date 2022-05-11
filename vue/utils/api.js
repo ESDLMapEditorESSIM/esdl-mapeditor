@@ -86,10 +86,14 @@ export function handleErrorResponse(e) {
         }
     } else {
         let message;
-        if (e.status) {
-            message = "Invalid response received - status " + e.status + " " + e.statusText;
+        if (e.message) {
+            message = e.message;
         } else {
-            message = "An unknown error occurred while retrieving data. If the problem persists, please contact us."
+            if (e.status) {
+                message = "Invalid response received - status " + e.status + " " + e.statusText;
+            } else {
+                message = "An unknown error occurred while retrieving data. If the problem persists, please contact us."
+            }
         }
         genericErrorHandler(message);
     }

@@ -344,7 +344,7 @@ class ESSIM:
 
         return sim_list
 
-    def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
+    def store_simulation(self, es_id, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None:
                 if self.settings_storage.has_user(user_email, essim_list):
@@ -353,6 +353,7 @@ class ESSIM:
                     sim_list = []
 
                 sim_list.insert(0, {
+                    "es_id": es_id,
                     "simulation_id": simulation_id,
                     "simulation_datetime": simulation_datetime,
                     "simulation_descr": simulation_descr,
@@ -458,7 +459,7 @@ class ESSIM:
                     set_session('es_simid', sim_id)
                     print("ESSIM started, sim_id: " + sim_id)
 
-                    self.store_simulation(user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
+                    self.store_simulation(active_es_id, user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
 
                     active_simulation = {

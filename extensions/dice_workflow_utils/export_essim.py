@@ -11,15 +11,11 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import json
-import os
-import sys
 from pathlib import Path
 
 import esdl
 import pandas as pd
 from influxdb import InfluxDBClient
-from esdl.esdl_handler import EnergySystemHandler
 
 # Helper function
 from influxdb.resultset import ResultSet
