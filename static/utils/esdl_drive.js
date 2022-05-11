@@ -33,6 +33,7 @@ class ESDLDrive {
      getTreeBrowser() {
         let $div = $('<div>').attr('id', 'treebrowsercontainer');
         let $jstree = $('<div>').attr('id', 'treebrowser');
+        let $splitter = $('<div>').attr('id', 'splitter');
         let $data = $('<div>').attr('id', 'data');
         let $content_esdl = $('<div>').addClass('content esdl').css('display','none');
         let $content_folder = $('<div>').addClass('content folder').css('display','none');
@@ -46,7 +47,30 @@ class ESDLDrive {
         $data.append($content_default);
         $data.append($content_loader);
         $div.append($jstree);
+        $div.append($splitter);
         $div.append($data);
+
+        var jDoc = $div;
+        $splitter.mousedown(function (e) {
+            e.preventDefault();
+            jDoc.mousemove(function (e) {
+                e.preventDefault();
+                var x = e.pageX - $jstree.offset().left;
+                var windowWidth = $(window).width();
+                var min = windowWidth/10;
+                if (x > min && x < windowWidth && e.pageX < (windowWidth - min)) {
+                    $jstree.width(x);
+                    //jQuery("div#doc-content .markdown-body").each(function() {
+                    //	var delta = jQuery("#docAppPanel")[0].getBoundingClientRect().right - this.getBoundingClientRect().right - 30;
+                    //	var jThis = jQuery(this);
+                    //	jThis.css("max-width", jThis.width()+delta+"px");
+                    //});
+                }
+            });
+        });
+        jDoc.mouseup(function (e) {
+            jDoc.unbind('mousemove');
+        });
 
         return $div;
      }
@@ -79,7 +103,11 @@ class ESDLDrive {
                         if(operation === "move_node" || operation === "copy_node") {
                             if(this.get_node(node).parent === this.get_node(parent).id) { return false; }
                         }
-                        if (parent.original === undefined || !parent.original.writable) { return false;}
+                        if (parent.original === undefined ||
+                            !parent.original.writable ||
+                            !(parent.original.type === 'folder')) {
+                            return false;
+                        }
                         return true;
                     },
                     'themes' : {
@@ -96,12 +124,19 @@ class ESDLDrive {
                         var tmp = $.jstree.defaults.contextmenu.items();
                         //console.log(tmp);
                         //console.log(node);
+                        tmp.rename.icon = "fa fa-edit";
+                        tmp.remove.icon = "fa fa-trash-o";
+                        tmp.ccp.submenu.cut.icon = "fa fa-cut";
+                        tmp.ccp.submenu.copy.icon = "fa fa-copy";
+                        tmp.ccp.submenu.paste.icon = "fa fa-paste";
                         delete tmp.create.action;
                         tmp.create.label = "New";
+                        tmp.create.icon = "fa fa+plus";
                         tmp.create.submenu = {
                             "create_folder" : {
                                 "separator_after"	: true,
                                 "label"				: "Folder",
+                                "icon"              : "fa fa-folder",
                                 "action"			: function (data) {
                                     var inst = $.jstree.reference(data.reference),
                                         obj = inst.get_node(data.reference);
@@ -122,20 +157,39 @@ class ESDLDrive {
                                 }
                             }*/
                         };
-                        tmp.refresh = {
+                        if (this.get_type(node) === 'folder') {
+                            tmp.refresh = {
                                 "label": "Refresh",
+                                "icon": "fa fa-refresh",
                                 "separator_before": true,
                                 "action": function (data) {
                                     var inst = $.jstree.reference(data.reference),
                                         obj = inst.get_node(data.reference);
                                     //console.log(obj);
-                                    $('#treebrowser').jstree(true).refresh_node(obj.id);
+                                    // refresh parent, as that will refresh the children
+                                    $('#treebrowser').jstree(true).refresh_node(obj.parent);
                                 }
                             };
+                        }
                         if(this.get_type(node) !== "folder" || !node.original.writable) {
                             // don't add New menu if it is a file that is selected
                             delete tmp.create;
                         }
+                        if (this.get_type(node) === 'folder' && !node.original.writable) {
+                            tmp.ccp._disabled = true;
+						}
+						if (this.get_type(node) !== 'folder' && !node.original.writable) {
+                            tmp.rename._disabled = true;
+                            tmp.remove._disabled = true;
+                            tmp.ccp.submenu.cut._disabled = true;
+						}
+                        if (this.get_type(node) === 'folder' && !node.original.deletable) {
+                            // don't show rename and remove on folders that are not deletable
+                            tmp.rename._disabled = true;
+                            tmp.remove._disabled = true;
+                            tmp.ccp.submenu.cut._disabled = true;
+                            tmp.ccp.submenu.copy._disabled = true;
+						}
                         return tmp;
                     }
                 },
@@ -167,8 +221,11 @@ class ESDLDrive {
                         alert(response.json.error);
                         data.instance.refresh();
                     } else {
-                        data.node.original.writable = true;
                         data.instance.set_id(data.node, response.json.id);
+                        for(let key in response.json) {
+                            // update node to match properties from backend, e.g. writable
+						    data.node.original[key] = response.json[key];
+						}
                     }
                 });
             })
@@ -390,7 +447,7 @@ class ESDLDrive {
 
         let $filename_div = $('<div>').addClass('blockdiv');
         let $filename_label = $('<label>').addClass('button').attr({'for': 'filename'}).text("Specify file name:");
-        let $filename = $('<input placeholder="My Energysystem.esdl" type="text">').attr('id', 'filename').css({'width':'400px'});
+        let $filename = $('<input placeholder="My Energy System.esdl" type="text">').attr('id', 'filename').css({'width':'400px'});
         $filename_div.append($filename_label).append($filename);
         $filename.val(filename);
 
@@ -403,6 +460,9 @@ class ESDLDrive {
         let $save = $('<input type="button" class="btn btn-outline-primary blockdiv" value="Save">');
         $save.click(function (e) {
             filename = $('#filename').val();
+            if (!filename) { // empty string
+                filename = "My Energy System.esdl";
+            }
             if (!filename.endsWith('.esdl')) { // add .esdl extension
                 filename = filename + ".esdl";
             }
@@ -449,7 +509,7 @@ class ESDLDrive {
         let $input = $('<input type="file" multiple>').attr('id', 'fileElem');
         let $label = $('<label for="fileElem">').addClass('button').text('Select file(s)');
         let $progress = $('<progress>').attr('id', 'progress-bar').attr('max', 100).attr('value', 0).css('vertical-align','middle');
-        let $progress_text = $('<span style="margin-left: 1em; margin-top: -4px">').attr('id', 'progress-text').text('progress text');
+        let $progress_text = $('<span style="margin-left: 1em; margin-top: -4px">').attr('id', 'progress-text').text('');
         $droparea.append($form);
         $input.change(function(e) {
             handleFiles(this.files);

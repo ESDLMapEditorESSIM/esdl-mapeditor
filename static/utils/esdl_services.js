@@ -257,7 +257,8 @@ function process_service_results(results) {
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
     }
 
-    if (!('show_asset_results' in results) && !('asset_feedback' in results) && !('show_url' in results)) {
+    if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
+        !('show_url' in results) && !('message' in results)) {
         sidebar.hide();
     }
 }

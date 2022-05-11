@@ -11,6 +11,8 @@ import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
+import ReleaseNotes from './apps/ReleaseNotes';
+import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import AssetTableEditor from './apps/AssetTableEditor';
@@ -106,6 +108,12 @@ window.environmental_profiles = () => {
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
+mountApp(ReleaseNotes, '#vue_show_release_notes')
+window.show_new_release_notes = () => {
+   const { showNewReleaseNotes } = useReleaseNotes();
+   // show new release notes if any...
+   showNewReleaseNotes();
+}
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
 createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
