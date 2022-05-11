@@ -1,5 +1,5 @@
 {
-  "version": "22.2.0",
+  "version": "22.4.2",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
@@ -12,13 +12,13 @@
     "@jsonforms/core": "^2.5.2",
     "@jsonforms/vue": "^2.5.2",
     "@jsonforms/vue-vanilla": "^2.5.2",
-    "@revolist/vue3-datagrid": "^3.0.97",
+    "@revolist/vue3-datagrid": "^3.1.0",
     "ant-design-vue": "2.0.0-rc.3",
     "axios": "^0.20.0",
-    "core-js": "^3.6.5",
+    "core-js": "^3.21.1",
     "reqwest": "^2.0.5",
-    "sass-loader": "^10.0.2",
-    "sweetalert2": "^11.1.4",
+    "sass-loader": "^10.2.1",
+    "sweetalert2": "^11.4.8",
     "uuid": "^8.3.1",
     "vue": "3.0.4"
   },

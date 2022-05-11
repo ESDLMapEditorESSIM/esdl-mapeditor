@@ -321,7 +321,9 @@
             marker.on('dragend', function(e) {
                 var marker = e.target;
                 var pos = marker.getLatLng();
+                update_marker_ports(marker);
                 socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
+
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works
@@ -1271,10 +1273,12 @@
             var selected_asset = select_box.options[select_box.selectedIndex].value;
 
             var line_assets = ["ElectricityCable", "Pipe"];
-            var area_assets = ["Area", "PVPark", "WindPark"];
+            var polygon_assets = ["PVPark", "WindPark"];
             if (line_assets.includes(selected_asset)) {
                 if (menu_id == 'asset_menu') update_line_asset_menu(selected_asset);
                 dc._toolbars.draw._modes.polyline.handler.enable();
+            } else if (selected_asset == "Area") {
+                dc._toolbars.draw._modes.polygon.handler.enable();
             } else {
                 var marker_class_name = window[selected_asset + "Marker"];
 
@@ -1283,7 +1287,7 @@
                         icon: new marker_class_name()
                     }
                 });
-                if (area_assets.includes(selected_asset)) {
+                if (polygon_assets.includes(selected_asset)) {
                     socket.emit('command', {'cmd': 'set_area_drawing_mode', 'mode': 'asset_with_polygon'});
                     dc._toolbars.draw._modes.polygon.handler.enable();
                 } else {
@@ -1310,8 +1314,8 @@
             // changes the icon for the new marker command
             $('#asset_menu').on('selectmenuchange', function (e) {
                 socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
-                console.log('selectmenuchange');
-                console.log(draw_control);
+                // console.log('selectmenuchange');
+                // console.log(draw_control);
                 initiate_draw_asset(draw_control, 'asset_menu');
             });
 
@@ -1360,6 +1364,14 @@
         };
 
         function refresh_esdl(e) {
+            drawState.reset();
+            sidebar.hide();
+            window.draw_control._toolbars.draw._modes.polyline.handler.stopDrawing()
+            window.draw_control._toolbars.draw._modes.polygon.handler.stopDrawing()
+            window.draw_control._toolbars.draw._modes.marker.handler.stopDrawing();
+            window.draw_control._toolbars.draw._modes.rectangle.handler.stopDrawing();
+            window.draw_control._toolbars.edit._modes.edit.handler.disable();
+            window.draw_control._toolbars.edit._modes.remove.handler.disable();
             socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
         }
 
@@ -1459,6 +1471,10 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Save to ESDL Drive...</a></li>
 {% endif %}
+                                    <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Export as shapefiles</a></li>
+
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1567,6 +1583,7 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+                                    <li id="vue_show_release_notes"></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
@@ -1705,13 +1722,15 @@
     }).addTo(map);
 
     // List of assets that have a dedicated icon. For others they are generated based on capital letters in the name.
-    var assets_for_icons = ["AggregatedBuilding", "ATES", "Battery", "Building", "Bus", "CHP", "CheckValve", "CoolingDemand",
-        "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer", "FermentationPlant",
-        "Export", "FuelCell", "GConnection", "GasHeater", "GasNetwork", "GasStorage", "GConnection", "GenericConsumer",
-        "GenericConversion", "GenericProducer", "GenericTransport", "GeothermalSource", "HConnection", "HeatingDemand",
-        "HeatExchange", "HeatNetwork", "HeatPump", "HeatStorage", "Import", "Joint", "MobilityDemand", "Pipe",
-        "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVParc", "ResidualHeatSource", "ResidualHeatSourcePotential",
-        "SinkConsumer", "SourceProducer", "Transformer", "UTES", "Valve", "WindTurbine", "EVChargingStation", "Sensor"];
+    var assets_for_icons = ["AggregatedBuilding", "ATES", "Battery", "Building", "Bus", "CheckValve", "CHP",
+        "CoolingDemand", "EConnection", "ElectricityCable", "ElectricityDemand", "ElectricityNetwork", "Electrolyzer",
+        "EVChargingStation", "Export", "FermentationPlant",  "FuelCell", "GasHeater", "GasNetwork",
+        "GasStorage", "GConnection", "GenericConsumer", "GenericConversion", "GenericProducer", "GenericTransport",
+        "GeothermalSource", "HConnection", "HeatExchange", "HeatingDemand", "HeatNetwork", "HeatPump", "HeatStorage",
+        "Import", "Joint", "MobilityDemand", "Pipe", "PowerPlant", "Pump", "PVInstallation", "PVPanel", "PVPark",
+        "ResidualHeatSource", "ResidualHeatSourcePotential", "Sensor", "SinkConsumer", "SolarCollector",
+        "SourceProducer", "Transformer", "UTES", "Valve", "WaterBuffer", "WindPark", "WindTurbine"
+    ];
 
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {

@@ -157,7 +157,8 @@ view_modes_config = {
         "Basic": {
             "EnergyAsset": [
                 "name",
-                "state"
+                "state",
+                "technicalLifetime"
             ],
             "Potential": [
                 "name",

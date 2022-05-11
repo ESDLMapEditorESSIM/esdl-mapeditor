@@ -152,7 +152,7 @@ function delete_asset(asset) {
             }
         } else if (asset instanceof L.Polyline) {
             if (asset.mouseOverArrowHead !== undefined) {
-                map.removeLayer(asset.mouseOverArrowHead)
+                remove_object_from_layer(es_bld_id, 'connection_layer', asset.mouseOverArrowHead);
                 delete asset.mouseOverArrowHead;
             }
 
@@ -320,11 +320,14 @@ function set_marker_handlers(marker) {
         }
     }
 
+    // TODO: after editing the layers in LeafletDraw, these events are removed and need to be added again
     marker.off('dragend')
     marker.on('dragend', function(e) {
         var marker = e.target;
         var pos = marker.getLatLng();
+        update_marker_ports(marker);
         socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+
         // console.log(e.oldLatLng.lat);
         // console.log(pos.lat + ', ' + pos.lng );
     });
@@ -464,7 +467,7 @@ function set_line_handlers(line) {
     line.on('remove', function(e) {
         let layer = e.target;
         if (layer.mouseOverArrowHead !== undefined) {
-            map.removeLayer(layer.mouseOverArrowHead)
+            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
 
@@ -595,7 +598,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point' && !('surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'point' && !(asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -620,14 +623,17 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-        if (spatial_buffers_plugin.show_spatial_buffers())
-            spatial_buffers_plugin.add_spatial_buffers(marker);
-  
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                { permanent: true, className: 'marker-tooltip' });
+
+        if (asset_info[1] == 'asset') {
+            if (spatial_buffers_plugin.show_spatial_buffers())
+                spatial_buffers_plugin.add_spatial_buffers(marker);
+
+            if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                    { permanent: true, className: 'marker-tooltip' });
+        }
     }
-    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
         var coords = asset_info[5]
         let polygon_color;

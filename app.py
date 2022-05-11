@@ -70,9 +70,10 @@ from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
 from src.edr_assets import EDRAssets
+from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
-    update_carrier_conn_list
+    update_carrier_conn_list, add_spatial_attributes
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
@@ -84,6 +85,7 @@ from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
+from src.release_notes import ReleaseNotes
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -185,6 +187,8 @@ AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
+ReleaseNotes(app, socketio, settings_storage)
+ESDL2Shapefile(app)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -437,6 +441,7 @@ def download_esdl():
         import traceback
         traceback.print_exc()
         return "Error sending ESDL file, due to {}".format(e)
+
 
 
 @app.route('/<path:path>')
@@ -1001,6 +1006,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # remove conductor from container (area or building) and add new two conductors
         assets = conductor_container.asset
         assets.remove(conductor)
+        esh.remove_object_from_dict(active_es_id, conductor)
         conductor_container.asset.append(new_cond1)
         conductor_container.asset.append(new_cond2)
 
@@ -1020,6 +1026,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                               'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond1)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond1, 'line')
+        add_spatial_attributes(new_cond1, tooltip_asset_attrs)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond1.name, new_cond1.id, type(new_cond1).__name__,
                                         coords1, tooltip_asset_attrs, state, port_list])
         coords2 = []
@@ -1033,6 +1040,7 @@ def split_conductor(conductor, location, mode, conductor_container):
                               'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
         state = asset_state_to_ui(new_cond2)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond2, 'line')
+        add_spatial_attributes(new_cond2, tooltip_asset_attrs)
         esdl_assets_to_be_added.append(['line', 'asset', new_cond2.name, new_cond2.id, type(new_cond2).__name__,
                                         coords2, tooltip_asset_attrs, state, port_list])
 
@@ -1109,6 +1117,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # now send new objects to UI
         emit('add_esdl_objects', {'es_id': active_es_id, 'asset_pot_list': esdl_assets_to_be_added, 'zoom': False})
         emit('clear_connections')   # clear current active layer connections
+        emit('delete_esdl_object', {'asset_id': conductor.id}) # remove original condutor from map
         emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
     else:
         send_alert('UNSUPPORTED: Conductor is not of type esdl.Line!')
@@ -1600,11 +1609,22 @@ def process_command(message):
                         else:
                             asset.surfaceArea = polygon_area
 
+                # Set port existence booleans
+                no_out_port = True
+                no_in_port = True
+                if isinstance(asset, esdl.EnergyAsset):
+                    for p in asset.port:
+                        if isinstance(p, esdl.OutPort):
+                            no_out_port = False
+                        if isinstance(p, esdl.InPort):
+                            no_in_port = False
+
                 if not isinstance(asset, esdl.AbstractBuilding):
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with a polyline geometry and an InPort and an OutPort
                     # -------------------------------------------------------------------------------------------------------------
                     if object_type in ['ElectricityCable', 'Pipe']:
+                        # Assume pipes and cables never have ports (coming out of the EDR)
                         inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                         asset.port.append(inp)
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
@@ -1679,12 +1699,12 @@ def process_command(message):
                                     inp.carrier = start_port.carrier
                                     outp.carrier = start_port.carrier
                                     if end_port is not None and end_port.carrier is None:
-                                        if isinstance(end_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                        # in case of a joint: set the carrier for all ports
+                                        if isinstance(end_port.energyasset, esdl.Joint):
                                             for p in end_port.energyasset.port:
                                                 p.carrier = start_port.carrier if p.carrier is None else p.carrier
                                         else:
                                             end_port.carrier = start_port.carrier
-
 
                             if end_port:
                                 if isinstance(end_port, esdl.InPort):
@@ -1696,13 +1716,12 @@ def process_command(message):
                                     inp.carrier = end_port.carrier
                                     outp.carrier = end_port.carrier
                                     if start_port is not None and start_port.carrier is None:
-                                        if isinstance(start_port.energyasset, esdl.Joint): # in case of a joint: set the carrier for all ports
+                                        # in case of a joint: set the carrier for all ports
+                                        if isinstance(start_port.energyasset, esdl.Joint):
                                             for p in start_port.energyasset.port:
                                                 p.carrier = end_port.carrier if p.carrier is None else p.carrier
                                         else:
                                             start_port.carrier = end_port.carrier
-
-
 
                             # send messages to update connections and start port / end port marker colors based on
                             # the carriers
@@ -1726,7 +1745,6 @@ def process_command(message):
                                                       'conn_to': [pt.id for pt in p.connectedTo],
                                                       'carrier': p.carrier.id if p.carrier else None})
                                 emit('update_asset', {'asset_id': from_asset.id, 'ports': port_list})
-
 
                             if end_port:
                                 conn_message = {'from-port-id': from_port2.id,
@@ -1753,6 +1771,7 @@ def process_command(message):
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
                     # -------------------------------------------------------------------------------------------------------------
                     elif object_type in ['CHP', 'FuelCell']:
+                        # Assume CHPs and FuelCells never have ports (coming out of the EDR)
                         inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
                         asset.port.append(inp)
 
@@ -1770,14 +1789,19 @@ def process_command(message):
                         if view_modes.get_user_settings(user_email)['mode'] == 'CHESS':
                             double_line_mode = True
 
+                        # For producers, consumers (and storage) check if a port already exists (coming from the EDR)
                         if capability == 'Producer':
-                            asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
-                            if double_line_mode:
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                        elif capability in ['Consumer', 'Storage']:
-                            asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                            if double_line_mode:
+                            if no_out_port:
                                 asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
+                            if double_line_mode:
+                                if no_in_port:
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                        elif capability in ['Consumer', 'Storage']:
+                            if no_in_port:
+                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                            if double_line_mode:
+                                if no_out_port:
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Conversion':
                             if object_type == "HeatPump" and double_line_mode:
                                 asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
@@ -1843,6 +1867,7 @@ def process_command(message):
                     state = asset_state_to_ui(asset)
                     if isinstance(geometry, esdl.Point):
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        [shape['coordinates']['lat'], shape['coordinates']['lng']],
                                                        tooltip_asset_attrs, state, port_list, capability_type])
@@ -1851,6 +1876,7 @@ def process_command(message):
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         # logger.debug(coords)
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(
                             ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
                              tooltip_asset_attrs, state, port_list, capability_type])
@@ -1859,6 +1885,7 @@ def process_command(message):
                         for point in geometry.point:
                             coords.append([point.lat, point.lon])
                         tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'line')
+                        add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['line', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        coords, tooltip_asset_attrs, state, port_list])
 
@@ -1896,6 +1923,10 @@ def process_command(message):
             # remove from asset dict
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
+            conn_list = get_session_for_esid(active_es_id, 'conn_list')
+            conn_list[:] = [c for c in conn_list
+                            if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
+
 
 
         else:
@@ -3000,13 +3031,14 @@ def process_file_command(message):
     if message['cmd'] == 'new_esdl':
         name = message['name']
         description = message['description']
-        email = message['email']
+        instance_name = message['instance_name']
         top_area_name = message['top_area_name']
-        if top_area_name == '': top_area_name = 'Untitled area'
         if name == '': name = 'New Energy System'
+        if instance_name == '': instance_name = 'Untitled instance'
+        if top_area_name == '': top_area_name = 'Untitled area'
         filename = 'Unknown'
         esh = EnergySystemHandler()
-        es = esh.create_empty_energy_system(name, description, 'Untitled instance', top_area_name, esdlVersion=esdl_doc.get_esdl_version())
+        es = esh.create_empty_energy_system(name, description, instance_name, top_area_name, esdlVersion=esdl_doc.get_esdl_version())
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -3017,7 +3049,6 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        set_session('es_email', email)
 
     if message['cmd'] == 'load_esdl_from_file':
         file_content = message['file_content']
