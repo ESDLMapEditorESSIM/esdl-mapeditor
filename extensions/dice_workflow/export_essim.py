@@ -16,6 +16,9 @@ from pathlib import Path
 import esdl
 import pandas as pd
 from influxdb import InfluxDBClient
+from src.log import get_logger
+
+logger = get_logger(__name__)
 
 # Helper function
 from influxdb.resultset import ResultSet
@@ -134,12 +137,15 @@ def export_energy_system_simulation(
 
     id_to_energy_asset = {ea.id: ea for ea in all_energy_assets(instance)}
 
+    logger.info("Exporting transports")
     transport_results = export_transports(
         influx_client, essim_id, id_to_energy_asset, networks
     )
+    logger.info("Exporting consumptions")
     consumption_results = export_consumptions(
         influx_client, essim_id, id_to_energy_asset, networks
     )
+    logger.info("Exporting emissions")
     emissions_results = export_emissions(
         influx_client, essim_id, id_to_energy_asset, es.name
     )

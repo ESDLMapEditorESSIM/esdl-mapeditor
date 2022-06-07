@@ -1,9 +1,25 @@
 <template>
   <div v-show="showActiveLongProcess" class="my-control leaflet-active-long-process">
+    <a-button
+      style="float: right"
+      type="link"
+      @click="toggleShowActiveLongProcess()"
+    >
+      <i class="fa fa-times small-icon" />
+    </a-button>
     <h1>{{ activeLongProcess.name }}</h1>
-    <p>Progress: {{ activeLongProcess.progress }}</p>
+    <p>Progress: {{ activeLongProcess.progress }}%</p>
     <p v-if="activeLongProcess.message">Status: {{ activeLongProcess.message }}</p>
-    <p v-show="activeLongProcess.isDone">Process complete!</p>
+    <br>
+    <p v-show="activeLongProcess.isDone">
+      Process complete!&nbsp;
+      <a-button
+        type="link"
+        @click="toggleShowActiveLongProcess()"
+      >
+        Close
+      </a-button>
+    </p>
   </div>
 </template>
 
@@ -13,10 +29,11 @@ import { useLongProcessState } from "../../composables/longProcess.js";
 export default {
   name: "ActiveLongProcess",
   setup() {
-    const { activeLongProcess, showActiveLongProcess } = useLongProcessState();
+    const { toggleShowActiveLongProcess, activeLongProcess, showActiveLongProcess } = useLongProcessState();
     return {
       activeLongProcess,
       showActiveLongProcess,
+      toggleShowActiveLongProcess,
     };
   }
 };

@@ -6,6 +6,7 @@ flask-oidc==1.4.0
 geomet==0.2.1.post1
 geojson==2.5.0
 influxdb==5.3.0
+openpyxl
 pyecore==0.12.1
 PyJWT==1.7.1
 pymongo==3.11.0

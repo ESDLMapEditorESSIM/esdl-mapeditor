@@ -10,6 +10,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from typing import Tuple
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.ecore import EEnum, EAttribute, EObject, EReference, EClass, EStructuralFeature
@@ -165,7 +166,7 @@ class EnergySystemHandler:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
             raise
 
-    def load_external_string(self, esdl_string, name='from_string'):
+    def load_external_string(self, esdl_string, name='from_string') -> Tuple[esdl.EnergySystem, list]:
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
         It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
         """

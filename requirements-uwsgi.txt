@@ -21,6 +21,8 @@ click==8.1.2
     #   pip-tools
 colorama==0.4.4
     # via -r requirements-uwsgi.in
+et-xmlfile==1.1.0
+    # via openpyxl
 flask==1.1.2
     # via
     #   -r requirements-uwsgi.in
@@ -67,6 +69,8 @@ msgpack==0.6.1
     # via influxdb
 oauth2client==4.1.3
     # via flask-oidc
+openpyxl==3.0.10
+    # via -r requirements-uwsgi.in
 ordered-set==4.1.0
     # via pyecore
 pathtools==0.1.2

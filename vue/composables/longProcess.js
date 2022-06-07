@@ -4,9 +4,10 @@ import { computed, ref, watchEffect } from "vue";
  * The representation of a long process. Progress can be fetched periodically from a URL.
  */
 export class LongProcess {
-  constructor(name, url, progressField, messageField) {
+  constructor(name, url, requestParams, progressField, messageField) {
     this.name = name;
     this.url = url;
+    this.requestParams = requestParams;
     this.progressField = progressField;
     this.messageField = messageField;
     this.progress = ref(0);
@@ -21,7 +22,12 @@ export class LongProcess {
   }
 
   fetchProgress = () => {
-    fetch(this.url)
+    let target_url = this.url;
+    if (this.requestParams) {
+      const queryString = new URLSearchParams(self.requestParams).toString();
+      target_url += `?${queryString}`;
+    }
+    fetch(target_url)
       .then(response => response.json())
       .then(data => {
         console.log(data);
@@ -30,7 +36,7 @@ export class LongProcess {
         if (this.messageField) {
           this.message.value = data[this.messageField];
         }
-        if (this.progress < 100) {
+        if (this.progress.value < 100) {
           setTimeout(this.fetchProgress, 10000)
         }
       });

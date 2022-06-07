@@ -45,7 +45,7 @@ from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
 from extensions.esdl_compare import ESDLCompare
-from extensions.esdl_drive import ESDLDrive
+from extensions.esdl_drive.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
@@ -65,7 +65,7 @@ from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.dice_workflow import DiceWorkflow
+from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI

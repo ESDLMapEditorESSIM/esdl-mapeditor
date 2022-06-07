@@ -38,7 +38,6 @@ class Workflow:
         self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage
     ):
         self.flask_app = flask_app
-
         self.register()
 
     def register(self):

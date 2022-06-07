@@ -31,17 +31,12 @@ from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session, set_session
 import requests
 from pyecore.resources import URI, Resource
-from pyecore.resources.resource import URIConverter
 from io import BytesIO
 from src.process_es_area_bld import process_energy_system
 from flask_executor import Executor
 import src.log as log
 from src.settings import esdl_drive_config
-
-url = esdl_drive_config['hostname']
-browse_endpoint = "/store/browse"
-resource_endpoint = "/store/resource"
-drive_name = "ESDl Drive"
+from extensions.esdl_drive.api import DRIVE_URL, browse_endpoint, resource_endpoint, drive_name, upload_to_drive
 
 logger = log.get_logger(__name__)
 
@@ -78,7 +73,7 @@ class ESDLDrive:
 
                 logger.debug("Open params: {}".format(params))
                 #token = get_session('jwt-token')
-                uri = ESDLDriveHttpURI(url + resource_endpoint + path, headers_function=add_authorization_header, getparams=params)
+                uri = ESDLDriveHttpURI(DRIVE_URL + resource_endpoint + path, headers_function=add_authorization_header, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
@@ -125,7 +120,7 @@ class ESDLDrive:
                     params['overwrite'] = overwrite
                 print(message)
 
-                uri = url + resource_endpoint + path
+                uri = DRIVE_URL + resource_endpoint + path
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 esh.update_version(es_id=active_es_id)
@@ -153,8 +148,8 @@ class ESDLDrive:
         # BULK upload from MapEditor
         def socketio_esdldrive_upload(message):
             with self.flask_app.app_context():
-                message_type = message['message_type'] # start, next_chunk, done
-                if (message_type == 'start'):
+                message_type = message['message_type']  # start, next_chunk, done
+                if message_type == 'start':
                     # start of upload
                     filetype = message['filetype']
                     name = message['name']
@@ -211,7 +206,7 @@ class ESDLDrive:
                 return {'status': 403, 'error': "ESDLDrive: Token not available, please reauthenticate"}
             headers = {'Authorization': 'Bearer ' + token}
             try:
-                r = requests.get(url + browse_endpoint, params=params, headers=headers)
+                r = requests.get(DRIVE_URL + browse_endpoint, params=params, headers=headers)
             except Exception as e:
                 return {'status': 500, 'error': "Error communicating with ESDLDrive: " + str(e)}
             if 'Content-Type' in r.headers and r.headers.get('Content-Type').startswith('application/json'):
@@ -227,7 +222,7 @@ class ESDLDrive:
                 return {'status': r.status_code, 'error': "Error communicating with ESDLDrive: " + str(r.status_code)}
 
     def save(self, path, content_as_string):
-        location = url + resource_endpoint + path
+        location = DRIVE_URL + resource_endpoint + path
         esh = get_handler()
 
         #active_es_id = get_session('active_es_id')
@@ -305,13 +300,7 @@ class ESDLDriveHttpURI(URI):
         # content has been written to __stream()
         if self.writing:
             logger.debug("Writing to {}".format(self.plain))
-            headers = self.headers_function()
-            response = requests.put(self.plain, data=self.__stream.getvalue(), headers=headers, params=self.putparams)
-            if response.status_code > 400:
-                logger.error("Error writing to ESDLDrive: headers={}, response={}".format(response.headers, response.content))
-                #raise Exception("Error saving {}: HTTP Status {}".format(self.plain, response.status_code))
-            else:
-                logger.debug('Saved successfully to ESDLDrive {} (HTTP status: {}) '.format(self.plain, response.status_code))
+            response = upload_to_drive(self.__stream.getvalue(), self.plain, putparams=self.putparams, headers=self.headers_function())
             self.writing = False
             super().close_stream()
             return response
