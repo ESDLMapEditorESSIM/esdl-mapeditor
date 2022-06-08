@@ -15,7 +15,7 @@
       </a-breadcrumb>
     </template>
     <a-button
-      @click="persistWorkflow()"
+      @click="confirmPersistWorkflow"
     >
       <i class="fas fa-save small-icon" />
     </a-button>
@@ -120,11 +120,21 @@ export default {
   setup() {
     const { currentWorkflow, goToStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow } = useWorkflow();
 
+    function confirmPersistWorkflow() {
+      let workflowName = currentWorkflow.value.name;
+      if (!workflowName) {
+        workflowName = prompt("Please enter a workflow name")
+      }
+      if (workflowName) {
+        persistWorkflow(workflowName);
+      }
+    }
+
     return {
+      confirmPersistWorkflow,
       currentWorkflow,
       goToStep,
       goToPreviousStep,
-      persistWorkflow,
       WorkflowStepTypes,
       WorkflowUploadFile,
       WorkflowHttpPost,

@@ -98,8 +98,9 @@ export function useWorkflow() {
         currentWorkflow.value = workflowObj;
     }
 
-    const persistWorkflow = () => {
-        currentWorkflow.value.setPersistence(true)
+    const persistWorkflow = async (name) => {
+        currentWorkflow.value.setPersistence(true);
+        currentWorkflow.value.setName(name);
         const key = `wf.${currentWorkflow.value.uuid}`;
         localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
     }

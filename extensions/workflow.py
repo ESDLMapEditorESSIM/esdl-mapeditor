@@ -45,6 +45,9 @@ class Workflow:
 
         @self.flask_app.route("/workflow/get_options")
         def get_options():
+            """
+            Proxy to do an OPTIONS call on a remote URL.
+            """
             url = request.args["url"]
             other_args = dict(request.args)
             del other_args["url"]
@@ -62,6 +65,9 @@ class Workflow:
 
         @self.flask_app.route("/workflow/get_data")
         def get_data():
+            """
+            Proxy to GET data from a remote URL.
+            """
             url = request.args["url"]
             other_args = dict(request.args)
             del other_args["url"]
@@ -135,3 +141,9 @@ class Workflow:
             except Exception:
                 resp_json = []
             return jsonify(resp_json), r.status_code
+
+        @self.flask_app.route("/workflow/persist", methods=["POST"])
+        def persist():
+            """
+            Persist this workflow to MongoDB.
+            """
