@@ -11,6 +11,14 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
+
+import io
+
+import zipfile
+
+from datetime import datetime
+
 import os
 
 import tempfile
@@ -43,6 +51,8 @@ DICE_ESSIM_EXPORTS = "dice_essim_exports"
 
 class DiceESSIMExport(TypedDict):
     simulation_id: str
+    start_date: str
+    end_date: Optional[str]
     finished: bool
     file_paths: Optional[dict[str, str]]
 
@@ -93,11 +103,20 @@ class DiceWorkflow:
                 essim_exports: dict[
                     str, DiceESSIMExport
                 ] = self.settings_storage.get_current_user(DICE_ESSIM_EXPORTS)
-                finished_essim_exports = [
-                    dict(id=essim_export["simulation_id"])
-                    for essim_export in essim_exports.values()
-                    if essim_export["finished"]
-                ]
+                finished_essim_exports = []
+                for essim_export in essim_exports.values():
+                    if essim_export["finished"]:
+                        simulation_id = essim_export["simulation_id"]
+                        result = retrieve_simulation_from_essim(simulation_id)
+                        finished_essim_exports.append(
+                            dict(
+                                key=simulation_id,
+                                date=essim_export.get(
+                                    "start_date", datetime.now().isoformat()
+                                ),
+                                description=result["simulationDescription"],
+                            )
+                        )
                 return jsonify(finished_essim_exports)
             else:
                 # Start new ESSIM export.
@@ -113,9 +132,13 @@ class DiceWorkflow:
                 except KeyError:
                     user_processes = dict()
 
-                # Create long process entry in the mongo db.
+                # Create ESSIM export entry in the mongo db.
                 essim_export: DiceESSIMExport = dict(
-                    simulation_id=simulation_id, finished=False
+                    simulation_id=simulation_id,
+                    start_date=datetime.now().isoformat(),
+                    end_date=None,
+                    finished=False,
+                    file_paths=None,
                 )
                 user_processes[simulation_id] = essim_export
                 self.settings_storage.set_current_user(
@@ -140,9 +163,20 @@ class DiceWorkflow:
             ).get(simulation_id)
             if essim_export is None or not essim_export["finished"]:
                 return jsonify({}), 404
-            logger.info(essim_export)
             file_paths = essim_export["file_paths"]
-            return jsonify({})
+
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w") as zip_object:
+                # Add multiple files to the zip
+                for file_name, file_path in file_paths.items():
+                    if os.path.isfile(file_path):
+                        zip_object.write(file_path, arcname=file_name)
+            zip_buffer.seek(0)
+            zip_filename = f"ESSIM-export-{simulation_id}.zip"
+
+            return jsonify(
+                dict(filename=zip_filename, base64_file=base64.b64encode(zip_buffer.read()).decode())
+            )
 
         @self.flask_app.route(
             "/dice_workflow/export_essim/<simulation_id>", methods=["GET"]
@@ -193,11 +227,6 @@ def _export_energy_system_simulation_task(
         influx_client.close()
         logger.info("Finished exporting ESSIM, saving result to files")
 
-        # zip_filename = "ESSIM-export-{simulation_id}"
-        # zip_file_obj = tempfile.mkstemp()
-        # with zipfile.ZipFile(, "w") as zip_object:
-        #     file_paths: dict[str, str] = dict()
-
         file_paths: dict[str, str] = dict()
         dir_path = tempfile.mkdtemp(prefix=f"ESSIM-export-{simulation_id}")
         for filename, df in results.items():
@@ -211,6 +240,7 @@ def _export_energy_system_simulation_task(
         )
         essim_export = user_processes.get(simulation_id)
         essim_export["finished"] = True
+        essim_export["end_date"] = datetime.now().isoformat()
         essim_export["file_paths"] = file_paths
         user_processes[simulation_id] = essim_export
         settings_storage.set_current_user(DICE_ESSIM_EXPORTS, user_processes)

@@ -46,11 +46,13 @@
   <div style="margin-top: 20px;">
     <h4>Previous ESSIM exports</h4>
     <a-table :columns="essim_export_columns" :data-source="essim_exports">
-      <template v-if="column.key === 'action'">
-        test
+      <template #action="{ record }">
         <span>
-          <a-button type="link" @click="downloadEssimExport">Download</a-button>
+          <a-button type="link" @click="downloadEssimExport(record.key)">Download</a-button>
         </span>
+      </template>
+      <template #date="{ record }">
+        {{ record.date.substring(0, 10) }}
       </template>
     </a-table>
   </div>
@@ -60,6 +62,7 @@
 import {defineProps, ref} from "vue";
 import {doGet, doPost} from "../../../../utils/api";
 import {useLongProcessState} from "../../../../composables/longProcess";
+import {download_binary_file_from_base64_str_with_type} from "../../../../utils/files";
 const { startLongProcess } = useLongProcessState();
 
 const props = defineProps({
@@ -76,13 +79,20 @@ const selected_simulation = ref(null);
 const essim_exports = ref([])
 const essim_export_columns = [
   {
-    title: 'ID',
-    dataIndex: 'simulation_id',
-    key: 'id',
+    title: 'Date',
+    dataIndex: 'date',
+    key: 'date',
+    slots: { customRender: 'date' },
+  },
+  {
+    title: 'Description',
+    dataIndex: 'description',
+    key: 'description',
   },
   {
     title: 'Action',
     key: 'action',
+    slots: { customRender: 'action' },
   },
 ];
 
@@ -108,10 +118,15 @@ const onSubmit = async () => {
   alert("Download process started.");
 }
 
-const downloadEssimExport = async () => {
+const downloadEssimExport = async (simulation_id) => {
   console.log("Downloading essim export.")
   const response = await doPost(`/dice_workflow/export_essim/${simulation_id}/download`);
-  console.log(response)
+  const body = await response.json();
+  download_binary_file_from_base64_str_with_type(
+      body.base64_file,
+      body.filename,
+      'application/x-zip',
+  );
 }
 
 const loadSimulations = async () => {
@@ -122,7 +137,6 @@ loadSimulations();
 
 const loadReadyExports = async () => {
   const essim_exports_response = await doGet("dice_workflow/export_essim");
-  console.log(essim_exports_response)
   essim_exports.value = essim_exports_response;
 }
 loadReadyExports();

@@ -10,7 +10,6 @@
     <h1>{{ activeLongProcess.name }}</h1>
     <p>Progress: {{ activeLongProcess.progress }}%</p>
     <p v-if="activeLongProcess.message">Status: {{ activeLongProcess.message }}</p>
-    <br>
     <p v-show="activeLongProcess.isDone">
       Process complete!&nbsp;
       <a-button
