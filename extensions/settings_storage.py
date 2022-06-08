@@ -14,6 +14,8 @@
 
 from pymongo import MongoClient, ReturnDocument
 from pymongo.database import Database, Collection
+
+from extensions.session_manager import get_session
 import src.log as log
 from enum import Enum
 
@@ -109,6 +111,9 @@ class SettingsStorage:
         return False
 
     def set_user(self, user:str, setting_name:str, value):
+        """
+        Set a setting for the given user.
+        """
         return self.set(SettingType.USER, user, setting_name, value)
 
     def get_user(self, user:str, setting_name:str):
@@ -119,6 +124,27 @@ class SettingsStorage:
 
     def del_user(self, user:str, setting_name:str):
         return self.delete(SettingType.USER, user, setting_name)
+
+    def set_current_user(self, setting_name: str, value):
+        """
+        Set a setting for the currently logged in user.
+        """
+        user = get_session('user-email')
+        return self.set_user(user, setting_name, value)
+
+    def get_current_user(self, setting_name: str):
+        """
+        Get setting for currently logged in user.
+        """
+        user = get_session('user-email')
+        return self.get_user(user, setting_name)
+
+    def del_current_user(self, setting_name: str):
+        """
+        Get setting for currently logged in user.
+        """
+        user = get_session('user-email')
+        return self.del_user(user, setting_name)
 
     def get_all_settings_for_type(self, type_name: SettingType):
         return list(self.settings.find({"type": type_name.value}))
@@ -132,7 +158,6 @@ class SettingsStorage:
         :return:
         """
         return list(self.settings.find({"type": type_name.value, 'name': identifier}, {'type': 0, 'name': 0, '_id': 0}))
-
 
     def set_project(self, project_name:str, setting_name:str, value):
         return self.set(SettingType.PROJECT, project_name, setting_name, value)

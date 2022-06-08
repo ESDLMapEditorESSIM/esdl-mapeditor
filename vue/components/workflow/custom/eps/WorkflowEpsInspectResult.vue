@@ -28,7 +28,6 @@
 import {defineProps, onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
-import {genericErrorHandler} from "../../../../utils/errors.js";
 import {useWorkflow} from "../../../../composables/workflow.js";
 import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
 import {workflowGetData} from "../../utils/api.js";

@@ -28,7 +28,7 @@ import ServicesToolbar from './components/toolbars/ServicesToolbar'
 import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
-// import ActiveLongProcess from './components/progress/ActiveProcess'
+import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -105,7 +105,7 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
-// createVueLControl(ActiveLongProcess);
+createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
 mountApp(ReleaseNotes, '#vue_show_release_notes')
