@@ -69,6 +69,8 @@ const costInformationProfileTypes = [
   { key: 'EUR/MWh/yr', type: "EUR/MWh/yr"},
   { key: 'EUR/m', type: "EUR/m"},
   { key: 'EUR/km', type: "EUR/km"},
+  { key: 'EUR/m2', type: "EUR/m2"},
+  { key: 'EUR/m3', type: "EUR/m3"},
   { key: '%', type: "% of CAPEX"},
 ]
 

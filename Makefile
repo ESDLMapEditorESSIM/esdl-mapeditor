@@ -1,12 +1,19 @@
-all: requirements
+all: requirements yarn
 	docker-compose -f docker/docker-compose.yml build
 
+pip-compile:
+	pip-compile
+	pip-compile requirements-uwsgi.in
 requirements:
 	pip install -r requirements.txt
+requirements-uwsgi:
+	pip install -r requirements-uwsgi.txt
+yarn:
+	yarn
 
 dev:
 	python app.py
-watch:
+watch: yarn
 	yarn && yarn run watch
 
 dev-local:

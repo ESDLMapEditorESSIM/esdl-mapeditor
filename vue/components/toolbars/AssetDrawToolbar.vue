@@ -10,7 +10,7 @@
           <td v-for="asset in capabilityList" :key="asset" class="icon">
             <div :title="asset" :class="'circle '+capability" @click="buttonClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -20,7 +20,7 @@
           <td v-for="asset in EDRAssets" :key="asset.edr_asset_id" class="icon">
             <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -30,7 +30,7 @@
           <td v-for="asset in recentEDRAssets" :key="asset.edr_asset_id" class="icon">
             <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="circle-img" :src="'images/' + asset.edr_asset_type + '.png'">
+                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
               </div>
             </div>
           </td>
@@ -80,11 +80,10 @@ export default {
   },
   methods: {
     getAssetList: function() {
-      console.log('getAssetList');
+      // console.log('getAssetList');
       const path = '/DLA_get_asset_toolbar_info';
       axios.get(path)
         .then((res) => {
-          console.log(res);
           this.assetList = res["data"]["assets_per_cap_dict"];
           this.EDRAssets = res["data"]["edr_assets"];
           this.recentEDRAssets = res["data"]["recent_edr_assets"];
@@ -103,6 +102,11 @@ export default {
         window.update_asset_menu(assetName);
 
       window.remove_tooltip();
+
+      // Disable the leaflet draw toolbars, such that the shown icon can be updated
+      window.draw_control._toolbars.draw._modes.polyline.handler.disable();
+      window.draw_control._toolbars.draw._modes.polygon.handler.disable();
+      window.draw_control._toolbars.draw._modes.marker.handler.disable();
 
       window.draw_control.setDrawingOptions({
           marker: {
@@ -150,7 +154,7 @@ export default {
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
     border-radius: 5px;
 }
-to
+
 .leaflet-asset-draw-toolbar p {
   margin-bottom: 0;
 }
@@ -160,6 +164,10 @@ to
    height: 40px;
    text-align: center;
    padding: 20px 0px 0px 20px;
+}
+
+.asset-icon {
+   cursor: pointer;
 }
 
 </style>

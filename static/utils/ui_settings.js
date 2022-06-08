@@ -37,7 +37,7 @@ class UISettings {
         return $div;
     }
 
-    // Asset draw toolbar has no separate extension (it's part of the Vue code), so include settings div here
+    // Asset UI information has no separate extension (it's part of the Vue code), so include settings div here
     asset_ui_information_settings() {
         let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Asset information on map'));
 
@@ -58,12 +58,34 @@ class UISettings {
         return $div;
     }
 
+    // Services toolbar has no separate extension (it's part of the Vue code), so include settings div here
+    services_toolbar_settings() {
+        let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Services toolbar'));
+
+        let $stbvis_on_startup = $('<input>').attr('type', 'checkbox').attr('id', 'stb_visible').attr('value', 'stb_visible').attr('name', 'stb_visible');
+        let $stbvis_label = $('<label>').attr('for', 'stb_visible').text('Services toolbar is visible on startup');
+        $div.append($('<p>').append($stbvis_on_startup).append($stbvis_label));
+
+        $stbvis_on_startup.change(function() {
+            let stb_visible = $('#stb_visible').is(':checked');
+            socket.emit('mapeditor_user_ui_setting_set', {category: 'services_toolbar', name: 'visible_on_startup', value: stb_visible});
+        });
+
+        socket.emit('mapeditor_user_ui_setting_get', {category: 'services_toolbar', name: 'visible_on_startup'}, function(res) {
+            let stb_visible = res;
+            $('#stb_visible').prop('checked', stb_visible);
+        });
+
+        return $div;
+    }
+
     settings_window_contents() {
         let $div = $('<div>').attr('id', 'ui_settings_window_div');
         $div.append($('<h1>').text('UI Settings'));
 
         $div.append(ui_settings_plugin.asset_draw_toolbar_settings());
         $div.append(ui_settings_plugin.asset_ui_information_settings());
+        $div.append(ui_settings_plugin.services_toolbar_settings());
 
         for (let i=0; i<extensions.length; i++) {
             let extensions_function = extensions[i];

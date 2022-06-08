@@ -11,6 +11,8 @@ import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
+import ReleaseNotes from './apps/ReleaseNotes';
+import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import AssetTableEditor from './apps/AssetTableEditor';
@@ -31,6 +33,8 @@ import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoC
 import ToggleProjectView from './components/projects/ToggleProjectView'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
+import ServicesToolbar from './components/toolbars/ServicesToolbar'
+import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
@@ -45,7 +49,7 @@ import {useUndoRedo} from "./composables/undoRedo";
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
     if (currentWorkflow.value) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
@@ -61,6 +65,7 @@ window.activate_service_workflow = async (serviceIndex, service) => {
         startNewWorkflow(serviceIndex, service);
     }
     mountSidebarComponent(Workflow);
+    window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -114,6 +119,16 @@ window.environmental_profiles = () => {
 
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+mountApp(AboutBox, '#vue_show_about_box')
+mountApp(ReleaseNotes, '#vue_show_release_notes')
+window.show_new_release_notes = () => {
+   const { showNewReleaseNotes } = useReleaseNotes();
+   // show new release notes if any...
+   showNewReleaseNotes();
+}
+
+createVueLControl(ServicesToolbar, {position: 'topleft'});
+createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
@@ -128,7 +143,6 @@ createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-mountApp(AboutBox, '#vue_show_about_box')
 
 createApp(ToggleProjectView).mount('#vue_toggle_show_project_view')
 createApp(LoadProjectFileButton).mount('#vue_load_project_file')

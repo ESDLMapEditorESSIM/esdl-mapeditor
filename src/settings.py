@@ -86,8 +86,7 @@ essim_config = {
 }
 
 edr_config = {
-    "EDR_host": os.environ.get('EDR_URL', None),  # "https://edr.hesi.energy",
-    "EDR_path": "/store/esdl/",
+    "host": os.environ.get('EDR_URL', None),  # "https://edr.hesi.energy",
 }
 
 esdl_store_config = {

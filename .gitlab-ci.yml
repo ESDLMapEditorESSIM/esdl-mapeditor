@@ -32,6 +32,6 @@ build-mapeditor:
   script:
     - docker pull $IMAGE:$BRANCH || true
     - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-    # - docker build --no-cache --build-arg git_commit=$TAG . -f Dockerfile -t $IMAGE:$TAG -t $IMAGE:$BRANCH
+    #- docker build --no-cache --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn -t $IMAGE:$TAG -t $IMAGE:$BRANCH
     - docker push $IMAGE:$TAG
     - docker push $IMAGE:$BRANCH

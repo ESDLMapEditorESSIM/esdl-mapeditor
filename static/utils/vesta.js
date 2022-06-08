@@ -164,6 +164,6 @@ class Vesta {
 
 var vesta_plugin;   // global variable for the Vesta plugin
 
-$(document).ready(function() {
-    extensions.push(function(event) { return Vesta.create(event) });
-});
+// $(document).ready(function() {
+//     extensions.push(function(event) { return Vesta.create(event) });
+// });

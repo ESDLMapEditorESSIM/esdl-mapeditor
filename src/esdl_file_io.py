@@ -51,9 +51,9 @@ class ESDLFileIO:
                     base64_file_contents = base64_file_contents.split(',')[1]
                     filename = request.values.get(f'file_info[{i}][filename]')
                     if base64_file_contents:
-                        esdlstr_base64_bytes = base64_file_contents.encode('ascii')
+                        esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
                         esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
-                        esdl_str = esdlstr_bytes.decode('ascii')
+                        esdl_str = esdlstr_bytes.decode('utf-8')
 
                         self.load_esdl_in_esh(filename, esdl_str)
 

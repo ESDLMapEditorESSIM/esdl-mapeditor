@@ -450,10 +450,10 @@ function delete_area(e, area_id) {
     socket.emit('command', {cmd: 'remove_area', id: a_id});
 }
 
-function request_bag_info(e, area_id) {
-    area_polygon = e.relatedTarget;
-    latlngs = area_polygon.getLatLngs();
-    socket.emit('get_bag_contours', {id: area_polygon.id, polygon: latlngs});
+function request_bag_info(area) {
+    let latlngs = area.getLatLngs();
+    show_loader();
+    socket.emit('get_bag_contours', {id: area.id, polygon: latlngs});
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -478,7 +478,7 @@ function set_area_handlers(area) {
         area.options.contextmenuItems.push({
             icon: resource_uri + '/icons/BuildingContents.png',
             text: 'request BAG building',
-            callback: function(e) { request_bag_info(e, area_id); }
+            callback: function(e) { request_bag_info(area); }
         });
         area.options.contextmenuItems.push('-');
     }
@@ -814,6 +814,7 @@ function selectAreaKPI(selectObject) {
 // ------------------------------------------------------------------------------------------------------------
 function createBuildingLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Building Legend';
 
@@ -838,6 +839,7 @@ function createBuildingLegendDiv() {
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Area Legend';
 
@@ -962,10 +964,11 @@ function add_geojson_listener(socket, map) {
         }
 
         // add_building_geojson_layer_with_legend is now called from the 'add_building_objects' socketIO handler
-        // if (layer == 'bld_layer') {
-        //    geojson_building_data = message['geojson']; // store for redraw based on other property
-        //    add_building_geojson_layer_with_legend(geojson_building_data);
-        // }
+        // This code was commented out with the above command, but is required for the BAG service
+        if (layer == 'bld_layer') {
+            geojson_building_data = message['geojson']; // store for redraw based on other property
+            add_building_geojson_layer_with_legend(geojson_building_data);
+        }
 
         if (layer == 'pot_layer') {
             add_potential_geojson_layer(message['geojson']);

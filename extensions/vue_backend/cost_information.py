@@ -108,6 +108,12 @@ def _change_cost_unit(qau, cost_unit_string):
     elif re.match(r"\w+/km", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.KILO
+    elif re.match(r"\w+/m3", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.CUBIC_METRE
+        qau.perMultiplier = esdl.MultiplierEnum.NONE
+    elif re.match(r"\w+/m2", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.SQUARE_METRE
+        qau.perMultiplier = esdl.MultiplierEnum.NONE
     elif re.match(r"\w+/m", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.NONE

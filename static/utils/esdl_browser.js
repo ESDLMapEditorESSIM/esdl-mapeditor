@@ -289,7 +289,11 @@ class ESDLBrowser {
                 for (let j = 0; j< data.references[i].value.length; j++) {
                     let $sub = $('<div>');
                     let v = data.references[i].value[j];
-                    let $a = $('<a>').text(v.repr).attr('href', "#");
+                    let r_text = v.repr;
+                    if (!r_text || r_text.match(/^\s+$/)) {
+                        r_text = "Unnamed";
+                    }
+                    let $a = $('<a>').text(r_text).attr('href', "#");
                     $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(ESDLBrowser.identifier(v)); return false; });
                     let $span = $('<span>').text(' (' + v.type + ')');
 
@@ -323,7 +327,7 @@ class ESDLBrowser {
                 }
 
             } else {
-                if (value.repr == null) {
+                if (value.repr == null || !value.repr) {
                     //value.repr = '';
                     if (data.references[i].containment == true) {
                         let $addButton = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-plus-circle').css('color', 'green')).click( function(e) { esdl_browser.add(data.object, data.references[i], data.references[i].types); });
@@ -335,8 +339,13 @@ class ESDLBrowser {
                         }
                     }
                 } else {
+                    let r_text = value.repr;
+                    if (!r_text || r_text.match(/^\s+$/)) {
+                        r_text = "Unnamed";
+                    }
                     if (value.hasOwnProperty('id') && value.id != null) {
-                        let $a = $('<a>').text(value.repr).attr('href', "#");
+
+                        let $a = $('<a>').text(r_text).attr('href', "#");
                         //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
                         $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_identifier(value); return false; });
                         $repr.append($a);
@@ -345,12 +354,12 @@ class ESDLBrowser {
                     } else {
                         // try browsing using a URI fragment //instance.0/area/asset.0/
                         if (data.references[i].fragment !== undefined) {
-                            let $a = $('<a>').text(value.repr).attr('href', "#");
+                            let $a = $('<a>').text(r_text).attr('href', "#");
                             //.attr('href', 'javascript:esdl_browser.open_browser(\''+value.id+'\')')
                             $a.click( function(e) { esdl_browser.history.push(ESDLBrowser.identifier(data.object)); esdl_browser.open_browser_fragment(data.references[i].fragment); return false; });
                             $repr.append($a);
                         } else {
-                            $repr.text(value.repr);
+                            $repr.text(r_text);
                         }
                     }
 

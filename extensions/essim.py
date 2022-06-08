@@ -80,9 +80,9 @@ class ESSIM:
                         set_session('active_simulation', active_simulation)
                         try:
                             esdlstr_base64 = result['esdlContents']
-                            esdlstr_base64_bytes = esdlstr_base64.encode('ascii')
+                            esdlstr_base64_bytes = esdlstr_base64.encode('utf-8')
                             esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
-                            esdlstr = esdlstr_bytes.decode('ascii')
+                            esdlstr = esdlstr_bytes.decode('utf-8')
                         except:
                             esdlstr_urlenc = result['esdlContents']
                             esdlstr = urllib.parse.unquote(esdlstr_urlenc)

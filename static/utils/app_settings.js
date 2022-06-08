@@ -46,7 +46,7 @@ class AppSettings {
             let res = extensions_function({type: 'settings_menu_items'});
             if (res) modules_settings_list.push(res);
         }
-        console.log('module settings:', modules_settings_list);
+        // console.log('module settings:', modules_settings_list);
         return modules_settings_list;
     }
 

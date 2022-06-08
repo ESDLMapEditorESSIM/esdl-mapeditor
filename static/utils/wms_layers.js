@@ -218,6 +218,7 @@ function show_layers() {
 
 function create_wms_layer_legend(url) {
     var legend_div = L.DomUtil.create('div', 'info legend');
+    legend_div.oncontextmenu = L.DomEvent.stopPropagation;
     var legend_title_div = L.DomUtil.create('div', 'legend_title', legend_div);
     legend_title_div.innerHTML += 'Legend';
 

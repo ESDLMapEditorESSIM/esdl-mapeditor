@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 from pymongo.database import Database, Collection
 import src.log as log
 from enum import Enum
@@ -63,15 +63,17 @@ class SettingsStorage:
 
     def set(self, setting_type: SettingType, identifier: str, setting_name: str, value):
         if not self.settings: return None
-        mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier}, {setting_name: 1})
+        mapeditor_settings_obj = self.settings.find_one_and_update({'type': setting_type.value, 'name': identifier},
+                                                                   {'$set': {setting_name: value}}, upsert=False,
+                                                                   projection={setting_name: 1},
+                                                                   return_document=ReturnDocument.AFTER)
         if mapeditor_settings_obj is None:
-            # unknown identifier, create first
+            # unknown setting and/or identifier: create first
             doc = {'type': setting_type.value, 'name': identifier, setting_name: value}
             self.settings.insert_one(doc)
+            return doc
         else:
-            return self.settings.update_one(
-                {'_id': mapeditor_settings_obj['_id']},
-                {'$set': {setting_name: value}}, upsert=False)
+            return mapeditor_settings_obj
 
     def delete(self, setting_type: SettingType, identifier: str, setting_name: str):
         """

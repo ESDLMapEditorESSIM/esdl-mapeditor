@@ -76,12 +76,22 @@ class PortProfileViewer:
                         p = profiles[pkey]
                         if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
                             profile_name = p['profile_uiname']
-                    if profile_name == None:
+                    if not profile_name:
                         profile_name = profile.field + " (Multiplier: " + str(multiplier) + " - Type: " + profile_type + ")"
 
-                    embedUrl = create_panel(profile_name, "", profile.host+':'+str(profile.port),
-                                        profile.database, profile.measurement, profile.field, profile.filters, qau,
-                                        "sum", profile.startDate, profile.endDate)
+                    embedUrl = create_panel(
+                        graph_title=profile_name,
+                        axis_title="",
+                        host=profile.host+':'+str(profile.port),
+                        database=profile.database,
+                        measurement=profile.measurement,
+                        field=profile.field,
+                        filters=profile.filters,
+                        qau=qau,
+                        prof_aggr_type="sum",
+                        start_datetime=profile.startDate,
+                        end_datetime=profile.endDate
+                    )
                     if embedUrl:
                         return embedUrl
                 else:

@@ -1,5 +1,5 @@
 /**
- * This module is deprecated in favour of the vue workflow module.
+ * NOTE: This module is deprecated in favour of the vue workflow module.
  */
 import {render_btn_group, render_button} from './buttons.js';
 import {render_form, render_form_field, render_submit} from './form.js';
