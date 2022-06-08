@@ -21,6 +21,7 @@ from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 import esdl
 from geomet import wkt
 import src.log as log
+from src.process_es_area_bld import create_building_KPIs
 
 logger = log.get_logger(__name__)
 
@@ -77,7 +78,8 @@ class BAG:
                                                 target_area.asset.append(bld.deepcopy())
                                                 geometry = bld.geometry
                                                 boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                                                bld_list.append(ESDLGeometry.create_geojson(bld.id, bld.name, [], boundary_wgs))
+                                                bld_KPIs = create_building_KPIs(bld)
+                                                bld_list.append(ESDLGeometry.create_geojson(bld.id, bld.name, bld_KPIs, boundary_wgs))
 
                                         if bld_list:
                                             emit('geojson', {"layer": "bld_layer", "geojson": bld_list})

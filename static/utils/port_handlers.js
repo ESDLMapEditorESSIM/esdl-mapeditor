@@ -108,7 +108,7 @@ function set_marker_port_handlers(marker) {
                 if (ports[p].marker === undefined) {
                     // marker not yet created
                     let port_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: port_name, zIndexOffset:1000});
-                    port_marker.addTo(map);
+                    port_marker.addTo(get_layers(active_layer_id, 'connection_layer'));
 
                     ports[p].active = false;
                     ports[p].marker = port_marker;
@@ -126,7 +126,7 @@ function set_marker_port_handlers(marker) {
                         setTimeout(function() {
                             layer.port_parent.active = false;
                             if (!layer.parent.mouseactive) {
-                                layer.removeFrom(map);
+                                layer.removeFrom(get_layers(active_layer_id, 'connection_layer'));
                                 remove_tooltip();
                                 unhighlight_connection(layer.port_parent)
                             }
@@ -162,7 +162,7 @@ function set_marker_port_handlers(marker) {
                 } else {
                     // show already created marker
                     ports[p].active = false;
-                    ports[p].marker.addTo(map);
+                    ports[p].marker.addTo(get_layers(active_layer_id, 'connection_layer'));
                 }
             }
             set_port_size_and_position();
@@ -177,7 +177,7 @@ function set_marker_port_handlers(marker) {
         for (let p in ports) {
             setTimeout(function() {
                 if (ports[p].active === false && !layer.mouseactive) {
-                    ports[p].marker.removeFrom(map);
+                    ports[p].marker.removeFrom(get_layers(active_layer_id, 'connection_layer'));
                     unhighlight_connection(ports[p])
                 }
             }, 300);
@@ -410,7 +410,7 @@ function set_line_port_handlers(line) {
                                     })
                                 }
                             ]
-                        }).addTo(map);
+                        }).addTo(get_layers(active_layer_id, 'connection_layer')); // don't add to esdl_layer icw Lt.Draw
                 line.mouseOverArrowHead = arrowHead; // make sure we can removed it later in the mouseOut event
             }
         }
@@ -481,7 +481,7 @@ function set_line_port_handlers(line) {
                 if (ports[p].marker === undefined) {
                     // marker not yet created
                     let port_marker = L.marker([lat,lng], {icon: divicon, title: port_name, zIndexOffset:1000});
-                    port_marker.addTo(map);
+                    port_marker.addTo(get_layers(active_layer_id, 'connection_layer'));
 
                     ports[p].active = false;
                     ports[p].marker = port_marker;
@@ -499,7 +499,7 @@ function set_line_port_handlers(line) {
                         setTimeout(function() {
                             layer.port_parent.active = false;
                             if (!layer.parent.mouseactive) {
-                                layer.removeFrom(map); // only remove if not mousemoved back to marker
+                                layer.removeFrom(get_layers(active_layer_id, 'connection_layer')); // only remove if not mousemoved back to marker
                                 remove_tooltip();
                                 unhighlight_connection(layer.port_parent);
                             }
@@ -514,7 +514,7 @@ function set_line_port_handlers(line) {
                 } else {
                     // show already created marker
                     ports[p].active = false;
-                    ports[p].marker.addTo(map);
+                    ports[p].marker.addTo(get_layers(active_layer_id, 'connection_layer'));
                     // update position based on zoom level
                     ports[p].marker.setLatLng([lat, lng])
 
@@ -534,7 +534,7 @@ function set_line_port_handlers(line) {
 //            weight: 3
 //        });
         if (layer.mouseOverArrowHead !== undefined) {
-            map.removeLayer(layer.mouseOverArrowHead)
+            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
         // from assets.js
@@ -545,7 +545,7 @@ function set_line_port_handlers(line) {
         for (let p in ports) {
             setTimeout(function() {
                 if (ports[p].active === false) {
-                    ports[p].marker.removeFrom(map);
+                    ports[p].marker.removeFrom(get_layers(active_layer_id, 'connection_layer'));
                     unhighlight_connection(ports[p]);
                 }
             }, 300);

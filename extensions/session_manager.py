@@ -68,6 +68,7 @@ def set_session(key, value):
     #logger.debug('Current Thread %s' % threading.currentThread().getName())
     if 'client_id' not in session:
         logger.warning('No client_id for the session is available, cannot set value for key {}'.format(key))
+        return
     client_id = session['client_id']
     if client_id not in managed_sessions:
         managed_sessions[client_id] = dict()
