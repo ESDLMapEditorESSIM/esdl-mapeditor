@@ -36,7 +36,8 @@ from src.process_es_area_bld import process_energy_system
 from flask_executor import Executor
 import src.log as log
 from src.settings import esdl_drive_config
-from extensions.esdl_drive.api import DRIVE_URL, browse_endpoint, resource_endpoint, drive_name, upload_to_drive
+from extensions.esdl_drive.api import DRIVE_URL, get_drive_post_headers, browse_endpoint, resource_endpoint, \
+    drive_name, upload_to_drive
 
 logger = log.get_logger(__name__)
 
@@ -73,7 +74,7 @@ class ESDLDrive:
 
                 logger.debug("Open params: {}".format(params))
                 #token = get_session('jwt-token')
-                uri = ESDLDriveHttpURI(DRIVE_URL + resource_endpoint + path, headers_function=add_authorization_header, getparams=params)
+                uri = ESDLDriveHttpURI(DRIVE_URL + resource_endpoint + path, headers_function=get_drive_post_headers, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
                 esh = get_handler()
                 try:
@@ -131,11 +132,11 @@ class ESDLDrive:
                     # resource already in CDO
                     logger.debug('Saving resource that is already loaded from ESDLDrive: {}'.format(resource.uri.plain))
                     # update uri with commit message
-                    resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
+                    resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
                     response = resource.save()
                 else:
                     logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
-                    resource.uri = ESDLDriveHttpURI(uri, headers_function=add_authorization_header, putparams=params)
+                    resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
                     response: requests.Response = resource.save()
                     esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
                     # new resource
@@ -230,7 +231,7 @@ class ESDLDrive:
         #resource: Resource = esh.get_resource(active_es_id)
         logger.debug('ESDLDrive saving resource {}'.format(location))
         try:
-            uri = ESDLDriveHttpURI(location, headers_function=add_authorization_header)
+            uri = ESDLDriveHttpURI(location, headers_function=get_drive_post_headers)
             uri.create_outstream(text_content=content_as_string)
             response = uri.close_stream()  # send content to CDO
             return response
@@ -242,18 +243,14 @@ class ESDLDrive:
             return e
 
 
-def add_authorization_header():
-    token = get_session('jwt-token')
-    headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/xml'}
-    return headers
-
-"""
-ESDL resources in ESDLDrive are directly accessible by a URL. 
-ESDLDriveHttpURI wraps this URL and adds support for JWT tokens for authentication when using a ESDL Drive URL.
-header_function is used to query the JWT token that is at that moment in use and not expired. This token needs to be
-added to the HTTP request just before it gets called.
-"""
 class ESDLDriveHttpURI(URI):
+    """
+    ESDL resources in ESDLDrive are directly accessible by a URL.
+    ESDLDriveHttpURI wraps this URL and adds support for JWT tokens for authentication when using a ESDL Drive URL.
+    header_function is used to query the JWT token that is at that moment in use and not expired. This token needs to be
+    added to the HTTP request just before it gets called.
+    """
+
     def __init__(self, uri, headers_function=None, getparams: dict = None, putparams: dict=None):
         self.headers_function = headers_function
         if headers_function is None:
@@ -279,7 +276,6 @@ class ESDLDriveHttpURI(URI):
             raise Exception("Error accessing {}: HTTP Status {}".format(self.plain, response.status_code))
         self.__stream = BytesIO(response.content)
         return self.__stream
-
 
     def create_outstream(self, text_content=None):
         """

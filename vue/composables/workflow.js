@@ -1,6 +1,7 @@
 import {computed, ref, watch} from "vue";
 import {getattrd} from "../utils/utils";
 import {v4 as uuidv4} from 'uuid';
+import {doPost} from "../utils/api";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -84,8 +85,7 @@ export function useWorkflow() {
         currentWorkflow.value.setName(name);
     }
 
-    const activatePersistedWorkflow = (uuid) => {
-        console.log('Activating persisted workflow.')
+    const activatePersistedWorkflow = async (uuid) => {
         const key = `wf.${uuid}`;
         const parsedWorkflow = JSON.parse(localStorage.getItem(key));
         const workflowObj = new Workflow(parsedWorkflow.service_index, parsedWorkflow.service);
@@ -95,14 +95,20 @@ export function useWorkflow() {
         workflowObj.state = parsedWorkflow.state;
         workflowObj.name = parsedWorkflow.name;
         workflowObj.persisted = parsedWorkflow.persisted;
+        workflowObj.drive_paths = parsedWorkflow.drive_paths;
         currentWorkflow.value = workflowObj;
+        await doPost(`/workflow/load`, {workflow_id: currentWorkflow.value.uuid});
     }
 
     const persistWorkflow = async (name) => {
+        window.clear_esdl_layer_list()
         currentWorkflow.value.setPersistence(true);
         currentWorkflow.value.setName(name);
         const key = `wf.${currentWorkflow.value.uuid}`;
         localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
+        const response = await doPost(`/workflow/persist`, {workflow_id: currentWorkflow.value.uuid});
+        const json = await response.json();
+        currentWorkflow.value.setDrivePaths(json.drive_paths);
     }
 
     const forgetWorkflow = () => {
@@ -191,6 +197,7 @@ export class Workflow {
         this.state = {};
         this.name = null;
         this.persisted = false;
+        this.drive_paths = [];
     }
 
     setName(name) {
@@ -199,6 +206,10 @@ export class Workflow {
 
     setPersistence(truefalse) {
         this.persisted = truefalse;
+    }
+
+    setDrivePaths(drive_paths) {
+        this.drive_paths = drive_paths;
     }
 
     /**
