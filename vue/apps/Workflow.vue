@@ -1,35 +1,58 @@
 <template>
   <div v-if="currentWorkflow" id="app">
-    <template v-if="currentWorkflow.hasPreviousStep()">
-      <a-button
-        type="link"
-        @click="goToPreviousStep()"
-      >
-        <i class="fas fa-long-arrow-alt-left small-icon" />
-      </a-button>
+    <div style="display: inline-block">
+      <template v-if="currentWorkflow.hasPreviousStep()">
+        <a-button
+          type="link"
+          @click="goToPreviousStep()"
+        >
+          <i class="fas fa-long-arrow-alt-left small-icon" />
+        </a-button>
+      </template>
 
+      <a-dropdown>
+        <a class="ant-dropdown-link" @click.prevent>
+          <a-button type="text" @click.prevent>
+            <template #icon>
+              <MenuOutlined />
+            </template>
+          </a-button>
+        </a>
+        <template #overlay>
+          <a-menu>
+            <a-menu-item v-if="currentWorkflow.name" disabled><strong>Name: {{ currentWorkflow.name }}</strong></a-menu-item>
+            <a-menu-item key="setname" disabled>Set workflow name</a-menu-item>
+            <a-menu-item key="save" @click="confirmPersistWorkflow">Save</a-menu-item>
+            <a-sub-menu key="load" title="Load workflow">
+              <a-menu-item
+                v-for="workflow in savedWorkflows()"
+                :key="workflow.uuid"
+                @click="activatePersistedWorkflow(workflow.uuid)"
+              >
+                {{ workflow.name }}
+              </a-menu-item>
+            </a-sub-menu>
+            <a-sub-menu key="delete" title="Delete workflow">
+              <a-menu-item
+                v-for="workflow in savedWorkflows()"
+                :key="workflow.uuid"
+                @click="deletePersistedWorkflow(workflow.uuid)"
+              >
+                {{ workflow.name }}
+              </a-menu-item>
+            </a-sub-menu>
+          </a-menu>
+        </template>
+      </a-dropdown>
+    </div>
+
+    <template v-if="currentWorkflow.hasPreviousStep()">
       <a-breadcrumb
         separator=">"
       >
         <a-breadcrumb-item v-for="prevStep in currentWorkflow.prevWorkflowSteps" :key="prevStep.id">{{ prevStep.name }}</a-breadcrumb-item>
       </a-breadcrumb>
     </template>
-    <a-button
-      @click="confirmPersistWorkflow"
-    >
-      <i class="fas fa-save small-icon" />
-    </a-button>
-    <a-select
-      @change="activatePersistedWorkflow"
-    >
-      <a-select-option
-        v-for="workflow in savedWorkflows"
-        :key="workflow.uuid"
-        :value="workflow.uuid"
-      >
-        {{ workflow.name }}
-      </a-select-option>
-    </a-select>
 
     <hr>
 
@@ -115,10 +138,11 @@ import {default as WorkflowProgress} from "../components/workflow/WorkflowProgre
 import {default as WorkflowText} from "../components/workflow/WorkflowText";
 import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
+import {MenuOutlined} from "@ant-design/icons-vue";
 
 export default {
   setup() {
-    const { currentWorkflow, goToStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow } = useWorkflow();
+    const { currentWorkflow, goToStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
 
     function confirmPersistWorkflow() {
       let workflowName = currentWorkflow.value.name;
@@ -131,6 +155,7 @@ export default {
     }
 
     return {
+      MenuOutlined,
       confirmPersistWorkflow,
       currentWorkflow,
       goToStep,
@@ -147,7 +172,8 @@ export default {
       WorkflowDownloadFile,
       WorkflowJsonForm,
       savedWorkflows,
-      activatePersistedWorkflow
+      activatePersistedWorkflow,
+      deletePersistedWorkflow,
     };
   },
 };

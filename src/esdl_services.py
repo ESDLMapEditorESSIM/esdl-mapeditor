@@ -53,7 +53,7 @@ class ESDLServices:
         @self.socketio.on('get_esdl_services_list', namespace='/esdl')
         def get_esdl_services_list():
             user = get_session('user-email')
-            return self.get_user_settings(user)
+            return self.get_esdl_services_from_user_settings(user)
 
         @self.socketio.on('store_esdl_services_list', namespace='/esdl')
         def store_esdl_services_list(settings):
@@ -79,7 +79,7 @@ class ESDLServices:
             services_list = list()
 
             user = get_session('user-email')
-            services = self.get_user_settings(user)
+            services = self.get_esdl_services_from_user_settings(user)
 
             for service in services:
                 if 'show_on_toolbar' in service:
@@ -94,7 +94,7 @@ class ESDLServices:
                         services_list.append(svc);
             return {'services_list': services_list}
 
-    def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
+    def get_esdl_services_from_user_settings(self, user: str) -> List[Dict[str, Any]]:
         """Get the user services from the settings storage. """
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
             esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
@@ -124,12 +124,12 @@ class ESDLServices:
         """
         Get the full list of services for this user with the given roles. Both user and roles come from Keycloak.
         """
-        srvs_list = self.get_user_settings(user)
+        user_esdl_services = self.get_esdl_services_from_user_settings(user)
         # store the user services list in session for later use
-        set_session('services_list', srvs_list)
+        set_session('services_list', user_esdl_services)
 
         # Start with user services, remove those services that the user does not have the role for.
-        final_services_list = copy.deepcopy(srvs_list)
+        final_services_list = copy.deepcopy(user_esdl_services)
         for service in list(final_services_list):
             if "required_role" in service and service["required_role"] not in roles:
                 final_services_list.remove(service)

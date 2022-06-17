@@ -16,7 +16,7 @@
 
 <template>
   <div>
-    <label>Choose ESSIM simulation to export</label>
+    <label>Choose ESSIM simulation to export.</label>
     <a-select
       v-model:value="simulation_id"
       style="width: 100%"
@@ -32,15 +32,13 @@
     </a-select>
   </div>
   <div v-if="selected_simulation" style="margin-top: 10px;">
-    <strong>Description</strong>: {{ selected_simulation.simulation_descr }}<br>
+    <strong>ESSIM description</strong>: {{ selected_simulation.simulation_descr }}<br>
     <strong>Energy system name</strong>: {{ selected_simulation.simulation_es_name }}<br>
     <strong>Energy system ID</strong>:
     <span v-if="selected_simulation.es_id">{{ selected_simulation.es_id }}</span>
     <span v-else>Unknown</span>
     <br>
-    <strong>Simulation ID</strong>: {{ selected_simulation.simulation_id }}
-    <br>
-    <p>Please make sure the above energy system is loaded in the mapeditor before generating the ESSIM export.</p>
+    <strong>ESSIM simulation ID</strong>: {{ selected_simulation.simulation_id }}
   </div>
   <a-button type="primary" style="margin-top: 10px" @click="onSubmit">Generate ESSIM export</a-button>
   <div style="margin-top: 20px;">

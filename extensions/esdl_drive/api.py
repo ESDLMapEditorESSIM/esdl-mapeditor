@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from json import JSONDecodeError
+
 from typing import Any, Dict, Optional, TypedDict, Union
 
 import requests
@@ -36,7 +38,7 @@ class DrivePutParams(TypedDict):
     overwrite: bool
 
 
-def upload_to_drive(
+def upload_esdl_to_drive(
     esdl_contents: Union[str, bytes],
     drive_path: str,
     putparams: DrivePutParams,
@@ -79,7 +81,7 @@ class GetNodeDriveItem(TypedDict):
     children: bool
 
 
-def get_node_drive(
+def esdl_drive_get_node(
     path: str,
     headers: Optional[dict[str, str]] = None,
 ) -> list[GetNodeDriveItem]:
@@ -110,7 +112,10 @@ def do_browse_drive(
     )
     if not response.ok:
         raise EsdlDriveException(f"Failed communicating with ESDL Drive: {response.status_code}")
-    return response.json()
+    try:
+        return response.json()
+    except JSONDecodeError as e:
+        raise EsdlDriveException(f"Failed communicating with ESDL Drive") from e
 
 
 def get_drive_headers() -> Dict[str, str]:

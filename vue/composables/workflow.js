@@ -1,7 +1,6 @@
-import {computed, ref, watch} from "vue";
+import {ref, watch} from "vue";
 import {getattrd} from "../utils/utils";
 import {v4 as uuidv4} from 'uuid';
-import {doPost} from "../utils/api";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -28,6 +27,7 @@ export const currentWorkflow = ref(null);
 
 watch(currentWorkflow,
     (newWorkflow, oldWorkflow) => {
+        // TODO: Persist?
         console.log("Detected workflow modification");
     }
 )
@@ -44,12 +44,12 @@ export function useWorkflow() {
         return currentWorkflow;
     }
 
-    const savedWorkflows = computed(() => {
+    const savedWorkflows = () => {
         return Object.keys(localStorage).filter((key) => key.startsWith('wf.')).map((key) => {
             const workflow = JSON.parse(localStorage.getItem(key));
             return {uuid: workflow.uuid, name: workflow.name};
-        })
-    })
+        });
+    }
 
     /**
      * Start over the current workflow.
@@ -85,7 +85,7 @@ export function useWorkflow() {
         currentWorkflow.value.setName(name);
     }
 
-    const activatePersistedWorkflow = async (uuid) => {
+    const activatePersistedWorkflow = (uuid) => {
         const key = `wf.${uuid}`;
         const parsedWorkflow = JSON.parse(localStorage.getItem(key));
         const workflowObj = new Workflow(parsedWorkflow.service_index, parsedWorkflow.service);
@@ -96,25 +96,32 @@ export function useWorkflow() {
         workflowObj.name = parsedWorkflow.name;
         workflowObj.persisted = parsedWorkflow.persisted;
         workflowObj.drive_paths = parsedWorkflow.drive_paths;
+        workflowObj.restartable = parsedWorkflow.restartable;
         currentWorkflow.value = workflowObj;
-        await doPost(`/workflow/load`, {workflow_id: currentWorkflow.value.uuid});
+        window.show_loader();
+        window.socket.emit('/workflow/load', {workflow_id: currentWorkflow.value.uuid});
     }
 
-    const persistWorkflow = async (name) => {
-        window.clear_esdl_layer_list()
+    const persistWorkflow = (name) => {
         currentWorkflow.value.setPersistence(true);
         currentWorkflow.value.setName(name);
         const key = `wf.${currentWorkflow.value.uuid}`;
         localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
-        const response = await doPost(`/workflow/persist`, {workflow_id: currentWorkflow.value.uuid});
-        const json = await response.json();
-        currentWorkflow.value.setDrivePaths(json.drive_paths);
+        window.show_loader();
+        window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
+            window.hide_loader();
+            currentWorkflow.value.setDrivePaths(msg.drive_paths);
+        });
     }
 
-    const forgetWorkflow = () => {
-        currentWorkflow.value.setPersistence(false)
-        const key = `wf.${currentWorkflow.value.uuid}`;
+    const deletePersistedWorkflow = (uuid) => {
+        const key = `wf.${uuid}`;
         localStorage.removeItem(key)
+        window.show_loader();
+        window.socket.emit('/workflow/delete', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
+            window.hide_loader();
+            currentWorkflow.value.setDrivePaths([]);
+        });
     }
 
     /**
@@ -180,7 +187,7 @@ export function useWorkflow() {
         startOver,
         setWorkflowName,
         persistWorkflow,
-        forgetWorkflow,
+        deletePersistedWorkflow,
         savedWorkflows,
         activatePersistedWorkflow,
     }
@@ -197,6 +204,7 @@ export class Workflow {
         this.state = {};
         this.name = null;
         this.persisted = false;
+        this.restartable = service.restartable || false;
         this.drive_paths = [];
     }
 

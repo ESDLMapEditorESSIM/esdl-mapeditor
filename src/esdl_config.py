@@ -343,6 +343,7 @@ esdl_config = {
                 "name": "Energy Potential Scan",
                 "explanation": "This workflow allows you to run the EPS web service and view the EPS results.",
                 "type": "vueworkflow",
+                "restartable": True,
                 "workflow": [
                     {
                         # 0

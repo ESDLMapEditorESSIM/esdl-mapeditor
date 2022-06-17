@@ -37,7 +37,7 @@ from flask_executor import Executor
 import src.log as log
 from src.settings import esdl_drive_config
 from extensions.esdl_drive.api import DRIVE_URL, get_drive_post_headers, browse_endpoint, resource_endpoint, \
-    drive_name, upload_to_drive
+    drive_name, upload_esdl_to_drive
 
 logger = log.get_logger(__name__)
 
@@ -296,7 +296,7 @@ class ESDLDriveHttpURI(URI):
         # content has been written to __stream()
         if self.writing:
             logger.debug("Writing to {}".format(self.plain))
-            response = upload_to_drive(self.__stream.getvalue(), self.plain, putparams=self.putparams, headers=self.headers_function())
+            response = upload_esdl_to_drive(self.__stream.getvalue(), self.plain, putparams=self.putparams, headers=self.headers_function())
             self.writing = False
             super().close_stream()
             return response

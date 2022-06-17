@@ -617,7 +617,7 @@
             // ------------------------------------------------------------------------------------------------------------
             //  Map functions
             // ------------------------------------------------------------------------------------------------------------
-            socket.on('clear_ui', function(msg) {
+            function clear_ui(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
                     // esdl_layer.clearLayers();
@@ -640,7 +640,10 @@
                     clear_layers(active_layer_id, 'connection_layer');
                 }
                 clear_layer = false;
-            });
+            }
+            window.clear_ui = clear_ui;
+
+            socket.on('clear_ui', clear_ui)
 
             socket.on('clear_esdl_layer_list', function() {
                 clear_esdl_layer_list();

@@ -20,15 +20,16 @@ import os
 
 import requests
 from flask import Flask, Response, jsonify, request
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 
 import esdl
 from extensions.esdl_drive.api import (
     DRIVE_URL,
+    EsdlDriveException,
     get_drive_post_headers,
-    get_node_drive,
+    esdl_drive_get_node,
     resource_endpoint,
-    upload_to_drive,
+    upload_esdl_to_drive,
 )
 from extensions.esdl_drive.esdl_drive import ESDLDriveHttpURI
 from extensions.session_manager import get_handler, get_session
@@ -48,9 +49,14 @@ class Workflow:
     """
 
     def __init__(
-        self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage, executor: Executor
+        self,
+        flask_app: Flask,
+        socket: SocketIO,
+        settings_storage: SettingsStorage,
+        executor: Executor,
     ):
         self.flask_app = flask_app
+        self.socketio = socket
         self.executor = executor
         self.register()
 
@@ -163,35 +169,43 @@ class Workflow:
                 resp_json = []
             return jsonify(resp_json), r.status_code
 
-        @self.flask_app.route("/workflow/persist", methods=["POST"])
-        def persist():
+        @self.socketio.on("/workflow/persist", namespace="/esdl")
+        def persist(message):
             """
             Persist this workflow.
             """
-            workflow_id = request.json.get("workflow_id")
+            workflow_id = message["workflow_id"]
+            # workflow_id = request.json.get("workflow_id")
             user_email = get_session("user-email")
             esh = get_handler()
             energy_systems: List[esdl.EnergySystem] = esh.get_energy_systems()
             drive_paths = []
             for energy_system in energy_systems:
-                esdl_contents = esh.to_string(energy_system.id)
+                esdl_contents = esh.to_string(energy_system.id).encode("utf-8")
                 drive_path = f"/Users/{user_email}/workflows/{workflow_id}/{energy_system.name}.esdl"
-                upload_to_drive(
+                response = upload_esdl_to_drive(
                     esdl_contents,
                     drive_path,
                     dict(commitMessage="", overwrite=True),
                 )
-                drive_paths.append(drive_path)
-            return jsonify(dict(drive_paths=drive_paths)), 200
+                if response.ok:
+                    drive_paths.append(drive_path)
 
-        @self.flask_app.route("/workflow/load", methods=["POST"])
-        def load():
+            return dict(drive_paths=drive_paths)
+
+        @self.socketio.on("/workflow/load", namespace="/esdl")
+        def load(message):
             """
             Persist this workflow.
             """
-            workflow_id = request.json.get("workflow_id")
+            workflow_id = message["workflow_id"]
             user_email = get_session("user-email")
-            drive_items = get_node_drive(f"/Users/{user_email}/workflows/{workflow_id}")
+            try:
+                drive_items = esdl_drive_get_node(
+                    f"/Users/{user_email}/workflows/{workflow_id}"
+                )
+            except EsdlDriveException:
+                return dict(message="Failed loading ESDLs from drive")
             esh = get_handler()
             for drive_item in drive_items:
                 uri = ESDLDriveHttpURI(
@@ -200,7 +214,31 @@ class Workflow:
                     getparams={},
                 )
                 es, parse_info = esh.import_file(uri)
-                self.executor.submit(
-                    process_energy_system, esh, uri.last_segment, es.name or es.id
+                if len(parse_info) > 0:
+                    info = ""
+                    for line in parse_info:
+                        info += line + "\n"
+                    message = "Warnings while opening {}:\n\n{}".format(
+                        uri.last_segment, info
+                    )
+                    emit("alert", message, namespace="/esdl")
+            self.executor.submit(
+                process_energy_system, esh, force_update_es_id="all", zoom=False
+            )
+
+        @self.socketio.on("/workflow/delete", namespace="/esdl")
+        def delete(message):
+            """
+            Delete this workflow.
+            """
+            workflow_id = message["workflow_id"]
+            user_email = get_session("user-email")
+            try:
+                drive_items = esdl_drive_get_node(
+                    f"/Users/{user_email}/workflows/{workflow_id}"
                 )
-            return jsonify(dict()), 200
+            except EsdlDriveException:
+                return dict(message="Failed deleting ESDLs from drive")
+            for drive_item in drive_items:
+                # TODO: Delete from Drive.
+                pass

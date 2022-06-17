@@ -80,16 +80,17 @@ class DiceWorkflow:
 
         @self.flask_app.route("/dice_workflow/get_buildings")
         def get_buildings():
-            buildings = _get_buildings_in_active_es()
-            building_dicts: List[Dict] = []
+            buildings: list[esdl.GenericBuilding] = _get_buildings_in_active_es()
+            building_dicts: list[dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
-                kpis_value_dict: Dict[str, Union[int, float, str]] = {}
+                kpis_value_dict: dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
                 building_dict = dict(
                     id=building.id,
                     name=building.name,
+                    address=building.address,
                     kpis=kpis_value_dict,
                 )
                 building_dicts.append(building_dict)
@@ -255,7 +256,7 @@ class ExportEssimDict(TypedDict):
     networks: Optional[list[str]]
 
 
-def _get_buildings_in_active_es() -> List[esdl.AbstractBuilding]:
+def _get_buildings_in_active_es() -> list[esdl.GenericBuilding]:
     """
     Retrieve all buildings in the active energy system.
     """
@@ -263,18 +264,18 @@ def _get_buildings_in_active_es() -> List[esdl.AbstractBuilding]:
     esh = get_handler()
     es = esh.get_energy_system(es_id=active_es_id)
     area = es.instance[0].area
-    buildings: List[esdl.AbstractBuilding] = []
+    buildings: list[esdl.GenericBuilding] = []
     for asset in area.asset:
-        if isinstance(asset, esdl.AbstractBuilding):
+        if isinstance(asset, esdl.GenericBuilding):
             buildings.append(asset)
     return buildings
 
 
-def _building_kpis_to_dict(building: esdl.AbstractBuilding) -> Dict[str, esdl.KPI]:
+def _building_kpis_to_dict(building: esdl.GenericBuilding) -> dict[str, esdl.KPI]:
     """
     Find all KPIs of a building, and returns it as a dict, indexed by the name.
     """
-    kpis: Dict[str, esdl.KPI] = {}
+    kpis: dict[str, esdl.KPI] = {}
     if building.KPIs is not None:
         for kpi in building.KPIs.kpi:
             kpis[kpi.name] = kpi

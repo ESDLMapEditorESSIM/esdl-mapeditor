@@ -29,6 +29,7 @@ import {
     Table,
     Transfer,
     Tree,
+    Menu,
     Upload
 } from 'ant-design-vue';
 
@@ -75,6 +76,7 @@ export function mountApp(component, elementSelector) {
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
+    app.use(Menu);
 
     app.mount(elementSelector);
 }

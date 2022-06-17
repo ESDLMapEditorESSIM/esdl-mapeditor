@@ -15,7 +15,7 @@ export function getattrd(obj, name) {
         }
         return value
     } catch {
-        console.error("Attribute not found on object")
+        // console.error(`Attribute not found on object: ${name}`)
         return null;
     }
 }

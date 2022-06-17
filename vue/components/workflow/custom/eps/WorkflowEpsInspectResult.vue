@@ -20,7 +20,7 @@
     </template>
   </a-tree>
   <p v-else>
-    Please right-click on a building and select "Show EPS results" to view detailed information.
+    Please right-click on a building in an unmodified EPS ESDL and select "Show EPS results" to view detailed information.
   </p>
 </template>
 

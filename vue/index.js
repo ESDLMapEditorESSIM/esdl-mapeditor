@@ -38,7 +38,7 @@ import Swal from "sweetalert2";
 
 window.activate_service_workflow = async (serviceIndex, service) => {
     const { startNewWorkflow, currentWorkflow } = useWorkflow();
-    if (currentWorkflow.value) {
+    if (currentWorkflow.value && currentWorkflow.value.restartable) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
           icon: 'question',
