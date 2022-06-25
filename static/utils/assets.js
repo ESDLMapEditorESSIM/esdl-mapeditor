@@ -122,33 +122,29 @@ function remove_single_connection(from_id, to_id, es_id) {
 // ------------------------------------------------------------------------------------------------------------
 //  Deletes an asset (Marker, Polyline or Polygon) and its connections
 // ------------------------------------------------------------------------------------------------------------
-function delete_asset(asset) {
+function delete_asset(clicked_asset) {
    console.log('remove marker');
     $(".ui-tooltip-content").parents('div').remove();
 
-    let asset_list = [asset.id];
+    let asset_list = [clicked_asset.id];
     if (select_assets.is_select_mode()) {
         // One or more assets have been selected
-        if (select_assets.is_selected(asset)) {
+        if (select_assets.is_selected(clicked_asset)) {
             // the current asset is part of this selection
             asset_list = select_assets.get_selected_assets();
         }
     }
 
+    // asset_list now contains a list of all IDs of the selected assets
     all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
     for (let idx=0; idx<asset_list.length; idx++) {
         asset_id = asset_list[idx];
         let asset = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
 
-        if (asset instanceof L.Marker) {
-            // Remove polygon that belongs to marker, if one is present
-            if (asset.polygon) {
-               for (let i=0; i<all_layers.length; i++) {
-                    layer = all_layers[i];
-                    if (layer.id == asset_id && layer instanceof L.Polygon) {
-                        remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
-                    }
-               }
+        if (asset instanceof L.Polygon) {
+            // Remove maker that belongs to polygon
+            if (asset.marker) {
+                remove_object_from_layer(active_layer_id, 'esdl_layer', asset.marker)
             }
         } else if (asset instanceof L.Polyline) {
             if (asset.mouseOverArrowHead !== undefined) {
@@ -162,7 +158,7 @@ function delete_asset(asset) {
             }
         }
 
-        // remove connections manually:
+        // remove connections manually
         for (let i in asset.ports) {
             let from_id = asset.ports[i].id;
             for (let j in asset.ports[i].conn_to) {
