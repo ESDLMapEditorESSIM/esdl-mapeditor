@@ -42,6 +42,7 @@ release_notes = [
     #             "items": [
     #                 "Fixed loading ESDL file with same name",
     #                 "Fixed deleting assets that are represented as a polygon on the map",
+    #                 "Fixed the table editor"
     #             ]
     #         },
     #     ]
