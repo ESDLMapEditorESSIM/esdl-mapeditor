@@ -323,7 +323,6 @@
                 var pos = marker.getLatLng();
                 update_marker_ports(marker);
                 socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
-
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works
