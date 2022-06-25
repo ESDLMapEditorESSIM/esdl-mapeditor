@@ -25,10 +25,31 @@ logger = log.get_logger(__name__)
 
 # Add new release notes at the beginning of this list
 release_notes = [
+    # {
+    #     "version": "22.7.0",
+    #     "date": "2022-07-03T18:00:00Z",
+    #     "general_message": "On July 3rd 2022, we've released the new ESDL MapEditor version 22.7.0. " +
+    #                        "See below for a list of new features and bug fixes",
+    #     "categories": [
+    #         {
+    #             "name": "New features",
+    #             "items": [
+    #                 "Implement delete building",
+    #             ]
+    #         },
+    #         {
+    #             "name": "Bug fixes",
+    #             "items": [
+    #                 "Fixed loading ESDL file with same name",
+    #                 "Fixed deleting assets that are represented as a polygon on the map",
+    #             ]
+    #         },
+    #     ]
+    # },
     {
         "version": "22.4.2",
         "date": "2022-04-30T18:00:00Z",
-        "general_message": "On April 30th 2022, we've released the new ESDL MapEditor version 22.04.2. " +
+        "general_message": "On April 30th 2022, we've released the new ESDL MapEditor version 22.4.2. " +
                            "See below for a list of new features and bug fixes",
         "categories": [
             {
