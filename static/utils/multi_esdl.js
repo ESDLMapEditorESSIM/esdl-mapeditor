@@ -261,8 +261,16 @@ function get_layers(es_id, layer_name) {
 function find_layer_by_id(es_id, layer_name, id) {
     let layer_list = esdl_list[es_id].layers[layer_name].getLayers();
     for (let i=0; i<layer_list.length; i++) {
-        layer = layer_list[i];
-        if (layer.id == id) {
+        let layer = layer_list[i];
+        if (layer instanceof L.GeoJSON) {     // building layer
+          let geojson_layer_list = Object.entries(layer._layers);   // _layers is an Object with ids as keys
+          for (let j=0; j<geojson_layer_list.length; j++) {
+            let geojson_layer = geojson_layer_list[j];
+            if (geojson_layer[1].feature.properties.id == id) {
+              return geojson_layer;
+            }
+          }
+        } else if (layer.id == id) {
             return layer;
         }
     }

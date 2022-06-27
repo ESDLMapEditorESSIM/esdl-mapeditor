@@ -774,6 +774,37 @@ def get_building_information(building):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+#  Get information about building connections (required for deleting the connections to/from a building)
+# ---------------------------------------------------------------------------------------------------------------------
+def get_building_connections(building):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
+
+    conn_list = []
+
+    for basset in building.asset:
+        if isinstance(basset, esdl.EnergyAsset):
+            for p in basset.port:
+                conn_to = p.connectedTo
+                if conn_to:
+                    for pc in conn_to:
+                        pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
+
+                        # If the asset the current asset connects to, is in a building...
+                        if pc_asset['asset'].containingBuilding:
+                            bld_pc_asset = pc_asset['asset'].containingBuilding
+                            bld_basset = basset.containingBuilding
+                            # If the asset is in a different building ...
+                            if not bld_pc_asset == bld_basset:
+                                conn_list.append({"from_id": p.id, "to_id": pc.id})
+                        else:
+                            # other asset is not in a building
+                            conn_list.append({"from_id": p.id, "to_id": pc.id})
+
+    return conn_list
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 #  Initialization after new or load energy system
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
