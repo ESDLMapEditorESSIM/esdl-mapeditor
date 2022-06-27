@@ -353,6 +353,7 @@ function set_marker_handlers(marker) {
         var marker = e.target;
         var pos = marker.getLatLng();
         update_marker_ports(marker);
+        console.log('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
         socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
 
         // console.log(e.oldLatLng.lat);

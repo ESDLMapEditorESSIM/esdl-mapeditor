@@ -190,9 +190,9 @@ function highlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
         let conn_id = port.id + port.conn_to[i];
         let conn_rev_id = port.conn_to[i] + port.id;
-        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
-            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+            conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);
         }
         if (conn && !conn.highlight) { // runs on mouseover, so is received multiple times
             let curr_weight = conn.options.weight;
@@ -207,9 +207,9 @@ function unhighlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
         let conn_id = port.id + port.conn_to[i];
         let conn_rev_id = port.conn_to[i] + port.id;
-        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
+        let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
-            conn = find_layer_by_id(es_id, 'connection_layer', conn_rev_id);
+            conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);
         }
         if (conn && conn.highlight) {
             conn.setStyle({dashArray:'3,10', weight: conn.previous_weight});

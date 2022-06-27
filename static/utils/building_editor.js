@@ -18,7 +18,7 @@ var bld_map;
 var bld_edit_id = null;        // stores the ID of the building while editing building
 
 function open_building_editor(dialog, building_info) {
-    console.log(building_info);
+    //console.log(building_info);
     bld_edit_id = building_info['id'];
 
     var contents = [
