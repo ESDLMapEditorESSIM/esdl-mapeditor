@@ -143,5 +143,16 @@ function add_building_map_handlers(mp) {
         mp.contextmenu.hide();
     });
 
+    mp.on('keydown', function(e){
+        var event = e.originalEvent
+        if (event.keyCode === 27) {
+            // cancel drawing a connection if necessary, also needed for this map_handler
+            cancel_connection(e);
+            map.contextmenu.hide();
+            remove_tooltip(); // clear tooltips if they are sticky
+            select_assets.deselect_all_assets(); //from select_asset.js
+        }
+    });
+
     return mp
 }
