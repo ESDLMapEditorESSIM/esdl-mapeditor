@@ -107,6 +107,12 @@ class ESDLDataLayer:
             return common_obj_data
 
     def get_object_parameters_by_asset_type(self, asset_type):
+        """
+        This function is used by the Table Editor to gather information of all assets of a certain type
+
+        :param asset_type: esdl asset type
+        :return: list with information per asset instance
+        """
         asset_list = self.get_esdl_objects_of_type(asset_type)
 
         attrs_per_asset_list = list()
@@ -119,7 +125,13 @@ class ESDLDataLayer:
 
             view_mode = ViewModes.get_instance()
             cat_attrs = view_mode.categorize_object_attributes_and_references(asset, attrs, refs)
-            attrs_per_asset_list.append(cat_attrs)
+
+            cost_information = get_cost_information(asset)
+
+            attrs_per_asset_list.append({
+                "attributes": cat_attrs,
+                "cost_information": cost_information,
+            })
 
         return attrs_per_asset_list
 

@@ -140,7 +140,9 @@ class SelectAssets {
     disable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if ((option != '-') && (option.text != 'Delete'))
+            if ((option != '-') && ((option.text != 'Delete') ||
+              // Buildings cannot be deleted yet in multi select mode
+              (asset_leaflet_obj.type == 'Building')))
                 option['disabled'] = true;
         }
     }

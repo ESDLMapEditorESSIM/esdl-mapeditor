@@ -321,7 +321,6 @@
                 var pos = marker.getLatLng();
                 update_marker_ports(marker);
                 socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: 'building'});
-
             });
 
             // TODO replace this with map.on("draw:deleted") as then undo function works
@@ -1599,9 +1598,8 @@
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
-            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" multiple>
-            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);">
-
+            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" onclick="this.value=null;" multiple>
+            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
 
 {% if edr_enabled %}
             <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
