@@ -18,7 +18,7 @@ RUN yarn
 
 # Python dependencies.
 COPY requirements-uwsgi.txt /usr/src/app/
-RUN pip3.7 install -r requirements-uwsgi.txt
+RUN pip install -r requirements-uwsgi.txt
 
 # Add everything in the image.
 COPY . /usr/src/app
