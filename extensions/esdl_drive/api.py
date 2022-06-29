@@ -13,7 +13,7 @@
 #      TNO
 from json import JSONDecodeError
 
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 import requests
 
@@ -42,7 +42,7 @@ def upload_esdl_to_drive(
     esdl_contents: Union[str, bytes],
     drive_path: str,
     putparams: DrivePutParams,
-    headers: Optional[dict[str, str]] = None,
+    headers: Optional[Dict[str, str]] = None,
 ) -> requests.Response:
     """
     Upload the specified file to drive.
@@ -83,8 +83,8 @@ class GetNodeDriveItem(TypedDict):
 
 def esdl_drive_get_node(
     path: str,
-    headers: Optional[dict[str, str]] = None,
-) -> list[GetNodeDriveItem]:
+    headers: Optional[Dict[str, str]] = None,
+) -> List[GetNodeDriveItem]:
     """
     Browse the ESDL Drive.
     """
@@ -95,8 +95,8 @@ def do_browse_drive(
     operation: str,
     path: str,
     depth: Optional[int] = None,
-    headers: Optional[dict[str, str]] = None,
-) -> list[dict[str, Any]]:
+    headers: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
     """
     Browse the ESDL Drive.
     """

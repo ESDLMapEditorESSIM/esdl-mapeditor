@@ -54,7 +54,7 @@ class DiceESSIMExport(TypedDict):
     start_date: str
     end_date: Optional[str]
     finished: bool
-    file_paths: Optional[dict[str, str]]
+    file_paths: Optional[Dict[str, str]]
 
 
 class DiceWorkflow:
@@ -80,11 +80,11 @@ class DiceWorkflow:
 
         @self.flask_app.route("/dice_workflow/get_buildings")
         def get_buildings():
-            buildings: list[esdl.GenericBuilding] = _get_buildings_in_active_es()
-            building_dicts: list[dict] = []
+            buildings: List[esdl.GenericBuilding] = _get_buildings_in_active_es()
+            building_dicts: List[Dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
-                kpis_value_dict: dict[str, Union[int, float, str]] = {}
+                kpis_value_dict: Dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
                 building_dict = dict(
@@ -195,7 +195,7 @@ class DiceWorkflow:
 
 def _export_energy_system_simulation_task(
     simulation_id: str,
-    networks: Optional[list[str]],
+    networks: Optional[List[str]],
     settings_storage: SettingsStorage,
 ):
     """
@@ -228,7 +228,7 @@ def _export_energy_system_simulation_task(
         influx_client.close()
         logger.info("Finished exporting ESSIM, saving result to files")
 
-        file_paths: dict[str, str] = dict()
+        file_paths: Dict[str, str] = dict()
         dir_path = tempfile.mkdtemp(prefix=f"ESSIM-export-{simulation_id}")
         for filename, df in results.items():
             path = os.path.join(dir_path, filename)
@@ -236,7 +236,7 @@ def _export_energy_system_simulation_task(
             df.to_excel(path)
 
         # Find the long process and finalize it.
-        user_processes: dict[str, DiceESSIMExport] = settings_storage.get_current_user(
+        user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_current_user(
             DICE_ESSIM_EXPORTS
         )
         essim_export = user_processes.get(simulation_id)
@@ -253,10 +253,10 @@ def _export_energy_system_simulation_task(
 class ExportEssimDict(TypedDict):
     simulation_id: str
     es_id: Optional[str]
-    networks: Optional[list[str]]
+    networks: Optional[List[str]]
 
 
-def _get_buildings_in_active_es() -> list[esdl.GenericBuilding]:
+def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     """
     Retrieve all buildings in the active energy system.
     """
@@ -264,18 +264,18 @@ def _get_buildings_in_active_es() -> list[esdl.GenericBuilding]:
     esh = get_handler()
     es = esh.get_energy_system(es_id=active_es_id)
     area = es.instance[0].area
-    buildings: list[esdl.GenericBuilding] = []
+    buildings: List[esdl.GenericBuilding] = []
     for asset in area.asset:
         if isinstance(asset, esdl.GenericBuilding):
             buildings.append(asset)
     return buildings
 
 
-def _building_kpis_to_dict(building: esdl.GenericBuilding) -> dict[str, esdl.KPI]:
+def _building_kpis_to_dict(building: esdl.GenericBuilding) -> Dict[str, esdl.KPI]:
     """
     Find all KPIs of a building, and returns it as a dict, indexed by the name.
     """
-    kpis: dict[str, esdl.KPI] = {}
+    kpis: Dict[str, esdl.KPI] = {}
     if building.KPIs is not None:
         for kpi in building.KPIs.kpi:
             kpis[kpi.name] = kpi

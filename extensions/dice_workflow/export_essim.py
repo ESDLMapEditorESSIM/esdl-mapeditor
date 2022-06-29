@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from typing import Dict
+
 from pathlib import Path
 
 import esdl
@@ -74,7 +76,7 @@ def export_consumptions(
     simulation_run: str,
     id_to_energy_asset: {str: esdl.EnergyAsset},
     networks: [str],
-) -> dict[str, pd.DataFrame]:
+) -> Dict[str, pd.DataFrame]:
     result = dict()
     for network in networks:
         df = export_consumption(
@@ -90,7 +92,7 @@ def export_emissions(
     simulation_run: str,
     id_to_energy_asset: {str: esdl.EnergyAsset},
     es_name: str,
-) -> dict[str, pd.DataFrame]:
+) -> Dict[str, pd.DataFrame]:
     query = f"SELECT \"emission\"  / 1000 FROM /.*/ WHERE (\"simulationRun\" = '{simulation_run}' AND \"capability\" = 'Producer') AND time >= 1546297200000ms and time <= 1577833200000ms GROUP BY \"assetId\", \"assetClass\", \"carrierName\""
     df = query_influx_db(influx_client, id_to_energy_asset, query)
     excel_name = f"{es_name}-emissions_ton-CO2.xlsx"
@@ -112,7 +114,7 @@ def export_transports(
     simulation_run: str,
     id_to_energy_asset: {str: esdl.EnergyAsset},
     networks: [str],
-) -> dict[str, pd.DataFrame]:
+) -> Dict[str, pd.DataFrame]:
     result = dict()
     for network in networks:
         df = export_transport(
@@ -128,7 +130,7 @@ def export_energy_system_simulation(
     essim_id: str,
     es: esdl.EnergySystem,
     networks: [str],
-) -> dict[str, pd.DataFrame]:
+) -> Dict[str, pd.DataFrame]:
     if len(es.instance) != 1:
         raise Exception(
             "there are {} instances in this ESDL except 1".format(len(es.instance))
