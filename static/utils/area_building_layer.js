@@ -655,10 +655,15 @@ function set_building_contextmenu(layer, id) {
 
     layer.options.contextmenuItems.push({
         text: 'Building ESDL contents',
-        icon: 'icons/BuildingContents.png',
+        icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
     layer.options.contextmenuItems.push('-');
+    layer.options.contextmenuItems.push({
+        text: 'Delete',
+        icon: resource_uri + 'icons/Delete.png',
+        callback: function(e) { remove_building(layer); }
+    });
     layer.options.contextmenuItems.push({
         text: 'Edit building properties',
         icon: resource_uri + 'icons/Edit.png',
