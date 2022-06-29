@@ -101,9 +101,12 @@ class DiceWorkflow:
         def export_essim():
             if request.method == "GET":
                 # Retrieve previously performed exports.
-                essim_exports: dict[
-                    str, DiceESSIMExport
-                ] = self.settings_storage.get_current_user(DICE_ESSIM_EXPORTS)
+                try:
+                    essim_exports: dict[
+                        str, DiceESSIMExport
+                    ] = self.settings_storage.get_current_user(DICE_ESSIM_EXPORTS)
+                except KeyError:
+                    essim_exports = dict()
                 finished_essim_exports = []
                 for essim_export in essim_exports.values():
                     if essim_export["finished"]:
