@@ -146,8 +146,8 @@ class ESDLDataLayer:
         for pkey in profiles:
             p = profiles[pkey]
             profiles_list.append({
-                'id': pkey,
-                'name': p['profile_uiname']
+                'value': pkey,
+                'label': p['profile_uiname']
             })
         return profiles_list
 

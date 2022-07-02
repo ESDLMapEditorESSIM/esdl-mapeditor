@@ -54,16 +54,9 @@
             <a-select
               v-model:value="edit_carrier.type"
               style="width: 100%"
+              :options="carrier_types"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="carr in carrier_types"
-                :key="carr.value"
-                :value="carr.value"
-              >
-                {{ carr.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -126,16 +119,9 @@
             <a-select
               v-model:value="edit_carrier.energy_content_unit"
               style="width: 100%"
+              :options="energy_content_units"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="ecu in energy_content_units"
-                :key="ecu.value"
-                :value="ecu.value"
-              >
-                {{ ecu.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -150,16 +136,9 @@
             <a-select
               v-model:value="edit_carrier.state_of_matter"
               style="width: 100%"
+              :options="state_of_matters"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="som in state_of_matters"
-                :key="som.value"
-                :value="som.value"
-              >
-                {{ som.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -174,16 +153,9 @@
             <a-select
               v-model:value="edit_carrier.renewable_type"
               style="width: 100%"
+              :options="renewable_types"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="rt in renewable_types"
-                :key="rt.value"
-                :value="rt.value"
-              >
-                {{ rt.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -301,29 +273,29 @@ export default {
       carrier_info_mapping: {},
 
       carrier_types: [
-        {name: 'No Carrier selected', value: 'None'},
-        {name: 'Energy carrier', value: 'EnergyCarrier'},
-        {name: 'Electricity Commodity', value: 'ElectricityCommodity'},
-        {name: 'Gas Commodity', value: 'GasCommodity'},
-        {name: 'Heat Commodity', value: 'HeatCommodity'},
-        {name: 'EnergyCommodity', value: 'EnergyCommodity'},
+        {label: 'No Carrier selected', value: 'None'},
+        {label: 'Energy carrier', value: 'EnergyCarrier'},
+        {label: 'Electricity Commodity', value: 'ElectricityCommodity'},
+        {label: 'Gas Commodity', value: 'GasCommodity'},
+        {label: 'Heat Commodity', value: 'HeatCommodity'},
+        {label: 'EnergyCommodity', value: 'EnergyCommodity'},
       ],
       renewable_types: [
-        {name: 'Undefined', value: 'Undefined'},
-        {name: 'Fossil', value: 'Fossil'},
-        {name: 'Renewable', value: 'Renewable'},
+        {label: 'Undefined', value: 'Undefined'},
+        {label: 'Fossil', value: 'Fossil'},
+        {label: 'Renewable', value: 'Renewable'},
       ],
       state_of_matters: [
-        {name: 'Undefined', value: 'Undefined'},
-        {name: 'Solid', value: 'Solid'},
-        {name: 'Liquid', value: 'Liquid'},
-        {name: 'Gaseous', value: 'Gaseous'},
+        {label: 'Undefined', value: 'Undefined'},
+        {label: 'Solid', value: 'Solid'},
+        {label: 'Liquid', value: 'Liquid'},
+        {label: 'Gaseous', value: 'Gaseous'},
       ],
       energy_content_units: [
-        {name: 'Please select...', value: 'Undefined'},
-        {name: 'MJ/kg', value: 'MJ/kg'},
-        {name: 'MJ/Nm3', value: 'MJ/m3'},
-        {name: 'MJ/MJ', value: 'MJ/MJ'},
+        {label: 'Please select...', value: 'Undefined'},
+        {label: 'MJ/kg', value: 'MJ/kg'},
+        {label: 'MJ/Nm3', value: 'MJ/m3'},
+        {label: 'MJ/MJ', value: 'MJ/MJ'},
       ],
 
       clear_inputs: false,

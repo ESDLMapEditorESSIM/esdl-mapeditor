@@ -76,17 +76,10 @@
               Select an existing profile from the profile database
               <a-select
                 v-model:value="db_profile"
+                :options="db_profiles"
                 placeholder="Select a profile"
                 style="width: 100%"
-              >
-                <a-select-option
-                  v-for="dbp in db_profiles"
-                  :key="dbp.id"
-                  :value="dbp.id"
-                >
-                  {{ dbp.name }}
-                </a-select-option>
-              </a-select>
+              />
             </template>
             <!------------------------------------>
             <!-- Profile table editor           -->
