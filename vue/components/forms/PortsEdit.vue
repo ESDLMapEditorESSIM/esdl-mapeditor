@@ -1,26 +1,25 @@
 <template>
-  <a-table :columns="portColumns" :data-source="ports" :rowKey="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig" >
+  <a-table :columns="portColumns" :data-source="ports" :row-key="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig">
     <template #expandedRowRender="{ record }">
-      <a-divider orientation="left" id="table-divider">Connected To:</a-divider>
-      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :rowKey="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
+      <a-divider id="table-divider" orientation="left">Connected To:</a-divider>
+      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :row-key="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
         <template #operation="{ record }">
           <div class="editable-row-operations">
             <span>
               <a @click="deleteConnection(record.opid+'&&'+record.pid)">
-                <i class="fa fa-trash"/>
+                <i class="fa fa-trash" />
               </a>
             </span>
           </div>
         </template>  
       </a-table>  
       <!-- <a-divider id="table-divider"/> -->
-      
     </template>
     <template #operation="{ record }">
       <div class="editable-row-operations">
         <span>
           <a @click="deletePort(record.pid)">
-            <i class="fa fa-trash"/>
+            <i class="fa fa-trash" />
           </a>
         </span>
       </div>      
@@ -35,10 +34,11 @@
         <tr>
           <td>Port type</td>
           <td>
-            <a-select v-model:value="portType" style="width: 120px">
-              <a-select-option key="InPort" value="InPort">InPort</a-select-option>
-              <a-select-option key="OutPort" value="OutPort">OutPort</a-select-option>
-            </a-select>
+            <a-select
+              v-model:value="portType"
+              :options="portTypes"
+              style="width: 120px"
+            />
           </td>
         </tr>
         <tr>
@@ -65,6 +65,11 @@ const connectedToColumns = [
   { title: '', slots: { customRender: 'operation' }},
 ];
 
+const portTypes = [
+  { label: 'InPort', value: 'InPort' },
+  { label: 'OutPort', value: 'OutPort' }
+];
+
 const paginationConfig = { hideOnSinglePage: true};
 
 export default {
@@ -86,16 +91,16 @@ export default {
       portColumns,
       connectedToColumns,
       portType: 'InPort',
+      portTypes,
       portName: 'Port',
       visible: false,
       paginationConfig
     }
   },
-  mounted() {
-
-    // console.log(this.ports);
-  },
   computed: {    
+  },
+  mounted() {
+    // console.log(this.ports);
   },
   methods: {
     deletePort(port_id) {
