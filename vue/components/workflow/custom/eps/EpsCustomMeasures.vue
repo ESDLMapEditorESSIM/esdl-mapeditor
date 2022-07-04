@@ -24,15 +24,9 @@
       show-search
       placeholder="Select a building"
       style="width: 300px"
+      :options="buildingDropdownOptions"
       @change="selectBuilding"
-    >
-      <a-select-option
-        v-for="building in buildings"
-        :key="building.id"
-      >
-        {{ building.name }}
-      </a-select-option>
-    </a-select>
+    />
     <hr>
     <div v-if="selectedBuilding">
       <h4>{{ selectedBuilding.name }}</h4>
@@ -82,7 +76,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, ref} from "vue";
+import {computed, defineProps, ref} from "vue";
 import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
 
@@ -106,6 +100,14 @@ const formState = ref({});
 const isLoading = ref(true);
 const buildings = ref([]);
 
+const buildingDropdownOptions = computed(() => {
+  return buildings.value.map((building) => {
+    return {
+      label: building.name,
+      value: building.id,
+    };
+  })
+});
 
 function selectBuilding() {
   for (const building of buildings.value) {
