@@ -2,16 +2,9 @@
   <a-select
     v-model:value="selected_asset_type"
     style="width: 100%"
+    :options="asset_types_list"
     @change="selected_asset_changed"
-  >
-    <a-select-option
-      v-for="type in asset_types_list"
-      :key="type"
-      :value="type"
-    >
-      {{ type }}
-    </a-select-option>
-  </a-select>
+  />
 
   <div v-if="selected_asset_type && !isLoading"
        id="grid_div"
@@ -57,7 +50,13 @@ function get_asset_type_list() {
 
   asset_list.value = active_es_asset_layers;
   // create list of unique asset types
-  asset_types_list.value = [...new Set(asset_list.value.map(asset=>asset.type))];
+  const unique_asset_types = [...new Set(asset_list.value.map(asset=>asset.type))];
+  asset_types_list.value = unique_asset_types.map((asset_type) => {
+    return {
+      label: asset_type,
+      value: asset_type,
+    };
+  });
 }
 get_asset_type_list();
 
@@ -124,7 +123,7 @@ function check_cost_info(attr) {
 }
 
 function change_cost_attribute(id, attr, value) {
-  console.log("change_cost_attr", attr, value);
+  // console.log("change_cost_attr", attr, value);
   window.socket.emit("change_cost_attr", {
     id: id,
     attr: attr,
@@ -189,7 +188,7 @@ function process_changes(e) {
 }
 
 function before_cell_focus(e) {
-  console.log(e);
+  // console.log(e);
   let asset_id = e.detail.model.id;
 
   let active_es_id = window.active_layer_id;

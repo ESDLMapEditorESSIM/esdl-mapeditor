@@ -9,17 +9,10 @@
   >
     <a-select
       v-model:value="selected"
+      :options="control_strategies"
       style="width: 100%"
       :disabled="selected != 'None'"
-    >
-      <a-select-option
-        v-for="cs in controlstrategies"
-        :key="cs.value"
-        :value="cs.value"
-      >
-        {{ cs.name }}
-      </a-select-option>
-    </a-select>
+    />
 
     <!------------------------------------>
     <!-- Driven by Demand/Supply        -->
@@ -89,17 +82,10 @@
           Select an existing profile from the profile database
           <a-select
             v-model:value="db_profile"
+            :options="db_profiles"
             placeholder="Select a profile"
             style="width: 100%"
-          >
-            <a-select-option
-              v-for="dbp in db_profiles"
-              :key="dbp.id"
-              :value="dbp.id"
-            >
-              {{ dbp.name }}
-            </a-select-option>
-          </a-select>
+          />
         </a-space>
         <!------------------------------------>
         <!-- Profile table editor           -->
@@ -150,17 +136,10 @@
         Select the sensor to use for the PID Controller
         <a-select
           v-model:value="pid_sensor"
+          :options="pid_sensor_list"
           placeholder="Select the sensor"
           style="width: 100%"
-        >
-          <a-select-option
-            v-for="pids in pid_sensor_list"
-            :key="pids.id"
-            :value="pids.id"
-          >
-            {{ pids.name }}
-          </a-select-option>
-        </a-select>
+        />
         <a-button
           disabled
         >
@@ -225,14 +204,14 @@ export default {
       DbPOptions: defaultDbPoptions,
       dbp_radio: '',
       selected: 'None',
-      controlstrategies: [
-        {name: 'No Control Strategy selected', value: 'None'},
-        {name: 'Driven by demand on OutPort', value: 'DrivenByDemand'},
-        {name: 'Driven by supply on InPort', value: 'DrivenBySupply'},
-        {name: 'Storage strategy', value: 'StorageStrategy'},
-        {name: 'Curtailment strategy', value: 'CurtailmentStrategy'},
-        {name: 'Driven by profile', value: 'DrivenByProfile'},
-        {name: 'PID Controller', value: 'PIDController'},
+      control_strategies: [
+        {label: 'No Control Strategy selected', value: 'None'},
+        {label: 'Driven by demand on OutPort', value: 'DrivenByDemand'},
+        {label: 'Driven by supply on InPort', value: 'DrivenBySupply'},
+        {label: 'Storage strategy', value: 'StorageStrategy'},
+        {label: 'Curtailment strategy', value: 'CurtailmentStrategy'},
+        {label: 'Driven by profile', value: 'DrivenByProfile'},
+        {label: 'PID Controller', value: 'PIDController'},
       ],
       ports: [
       ],
@@ -320,7 +299,12 @@ export default {
         }
 
         this.ports = res['ports']
-        this.pid_sensor_list = res['sensor_list']
+        this.pid_sensor_list = res['sensor_list'].map((sensor) => {
+          return {
+            label: sensor.name,
+            value: sensor.id,
+          }
+        });
         this.db_profiles = res['profile_list']
 
         this.isLoading = false

@@ -25,14 +25,8 @@
       show-search
       placeholder="Select a building"
       style="width: 300px"
-    >
-      <a-select-option
-        v-for="building in buildings"
-        :key="building.id"
-      >
-        {{ building.name }}
-      </a-select-option>
-    </a-select>
+      :options="buildingDropdownOptions"
+    />
     <hr>
     <div v-if="firstSelectedBuilding">
       <a-table v-if="firstSelectedBuilding" :data-source="formState[firstSelectedBuilding.id].table" :columns="columns" :pagination="false" />
@@ -165,15 +159,14 @@ const formState = ref({});
 const isLoading = ref(true);
 const buildings = ref([]);
 
-//
-// function selectBuilding() {
-//   selectedBuildings.value = []
-//   for (const building of buildings.value) {
-//     if (building.id === selectedBuildingIds.value) {
-//       selectedBuildings.value.push(building)
-//     }
-//   }
-// }
+const buildingDropdownOptions = computed(() => {
+  return buildings.value.map((building) => {
+    return {
+      label: building.name,
+      value: building.id,
+    };
+  })
+});
 
 /**
  * Update the value for all selected buildings.

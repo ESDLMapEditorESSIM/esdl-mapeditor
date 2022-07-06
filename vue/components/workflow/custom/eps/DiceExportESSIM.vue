@@ -20,16 +20,9 @@
     <a-select
       v-model:value="simulation_id"
       style="width: 100%"
+      :options="simulations_options"
       @change="onChange"
-    >
-      <a-select-option
-        v-for="simulation in simulations"
-        :key="simulation.simulation_id"
-        :value="simulation.simulation_id"
-      >
-        {{ simulation.simulation_descr || "No description" }} - {{ simulation.simulation_es_name }}
-      </a-select-option>
-    </a-select>
+    />
   </div>
   <div v-if="selected_simulation" style="margin-top: 10px;">
     <strong>ESSIM description</strong>: {{ selected_simulation.simulation_descr }}<br>
@@ -73,6 +66,7 @@ const props = defineProps({
 
 const simulation_id = ref("");
 const simulations = ref([]);
+const simulations_options = ref([]);
 const selected_simulation = ref(null);
 const essim_exports = ref([])
 const essim_export_columns = [
@@ -130,6 +124,14 @@ const downloadEssimExport = async (simulation_id) => {
 const loadSimulations = async () => {
   const simulations_list = await doGet("simulations_list");
   simulations.value = simulations_list;
+
+  simulations_options.value = simulations_list.map((simulation) => {
+    const description = simulation.simulation_descr || "No description"
+    return {
+      label: description + " - " + simulation.simulation_es_name,
+      value: simulation.simulation_id,
+    };
+  });
 }
 loadSimulations();
 

@@ -20,40 +20,26 @@
       <h3>Filter asset list on type:</h3>
       <a-select
         v-model:value="selected_asset_type"
+        :options="asset_type_list"
         show-search
-        option-filter-prop="children"
+        option-filter-prop="label"
         :filter-option="filter_asset_type"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
-      >
-        <a-select-option
-          v-for="at in asset_type_list"
-          :key="at"
-        >
-          {{ at }}
-        </a-select-option>
-      </a-select>
+      />
     </div>
 
     <div>
       <h3>Select asset:</h3>
       <a-select
         v-model:value="selected_asset"
+        :options="filtered_asset_list"
         show-search
-        option-filter-prop="children"
+        option-filter-prop="label"
         :filter-option="filter_asset"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
-      >
-        <a-select-option
-          v-for="asset in filtered_asset_list"
-          :value="asset.id"
-          :key="asset.id"
-          :title="asset.title"
-        >
-          {{ asset.title }}
-        </a-select-option>
-      </a-select>
+      />
     </div>
 
     <a-space>
@@ -88,9 +74,6 @@ export default {
       isLoading: true
     }
   },
-  mounted() {
-    this.getDataSocketIO();
-  },
   computed: {
     filtered_asset_list: function() {
       if (this.selected_asset_type != 'No filter' && this.selected_asset_type != undefined) {
@@ -100,6 +83,9 @@ export default {
       }
     }
   },
+  mounted() {
+    this.getDataSocketIO();
+  },
   methods: {
     getDataSocketIO: function() {
       // console.log(currentObjectID.value);
@@ -108,7 +94,13 @@ export default {
       axios.get(path)
         .then((res) => {
           this.asset_list = res['data']['asset_list'];
-          this.asset_type_list = ['No filter'].concat(res['data']['asset_type_list']);
+          const asset_types = ['No filter'].concat(res['data']['asset_type_list']);
+          this.asset_type_list = asset_types.map((asset_type) => {
+            return {
+              label: asset_type,
+              value: asset_type,
+            }
+          });
           this.isLoading = false;
         })
         .catch((error) => {
@@ -127,10 +119,10 @@ export default {
       window.sidebar.hide();
     },
     filter_asset_type: function(input, option) {
-      return option.props.key.toLowerCase().indexOf(input.toLowerCase()) >= 0;
+      return option.props.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
     },
     filter_asset: function(input, option) {
-      return option.props.title.toLowerCase().indexOf(input.toLowerCase()) >= 0;
+      return option.props.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
     },
     buildResultInfo: function() {
       let result = {};

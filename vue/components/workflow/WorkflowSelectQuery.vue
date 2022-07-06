@@ -2,15 +2,7 @@
   <p v-if="isLoading">Loading...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-select v-model:value="form[workflowStep.target_variable]">
-        <a-select-option
-          v-for="option in options"
-          :key="option.value"
-          :value="option.value"
-        >
-          {{ option.label }}
-        </a-select-option>
-      </a-select>
+      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" />
     </a-form-item>
     <a-form-item>
       <a-button type="primary" @click="onSubmit"> Select </a-button>

@@ -71,17 +71,9 @@
                   <a-select
                     v-if="attr.type == 'EEnum' || attr.type == 'EBoolean'"
                     v-model:value="attr.value" size="small" style="width: 100%"
+                    :options="dropdownOptions(attr.options)"
                     @change="updateAttribute(attr.name, attr.value)"
-                  >
-                    <!-- mode werkt nog niet op deze manier: :mode="multiSelect(attr)"-->
-                    <a-select-option
-                      v-for="opt in attr.options"
-                      :key="opt"
-                      :value="opt"
-                    >
-                      {{ opt }}
-                    </a-select-option>
-                  </a-select>
+                  />
                   <a-date-picker
                     v-if="attr.type == 'EDate'"
                     format="YYYY-MM-DD HH:mm:ss"
@@ -95,7 +87,7 @@
                 <a-col v-if="!multipleAssetsSelected && !isAttribute(attr) && !ignoredRefs.includes(attr.name)" :span="24">
                   <a-row :gutter="[0, 0]" type="flex" align="middle">
                     <ReferenceViewer
-                      :parentObjectID="currentObjectIDs[0]"
+                      :parent-object-i-d="currentObjectIDs[0]"
                       :reference="attr"
                       @update="updateRef($event, attr)"
                     />
@@ -204,6 +196,14 @@ export default {
     camelCase: function(str) {
       // TODO: import this function from utils.js and let utils.js export functions
       return window.camelCaseToWords(str);
+    },
+    dropdownOptions: function(attrOpts) {
+      return attrOpts.map((opt) => {
+        return {
+          label: opt,
+          value: opt,
+        };
+      });
     },
     getDataSocketIO: function () {
       // console.log(currentObjectID.value);

@@ -23,16 +23,10 @@
           <a-select
             v-model:value="record.unit"
             style="width: 140px"
+            :options="costInformationProfileTypes"
             placeholder="Please select a unit..."
             @change="val => handleUnitChange(val, record.key)"
-          >
-            <a-select-option
-              v-for="ptype in costInformationProfileTypes"
-              :key="ptype.key" :value="ptype.key"
-            >
-              {{ ptype.type }}
-            </a-select-option>
-          </a-select>
+          />
         </template>
         <template #operation="{ record }">
           <div v-if="record.value != null">
@@ -58,20 +52,20 @@ const costInformationColumns = [
 
 // For the time being a fixed list of possible options
 const costInformationProfileTypes = [
-  { key: '', type: "Please select a unit..."},
-  { key: 'EUR', type: "EUR"},
-  { key: 'EUR/yr', type: "EUR/yr"},
-  { key: 'EUR/kW', type: "EUR/kW"},
-  { key: 'EUR/MW', type: "EUR/MW"},
-  { key: 'EUR/kWh', type: "EUR/kWh"},
-  { key: 'EUR/MWh', type: "EUR/MWh"},
-  { key: 'EUR/kWh/yr', type: "EUR/kWh/yr"},
-  { key: 'EUR/MWh/yr', type: "EUR/MWh/yr"},
-  { key: 'EUR/m', type: "EUR/m"},
-  { key: 'EUR/km', type: "EUR/km"},
-  { key: 'EUR/m2', type: "EUR/m2"},
-  { key: 'EUR/m3', type: "EUR/m3"},
-  { key: '%', type: "% of CAPEX"},
+  { value: '', label: "Please select a unit..."},
+  { value: 'EUR', label: "EUR"},
+  { value: 'EUR/yr', label: "EUR/yr"},
+  { value: 'EUR/kW', label: "EUR/kW"},
+  { value: 'EUR/MW', label: "EUR/MW"},
+  { value: 'EUR/kWh', label: "EUR/kWh"},
+  { value: 'EUR/MWh', label: "EUR/MWh"},
+  { value: 'EUR/kWh/yr', label: "EUR/kWh/yr"},
+  { value: 'EUR/MWh/yr', label: "EUR/MWh/yr"},
+  { value: 'EUR/m', label: "EUR/m"},
+  { value: 'EUR/km', label: "EUR/km"},
+  { value: 'EUR/m2', label: "EUR/m2"},
+  { value: 'EUR/m3', label: "EUR/m3"},
+  { value: '%', label: "% of CAPEX"},
 ]
 
 const paginationConfig = { hideOnSinglePage: true};

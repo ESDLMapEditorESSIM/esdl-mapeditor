@@ -64,15 +64,15 @@ class EDRAssets:
                             asset_type_list.append(asset_type)
 
                         asset = {
-                            'id': a["id"],
-                            'title': a["title"],
+                            'value': a["id"],
+                            'label': a["title"],
                             'asset_type': asset_type,
-                            'description': a["description"] if 'description' in a else '',
+                            'description': a["description"] if ('description' in a and a['description'] is not None) else '',
                         }
                         asset_list.append(asset)
 
                     asset_type_list.sort()
-                    asset_list.sort(key=lambda x: x["title"])
+                    asset_list.sort(key=lambda x: x["label"])
 
                     return (jsonify({'asset_list': asset_list, 'asset_type_list': asset_type_list})), 200
                 else:
