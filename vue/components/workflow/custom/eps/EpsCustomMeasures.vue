@@ -28,11 +28,12 @@
       :options="buildingDropdownOptions"
     />
     <hr>
+
     <div v-if="firstSelectedBuilding">
-      <a-table v-if="firstSelectedBuilding" :data-source="formState[firstSelectedBuilding.id].table" :columns="columns" :pagination="false" />
-      <br>
       <a-form layout="vertical" :model="formState" :label-col="{ span: 0 }">
         <!-- Warmtevraag gebouw -->
+        <h4>Warmtevraag gebouw</h4>
+
         <a-form-item label="Percentage warmtevraag gebouw door gas">
           <a-input-number
             v-model:value="formState.percentage_warmtevraag_gebouw_gas"
@@ -65,7 +66,10 @@
             @change="(value) => updateValue(efficientie_warmteinstallatie_gebouw_elektriciteit, value)"
           />
         </a-form-item>
+
         <!-- Warmtevraag proces -->
+        <h4>Warmtevraag proces</h4>
+
         <a-form-item label="Percentage warmtevraag proces door gas">
           <a-input-number
             v-model:value="formState.percentage_warmtevraag_proces_gas"
@@ -98,7 +102,10 @@
             @change="(value) => updateValue(efficientie_warmteinstallatie_proces_elektriciteit, value)"
           />
         </a-form-item>
+
         <!-- Procesgas -->
+        <h4>Proces gasgebruik</h4>
+
         <a-form-item label="Percentage gasgebruik proces voor warmte">
           <a-input-number
             v-model:value="formState.percentage_proces_gas_warmte"
@@ -113,6 +120,50 @@
             :step="scalingFactorStepSize"
             style="width: 300px;"
             @change="(value) => updateValue(efficientie_proces_gas_warmte, value)"
+          />
+        </a-form-item>
+
+        <!-- Schalingsfactoren -->
+        <h4>Schalingsfactoren</h4>
+
+        <a-form-item label="Schalingsfactor warmtevraag gebouw">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_warmtevraag_gebouw"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_warmtevraag_gebouw, value)"
+          />
+        </a-form-item>
+        <a-form-item label="Schalingsfactor elektriciteitsgebruik gebouw">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_elektriciteitsgebruik_gebouw"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_elektriciteitsgebruik_gebouw, value)"
+          />
+        </a-form-item>
+        <a-form-item label="Schalingsfactor gasgebruik proces (niet voor warmte)">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_gasgebruik_proces_excl_warmte"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_gasgebruik_proces_excl_warmte, value)"
+          />
+        </a-form-item>
+        <a-form-item label="Schalingsfactor elektriciteitsgebruik proces">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_elektriciteitsgebruik_proces"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_elektriciteitsgebruik_proces, value)"
+          />
+        </a-form-item>
+        <a-form-item label="Schalingsfactor warmtevraag proces">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_warmtevraag_proces"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_warmtevraag_proces, value)"
           />
         </a-form-item>
       </a-form>
@@ -136,7 +187,7 @@ const props = defineProps({
   },
 });
 
-const scalingFactorStepSize = 0.0001;
+const scalingFactorStepSize = 0.01;
 
 const selectedBuildingIds = ref([]);
 
@@ -154,7 +205,25 @@ const selectedBuildings = computed(() => {
   return selectedBuildings;
 })
 
-const formState = ref({});
+const formState = ref({
+  percentage_warmtevraag_gebouw_gas: 100,
+  efficientie_warmteinstallatie_gebouw_gas: 100,
+  percentage_warmtevraag_gebouw_elektriciteit: 0,
+  efficientie_warmteinstallatie_gebouw_elektriciteit: 100,
+  percentage_warmtevraag_proces_gas: 100,
+  efficientie_warmteinstallatie_proces_gas: 100,
+  percentage_warmtevraag_proces_elektriciteit: 0,
+  efficientie_warmteinstallatie_proces_elektriciteit: 100,
+
+  percentage_proces_gas_warmte: 80,
+  efficientie_proces_gas_warmte: 60,
+
+  schalingsfactor_warmtevraag_gebouw: 1,
+  schalingsfactor_elektriciteitsgebruik_gebouw: 1,
+  schalingsfactor_gasgebruik_proces_excl_warmte: 1,
+  schalingsfactor_elektriciteitsgebruik_proces: 1,
+  schalingsfactor_warmtevraag_proces: 1,
+});
 
 const isLoading = ref(true);
 const buildings = ref([]);
@@ -167,6 +236,7 @@ const buildingDropdownOptions = computed(() => {
     };
   })
 });
+
 
 /**
  * Update the value for all selected buildings.
@@ -209,48 +279,6 @@ const doGetData = async () => {
     if (!response) {
       alert("No buildings received.");
       return
-    }
-    for (const building of response) {
-      const kpis = building.kpis;
-      const pand_energiegebruik_aardgas_gebouw_huidig_m3 = kpis.pand_energiegebruik_aardgas_gebouw_huidig_m3;
-      const pand_energiegebruik_aardgas_proces_huidig_m3 = kpis.pand_energiegebruik_aardgas_proces_huidig_m3;
-      const pand_energiegebruik_elektriciteit_gebouw_huidig_kWh = kpis.pand_energiegebruik_elektriciteit_gebouw_huidig_kWh;
-      const pand_energiegebruik_elektriciteit_proces_huidig_kWh = kpis.pand_energiegebruik_elektriciteit_proces_huidig_kWh;
-
-      const pand_energiegebruik_aardgas_gebouw_schalingsfactor = roundFactor(pand_energiegebruik_aardgas_gebouw_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3 / pand_energiegebruik_aardgas_gebouw_huidig_m3 : 0);
-      const pand_energiegebruik_aardgas_proces_schalingsfactor = roundFactor(pand_energiegebruik_aardgas_proces_huidig_m3 > 0 ? kpis.pand_energiegebruik_aardgas_proces_scenario_m3 / pand_energiegebruik_aardgas_proces_huidig_m3 : 0);
-      const pand_energiegebruik_elektriciteit_gebouw_schalingsfactor = roundFactor(pand_energiegebruik_elektriciteit_gebouw_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_gebouw_scenario_kWh / pand_energiegebruik_elektriciteit_gebouw_huidig_kWh : 0);
-      const pand_energiegebruik_elektriciteit_proces_schalingsfactor = roundFactor(pand_energiegebruik_elektriciteit_proces_huidig_kWh > 0 ? kpis.pand_energiegebruik_elektriciteit_proces_scenario_kWh / pand_energiegebruik_elektriciteit_proces_huidig_kWh : 0);
-      formState.value[building.id] = {
-        table: [
-          {
-            key: "pand_energiegebruik_aardgas_gebouw_huidig_m3",
-            name: "Huidig aardgasgebruik gebouw",
-            value: pand_energiegebruik_aardgas_gebouw_huidig_m3.toLocaleString(),
-          },
-          {
-            key: "pand_energiegebruik_aardgas_proces_huidig_m3",
-            name: "Huidig aardgasgebruik proces",
-            value: pand_energiegebruik_aardgas_proces_huidig_m3.toLocaleString(),
-          },
-          {
-            key: "pand_energiegebruik_elektriciteit_gebouw_huidig_kWh",
-            name: "Huidig elektriciteitsgebruik gebouw",
-            value: pand_energiegebruik_elektriciteit_gebouw_huidig_kWh.toLocaleString(),
-          },
-          {
-            key: "pand_energiegebruik_elektriciteit_proces_huidig_kWh",
-            name: "Huidig elektriciteitsgebruik proces",
-            value: pand_energiegebruik_elektriciteit_proces_huidig_kWh.toLocaleString(),
-          },
-        ],
-        pand_energiegebruik_aardgas_gebouw_schalingsfactor: pand_energiegebruik_aardgas_gebouw_schalingsfactor,
-        pand_energiegebruik_aardgas_proces_schalingsfactor: pand_energiegebruik_aardgas_proces_schalingsfactor,
-        pand_energiegebruik_elektriciteit_gebouw_schalingsfactor: pand_energiegebruik_elektriciteit_gebouw_schalingsfactor,
-        pand_energiegebruik_elektriciteit_proces_schalingsfactor: pand_energiegebruik_elektriciteit_proces_schalingsfactor,
-        pand_energiegebruik_elektriciteit_gebouw_warmtepomp_kWh: roundFactor(kpis.pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh),
-        pand_energiegebruik_elektriciteit_proces_elektrificatie_warmte_kWh: 0,
-      };
     }
     buildings.value = response;
   } finally {
