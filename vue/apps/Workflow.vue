@@ -121,13 +121,13 @@
     <p v-else>
       Unknown workflow step: {{ currentWorkflow.workflowStep.type }}.
       <br>
-      <a-button type="dashed" @click="goToStep(0)"> Start over. </a-button>
+      <a-button type="dashed" @click="goToFirstStep()"> Start over. </a-button>
     </p>
   </div>
 </template>
 
 <script>
-import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
+import {currentWorkflow, useWorkflow, WorkflowStepTypes} from "../composables/workflow";
 import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
 import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
 import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
@@ -142,7 +142,7 @@ import {MenuOutlined} from "@ant-design/icons-vue";
 
 export default {
   setup() {
-    const { currentWorkflow, goToStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
 
     function confirmPersistWorkflow() {
       let workflowName = currentWorkflow.value.name;
@@ -150,7 +150,9 @@ export default {
         workflowName = prompt("Please enter a workflow name")
       }
       if (workflowName) {
-        persistWorkflow(workflowName);
+        currentWorkflow.value.setName(workflowName);
+        currentWorkflow.value.setPersistence(true);
+        persistWorkflow(true);
       }
     }
 
@@ -158,7 +160,7 @@ export default {
       MenuOutlined,
       confirmPersistWorkflow,
       currentWorkflow,
-      goToStep,
+      goToFirstStep,
       goToPreviousStep,
       WorkflowStepTypes,
       WorkflowUploadFile,

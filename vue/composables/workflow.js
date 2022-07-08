@@ -25,13 +25,6 @@ export const WorkflowStepTypes = Object.freeze({
 // The currently active workflow.
 export const currentWorkflow = ref(null);
 
-watch(currentWorkflow,
-    (newWorkflow, oldWorkflow) => {
-        // TODO: Persist?
-        console.log("Detected workflow modification");
-    }
-)
-
 export function useWorkflow() {
     /**
      * Start a brand new workflow.
@@ -88,7 +81,7 @@ export function useWorkflow() {
     const activatePersistedWorkflow = (uuid) => {
         const key = `wf.${uuid}`;
         const parsedWorkflow = JSON.parse(localStorage.getItem(key));
-        const workflowObj = new Workflow(parsedWorkflow.service_index, parsedWorkflow.service);
+        const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
         workflowObj.uuid = parsedWorkflow.uuid;
         workflowObj.workflowStep = parsedWorkflow.workflowStep;
         workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
@@ -102,16 +95,18 @@ export function useWorkflow() {
         window.socket.emit('/workflow/load', {workflow_id: currentWorkflow.value.uuid});
     }
 
-    const persistWorkflow = (name) => {
-        currentWorkflow.value.setPersistence(true);
-        currentWorkflow.value.setName(name);
-        const key = `wf.${currentWorkflow.value.uuid}`;
-        localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
-        window.show_loader();
-        window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
-            window.hide_loader();
-            currentWorkflow.value.setDrivePaths(msg.drive_paths);
-        });
+    const persistWorkflow = (uploadEsdls) => {
+        if (currentWorkflow.value.persisted) {
+            const key = `wf.${currentWorkflow.value.uuid}`;
+            localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
+            if (uploadEsdls) {
+                window.show_loader();
+                window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid}, function (msg) {
+                    window.hide_loader();
+                    currentWorkflow.value.setDrivePaths(msg.drive_paths);
+                });
+            }
+        }
     }
 
     const deletePersistedWorkflow = (uuid) => {
@@ -147,6 +142,7 @@ export function useWorkflow() {
      */
     const goToNextStep = () => {
         currentWorkflow.value.doNext();
+        persistWorkflow();
     }
 
     /**
@@ -154,15 +150,20 @@ export function useWorkflow() {
      */
     const goToPreviousStep = () => {
         currentWorkflow.value.doPrevious();
+        persistWorkflow();
     }
 
     /**
-     * Go to the given workflow step.
+     * Go to given step.
      */
     const goToStep = (stepIdx) => {
         currentWorkflow.value.doNext(stepIdx);
+        persistWorkflow();
     }
 
+    /**
+     * Unroll the previous steps to go to the first step.
+     */
     const goToFirstStep = () => {
         while (currentWorkflow.value.hasPreviousStep()) {
             goToPreviousStep();
