@@ -15,7 +15,11 @@
   -->
 
 <template>
-  <p>Please configure custom energy saving measures to apply to the ESDL.</p>
+  <p />
+  <p>In this step, custom energy measures can be applied through modifying a number of parameters.</p>
+  <p>
+    <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. For best results, apply custom measures only on ESDLs loaded from the EPS.
+  </p>
   <p v-if="isLoading">Loading...</p>
   <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>
   <div v-else>
@@ -26,6 +30,7 @@
       placeholder="Select a building"
       style="width: 300px"
       :options="buildingDropdownOptions"
+      @change="onSelectBuilding"
     />
     <hr>
 
@@ -33,6 +38,9 @@
       <a-form layout="vertical" :model="formState" :label-col="{ span: 0 }">
         <!-- Warmtevraag gebouw -->
         <h4>Warmtevraag gebouw</h4>
+        <p style="color: var(--gray)">
+          <small v-if="heatpumpApplied">We detected that a heat pump was applied in this ESDL. Heat demand has been assigned to the electricity system by default.</small>
+        </p>
 
         <a-form-item label="Percentage warmtevraag gebouw door gas">
           <a-input-number
@@ -176,6 +184,8 @@
 import {computed, defineProps, ref} from "vue";
 import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
+import {MessageNames, PubSubManager} from "../../../../bridge";
+import {useAssetDrawToolbar} from "../../../../composables/assetDrawToolbar";
 
 const { goToPreviousStep } = useWorkflow();
 
@@ -227,6 +237,7 @@ const formState = ref({
 
 const isLoading = ref(true);
 const buildings = ref([]);
+const heatpumpApplied = ref(false);
 
 const buildingDropdownOptions = computed(() => {
   return buildings.value.map((building) => {
@@ -246,13 +257,9 @@ const buildingDropdownOptions = computed(() => {
  * @param value
  */
 function updateValue(field_name, value) {
-  console.log(field_name)
-  console.log(value)
   for (const selectedBuildingId of selectedBuildingIds.value) {
-    console.log(selectedBuildingId);
     formState.value[field_name] = value;
   }
-  console.log(formState.value);
 }
 
 const columns = [
@@ -273,6 +280,7 @@ function roundFactor(value) {
 }
 
 const doGetData = async () => {
+  selectedBuildingIds.value = [];
   isLoading.value = true;
   try {
     const response = await doGet("dice_workflow/get_buildings");
@@ -290,7 +298,6 @@ doGetData();
 const workflowStep = props.workflowStep;
 
 const onSubmit = async () => {
-
   const params = {};
   params["service_id"] = workflowStep.service.id;
   params["query_parameters"] = {};
@@ -301,6 +308,31 @@ const onSubmit = async () => {
 
   goToPreviousStep();
 }
+
+const onSelectBuilding = async (newSelectedBuildingIds) => {
+  const newlySelectedBuildingId = newSelectedBuildingIds.filter(x => !selectedBuildings.value.includes(x))[0];
+  const newlySelectedBuilding = buildings.value.find(building => building.id == newlySelectedBuildingId);
+  if (newlySelectedBuilding) {
+    // console.log(newlySelectedBuilding.value)
+    const kpis = newlySelectedBuilding.kpis;
+    const pand_energiegebruik_aardgas_gebouw_scenario_m3 = kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3;
+    const pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh = kpis.pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh;
+    if (pand_energiegebruik_aardgas_gebouw_scenario_m3 == null || pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh == null) {
+      alert("The selected building does not contain the necessary KPI's to allow applying custom measures. Please load a valid EPS ESDL and try again.");
+      return
+    }
+    // The heat pump is applied if we don't have any aardgas usage.
+    heatpumpApplied.value = pand_energiegebruik_aardgas_gebouw_scenario_m3 < 1;
+    if (heatpumpApplied.value) {
+      formState.value.percentage_warmtevraag_gebouw_gas = 0;
+      formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
+    }
+  }
+}
+
+PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+  doGetData();
+});
 </script>
 
 <style scoped>
