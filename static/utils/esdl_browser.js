@@ -573,6 +573,16 @@ class ESDLBrowser {
         socket.emit('esdl_browse_list_references', {'parent': ESDLBrowser.identifier(object), 'name': reference.name});
     }
 
+    add_close_dialog_hook() {
+        map.on('dialog:closed', function(e) {
+               //socket.emit('esdl_browse_closed');
+               show_loader();
+               // refresh complete esdl completely for now when closing
+               socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
+               map.off('dialog:closed') // remove handler after closing
+        });
+    }
+
     initSocketIO() {
         let self = this;
         console.log("Registering socket io bindings for ESDLBrowser")
@@ -596,6 +606,7 @@ class ESDLBrowser {
             dialog.setLocation([esdl_browser.x, esdl_browser.y]);
             dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
+            self.add_close_dialog_hook();
             dialog.open();
         });
 
@@ -615,6 +626,7 @@ class ESDLBrowser {
             dialog.setLocation([esdl_browser.x, esdl_browser.y]);
             dialog.setTitle('ESDL browser - Edit EnergySystem');
             $('.leaflet-control-dialog-contents').scrollTop(0);
+            self.add_close_dialog_hook();
             dialog.open();
         });
     }
@@ -632,9 +644,6 @@ class ESDLBrowser {
             esdl_browser = new ESDLBrowser();
             map.on('dialog:resizeend', ESDLBrowser.handle_dialog_resize_move);
             map.on('dialog:moving', ESDLBrowser.handle_dialog_resize_move);
-            map.on('dialog:closed', function(e) {
-                socket.emit('esdl_browse_closed');
-            });
             return esdl_browser;
         }
         if (event.type === 'add_contextmenu') {

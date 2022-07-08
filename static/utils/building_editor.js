@@ -17,6 +17,10 @@
 var bld_map;
 var bld_edit_id = null;        // stores the ID of the building while editing building
 
+function isBuildingEditorOpen() {
+    return bld_edit_id != null;
+}
+
 function open_building_editor(dialog, building_info) {
     //console.log(building_info);
     bld_edit_id = building_info['id'];
@@ -58,11 +62,15 @@ function open_building_editor(dialog, building_info) {
         crs: L.CRS.Simple,
         maxBounds: [[0,0],[500,500]]
     });
+    bld_map.whenReady(function (e) {
+        set_leaflet_sizes(bld_map); // does not work, as assets are not drawn yet at this point
+    });
 
     bld_map = add_building_map_handlers(bld_map);
 
     var bounds = [[0,0], [500,500]];
-    var bld_background = L.imageOverlay('images/BuildingBackground.png', bounds);
+    var bld_background = L.imageOverlay('images/BuildingBackground.png', bounds, {'zIndex': 'auto', 'className': 'buildingBackground'});
+    bld_background.setZIndex(-1); // setting the correct zIndex does not seem to work...
     bld_map.fitBounds(bounds);
 
     create_new_bld_layer(bld_edit_id, 'Building', bld_map);
@@ -82,6 +90,8 @@ function open_building_editor(dialog, building_info) {
         },
         { position: 'topright', collapsed: false }
     ).addTo(bld_map);
+
+    bld_background.setZIndex(-1); // setting the correct zIndex does not seem to work...
 
     var bld_draw_control = new L.Control.Draw({
         edit: {
@@ -108,15 +118,19 @@ function open_building_editor(dialog, building_info) {
     L.control.mousePosition().addTo(bld_map);
 
     map.off('dialog:closed'); // previous event handler must be removed
+    map.off('dialog:updated'); // previous event handler must be removed
     function on_dialog_close(event) {
-        console.log('close - remove bld layer with id: '+bld_edit_id);
+        console.log('close - remove bld layer with id: '+bld_edit_id, event);
         remove_bld_layer(bld_edit_id);
         //close_dialog(event, bld_edit_id)
         active_layer_id = active_layer_id_backup;
         select_area_bld_list(area_before_building_edit);
         bld_edit_id = null;
+        map.off('dialog:closed'); // previous event handler must be removed
+        map.off('dialog:updated'); // previous event handler must be removed
     }
     map.on('dialog:closed', on_dialog_close);
+    map.on('dialog:updated', on_dialog_close); // when content is updated (e.g. by opening the ESDL browser or drive), it should act as a 'close' event
 
     $(function() {
         $("#bld_asset_menu").selectmenu({ 'width':200, 'max-height': 500 }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
@@ -133,12 +147,7 @@ function open_building_editor(dialog, building_info) {
     build_asset_menu('bld_asset_menu', false, cap_pot_list);
     bld_draw_control = add_draw_control(bld_draw_control, bld_map);                 // couple draw_control to active layer
 
+
     dialog.open();
 }
 
-function add_handler() {
-//socket.on('add_esdl_objects', function(data) {
-//    console.log('add_esdl_objects (bld)');
-//    console.log(data);
-//});
-}

@@ -21,8 +21,12 @@ var port_drawing_conductor = false;
 
 
 
-function set_port_size_and_position() {
-    let size = Math.pow(map.getZoom()/8+1,3);
+function set_port_size_and_position(mp) { // map as optional parameter
+    let active_map = map;
+    if (mp !== undefined) {
+        active_map = mp;
+    }
+    let size = Math.pow(active_map.getZoom()/8+1,3);
 
     let port_inner_width = 8;
     let port_border_width = 3;

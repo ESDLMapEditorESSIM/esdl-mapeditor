@@ -154,5 +154,10 @@ function add_building_map_handlers(mp) {
         }
     });
 
+    mp.on(L.Draw.Event.DRAWSTOP, function(e) {
+        console.log('drawStop');
+        drawState.reset(); // reset connecting by pipe/cable
+    });
+
     return mp
 }
