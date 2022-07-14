@@ -302,10 +302,12 @@ const onSubmit = async () => {
   params["service_id"] = workflowStep.service.id;
   params["query_parameters"] = {};
 
+  params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
   params["query_parameters"]['measures_to_apply'] = formState.value;
 
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 
+  window.show_loader();
   goToPreviousStep();
 }
 
@@ -326,6 +328,9 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
     if (heatpumpApplied.value) {
       formState.value.percentage_warmtevraag_gebouw_gas = 0;
       formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
+    } else {
+      formState.value.percentage_warmtevraag_gebouw_gas = 100;
+      formState.value.percentage_warmtevraag_gebouw_elektriciteit = 0;
     }
   }
 }
