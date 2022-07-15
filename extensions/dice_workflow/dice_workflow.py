@@ -104,7 +104,7 @@ class DiceWorkflow:
                 try:
                     essim_exports: dict[
                         str, DiceESSIMExport
-                    ] = self.settings_storage.get_current_user(DICE_ESSIM_EXPORTS)
+                    ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
                 except KeyError:
                     essim_exports = dict()
                 finished_essim_exports = []
@@ -128,11 +128,11 @@ class DiceWorkflow:
                 # ESSIM simulation ID. We also use this as process id for the download process..
                 simulation_id = export_json["simulation_id"]
 
-                self.settings_storage.del_current_user(DICE_ESSIM_EXPORTS)
+                self.settings_storage.del_for_current_user(DICE_ESSIM_EXPORTS)
                 try:
                     user_processes: dict[
                         str, DiceESSIMExport
-                    ] = self.settings_storage.get_current_user(DICE_ESSIM_EXPORTS)
+                    ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
                 except KeyError:
                     user_processes = dict()
 
@@ -145,7 +145,7 @@ class DiceWorkflow:
                     file_paths=None,
                 )
                 user_processes[simulation_id] = essim_export
-                self.settings_storage.set_current_user(
+                self.settings_storage.set_for_current_user(
                     DICE_ESSIM_EXPORTS, user_processes
                 )
 
@@ -162,7 +162,7 @@ class DiceWorkflow:
             "/dice_workflow/export_essim/<simulation_id>/download", methods=["POST"]
         )
         def export_essim_download(simulation_id: str):
-            essim_export: DiceESSIMExport = self.settings_storage.get_current_user(
+            essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(
                 DICE_ESSIM_EXPORTS
             ).get(simulation_id)
             if essim_export is None or not essim_export["finished"]:
@@ -186,7 +186,7 @@ class DiceWorkflow:
             "/dice_workflow/export_essim/<simulation_id>", methods=["GET"]
         )
         def export_essim_progress(simulation_id: str):
-            essim_export: DiceESSIMExport = self.settings_storage.get_current_user(
+            essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(
                 DICE_ESSIM_EXPORTS
             ).get(simulation_id)
             if essim_export is None:
@@ -239,7 +239,7 @@ def _export_energy_system_simulation_task(
             df.to_excel(path)
 
         # Find the long process and finalize it.
-        user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_current_user(
+        user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(
             DICE_ESSIM_EXPORTS
         )
         essim_export = user_processes.get(simulation_id)
@@ -247,7 +247,7 @@ def _export_energy_system_simulation_task(
         essim_export["end_date"] = datetime.now().isoformat()
         essim_export["file_paths"] = file_paths
         user_processes[simulation_id] = essim_export
-        settings_storage.set_current_user(DICE_ESSIM_EXPORTS, user_processes)
+        settings_storage.set_for_current_user(DICE_ESSIM_EXPORTS, user_processes)
         logger.info("Finished generating ESSIM export")
     except Exception:
         logger.exception("Exception generating ESSIM export")

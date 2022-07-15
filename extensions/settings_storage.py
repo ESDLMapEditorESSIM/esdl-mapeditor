@@ -94,11 +94,13 @@ class SettingsStorage:
                 {'$unset': {setting_name: ""}}, upsert=False)
 
     def get(self, setting_type: SettingType, identifier: str, setting_name: str):
-        if not self.settings: return None
+        if not self.settings:
+            return None
+
         mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier}, {'type':1, 'name': 1, setting_name: 1})
         if mapeditor_settings_obj is None:
             raise KeyError('No such setting \'{}\' for {} {}'.format(setting_name, setting_type.value, identifier))
-            return None
+
         if setting_name in mapeditor_settings_obj:
             return mapeditor_settings_obj[setting_name]
         else:
@@ -117,6 +119,9 @@ class SettingsStorage:
         return self.set(SettingType.USER, user, setting_name, value)
 
     def get_user(self, user:str, setting_name:str):
+        """
+        Get a setting for the given user.
+        """
         return self.get(SettingType.USER, user, setting_name)
 
     def has_user(self, user: str, setting_name: str):
@@ -125,21 +130,21 @@ class SettingsStorage:
     def del_user(self, user:str, setting_name:str):
         return self.delete(SettingType.USER, user, setting_name)
 
-    def set_current_user(self, setting_name: str, value):
+    def set_for_current_user(self, setting_name: str, value):
         """
         Set a setting for the currently logged in user.
         """
         user = get_session('user-email')
         return self.set_user(user, setting_name, value)
 
-    def get_current_user(self, setting_name: str):
+    def get_for_current_user(self, setting_name: str):
         """
         Get setting for currently logged in user.
         """
         user = get_session('user-email')
         return self.get_user(user, setting_name)
 
-    def del_current_user(self, setting_name: str):
+    def del_for_current_user(self, setting_name: str):
         """
         Get setting for currently logged in user.
         """

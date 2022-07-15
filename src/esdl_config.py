@@ -739,6 +739,10 @@ esdl_config = {
                                     "parameter_name": "measures_to_apply",
                                     "location": "body",
                                 },
+                                {
+                                    "parameter_name": "building_ids",
+                                    "location": "body",
+                                },
                             ],
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,

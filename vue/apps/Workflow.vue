@@ -25,7 +25,7 @@
             <a-menu-item key="save" @click="confirmPersistWorkflow">Save</a-menu-item>
             <a-sub-menu key="load" title="Load workflow">
               <a-menu-item
-                v-for="workflow in savedWorkflows()"
+                v-for="workflow in savedWorkflows"
                 :key="workflow.uuid"
                 @click="activatePersistedWorkflow(workflow.uuid)"
               >
@@ -34,7 +34,7 @@
             </a-sub-menu>
             <a-sub-menu key="delete" title="Delete workflow">
               <a-menu-item
-                v-for="workflow in savedWorkflows()"
+                v-for="workflow in savedWorkflows"
                 :key="workflow.uuid"
                 @click="deletePersistedWorkflow(workflow.uuid)"
               >
@@ -142,7 +142,7 @@ import {MenuOutlined} from "@ant-design/icons-vue";
 
 export default {
   setup() {
-    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
 
     function confirmPersistWorkflow() {
       let workflowName = currentWorkflow.value.name;
@@ -155,6 +155,8 @@ export default {
         persistWorkflow(true);
       }
     }
+
+    loadSavedWorkflows();
 
     return {
       MenuOutlined,

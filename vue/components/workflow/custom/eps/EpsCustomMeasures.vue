@@ -225,8 +225,8 @@ const formState = ref({
   percentage_warmtevraag_proces_elektriciteit: 0,
   efficientie_warmteinstallatie_proces_elektriciteit: 100,
 
-  percentage_proces_gas_warmte: 80,
-  efficientie_proces_gas_warmte: 60,
+  percentage_proces_gas_warmte: 100,
+  efficientie_proces_gas_warmte: 100,
 
   schalingsfactor_warmtevraag_gebouw: 1,
   schalingsfactor_elektriciteitsgebruik_gebouw: 1,
@@ -304,6 +304,7 @@ const onSubmit = async () => {
 
   params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
   params["query_parameters"]['measures_to_apply'] = formState.value;
+  console.log(params);
 
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 

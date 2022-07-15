@@ -24,6 +24,8 @@ export const WorkflowStepTypes = Object.freeze({
 
 // The currently active workflow.
 export const currentWorkflow = ref(null);
+// Saved workflows that the user can load.
+export const savedWorkflows = ref([]);
 
 export function useWorkflow() {
     /**
@@ -37,10 +39,11 @@ export function useWorkflow() {
         return currentWorkflow;
     }
 
-    const savedWorkflows = () => {
-        return Object.keys(localStorage).filter((key) => key.startsWith('wf.')).map((key) => {
-            const workflow = JSON.parse(localStorage.getItem(key));
-            return {uuid: workflow.uuid, name: workflow.name};
+    const loadSavedWorkflows = () => {
+        window.socket.emit('/workflow/list', function (workflow_list) {
+            savedWorkflows.value = workflow_list.map((workflow) => {
+                return {uuid: workflow.uuid, name: workflow.name};
+            });
         });
     }
 
@@ -79,29 +82,32 @@ export function useWorkflow() {
     }
 
     const activatePersistedWorkflow = (uuid) => {
-        const key = `wf.${uuid}`;
-        const parsedWorkflow = JSON.parse(localStorage.getItem(key));
-        const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
-        workflowObj.uuid = parsedWorkflow.uuid;
-        workflowObj.workflowStep = parsedWorkflow.workflowStep;
-        workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
-        workflowObj.state = parsedWorkflow.state;
-        workflowObj.name = parsedWorkflow.name;
-        workflowObj.persisted = parsedWorkflow.persisted;
-        workflowObj.drive_paths = parsedWorkflow.drive_paths;
-        workflowObj.restartable = parsedWorkflow.restartable;
-        currentWorkflow.value = workflowObj;
         window.show_loader();
-        window.socket.emit('/workflow/load', {workflow_id: currentWorkflow.value.uuid});
+        window.socket.emit('/workflow/load', {workflow_id: uuid}, function (parsedWorkflow) {
+            console.log(parsedWorkflow);
+            if (parsedWorkflow) {
+                const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
+                workflowObj.uuid = parsedWorkflow.uuid;
+                workflowObj.workflowStep = parsedWorkflow.workflowStep;
+                workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
+                workflowObj.state = parsedWorkflow.state;
+                workflowObj.name = parsedWorkflow.name;
+                workflowObj.persisted = parsedWorkflow.persisted;
+                workflowObj.drive_paths = parsedWorkflow.drive_paths;
+                workflowObj.restartable = parsedWorkflow.restartable;
+                currentWorkflow.value = workflowObj;
+            }
+        });
     }
 
     const persistWorkflow = (uploadEsdls) => {
         if (currentWorkflow.value.persisted) {
             const key = `wf.${currentWorkflow.value.uuid}`;
-            localStorage.setItem(key, JSON.stringify(currentWorkflow.value));
+            const jsonWorkflow = JSON.stringify(currentWorkflow.value);
+            localStorage.setItem(key, jsonWorkflow);
             if (uploadEsdls) {
                 window.show_loader();
-                window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid}, function (msg) {
+                window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid, workflow_json: jsonWorkflow}, function (msg) {
                     window.hide_loader();
                     currentWorkflow.value.setDrivePaths(msg.drive_paths);
                 });
@@ -110,8 +116,6 @@ export function useWorkflow() {
     }
 
     const deletePersistedWorkflow = (uuid) => {
-        const key = `wf.${uuid}`;
-        localStorage.removeItem(key)
         window.show_loader();
         window.socket.emit('/workflow/delete', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
             window.hide_loader();
@@ -190,6 +194,7 @@ export function useWorkflow() {
         persistWorkflow,
         deletePersistedWorkflow,
         savedWorkflows,
+        loadSavedWorkflows,
         activatePersistedWorkflow,
     }
 }
