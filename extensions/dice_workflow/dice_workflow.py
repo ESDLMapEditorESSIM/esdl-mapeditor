@@ -14,29 +14,23 @@
 from collections import defaultdict
 
 import base64
-
+from datetime import datetime
+from flask import Flask, jsonify, request
+from flask_executor import Executor
+from flask_socketio import SocketIO
+from influxdb import InfluxDBClient
 import io
-
+import os
+import tempfile
+from typing import Dict, List, Optional, TypedDict, Union, cast
 import zipfile
 
-from datetime import datetime
-
-import os
-
-import tempfile
-from flask_executor import Executor
-from typing import Dict, List, Optional, TypedDict, Union, cast
-
-from influxdb import InfluxDBClient
-from flask import Flask, jsonify, request
-from flask_socketio import SocketIO
-
+from esdl import esdl
+from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.essim import (
     essim_esdl_contents_to_esdl_string,
     retrieve_simulation_from_essim,
 )
-from esdl import esdl
-from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.session_manager import get_handler, get_session
 from extensions.settings_storage import SettingsStorage
 from src.log import get_logger
@@ -297,11 +291,11 @@ def _building_kpis_to_dict(building: esdl.GenericBuilding) -> Dict[str, esdl.KPI
 
 def _building_energy_assets_to_type_dict(
         building: esdl.AbstractBuilding,
-) -> dict[str, List[esdl.EnergyAsset]]:
+) -> Dict[str, List[esdl.EnergyAsset]]:
     """
     Find all assets of a building, and returns it as a dict, indexed by the type.
     """
-    assets: dict[str, List[esdl.EnergyAsset]] = defaultdict(list)
+    assets: Dict[str, List[esdl.EnergyAsset]] = defaultdict(list)
     if building.asset is not None:
         for asset in building.asset:
             if isinstance(asset, esdl.EnergyAsset):
