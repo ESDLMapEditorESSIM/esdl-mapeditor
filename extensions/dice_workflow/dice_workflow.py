@@ -261,7 +261,7 @@ class ExportEssimDict(TypedDict):
 
 def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     """
-    Retrieve all buildings in the active energy system.
+    Retrieve all buildings in the active energy system and returns it sorted by name.
     """
     active_es_id = get_session("active_es_id")
     esh = get_handler()
@@ -271,6 +271,7 @@ def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     for asset in area.asset:
         if isinstance(asset, esdl.GenericBuilding):
             buildings.append(asset)
+    buildings.sort(key=lambda building: building.name)
     return buildings
 
 

@@ -16,7 +16,9 @@
 
 <template>
   <p />
-  <p>In this step, custom energy measures can be applied through modifying a number of parameters.</p>
+  <p>
+    In this step, custom energy saving and electrification measures can be applied for building-related and industrial process energy use, through modifying a number of parameters.
+  </p>
   <p>
     <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. For best results, apply custom measures only on ESDLs loaded from the EPS.
   </p>
@@ -39,7 +41,7 @@
         <!-- Warmtevraag gebouw -->
         <h4>Warmtevraag gebouw</h4>
         <p style="color: var(--gray)">
-          <small v-if="heatpumpApplied">We detected that a heat pump was applied in this ESDL. Heat demand has been assigned to the electricity system by default.</small>
+          <small v-if="heatpumpApplied">A heat pump was applied in this ESDL. Therefore, heat demand has been assigned to electricity.</small>
         </p>
 
         <a-form-item label="Percentage warmtevraag gebouw door gas">
@@ -215,25 +217,7 @@ const selectedBuildings = computed(() => {
   return selectedBuildings;
 })
 
-const formState = ref({
-  percentage_warmtevraag_gebouw_gas: 100,
-  efficientie_warmteinstallatie_gebouw_gas: 100,
-  percentage_warmtevraag_gebouw_elektriciteit: 0,
-  efficientie_warmteinstallatie_gebouw_elektriciteit: 100,
-  percentage_warmtevraag_proces_gas: 100,
-  efficientie_warmteinstallatie_proces_gas: 100,
-  percentage_warmtevraag_proces_elektriciteit: 0,
-  efficientie_warmteinstallatie_proces_elektriciteit: 100,
-
-  percentage_proces_gas_warmte: 100,
-  efficientie_proces_gas_warmte: 100,
-
-  schalingsfactor_warmtevraag_gebouw: 1,
-  schalingsfactor_elektriciteitsgebruik_gebouw: 1,
-  schalingsfactor_gasgebruik_proces_excl_warmte: 1,
-  schalingsfactor_elektriciteitsgebruik_proces: 1,
-  schalingsfactor_warmtevraag_proces: 1,
-});
+const formState = ref({});
 
 const isLoading = ref(true);
 const buildings = ref([]);
@@ -309,7 +293,6 @@ const onSubmit = async () => {
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 
   window.show_loader();
-  goToPreviousStep();
 }
 
 const onSelectBuilding = async (newSelectedBuildingIds) => {
@@ -326,12 +309,29 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
     }
     // The heat pump is applied if we don't have any aardgas usage.
     heatpumpApplied.value = pand_energiegebruik_aardgas_gebouw_scenario_m3 < 1;
+    const formState = ref({
+      percentage_warmtevraag_gebouw_gas: 100,
+      efficientie_warmteinstallatie_gebouw_gas: 1,
+      percentage_warmtevraag_gebouw_elektriciteit: 0,
+      efficientie_warmteinstallatie_gebouw_elektriciteit: 1,
+      percentage_warmtevraag_proces_gas: 100,
+      efficientie_warmteinstallatie_proces_gas: 1,
+      percentage_warmtevraag_proces_elektriciteit: 0,
+      efficientie_warmteinstallatie_proces_elektriciteit: 1,
+
+      percentage_proces_gas_warmte: 100,
+      efficientie_proces_gas_warmte: 1,
+
+      schalingsfactor_warmtevraag_gebouw: 1,
+      schalingsfactor_elektriciteitsgebruik_gebouw: 1,
+      schalingsfactor_gasgebruik_proces_excl_warmte: 1,
+      schalingsfactor_elektriciteitsgebruik_proces: 1,
+      schalingsfactor_warmtevraag_proces: 1,
+    });
+
     if (heatpumpApplied.value) {
       formState.value.percentage_warmtevraag_gebouw_gas = 0;
       formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
-    } else {
-      formState.value.percentage_warmtevraag_gebouw_gas = 100;
-      formState.value.percentage_warmtevraag_gebouw_elektriciteit = 0;
     }
   }
 }
