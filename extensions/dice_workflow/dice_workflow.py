@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from collections import defaultdict
+
 import base64
 
 import io
@@ -23,7 +25,7 @@ import os
 
 import tempfile
 from flask_executor import Executor
-from typing import Dict, List, Optional, TypedDict, Union
+from typing import Dict, List, Optional, TypedDict, Union, cast
 
 from influxdb import InfluxDBClient
 from flask import Flask, jsonify, request
@@ -87,11 +89,18 @@ class DiceWorkflow:
                 kpis_value_dict: Dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
+                energy_assets_type_dict = _building_energy_assets_to_type_dict(building)
+                heatpumps: List[esdl.HeatPump] = cast(List[esdl.HeatPump], energy_assets_type_dict.get("HeatPump"))
+                if heatpumps:
+                    heatpump_efficiency = heatpumps[0].COP
+                else:
+                    heatpump_efficiency = None
                 building_dict = dict(
                     id=building.id,
                     name=building.name,
                     address=building.address,
                     kpis=kpis_value_dict,
+                    heatpump_efficiency=heatpump_efficiency,
                 )
                 building_dicts.append(building_dict)
 
@@ -284,3 +293,18 @@ def _building_kpis_to_dict(building: esdl.GenericBuilding) -> Dict[str, esdl.KPI
         for kpi in building.KPIs.kpi:
             kpis[kpi.name] = kpi
     return kpis
+
+
+def _building_energy_assets_to_type_dict(
+        building: esdl.AbstractBuilding,
+) -> dict[str, List[esdl.EnergyAsset]]:
+    """
+    Find all assets of a building, and returns it as a dict, indexed by the type.
+    """
+    assets: dict[str, List[esdl.EnergyAsset]] = defaultdict(list)
+    if building.asset is not None:
+        for asset in building.asset:
+            if isinstance(asset, esdl.EnergyAsset):
+                assets[type(asset).__name__].append(asset)
+    return assets
+

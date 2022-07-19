@@ -28,7 +28,9 @@
     <a-select
       v-model:value="selectedBuildingIds"
       mode="multiple"
+      allow-clear
       show-search
+      :filter-option="(inputValue, option) => option.label.toLowerCase().includes(inputValue.toLowerCase())"
       placeholder="Select a building"
       style="width: 300px"
       :options="buildingDropdownOptions"
@@ -41,12 +43,13 @@
         <!-- Warmtevraag gebouw -->
         <h4>Warmtevraag gebouw</h4>
         <p style="color: var(--gray)">
-          <small v-if="heatpumpApplied">A heat pump was applied in this ESDL. Therefore, heat demand has been assigned to electricity.</small>
+          <small v-if="heatpumpApplied">A heat pump was applied in this ESDL. Therefore, heat demand has been assigned to electricity and heat demand cannot be assigned to gas.</small>
         </p>
 
         <a-form-item label="Percentage warmtevraag gebouw door gas">
           <a-input-number
             v-model:value="formState.percentage_warmtevraag_gebouw_gas"
+            :disabled="heatpumpApplied"
             :step="scalingFactorStepSize"
             style="width: 300px;"
             @change="(value) => updateValue(percentage_warmtevraag_gebouw_gas, value)"
@@ -298,7 +301,8 @@ const onSubmit = async () => {
 const onSelectBuilding = async (newSelectedBuildingIds) => {
   const newlySelectedBuildingId = newSelectedBuildingIds.filter(x => !selectedBuildings.value.includes(x))[0];
   const newlySelectedBuilding = buildings.value.find(building => building.id == newlySelectedBuildingId);
-  if (newlySelectedBuilding) {
+  if (newlySelectedBuilding && newSelectedBuildingIds.length === 1) {
+    // Only do this for first selection.
     // console.log(newlySelectedBuilding.value)
     const kpis = newlySelectedBuilding.kpis;
     const pand_energiegebruik_aardgas_gebouw_scenario_m3 = kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3;
@@ -308,12 +312,13 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
       return
     }
     // The heat pump is applied if we don't have any aardgas usage.
-    heatpumpApplied.value = pand_energiegebruik_aardgas_gebouw_scenario_m3 < 1;
-    const formState = ref({
+    // heatpumpApplied.value = pand_energiegebruik_aardgas_gebouw_scenario_m3 < 1;
+    heatpumpApplied.value = newlySelectedBuilding.heatpump_efficiency != null;
+    formState.value = {
       percentage_warmtevraag_gebouw_gas: 100,
       efficientie_warmteinstallatie_gebouw_gas: 1,
       percentage_warmtevraag_gebouw_elektriciteit: 0,
-      efficientie_warmteinstallatie_gebouw_elektriciteit: 1,
+      efficientie_warmteinstallatie_gebouw_elektriciteit: newlySelectedBuilding.heatpump_efficiency || 1,
       percentage_warmtevraag_proces_gas: 100,
       efficientie_warmteinstallatie_proces_gas: 1,
       percentage_warmtevraag_proces_elektriciteit: 0,
@@ -327,7 +332,7 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
       schalingsfactor_gasgebruik_proces_excl_warmte: 1,
       schalingsfactor_elektriciteitsgebruik_proces: 1,
       schalingsfactor_warmtevraag_proces: 1,
-    });
+    };
 
     if (heatpumpApplied.value) {
       formState.value.percentage_warmtevraag_gebouw_gas = 0;
