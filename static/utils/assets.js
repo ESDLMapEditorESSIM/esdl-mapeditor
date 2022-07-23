@@ -639,7 +639,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -680,7 +680,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         polygon.title = title;
         polygon.id = asset_info[3];
-        polygon.esid = es_id;
+        polygon.esid = es_bld_id;
         polygon.name = asset_info[2];
         polygon.type = asset_info[4];
         polygon.asspot = asset_info[1];
@@ -698,7 +698,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -741,7 +741,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         // line.bindPopup(asset_info[4]+': '+asset_info[2]+ '('+ asset_info[3] + ')');
         line.title = title;
         line.id = asset_info[3];
-        line.esid = es_id;
+        line.esid = es_bld_id;
         line.ports = asset_info[8];
         line.type = asset_info[4];
         line.asspot = asset_info[1];

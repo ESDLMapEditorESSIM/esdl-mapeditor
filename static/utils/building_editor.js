@@ -16,6 +16,7 @@
 
 var bld_map;
 var bld_edit_id = null;        // stores the ID of the building while editing building
+var active_layer_id_backup = null;  // stores the ID of the energy system while editing building
 
 function isBuildingEditorOpen() {
     return bld_edit_id != null;
@@ -124,6 +125,7 @@ function open_building_editor(dialog, building_info) {
         remove_bld_layer(bld_edit_id);
         //close_dialog(event, bld_edit_id)
         active_layer_id = active_layer_id_backup;
+        active_layer_id_backup = null;
         select_area_bld_list(area_before_building_edit);
         bld_edit_id = null;
         map.off('dialog:closed'); // previous event handler must be removed

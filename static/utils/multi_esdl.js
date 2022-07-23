@@ -345,7 +345,14 @@ function get_carrier_list(es_id) {
 }
 
 function get_carrier_info_mapping(es_id) {
-    return esdl_list[es_id].carrier_info_mapping;
+    // Temporary fix: if active_layer_id_backup is set, building editor is open. The building editor tries to find the
+    // carriers within the building but it should query the energy system that contains the building.
+    // active_layer_id_backup contains the ID of the energy system
+    if (active_layer_id_backup) {
+        return esdl_list[active_layer_id_backup].carrier_info_mapping;
+    } else {
+        return esdl_list[es_id].carrier_info_mapping;
+    }
 }
 
 function set_carrier_color(es_id, carrier_id, color) {
