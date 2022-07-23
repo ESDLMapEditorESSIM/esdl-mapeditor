@@ -816,9 +816,10 @@ def remove_ab_from_area_bld_list(ab_id, ab_list):
 #         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
 
 
-def update_asset_connection_locations(ass_id, lat, lon):
+def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
+    ass_id = asset.id
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             c['from-asset-coord'] = (lat, lon)
@@ -826,7 +827,14 @@ def update_asset_connection_locations(ass_id, lat, lon):
             c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')   # clear current active layer connections
-    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+    add_to_building = False
+    if asset.containingBuilding:
+        # building editor is open, so only update building connections.
+        building = asset.containingBuilding
+        bld_info = get_building_information(building)
+        conn_list = bld_info["conn_list"]
+        add_to_building = True
+    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list, 'add_to_building': add_to_building})
 
 
 def update_transport_connection_locations(ass_id, asset, coords):
@@ -1162,11 +1170,11 @@ def update_coordinates(message):
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
-            update_asset_connection_locations(obj_id, coords['lat'], coords['lng'])
+            update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
-            # TODO: Check if this is still required
-            if message['asspot'] == 'building':
-                send_alert("Assets in building with locations are not updated yet")
+            # TODO: Check if this is still required: Ewoud: No
+            #if message['asspot'] == 'building':
+            #    send_alert("Assets in building with locations are not updated yet")
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -2071,7 +2079,7 @@ def process_command(message):
                                   'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2.id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
                 conn_list.append(conn_message)
-                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message], "add_to_building": add_to_building})
 
                 # update ports of assets that are connected
 
@@ -2514,19 +2522,20 @@ def process_command(message):
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
-    if message['cmd'] == 'remove_connection_portids':
+    if message['cmd'] == 'remove_connection_portids': # user clicked remove connection by right-clicking on connection
+        building_id = message['building_id'] if 'building_id' in message else None
         from_port_id = message['from_port_id']
-        from_port = esh.get_by_id(es_edit.id, from_port_id)
+        from_port: esdl.Port = esh.get_by_id(es_edit.id, from_port_id)
         to_port_id = message['to_port_id']
-        to_port = esh.get_by_id(es_edit.id, to_port_id)
+        to_port: esdl.Port = esh.get_by_id(es_edit.id, to_port_id)
         from_port.connectedTo.remove(to_port)
 
         from_asset_id = from_port.eContainer().id
         to_asset_id = to_port.eContainer().id
 
         # refresh connections in gui
-        active_es_id = get_session('active_es_id')
-        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        #active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
         new_list = []
         #print(conn_list)
         for conn in conn_list:
@@ -2539,27 +2548,35 @@ def process_command(message):
                 new_list.append(conn)  # add connections that we are not interested in
             else:
                 print(' - removed {}'.format(conn))
-        set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
-        # TODO: send es.id with this message?
-        emit('clear_connections')   # clear current active layer connections
-        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
+        set_session_for_esid(es_edit.id, 'conn_list', new_list)  # set new connection list
+        if building_id:
+            # building editor is open, so only update building connections.
+            building = esh.get_by_id(es_edit.id, building_id)
+            bld_info = get_building_information(building)
+            bld_conn_list = bld_info["conn_list"]
+            emit('clear_connections', {'id': building_id})   # clear current active layer connections
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': bld_conn_list, 'add_to_building': True})
+        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+            # only clear main map connections if not both assets are in a building
+            emit('clear_connections', {'id': active_es_id})   # clear current active layer connections
+            emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
     if message['cmd'] == 'remove_connection':
         # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
-        #                         to_asset_id: to_asset_id, to_port_id: to_port_id});
+        #                         to_asset_id: to_asset_id, to_port_id: to_port_id, 'building_id': building_id});
         from_asset_id = message['from_asset_id']
         from_port_id = message['from_port_id']
         from_port = esh.get_by_id(es_edit.id, from_port_id)
         to_asset_id = message['to_asset_id']
         to_port_id = message['to_port_id']
+        building_id = message['building_id'] if 'building_id' in message else None
         to_port = esh.get_by_id(es_edit.id, to_port_id)
         from_port.connectedTo.remove(to_port)
 
         # refresh connections in gui
-        active_es_id = get_session('active_es_id')
-        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        #active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
         new_list = []
-        #print(conn_list)
         for conn in conn_list:
             if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
                     conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
@@ -2572,8 +2589,19 @@ def process_command(message):
                 print(' - removed {}'.format(conn))
         set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
         # TODO: send es.id with this message?
-        emit('clear_connections')   # clear current active layer connections
-        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
+        if building_id:
+            # building editor is open, so only update building connections.
+            building = esh.get_by_id(es_edit.id, building_id)
+            bld_info = get_building_information(building)
+            conn_list = bld_info["conn_list"]
+            emit('clear_connections', {'id': building_id})   # clear connection of building editor
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list, 'add_to_building': True})
+
+        # always clear the main layer, as the connection edited can be at two maps at the same time
+        # only clear main map if the assets are not part of a containingBuilding
+        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+            emit('clear_connections', {'id': es_edit.id})   # clear main layer layer connections
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': new_list, 'add_to_building': False})
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']

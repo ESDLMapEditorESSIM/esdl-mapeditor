@@ -17,7 +17,7 @@
 var esdl_list = {};         // Dictionairy to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
-var bld_draw_control = null;
+var draw_control_map = {};
 var select_esdl_control = null;
 
 // -----------------------------------------------------------------------------------------------------------
@@ -138,7 +138,13 @@ function add_draw_control(dc, mp) {
         }
     })
     mp.addControl(dc);
+    draw_control_map[mp.getContainer().id] = dc;
     return dc;
+}
+
+// return the draw_control beloning to this map
+function get_active_draw_control(map) {
+    return draw_control_map[map.getContainer().id];
 }
 
 // -----------------------------------------------------------------------------------------------------------

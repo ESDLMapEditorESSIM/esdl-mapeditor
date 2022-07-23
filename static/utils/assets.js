@@ -353,6 +353,7 @@ function set_marker_handlers(marker) {
         var marker = e.target;
         var pos = marker.getLatLng();
         update_marker_ports(marker);
+        console.log('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
         socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
 
         // console.log(e.oldLatLng.lat);
@@ -852,8 +853,14 @@ function update_line_color(line_layer) {
 // ------------------------------------------------------------------------------------------------------------
 //  Calculates leaflet sizes of assets, joints, ...
 // ------------------------------------------------------------------------------------------------------------
-function set_leaflet_sizes() {
-    let zoom_level = map.getZoom();
+// optional map reference (e.g. building editor map)
+function set_leaflet_sizes(mp) {
+    let active_map = map;
+    if (mp !== undefined) {
+        active_map = mp;
+    }
+    map_id = active_map.getContainer().id;
+    let zoom_level = active_map.getZoom();
     let size = Math.pow(zoom_level/8+1,3);
 
     /* Markers */
@@ -865,7 +872,7 @@ function set_leaflet_sizes() {
     let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
     let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
 
-    $('#mapid .zoom.circle').css({
+    $('#'+map_id+' .zoom.circle').css({
         'width': size_marker,
         'height': size_marker,
         'line-height': size_marker,
@@ -873,22 +880,24 @@ function set_leaflet_sizes() {
         'margin-top': margin_marker,
         'border-width': marker_border
     });
-    $('#mapid .image-div').css({'text-align':'center'});
-    $('#mapid .zoom.circle-img').css({'width':size_image, 'height':size_image});
+    $('#'+map_id+' .image-div').css({'text-align':'center'});
+    $('#'+map_id+' .zoom.circle-img').css({'width':size_image, 'height':size_image});
 
     /* Joints */
     if (size/3 < 5) size_joint = 5; else size_joint = size/3;
     let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
     let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
 
-    $('#mapid .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
-    $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+    $('#'+map_id+' .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+    $('#'+map_id+' .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
     /* Lines */
     let size_line = 2;
     if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
-    $('#mapid .zoomline').css({'stroke-width': size_line + 'px'});
-    $('#mapid .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
+    $('#'+map_id+' .zoomline').css({'stroke-width': size_line + 'px'});
+    $('#'+map_id+' .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
-    set_port_size_and_position();       /* Ports */
+    set_port_size_and_position(active_map);       /* Ports */
+
+    // todo create pane for select line when pipes and cables are supported in the building editor
 }

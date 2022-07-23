@@ -768,7 +768,7 @@ def get_building_information(building):
         "id": building.id,
         "asset_list": asset_list,
         "building_list": building_list,
-        "aera_bld_list": bld_list,
+        "area_bld_list": bld_list,
         "conn_list": conn_list
     }
 

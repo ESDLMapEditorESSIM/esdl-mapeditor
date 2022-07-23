@@ -165,6 +165,7 @@ function add_layer_control() {
                         show_esdl_layer_on_map(node.data.es_id, node.data.layer_name);
                     }
                 }
+                set_leaflet_sizes();
             })
             .on('uncheck_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
