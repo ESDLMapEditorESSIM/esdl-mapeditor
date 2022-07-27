@@ -11,7 +11,12 @@
     <p>Progress: {{ activeLongProcess.progress }}%</p>
     <p v-if="activeLongProcess.message">Status: {{ activeLongProcess.message }}</p>
     <p v-show="activeLongProcess.isDone">
-      Process complete!&nbsp;
+      <span v-if="activeLongProcess.isFailed" style="color: var(--red)">
+        Process failed.&nbsp;
+      </span>
+      <span v-else style="color: var(--green)">
+        Process complete!&nbsp;
+      </span>
       <a-button
         type="link"
         @click="toggleShowActiveLongProcess()"

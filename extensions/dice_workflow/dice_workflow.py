@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, TypedDict, Union, cast
 import zipfile
 
 from esdl import esdl
+from extensions.dice_workflow.export_bc import export_business_case
 from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.essim import (
     essim_esdl_contents_to_esdl_string,
@@ -45,10 +46,17 @@ ENERGY_GAS_MJ_PER_M3 = 31.7
 DICE_ESSIM_EXPORTS = "dice_essim_exports"
 
 
+class DiceESSIMExportType:
+    ICE = "ICE"
+    BUSINESS_CASE = "BUSINESS_CASE"
+
+
 class DiceESSIMExport(TypedDict):
     simulation_id: str
-    start_date: str
+    start_date: str  # Isoformat
+    export_type: str  # See DiceEssimExportType
     end_date: Optional[str]
+    failed_msg: Optional[str]
     finished: bool
     file_paths: Optional[Dict[str, str]]
 
@@ -115,9 +123,13 @@ class DiceWorkflow:
                     if essim_export["finished"]:
                         simulation_id = essim_export["simulation_id"]
                         result = retrieve_simulation_from_essim(simulation_id)
+                        export_type = essim_export.get("export_type", DiceESSIMExportType.ICE)
+                        if export_type == DiceESSIMExportType.BUSINESS_CASE:
+                            export_type = "Business Case"
                         finished_essim_exports.append(
                             dict(
                                 key=simulation_id,
+                                export_type=export_type,
                                 date=essim_export.get(
                                     "start_date", datetime.now().isoformat()
                                 ),
@@ -130,6 +142,7 @@ class DiceWorkflow:
                 export_json: ExportEssimDict = request.json
                 # ESSIM simulation ID. We also use this as process id for the download process..
                 simulation_id = export_json["simulation_id"]
+                export_type = export_json["export_type"]
 
                 self.settings_storage.del_for_current_user(DICE_ESSIM_EXPORTS)
                 try:
@@ -143,7 +156,9 @@ class DiceWorkflow:
                 essim_export: DiceESSIMExport = dict(
                     simulation_id=simulation_id,
                     start_date=datetime.now().isoformat(),
+                    export_type=export_type,
                     end_date=None,
+                    failed_msg=None,
                     finished=False,
                     file_paths=None,
                 )
@@ -156,6 +171,7 @@ class DiceWorkflow:
                 self.executor.submit(
                     _export_energy_system_simulation_task,
                     simulation_id,
+                    export_type,
                     export_json.get("networks"),
                     self.settings_storage,
                 )
@@ -189,11 +205,17 @@ class DiceWorkflow:
             "/dice_workflow/export_essim/<simulation_id>", methods=["GET"]
         )
         def export_essim_progress(simulation_id: str):
-            essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(
-                DICE_ESSIM_EXPORTS
-            ).get(simulation_id)
+            try:
+                essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(
+                    DICE_ESSIM_EXPORTS
+                ).get(simulation_id)
+            except KeyError:
+                return dict(progress=0, message="Export not yet started")
+
             if essim_export is None:
                 return dict(progress=0, message="Export not yet started")
+            if essim_export["failed_msg"]:
+                return dict(progress=100, failed=True, message=essim_export["failed_msg"])
             if essim_export["finished"]:
                 return dict(progress=100, message="Simulation complete")
             return dict(progress=10, message="Exporting data")
@@ -201,12 +223,17 @@ class DiceWorkflow:
 
 def _export_energy_system_simulation_task(
     simulation_id: str,
+    export_type: str,
     networks: Optional[List[str]],
     settings_storage: SettingsStorage,
 ):
     """
     A background task to export the energy system simulation results.
     """
+    user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(
+        DICE_ESSIM_EXPORTS
+    )
+    essim_export = user_processes.get(simulation_id)
     try:
         logger.info("Exporting energy system simulation results")
 
@@ -224,40 +251,50 @@ def _export_energy_system_simulation_task(
 
         esh = get_handler()
         # Get ESDL from ESSIM.
-        result = retrieve_simulation_from_essim(simulation_id)
-        esdl_string = essim_esdl_contents_to_esdl_string(result["esdlContents"])
+        essim_simulation_run = retrieve_simulation_from_essim(simulation_id)
+        esdl_string = essim_esdl_contents_to_esdl_string(essim_simulation_run["esdlContents"])
         es, _ = esh.load_external_string(esdl_string, name=f"essim_{simulation_id}")
 
-        results = export_energy_system_simulation(
-            influx_client, simulation_id, es, networks
-        )
-        influx_client.close()
-        logger.info("Finished exporting ESSIM, saving result to files")
-
+        dir_path = tempfile.mkdtemp(prefix=f"ESSIM-export-{export_type}-{simulation_id}")
         file_paths: Dict[str, str] = dict()
-        dir_path = tempfile.mkdtemp(prefix=f"ESSIM-export-{simulation_id}")
-        for filename, df in results.items():
+
+        if export_type == DiceESSIMExportType.BUSINESS_CASE:
+            business_case_export_wb = export_business_case(influx_client, simulation_id, es)
+            logger.info("Finished exporting business case, saving result to file")
+            filename = "business_case.xlsx"
             path = os.path.join(dir_path, filename)
             file_paths[filename] = path
-            df.to_excel(path)
+            business_case_export_wb.save(path)
+        else:
+            results = export_energy_system_simulation(
+                influx_client, simulation_id, es, networks
+            )
+            logger.info("Finished exporting ICE, saving result to files")
+
+            for filename, df in results.items():
+                path = os.path.join(dir_path, filename)
+                file_paths[filename] = path
+                df.to_excel(path)
+
+        influx_client.close()
 
         # Find the long process and finalize it.
-        user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(
-            DICE_ESSIM_EXPORTS
-        )
-        essim_export = user_processes.get(simulation_id)
         essim_export["finished"] = True
         essim_export["end_date"] = datetime.now().isoformat()
         essim_export["file_paths"] = file_paths
+        logger.info("Finished generating ESSIM export")
+    except Exception as e:
+        essim_export["failed_msg"] = f"Error generating export"
+        essim_export["finished"] = True
+        logger.exception("Error generating DICE export")
+    finally:
         user_processes[simulation_id] = essim_export
         settings_storage.set_for_current_user(DICE_ESSIM_EXPORTS, user_processes)
-        logger.info("Finished generating ESSIM export")
-    except Exception:
-        logger.exception("Exception generating ESSIM export")
 
 
 class ExportEssimDict(TypedDict):
     simulation_id: str
+    export_type: str
     es_id: Optional[str]
     networks: Optional[List[str]]
 

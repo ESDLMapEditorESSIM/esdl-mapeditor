@@ -19,10 +19,15 @@
     <label>Choose ESSIM simulation to export.</label>
     <a-select
       v-model:value="simulation_id"
-      style="width: 100%"
+      style="width: 100%; margin-bottom: 10px;"
       :options="simulations_options"
       @change="onChange"
     />
+    <label>Export type: </label>
+    <a-radio-group v-model:value="export_type">
+      <a-radio-button value="BUSINESS_CASE">Business case</a-radio-button>
+      <a-radio-button value="ICE">ICE (MapGear)</a-radio-button>
+    </a-radio-group>
   </div>
   <div v-if="selected_simulation" style="margin-top: 10px;">
     <strong>ESSIM description</strong>: {{ selected_simulation.simulation_descr }}<br>
@@ -64,8 +69,14 @@ const props = defineProps({
   },
 });
 
+const ExportType = Object.freeze({
+  ICE: 'ICE',
+  BUSINESS_CASE: 'BUSINESS_CASE',
+});
+
 const simulation_id = ref("");
 const simulations = ref([]);
+const export_type = ref(ExportType.BUSINESS_CASE);
 const simulations_options = ref([]);
 const selected_simulation = ref(null);
 const essim_exports = ref([])
@@ -75,6 +86,11 @@ const essim_export_columns = [
     dataIndex: 'date',
     key: 'date',
     slots: { customRender: 'date' },
+  },
+  {
+    title: 'Type',
+    dataIndex: 'export_type',
+    key: 'export_type',
   },
   {
     title: 'Description',
@@ -105,8 +121,9 @@ const onSubmit = async () => {
   const simulation_id = selected_simulation.value.simulation_id;
   await doPost("dice_workflow/export_essim", {
     simulation_id: simulation_id,
+    export_type: export_type.value,
   });
-  startLongProcess("ESSIM export", `/dice_workflow/export_essim/${simulation_id}`, {}, "progress", "message")
+  startLongProcess("ESSIM export", `/dice_workflow/export_essim/${simulation_id}`, {}, "progress", "message", "failed")
   alert("Download process started.");
 }
 
@@ -125,7 +142,7 @@ const loadSimulations = async () => {
   const simulations_list = await doGet("simulations_list");
   simulations.value = simulations_list;
 
-  simulations_options.value = simulations_list.map((simulation) => {
+  simulations_options.value = simulations_list.filter((simulation) => simulation.dashboard_url).map((simulation) => {
     const description = simulation.simulation_descr || "No description"
     return {
       label: description + " - " + simulation.simulation_es_name,

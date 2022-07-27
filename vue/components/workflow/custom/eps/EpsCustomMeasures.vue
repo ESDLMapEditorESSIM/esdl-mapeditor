@@ -36,25 +36,62 @@
       :options="buildingDropdownOptions"
       @change="onSelectBuilding"
     />
+    <a-button type="info" @click="selectAll"> Select all</a-button>
     <hr>
 
     <div v-if="firstSelectedBuilding">
       <a-form layout="vertical" :model="formState" :label-col="{ span: 0 }">
-        <!-- Warmtevraag gebouw -->
-        <h4>Warmtevraag gebouw</h4>
-        <p style="color: var(--gray)">
-          <small v-if="heatpumpApplied">A heat pump was applied in this ESDL. Therefore, heat demand has been assigned to electricity and heat demand cannot be assigned to gas.</small>
-        </p>
+        <h4>Huidige inzet gasgebruik proces</h4>
 
-        <a-form-item label="Percentage warmtevraag gebouw door gas">
+        <a-form-item label="Percentage gasgebruik proces voor warmte">
           <a-input-number
-            v-model:value="formState.percentage_warmtevraag_gebouw_gas"
-            :disabled="heatpumpApplied"
+            v-model:value="formState.percentage_proces_gas_warmte"
             :step="scalingFactorStepSize"
             style="width: 300px;"
-            @change="(value) => updateValue(percentage_warmtevraag_gebouw_gas, value)"
+            @change="(value) => updateValue(percentage_proces_gas_warmte, value)"
           />
         </a-form-item>
+        <a-form-item label="Huidige efficiëntie warmte-installatie proces gas">
+          <a-input-number
+            v-model:value="formState.efficientie_proces_gas_warmte"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(efficientie_proces_gas_warmte, value)"
+          />
+        </a-form-item>
+        
+        <!-- Warmtevraag gebouw -->
+        <h4>Maatregelen warmtevraag gebouw</h4>
+        <p v-if="heatpumpApplied" style="color: var(--gray)">
+          <small>A heat pump was applied in this ESDL. Therefore, heat demand has been assigned to electricity and heat demand cannot be assigned to gas.</small>
+        </p>
+        <p v-if="heatpumpConflict" style="color: var(--gray)">
+          <strong>Warning</strong>: The selected buildings contain conflicting energy measures. If you proceed, you could overwrite previously applied measures.
+        </p>
+
+        <a-form-item label="Schalingsfactor warmtevraag gebouw">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_warmtevraag_gebouw"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_warmtevraag_gebouw, value)"
+          />
+        </a-form-item>
+
+        <a-radio-group v-model:value="heatingType">
+          <a-radio-button value="HEATPUMP">Warmtepomp</a-radio-button>
+          <a-radio-button value="GAS" :disabled="heatpumpApplied">Gas</a-radio-button>
+        </a-radio-group>
+
+        <!--        <a-form-item label="Percentage warmtevraag gebouw door gas">-->
+        <!--          <a-input-number-->
+        <!--            v-model:value="formState.percentage_warmtevraag_gebouw_gas"-->
+        <!--            :disabled="heatpumpApplied"-->
+        <!--            :step="scalingFactorStepSize"-->
+        <!--            style="width: 300px;"-->
+        <!--            @change="(value) => updateValue(percentage_warmtevraag_gebouw_gas, value)"-->
+        <!--          />-->
+        <!--        </a-form-item>-->
         <a-form-item label="Efficiëntie warmte-installatie gebouw gas">
           <a-input-number
             v-model:value="formState.efficientie_warmteinstallatie_gebouw_gas"
@@ -63,15 +100,15 @@
             @change="(value) => updateValue(efficientie_warmteinstallatie_gebouw_gas, value)"
           />
         </a-form-item>
-        <a-form-item label="Percentage warmtevraag gebouw door elektriciteit">
-          <a-input-number
-            v-model:value="formState.percentage_warmtevraag_gebouw_elektriciteit"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(percentage_warmtevraag_gebouw_elektriciteit, value)"
-          />
-        </a-form-item>
-        <a-form-item label="Efficiëntie warmte-installatie gebouw elektriciteit">
+        <!--        <a-form-item label="Percentage warmtevraag gebouw door elektriciteit">-->
+        <!--          <a-input-number-->
+        <!--            v-model:value="formState.percentage_warmtevraag_gebouw_elektriciteit"-->
+        <!--            :step="scalingFactorStepSize"-->
+        <!--            style="width: 300px;"-->
+        <!--            @change="(value) => updateValue(percentage_warmtevraag_gebouw_elektriciteit, value)"-->
+        <!--          />-->
+        <!--        </a-form-item>-->
+        <a-form-item label="COP warmtepomp gebouw elektriciteit">
           <a-input-number
             v-model:value="formState.efficientie_warmteinstallatie_gebouw_elektriciteit"
             :step="scalingFactorStepSize"
@@ -81,8 +118,15 @@
         </a-form-item>
 
         <!-- Warmtevraag proces -->
-        <h4>Warmtevraag proces</h4>
-
+        <h4>Maatregelen warmtevraag proces</h4>
+        <a-form-item label="Schalingsfactor warmtevraag proces">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_warmtevraag_proces"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_warmtevraag_proces, value)"
+          />
+        </a-form-item>
         <a-form-item label="Percentage warmtevraag proces door gas">
           <a-input-number
             v-model:value="formState.percentage_warmtevraag_proces_gas"
@@ -117,44 +161,7 @@
         </a-form-item>
 
         <!-- Procesgas -->
-        <h4>Proces gasgebruik</h4>
-
-        <a-form-item label="Percentage gasgebruik proces voor warmte">
-          <a-input-number
-            v-model:value="formState.percentage_proces_gas_warmte"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(percentage_proces_gas_warmte, value)"
-          />
-        </a-form-item>
-        <a-form-item label="Efficiëntie warmte-installatie proces gas">
-          <a-input-number
-            v-model:value="formState.efficientie_proces_gas_warmte"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(efficientie_proces_gas_warmte, value)"
-          />
-        </a-form-item>
-
-        <!-- Schalingsfactoren -->
-        <h4>Schalingsfactoren</h4>
-
-        <a-form-item label="Schalingsfactor warmtevraag gebouw">
-          <a-input-number
-            v-model:value="formState.schalingsfactor_warmtevraag_gebouw"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(schalingsfactor_warmtevraag_gebouw, value)"
-          />
-        </a-form-item>
-        <a-form-item label="Schalingsfactor elektriciteitsgebruik gebouw">
-          <a-input-number
-            v-model:value="formState.schalingsfactor_elektriciteitsgebruik_gebouw"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(schalingsfactor_elektriciteitsgebruik_gebouw, value)"
-          />
-        </a-form-item>
+        <h4>Maatregelen gasgebruik proces (niet voor warmte)</h4>
         <a-form-item label="Schalingsfactor gasgebruik proces (niet voor warmte)">
           <a-input-number
             v-model:value="formState.schalingsfactor_gasgebruik_proces_excl_warmte"
@@ -163,20 +170,24 @@
             @change="(value) => updateValue(schalingsfactor_gasgebruik_proces_excl_warmte, value)"
           />
         </a-form-item>
+
+        <h4>Maatregelen elektriciteitsgebruik gebouw</h4>
+        <a-form-item label="Schalingsfactor elektriciteitsgebruik gebouw">
+          <a-input-number
+            v-model:value="formState.schalingsfactor_elektriciteitsgebruik_gebouw"
+            :step="scalingFactorStepSize"
+            style="width: 300px;"
+            @change="(value) => updateValue(schalingsfactor_elektriciteitsgebruik_gebouw, value)"
+          />
+        </a-form-item>
+
+        <h4>Maatregelen elektriciteitsgebruik proces</h4>
         <a-form-item label="Schalingsfactor elektriciteitsgebruik proces">
           <a-input-number
             v-model:value="formState.schalingsfactor_elektriciteitsgebruik_proces"
             :step="scalingFactorStepSize"
             style="width: 300px;"
             @change="(value) => updateValue(schalingsfactor_elektriciteitsgebruik_proces, value)"
-          />
-        </a-form-item>
-        <a-form-item label="Schalingsfactor warmtevraag proces">
-          <a-input-number
-            v-model:value="formState.schalingsfactor_warmtevraag_proces"
-            :step="scalingFactorStepSize"
-            style="width: 300px;"
-            @change="(value) => updateValue(schalingsfactor_warmtevraag_proces, value)"
           />
         </a-form-item>
       </a-form>
@@ -224,7 +235,14 @@ const formState = ref({});
 
 const isLoading = ref(true);
 const buildings = ref([]);
+const heatingType = ref(null);
 const heatpumpApplied = ref(false);
+const heatpumpConflict = ref(false);
+
+const HeatingType = Object.freeze({
+  GAS: 'GAS',
+  HEATPUMP: 'HEATPUMP',
+});
 
 const buildingDropdownOptions = computed(() => {
   return buildings.value.map((building) => {
@@ -290,53 +308,73 @@ const onSubmit = async () => {
   params["query_parameters"] = {};
 
   params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
+
+  // Selection of heating type currently happens with a radio button. In the future we could support partials.
+  if (heatingType.value === HeatingType.HEATPUMP) {
+    formState.value.percentage_warmtevraag_gebouw_gas = 0;
+    formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
+  } else {
+    formState.value.percentage_warmtevraag_gebouw_gas = 100;
+    formState.value.percentage_warmtevraag_gebouw_elektriciteit = 0;
+  }
   params["query_parameters"]['measures_to_apply'] = formState.value;
-  console.log(params);
 
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 
   window.show_loader();
 }
 
+const selectAll = () => {
+  const innerSelectedBuildingIds = [];
+  for (const building of buildings.value) {
+    innerSelectedBuildingIds.push(building.id);
+    onSelectBuilding(innerSelectedBuildingIds);
+    selectedBuildingIds.value = innerSelectedBuildingIds;
+  }
+}
+
 const onSelectBuilding = async (newSelectedBuildingIds) => {
   const newlySelectedBuildingId = newSelectedBuildingIds.filter(x => !selectedBuildings.value.includes(x))[0];
-  const newlySelectedBuilding = buildings.value.find(building => building.id == newlySelectedBuildingId);
-  if (newlySelectedBuilding && newSelectedBuildingIds.length === 1) {
-    // Only do this for first selection.
-    // console.log(newlySelectedBuilding.value)
-    const kpis = newlySelectedBuilding.kpis;
-    const pand_energiegebruik_aardgas_gebouw_scenario_m3 = kpis.pand_energiegebruik_aardgas_gebouw_scenario_m3;
-    const pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh = kpis.pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh;
-    if (pand_energiegebruik_aardgas_gebouw_scenario_m3 == null || pand_energiegebruik_elektriciteit_gebouw_warmtepomp_scenario_kWh == null) {
-      alert("The selected building does not contain the necessary KPI's to allow applying custom measures. Please load a valid EPS ESDL and try again.");
-      return
+  const newlySelectedBuilding = buildings.value.find(building => building.id === newlySelectedBuildingId);
+  if (newlySelectedBuilding) {
+    if (newSelectedBuildingIds.length === 1) {
+      // The heat pump is applied if we don't have any aardgas usage.
+      heatpumpApplied.value = newlySelectedBuilding.heatpump_efficiency != null;
+      heatingType.value = heatpumpApplied.value ? HeatingType.HEATPUMP : HeatingType.GAS;
+
+      formState.value = {
+        efficientie_warmteinstallatie_gebouw_gas: 1,
+        percentage_warmtevraag_gebouw_gas: 100,
+        efficientie_warmteinstallatie_gebouw_elektriciteit: newlySelectedBuilding.heatpump_efficiency || 1,
+        percentage_warmtevraag_gebouw_elektriciteit: 0,
+        percentage_warmtevraag_proces_gas: 100,
+        efficientie_warmteinstallatie_proces_gas: 1,
+        percentage_warmtevraag_proces_elektriciteit: 0,
+        efficientie_warmteinstallatie_proces_elektriciteit: 1,
+
+        percentage_proces_gas_warmte: 100,
+        efficientie_proces_gas_warmte: 1,
+
+        schalingsfactor_warmtevraag_gebouw: 1,
+        schalingsfactor_elektriciteitsgebruik_gebouw: 1,
+        schalingsfactor_gasgebruik_proces_excl_warmte: 1,
+        schalingsfactor_elektriciteitsgebruik_proces: 1,
+        schalingsfactor_warmtevraag_proces: 1,
+      };
+
+      if (heatpumpApplied.value) {
+        formState.value.percentage_warmtevraag_gebouw_gas = 0;
+        formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
+      }
     }
-    // The heat pump is applied if we don't have any aardgas usage.
-    // heatpumpApplied.value = pand_energiegebruik_aardgas_gebouw_scenario_m3 < 1;
-    heatpumpApplied.value = newlySelectedBuilding.heatpump_efficiency != null;
-    formState.value = {
-      percentage_warmtevraag_gebouw_gas: 100,
-      efficientie_warmteinstallatie_gebouw_gas: 1,
-      percentage_warmtevraag_gebouw_elektriciteit: 0,
-      efficientie_warmteinstallatie_gebouw_elektriciteit: newlySelectedBuilding.heatpump_efficiency || 1,
-      percentage_warmtevraag_proces_gas: 100,
-      efficientie_warmteinstallatie_proces_gas: 1,
-      percentage_warmtevraag_proces_elektriciteit: 0,
-      efficientie_warmteinstallatie_proces_elektriciteit: 1,
+  }
 
-      percentage_proces_gas_warmte: 100,
-      efficientie_proces_gas_warmte: 1,
-
-      schalingsfactor_warmtevraag_gebouw: 1,
-      schalingsfactor_elektriciteitsgebruik_gebouw: 1,
-      schalingsfactor_gasgebruik_proces_excl_warmte: 1,
-      schalingsfactor_elektriciteitsgebruik_proces: 1,
-      schalingsfactor_warmtevraag_proces: 1,
-    };
-
-    if (heatpumpApplied.value) {
-      formState.value.percentage_warmtevraag_gebouw_gas = 0;
-      formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;
+  // If a building is selected that conflicts in terms of heatpump, show a warning.
+  heatpumpConflict.value = false;
+  for (const selectedBuilding of selectedBuildings.value) {
+    const buildingHeatpumpApplied = newlySelectedBuilding.heatpump_efficiency != null;
+    if (buildingHeatpumpApplied !== heatpumpApplied.value) {
+      heatpumpConflict.value = true;
     }
   }
 }

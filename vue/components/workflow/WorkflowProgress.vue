@@ -29,7 +29,7 @@ const requestParams = getParamsFromState(workflowStep.source.request_params);
 requestParams['url'] = workflowStep.source.url;
 const queryString = new URLSearchParams(requestParams).toString();
 const progressUrl = `workflow/get_data?${queryString}`;
-startLongProcess(workflowStep.name, progressUrl, workflowStep.source.progress_field, workflowStep.source.message_field)
+startLongProcess(workflowStep.name, progressUrl, workflowStep.source.progress_field, workflowStep.source.message_field, workflowStep.source.failed_field)
 
 showActiveLongProcess.value = true;
 

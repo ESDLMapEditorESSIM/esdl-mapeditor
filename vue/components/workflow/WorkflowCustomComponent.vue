@@ -13,7 +13,7 @@ import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService';
 import {default as EpsCreateProject} from './custom/eps/EpsCreateProject';
 import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures';
 import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures';
-import {default as DiceExportEssim} from './custom/eps/DiceExportESSIM';
+import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM';
 import {defineProps} from 'vue'
 
 const components = {
