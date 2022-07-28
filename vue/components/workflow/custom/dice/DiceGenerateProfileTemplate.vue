@@ -50,7 +50,7 @@ const generateTemplate = async () => {
     const response = await doPost("dice_workflow/profiles/template");
     const responseJson = await response.json()
     const process_id = responseJson.process_id;
-    startLongProcess("Profile template", `/dice_workflow/profiles/template/check/${process_id}`, {}, "progress", "message", "failed", onComplete)
+    startLongProcess("Profile template", `/dice_workflow/profiles/template/progress/${process_id}`, {}, "progress", "message", "failed", onComplete)
     alert("Started generating profile template. When it is complete it will be downloaded automatically.");
   } catch (e) {
     genericErrorHandler(e);
