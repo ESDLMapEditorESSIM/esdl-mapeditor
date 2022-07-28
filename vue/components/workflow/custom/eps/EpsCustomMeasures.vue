@@ -36,7 +36,7 @@
       :options="buildingDropdownOptions"
       @change="onSelectBuilding"
     />
-    <a-button type="info" @click="selectAll"> Select all</a-button>
+    <a-button type="default" @click="selectAll"> Select all</a-button>
     <hr>
 
     <div v-if="firstSelectedBuilding">
@@ -78,10 +78,12 @@
           />
         </a-form-item>
 
-        <a-radio-group v-model:value="heatingType">
-          <a-radio-button value="HEATPUMP">Warmtepomp</a-radio-button>
-          <a-radio-button value="GAS" :disabled="heatpumpApplied">Gas</a-radio-button>
-        </a-radio-group>
+        <a-form-item label="Warmte installatie">
+          <a-radio-group v-model:value="heatingType">
+            <a-radio-button value="HEATPUMP">Warmtepomp</a-radio-button>
+            <a-radio-button value="GAS" :disabled="heatpumpApplied">Gas</a-radio-button>
+          </a-radio-group>
+        </a-form-item>
 
         <!--        <a-form-item label="Percentage warmtevraag gebouw door gas">-->
         <!--          <a-input-number-->
