@@ -203,7 +203,7 @@ class EnergySystemHandler:
             raise
 
 
-    def to_string(self, es_id=None):
+    def to_string(self, es_id=None) -> str:
         # to use strings as resources, we simulate a string as being a URI
         uri = StringURI('to_string_'+str(uuid4())+'.esdl')
         if es_id is None:

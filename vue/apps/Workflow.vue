@@ -44,6 +44,7 @@
           </a-menu>
         </template>
       </a-dropdown>
+      <span style="color: var(--gray); vertical-align: sub; margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
     </div>
 
     <template v-if="currentWorkflow.hasPreviousStep()">
@@ -127,7 +128,7 @@
 </template>
 
 <script>
-import {currentWorkflow, useWorkflow, WorkflowStepTypes} from "../composables/workflow";
+import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
 import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
 import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
 import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
@@ -139,10 +140,18 @@ import {default as WorkflowText} from "../components/workflow/WorkflowText";
 import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
 import {MenuOutlined} from "@ant-design/icons-vue";
+import {MessageNames, PubSubManager} from "../bridge";
+import {ref} from "vue";
 
 export default {
   setup() {
     const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+
+    const activeEnergySystemTitle = ref(window.esdl_list[window.active_layer_id].title);
+
+    PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+      activeEnergySystemTitle.value = window.esdl_list[window.active_layer_id].title;
+    });
 
     function confirmPersistWorkflow() {
       let workflowName = currentWorkflow.value.name;
@@ -159,6 +168,7 @@ export default {
     loadSavedWorkflows();
 
     return {
+      activeEnergySystemTitle,
       MenuOutlined,
       confirmPersistWorkflow,
       currentWorkflow,

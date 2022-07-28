@@ -4,13 +4,15 @@ import { computed, ref, watchEffect } from "vue";
  * The representation of a long process. Progress can be fetched periodically from a URL.
  */
 export class LongProcess {
-  constructor(name, url, requestParams, progressField, messageField, failedField) {
+  constructor(name, url, requestParams, progressField, messageField, failedField, callback) {
     this.name = name;
     this.url = url;
     this.requestParams = requestParams;
     this.progressField = progressField || "progress";
     this.failedField = failedField;
     this.messageField = messageField;
+    // If callback is set, call it when the process is completed successfully, containing the final response.
+    this.callback = callback;
     this.checkIntervalMs = 10000;
     this.progress = ref(0);
     this.message = ref('');
@@ -41,13 +43,18 @@ export class LongProcess {
         if (this.failedField) {
           this.isFailed.value = data[this.failedField];
         }
+        if (this.isDone.value && !this.isFailed.value && this.callback) {
+          this.callback(data);
+        }
         if (!this.isDone.value) {
           setTimeout(this.fetchProgress, this.checkIntervalMs)
         }
-      });
+      }).catch((error) => {
+        console.error("Error while fetching progress", error)
+        this.isFailed.value = true;
+    });
   }
 }
-
 
 const activeLongProcess = ref(new LongProcess());
 const showActiveLongProcess = ref(false);
@@ -55,8 +62,8 @@ const showActiveLongProcess = ref(false);
 export function useLongProcessState() {
   const toggleShowActiveLongProcess = () => showActiveLongProcess.value = !showActiveLongProcess.value;
 
-  const startLongProcess = (name, url, requestParams, progress_field, message_field, failed_field) => {
-    activeLongProcess.value = new LongProcess(name, url, requestParams, progress_field, message_field, failed_field);
+  const startLongProcess = (name, url, requestParams, progress_field, message_field, failed_field, callback) => {
+    activeLongProcess.value = new LongProcess(name, url, requestParams, progress_field, message_field, failed_field, callback);
     showActiveLongProcess.value = true;
     activeLongProcess.value.start();
 
@@ -67,11 +74,15 @@ export function useLongProcessState() {
     });
   }
 
+  const refreshActiveLongPorcess = () => {
+    activeLongProcess.value.fetchProgress();
+  }
 
   return {
     activeLongProcess,
     toggleShowActiveLongProcess,
     showActiveLongProcess,
     startLongProcess,
+    refreshActiveLongPorcess,
   }
 }

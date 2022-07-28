@@ -15,6 +15,7 @@ import os
 
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
+ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://esdl-upload-profiles:4003")
 
 esdl_config = {
     "control_strategies": [
@@ -380,6 +381,17 @@ esdl_config = {
                                 "next_step": 11,
                             },
                             {
+                                "name": "Generate profile template",
+                                "type": "default",
+                                "next_step": 20,
+                            },
+                            {
+                                "name": "Upload profiles",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 21,
+                            },
+                            {
                                 "name": "Apply custom energy saving measures",
                                 "description": "beta",
                                 "type": "default",
@@ -441,6 +453,7 @@ esdl_config = {
                             "request_params": {"project_id": "project.id"},
                             "response_params": {"name": "file_name"},
                         },
+                        "success_text": "The newly uploaded file can be used to start a new EPS run.",
                         "next_step": 0,
                     },
                     {
@@ -753,7 +766,20 @@ esdl_config = {
                         "name": "Export ESSIM results",
                         "description": "",
                         "type": "custom",
-                        "component": "eps-export-essim",
+                        "component": "dice-export-essim",
+                    },
+                    {
+                        # 20
+                        "name": "Generate profile template",
+                        "description": "",
+                        "type": "custom",
+                        "component": "dice-generate-profile-template",
+                    },
+                    {
+                        # 21
+                        "name": "Upload profiles",
+                        "type": "custom",
+                        "component": "dice-upload-profiles",
                     },
                 ],
             }

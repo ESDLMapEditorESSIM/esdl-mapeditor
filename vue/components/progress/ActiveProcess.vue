@@ -7,6 +7,14 @@
     >
       <i class="fa fa-times small-icon" />
     </a-button>
+    <a-button
+      style="float: right"
+      type="link"
+      @click="refreshActiveLongProcess"
+    >
+      <i class="fa fa-refresh small-icon" />
+    </a-button>
+    
     <h1>{{ activeLongProcess.name }}</h1>
     <p>Progress: {{ activeLongProcess.progress }}%</p>
     <p v-if="activeLongProcess.message">Status: {{ activeLongProcess.message }}</p>
@@ -33,11 +41,12 @@ import { useLongProcessState } from "../../composables/longProcess.js";
 export default {
   name: "ActiveLongProcess",
   setup() {
-    const { toggleShowActiveLongProcess, activeLongProcess, showActiveLongProcess } = useLongProcessState();
+    const { toggleShowActiveLongProcess, activeLongProcess, showActiveLongProcess, refreshActiveLongProcess } = useLongProcessState();
     return {
       activeLongProcess,
       showActiveLongProcess,
       toggleShowActiveLongProcess,
+      refreshActiveLongProcess,
     };
   }
 };

@@ -10,7 +10,7 @@
       </li>
     </ul>
     <a-button @click="downloadCSVProfileTemplate">
-      Download profile template
+      Download profile template.
     </a-button>
   </div>
 </template>

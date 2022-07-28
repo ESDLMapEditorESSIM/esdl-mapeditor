@@ -23,8 +23,14 @@ import requests
 from typing import List
 
 import esdl
-from extensions.esdl_drive.api import (DRIVE_URL, EsdlDriveException, esdl_drive_get_node, get_drive_post_headers,
-                                       resource_endpoint, upload_esdl_to_drive)
+from extensions.esdl_drive.api import (
+    DRIVE_URL,
+    EsdlDriveException,
+    esdl_drive_get_node,
+    get_drive_post_headers,
+    resource_endpoint,
+    upload_esdl_to_drive,
+)
 from extensions.esdl_drive.esdl_drive import ESDLDriveHttpURI
 from extensions.session_manager import get_handler, get_session
 from extensions.settings_storage import SettingsStorage
@@ -36,7 +42,7 @@ logger = get_logger(__name__)
 DEFAULT_TIMEOUT = 30
 """Default timeout for workflow proxy requests."""
 
-WORKFLOW_SETTINGS_NAME = 'workflows'
+WORKFLOW_SETTINGS_NAME = "workflows"
 
 
 class Workflow:
@@ -170,16 +176,20 @@ class Workflow:
         def list_workflows():
             user_email = get_session("user-email")
             if self.settings_storage.has_user(user_email, WORKFLOW_SETTINGS_NAME):
-                all_workflows_dict = self.settings_storage.get_user(user_email, WORKFLOW_SETTINGS_NAME)
+                all_workflows_dict = self.settings_storage.get_user(
+                    user_email, WORKFLOW_SETTINGS_NAME
+                )
             else:
                 all_workflows_dict = {}
 
             workflow_list = []
             for uuid, workflow_dict in all_workflows_dict.items():
-                workflow_list.append(dict(
-                    uuid=uuid,
-                    name=workflow_dict['name'],
-                ))
+                workflow_list.append(
+                    dict(
+                        uuid=uuid,
+                        name=workflow_dict["name"],
+                    )
+                )
             return workflow_list
 
         @self.socketio.on("/workflow/persist", namespace="/esdl")
@@ -208,11 +218,15 @@ class Workflow:
             # Only store those Drive paths that we just uploaded.
             workflow_json["drive_paths"] = drive_paths
             if self.settings_storage.has_user(user_email, WORKFLOW_SETTINGS_NAME):
-                all_workflows_dict = self.settings_storage.get_user(user_email, WORKFLOW_SETTINGS_NAME)
+                all_workflows_dict = self.settings_storage.get_user(
+                    user_email, WORKFLOW_SETTINGS_NAME
+                )
             else:
                 all_workflows_dict = {}
             all_workflows_dict[workflow_id] = workflow_json
-            self.settings_storage.set_user(user_email, WORKFLOW_SETTINGS_NAME, all_workflows_dict)
+            self.settings_storage.set_user(
+                user_email, WORKFLOW_SETTINGS_NAME, all_workflows_dict
+            )
 
             return dict(drive_paths=drive_paths)
 
@@ -225,7 +239,9 @@ class Workflow:
             user_email = get_session("user-email")
 
             if self.settings_storage.has_user(user_email, WORKFLOW_SETTINGS_NAME):
-                all_workflows_dict = self.settings_storage.get_user(user_email, WORKFLOW_SETTINGS_NAME)
+                all_workflows_dict = self.settings_storage.get_user(
+                    user_email, WORKFLOW_SETTINGS_NAME
+                )
                 workflow = all_workflows_dict.get(workflow_id)
             else:
                 workflow = None
@@ -267,10 +283,14 @@ class Workflow:
             user_email = get_session("user-email")
 
             if self.settings_storage.has_user(user_email, WORKFLOW_SETTINGS_NAME):
-                all_workflows_dict = self.settings_storage.get_user(user_email, WORKFLOW_SETTINGS_NAME)
+                all_workflows_dict = self.settings_storage.get_user(
+                    user_email, WORKFLOW_SETTINGS_NAME
+                )
                 if workflow_id in all_workflows_dict:
                     del all_workflows_dict[workflow_id]
-                self.settings_storage.set_user(user_email, WORKFLOW_SETTINGS_NAME, all_workflows_dict)
+                self.settings_storage.set_user(
+                    user_email, WORKFLOW_SETTINGS_NAME, all_workflows_dict
+                )
 
             try:
                 drive_items = esdl_drive_get_node(
