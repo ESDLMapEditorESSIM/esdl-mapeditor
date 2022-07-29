@@ -17,6 +17,10 @@
 <template>
   <p>Upload profiles template for the selected Energy System. Please make sure to use a generated profile template.</p>
 
+  <p>
+    <strong class="text-warning">Note:</strong> Please only upload profiles with the template downloaded for this ESDL.
+  </p>
+
   <a-form-item label="File to upload">
     <a-input id="upload-file" type="file" />
   </a-form-item>
