@@ -30,6 +30,7 @@ class SummedAsset:
         self.capability = capability
         self.carriers = {}
         self.power = 0
+        self.capacity = 0
         self.group = group
 
     def id(self):
@@ -45,6 +46,9 @@ class SummedAsset:
 
     def plus_power(self, power):
         self.power += power
+
+    def plus_capacity(self, capacity):
+        self.capacity += capacity
 
 # class LazyDict():
 #     def __init__(self, merge_func, init_func=None, d=None):
@@ -157,7 +161,7 @@ def get_power(influx_client: InfluxDBClient, asset):
     #             return get_max_profile_influx(influx_client, profile)
 
 
-def extract_power(influx_client: InfluxDBClient, instance: esdl.Instance, summed_assets, big_consumers):
+def extract_power(instance: esdl.Instance, summed_assets, big_consumers):
     energy_assets = all_energy_assets(instance)
     for energy_asset in energy_assets:
         energy_asset: esdl.EnergyAsset
@@ -174,6 +178,21 @@ def extract_power(influx_client: InfluxDBClient, instance: esdl.Instance, summed
             elif isinstance(energy_asset, esdl.AbstractBasicConversion):
                 energy_asset: esdl.AbstractBasicConversion
                 summed_asset.plus_power(energy_asset.power)
+
+
+def extract_capacity(instance: esdl.Instance, summed_assets, big_consumers):
+    energy_assets = all_energy_assets(instance)
+    for energy_asset in energy_assets:
+        # energy_asset: esdl.EnergyAsset
+        if isinstance(energy_asset, esdl.Storage):
+            energy_asset: esdl.Storage
+            group = get_group(energy_asset, big_consumers)
+            ea_summed_id = SummedAsset(energy_asset.name, type(energy_asset).__name__, "", group).id()
+            print('IT IS STORAGEEEEE')
+            print(energy_asset)
+            summed_asset = summed_assets[ea_summed_id]
+            summed_asset.plus_capacity(energy_asset.capacity * float(JOULE_TO_KWH))
+
 
 def extract_energy_asset_classes(bc):
     energy_asset_classes = {}
@@ -267,6 +286,14 @@ def bc_export_excel(bc) -> Workbook:
                 safe_fill_cell(sheet, excel_dict["r"][summed_asset_id], column_counter, summed_asset.power)
         column_counter += 1
 
+        # capacity
+        safe_fill_cell(sheet, excel_dict["r"]["column_name"], column_counter, "Capacity (kWh)")
+        for summed_asset_id, summed_asset in summed_assets.items():
+            # for sub_row, year_total in enumerate(summed_asset.carriers.values()):
+            if summed_asset.capacity > 0:
+                safe_fill_cell(sheet, excel_dict["r"][summed_asset_id], column_counter, summed_asset.capacity)
+        column_counter += 1
+
     #
     # for esdl_name, esdl_values in bc.items():
     #     row = excel_dict["r"]["esdl_name"]
@@ -299,8 +326,9 @@ def sum_assets_single_case(influx_client: InfluxDBClient, simulation_run: str, e
     big_consumers = get_big_consumers(es)
     hashed_energy_assets = {x.id: x for x in all_energy_assets_from_area(es.instance[0].area) if isinstance(x, esdl.EnergyAsset)}
     summed_assets = year_total_per_asset_class(influx_client, simulation_run, es, big_consumers, hashed_energy_assets)
-    # summed_assets = []
-    extract_power(influx_client, es.instance[0], summed_assets, big_consumers)
+    # summed_assets = {}
+    extract_power(es.instance[0], summed_assets, big_consumers)
+    extract_capacity(es.instance[0], summed_assets, big_consumers)
     return summed_assets
 
 
@@ -317,10 +345,10 @@ def main():
 
     bc = {}
     for export in export_json["exports"]:
-        es = esh.load_file(export["esdl_file_case"])
+        es, _ = esh.load_file(export["esdl_file_case"])
         simulation_run = export["simulation_run_case"]
         bc[es.name] = sum_assets_single_case(influx_client, simulation_run, es)
-    bc_export_excel(bc, export_json["output_excel"])
+    _bc_export_excel(bc, export_json["output_excel"])
     influx_client.close()
 
 
