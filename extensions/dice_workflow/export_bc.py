@@ -119,6 +119,7 @@ def get_group(asset: esdl.EnergyAsset, big_consumers) -> str:
 
 def year_total_per_asset_class(influx_client: InfluxDBClient, simulation_run: str, es: esdl.EnergySystem, big_consumers: list, hashed_energy_assets):
     summed_assets = {}
+    saldering_building = {}
     query = f"SELECT sum(\"allocationEnergy\") * {JOULE_TO_KWH} FROM /.*/ WHERE (\"simulationRun\" = '{simulation_run}') AND time >= 1546297200000ms and time <= 1577836800000ms and \"allocationEnergy\" > 0 GROUP BY \"assetId\", \"assetName\", \"assetClass\", \"carrierName\", \"capability\"; " \
             f"SELECT sum(\"allocationEnergy\") * {JOULE_TO_KWH} FROM /.*/ WHERE (\"simulationRun\" = '{simulation_run}') AND time >= 1546297200000ms and time <= 1577836800000ms and \"allocationEnergy\" < 0 GROUP BY \"assetId\", \"assetName\", \"assetClass\", \"carrierName\", \"capability\""
     result: ResultSet = influx_client.query(query, database=es.id)
@@ -136,7 +137,26 @@ def year_total_per_asset_class(influx_client: InfluxDBClient, simulation_run: st
                 if summed_asset_id not in summed_assets:
                     summed_assets[summed_asset_id] = summed_asset
                 summed_assets[summed_asset_id].plus_carrier(prop['carrierName'], allocation_energy)
-    return summed_assets
+
+                # added for salderings calculation
+                if isinstance(asset, esdl.EConnection):
+                    if group == "KVB":
+                        building_id = asset.containingBuilding.id
+                        if building_id not in saldering_building:
+                            saldering_building[building_id] = EnergyHolder()
+                        saldering_building[building_id].add(allocation_energy)
+    # sum saldering
+    compensated = 0.0
+    to_pay = 0.0
+    overproduction = 0.0
+    for holder in saldering_building.values():
+        provided_back = holder.negative*-1
+        imported = holder.positive
+
+        compensated += min(provided_back, imported)
+        to_pay += max(imported-provided_back, 0)
+        overproduction += max(provided_back-imported, 0)
+    return summed_assets, {"compensated": compensated, "overproduction": overproduction, "to_pay": to_pay}
 
 
 def get_max_profile_influx(influx_client: InfluxDBClient, profile: esdl.InfluxDBProfile):
@@ -188,8 +208,6 @@ def extract_capacity(instance: esdl.Instance, summed_assets, big_consumers):
             energy_asset: esdl.Storage
             group = get_group(energy_asset, big_consumers)
             ea_summed_id = SummedAsset(energy_asset.name, type(energy_asset).__name__, "", group).id()
-            print('IT IS STORAGEEEEE')
-            print(energy_asset)
             summed_asset = summed_assets[ea_summed_id]
             summed_asset.plus_capacity(energy_asset.capacity * float(JOULE_TO_KWH))
 
@@ -210,7 +228,7 @@ def safe_fill_cell(sheet, row, column, val):
     sheet.cell(row, column, val)
 
 
-def bc_export_excel(bc) -> Workbook:
+def bc_export_excel(bc, salderings) -> Workbook:
     energy_asset_classes = extract_energy_asset_classes(bc)
 
     excel_dict = {"c": {}, "r": {}}
@@ -262,6 +280,18 @@ def bc_export_excel(bc) -> Workbook:
             first = False
         row_counter += 1
 
+    # Add saldering lines with empty line above to distantiate it
+    row_counter += 1
+    safe_fill_cell(sheet, row_counter, 1, "Gesaldeerde teruggeleverde Elektriciteit")
+    excel_dict["r"]["compensated"] = row_counter
+    row_counter += 1
+    safe_fill_cell(sheet, row_counter, 1, "Ongesaldeerde teruggeleverde Elektriciteit")
+    excel_dict["r"]["overproduction"] = row_counter
+    row_counter += 1
+    safe_fill_cell(sheet, row_counter, 1, "Te betalen geconsumeerde Elektriciteit")
+    excel_dict["r"]["to_pay"] = row_counter
+    row_counter += 1
+
     column_counter = len(excel_dict["c"])+1
     for esdl_name, summed_assets in bc.items():
         safe_fill_cell(sheet, excel_dict["r"]["esdl_name"], column_counter, esdl_name)
@@ -276,6 +306,13 @@ def bc_export_excel(bc) -> Workbook:
                     sub_sub_row += 1
                 if energy_holder.negative < 0:
                     safe_fill_cell(sheet, excel_dict["r"][summed_asset_id] + sub_row + sub_sub_row, column_counter, energy_holder.negative)
+
+        # saldering
+        saldering = salderings[esdl_name]
+        safe_fill_cell(sheet, excel_dict["r"]["compensated"], column_counter, saldering["compensated"])
+        safe_fill_cell(sheet, excel_dict["r"]["overproduction"], column_counter, saldering["overproduction"])
+        safe_fill_cell(sheet, excel_dict["r"]["to_pay"], column_counter, saldering["to_pay"])
+
         column_counter += 1
 
         # power
@@ -294,29 +331,16 @@ def bc_export_excel(bc) -> Workbook:
                 safe_fill_cell(sheet, excel_dict["r"][summed_asset_id], column_counter, summed_asset.capacity)
         column_counter += 1
 
-    #
-    # for esdl_name, esdl_values in bc.items():
-    #     row = excel_dict["r"]["esdl_name"]
-    #     column = column_counter
-    #     safe_fill_cell(sheet, row, column, esdl_name)
-    #     # excel_dict["c"][esdl_name] = column
-    #
-    #     for column_name, column_values in esdl_values.items():
-    #         row = excel_dict["r"]["column_name"]
-    #         column = column_counter
-    #         safe_fill_cell(sheet, row, column, column_name)
-    #
-    #         for energy_asset_class, val in column_values.items():
-    #             row = excel_dict["r"][energy_asset_class]
-    #             column = column_counter
-    #             safe_fill_cell(sheet, row, column, val)
-    #         # for energy_asset_name, asset_total in column_val:
-    #         column_counter += 1
+
+
+    #Saldering
+
+
     return book
 
 
-def _bc_export_excel(bc, output_excel_name: str):
-    book = bc_export_excel(bc)
+def _bc_export_excel(bc, salderings, output_excel_name: str):
+    book = bc_export_excel(bc, salderings)
     book.save(output_excel_name)
 
 
@@ -325,11 +349,11 @@ def sum_assets_single_case(influx_client: InfluxDBClient, simulation_run: str, e
     influx_client.switch_database(es.id)
     big_consumers = get_big_consumers(es)
     hashed_energy_assets = {x.id: x for x in all_energy_assets_from_area(es.instance[0].area) if isinstance(x, esdl.EnergyAsset)}
-    summed_assets = year_total_per_asset_class(influx_client, simulation_run, es, big_consumers, hashed_energy_assets)
+    summed_assets, saldering = year_total_per_asset_class(influx_client, simulation_run, es, big_consumers, hashed_energy_assets)
     # summed_assets = {}
     extract_power(es.instance[0], summed_assets, big_consumers)
     extract_capacity(es.instance[0], summed_assets, big_consumers)
-    return summed_assets
+    return summed_assets, saldering
 
 
 def main():
@@ -344,11 +368,12 @@ def main():
     influx_client = InfluxDBClient(export_json["influxdb"]["url"], export_json["influxdb"]["port"])
 
     bc = {}
+    salderings = {}
     for export in export_json["exports"]:
         es, _ = esh.load_file(export["esdl_file_case"])
         simulation_run = export["simulation_run_case"]
-        bc[es.name] = sum_assets_single_case(influx_client, simulation_run, es)
-    _bc_export_excel(bc, export_json["output_excel"])
+        bc[es.name], salderings[es.name] = sum_assets_single_case(influx_client, simulation_run, es)
+    _bc_export_excel(bc, salderings, export_json["output_excel"])
     influx_client.close()
 
 
