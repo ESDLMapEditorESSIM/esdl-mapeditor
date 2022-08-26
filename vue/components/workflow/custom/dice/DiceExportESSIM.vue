@@ -26,7 +26,7 @@
     <label>Export type: </label>
     <a-radio-group v-model:value="export_type">
       <a-radio-button value="BUSINESS_CASE">Business case</a-radio-button>
-      <a-radio-button value="ICE">ICE (MapGear)</a-radio-button>
+      <a-radio-button value="ICE">DICE Dashboard (MapGear)</a-radio-button>
     </a-radio-group>
   </div>
   <div v-if="selected_simulation" style="margin-top: 10px;">

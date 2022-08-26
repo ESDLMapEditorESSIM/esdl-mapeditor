@@ -15,12 +15,11 @@
   -->
 
 <template>
-  <p />
   <p>
     In this step, custom energy saving and electrification measures can be applied for building-related and industrial process energy use, through modifying a number of parameters.
   </p>
   <p>
-    <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. For best results, apply custom measures only on ESDLs loaded from the EPS.
+    <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. Apply custom measures only on ESDLs loaded from the EPS.
   </p>
   <p v-if="isLoading">Loading...</p>
   <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>
@@ -202,10 +201,11 @@
 import {computed, defineProps, ref} from "vue";
 import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
+import {useEsdlLayers} from "../../../../composables/esdlLayers.js";
 import {MessageNames, PubSubManager} from "../../../../bridge";
-import {useAssetDrawToolbar} from "../../../../composables/assetDrawToolbar";
 
-const { goToPreviousStep } = useWorkflow();
+const { getActiveEsdlLayerId } = useEsdlLayers();
+const { getState, goToPreviousStep } = useWorkflow();
 
 const props = defineProps({
   workflowStep: {
@@ -296,6 +296,7 @@ const doGetData = async () => {
       return
     }
     buildings.value = response;
+
   } finally {
     isLoading.value = false;
   }
@@ -305,6 +306,10 @@ doGetData();
 const workflowStep = props.workflowStep;
 
 const onSubmit = async () => {
+  if (formState.value.percentage_warmtevraag_proces_gas + formState.value.percentage_warmtevraag_proces_elektriciteit !== 100) {
+    alert("Please make sure the sum of the heat demand percentages of gas and electricity is 100.")
+    return false;
+  }
   const params = {};
   params["service_id"] = workflowStep.service.id;
   params["query_parameters"] = {};
@@ -321,17 +326,43 @@ const onSubmit = async () => {
   }
   params["query_parameters"]['measures_to_apply'] = formState.value;
 
+  // Store the form entry values.
+  // The structure:
+  // state.custom_measures: {
+  //   esdl_id: {
+  //     building_id1: {<formState>},
+  //     building_id2: {<formState>},
+  //   }
+  // }
+  const state = getState();
+  if (!state.customMeasures) {
+    state.customMeasures = {};
+  }
+  state.customMeasures[getActiveEsdlLayerId().value] = {};
+  for (const selectedBuildingId of selectedBuildingIds.value) {
+    state.customMeasures[getActiveEsdlLayerId().value][selectedBuildingId] = formState.value;
+  }
+
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
 
   window.show_loader();
 }
 
+/**
+ * Select all buildings, or unselect if all are already selected..
+ */
 const selectAll = () => {
-  const innerSelectedBuildingIds = [];
-  for (const building of buildings.value) {
-    innerSelectedBuildingIds.push(building.id);
-    onSelectBuilding(innerSelectedBuildingIds);
-    selectedBuildingIds.value = innerSelectedBuildingIds;
+  if (buildings.value.length === selectedBuildingIds.value.length) {
+    // Everything is already selected. Unselect everything.
+    selectedBuildingIds.value = [];
+  } else {
+    // Keep a list so we can trigger a one-by-one addition in the onSelectBuilding.
+    const innerSelectedBuildingIds = [];
+    for (const building of buildings.value) {
+      innerSelectedBuildingIds.push(building.id);
+      onSelectBuilding(innerSelectedBuildingIds);
+      selectedBuildingIds.value = innerSelectedBuildingIds;
+    }
   }
 }
 
@@ -340,10 +371,6 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
   const newlySelectedBuilding = buildings.value.find(building => building.id === newlySelectedBuildingId);
   if (newlySelectedBuilding) {
     if (newSelectedBuildingIds.length === 1) {
-      // The heat pump is applied if we don't have any aardgas usage.
-      heatpumpApplied.value = newlySelectedBuilding.heatpump_efficiency != null;
-      heatingType.value = heatpumpApplied.value ? HeatingType.HEATPUMP : HeatingType.GAS;
-
       formState.value = {
         efficientie_warmteinstallatie_gebouw_gas: 1,
         percentage_warmtevraag_gebouw_gas: 100,
@@ -364,6 +391,20 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
         schalingsfactor_warmtevraag_proces: 1,
       };
 
+      // The heat pump is applied if we don't have any aardgas usage.
+      heatpumpApplied.value = newlySelectedBuilding.heatpump_efficiency != null;
+
+      // Load the form entry values.
+      const state = getState();
+      if (state.customMeasures && state.customMeasures[getActiveEsdlLayerId().value] && state.customMeasures[getActiveEsdlLayerId().value][newlySelectedBuildingId]) {
+        formState.value = state.customMeasures[getActiveEsdlLayerId().value][newlySelectedBuildingId];
+        if (formState.value.percentage_warmtevraag_gebouw_gas < 100) {
+          heatpumpApplied.value = true;
+          newlySelectedBuilding.heatpump_efficiency = 1;
+        }
+      }
+
+      heatingType.value = heatpumpApplied.value ? HeatingType.HEATPUMP : HeatingType.GAS;
       if (heatpumpApplied.value) {
         formState.value.percentage_warmtevraag_gebouw_gas = 0;
         formState.value.percentage_warmtevraag_gebouw_elektriciteit = 100;

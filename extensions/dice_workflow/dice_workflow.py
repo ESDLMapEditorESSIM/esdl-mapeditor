@@ -315,7 +315,7 @@ class DiceWorkflow:
                     progress=100, failed=True, message=essim_export["failed_msg"]
                 )
             if essim_export["finished"]:
-                return dict(progress=100, message="Simulation complete")
+                return dict(progress=100, message="Export complete")
             return dict(progress=10, message="Exporting data")
 
 

@@ -341,8 +341,8 @@ esdl_config = {
         "eps": [
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
-                "name": "Energy Potential Scan",
-                "explanation": "This workflow allows you to run the EPS web service and view the EPS results.",
+                "name": "Business Park Workflow",
+                "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "restartable": True,
                 "workflow": [
@@ -406,14 +406,14 @@ esdl_config = {
                                 "next_step": 7,
                             },
                             {
-                                "name": "Aggregate ESDL buildings for ESSIM",
-                                "next_step": 12,
-                                "type": "default",
-                            },
-                            {
                                 "name": "Export ESSIM results",
                                 "next_step": 19,
-                                "type": "default",
+                                "type": "primary",
+                            },
+                            {
+                                "name": "Aggregate ESDL buildings for ESSIM",
+                                "next_step": 12,
+                                "type": "dashed",
                             },
                         ],
                     },
@@ -544,7 +544,7 @@ esdl_config = {
                     {
                         # 10
                         "name": "Load EPS",
-                        "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied.W hen the EPS is loaded, please continue.",
+                        "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied. When the EPS is loaded, please continue.",
                         "type": "service",
                         "state_params": {"execution_id": "execution.id"},
                         "service": {

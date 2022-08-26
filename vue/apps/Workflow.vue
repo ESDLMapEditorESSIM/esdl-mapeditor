@@ -141,16 +141,24 @@ import {default as WorkflowCustomComponent} from "../components/workflow/Workflo
 import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
+import {useEsdlLayers} from "../composables/esdlLayers.js";
 import {ref} from "vue";
+
+const { getActiveEsdlLayerId } = useEsdlLayers();
 
 export default {
   setup() {
     const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
 
-    const activeEnergySystemTitle = ref(window.esdl_list[window.active_layer_id].title);
+    const activeEnergySystemTitle = ref("Please select an energy system");
+    try {
+      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+    } catch (e) {
+      // Skip.
+    }
 
     PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
-      activeEnergySystemTitle.value = window.esdl_list[window.active_layer_id].title;
+      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
     });
 
     function confirmPersistWorkflow() {

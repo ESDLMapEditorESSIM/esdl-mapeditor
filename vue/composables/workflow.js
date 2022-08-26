@@ -124,7 +124,7 @@ export function useWorkflow() {
     }
 
     /**
-     * Get values from the state, as a parameter mapping..
+     * Get values from the state, as a parameter mapping.
      *
      * @param {*} to_obtain_params An object mapping a key (what it should be in the
      * result) to a value (the name in the state).
