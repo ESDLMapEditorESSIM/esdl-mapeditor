@@ -384,8 +384,9 @@ def export_business_case(
 ) -> Workbook:
     """Entrypoint for the mapeditor."""
     bc = dict()
-    bc[es.name] = sum_assets_single_case(influx_client, essim_id, es)
-    return bc_export_excel(bc)
+    salderings = {}
+    bc[es.name], salderings[es.name] = sum_assets_single_case(influx_client, essim_id, es)
+    return bc_export_excel(bc, salderings)
 
 
 if __name__ == '__main__':
