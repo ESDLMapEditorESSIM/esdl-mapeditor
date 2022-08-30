@@ -21,6 +21,9 @@
   <p>
     <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. Apply custom measures only on ESDLs loaded from the EPS.
   </p>
+  <p>
+    The values for custom measures applied are stored for this ESDL, for later adjustments.
+  </p>
   <p v-if="isLoading">Loading...</p>
   <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>
   <div v-else>
