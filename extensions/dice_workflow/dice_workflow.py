@@ -277,7 +277,7 @@ class DiceWorkflow:
             ).get(simulation_id)
             if essim_export is None or not essim_export["finished"]:
                 return jsonify({}), 404
-            file_paths = essim_export["file_paths"]
+            file_paths = essim_export.get("file_paths", [])
 
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w") as zip_object:
