@@ -404,7 +404,7 @@ function poll_simulation_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt<5) {
+            if (attempt<30) {
                 attempt = attempt + 1;
                 setTimeout(poll_simulation_progress, 1000);
             } else {
@@ -469,7 +469,7 @@ function poll_kpi_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt<5) {
+            if (attempt<30) {
                 attempt = attempt + 1;
                 setTimeout(poll_kpi_progress, 1000);
             } else {
