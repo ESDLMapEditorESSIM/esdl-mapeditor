@@ -39,6 +39,7 @@ release_notes = [
     #         {
     #             "name": "Bug fixes",
     #             "items": [
+    #                 "Improved interaction with ESSIM during preprocessing and errors",
     #                 "Fixed frontend error during editing asset properties",
     #                 "Fixed showing connection lines in correct map",
     #                 "Fixed lots of functionality in building editor",
