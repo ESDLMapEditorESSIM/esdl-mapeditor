@@ -33,3 +33,8 @@ class CarrierMessage:
     pressure: float = None
     supply_temperature: float = None
     return_temperature: float = None
+
+    cost_sort: str = None
+    cost_value: float = None
+    cost_profile: str = None
+    cost_unit: str = None

@@ -15,6 +15,9 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
+from pyecore.ecore import EDate
+
+from esdl import esdl
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -26,6 +29,8 @@ import locale
 from io import StringIO
 from uuid import uuid4
 import src.settings as settings
+from utils.datetime_utils import parse_date
+from utils.utils import str2float
 
 logger = log.get_logger(__name__)
 
@@ -33,6 +38,11 @@ logger = log.get_logger(__name__)
 PROFILES_LIST = 'PROFILES'                  # To store profiles
 PROFILES_SETTINGS = 'PROFILES_SETTINGS'     # To store information about profiles servers, ...
 profiles = None
+
+
+def send_alert(message):
+    print(message)
+    # emit('alert', message, namespace='/esdl')
 
 
 class Profiles:
@@ -494,6 +504,46 @@ class Profiles:
             }]
             self.settings_storage.set_system(PROFILES_SETTINGS, profiles_settings)
         return profiles_settings
+
+    def create_esdl_influxdb_profile(self, profile_uiname, multiplier):
+        profiles = self.get_profiles()['profiles']
+        esdl_profile = None
+        for pkey in profiles:
+            p = profiles[pkey]
+
+            if p['profile_uiname'] == profile_uiname:
+                esdl_profile = esdl.InfluxDBProfile()
+                esdl_profile.multiplier = str2float(multiplier)
+
+                esdl_profile.measurement = p['measurement']
+                esdl_profile.field = p['field']
+                if 'host' in p and p['host']:
+                    esdl_profile.host = p['host']
+                    if 'port' in p and p['port']:
+                        esdl_profile.port = int(p['port'])
+                else:
+                    esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                                        settings.profile_database_config['host']
+                    esdl_profile.port = int(settings.profile_database_config['port'])
+
+                esdl_profile.database = p['database']
+                esdl_profile.filters = settings.profile_database_config['filters']
+
+                if 'start_datetime' in p:
+                    dt = parse_date(p['start_datetime'])
+                    if dt:
+                        esdl_profile.startDate = EDate.from_string(str(dt))
+                    else:
+                        send_alert('Invalid datetime format')
+                if 'end_datetime' in p:
+                    dt = parse_date(p['end_datetime'])
+                    if dt:
+                        esdl_profile.endDate = EDate.from_string(str(dt))
+                    else:
+                        send_alert('Invalid datetime format')
+                break
+
+        return esdl_profile
 
 
 default_profile_groups = {

@@ -34,6 +34,7 @@ release_notes = [
     #         {
     #             "name": "New features",
     #             "items": [
+    #                 "Support for carrier costs (SingleValue and InfluxDBProfile)",
     #             ]
     #         },
     #         {
