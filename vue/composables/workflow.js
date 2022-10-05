@@ -1,4 +1,4 @@
-import {ref, watch} from "vue";
+import {ref} from "vue";
 import {getattrd} from "../utils/utils";
 import {v4 as uuidv4} from 'uuid';
 
@@ -249,6 +249,6 @@ export class Workflow {
     }
 
     hasPreviousStep() {
-        return this.prevWorkflowSteps.length > 0;
+        return this.prevWorkflowSteps && this.prevWorkflowSteps.length > 0;
     }
 }

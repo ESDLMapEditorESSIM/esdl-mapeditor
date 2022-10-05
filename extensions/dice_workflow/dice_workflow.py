@@ -199,14 +199,15 @@ class DiceWorkflow:
 
         @self.flask_app.route("/dice_workflow/export_essim", methods=["GET", "POST"])
         def export_essim():
+            try:
+                essim_exports: dict[
+                    str, DiceESSIMExport
+                ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
+            except KeyError:
+                essim_exports = dict()
+
             if request.method == "GET":
                 # Retrieve previously performed exports.
-                try:
-                    essim_exports: dict[
-                        str, DiceESSIMExport
-                    ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
-                except KeyError:
-                    essim_exports = dict()
                 finished_essim_exports = []
                 for essim_export in essim_exports.values():
                     if essim_export["finished"]:
@@ -236,12 +237,6 @@ class DiceWorkflow:
                 export_type = export_json["export_type"]
 
                 self.settings_storage.del_for_current_user(DICE_ESSIM_EXPORTS)
-                try:
-                    user_processes: dict[
-                        str, DiceESSIMExport
-                    ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
-                except KeyError:
-                    user_processes = dict()
 
                 # Create ESSIM export entry in the mongo db.
                 essim_export: DiceESSIMExport = dict(
@@ -253,14 +248,16 @@ class DiceWorkflow:
                     finished=False,
                     file_paths=None,
                 )
-                user_processes[simulation_id] = essim_export
+                essim_export_id = f"{simulation_id}_{export_type}"
+                essim_exports[essim_export_id] = essim_export
                 self.settings_storage.set_for_current_user(
-                    DICE_ESSIM_EXPORTS, user_processes
+                    DICE_ESSIM_EXPORTS, essim_exports
                 )
 
                 # Start job to generate the export.
                 self.executor.submit(
                     _export_energy_system_simulation_task,
+                    essim_export_id,
                     simulation_id,
                     export_type,
                     export_json.get("networks"),
@@ -320,6 +317,7 @@ class DiceWorkflow:
 
 
 def _export_energy_system_simulation_task(
+    essim_export_id: str,
     simulation_id: str,
     export_type: str,
     networks: Optional[List[str]],
@@ -331,7 +329,7 @@ def _export_energy_system_simulation_task(
     user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(
         DICE_ESSIM_EXPORTS
     )
-    essim_export = user_processes.get(simulation_id)
+    essim_export = user_processes.get(essim_export_id)
     try:
         logger.info("Exporting energy system simulation results")
 
@@ -392,7 +390,7 @@ def _export_energy_system_simulation_task(
         essim_export["finished"] = True
         logger.exception("Error generating DICE export")
     finally:
-        user_processes[simulation_id] = essim_export
+        user_processes[essim_export_id] = essim_export
         settings_storage.set_for_current_user(DICE_ESSIM_EXPORTS, user_processes)
 
 
