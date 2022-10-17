@@ -40,6 +40,8 @@ release_notes = [
     #         {
     #             "name": "Bug fixes",
     #             "items": [
+    #                 "Improve browser memory usage when loading very large ESDLs",
+    #                 "Fixed some things handling instances of type esdl.Potential",
     #                 "Improved interaction with ESSIM during preprocessing and errors",
     #                 "Fixed frontend error during editing asset properties",
     #                 "Fixed showing connection lines in correct map",

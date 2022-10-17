@@ -591,7 +591,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         classname = '';
     }
     let img_class = "circle-img";
-    if (!add_to_building) img_class = 'zoom '+img_class;
+    if (!add_to_building) img_class = 'hide_when_small zoom '+img_class;
     if (asset_info[1] == 'asset') {
         if (asset_info[7] == 'o') {
             classname += ' Optional';       // will become 'Producer Optional'
@@ -883,8 +883,11 @@ function set_leaflet_sizes(mp) {
     $('#'+map_id+' .image-div').css({'text-align':'center'});
     $('#'+map_id+' .zoom.circle-img').css({'width':size_image, 'height':size_image});
 
+    if (zoom_level < 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'none'}); }
+    if (zoom_level >= 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'inline'}); }
+
     /* Joints */
-    if (size/3 < 5) size_joint = 5; else size_joint = size/3;
+    if (size/3 < 3) size_joint = 3; else size_joint = size/3;
     let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
     let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
 

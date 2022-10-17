@@ -103,6 +103,10 @@ h6 {
     height: 23px;
 }
 
+.circle-img.hide_when_small {
+    display: none;
+}
+
 .circle-img-disabled {
     vertical-align: middle;
     width: 23px;
