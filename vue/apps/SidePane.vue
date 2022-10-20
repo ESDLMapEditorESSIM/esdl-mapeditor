@@ -2,10 +2,10 @@
   <div id="side_pane" :class="{side_pane_hidden: !showProjectView}">
     <ul class="tabs">
       <li>
-        <button @click="toggleProjectView">
+        <a @click="toggleProjectView">
           <span class="fas fa-project-diagram" />
           Project
-        </button>
+        </a>
       </li>
     </ul>
     <ProjectView />
@@ -39,7 +39,8 @@ const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
   ul.tabs {
     padding: 8px 0 0 0;
     margin: 0;
-    writing-mode: sideways-lr;
+    // This only works in Firefox, not Chrome.
+    //writing-mode: sideways-lr;
     text-align: right;
     border-right: 1px solid #efeff1;
     box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
@@ -48,12 +49,19 @@ const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
     li {
       display: block;
 
-      button {
+      a {
         background: none;
         border: none;
+        writing-mode: vertical-lr;
+        -webkit-transform: rotate(180deg);
+        -moz-transform: rotate(180deg);
+        -ms-transform: rotate(180deg);
+        -o-transform: rotate(180deg);
+        transform: rotate(180deg);
 
         &:hover {
           cursor: pointer;
+          color: slategray;
         }
 
         padding: 0;
