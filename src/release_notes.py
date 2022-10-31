@@ -25,32 +25,33 @@ logger = log.get_logger(__name__)
 
 # Add new release notes at the beginning of this list
 release_notes = [
-    # {
-    #     "version": "22.8.0",
-    #     "date": "2022-08-02T22:15:00Z",
-    #     "general_message": "On August 2nd 2022, we've released the new ESDL MapEditor version 22.8.0. " +
-    #                        "See below for a list of new features and bug fixes",
-    #     "categories": [
-    #         {
-    #             "name": "New features",
-    #             "items": [
-    #                 "Support for carrier costs (SingleValue and InfluxDBProfile)",
-    #             ]
-    #         },
-    #         {
-    #             "name": "Bug fixes",
-    #             "items": [
-    #                 "Improve browser memory usage when loading very large ESDLs",
-    #                 "Fixed some things handling instances of type esdl.Potential",
-    #                 "Improved interaction with ESSIM during preprocessing and errors",
-    #                 "Fixed frontend error during editing asset properties",
-    #                 "Fixed showing connection lines in correct map",
-    #                 "Fixed lots of functionality in building editor",
-    #                 "Refresh ESDL when ESDL browser is closed",
-    #             ]
-    #         },
-    #     ]
-    # },
+    {
+        "version": "22.10.0",
+        "date": "2022-10-31T22:02:00Z",
+        "general_message": "On October 31st 2022, we've released the new ESDL MapEditor version 22.10.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for carrier costs (SingleValue and InfluxDBProfile)",
+                    "Update ESDL version to v2210",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Improve browser memory usage when loading very large ESDLs",
+                    "Fixed some things handling instances of type esdl.Potential",
+                    "Improved interaction with ESSIM during preprocessing and errors",
+                    "Fixed frontend error during editing asset properties",
+                    "Fixed showing connection lines in correct map",
+                    "Fixed lots of functionality in building editor",
+                    "Refresh ESDL when ESDL browser is closed",
+                ]
+            },
+        ]
+    },
     {
         "version": "22.7.0",
         "date": "2022-07-02T22:15:00Z",
