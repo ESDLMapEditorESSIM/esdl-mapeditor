@@ -15,9 +15,9 @@
  */
 
 ESSIM_simulation_URL_prefix = '/';
-var attempt = 0;                // number of retries after an error occurs with the simulation_progress query
-const max_attempt = 30;
-var wait_preprocess = 0;
+var essim_attempt = 0;                // number of retries after an error occurs with the simulation_progress query
+const max_essim_attempt = 30;
+var wait_essim_preprocess = 0;
 
 // ------------------------------------------------------------------------------------------------------------
 //   ESSIM validation
@@ -349,8 +349,8 @@ function run_ESSIM_simulation() {
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
         sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis,
         essim_loadflow: essim_loadflow});
-    attempt = 0;
-    wait_preprocess = 0;
+    essim_attempt = 0;
+    wait_essim_preprocess = 0;
     setTimeout(poll_simulation_progress, 1000);
 }
 
@@ -393,17 +393,17 @@ function poll_simulation_progress() {
                 document.getElementById('button_close_simulation_dialog').style.display = "block";
                 document.getElementById('button_cancel_simulation').style.display = "none";
 
-                attempt = 0;
-                wait_preprocess = 0;
+                essim_attempt = 0;
+                wait_essim_preprocess = 0;
                 let selected_kpis = $('#essim_kpi_select').val();
                 if (selected_kpis && selected_kpis.length > 0)
                     poll_kpi_progress();
             } else {
                 let percentage = Math.round(parseFloat(data["percentage"]) * 100);
                 if (percentage == 0) {
-                    wait_preprocess += 1;
+                    wait_essim_preprocess += 1;
                     document.getElementById('wait_for_essim').innerHTML =
-                        'Waiting for ESSIM preprocessing, caching of profiles... ('+ wait_preprocess +')';
+                        'Waiting for ESSIM preprocessing, caching of profiles... ('+ wait_essim_preprocess +')';
                 } else {
                     document.getElementById('wait_for_essim').innerHTML = '';
                 }
@@ -417,16 +417,16 @@ function poll_simulation_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt < max_attempt) {
-                attempt = attempt + 1;
+            if (essim_attempt < max_essim_attempt) {
+                essim_attempt = essim_attempt + 1;
                 document.getElementById('wait_for_essim').innerHTML =
-                    'Error accessing ESSIM, retrying ' + attempt + '/' + max_attempt + ' times...';
+                    'Waiting for ESSIM, retrying ' + essim_attempt + '/' + max_essim_attempt + ' times...';
                 setTimeout(poll_simulation_progress, 1000);
             } else {
                 document.getElementById('wait_for_essim').innerHTML =
                     'ESSIM time out, contact system administrator';
-                attempt = 0;
-                wait_preprocess = 0;
+                essim_attempt = 0;
+                wait_essim_preprocess = 0;
             }
         }
     });
@@ -487,11 +487,11 @@ function poll_kpi_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt < max_attempt) {
-                attempt = attempt + 1;
+            if (essim_attempt < max_essim_attempt) {
+                essim_attempt = essim_attempt + 1;
                 setTimeout(poll_kpi_progress, 1000);
             } else {
-                attempt = 0;
+                essim_attempt = 0;
             }
         }
     });
