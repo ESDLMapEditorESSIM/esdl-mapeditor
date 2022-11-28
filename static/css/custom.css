@@ -778,6 +778,14 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 /*
+    Profile group select (readonly standard/system profiles depending on user role)
+*/
+#profile_group_select option:disabled {
+    color: #bababa;
+    font-style: italic;
+}
+
+/*
     Statistics window
 */
 .statistics_window {

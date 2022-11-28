@@ -492,7 +492,7 @@ class Profiles {
             // console.log(profile_group_list);
             let $select = $('<select>').attr('id', 'profile_group_select');
             for (let gr=0; gr<profile_group_list.length; gr++) {
-                let $option = $('<option>').val(profile_group_list[gr].name).text(profile_group_list[gr].name);
+                let $option = $('<option>').attr('disabled', profile_group_list[gr].readonly).val(profile_group_list[gr].name).text(profile_group_list[gr].name);
                 // console.log(profile_group_list[gr]);
                 $select.append($option);
             }
