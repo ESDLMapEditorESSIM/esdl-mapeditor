@@ -505,12 +505,12 @@ class Profiles {
         div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_sum')
           .attr('name', 'radio_profile_type').attr('value', 'sum'))
           .append($('<label>').attr('for', 'radio_pt_sum')
-          .text('Profile values will be summed when aggregating over time (e.g. profiles contain energy values'))
+          .text('Profile values will be summed when aggregating over time (e.g. profiles contain energy values)'))
           .append('<br>');
         div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_avg')
           .attr('name', 'radio_profile_type').attr('value', 'mean').prop('checked',true))
           .append($('<label>').attr('for', 'radio_pt_avg')
-          .text('Profile values will be averaged when aggregating over time (e.g. profiles contain power or temperature values'))
+          .text('Profile values will be averaged when aggregating over time (e.g. profiles contain power or temperature values)'))
           .append('<br>');
     }
 

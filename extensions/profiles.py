@@ -419,6 +419,12 @@ class Profiles:
     def get_profile_groups(self):
         user_group = get_session('user-group')
         dpg = copy.deepcopy(default_profile_groups)
+
+        # Make system profiles editable for the MapEditor admin role
+        mapeditor_role = get_session('user-mapeditor-role')
+        if 'mapeditor-admin' in mapeditor_role:
+            dpg['groups'][1]['readonly'] = False
+
         possible_groups = dpg["groups"]
         possible_groups.extend(self._create_group_profiles_for_projects(user_group))
         return possible_groups
@@ -480,7 +486,7 @@ class Profiles:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
                 if self.settings_storage.has_project(identifier, PROFILES_SETTINGS):
                     # add project profiles server settings if available
-                    # Note: this is a a specific implementation for a dict element with a list of servers. When
+                    # Note: this is a specific implementation for a dict element with a list of servers. When
                     #       additional settings must be added, this implementation must be extended.
                     project_profiles_settings = self.settings_storage.get_project(identifier, PROFILES_SETTINGS)
                     if 'profiles_servers' in project_profiles_settings:
