@@ -109,10 +109,11 @@ UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOL
 TimeUnitEnum = EEnum('TimeUnitEnum', literals=[
                      'NONE', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
 
-GasConversionTypeEnum = EEnum('GasConversionTypeEnum', literals=['UNDEFINED', 'SMR', 'ATR'])
+GasConversionTypeEnum = EEnum('GasConversionTypeEnum', literals=[
+                              'UNDEFINED', 'SMR', 'ATR', 'METHANATION'])
 
 PVInstallationTypeEnum = EEnum('PVInstallationTypeEnum', literals=[
-                               'UNDEFINED', 'ROOFTOP_PV', 'BUILDING_INTEGRATED_PV', 'WINDOW', 'ROAD', 'FIELD', 'WATER'])
+                               'UNDEFINED', 'ROOFTOP_PV', 'BUILDING_INTEGRATED_PV', 'WINDOW', 'ROAD', 'FIELD', 'WATER', 'CONCENTRATED_SOLAR'])
 
 WindTurbineTypeEnum = EEnum('WindTurbineTypeEnum', literals=[
                             'UNDEFINED', 'WIND_ON_LAND', 'WIND_AT_SEA', 'WIND_ON_COAST', 'WIND_ON_BUILDING'])
@@ -167,6 +168,9 @@ MeasureTypeEnum = EEnum('MeasureTypeEnum', literals=[
 
 BufferDistanceTypeEnum = EEnum('BufferDistanceTypeEnum', literals=[
                                'UNDEFINED', 'RISK', 'ENVIRONMENT', 'NOISE', 'PARTICULATE_MATTER', 'NOX_EMISSIONS'])
+
+PowerPlantTypeEnum = EEnum('PowerPlantTypeEnum', literals=['UNDEFINED', 'STEAM_TURBINE', 'INTERNAL_COMBUSTION', 'COMBINED_CYCLE_GAS_TURBINE',
+                           'OPEN_CYCLE_GAS_TURBINE', 'INTEGRARED_COMBUSTION_COMBINED_CYCLE', 'SUPER_CRITICAL_STEAM_TURBINE', 'NUCLEAR_2ND_GENERATION', 'NUCLEAR_3RD_GENERATION'])
 
 
 class EnergySystem(EObject, metaclass=MetaEClass):
@@ -496,10 +500,12 @@ class Instance(EObject, metaclass=MetaEClass):
 class Carriers(EObject, metaclass=MetaEClass):
     """Collection of carriers as part of the Energy System Information. Both energy carriers and commodities."""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     carrier = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, carrier=None, dataSource=None, id=None):
+    def __init__(self, *, carrier=None, dataSource=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -507,6 +513,12 @@ class Carriers(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if carrier:
             self.carrier.extend(carrier)
@@ -674,6 +686,8 @@ class Percentile(EObject, metaclass=MetaEClass):
 class CostInformation(EObject, metaclass=MetaEClass):
     """Describes the costs to acquire, install and maintain a certain asset."""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     investmentCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
     installationCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
     fixedOperationalAndMaintenanceCosts = EReference(
@@ -690,7 +704,7 @@ class CostInformation(EObject, metaclass=MetaEClass):
         ordered=True, unique=True, containment=True, derived=False)
     developmentCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None):
+    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -698,6 +712,12 @@ class CostInformation(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if investmentCosts is not None:
             self.investmentCosts = investmentCosts
@@ -913,9 +933,11 @@ class Duration(EObject, metaclass=MetaEClass):
 class Profiles(EObject, metaclass=MetaEClass):
     """Container for profiles in the Energy System Information where other profiles can refer to"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     profile = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, profile=None, id=None):
+    def __init__(self, *, profile=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -923,6 +945,12 @@ class Profiles(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if profile:
             self.profile.extend(profile)
@@ -945,9 +973,11 @@ class Parties(EObject, metaclass=MetaEClass):
 class DataSources(EObject, metaclass=MetaEClass):
     """Collection of datasources used in the energy system"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, dataSource=None, id=None):
+    def __init__(self, *, dataSource=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -955,6 +985,12 @@ class DataSources(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if dataSource:
             self.dataSource.extend(dataSource)
@@ -977,11 +1013,13 @@ class SubPolygon(EObject, metaclass=MetaEClass):
 class MobilityFuelInformation(EObject, metaclass=MetaEClass):
     """Collection of information about vehicles, fuels and efficiency"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     vehicleFuelEfficiency = EReference(ordered=True, unique=True,
                                        containment=True, derived=False, upper=-1)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, vehicleFuelEfficiency=None, dataSource=None, id=None):
+    def __init__(self, *, vehicleFuelEfficiency=None, dataSource=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -989,6 +1027,12 @@ class MobilityFuelInformation(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if vehicleFuelEfficiency:
             self.vehicleFuelEfficiency.extend(vehicleFuelEfficiency)
@@ -1068,9 +1112,11 @@ class VehicleCount(EObject, metaclass=MetaEClass):
 class Services(EObject, metaclass=MetaEClass):
     """Defines a collection of logical services used in the energy system, e.g. Demand-Response, Aggregator services, Energy markets and control strategies."""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     service = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, service=None, id=None):
+    def __init__(self, *, service=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1078,6 +1124,12 @@ class Services(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if service:
             self.service.extend(service)
@@ -1125,9 +1177,14 @@ class KPI(EObject, metaclass=MetaEClass):
     """Defines a key performance indicator (KPI)"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     quantityAndUnit = EReference(ordered=True, unique=True, containment=True, derived=False)
+    kpi = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    sector = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+    carrier = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+    matter = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, id=None, name=None, quantityAndUnit=None):
+    def __init__(self, *, id=None, name=None, quantityAndUnit=None, kpi=None, description=None, sector=None, carrier=None, matter=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1139,17 +1196,34 @@ class KPI(EObject, metaclass=MetaEClass):
         if name is not None:
             self.name = name
 
+        if description is not None:
+            self.description = description
+
         if quantityAndUnit is not None:
             self.quantityAndUnit = quantityAndUnit
+
+        if kpi:
+            self.kpi.extend(kpi)
+
+        if sector:
+            self.sector.extend(sector)
+
+        if carrier:
+            self.carrier.extend(carrier)
+
+        if matter:
+            self.matter.extend(matter)
 
 
 class QuantityAndUnits(EObject, metaclass=MetaEClass):
     """Collection of QuantityAndUnitTypes defined in the EnergySystemInformation section"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     quantityAndUnit = EReference(ordered=True, unique=True,
                                  containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, quantityAndUnit=None, id=None):
+    def __init__(self, *, quantityAndUnit=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1157,6 +1231,12 @@ class QuantityAndUnits(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if quantityAndUnit:
             self.quantityAndUnit.extend(quantityAndUnit)
@@ -1195,10 +1275,12 @@ class Parameters(EObject, metaclass=MetaEClass):
 class Sectors(EObject, metaclass=MetaEClass):
     """Collection of sectors. Both Party and Item can link to a sector"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     sector = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, sector=None, dataSource=None, id=None):
+    def __init__(self, *, sector=None, dataSource=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1206,6 +1288,12 @@ class Sectors(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if sector:
             self.sector.extend(sector)
@@ -1221,8 +1309,9 @@ class Sector(EObject, metaclass=MetaEClass):
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     code = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
+    sector = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, id=None, name=None, description=None, dataSource=None, code=None):
+    def __init__(self, *, id=None, name=None, description=None, dataSource=None, code=None, sector=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1242,6 +1331,9 @@ class Sector(EObject, metaclass=MetaEClass):
 
         if dataSource is not None:
             self.dataSource = dataSource
+
+        if sector:
+            self.sector.extend(sector)
 
 
 @abstract
@@ -1355,9 +1447,11 @@ class AbstractBuildingUsage(EObject, metaclass=MetaEClass):
 class BuildingUsageInformation(EObject, metaclass=MetaEClass):
     """Part of Energy System Information that specifies generic building usage information that can be referenced from multiple individual buildings"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     buildingUsage = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, buildingUsage=None, id=None):
+    def __init__(self, *, buildingUsage=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1365,6 +1459,12 @@ class BuildingUsageInformation(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if buildingUsage:
             self.buildingUsage.extend(buildingUsage)
@@ -1506,13 +1606,25 @@ class StringTargetKPI(EObject, metaclass=MetaEClass):
 class Templates(EObject, metaclass=MetaEClass):
     """Collection of templates, e.g. asset templates.
 """
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     assetTemplate = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, assetTemplate=None):
+    def __init__(self, *, assetTemplate=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
         super().__init__()
+
+        if id is not None:
+            self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if assetTemplate:
             self.assetTemplate.extend(assetTemplate)
@@ -1640,9 +1752,11 @@ class TableRow(EObject, metaclass=MetaEClass):
 class Notes(EObject, metaclass=MetaEClass):
     """Collection of notes that can be added to the map, like postits (with comments in HTML)"""
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     note = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, note=None, id=None):
+    def __init__(self, *, note=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1650,6 +1764,12 @@ class Notes(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if note:
             self.note.extend(note)
@@ -1692,10 +1812,12 @@ class Note(EObject, metaclass=MetaEClass):
 class Matters(EObject, metaclass=MetaEClass):
 
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
     matter = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, id=None, dataSource=None, matter=None):
+    def __init__(self, *, id=None, dataSource=None, matter=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1703,6 +1825,12 @@ class Matters(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if dataSource is not None:
             self.dataSource = dataSource
@@ -1714,6 +1842,8 @@ class Matters(EObject, metaclass=MetaEClass):
 class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
 
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     outsideTemperatureProfile = EReference(
         ordered=True, unique=True, containment=True, derived=False)
     solarIrradianceProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
@@ -1722,7 +1852,7 @@ class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
     soilTemperatureProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
     relativeHumidityProfile = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, outsideTemperatureProfile=None, solarIrradianceProfile=None, windSpeedProfile=None, windDirectionProfile=None, soilTemperatureProfile=None, relativeHumidityProfile=None, id=None):
+    def __init__(self, *, outsideTemperatureProfile=None, solarIrradianceProfile=None, windSpeedProfile=None, windDirectionProfile=None, soilTemperatureProfile=None, relativeHumidityProfile=None, id=None, name=None, description=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -1730,6 +1860,12 @@ class EnvironmentalProfiles(EObject, metaclass=MetaEClass):
 
         if id is not None:
             self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if outsideTemperatureProfile is not None:
             self.outsideTemperatureProfile = outsideTemperatureProfile
@@ -2758,11 +2894,19 @@ class Constraint(Item):
 
 class DataSourceList(AbstractDataSource):
 
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, dataSource=None, **kwargs):
+    def __init__(self, *, dataSource=None, name=None, description=None, **kwargs):
 
         super().__init__(**kwargs)
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
 
         if dataSource:
             self.dataSource.extend(dataSource)
@@ -4888,10 +5032,11 @@ class PowerPlant(AbstractBasicConversion):
     effMaxLoad = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     effMinLoad = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     powerFactor = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    type = EAttribute(eType=PowerPlantTypeEnum, unique=True, derived=False, changeable=True)
     energyCarrier = EReference(ordered=True, unique=True, containment=False, derived=False)
     mustRun = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, fuel=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, energyCarrier=None, mustRun=None, powerFactor=None, **kwargs):
+    def __init__(self, *, fuel=None, maxLoad=None, minLoad=None, effMaxLoad=None, effMinLoad=None, energyCarrier=None, mustRun=None, powerFactor=None, type=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4912,6 +5057,9 @@ class PowerPlant(AbstractBasicConversion):
 
         if powerFactor is not None:
             self.powerFactor = powerFactor
+
+        if type is not None:
+            self.type = type
 
         if energyCarrier is not None:
             self.energyCarrier = energyCarrier
@@ -5232,6 +5380,13 @@ class ATES(HeatStorage):
 
         if wellDistance is not None:
             self.wellDistance = wellDistance
+
+
+class ElectricBoiler(AbstractBasicConversion):
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
 
 
 class FuelCell(CoGeneration):
