@@ -3248,7 +3248,10 @@ def initialize_app():
         last_es = es_list[-1]
         set_session('active_es_id', last_es.id)
     else:
+        # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in esh list - Edwin and Ewoud discuss!!")
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
+                                       esdlVersion=esdl_doc.get_esdl_version())
 
     es_info_list = {}
     set_session("es_info_list", es_info_list)
