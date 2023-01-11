@@ -79,6 +79,7 @@ from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import call_process_energy_system, get_building_information
 from src.tno.undoredo.types import serialize_command_stack
+from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
@@ -2917,6 +2918,11 @@ def process_command(message):
              {'es_id': active_es_id, 'add_to_building': True, 'asset_pot_list': bld_info["asset_list"],
               'zoom': False})
         emit('add_connections', {'es_id': active_es_id, 'add_to_building': True, 'conn_list': bld_info["conn_list"]})
+
+    if message['cmd'] == 'get_building_connections':
+        bld_id = message['id']
+        building = esh.get_by_id(active_es_id, bld_id)
+        return get_building_connections(building)
 
     if message['cmd'] == 'accept_received_esdl':
         user_email = get_session('user-email')

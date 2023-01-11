@@ -778,13 +778,48 @@ def get_building_information(building):
     }
 
 
-@executor.job
-def call_process_energy_system(force_update_es_id=None, zoom=True):
-    """
-    Process energy system, wrapped in an executor job to be run in the background.
+# ---------------------------------------------------------------------------------------------------------------------
+#  Get information about building connections (required for deleting the connections to/from a building)
+# ---------------------------------------------------------------------------------------------------------------------
+def get_building_connections(building):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
 
-    TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
-    """
+    conn_list = []
+
+    for basset in building.asset:
+        if isinstance(basset, esdl.EnergyAsset):
+            for p in basset.port:
+                conn_to = p.connectedTo
+                if conn_to:
+                    for pc in conn_to:
+                        pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
+
+                        # If the asset the current asset connects to, is in a building...
+                        if pc_asset['asset'].containingBuilding:
+                            bld_pc_asset = pc_asset['asset'].containingBuilding
+                            bld_basset = basset.containingBuilding
+                            # If the asset is in a different building ...
+                            if not bld_pc_asset == bld_basset:
+                                conn_list.append({"from_id": p.id, "to_id": pc.id})
+                        else:
+                            # other asset is not in a building
+                            conn_list.append({"from_id": p.id, "to_id": pc.id})
+
+    return conn_list
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+#  Initialization after new or load energy system
+#  If this function is run through process_energy_system.submit(filename, es_title) it is executed
+#  in a separate thread.
+#  TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
+# ---------------------------------------------------------------------------------------------------------------------
+def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    # emit('clear_ui')
+    print("Processing energysystems in esh")
+    print("active_es_id at start: {}".format(get_session('active_es_id')))
+
     try:
         process_energy_system(force_update_es_id, zoom)
     except Exception as e:

@@ -16,8 +16,8 @@
       }"
       :target-keys="targetKeys"
       :selected-keys="selectedKeys"
-      :render="item => `${item.title} (${item.asset_type})`"
-      :row-key="item => item.id"
+      :render="item => `${item.label} (${item.asset_type})`"
+      :row-key="item => item.value"
       @change="handleChange"
       @selectChange="handleSelectChange"
     />
@@ -41,6 +41,9 @@ const targetKeys = ref([]);
 
 export default {
   name: "AssetDrawToolbarEDRAssetsSettings",
+  components: {
+    spinner
+  },
   data() {
     const isLoading = ref(true);
     const selectedKeys = ref([]);
@@ -54,14 +57,14 @@ export default {
     };
 
     const saveEDRAssets = () => {
-      console.log(targetKeys.value);
+      // console.log(targetKeys.value);
       let edr_asset_list = [];
       for (let i=0; i<targetKeys.value.length; i++) {
         for (let j=0; j<EDRAssets.value.length; j++) {
-          if (targetKeys.value[i] == EDRAssets.value[j].id) {
+          if (targetKeys.value[i] == EDRAssets.value[j].value) {
             let item = {
-              edr_asset_id: EDRAssets.value[j].id,
-              edr_asset_name: EDRAssets.value[j].title,
+              edr_asset_id: EDRAssets.value[j].value,
+              edr_asset_name: EDRAssets.value[j].label,
               edr_asset_type: EDRAssets.value[j].asset_type,
             };
             edr_asset_list.push(item);
@@ -69,7 +72,7 @@ export default {
           }
         }
       }
-      console.log(edr_asset_list);
+      // console.log(edr_asset_list);
       window.socket.emit('save_asset_draw_toolbar_edr_assets', edr_asset_list);
     };
 
@@ -80,7 +83,6 @@ export default {
       selectedKeys,
       handleChange,
       handleSelectChange,
-      spinner,
       saveEDRAssets,
     };
   },
@@ -92,9 +94,10 @@ export default {
       const path = '/edr_assets';
       axios.get(path)
         .then((res) => {
-          console.log(res);
+          // console.log(res);
           for (let i=0; i<res['data']['asset_list'].length; i++) {
-            res['data']['asset_list'][i].key = res['data']['asset_list'][i].id;
+            res['data']['asset_list'][i].key = res['data']['asset_list'][i].value;
+            res['data']['asset_list'][i].title = res['data']['asset_list'][i].label;
           }
           EDRAssets.value = res['data']['asset_list'];
 

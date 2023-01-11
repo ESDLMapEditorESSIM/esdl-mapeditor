@@ -34,10 +34,11 @@
         <tr>
           <td>Port type</td>
           <td>
-            <a-select v-model:value="portType" style="width: 120px">
-              <a-select-option key="InPort" value="InPort">InPort</a-select-option>
-              <a-select-option key="OutPort" value="OutPort">OutPort</a-select-option>
-            </a-select>
+            <a-select
+              v-model:value="portType"
+              :options="portTypes"
+              style="width: 120px"
+            />
           </td>
         </tr>
         <tr>
@@ -64,6 +65,11 @@ const connectedToColumns = [
   { title: '', slots: { customRender: 'operation' }},
 ];
 
+const portTypes = [
+  { label: 'InPort', value: 'InPort' },
+  { label: 'OutPort', value: 'OutPort' }
+];
+
 const paginationConfig = { hideOnSinglePage: true};
 
 export default {
@@ -85,6 +91,7 @@ export default {
       portColumns,
       connectedToColumns,
       portType: 'InPort',
+      portTypes,
       portName: 'Port',
       visible: false,
       paginationConfig
@@ -93,7 +100,6 @@ export default {
   computed: {    
   },
   mounted() {
-
     // console.log(this.ports);
   },
   methods: {

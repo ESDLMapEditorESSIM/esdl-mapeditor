@@ -8,15 +8,9 @@
   >
     <a-select
       v-model:value="currentViewMode"
+      :options="possibleViewModes"
       @change="selectViewMode"
-    >
-      <a-select-option
-        v-for="vm in possibleViewModes"
-        :key="vm"
-      >
-        {{ vm }}
-      </a-select-option>
-    </a-select>
+    />
     <a-transfer
       v-if="!isLoading"
       :data-source="standardAssets"
@@ -54,6 +48,9 @@ const possibleViewModes = ref([]);
 
 export default {
   name: "AssetDrawToolbarStandardAssetsSettings",
+  components: {
+    spinner
+  },
   data() {
     const isLoading = ref(true);
     const selectedKeys = ref([]);
@@ -67,7 +64,7 @@ export default {
     };
 
     const saveStandardAssets = () => {
-      console.log(targetKeys.value);
+      // console.log(targetKeys.value);
       let standard_asset_list = standardAssetsInfo.value['standard_assets'];
       standard_asset_list[currentViewMode.value] = {};
       for (let i=0; i<targetKeys.value.length; i++) {
@@ -81,7 +78,7 @@ export default {
           }
         }
       }
-      console.log(standard_asset_list);
+      // console.log(standard_asset_list);
       window.socket.emit('save_asset_draw_toolbar_standard_assets', standard_asset_list);
     };
 
@@ -92,7 +89,6 @@ export default {
       selectedKeys,
       handleChange,
       handleSelectChange,
-      spinner,
       saveStandardAssets,
       currentViewMode,
       possibleViewModes,
@@ -108,7 +104,12 @@ export default {
       window.socket.emit('load_asset_draw_toolbar_standard_assets_info', (standard_assets_info) => {
         standardAssetsInfo.value = standard_assets_info;
         currentViewMode.value = standard_assets_info['current_mode'];
-        possibleViewModes.value = standard_assets_info['possible_modes']
+        possibleViewModes.value = standard_assets_info['possible_modes'].map((item) => {
+          return {
+            value: item,
+            label: item,
+          }
+        });
 
         let standard_assets = standard_assets_info['standard_assets'][currentViewMode.value];
         for (const [cap_type, asset_list] of Object.entries(standard_assets)) {
@@ -121,7 +122,7 @@ export default {
     },
     createTransferDataStructure: function(cpdict) {
       let transfer_ds = [];
-      console.log(cpdict);
+      // console.log(cpdict);
       for (const [cap_type, asset_list] of Object.entries(cpdict)) {
         for (let i=0; i<asset_list.length; i++) {
           let item = {
@@ -134,7 +135,7 @@ export default {
           transfer_ds.push(item);
         }
       }
-      console.log(transfer_ds);
+      // console.log(transfer_ds);
       return transfer_ds
     },
     selectViewMode: function(view_mode) {
