@@ -5,6 +5,7 @@
  */
 import {createApp} from "vue";
 import ControlStrategy from './apps/ControlStrategy';
+import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 //import EsdlProfiles from './apps/EsdlProfiles';
@@ -60,6 +61,12 @@ window.control_strategy_window = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(ControlStrategy);
+}
+
+window.marginal_costs_window = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(MarginalCostsEdit);
 }
 
 window.carriers_window = () => {

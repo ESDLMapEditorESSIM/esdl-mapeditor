@@ -321,8 +321,8 @@ function set_marker_handlers(marker) {
                     icon: 'icons/Costs.png',
                     text: 'Set marginal costs...',
                     callback: function(e) {
-                        socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
-                        //marginal_costs_window(asset_id);
+                        // socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
+                        marginal_costs_window(asset_id);
                     }
                 });
             }

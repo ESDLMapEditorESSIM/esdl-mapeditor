@@ -1434,6 +1434,18 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
     mc.value = marginal_costs
 
 
+def remove_marginal_costs_for_asset(asset_id):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
+    asset = esh.get_by_id(active_es_id, asset_id)
+
+    ci = asset.costInformation
+    if ci:
+        mc = ci.marginalCosts
+        if mc:
+            mc.delete()
+
+
 def get_marginal_costs_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -2752,15 +2764,19 @@ def process_command(message):
         asset_id = message['asset_id']
         remove_control_strategy_for_asset(asset_id)
 
-    if message['cmd'] == 'set_marginal_costs_get_info':
-        asset_id = message['asset_id']
-        mc = get_marginal_costs_for_asset(asset_id)
-        emit('marginal_costs', {'asset_id': asset_id, 'mc': mc})
+    # if message['cmd'] == 'set_marginal_costs_get_info':
+    #     asset_id = message['asset_id']
+    #     mc = get_marginal_costs_for_asset(asset_id)
+    #     emit('marginal_costs', {'asset_id': asset_id, 'mc': mc})
 
     if message['cmd'] == 'set_marg_costs':
         asset_id = message['asset_id']
         mc = str2float(message['marg_costs'])
         set_marginal_costs_for_asset(asset_id, mc)
+
+    if message['cmd'] == 'remove_marg_costs':
+        asset_id = message['asset_id']
+        remove_marginal_costs_for_asset(asset_id)
 
     if message['cmd'] == 'layer':
         pass
