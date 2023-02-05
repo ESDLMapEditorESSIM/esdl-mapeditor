@@ -104,7 +104,6 @@ if settings.settings_storage_config["host"] is None or settings.settings_storage
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
 settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
-wms_layers = WMSLayers(settings_storage)
 
 
 # handler to retrieve ESDL documentation
@@ -153,6 +152,7 @@ executor = Executor(app)
 
 #extensions
 schedule_session_clean_up()
+wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
@@ -2820,33 +2820,6 @@ def process_command(message):
         # else:
         #     send_alert('No simulation id defined - run an ESSIM simulation first')
 
-    if message['cmd'] == 'add_layer':
-        id = message['id']
-        descr = message['descr']
-        url = message['url']
-        name = message['name']
-        setting_type = message['setting_type']
-        project_name = message['project_name']
-        legend_url = message['legend_url']
-        visible = message['visible']
-
-        layer = {
-            "description": descr,
-            "url": url,
-            "layer_name": name,
-            "setting_type": setting_type,
-            "project_name": project_name,
-            "legend_url": legend_url,
-            "layer_ref": None,
-            "visible": visible
-        }
-
-        wms_layers.add_wms_layer(id, layer)
-
-    if message['cmd'] == 'remove_layer':
-        id = message['id']
-        wms_layers.remove_wms_layer(id)
-
     if message['cmd'] == 'get_es_info':
         attributes = [
             {"id": 1, "name": "Energysystem name", "value": es_edit.name},
@@ -3020,7 +2993,6 @@ def process_command(message):
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
         esh.remove_energy_system(es_id=remove_es_id)
-
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
