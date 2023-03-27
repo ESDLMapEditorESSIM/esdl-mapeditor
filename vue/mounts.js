@@ -24,6 +24,7 @@ import {
     Row,
     Select,
     Space,
+    Spin,
     Switch,
     Table,
     Transfer,
@@ -68,6 +69,7 @@ export function mountApp(component, elementSelector) {
     app.use(Row);
     app.use(Select);
     app.use(Space);
+    app.use(Spin);
     app.use(Switch);
     app.use(Table);
     app.use(Transfer);

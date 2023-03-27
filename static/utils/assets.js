@@ -573,22 +573,22 @@ function set_line_handlers(line) {
 
 function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping, tt_format) {
     // Format of asset_info
-    // 0         1          2     3   4           5          6      7      8        9
-    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+    // 0         1          2     3   4           5          6      7      8        9           10
+    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
     // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
+    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
     // 'point'   potential  name  id  class_name  [lat,lon]
     // 'polygon' potential  name  id  class_name  [...]
+    let classname = '';
+    let extra_attrs = null;
     if ((asset_info[0] == 'point' && asset_info[1] == 'asset' && asset_info[4] != 'Joint') ||
         (asset_info[0] == 'polygon' && asset_info[1] == 'asset' )) {
-        capability = asset_info[9];
-        classname = 'circle ' + capability;
+        classname = 'circle ' + asset_info[9];
         if (!add_to_building) classname = 'zoom '+classname;
+        extra_attrs = asset_info[10];
     } else if (asset_info[1] == 'potential') {
         classname = 'circle Potential';
         if (!add_to_building) classname = 'zoom '+classname;
-    } else {
-        classname = '';
     }
     let img_class = "circle-img";
     if (!add_to_building) img_class = 'hide_when_small zoom '+img_class;
@@ -606,7 +606,12 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
     if (!assets_for_icons.includes(asset_info[4])) {
         imgsrc = drawTextImage(getAbbrevation(asset_info[4]));
     }
-  
+    if (custom_icons_plugin.custom_icons) {
+        let custom_icon = custom_icons_plugin.get_icon_for(asset_info[4], extra_attrs);
+        if (custom_icon) {
+            imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
+        }
+    }
     var divicon = L.divIcon({
         className: classname,
         html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',

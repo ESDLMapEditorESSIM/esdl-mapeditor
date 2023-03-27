@@ -85,6 +85,7 @@ from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from src.release_notes import ReleaseNotes
+from src.custom_icons import CustomIcons
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -187,6 +188,7 @@ TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
+custom_icons = CustomIcons(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -1109,7 +1111,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             tooltip_asset_attrs = get_tooltip_asset_attrs(joint, 'marker')
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__,
                                             [middle_point.lat, middle_point.lon], tooltip_asset_attrs, state, port_list,
-                                            capability_type])
+                                            capability_type, {}])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id,
                               'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
@@ -1867,17 +1869,21 @@ def process_command(message):
                             {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids,
                              'carrier': carrier_id})
 
+                # Collect extra attributes that might be required to draw specific icons, ...
+                extra_attributes = dict()
+                extra_attributes['assetType'] = asset.assetType
+
                 if isinstance(asset, esdl.AbstractBuilding):
                     if isinstance(geometry, esdl.Point):
                         buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__,
                                                            [shape['coordinates']['lat'], shape['coordinates']['lng']],
-                                                           False, {}])
+                                                           False, {}, extra_attributes])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                         buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
-                                                           boundary["coordinates"], False, {}])
+                                                           boundary["coordinates"], False, {}, extra_attributes])
                     emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list,
                                                   'zoom': False})
                 else:
@@ -1888,7 +1894,8 @@ def process_command(message):
                         add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        [shape['coordinates']['lat'], shape['coordinates']['lng']],
-                                                       tooltip_asset_attrs, state, port_list, capability_type])
+                                                       tooltip_asset_attrs, state, port_list, capability_type,
+                                                       extra_attributes])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
@@ -1897,7 +1904,7 @@ def process_command(message):
                         add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(
                             ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
-                             tooltip_asset_attrs, state, port_list, capability_type])
+                             tooltip_asset_attrs, state, port_list, capability_type, extra_attributes])
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:

@@ -215,6 +215,7 @@
     <script type="text/javascript" src="./utils/table_editor.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
+    <script type="text/javascript" src="./utils/custom_icons.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -675,10 +676,10 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0         1          2     3   4           5          6      7      8        9
-                // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+                // 0         1          2     3   4           5          6      7      8        9           10
+                // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
                 // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-                // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
+                // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
                 // 'point'   potential  name  id  class_name  [lat,lon]
                 // 'polygon' potential  name  id  class_name  [...]
 
@@ -735,9 +736,9 @@
 
             socket.on('add_building_objects', function(options) {
                 // Format of list items
-                // 0         1           2         3                    4                             5                   6
-                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs
-                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs
+                // 0         1           2         3                    4                             5                   6     7
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs
 
                 // hide_loader();
                 // console.log(options);
@@ -749,7 +750,12 @@
                 for (let i = 0; i<list.length; i++) {
                     classname = 'zoom circle Building';
                     imgsrc = 'images/' + list[i][3] + '.png';
-
+                    if (custom_icons_plugin.custom_icons) {
+                        let custom_icon = custom_icons_plugin.get_icon_for(list[i][3], list[i][7]);
+                        if (custom_icon) {
+                            imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
+                        }
+                    }
                     var divicon = L.divIcon({
                         className: classname,
                         html: '<div class="image-div" style="font-size:0px"><img class="zoom circle-img" src="' + imgsrc + '"></img></div>',

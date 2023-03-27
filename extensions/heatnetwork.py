@@ -181,9 +181,12 @@ class HeatNetwork:
         else:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
+            extra_attributes = dict()
+            extra_attributes['assetType'] = asset.assetType
             add_spatial_attributes(asset, tooltip_asset_attrs)
             return ['point', 'asset', asset.name, asset.id, type(asset).__name__,
-                [asset.geometry.lat,asset.geometry.lon], tooltip_asset_attrs, state, port_list, capability_type]
+                    [asset.geometry.lat,asset.geometry.lon], tooltip_asset_attrs, state, port_list, capability_type,
+                    extra_attributes]
 
     def remove_connections_from_connlist(self, asset: EnergyAsset, active_es_id: str):
         check_list = list()
@@ -209,8 +212,6 @@ class HeatNetwork:
             return False
         conn_list[:] = [conn for conn in conn_list if not identical(conn)]
         print("removed {} connections".format(l - len(conn_list)))
-
-
 
     def update_conn_list(self, asset: EnergyAsset, active_es_id: str):
         conn_list = get_session_for_esid(active_es_id, 'conn_list')
