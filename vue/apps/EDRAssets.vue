@@ -55,15 +55,15 @@
         :filter-option="filter_asset"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
-      />
-      <a-select-option
-        v-for="asset in filtered_asset_list"
-        :key="asset.id"
-        :value="asset.id"
-        :title="asset.title"
       >
-        {{ asset.title }}
-      </a-select-option>
+        <a-select-option
+          v-for="asset in filtered_asset_list"
+          :key="asset.id"
+          :value="asset.id"
+          :title="asset.title"
+        >
+          {{ asset.title }}
+        </a-select-option>
       </a-select>
     </div>
 

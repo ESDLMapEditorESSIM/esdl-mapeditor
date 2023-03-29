@@ -1,22 +1,56 @@
 <template>
-  <div id="side_pane" :class="{side_pane_hidden: !showProjectView}">
+  <div id="side_pane" :class="{side_pane_hidden: !showSidePane}">
     <ul class="tabs">
-      <li>
-        <a @click="toggleProjectView">
-          <span class="fas fa-project-diagram" />
-          Project
+      <li
+        v-for="tab in sidePaneTabs"
+        :key="tab.key"
+      >
+        <a @click="clickTab(tab.key);">
+          <span :class="tab.icon" />
+          <span
+            v-if="isActiveTab(tab.key)"
+            style="font-weight:bold"
+          >
+            {{ tab.title }}
+          </span>
+          <span v-else>
+            {{ tab.title }}
+          </span>
         </a>
       </li>
     </ul>
-    <ProjectView />
+    <ProjectView v-if="isActiveTab('Project')"/>
   </div>
 </template>
 
 <script setup>
+import {ref} from "vue"
 import {useESDLProjects} from "../composables/esdlProjects";
+import {useSidePane} from "../composables/sidePane";
 import ProjectView from "./ProjectView";
 
 const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
+const {showSidePane, toggleSidePaneView, initTabs, clickTab, isActiveTab} = useSidePane();
+
+const sidePaneTabs = ref([{
+    key: 'Project',
+    title: 'Project',
+    icon: 'fas fa-project-diagram',
+    active: false
+  }, {
+    key: 'Workflow',
+    title: 'Workflow',
+    icon: 'fas fa-tasks',
+    active: false
+  }, {
+    key: 'WMSLayers',
+    title: 'WMS Layers',
+    icon: 'fas fa-map',
+    active: false
+}]);
+
+initTabs(sidePaneTabs);
+
 </script>
 
 <style scoped lang="scss">
@@ -48,6 +82,7 @@ const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
 
     li {
       display: block;
+      padding: 8px 0 0 0;
 
       a {
         background: none;
@@ -65,6 +100,15 @@ const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
         }
 
         padding: 0;
+
+        span {
+          padding: 3px 0 0 0;
+          -webkit-transform: rotate(180deg);
+          -moz-transform: rotate(180deg);
+          -ms-transform: rotate(180deg);
+          -o-transform: rotate(180deg);
+          transform: rotate(180deg);
+        }
       }
     }
   }
