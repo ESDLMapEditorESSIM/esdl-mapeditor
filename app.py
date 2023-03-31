@@ -68,6 +68,7 @@ from extensions.workflow import Workflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
+from src.tno.events_api import EventsAPI
 from src.edr_assets import EDRAssets
 from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
@@ -159,6 +160,7 @@ esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
+EventsAPI(app, socketio, settings_storage)
 ViewModes(app, socketio, settings_storage)
 edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)

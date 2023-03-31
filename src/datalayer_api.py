@@ -12,13 +12,11 @@
 #  Manager:
 #      TNO
 
-from flask import Flask, jsonify
-from flask_socketio import SocketIO, emit
+from flask import Flask
+from flask_socketio import SocketIO
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from esdl.undo_wrapper import undo_record_changes
-from extensions.session_manager import get_session
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information
 from dataclasses import asdict

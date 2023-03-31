@@ -56,6 +56,7 @@ export default {
   },
   data() {
     return {
+      timeoutId: null,
       assetList: [],
       EDRAssets: [],
       recentEDRAssets: [],
@@ -112,6 +113,25 @@ export default {
           marker: {
               icon: new marker_class_name()
           }
+      });
+
+      const controller = new AbortController();
+      addEventListener("mousemove", (event) => {
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId);
+        }
+
+        // Set a new timeout to trigger the function after 300 milliseconds
+        this.timeoutId = setTimeout(() => {
+          console.log('Mouse has stopped moving');
+          console.log(event);
+          window.socket.emit('events.mouse.positioning', {point: {x: event.x, y: event.y}});
+        }, 200);
+      }, { signal: controller.signal });
+
+      addEventListener("click", () => {
+        // TODO: We need to abort when the user is done. But how?
+        controller.abort();
       });
 
       var line_assets = ["ElectricityCable", "Pipe"];
