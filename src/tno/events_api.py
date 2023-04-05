@@ -30,8 +30,8 @@ logger = log.get_logger(__name__)
 
 
 class Point(TypedDict):
-    x: int
-    y: int
+    lat: float
+    lng: float
 
 
 class MousePositionMessage(TypedDict):

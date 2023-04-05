@@ -115,23 +115,28 @@ export default {
           }
       });
 
-      const controller = new AbortController();
-      addEventListener("mousemove", (event) => {
+      // add a listener to the map's 'mousemove' event
+      const mouseMoveListener = function(event) {
+        // get the latitude and longitude from the event object's latlng property
         if (this.timeoutId) {
           clearTimeout(this.timeoutId);
         }
+        const lat = event.latlng.lat;
+        const lng = event.latlng.lng;
 
         // Set a new timeout to trigger the function after 300 milliseconds
         this.timeoutId = setTimeout(() => {
           console.log('Mouse has stopped moving');
-          console.log(event);
-          window.socket.emit('events.mouse.positioning', {point: {x: event.x, y: event.y}});
+          const payload = {point: {lat: lat, lng: lng}};
+          console.log(payload);
+          window.socket.emit('events.mouse.positioning', payload);
         }, 200);
-      }, { signal: controller.signal });
+      };
+      window.map.on('mousemove', mouseMoveListener);
 
-      addEventListener("click", () => {
-        // TODO: We need to abort when the user is done. But how?
-        controller.abort();
+      window.map.on(window.L.Draw.Event.DRAWSTOP, function(e) {
+        console.log('Removing mouse position listener');
+        window.map.off("mousemove", mouseMoveListener)
       });
 
       var line_assets = ["ElectricityCable", "Pipe"];
