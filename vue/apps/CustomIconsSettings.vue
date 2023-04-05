@@ -145,6 +145,11 @@ const headers_image = reactive({
 
 // eslint-disable-next-line
 const beforeImageUpload = file => {
+  if (file.size > 8000) {
+    console.log("File size too big!")
+    return true;
+  }
+
   return new Promise(() => {
     is_image_loading.value = true;
     const reader = new FileReader();
