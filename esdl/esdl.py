@@ -169,8 +169,8 @@ MeasureTypeEnum = EEnum('MeasureTypeEnum', literals=[
 BufferDistanceTypeEnum = EEnum('BufferDistanceTypeEnum', literals=[
                                'UNDEFINED', 'RISK', 'ENVIRONMENT', 'NOISE', 'PARTICULATE_MATTER', 'NOX_EMISSIONS'])
 
-PowerPlantTypeEnum = EEnum('PowerPlantTypeEnum', literals=['UNDEFINED', 'STEAM_TURBINE', 'INTERNAL_COMBUSTION', 'COMBINED_CYCLE_GAS_TURBINE',
-                           'OPEN_CYCLE_GAS_TURBINE', 'INTEGRARED_COMBUSTION_COMBINED_CYCLE', 'SUPER_CRITICAL_STEAM_TURBINE', 'NUCLEAR_2ND_GENERATION', 'NUCLEAR_3RD_GENERATION'])
+PowerPlantTypeEnum = EEnum('PowerPlantTypeEnum', literals=['UNDEFINED', 'STEAM_TURBINE', 'INTERNAL_COMBUSTION', 'COMBINED_CYCLE_GAS_TURBINE', 'OPEN_CYCLE_GAS_TURBINE',
+                           'INTEGRARED_COMBUSTION_COMBINED_CYCLE', 'SUPER_CRITICAL_STEAM_TURBINE', 'NUCLEAR_2ND_GENERATION', 'NUCLEAR_3RD_GENERATION', 'NUCLEAR_4TH_GENERATION', 'WASTE_INCENERATION'])
 
 
 class EnergySystem(EObject, metaclass=MetaEClass):
@@ -688,6 +688,7 @@ class CostInformation(EObject, metaclass=MetaEClass):
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    referenceYear = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
     investmentCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
     installationCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
     fixedOperationalAndMaintenanceCosts = EReference(
@@ -704,7 +705,7 @@ class CostInformation(EObject, metaclass=MetaEClass):
         ordered=True, unique=True, containment=True, derived=False)
     developmentCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None, name=None, description=None):
+    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None, name=None, description=None, referenceYear=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -718,6 +719,9 @@ class CostInformation(EObject, metaclass=MetaEClass):
 
         if description is not None:
             self.description = description
+
+        if referenceYear is not None:
+            self.referenceYear = referenceYear
 
         if investmentCosts is not None:
             self.investmentCosts = investmentCosts
@@ -3842,8 +3846,10 @@ class Consumer(EnergyAsset):
     consType = EAttribute(eType=ConsTypeEnum, unique=True, derived=False,
                           changeable=True, default_value=ConsTypeEnum.PRIMARY)
     power = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    operationalHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, consType=None, power=None, **kwargs):
+    def __init__(self, *, consType=None, power=None, operationalHours=None, fullLoadHours=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3852,6 +3858,12 @@ class Consumer(EnergyAsset):
 
         if power is not None:
             self.power = power
+
+        if operationalHours is not None:
+            self.operationalHours = operationalHours
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
 
 
 @abstract
@@ -3927,8 +3939,10 @@ class Transport(EnergyAsset):
     """An abstract class that describes EnergyAssets that can transport energy. It is one of the 5 capabilities in ESDL"""
     capacity = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     efficiency = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    operationalHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, capacity=None, efficiency=None, **kwargs):
+    def __init__(self, *, capacity=None, efficiency=None, operationalHours=None, fullLoadHours=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3937,6 +3951,12 @@ class Transport(EnergyAsset):
 
         if efficiency is not None:
             self.efficiency = efficiency
+
+        if operationalHours is not None:
+            self.operationalHours = operationalHours
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
 
 
 @abstract
