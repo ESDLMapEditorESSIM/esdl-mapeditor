@@ -1740,8 +1740,8 @@
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
         var ass_name = assets_for_icons[i];
-        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png'}});
+        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(15, 15),
+            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png', className: 'leaflet-no-mouse-cursor'}});
     }
 
     sidebar = L.control.sidebar('sidebar', {

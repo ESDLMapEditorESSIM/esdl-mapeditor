@@ -60,7 +60,7 @@ export default {
       assetList: [],
       EDRAssets: [],
       recentEDRAssets: [],
-      isLoading: true
+      isLoading: true,
     };
   },
   mounted() {
@@ -122,13 +122,17 @@ export default {
           clearTimeout(this.timeoutId);
         }
         const lat = event.latlng.lat;
-        const lng = event.latlng.lng;
-
+        const lng = event.latlng.lng;        
         // Set a new timeout to trigger the function after 300 milliseconds
         this.timeoutId = setTimeout(() => {
+         
           console.log('Mouse has stopped moving');
           const payload = {point: {lat: lat, lng: lng}};
           console.log(payload);
+          //var temp_icon = window["ElectricityNetworkMarker"];
+          //var marker = new temp_icon();
+          //window.draw_control._toolbars.draw._modes.marker.handler.updateMarkerIcon(marker);
+          window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(true);
           window.socket.emit('events.mouse.positioning', payload);
         }, 200);
       };
