@@ -29,7 +29,7 @@ from flask_oidc import OpenIDConnect
 from flask_socketio import emit
 from pyecore.ecore import EDate
 
-from src.tno.events.events_listener import start_rmq_thread
+from src.tno.events.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
 from src import create_app, executor, socketio
 import src.esdl_config as esdl_config

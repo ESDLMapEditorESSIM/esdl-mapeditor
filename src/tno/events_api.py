@@ -15,19 +15,16 @@ from typing import TypedDict
 
 from flask_socketio import SocketIO
 
+from extensions.session_manager import get_session
 import src.log as log
 from flask import Flask
 
 from extensions.settings_storage import SettingsStorage
+from src.tno.events.messages import AssetPositionMessage, Point
 
-from src.tno.events.publisher import send_rabbitmq_fanout_message
+from src.tno.events.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
-
-
-class Point(TypedDict):
-    lat: float
-    lng: float
 
 
 class MousePositionMessage(TypedDict):
@@ -46,7 +43,9 @@ class EventsAPI:
         logger.info("Registering EventsAPI")
 
         @self.socketio.on("events.mouse.positioning", namespace="/esdl")
-        def mouse_positioning(message: MousePositionMessage):
-            logger.info("Positioning mouse", message=message)
+        def mouse_positioning(frontend_message: MousePositionMessage):
+            logger.info("Positioning mouse", message=frontend_message)
+            user_email = get_session('user-email')
+            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email)
             # rabbitmq_fanout_publisher.publish_message(message)
-            send_rabbitmq_fanout_message(message)
+            send_rabbitmq_message(message, "events.asset.positioning")

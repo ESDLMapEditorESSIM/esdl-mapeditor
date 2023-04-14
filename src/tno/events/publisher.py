@@ -319,30 +319,30 @@ logger = log.get_logger(__name__)
 
 
 
-def get_rabbitmq_fanout_channel():
+def get_rabbitmq_topic_channel():
     """
     Connect to RabbitMQ and return the fanout channel.
     """
     connection = pika.BlockingConnection(parameters=PIKA_CONNECTION_PARAMETERS)
     channel = connection.channel()
     channel.exchange_declare(
-        exchange=EnvSettings.rabbitmq_fanout_exchange(),
-        exchange_type=ExchangeType.fanout,
+        exchange=EnvSettings.rabbitmq_exchange(),
+        exchange_type=ExchangeType.topic,
         durable=True,
     )
     return channel
 
 
-def send_rabbitmq_fanout_message(message: Union[dict, list]):
+def send_rabbitmq_message(message: Union[dict, list], routing_key):
     """
     Publish a message on the RabbitMQ fanout exchange, so that all queues will receive it.
 
     Message is send as JSON.
     """
-    channel = get_rabbitmq_fanout_channel()
+    channel = get_rabbitmq_topic_channel()
     channel.basic_publish(
-        exchange=EnvSettings.rabbitmq_fanout_exchange(),
-        routing_key="test",
+        exchange=EnvSettings.rabbitmq_exchange(),
+        routing_key=routing_key,
         body=json.dumps(message).encode(),
     )
     channel.close()

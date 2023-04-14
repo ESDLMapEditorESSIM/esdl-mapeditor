@@ -11,39 +11,40 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import json
+
 from dataclasses import dataclass
+from pika import BasicProperties
+from pika.exchange_type import ExchangeType
+from pika.spec import Basic
 
 from threading import Thread
 from socketio.kombu_manager import KombuManager
 
 
-from src import get_logger
+from src import EnvSettings, get_logger
 
 from src.tno.events.config import AMQP_URL
-from src.tno.events.consumer import ReconnectingConsumer
+from src.tno.events.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 
 external_sio = KombuManager(AMQP_URL, write_only=True)
 
 logger = get_logger(__name__)
 
 
-def on_message(channel, method_frame, header_frame, body, app=None):
-    message = body.decode("utf-8")
-    logger.info("I HAVE THE MSG", message=message)
+def on_result_message(channel, basic_deliver: Basic.Deliver, properties: BasicProperties, body):
+    """
+    The handler for all results message.
+    """
+    message = json.loads(body.decode("utf-8"))
+    logger.debug("Result message received", message=message)
     exclude_sessions = []
-    external_sio.emit("events.frontend", {"data": message}, skip_sid=exclude_sessions, namespace='/esdl')
-
-
-# def start(app):
-#     # app.app_context().push()
-#     amqp_url = f"amqp://{EnvSettings.rabbitmq_user()}:{EnvSettings.rabbitmq_password()}@{EnvSettings.rabbitmq_host()}:{EnvSettings.rabbitmq_port()}/%2F"
-#     consumer = ReconnectingConsumer(AMQP_URL, on_message)
-#     consumer.run()
-#
-#
-# def start_rmq_thread(app):
-#     t = threading.Thread(target=start, daemon=True, args=(app,))
-#     t.start()
+    external_sio.emit(
+        "events.frontend",
+        {"data": message},
+        skip_sid=exclude_sessions,
+        namespace="/esdl",
+    )
 
 
 def start_rmq_thread():
@@ -59,7 +60,16 @@ class RMQThread(Thread):
         self.daemon = True
 
     def run(self):
-        consumer = ReconnectingConsumer(AMQP_URL, on_message)
+        consumer_config = RabbitMQConsumerConfig(
+            amqp_url=AMQP_URL,
+            exchange=EnvSettings.rabbitmq_exchange(),
+            exchange_type=ExchangeType.topic,
+            queue="mapeditor.incoming",
+            routing_key="results.#",
+            on_message=on_result_message,
+        )
+
+        consumer = ReconnectingConsumer(consumer_config)
         consumer.run()
 
 
