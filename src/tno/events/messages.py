@@ -22,3 +22,8 @@ class Point(TypedDict):
 class AssetPositionMessage(TypedDict):
     point: Point
     user_email: str
+
+
+class WindPotentialResultMessage(TypedDict):
+    user_email: str
+    wind_potential: float

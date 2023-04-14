@@ -125,15 +125,8 @@ export default {
         const lng = event.latlng.lng;        
         // Set a new timeout to trigger the function after 300 milliseconds
         this.timeoutId = setTimeout(() => {
-         
-          console.log('Mouse has stopped moving');
           const payload = {point: {lat: lat, lng: lng}};
-          console.log(payload);
-          //var temp_icon = window["ElectricityNetworkMarker"];
-          //var marker = new temp_icon();
-          //window.draw_control._toolbars.draw._modes.marker.handler.updateMarkerIcon(marker);
-          window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(true);
-          window.socket.emit('events.mouse.positioning', payload);
+          window.socket.emit('events.asset.positioning', payload);
         }, 200);
       };
       window.map.on('mousemove', mouseMoveListener);

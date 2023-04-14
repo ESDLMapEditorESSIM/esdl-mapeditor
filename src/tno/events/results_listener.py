@@ -38,10 +38,12 @@ def on_result_message(channel, basic_deliver: Basic.Deliver, properties: BasicPr
     """
     message = json.loads(body.decode("utf-8"))
     logger.debug("Result message received", message=message)
+    del message["user_email"]
+    # TODO: Send message to only the user.
     exclude_sessions = []
     external_sio.emit(
-        "events.frontend",
-        {"data": message},
+        "results.asset.positioning",
+        message,
         skip_sid=exclude_sessions,
         namespace="/esdl",
     )

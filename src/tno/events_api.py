@@ -42,7 +42,7 @@ class EventsAPI:
     def register(self):
         logger.info("Registering EventsAPI")
 
-        @self.socketio.on("events.mouse.positioning", namespace="/esdl")
+        @self.socketio.on("events.asset.positioning", namespace="/esdl")
         def mouse_positioning(frontend_message: MousePositionMessage):
             logger.info("Positioning mouse", message=frontend_message)
             user_email = get_session('user-email')

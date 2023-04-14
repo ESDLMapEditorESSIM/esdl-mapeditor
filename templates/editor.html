@@ -535,8 +535,13 @@
             // request the list of assets in the EDR
             get_edr_assets('edr_assets');
 
-            socket.on('events.frontend', function(msg) {
+            socket.on('results.asset.positioning', function(msg) {
                 console.log(msg);
+                if (!msg.wind_potential) {
+                    window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(true);
+                } else {
+                    window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(false);
+                }
             });
 
             // ------------------------------------------------------------------------------------------------------------
