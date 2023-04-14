@@ -11,9 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import json
-
-import pika
 from typing import TypedDict
 
 from flask_socketio import SocketIO
@@ -22,9 +19,8 @@ import src.log as log
 from flask import Flask
 
 from extensions.settings_storage import SettingsStorage
-from src.tno.envsettings import EnvSettings
 
-from src.tno.events.publisher import rabbitmq_publisher
+from src.tno.events.publisher import send_rabbitmq_fanout_message
 
 logger = log.get_logger(__name__)
 
@@ -52,10 +48,5 @@ class EventsAPI:
         @self.socketio.on("events.mouse.positioning", namespace="/esdl")
         def mouse_positioning(message: MousePositionMessage):
             logger.info("Positioning mouse", message=message)
-            # rabbitmq_publisher.publish_message(message)
-            pika_credentials = pika.PlainCredentials(EnvSettings.rabbitmq_user(), EnvSettings.rabbitmq_password())
-            pika_connection_parameters = pika.ConnectionParameters(credentials=pika_credentials)
-            connection = pika.BlockingConnection(parameters=pika_connection_parameters)
-            channel = connection.channel()
-            channel.queue_declare(queue=EnvSettings.rabbitmq_queue())
-            channel.basic_publish(exchange="", routing_key=EnvSettings.rabbitmq_queue(), body=json.dumps(message))
+            # rabbitmq_fanout_publisher.publish_message(message)
+            send_rabbitmq_fanout_message(message)

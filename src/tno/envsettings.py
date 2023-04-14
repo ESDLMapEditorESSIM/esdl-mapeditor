@@ -20,8 +20,20 @@ class EnvSettings:
         return os.getenv("ENV", "dev")
 
     @staticmethod
-    def rabbitmq_queue() -> str:
-        return os.getenv("RABBITMQ_QUEUE", "mapeditor")
+    def rabbitmq_host() -> str:
+        return os.getenv("RABBITMQ_HOST", "localhost")
+
+    @staticmethod
+    def rabbitmq_port() -> int:
+        return int(os.getenv("RABBITMQ_PORT", "5672"))
+
+    @staticmethod
+    def rabbitmq_incoming_exchange() -> str:
+        return os.getenv("RABBITMQ_INCOMING_EXCHANGE", "mapeditor.incoming")
+
+    @staticmethod
+    def rabbitmq_fanout_exchange() -> str:
+        return os.getenv("RABBITMQ_FANOUT_EXCHANGE", "mapeditor.fanout")
 
     @staticmethod
     def rabbitmq_user() -> str:
