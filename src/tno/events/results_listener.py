@@ -13,14 +13,12 @@
 #      TNO
 import json
 
-from dataclasses import dataclass
 from pika import BasicProperties
 from pika.exchange_type import ExchangeType
 from pika.spec import Basic
 
 from threading import Thread
 from socketio.kombu_manager import KombuManager
-
 
 from src import EnvSettings, get_logger
 
@@ -66,7 +64,7 @@ class RMQThread(Thread):
             amqp_url=AMQP_URL,
             exchange=EnvSettings.rabbitmq_exchange(),
             exchange_type=ExchangeType.topic,
-            queue="mapeditor.incoming",
+            queue="mapeditor.results",
             routing_key="results.#",
             on_message=on_result_message,
         )

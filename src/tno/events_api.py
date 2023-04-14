@@ -44,7 +44,7 @@ class EventsAPI:
 
         @self.socketio.on("events.asset.positioning", namespace="/esdl")
         def mouse_positioning(frontend_message: MousePositionMessage):
-            logger.info("Positioning mouse", message=frontend_message)
+            logger.info("Positioning asset", message=frontend_message)
             user_email = get_session('user-email')
             message: AssetPositionMessage = dict(**frontend_message, user_email=user_email)
             # rabbitmq_fanout_publisher.publish_message(message)
