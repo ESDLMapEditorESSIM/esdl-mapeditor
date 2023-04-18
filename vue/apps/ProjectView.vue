@@ -44,7 +44,7 @@ const {
   removeBaseLayerFromMap
 } = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
-const {esdlProject, getESDLProject, showProjectView} = useESDLProjects();
+const {esdlProject, getESDLProject} = useESDLProjects();
 const {socket} = useSocketIO();
 const {isEsdlShownOnMap, showEsdlLayerOnMap, hideEsdlLayerFromMap, esdlList} = useMultiEsdl();
 

@@ -29,6 +29,7 @@ from flask_oidc import OpenIDConnect
 from flask_socketio import emit
 from pyecore.ecore import EDate
 
+from src.tno.events.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
 from src import create_app, executor, socketio
 import src.esdl_config as esdl_config
@@ -169,7 +170,6 @@ TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
-
 
 #TODO: check secret key with itsdangerous error and testing and debug here
 
@@ -3314,6 +3314,12 @@ def on_disconnect():
     logger.info('Client disconnected: {}'.format(request.sid))
 
 
+@socketio.on('events.frontend', namespace='/esdl')
+def on_disconnect(msg):
+    logger.info("HELLO THERE")
+    logger.info(msg)
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Error logging
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3326,12 +3332,16 @@ def default_error_handler(e):
     traceback.print_exc()
 
 
+@app.before_first_request
+def before_first_request():
+    start_rmq_thread()
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     parse_esdl_config()
     logger.info("Starting ESDL MapEditor application")
-
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)

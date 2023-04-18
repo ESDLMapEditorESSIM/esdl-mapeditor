@@ -18,6 +18,7 @@ shapely-geojson==0.0.1
 si-prefix==1.2.2
 xmldiff==2.4
 pika
+kombu
 
 # Logging
 colorama==0.4.4
