@@ -339,7 +339,7 @@ class ESDLServices:
                     try:
                         for asset_str in asset_str_list["add_assets"]:
                             asset = ESDLAsset.load_asset_from_string(asset_str)
-                            esh.add_object_to_dict(active_es_id, asset)
+                            esh.add_object_to_dict(active_es_id, asset, recursive=True)
                             ESDLAsset.add_object_to_area(es_edit, asset, area.id)
                             asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
                             emit(

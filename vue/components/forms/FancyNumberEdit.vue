@@ -129,7 +129,7 @@ export default {
 
         // Then correct for leading zeros (multiples of 0.001)
         let multiplier = NO_MULTIPLIER;
-        zeros = fn.substring(0,4);
+        let zeros = fn.substring(0,4);
         while (zeros == '0.00') {
           multiplier += 1;
           fn = (parseFloat(fn) * 1000).toString();
@@ -137,7 +137,7 @@ export default {
         }
 
         // Then correct for trailing zeros (multiples of 1000)
-        let zeros = fn.slice(-3);
+        zeros = fn.slice(-3);
         while (zeros == '000') {
           multiplier -= 1;
           fn = fn.substring(0, fn.length - 3);

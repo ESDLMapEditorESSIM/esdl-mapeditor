@@ -263,8 +263,10 @@ class PICORooftopPVPotential:
 
     @staticmethod
     def get_building_info_for_emit_list(building):
+        extra_attributes = dict()
+        extra_attributes['assetType'] = building.assetType
         return ['point', building.name, building.id, type(building).__name__,
-                        [building.geometry.lat, building.geometry.lon], True, {}]
+                        [building.geometry.lat, building.geometry.lon], True, {}, extra_attributes]
 
     @staticmethod
     def convert_potential(esh, active_es_id, pot, add_to_building, percentage, asset_list):
@@ -315,7 +317,9 @@ class PICORooftopPVPotential:
         port_list = [{'name': pv_outport.name, 'id': pv_outport.id, 'type': type(pv_outport).__name__, 'conn_to': []}]
         capability_type = ESDLAsset.get_asset_capability_type(pv_installation)
         tooltip_asset_attrs = get_tooltip_asset_attrs(pv_installation, 'marker')
+        extra_attributes = dict()
+        extra_attributes['assetType'] = pv_installation.assetType
         asset_list.append(['point', 'asset', pv_installation.name, pv_installation.id,
                            type(pv_installation).__name__, [pv_geometry.lat, pv_geometry.lon],
-                           tooltip_asset_attrs, 'e', port_list, capability_type])
+                           tooltip_asset_attrs, 'e', port_list, capability_type, extra_attributes])
         return pv_installation

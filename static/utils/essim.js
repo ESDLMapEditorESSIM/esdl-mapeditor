@@ -15,7 +15,9 @@
  */
 
 ESSIM_simulation_URL_prefix = '/';
-var attempt = 0;                // number of retries after an error occurs with the simulation_progress query
+var essim_attempt = 0;                // number of retries after an error occurs with the simulation_progress query
+const max_essim_attempt = 30;
+var wait_essim_preprocess = 0;
 
 // ------------------------------------------------------------------------------------------------------------
 //   ESSIM validation
@@ -314,11 +316,12 @@ function run_ESSIM_simulation() {
     document.getElementById('simulations_list_div').style.display = 'none';
 
     simulation_progress_div = document.getElementById('simulation_progress_div');
+    simulation_progress_div.innerHTML = '<p id="wait_for_essim"></p>'
     table = '<div id="simulation_progress"><table>';
     table = table + '<tr><td width=180>Progress</td>';
     table = table + '<td id="progress_percentage">0%</td></tr>';
     table += '</table></div>';
-    simulation_progress_div.innerHTML = table;
+    simulation_progress_div.innerHTML += table;
 
     simulation_progress_div.innerHTML += '<p id="dashboard_url"></p>';
     simulation_progress_div.innerHTML += '<p id="simulationRun"></p>';
@@ -346,7 +349,8 @@ function run_ESSIM_simulation() {
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
         sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis,
         essim_loadflow: essim_loadflow});
-    attempt = 0;
+    essim_attempt = 0;
+    wait_essim_preprocess = 0;
     setTimeout(poll_simulation_progress, 1000);
 }
 
@@ -362,11 +366,12 @@ function poll_simulation_progress() {
     $.ajax({
         url: ESSIM_simulation_URL_prefix + 'simulation_progress',
         success: function(data){
-            // console.log(data);
+            console.log(data);
             if (data["status"] == "ERROR") {
                 let description = data["description"];
                 let more_info = data["moreInfo"];
 
+                document.getElementById('wait_for_essim').innerHTML = '';
                 document.getElementById('essim_title').innerHTML = '<h1>ESSIM simulation error</h1>';
                 document.getElementById('simulation_progress').innerHTML = '<p style="font-size:70%;" title="'+more_info+'">'+description+'</p>';
 
@@ -388,12 +393,20 @@ function poll_simulation_progress() {
                 document.getElementById('button_close_simulation_dialog').style.display = "block";
                 document.getElementById('button_cancel_simulation').style.display = "none";
 
-                attempt = 0;
+                essim_attempt = 0;
+                wait_essim_preprocess = 0;
                 let selected_kpis = $('#essim_kpi_select').val();
                 if (selected_kpis && selected_kpis.length > 0)
                     poll_kpi_progress();
             } else {
                 let percentage = Math.round(parseFloat(data["percentage"]) * 100);
+                if (percentage == 0) {
+                    wait_essim_preprocess += 1;
+                    document.getElementById('wait_for_essim').innerHTML =
+                        'Waiting for ESSIM preprocessing, caching of profiles... ('+ wait_essim_preprocess +')';
+                } else {
+                    document.getElementById('wait_for_essim').innerHTML = '';
+                }
                 let progress = document.getElementById('progress_percentage');
                 progress.innerHTML =  percentage + '%';
                 setTimeout(poll_simulation_progress, 1000);
@@ -404,11 +417,16 @@ function poll_simulation_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt<5) {
-                attempt = attempt + 1;
+            if (essim_attempt < max_essim_attempt) {
+                essim_attempt = essim_attempt + 1;
+                document.getElementById('wait_for_essim').innerHTML =
+                    'Waiting for ESSIM, retrying ' + essim_attempt + '/' + max_essim_attempt + ' times...';
                 setTimeout(poll_simulation_progress, 1000);
             } else {
-                attempt = 0;
+                document.getElementById('wait_for_essim').innerHTML =
+                    'ESSIM time out, contact system administrator';
+                essim_attempt = 0;
+                wait_essim_preprocess = 0;
             }
         }
     });
@@ -469,11 +487,11 @@ function poll_kpi_progress() {
             console.log(xhr.status);
             console.log(thrownError);
 
-            if (attempt<5) {
-                attempt = attempt + 1;
+            if (essim_attempt < max_essim_attempt) {
+                essim_attempt = essim_attempt + 1;
                 setTimeout(poll_kpi_progress, 1000);
             } else {
-                attempt = 0;
+                essim_attempt = 0;
             }
         }
     });

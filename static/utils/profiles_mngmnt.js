@@ -107,7 +107,7 @@ class Profiles {
             $select.change(function() {profiles_plugin.select_profile();});
             div.append($select);
 
-            let $remove_button = $('<button>').text('Remove').click(function() {profiles_plugin.click_remove();})
+            let $remove_button = $('<button>').attr('id', 'button_remove_profile').text('Remove').click(function() {profiles_plugin.click_remove();})
             div.append($remove_button);
 
             div.append($('<p>'));
@@ -176,10 +176,10 @@ class Profiles {
 
             div.append($table);
 
-            let $add_button = $('<button>').text('Add profile').click(function() {profiles_plugin.click_add();})
-            let $save_button = $('<button>').text('Save profile').click(function() {profiles_plugin.click_save();})
-            let $test_button = $('<button>').text('Test').click(function() {profiles_plugin.click_test();})
-            let $clear_button = $('<button>').text('Clear').click(function() {profiles_plugin.click_clear();})
+            let $add_button = $('<button>').attr('id', 'button_add_profile').text('Add profile').click(function() {profiles_plugin.click_add();})
+            let $save_button = $('<button>').attr('id', 'button_save_profile').text('Save profile').click(function() {profiles_plugin.click_save();})
+            let $test_button = $('<button>').attr('id', 'button_test_profile').text('Test').click(function() {profiles_plugin.click_test();})
+            let $clear_button = $('<button>').attr('id', 'button_clear_profile').text('Clear').click(function() {profiles_plugin.click_clear();})
             div.append($('<p>').append($add_button).append($save_button).append($test_button).append($clear_button));
 
             div.append($('<div>').attr('id', 'profile_graph'));
@@ -283,8 +283,6 @@ class Profiles {
         let selected_option = $('#profile_select').val();
         let profile_info = profiles_plugin.profiles_list['profiles'][selected_option];
 
-        // console.log(profile_info);
-
         $('#input_prof_uiname').attr('value', profile_info.profile_uiname);
         $('#input_prof_db').attr('value', profile_info.database);
         $('#input_prof_meas').attr('value', profile_info.measurement);
@@ -300,16 +298,59 @@ class Profiles {
         let $select = $('#add_to_group_select');
         let setting_type = profile_info.setting_type;
         let selected_group = null;
+        let read_only = false;
         if (setting_type == 'project') {
             selected_group = profile_info.project_name;
         } else {
             for (let i=0; i<profiles_plugin.profiles_list['groups'].length; i++) {
                 if (profiles_plugin.profiles_list['groups'][i].setting_type == setting_type) {
                     selected_group = profiles_plugin.profiles_list['groups'][i].project_name;
+                    // system profiles can be readonly depending on user who logs in
+                    read_only = profiles_plugin.profiles_list['groups'][i].readonly;
                 }
             }
         }
         $select.val(selected_group);
+
+        if (read_only) {
+            $('#input_prof_uiname').attr('disabled', true);
+            $('#input_prof_db').attr('disabled', true);
+            $('#input_prof_meas').attr('disabled', true);
+            $('#input_prof_field').attr('disabled', true);
+            $('#input_prof_mult').attr('disabled', true);
+            $('#input_prof_type').attr('disabled', true);
+            $('#input_prof_startdt').attr('disabled', true);
+            $('#input_prof_enddt').attr('disabled', true);
+            $('#input_prof_host').attr('disabled', true);
+            $('#input_prof_port').attr('disabled', true);
+            $('#input_prof_embedurl').attr('disabled', true);
+            $('#add_to_group_select').attr('disabled', true);
+            
+            $('#button_add_profile').attr('disabled', true);
+            $('#button_remove_profile').attr('disabled', true);
+            $('#button_save_profile').attr('disabled', true);
+            $('#button_test_profile').attr('disabled', true);
+            $('#button_clear_profile').attr('disabled', true);
+        } else {
+            $('#input_prof_uiname').attr('disabled', false);
+            $('#input_prof_db').attr('disabled', false);
+            $('#input_prof_meas').attr('disabled', false);
+            $('#input_prof_field').attr('disabled', false);
+            $('#input_prof_mult').attr('disabled', false);
+            $('#input_prof_type').attr('disabled', false);
+            $('#input_prof_startdt').attr('disabled', false);
+            $('#input_prof_enddt').attr('disabled', false);
+            $('#input_prof_host').attr('disabled', false);
+            $('#input_prof_port').attr('disabled', false);
+            $('#input_prof_embedurl').attr('disabled', false);
+            $('#add_to_group_select').attr('disabled', false);
+
+            $('#button_add_profile').attr('disabled', false);
+            $('#button_remove_profile').attr('disabled', false);
+            $('#button_save_profile').attr('disabled', false);
+            $('#button_test_profile').attr('disabled', false);
+            $('#button_clear_profile').attr('disabled', false);
+        }
 
         if (profile_info.embedUrl) {
             $('#profile_graph').html('<iframe width="100%" height="200px" src="'+profile_info.embedUrl+'"></iframme>');
@@ -451,7 +492,7 @@ class Profiles {
             // console.log(profile_group_list);
             let $select = $('<select>').attr('id', 'profile_group_select');
             for (let gr=0; gr<profile_group_list.length; gr++) {
-                let $option = $('<option>').val(profile_group_list[gr].name).text(profile_group_list[gr].name);
+                let $option = $('<option>').attr('disabled', profile_group_list[gr].readonly).val(profile_group_list[gr].name).text(profile_group_list[gr].name);
                 // console.log(profile_group_list[gr]);
                 $select.append($option);
             }
@@ -464,12 +505,12 @@ class Profiles {
         div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_sum')
           .attr('name', 'radio_profile_type').attr('value', 'sum'))
           .append($('<label>').attr('for', 'radio_pt_sum')
-          .text('Profile values will be summed when aggregating over time (e.g. profiles contain energy values'))
+          .text('Profile values will be summed when aggregating over time (e.g. profiles contain energy values)'))
           .append('<br>');
         div.append($('<input>').attr('type', 'radio').attr('id', 'radio_pt_avg')
           .attr('name', 'radio_profile_type').attr('value', 'mean').prop('checked',true))
           .append($('<label>').attr('for', 'radio_pt_avg')
-          .text('Profile values will be averaged when aggregating over time (e.g. profiles contain power or temperature values'))
+          .text('Profile values will be averaged when aggregating over time (e.g. profiles contain power or temperature values)'))
           .append('<br>');
     }
 

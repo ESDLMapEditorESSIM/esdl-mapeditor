@@ -321,8 +321,8 @@ function set_marker_handlers(marker) {
                     icon: 'icons/Costs.png',
                     text: 'Set marginal costs...',
                     callback: function(e) {
-                        socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
-                        //marginal_costs_window(asset_id);
+                        // socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
+                        marginal_costs_window(asset_id);
                     }
                 });
             }
@@ -353,6 +353,7 @@ function set_marker_handlers(marker) {
         var marker = e.target;
         var pos = marker.getLatLng();
         update_marker_ports(marker);
+        console.log('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
         socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
 
         // console.log(e.oldLatLng.lat);
@@ -572,25 +573,25 @@ function set_line_handlers(line) {
 
 function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping, tt_format) {
     // Format of asset_info
-    // 0         1          2     3   4           5          6      7      8        9
-    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+    // 0         1          2     3   4           5          6      7      8        9           10
+    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
     // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
+    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
     // 'point'   potential  name  id  class_name  [lat,lon]
     // 'polygon' potential  name  id  class_name  [...]
+    let classname = '';
+    let extra_attrs = null;
     if ((asset_info[0] == 'point' && asset_info[1] == 'asset' && asset_info[4] != 'Joint') ||
         (asset_info[0] == 'polygon' && asset_info[1] == 'asset' )) {
-        capability = asset_info[9];
-        classname = 'circle ' + capability;
+        classname = 'circle ' + asset_info[9];
         if (!add_to_building) classname = 'zoom '+classname;
+        extra_attrs = asset_info[10];
     } else if (asset_info[1] == 'potential') {
         classname = 'circle Potential';
         if (!add_to_building) classname = 'zoom '+classname;
-    } else {
-        classname = '';
     }
     let img_class = "circle-img";
-    if (!add_to_building) img_class = 'zoom '+img_class;
+    if (!add_to_building) img_class = 'hide_when_small zoom '+img_class;
     if (asset_info[1] == 'asset') {
         if (asset_info[7] == 'o') {
             classname += ' Optional';       // will become 'Producer Optional'
@@ -605,7 +606,12 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
     if (!assets_for_icons.includes(asset_info[4])) {
         imgsrc = drawTextImage(getAbbrevation(asset_info[4]));
     }
-  
+    if (custom_icons_plugin.custom_icons) {
+        let custom_icon = custom_icons_plugin.get_icon_for(asset_info[4], extra_attrs);
+        if (custom_icon) {
+            imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
+        }
+    }
     var divicon = L.divIcon({
         className: classname,
         html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
@@ -638,7 +644,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -679,7 +685,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         polygon.title = title;
         polygon.id = asset_info[3];
-        polygon.esid = es_id;
+        polygon.esid = es_bld_id;
         polygon.name = asset_info[2];
         polygon.type = asset_info[4];
         polygon.asspot = asset_info[1];
@@ -697,7 +703,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -740,7 +746,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         // line.bindPopup(asset_info[4]+': '+asset_info[2]+ '('+ asset_info[3] + ')');
         line.title = title;
         line.id = asset_info[3];
-        line.esid = es_id;
+        line.esid = es_bld_id;
         line.ports = asset_info[8];
         line.type = asset_info[4];
         line.asspot = asset_info[1];
@@ -852,8 +858,14 @@ function update_line_color(line_layer) {
 // ------------------------------------------------------------------------------------------------------------
 //  Calculates leaflet sizes of assets, joints, ...
 // ------------------------------------------------------------------------------------------------------------
-function set_leaflet_sizes() {
-    let zoom_level = map.getZoom();
+// optional map reference (e.g. building editor map)
+function set_leaflet_sizes(mp) {
+    let active_map = map;
+    if (mp !== undefined) {
+        active_map = mp;
+    }
+    map_id = active_map.getContainer().id;
+    let zoom_level = active_map.getZoom();
     let size = Math.pow(zoom_level/8+1,3);
 
     /* Markers */
@@ -865,7 +877,7 @@ function set_leaflet_sizes() {
     let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
     let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
 
-    $('#mapid .zoom.circle').css({
+    $('#'+map_id+' .zoom.circle').css({
         'width': size_marker,
         'height': size_marker,
         'line-height': size_marker,
@@ -873,22 +885,27 @@ function set_leaflet_sizes() {
         'margin-top': margin_marker,
         'border-width': marker_border
     });
-    $('#mapid .image-div').css({'text-align':'center'});
-    $('#mapid .zoom.circle-img').css({'width':size_image, 'height':size_image});
+    $('#'+map_id+' .image-div').css({'text-align':'center'});
+    $('#'+map_id+' .zoom.circle-img').css({'width':size_image, 'height':size_image});
+
+    if (zoom_level < 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'none'}); }
+    if (zoom_level >= 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'inline'}); }
 
     /* Joints */
-    if (size/3 < 5) size_joint = 5; else size_joint = size/3;
+    if (size/3 < 3) size_joint = 3; else size_joint = size/3;
     let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
     let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
 
-    $('#mapid .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
-    $('#mapid .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+    $('#'+map_id+' .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+    $('#'+map_id+' .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
 
     /* Lines */
     let size_line = 2;
     if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
-    $('#mapid .zoomline').css({'stroke-width': size_line + 'px'});
-    $('#mapid .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
+    $('#'+map_id+' .zoomline').css({'stroke-width': size_line + 'px'});
+    $('#'+map_id+' .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
-    set_port_size_and_position();       /* Ports */
+    set_port_size_and_position(active_map);       /* Ports */
+
+    // todo create pane for select line when pipes and cables are supported in the building editor
 }

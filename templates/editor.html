@@ -213,6 +213,7 @@
     <script type="text/javascript" src="./utils/table_editor.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
+    <script type="text/javascript" src="./utils/custom_icons.js"></script>
 
     <!-- These should be the last ones -->
     <script type="text/javascript" src="./utils/ui_settings.js"></script>
@@ -676,10 +677,10 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('add_esdl_objects', function(options) {
                 // Format of list items
-                // 0         1          2     3   4           5          6      7      8        9
-                // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+                // 0         1          2     3   4           5          6      7      8        9           10
+                // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
                 // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-                // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
+                // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
                 // 'point'   potential  name  id  class_name  [lat,lon]
                 // 'polygon' potential  name  id  class_name  [...]
 
@@ -720,9 +721,8 @@
                     map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
                 }
 
-                if (!add_to_building) {
-                    set_leaflet_sizes();
-                }
+                // Ewoud: should also work with building editor now...
+                set_leaflet_sizes();
             });
 
             // deletes an esdl_object in the active layer
@@ -737,9 +737,9 @@
 
             socket.on('add_building_objects', function(options) {
                 // Format of list items
-                // 0         1           2         3                    4                             5                   6
-                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs
-                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs
+                // 0         1           2         3                    4                             5                   6     7
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs
 
                 // hide_loader();
                 // console.log(options);
@@ -751,7 +751,12 @@
                 for (let i = 0; i<list.length; i++) {
                     classname = 'zoom circle Building';
                     imgsrc = 'images/' + list[i][3] + '.png';
-
+                    if (custom_icons_plugin.custom_icons) {
+                        let custom_icon = custom_icons_plugin.get_icon_for(list[i][3], list[i][7]);
+                        if (custom_icon) {
+                            imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
+                        }
+                    }
                     var divicon = L.divIcon({
                         className: classname,
                         html: '<div class="image-div" style="font-size:0px"><img class="zoom circle-img" src="' + imgsrc + '"></img></div>',
@@ -830,9 +835,15 @@
                 update_area_bld_list_select();
             });
 
-            socket.on('clear_connections', function() {
+            socket.on('clear_connections', function(message) {
+                let id = active_layer_id;
+                if (message && message.id) {
+                    id = message.id;
+                    console.log("Clear connections for id:", id);
+                }
+                console.log('clear_connections', id)
                 clear_layer = true;
-                clear_layers(active_layer_id, 'connection_layer');
+                clear_layers(id, 'connection_layer');
                 clear_layer = false;
             });
 
@@ -844,7 +855,7 @@
 
                 es_bld_id = es_id;
                 if (add_to_building) {
-                   es_bld_id = bld_edit_id;
+                   es_bld_id = bld_edit_id; // global variable indicating the currently edited building
                 }
 
                 carrier_info_mapping = get_carrier_info_mapping(es_id);
@@ -907,8 +918,11 @@
                             icon: 'icons/Delete.png',
                             text: 'Delete connection',
                             callback: function(e) {
-                                console.log(e, line);
-                                socket.emit('command', {'cmd': 'remove_connection_portids', 'from_port_id': line.from_port_id, 'to_port_id': line.to_port_id });
+                                //console.log(e, line, bld_edit_id);
+                                socket.emit('command', {'cmd': 'remove_connection_portids',
+                                    'from_port_id': line.from_port_id, 'to_port_id': line.to_port_id,
+                                    'building_id': bld_edit_id});
+                                    // building_id defines if the building editor is open or not.
                             }
                        });
                     }

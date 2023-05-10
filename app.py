@@ -86,6 +86,7 @@ from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from src.release_notes import ReleaseNotes
+from src.custom_icons import CustomIcons
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -105,7 +106,6 @@ if settings.settings_storage_config["host"] is None or settings.settings_storage
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
 settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
-wms_layers = WMSLayers(settings_storage)
 
 
 # handler to retrieve ESDL documentation
@@ -154,6 +154,7 @@ executor = Executor(app)
 
 #extensions
 schedule_session_clean_up()
+wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
@@ -189,6 +190,7 @@ TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
+custom_icons = CustomIcons(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -818,9 +820,10 @@ def remove_ab_from_area_bld_list(ab_id, ab_list):
 #         'to-port-id': to_port_id, 'to-asset-id': to_asset_id, 'to-asset-coord': to_asset_coord})
 
 
-def update_asset_connection_locations(ass_id, lat, lon):
+def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
+    ass_id = asset.id
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             c['from-asset-coord'] = (lat, lon)
@@ -828,7 +831,14 @@ def update_asset_connection_locations(ass_id, lat, lon):
             c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')   # clear current active layer connections
-    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+    add_to_building = False
+    if asset.containingBuilding:
+        # building editor is open, so only update building connections.
+        building = asset.containingBuilding
+        bld_info = get_building_information(building)
+        conn_list = bld_info["conn_list"]
+        add_to_building = True
+    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list, 'add_to_building': add_to_building})
 
 
 def update_transport_connection_locations(ass_id, asset, coords):
@@ -1103,7 +1113,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             tooltip_asset_attrs = get_tooltip_asset_attrs(joint, 'marker')
             esdl_assets_to_be_added.append(['point', 'asset', joint.name, joint.id, type(joint).__name__,
                                             [middle_point.lat, middle_point.lon], tooltip_asset_attrs, state, port_list,
-                                            capability_type])
+                                            capability_type, {}])
 
             conn_list.append({'from-port-id': new_port2_id, 'from-port-carrier': carrier_id,
                               'from-asset-id': new_cond1_id, 'from-asset-coord': (middle_point.lat, middle_point.lon),
@@ -1164,11 +1174,11 @@ def update_coordinates(message):
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
-            update_asset_connection_locations(obj_id, coords['lat'], coords['lng'])
+            update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
-            # TODO: Check if this is still required
-            if message['asspot'] == 'building':
-                send_alert("Assets in building with locations are not updated yet")
+            # TODO: Check if this is still required: Ewoud: No
+            #if message['asspot'] == 'building':
+            #    send_alert("Assets in building with locations are not updated yet")
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1426,6 +1436,18 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
         ci.marginalCosts = mc
 
     mc.value = marginal_costs
+
+
+def remove_marginal_costs_for_asset(asset_id):
+    active_es_id = get_session('active_es_id')
+    esh = get_handler()
+    asset = esh.get_by_id(active_es_id, asset_id)
+
+    ci = asset.costInformation
+    if ci:
+        mc = ci.marginalCosts
+        if mc:
+            mc.delete()
 
 
 def get_marginal_costs_for_asset(asset_id):
@@ -1849,17 +1871,21 @@ def process_command(message):
                             {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids,
                              'carrier': carrier_id})
 
+                # Collect extra attributes that might be required to draw specific icons, ...
+                extra_attributes = dict()
+                extra_attributes['assetType'] = asset.assetType
+
                 if isinstance(asset, esdl.AbstractBuilding):
                     if isinstance(geometry, esdl.Point):
                         buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__,
                                                            [shape['coordinates']['lat'], shape['coordinates']['lng']],
-                                                           False, {}])
+                                                           False, {}, extra_attributes])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                         buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
-                                                           boundary["coordinates"], False, {}])
+                                                           boundary["coordinates"], False, {}, extra_attributes])
                     emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list,
                                                   'zoom': False})
                 else:
@@ -1870,7 +1896,8 @@ def process_command(message):
                         add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__,
                                                        [shape['coordinates']['lat'], shape['coordinates']['lng']],
-                                                       tooltip_asset_attrs, state, port_list, capability_type])
+                                                       tooltip_asset_attrs, state, port_list, capability_type,
+                                                       extra_attributes])
                     elif isinstance(geometry, esdl.Polygon):
                         coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
                         coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
@@ -1879,7 +1906,7 @@ def process_command(message):
                         add_spatial_attributes(asset, tooltip_asset_attrs)
                         asset_to_be_added_list.append(
                             ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
-                             tooltip_asset_attrs, state, port_list, capability_type])
+                             tooltip_asset_attrs, state, port_list, capability_type, extra_attributes])
                     elif isinstance(geometry, esdl.Line):
                         coords = []
                         for point in geometry.point:
@@ -2073,7 +2100,7 @@ def process_command(message):
                                   'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2.id,
                                   'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
                 conn_list.append(conn_message)
-                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message]})
+                emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message], "add_to_building": add_to_building})
 
                 # update ports of assets that are connected
 
@@ -2516,19 +2543,20 @@ def process_command(message):
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
         emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
-    if message['cmd'] == 'remove_connection_portids':
+    if message['cmd'] == 'remove_connection_portids': # user clicked remove connection by right-clicking on connection
+        building_id = message['building_id'] if 'building_id' in message else None
         from_port_id = message['from_port_id']
-        from_port = esh.get_by_id(es_edit.id, from_port_id)
+        from_port: esdl.Port = esh.get_by_id(es_edit.id, from_port_id)
         to_port_id = message['to_port_id']
-        to_port = esh.get_by_id(es_edit.id, to_port_id)
+        to_port: esdl.Port = esh.get_by_id(es_edit.id, to_port_id)
         from_port.connectedTo.remove(to_port)
 
         from_asset_id = from_port.eContainer().id
         to_asset_id = to_port.eContainer().id
 
         # refresh connections in gui
-        active_es_id = get_session('active_es_id')
-        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        #active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
         new_list = []
         #print(conn_list)
         for conn in conn_list:
@@ -2541,27 +2569,35 @@ def process_command(message):
                 new_list.append(conn)  # add connections that we are not interested in
             else:
                 print(' - removed {}'.format(conn))
-        set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
-        # TODO: send es.id with this message?
-        emit('clear_connections')   # clear current active layer connections
-        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
+        set_session_for_esid(es_edit.id, 'conn_list', new_list)  # set new connection list
+        if building_id:
+            # building editor is open, so only update building connections.
+            building = esh.get_by_id(es_edit.id, building_id)
+            bld_info = get_building_information(building)
+            bld_conn_list = bld_info["conn_list"]
+            emit('clear_connections', {'id': building_id})   # clear current active layer connections
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': bld_conn_list, 'add_to_building': True})
+        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+            # only clear main map connections if not both assets are in a building
+            emit('clear_connections', {'id': active_es_id})   # clear current active layer connections
+            emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
     if message['cmd'] == 'remove_connection':
         # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
-        #                         to_asset_id: to_asset_id, to_port_id: to_port_id});
+        #                         to_asset_id: to_asset_id, to_port_id: to_port_id, 'building_id': building_id});
         from_asset_id = message['from_asset_id']
         from_port_id = message['from_port_id']
         from_port = esh.get_by_id(es_edit.id, from_port_id)
         to_asset_id = message['to_asset_id']
         to_port_id = message['to_port_id']
+        building_id = message['building_id'] if 'building_id' in message else None
         to_port = esh.get_by_id(es_edit.id, to_port_id)
         from_port.connectedTo.remove(to_port)
 
         # refresh connections in gui
-        active_es_id = get_session('active_es_id')
-        conn_list = get_session_for_esid(active_es_id, 'conn_list')
+        #active_es_id = get_session('active_es_id')
+        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
         new_list = []
-        #print(conn_list)
         for conn in conn_list:
             if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
                     conn['to-port-id'] != to_port_id or conn['to-asset-id'] != to_asset_id) and \
@@ -2574,8 +2610,19 @@ def process_command(message):
                 print(' - removed {}'.format(conn))
         set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
         # TODO: send es.id with this message?
-        emit('clear_connections')   # clear current active layer connections
-        emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
+        if building_id:
+            # building editor is open, so only update building connections.
+            building = esh.get_by_id(es_edit.id, building_id)
+            bld_info = get_building_information(building)
+            conn_list = bld_info["conn_list"]
+            emit('clear_connections', {'id': building_id})   # clear connection of building editor
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list, 'add_to_building': True})
+
+        # always clear the main layer, as the connection edited can be at two maps at the same time
+        # only clear main map if the assets are not part of a containingBuilding
+        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+            emit('clear_connections', {'id': es_edit.id})   # clear main layer layer connections
+            emit('add_connections', {'es_id': es_edit.id, 'conn_list': new_list, 'add_to_building': False})
 
     if message['cmd'] == 'set_carrier':
         asset_id = message['asset_id']
@@ -2726,15 +2773,19 @@ def process_command(message):
         asset_id = message['asset_id']
         remove_control_strategy_for_asset(asset_id)
 
-    if message['cmd'] == 'set_marginal_costs_get_info':
-        asset_id = message['asset_id']
-        mc = get_marginal_costs_for_asset(asset_id)
-        emit('marginal_costs', {'asset_id': asset_id, 'mc': mc})
+    # if message['cmd'] == 'set_marginal_costs_get_info':
+    #     asset_id = message['asset_id']
+    #     mc = get_marginal_costs_for_asset(asset_id)
+    #     emit('marginal_costs', {'asset_id': asset_id, 'mc': mc})
 
     if message['cmd'] == 'set_marg_costs':
         asset_id = message['asset_id']
         mc = str2float(message['marg_costs'])
         set_marginal_costs_for_asset(asset_id, mc)
+
+    if message['cmd'] == 'remove_marg_costs':
+        asset_id = message['asset_id']
+        remove_marginal_costs_for_asset(asset_id)
 
     if message['cmd'] == 'layer':
         pass
@@ -2777,33 +2828,6 @@ def process_command(message):
         #     calc_ESSIM_KPIs.submit(es_edit, simulation_run, influxdb_startdate, influxdb_enddate)
         # else:
         #     send_alert('No simulation id defined - run an ESSIM simulation first')
-
-    if message['cmd'] == 'add_layer':
-        id = message['id']
-        descr = message['descr']
-        url = message['url']
-        name = message['name']
-        setting_type = message['setting_type']
-        project_name = message['project_name']
-        legend_url = message['legend_url']
-        visible = message['visible']
-
-        layer = {
-            "description": descr,
-            "url": url,
-            "layer_name": name,
-            "setting_type": setting_type,
-            "project_name": project_name,
-            "legend_url": legend_url,
-            "layer_ref": None,
-            "visible": visible
-        }
-
-        wms_layers.add_wms_layer(id, layer)
-
-    if message['cmd'] == 'remove_layer':
-        id = message['id']
-        wms_layers.remove_wms_layer(id)
 
     if message['cmd'] == 'get_es_info':
         attributes = [
@@ -2978,7 +3002,6 @@ def process_command(message):
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
         esh.remove_energy_system(es_id=remove_es_id)
-
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
@@ -3233,7 +3256,10 @@ def initialize_app():
         last_es = es_list[-1]
         set_session('active_es_id', last_es.id)
     else:
+        # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in esh list - Edwin and Ewoud discuss!!")
+        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
+                                       esdlVersion=esdl_doc.get_esdl_version())
 
     es_info_list = {}
     set_session("es_info_list", es_info_list)

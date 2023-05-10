@@ -5,6 +5,7 @@
  */
 import {createApp} from "vue";
 import ControlStrategy from './apps/ControlStrategy';
+import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
@@ -15,6 +16,7 @@ import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import AssetTableEditor from './apps/AssetTableEditor';
+import CustomIconsSettings from "./apps/CustomIconsSettings";
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -61,6 +63,12 @@ window.control_strategy_window = (object_id) => {
     mountSidebarComponent(ControlStrategy);
 }
 
+window.marginal_costs_window = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(MarginalCostsEdit);
+}
+
 window.carriers_window = () => {
     mountSidebarComponent(Carriers);
 }
@@ -98,6 +106,10 @@ window.activate_asset_draw_toolbar_edr_assets_settings = () => {
 window.activate_asset_draw_toolbar_standard_assets_settings = () => {
     mountSettingsComponent(AssetDrawToolbarStandardAssetsSettings);
     // mountApp(AssetDrawToolbarStandardAssetsSettings, '#settings_module_contents')
+}
+
+window.activate_custom_icons_settings = () => {
+    mountSettingsComponent(CustomIconsSettings);
 }
 
 window.environmental_profiles = () => {

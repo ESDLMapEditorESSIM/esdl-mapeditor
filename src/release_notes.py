@@ -26,6 +26,57 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "23.3.0",
+        "date": "2023-4-5T17:02:00Z",
+        "general_message": "On April 5th 2023, we've released the new ESDL MapEditor version 23.3.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Update ESDL version to v2303",
+                    "Support for custom icons",
+                    "Allow editing of WMS layer configurations",
+                    "Improve editing of marginal costs (delete is now possible too)"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix small errors with missing units",
+                    "Fix error for loading an ESDL file with an error in it"
+                ]
+            },
+        ]
+    },
+    {
+        "version": "22.10.0",
+        "date": "2022-10-31T22:02:00Z",
+        "general_message": "On October 31st 2022, we've released the new ESDL MapEditor version 22.10.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for carrier costs (SingleValue and InfluxDBProfile)",
+                    "Update ESDL version to v2210",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Improve browser memory usage when loading very large ESDLs",
+                    "Fixed some things handling instances of type esdl.Potential",
+                    "Improved interaction with ESSIM during preprocessing and errors",
+                    "Fixed frontend error during editing asset properties",
+                    "Fixed showing connection lines in correct map",
+                    "Fixed lots of functionality in building editor",
+                    "Refresh ESDL when ESDL browser is closed",
+                ]
+            },
+        ]
+    },
+    {
         "version": "22.7.0",
         "date": "2022-07-02T22:15:00Z",
         "general_message": "On July 2nd 2022, we've released the new ESDL MapEditor version 22.7.0. " +

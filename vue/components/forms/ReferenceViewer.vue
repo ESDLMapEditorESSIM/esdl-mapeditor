@@ -7,13 +7,13 @@
   <a-col :span="15 - nrButtons*2">        
     <span> {{ ref.value.repr }}</span>
   </a-col>
-  <a-col v-if="ref.value.repr !== null && !ref.eopposite" :span="2">
+  <a-col v-if="ref.value.repr !== null && !ref.eopposite && ref.type == 'Table'" :span="2">
     <a-button size="small" class="align-right" @click="editRef(ref)">
       <!-- <a-icon type="edit" /> -->
       <i class="fa fa-edit small-icon" />
     </a-button>
   </a-col>   
-  <a-col v-if="(ref.value.repr == null || ref.many) && !ref.eopposite" :span="2">
+  <a-col v-if="((ref.value.repr == null || ref.many) && ref.type == 'Table') && !ref.eopposite" :span="2">
     <a-button size="small" class="align-right" @click="addRef(ref)">
       <!-- <a-icon type="plus-square" /> -->
       <i class="fa fa-plus small-icon" />
@@ -62,8 +62,8 @@ export default {
           return this.type + ' ' + this.camelCase(this.ref.name);
       },
       nrButtons: function() {
-          let canEdit = this.ref.value.repr !== null && !this.ref.eopposite;
-          let canAdd = (this.ref.value.repr == null || this.ref.many) && !this.ref.eopposite;
+          let canEdit = this.ref.value.repr !== null && !this.ref.eopposite && this.ref.type == 'Table';
+          let canAdd = (this.ref.value.repr == null || this.ref.many) && !this.ref.eopposite && this.ref.type == 'Table';
           let canDelete = this.ref.value.repr !== null && !this.ref.eopposite;
           let buttons = 0;
           if (canEdit) buttons++;
