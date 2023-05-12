@@ -816,7 +816,7 @@ def get_building_connections(building):
 #  TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
 # ---------------------------------------------------------------------------------------------------------------------
 @executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+def call_process_energy_system(esh=None, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
     # emit('clear_ui')
     print("Processing energysystems in esh")
     print("active_es_id at start: {}".format(get_session('active_es_id')))
