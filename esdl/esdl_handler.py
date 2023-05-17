@@ -42,6 +42,42 @@ import src.log as log
 logger = log.get_logger(__name__)
 
 
+def patch_esdl():
+    """
+    Patch the ESDL classes to add some functionality that is not in the original ESDL classes.
+
+    TODO: Should be moved to PyESDL.
+    """
+    # fix python builtin 'from' that is also used in ProfileElement as attribute
+    # use 'start' instead of 'from' when using a ProfileElement
+    # and make sure that it is serialized back as 'from' instead of 'from_'
+    esdl.ProfileElement.from_.name = 'from'
+    setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
+    alias('start', esdl.ProfileElement.from_)
+    # also for FromToIntItem
+    esdl.FromToIntItem.from_.name = 'from'
+    setattr(esdl.FromToIntItem, 'from', esdl.FromToIntItem.from_)
+    alias('start', esdl.FromToIntItem.from_)
+    # also for FromToDoubleItem
+    esdl.FromToDoubleItem.from_.name = 'from'
+    setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
+    alias('start', esdl.FromToDoubleItem.from_)
+
+    # add support for cloning of EObjects and coppy.copy()
+    setattr(EObject, '__copy__', support_functions.clone)
+    setattr(EObject, 'clone', support_functions.clone)
+
+    # add support for deepcopying EObjects and copy.deepcopy()
+    setattr(EObject, '__deepcopy__', support_functions.deepcopy)
+    setattr(EObject, 'deepcopy', support_functions.deepcopy)
+
+    # have a nice __repr__ for some ESDL classes when printing ESDL objects (includes all Assets and EnergyAssets)
+    esdl.EnergySystem.__repr__ = \
+        lambda x: '{}: ({})'.format(x.name, EnergySystemHandler.attr_to_dict(x))
+
+    setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)
+
+
 class EnergySystemHandler(EnergyProjectHandlerMixin):
     """
     The handler for energy systems. Also manages other resources through mixins.
@@ -60,32 +96,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
         # add support for undo/redo
         self.change_tracker = ChangeTracker()
 
-        # fix python builtin 'from' that is also used in ProfileElement as attribute
-        # use 'start' instead of 'from' when using a ProfileElement
-        # and make sure that it is serialized back as 'from' instead of 'from_'
-        esdl.ProfileElement.from_.name = 'from'
-        setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
-        alias('start', esdl.ProfileElement.from_)
-        # also for FromToIntItem
-        esdl.FromToIntItem.from_.name = 'from'
-        setattr(esdl.FromToIntItem, 'from', esdl.FromToIntItem.from_)
-        alias('start', esdl.FromToIntItem.from_)
-        # also for FromToDoubleItem
-        esdl.FromToDoubleItem.from_.name = 'from'
-        setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
-        alias('start', esdl.FromToDoubleItem.from_)
-
-        # add support for cloning of EObjects and coppy.copy()
-        setattr(EObject, '__copy__', support_functions.clone)
-        setattr(EObject, 'clone', support_functions.clone)
-
-        # add support for deepcopying EObjects and copy.deepcopy()
-        setattr(EObject, '__deepcopy__', support_functions.deepcopy)
-        setattr(EObject, 'deepcopy', support_functions.deepcopy)
-
-        # have a nice __repr__ for some ESDL classes when printing ESDL objects (includes all Assets and EnergyAssets)
-        esdl.EnergySystem.__repr__ = \
-            lambda x: '{}: ({})'.format(x.name, EnergySystemHandler.attr_to_dict(x))
+        patch_esdl()
 
     def _new_resource_set(self):
         """Resets the resourceset (e.g. when loading a new file)"""

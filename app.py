@@ -387,12 +387,12 @@ def logout():
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
-    esh = get_project_manager()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
 
     try:
         #stream = esh.to_bytesio()
-        my_es = esh.get_active_energy_system()
+        my_es = pm.get_active_energy_system()
         # TODO: Version increment
         # esh.update_version(es_id=active_es_id)
         # if my_es.esdlVersion is None or my_es.esdlVersion == '':
@@ -409,7 +409,7 @@ def download_esdl():
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
-        content = esh.to_string(es_id=my_es.id)
+        content = pm.energy_system_to_string(my_es.id)
 
         #wrapped_io = FileWrapper(stream)
         #logger.debug(content)
@@ -2197,7 +2197,7 @@ def process_command(message):
         param_value = message['param_value']
 
         if asset_id is None:
-            resource = pm.get_resource(active_es_id)
+            resource = pm.get_energy_system_resource_by_id(active_es_id)
             assets = [resource.resolve(fragment)]
         else:
             if isinstance(asset_id, list):
@@ -3216,11 +3216,11 @@ def process_file_command(message):
 #        except Exception as e:
 #            send_alert('Error saving ESDL file to filesystem - exception: '+str(e))
 
-#    if message['cmd'] == 'download_esdl':
-#        esh = get_project_manager()
-#        name = get_session('es_title').replace(' ', '_')
-#
-#        send_ESDL_as_file(esh, name)
+   # if message['cmd'] == 'download_esdl':
+   #     esh = get_project_manager()
+   #     name = get_session('es_title').replace(' ', '_')
+   #
+   #     send_ESDL_as_file(esh, name)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3344,4 +3344,4 @@ if __name__ == '__main__':
     parse_esdl_config()
     logger.info("Starting ESDL MapEditor application")
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)

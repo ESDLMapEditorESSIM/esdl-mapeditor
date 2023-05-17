@@ -42,7 +42,7 @@ The  alternative is to scale the Mapeditor itself, e.g. start several instances 
 
 ### Building docker image
 
-```docker build -t mapeditor -f docker/Dockerfile-uwsgi .```
+```docker build -t mapeditor -f docker/Dockerfile .```
 
 ```docker run --rm -p 8111:8111 mapeditor:latest```
  

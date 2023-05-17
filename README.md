@@ -42,7 +42,7 @@ If you've updated this code and want to test it locally with the rest of the sta
 1. Build your docker container image:
 
    ```shell
-   docker build -t esdl-mapeditor:latest -f docker/Dockerfile-uwsgi .
+   docker build -t esdl-mapeditor:latest -f docker/Dockerfile .
    ```
 
 2. Go to the docker-toolsuite project, and change the docker-compose yaml file to link to the local container image:

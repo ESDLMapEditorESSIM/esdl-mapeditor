@@ -30,8 +30,6 @@ def serialize_variant(pm: ProjectManager, variant: Variant) -> dict:
     """
     Serialize a project variant for usage in the frontend.
     """
-    resource = pm.get_base_variant_resource(variant)
-    es = resource.contents[0]
     active_variant = pm.active_variant
     return dict(
         id=variant.id,

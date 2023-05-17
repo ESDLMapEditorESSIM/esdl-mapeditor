@@ -28,8 +28,10 @@ patch_notification_system() # patch pyecores notification system, so notificatio
 
 class LabelledAction(Command, UserList):
     """
-     Extend the compound class with a label field
-     """
+    A list of commands that are executed as one action. The label is used to describe the action.
+
+    Maps to a HighLevelChange in the ESDLProject model.
+    """
     def __init__(self, label=None, *commands):
         self.label = label
         super().__init__(commands)

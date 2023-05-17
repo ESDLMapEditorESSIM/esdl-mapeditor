@@ -129,7 +129,7 @@ class ESDLDrive:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
                 esh.update_version(es_id=active_es_id)
-                resource: Resource = esh.get_resource(active_es_id)
+                resource: Resource = esh.get_energy_system_resource_by_id(active_es_id)
                 logger.debug('ESDLDrive saving resource {}, commitMessage={}, overwrite={}'.format(resource.uri, commitMessage, overwrite))
 
                 if resource.uri.normalize() == uri:

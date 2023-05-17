@@ -103,7 +103,7 @@ class ESDLBrowser:
             if reference.containment:
                 try:
                     esh.remove_object_from_dict(active_es_id, ref_object, True)
-                    resource = esh.get_resource(active_es_id)
+                    resource = esh.get_energy_system_resource_by_id(active_es_id)
                     fragment = ref_object.eURIFragment()
                     del resource._resolve_mem[fragment]
                 except KeyError as e:
@@ -182,10 +182,10 @@ class ESDLBrowser:
                 the_object = esh.get_by_id(active_es_id, object_id)
             except KeyError:
                 print('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
-                resource = esh.get_resource(active_es_id)
+                resource = esh.get_energy_system_resource_by_id(active_es_id)
                 the_object = resource.resolve(identifier['fragment'])
         else:
-            resource = esh.get_resource(active_es_id)
+            resource = esh.get_energy_system_resource_by_id(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
 
         return the_object
