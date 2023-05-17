@@ -21,6 +21,9 @@ from esdlproject import BaseVariant, Variant
 def get_parent_variant(variant: Variant) -> Union[BaseVariant, Variant]:
     """
     Return the parent variant or the base variant of this variant.
+
+    :param variant: Variant to get the parent variant of.
+    :return: Parent variant or base variant.
     """
     if variant.parentVariant is None and variant.baseVariant is not None:
         return variant.baseVariant
@@ -31,6 +34,10 @@ def get_parent_variant(variant: Variant) -> Union[BaseVariant, Variant]:
 def create_new_variant(parentVariant: Union[BaseVariant, Variant], variant_name: Optional[str] = None) -> Variant:
     """
     Create a new variant under a base variant or variant.
+
+    :param parentVariant: Base variant or variant to create the new variant under.
+    :param variant_name: Name of the new variant.
+    :return: The new variant.
     """
     if variant_name is None:
         variant_name = f"Untitled variant {len(parentVariant.variant) + 1}"
@@ -42,6 +49,9 @@ def create_new_variant(parentVariant: Union[BaseVariant, Variant], variant_name:
 def get_variant_path_list(variant: Variant) -> List[Variant]:
     """
     Calculates the variants between this variant and its base variant and returns them as a list.
+
+    :param variant: Variant to get the path of.
+    :return: List of variants between this variant and its base variant.
     """
     variant_list = [variant]
     current_variant = variant

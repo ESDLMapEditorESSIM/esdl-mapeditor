@@ -27,9 +27,19 @@ def create_empty_energysystem(name, es_description, inst_title, area_title) -> e
 
 
 class ProjectManager:
+    """
+    Class that manages the project and its variants. It is responsible for loading and saving the project,
+    and for keeping track of changes to the project. It also provides functions to apply changes to the project.
+
+    The project manager is responsible for keeping track of the active variant. This is the variant to which
+    changes are applied. The active variant is always a variant that is based on the base variant.
+    """
+
+    # The resource set that contains all resources.
     rset: Final[ResourceSet]
     project_resource: XMLResource
     project: ESDLProject
+    # The change tracker that keeps track of changes.
     changeTracker: Final[ChangeTracker]
     # The currently selected variant to which changes should be applied.
     active_variant: Optional[Variant]
@@ -59,9 +69,11 @@ class ProjectManager:
             self.init_empty_project()
 
     @property
-    def active_tracker(self):
+    def active_tracker(self) -> Tracker:
         """
-        Return the tracker from the currently active variant.
+        Return the tracker from the currently active variant. If no variant is active, the first one is made active.
+
+        :return: the tracker from the currently active variant
         """
         variant_snapshot = self.get_variant_snapshot(self.active_variant)
         active_tracker = self.changeTracker.get_tracker(variant_snapshot)
@@ -70,6 +82,10 @@ class ProjectManager:
         return active_tracker
 
     def init_empty_project(self):
+        """
+        Initialize an empty project. This is called when no project is loaded. It creates a new project with a base variant.
+
+        """
         self.project_resource = self.rset.create_resource(StringURI("test.project"))  # type: ignore
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
         self.project = ESDLProject(name="New ESDL Project", description="Base variant")
@@ -112,6 +128,8 @@ class ProjectManager:
 
         :param uri: a StringURI with a unique uri and the esdl as string
            e.g. StringURI('my_energy_system.esdl', esdl_string)
+
+        :return: the newly created variant.
         """
         if uri.normalize() in self.rset.resources:
             orig_uri = uri.plain
@@ -138,6 +156,12 @@ class ProjectManager:
         )
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:
+        """
+        Retrieve a variant by its id. This is a recursive function which searches through all base variants and their variants.
+
+        :param variant_id: the id of the variant to retrieve
+        :return: the variant with the given id, or None if not found
+        """
         for bv in self.project.baseVariant:
             bv: BaseVariant
             result = self._get_variant_by_id_dfs(bv.variant, variant_id)
@@ -146,6 +170,13 @@ class ProjectManager:
         return None
 
     def _get_variant_by_id_dfs(self, v: List[Variant], variant_id: str) -> Optional[Variant]:
+        """
+        Recursive function to search for a variant by its id. This function is called by get_variant_by_id.
+
+        :param v: the list of variants to search through
+        :param variant_id: the id of the variant to retrieve
+        :return: the variant with the given id, or None if not found
+        """
         if len(v) > 0:
             for variant in v:
                 if variant.id == variant_id:
@@ -155,9 +186,14 @@ class ProjectManager:
                     return result
         return None
 
-    def convertActionToVariantChanges(self, action: LabelledAction, variant: Variant):
+    def convertActionToVariantChanges(self, action: LabelledAction, variant: Variant) -> List[Change]:
         """
         Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
+
+        :param action: the action to convert
+        :param variant: the variant to store the changes in
+
+        :return: a list of changes
         """
         print(
             f'Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})')
@@ -240,6 +276,15 @@ class ProjectManager:
             hlc.change.extend(cleanedChangeList)  # add x-references from deepcopy()
 
     def set_active_variant(self, new_variant: Variant):
+        """
+        Set the active variant. This will also generate a snapshot of the current active variant, if it is not already
+        generated. If the new variant is a child of the current active variant, the snapshot will be used as a base for
+        the new variant. If the new variant is not a child of the current active variant, the snapshot will be used as
+        a base for the new variant, and the changes in the current active variant will be applied on top of the
+        snapshot.
+
+        :param new_variant: the new active variant
+        """
 
         if self.active_variant == new_variant:
             print("set_active_variant(): no change in variant")
@@ -294,12 +339,16 @@ class ProjectManager:
 
                 self.apply_variant_changes(parent_variant, variant_snapshot, True)
 
-    def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool) -> None:
+    def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
         """
         Apply all changes from the given variant to the given resource. The resource should represent an energy system
         which is consequently updated to contain all changes from the variant.
 
         Using the record_changes boolean, we can immediately record the changes to the tracker stack.
+
+        :param variant: the variant to apply
+        :param es: the energy system to apply the changes to
+        :param record_changes: whether to record the changes to the tracker stack
         """
         resource = es.eResource
         tracker = self.changeTracker.get_tracker(resource=resource)
@@ -318,6 +367,12 @@ class ProjectManager:
                 print(f"Fixme: ignoring DetailedChanges at this level")
 
     def processChange(self, change, resource: XMLResource):
+        """
+        Process a change and apply it to the given resource.
+
+        :param change: the change to apply
+        :param resource: the resource to apply the change to
+        """
         print(
             f'Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}')
         if isinstance(change, Set):
@@ -389,7 +444,10 @@ class ProjectManager:
     def get_variant_snapshot(self, variant: Variant) -> esdl.EnergySystem:
         """
         Saves the current active energy system as the variant snapshot for this variant by saving this
-        in a temporary resource
+        in a temporary resource.
+
+        :param variant: the variant to save the snapshot for
+        :return: the snapshot resource
         """
         if variant is None:
             return None
@@ -408,6 +466,10 @@ class ProjectManager:
         return variant.snapshotRef
 
     def _delete_variant_recursive(self, variant: Variant):
+        """
+        Recursively delete a variant and all its subvariants. This will also delete the snapshot of the variant.
+        :param variant: the variant to delete
+        """
         for subvariant in variant.variant:
             self._delete_variant_recursive(subvariant)
         print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
@@ -420,6 +482,10 @@ class ProjectManager:
         parent.variant.remove(variant)
 
     def delete_variant(self, variant: Union[BaseVariant, Variant]):
+        """
+        Delete a variant and all its subvariants. This will also delete the snapshot of the variant.
+        :param variant: the variant to delete
+        """
         for subvariant in variant.variant:
             self._delete_variant_recursive(subvariant)
         print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
@@ -488,6 +554,12 @@ class ProjectManager:
         return project_as_string
 
     def load(self, uri: URI) -> ESDLProject:
+        """
+        Loads a project from a URI and returns the project object.
+
+        :param uri: the URI to load the project from
+        :return: the project object
+        """
         # clear current ResourceSet
         for r_uri, resource in dict(self.rset.resources).items():
             self.rset.remove_resource(resource)
@@ -553,6 +625,12 @@ class ProjectManager:
         return self.base_variant_resources[index]
 
     def get_base_variant_by_id(self, base_variant_id: str) -> Optional[BaseVariant]:
+        """
+        Get the base variant with the given id.
+
+        :param base_variant_id: the id of the base variant
+        :return: the base variant with the given id or None if it does not exist
+        """
         for base_variant in self.project.baseVariant:
             if base_variant.id == base_variant_id:
                 return base_variant
@@ -591,6 +669,13 @@ class ProjectManager:
             return uri.getvalue()
 
     def get_resource(self, es_id=None) -> Optional[Resource]:
+        """
+        Get the resource of the active energy system or the resource of the energy system with the given id. If no
+        energy system with the given id exists, None is returned.
+
+        :param es_id: the id of the energy system to get the resource for
+        :return: the resource of the active energy system or the resource of the energy system with the given id
+        """
         if es_id is None:
             return self.get_active_energy_system()
 
@@ -604,6 +689,9 @@ class ProjectManager:
         """
         Return the undo-redo stack of this EnergySystemHandler for a specific ESDL object (when eobj = not None)
         or by the current active es_id (es_id is not None)
+
+        :param eobj: the ESDL object to get the undo-redo stack for
+        :return: the undo-redo stack of this EnergySystemHandler for a specific ESDL object
         """
         if eobj:
             return self.changeTracker.get_tracker_stack(eobj=eobj)
@@ -613,6 +701,9 @@ class ProjectManager:
     def get_energy_system_by_id(self, es_id: str) -> Optional[esdl.EnergySystem]:
         """
         Attempts to find the energy system with the given ID, by inspecting the snapshots of the variants.
+
+        :param es_id: the id of the energy system to get
+        :return: the energy system with the given id or None if it does not exist
         """
         for base_variant in self.project.baseVariant:
             for variant in base_variant.variant:
@@ -621,9 +712,14 @@ class ProjectManager:
                     return variant.snapshotRef
         return None
 
-    def get_by_id(self, es_id, object_id):
+    def get_by_id(self, es_id: str, object_id: str):
         """
         Get entity from ESDL by ID from the requested energy system.
+
+        :param es_id: the id of the energy system to get the entity from
+        :param object_id: the id of the entity to get
+
+        :return: the entity with the given id
         """
         es = self.get_energy_system_by_id(es_id)
         if es is None:
@@ -640,8 +736,14 @@ class ProjectManager:
         raise KeyError('Can\'t find asset for id={} in uuid_dict of the ESDL model'.format(object_id))
 
 
-
 def resource_as_string(resource: Resource):
+    """
+    Get the string representation of the given resource. If the resource is a StringURI, the value of the StringURI
+    is returned. Otherwise, the resource is saved to a StringURI and the value of the StringURI is returned.
+
+    :param resource: the resource to get the string representation for
+    :return: the string representation of the given resource
+    """
     if isinstance(resource.uri, StringURI):
         uri: StringURI = resource.uri
         resource.save()
