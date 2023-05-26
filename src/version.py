@@ -1,4 +1,4 @@
-__version__ = "23.3.0"
-__long_version__ = "23.3.0-gf74ef7d-main"
-__git_commit__ = "f74ef7dfbcdf36d400422428dec7453a38cf882a"
+__version__ = "23.5.0"
+__long_version__ = "23.5.0-g1ded6dd-main"
+__git_commit__ = "1ded6dd62c5345be51397b1c52a5198ba0d46828"
 __git_branch__ = "main"
