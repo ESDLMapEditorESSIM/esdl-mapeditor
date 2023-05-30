@@ -1,19 +1,34 @@
-FROM python:3.7-slim
+FROM python:3.10-slim
 
+# Install external dependencies.
 RUN apt-get -y update
-RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
-RUN pip install --upgrade pip
+RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl
+
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    apt-get update && apt-get install -y nodejs yarn
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
-COPY requirements.txt /usr/src/app/
-RUN pip install -r requirements.txt
+# Build frontend dependencies.
+COPY yarn.lock package.json vue.config.js babel.config.js /usr/src/app/
+RUN yarn
 
+# Python dependencies.
+COPY requirements.txt /usr/src/app/
+RUN pip install --upgrade pip
+RUN pip install -r requirements-uwsgi.txt
+
+# Add everything in the image.
 COPY . /usr/src/app
-RUN pip install -e src/
-ENV PYTHONPATH=.:/usr/src/app
+RUN yarn build-prod
+ENV PYTHONPATH=.:/usr/src/ap
+
+# Clean up.
+RUN rm -rf node_modules
 
 EXPOSE 8111
 
-CMD python app.py
+CMD cd /usr/src/app && uwsgi docker/uwsgi-long-polling.ini
