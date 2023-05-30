@@ -17,9 +17,9 @@ COPY yarn.lock package.json vue.config.js babel.config.js /usr/src/app/
 RUN yarn
 
 # Python dependencies.
-COPY requirements-uwsgi.txt /usr/src/app/
+COPY requirements.txt /usr/src/app/
 RUN pip install --upgrade pip
-RUN pip install -r requirements-uwsgi.txt
+RUN pip install -r requirements.txt
 
 # Add everything in the image.
 COPY . /usr/src/app
