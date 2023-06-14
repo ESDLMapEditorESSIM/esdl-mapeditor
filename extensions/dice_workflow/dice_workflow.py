@@ -213,14 +213,16 @@ class DiceWorkflow:
                     if essim_export["finished"]:
                         simulation_id = essim_export["simulation_id"]
                         result = retrieve_simulation_from_essim(simulation_id)
-                        export_type = essim_export.get(
-                            "export_type", DiceESSIMExportType.ICE
-                        )
+                        export_type = essim_export.get("export_type")
                         if export_type == DiceESSIMExportType.BUSINESS_CASE:
-                            export_type = "Business Case"
+                            readable_export_type = "Business Case"
+                        else:
+                            readable_export_type = export_type
                         finished_essim_exports.append(
                             dict(
-                                key=simulation_id,
+                                key=f"{simulation_id}_{export_type}",
+                                simulation_id=simulation_id,
+                                readable_export_type=readable_export_type,
                                 export_type=export_type,
                                 date=essim_export.get(
                                     "start_date", datetime.now().isoformat()
@@ -234,7 +236,7 @@ class DiceWorkflow:
                 export_json: ExportEssimDict = request.json
                 # ESSIM simulation ID. We also use this as process id for the download process..
                 simulation_id = export_json["simulation_id"]
-                export_type = export_json["export_type"]
+                readable_export_type = export_json["export_type"]
 
                 self.settings_storage.del_for_current_user(DICE_ESSIM_EXPORTS)
 
@@ -242,13 +244,13 @@ class DiceWorkflow:
                 essim_export: DiceESSIMExport = dict(
                     simulation_id=simulation_id,
                     start_date=datetime.now().isoformat(),
-                    export_type=export_type,
+                    export_type=readable_export_type,
                     end_date=None,
                     failed_msg=None,
                     finished=False,
                     file_paths=None,
                 )
-                essim_export_id = f"{simulation_id}_{export_type}"
+                essim_export_id = f"{simulation_id}_{readable_export_type}"
                 essim_exports[essim_export_id] = essim_export
                 self.settings_storage.set_for_current_user(
                     DICE_ESSIM_EXPORTS, essim_exports
@@ -259,7 +261,7 @@ class DiceWorkflow:
                     _export_energy_system_simulation_task,
                     essim_export_id,
                     simulation_id,
-                    export_type,
+                    readable_export_type,
                     export_json.get("networks"),
                     self.settings_storage,
                 )

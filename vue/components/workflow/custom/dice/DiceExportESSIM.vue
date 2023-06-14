@@ -44,7 +44,7 @@
     <a-table :columns="essim_export_columns" :data-source="essim_exports">
       <template #action="{ record }">
         <span>
-          <a-button type="link" @click="downloadEssimExport(record.key)">Download</a-button>
+          <a-button type="link" @click="downloadEssimExport(record)">Download</a-button>
         </span>
       </template>
       <template #date="{ record }">
@@ -89,8 +89,8 @@ const essim_export_columns = [
   },
   {
     title: 'Type',
-    dataIndex: 'export_type',
-    key: 'export_type',
+    dataIndex: 'readable_export_type',
+    key: 'readable_export_type',
   },
   {
     title: 'Description',
@@ -123,11 +123,13 @@ const onSubmit = async () => {
     simulation_id: simulation_id,
     export_type: export_type.value,
   });
-  startLongProcess("ESSIM export", `/dice_workflow/export_essim/${simulation_id}`, {}, "progress", "message", "failed")
+  startLongProcess("ESSIM export", `/dice_workflow/export_essim/${simulation_id}_${export_type.value}`, {}, "progress", "message", "failed")
   alert("Download process started.");
 }
 
-const downloadEssimExport = async (simulation_id) => {
+const downloadEssimExport = async (record) => {
+  console.log(record)
+  const simulation_id = record.key;
   console.log("Downloading essim export.")
   const response = await doPost(`/dice_workflow/export_essim/${simulation_id}/download`);
   const body = await response.json();
