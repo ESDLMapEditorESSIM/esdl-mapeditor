@@ -94,6 +94,59 @@ function favorite_simulation(sim_id) {
     });
 }
 
+function download_binary_file_from_base64_str(base64_str, file_name, content_type) {
+    if (!content_type) {
+        content_type = 'application/octet-stream';
+    }
+    download_binary_file_from_base64_str_with_type(base64_str, file_name, content_type);
+}
+
+function download_binary_file_from_base64_str_with_type(base64_str, file_name, content_type) {
+    const byte_array = base64_str_to_byte_array(base64_str)
+    const blob = new Blob([byte_array], { 'type': content_type });
+    const a = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = file_name;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+/**
+ * Turn a base64 encoded string back into a binary array. For details see:
+ * http://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
+ * @param {*} base64_str
+ */
+function base64_str_to_byte_array(base64_str) {
+    const byteCharacters = atob(base64_str);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Uint8Array(byteNumbers);
+}
+
+function download_results(sim_id) {
+    show_loader();
+    $.ajax({
+        url: ESSIM_simulation_URL_prefix + 'simulation/' + sim_id + '/download_results',
+        success: function(data_str){
+            hide_loader();
+            if (data_str) {
+                data = JSON.parse(data_str);
+                download_binary_file_from_base64_str(
+                    data.excel_file_b64,
+                    data.filename,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                );
+            }
+        },
+        error: function (){
+            hide_loader();
+        }
+    });
+}
+
 function show_favorites_list(div_id) {
     // console.log('retreiving ESSIM simulations list');
     $.ajax({
@@ -140,6 +193,11 @@ function show_favorites_list(div_id) {
                         let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
                             .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
                         $actions.append($view_dashboard_button);
+                        let $view_download_button = $('<button>').addClass('btn')
+                            .append($('<i>').addClass('fas fa-download').css('color', 'black'))
+                            .attr('title', 'Download ESSIM results')
+                            .click( function(e) { download_results(simulation_id); });
+                        $actions.append($view_download_button);
                     }
                     if (data[i]['kpi_result_list']) {
                         let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
@@ -214,6 +272,11 @@ function show_simulations_list(div_id) {
                         let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
                             .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
                         $actions.append($view_dashboard_button);
+                        let $view_download_button = $('<button>').addClass('btn')
+                            .append($('<i>').addClass('fas fa-download').css('color', 'black'))
+                            .attr('title', 'Download ESSIM results')
+                            .click( function(e) { download_results(simulation_id); });
+                        $actions.append($view_download_button);
                     }
                     if (data[i]['kpi_result_list']) {
                         let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
