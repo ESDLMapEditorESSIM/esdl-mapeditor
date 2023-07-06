@@ -67,6 +67,18 @@ class DataLayerAPI:
             for obj in esdl_objects:
                 set_cost_information(obj, cost_information)
 
+        @self.socketio.on('DLA_get_marg_costs', namespace='/esdl')
+        def DLA_get_marg_costs(identifier):
+            esdl_object = self.datalayer.get_object_from_identifier(identifier)
+
+            mc = None
+            if esdl_object.costInformation:
+                if esdl_object.costInformation.marginalCosts:
+                   mc = esdl_object.costInformation.marginalCosts.value
+
+            return {'marg_costs': mc}
+
+
         @self.socketio.on('DLA_get_cs_info', namespace='/esdl')
         def DLA_get_cs_info(identifier):
             """

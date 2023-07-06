@@ -93,9 +93,9 @@ function send_cmd_import_ESDL() {
 }
 
 function click_load_ESDL_button(obj) {
-    select = document.getElementById('load_es_selection');
-    es_id = select.options[select.selectedIndex].value;
-    es_title = select.options[select.selectedIndex].innerHTML;
+    let select = document.getElementById('load_es_selection');
+    let es_id = select.options[select.selectedIndex].value;
+    // let es_title = select.options[select.selectedIndex].innerHTML;
     // console.log(es_id);
 
     // title_div = document.getElementById('es_title');
@@ -108,8 +108,8 @@ function click_load_ESDL_button(obj) {
 }
 
 function click_import_ESDL_button(obj) {
-    select = document.getElementById('load_es_selection');
-    es_id = select.options[select.selectedIndex].value;
+    let select = document.getElementById('load_es_selection');
+    let es_id = select.options[select.selectedIndex].value;
     socket.emit('file_command', {cmd: 'import_esdl_from_store', id: es_id})
     show_loader();
 }

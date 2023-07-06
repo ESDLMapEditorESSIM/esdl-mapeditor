@@ -93,18 +93,51 @@ def _change_cost_unit(qau, cost_unit_string):
     else:
         logger.warn('probably not a cost unit')
 
-    if re.match(r"\w+/kWh", cost_unit_string):
+    if re.match(r"\w+/Wh", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATTHOUR
+        qau.perMultiplier = esdl.MultiplierEnum.NONE
+    elif re.match(r"\w+/kWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.KILO
     elif re.match(r"\w+/MWh", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATTHOUR
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
+    elif re.match(r"\w+/GWh", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATTHOUR
+        qau.perMultiplier = esdl.MultiplierEnum.GIGA
+    elif re.match(r"\w+/TWh", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATTHOUR
+        qau.perMultiplier = esdl.MultiplierEnum.TERA
+    elif re.match(r"\w+/J", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.JOULE
+        qau.perMultiplier = esdl.MultiplierEnum.NONE
+    elif re.match(r"\w+/kJ", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.JOULE
+        qau.perMultiplier = esdl.MultiplierEnum.KILO
+    elif re.match(r"\w+/MJ", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.JOULE
+        qau.perMultiplier = esdl.MultiplierEnum.MEGA
+    elif re.match(r"\w+/GJ", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.JOULE
+        qau.perMultiplier = esdl.MultiplierEnum.GIGA
+    elif re.match(r"\w+/TJ", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.JOULE
+        qau.perMultiplier = esdl.MultiplierEnum.TERA
+    elif re.match(r"\w+/W", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATT
+        qau.perMultiplier = esdl.MultiplierEnum.NONE
     elif re.match(r"\w+/kW", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.KILO
     elif re.match(r"\w+/MW", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.WATT
         qau.perMultiplier = esdl.MultiplierEnum.MEGA
+    elif re.match(r"\w+/GW", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATT
+        qau.perMultiplier = esdl.MultiplierEnum.GIGA
+    elif re.match(r"\w+/TW", cost_unit_string):
+        qau.perUnit = esdl.UnitEnum.WATT
+        qau.perMultiplier = esdl.MultiplierEnum.TERA
     elif re.match(r"\w+/km", cost_unit_string):
         qau.perUnit = esdl.UnitEnum.METRE
         qau.perMultiplier = esdl.MultiplierEnum.KILO

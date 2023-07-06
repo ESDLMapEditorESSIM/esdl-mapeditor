@@ -13,7 +13,9 @@
 #      TNO
 
 import base64
+import collections
 import json
+import os.path
 import urllib
 import uuid
 from datetime import datetime
@@ -22,6 +24,8 @@ import requests
 from flask import Flask, abort, jsonify, session
 from flask_executor import Executor
 from flask_socketio import SocketIO, emit
+from influxdb import InfluxDBClient
+from influxdb.resultset import ResultSet
 
 import src.log as log
 import src.settings as settings
@@ -29,6 +33,7 @@ from extensions.session_manager import del_session, get_handler, get_session, se
 from extensions.settings_storage import SettingsStorage
 from src.essim_kpis import ESSIM_KPIs
 from src.process_es_area_bld import process_energy_system
+from src.tno.shared import excel
 
 logger = log.get_logger(__name__)
 
@@ -328,6 +333,113 @@ class ESSIM:
                             kpi_result_list = sf['kpi_result_list']
                             self.emit_kpis_for_visualization(kpi_result_list)
 
+        @self.flask_app.route('/simulation/<sim_id>/download_results')
+        def download_simulation_results(sim_id):
+            with self.flask_app.app_context():
+                user_email = get_session('user-email')
+                esh = get_handler()
+                if user_email is not None:
+                    result_name = sim_id
+
+                    ESSIM_config = settings.essim_config
+                    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id
+
+                    simulation_info = None
+                    res_es = None
+                    try:
+                        print("Retrieving simulation info...")
+                        r = requests.get(url)
+                        if r.status_code == 200:
+                            result = json.loads(r.text)
+                            simulation_info = {
+                                'sim_id': sim_id,
+                                'scenarioID': result['scenarioID'],
+                                'simulationDescription': result['simulationDescription'],
+                                'startDate': result['startDate'],
+                                'endDate': result['endDate'],
+                                'dashboardURL': result['dashboardURL']
+                            }
+                            try:
+                                esdlstr_base64 = result['esdlContents']
+                                esdlstr_base64_bytes = esdlstr_base64.encode('utf-8')
+                                esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
+                                esdlstr = esdlstr_bytes.decode('utf-8')
+                            except:
+                                esdlstr_urlenc = result['esdlContents']
+                                esdlstr = urllib.parse.unquote(esdlstr_urlenc)
+
+                            res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                    except Exception as e:
+                        # print('Exception: ')
+                        # print(e)
+                        send_alert('Error accessing ESSIM API: ' + str(e))
+
+                    if simulation_info and res_es:
+                        logger.info("Retrieving simulation results...")
+                        database_client = InfluxDBClient(host=ESSIM_config['ESSIM_database_server'],
+                                                         port=ESSIM_config['ESSIM_database_port'],
+                                                         database=simulation_info['scenarioID'])
+
+                        sdt = datetime.strptime(simulation_info['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        edt = datetime.strptime(simulation_info['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                        essim_results = None
+                        try:
+                            query = 'SELECT * FROM /' + res_es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\')'
+                            logger.debug(query)
+                            essim_results: ResultSet = database_client.query(query)
+                        except Exception as e:
+                            logger.error('error with query: ', str(e))
+
+                        if essim_results:
+                            # To save raw ESSIM data
+                            # ----------------------
+                            # for result_key in essim_results.keys():
+                            #     result_key_name = result_key[0]
+                            #     sheet_name = result_key_name
+                            #     if len(sheet_name) > 31:
+                            #         sheet_name = result_key_name[:31]
+                            #
+                            #     field_map = collections.OrderedDict()
+                            #     # field_map["time"] = "time"
+                            #     first_row = list(essim_results[result_key])[0]
+                            #     for k, v in first_row.items():
+                            #         field_map[k] = k
+                            #
+                            #     if not wb:
+                            #         wb = excel.create_simple_excel_file(sheet_name=sheet_name, field_map=field_map, entities=essim_results[result_key])
+                            #     else:
+                            #         wb = excel.add_excel_sheet(workbook=wb, sheet_name=sheet_name, field_map=field_map, entities=essim_results[result_key])
+
+                            # Post process ESSIM results
+                            pp_results = self.post_process_essim_results(essim_results)
+                            wb = None
+
+                            for sheet_name in pp_results.keys():
+                                pp_result = pp_results[sheet_name]
+
+                                field_map = collections.OrderedDict()
+                                first_row = pp_result[0]
+                                for k, v in first_row.items():
+                                    field_map[k] = k
+
+                                if not wb:
+                                    wb = excel.create_simple_excel_file(sheet_name=sheet_name, field_map=field_map, entities=pp_result)
+                                else:
+                                    wb = excel.add_excel_sheet(workbook=wb, sheet_name=sheet_name, field_map=field_map, entities=pp_result)
+
+                            excel_file_b64 = excel.base64encode_excel_file(wb)
+
+                            return json.dumps({'excel_file_b64': excel_file_b64, 'filename': f"{result['simulationDescription']}.xlsx"})
+                        else:
+                            logger.error("Simulation results could not be retrieved")
+                            return None
+                    else:
+                        logger.error("Either simulation info or ESDL could not be retrieved")
+                        return None
+
     def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             user_email = get_session('user-email')
@@ -625,3 +737,60 @@ class ESSIM:
         # else:
         #     kpi['value'] = kpi_res[0]['value']
         #     kpi['type'] = 'Double'
+
+    def post_process_essim_results(self, essim_results):
+        # The results are ordered using a key consisting of "ESDL energy system name + network name + index"
+        # The ESDL energy system name is the same for all results. Excel only allows tabs of max 31 characters, so
+        # we find out what the common name is of all simulation results and remove that part of the name
+        common_name = list(essim_results.keys())[0][0]
+        for result_key in essim_results.keys():
+            result_key_name = result_key[0]
+            common_name = os.path.commonprefix([common_name, result_key_name])
+
+        post_processed_results = dict()
+
+        attribute_to_name_mapping = {
+            "Power": "PinW",
+            "Energy": "EinJ"
+        }
+
+        # Iterate over all network results
+        for result_key in essim_results.keys():
+            result_key_name = result_key[0]
+            network_name = result_key_name.replace(common_name, "")
+
+            for attribute in ["Power", "Energy"]:
+                sheet_name = network_name + "_" + attribute_to_name_mapping[attribute]
+
+                post_processed_results[sheet_name] = list()
+                pp_row = dict()
+
+                # Iterate over all time series in the network
+                for result_row in essim_results[result_key]:
+                    # result_row is a dictionary with field names as keys and value
+
+                    if 'time' not in pp_row:
+                        # only for the first time we add 'time'
+                        pp_row['time'] = result_row['time']
+                    elif result_row['time'] != pp_row['time']:
+                        # If we've arrive at a next time step, store this data and start a new row
+                        # This assumes the essim_results are ordered by date
+                        post_processed_results[sheet_name].append(pp_row)
+                        pp_row = dict()
+                        pp_row['time'] = result_row['time']
+
+                    if result_row["allocation" + attribute] is not None and result_row["assetName"] is not None:
+                        # row contains allocationEnergy and allocationPower values
+                        if result_row["capability"] != "Transport":
+                            # Ignore all transport assets
+                            attr_value = result_row["allocation" + attribute]
+                            asset_name = result_row["assetName"]
+                            pp_row[asset_name] = attr_value
+                    else:
+                        # row contains imbalanceEnergy and imbalancePower values
+                        attr_value = result_row["imbalance" + attribute]
+                        pp_row["imbalance" + attribute] = attr_value
+
+        return post_processed_results
+
+

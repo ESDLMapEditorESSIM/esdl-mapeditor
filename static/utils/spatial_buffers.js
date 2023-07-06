@@ -68,10 +68,12 @@ class SpatialBuffers {
     }
 
     add_spatial_buffers(layer) {
-        if ('dist' in layer.attrs) {
-            for (const [cat, distance] of Object.entries(layer.attrs.dist)) {
-                if (distance > 0) {
-                    this.create_buffer(layer, distance, user_settings.ui_settings.spatial_buffers.colors[cat], cat);
+        if (layer.attrs !== undefined) {     // this is only true for assets, not for potentials
+            if ('dist' in layer.attrs) {
+                for (const [cat, distance] of Object.entries(layer.attrs.dist)) {
+                    if (distance > 0) {
+                        this.create_buffer(layer, distance, user_settings.ui_settings.spatial_buffers.colors[cat], cat);
+                    }
                 }
             }
         }
