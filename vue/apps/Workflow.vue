@@ -145,24 +145,31 @@
 
 <script>
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
-import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
-import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
-import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
-import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
-import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
-import {default as WorkflowHttpPost} from "../components/workflow/WorkflowHttpPost";
-import {default as WorkflowProgress} from "../components/workflow/WorkflowProgress";
-import {default as WorkflowText} from "../components/workflow/WorkflowText";
-import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
-import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {useEsdlLayers} from "../composables/esdlLayers.js";
 import {ref} from "vue";
+import WorkflowChoice from "../components/workflow/WorkflowChoice.vue";
+import WorkflowCustomComponent from "../components/workflow/WorkflowCustomComponent.vue";
+import WorkflowJsonForm from "../components/workflow/WorkflowJsonForm.vue";
+import WorkflowText from "../components/workflow/WorkflowText.vue";
+import WorkflowProgress from "../components/workflow/WorkflowProgress.vue";
+import WorkflowHttpPost from "../components/workflow/WorkflowHttpPost.vue";
+import WorkflowUploadFile from "../components/workflow/WorkflowUploadFile.vue";
+import WorkflowDownloadFile from "../components/workflow/WorkflowDownloadFile.vue";
+import WorkflowEsdlService from "../components/workflow/WorkflowEsdlService.vue";
+import WorkflowSelectQuery from "../components/workflow/WorkflowSelectQuery.vue";
 
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
 export default {
+  components: {
+    WorkflowSelectQuery,
+    WorkflowEsdlService,
+    WorkflowDownloadFile,
+    WorkflowUploadFile,
+    WorkflowHttpPost,
+    WorkflowProgress, WorkflowText, WorkflowJsonForm, WorkflowCustomComponent, WorkflowChoice, MenuOutlined},
   setup() {
     const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
 
