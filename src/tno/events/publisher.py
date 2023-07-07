@@ -318,7 +318,6 @@ logger = log.get_logger(__name__)
 # rabbitmq_fanout_publisher.connect()
 
 
-
 def get_rabbitmq_topic_channel():
     """
     Connect to RabbitMQ and return the fanout channel.
