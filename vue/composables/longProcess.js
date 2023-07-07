@@ -26,7 +26,7 @@ export class LongProcess {
     this.fetchProgress();
   }
 
-  fetchProgress = () => {
+  fetchProgress() {
     let target_url = this.url;
     if (this.requestParams) {
       const queryString = new URLSearchParams(self.requestParams).toString();
