@@ -8,7 +8,8 @@ geojson
 influxdb==5.3.0
 openpyxl==3.1.2
 pyecore==0.12.1
-PyJWT
+# PyJWT cannot be upgraded to >= 2 because of flask-oidc.
+PyJWT==1.7.1
 pymongo==3.11.0
 pyproj==3.1.0
 PyShp==2.1.0
