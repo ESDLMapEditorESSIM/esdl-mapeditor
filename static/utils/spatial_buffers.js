@@ -156,7 +156,9 @@ class SpatialBuffers {
 
     bring_spatial_buffers_to_back() {
         let esdl_layer = this.get_spatial_buffer_layer();
-        esdl_layer.bringToBack();
+        if (esdl_layer) {
+            esdl_layer.bringToBack();
+        }
     }
     
     UISettings() {

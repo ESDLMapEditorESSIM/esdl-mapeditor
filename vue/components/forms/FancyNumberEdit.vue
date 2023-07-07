@@ -81,7 +81,6 @@ export default {
       parseFancyNumber: function(fn) {
         // This function will take a fancy number fn (of type string)
         // and returns the floating point value of it.
-        console.log(fn);
         if (fn == null || fn.trim() == "") return null;
         if (fn.slice(-1) in factors) {
           let n = fn.substring(0, fn.length - 1);

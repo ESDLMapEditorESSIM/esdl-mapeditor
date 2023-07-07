@@ -1,5 +1,6 @@
 import {ref} from "vue";
 import {getattrd} from "../utils/utils";
+import {v4 as uuidv4} from 'uuid';
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -16,28 +17,39 @@ export const WorkflowStepTypes = Object.freeze({
     // Call a global JS function.
     CALL_JS_FUNCTION: 'call_js_function',
     PROGRESS: 'progress',
+    TEXT: 'text',
     // Custom component.
     CUSTOM: 'custom',
 });
 
 // The currently active workflow.
 export const currentWorkflow = ref(null);
+// Saved workflows that the user can load.
+export const savedWorkflows = ref([]);
 
 export function useWorkflow() {
     /**
      * Start a brand new workflow.
-     * 
-     * @param {*} service_index 
-     * @param {*} service 
+     *
+     * @param {*} service_index
+     * @param {*} service
      */
     const startNewWorkflow = (service_index, service) => {
         currentWorkflow.value = new Workflow(service_index, service);
         return currentWorkflow;
     }
 
+    const loadSavedWorkflows = () => {
+        window.socket.emit('/workflow/list', function (workflow_list) {
+            savedWorkflows.value = workflow_list.map((workflow) => {
+                return {uuid: workflow.uuid, name: workflow.name};
+            });
+        });
+    }
+
     /**
      * Start over the current workflow.
-     * 
+     *
      */
     const startOver = () => {
         currentWorkflow.value = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
@@ -53,7 +65,7 @@ export function useWorkflow() {
 
     /**
      * Get value from the state.
-     * 
+     *
      * @param {*} to_obtain_field The name of the field in the state to get.
      */
     const getFromState = (to_obtain_field) => {
@@ -62,8 +74,58 @@ export function useWorkflow() {
     }
 
     /**
-     * Get values from the state, as a parameter mapping..
-     * 
+     * Set name of the workflow. Used to retrieve it later.
+     * @param name
+     */
+    const setWorkflowName = (name) => {
+        currentWorkflow.value.setName(name);
+    }
+
+    const activatePersistedWorkflow = (uuid) => {
+        window.show_loader();
+        window.socket.emit('/workflow/load', {workflow_id: uuid}, function (parsedWorkflow) {
+            console.log(parsedWorkflow);
+            if (parsedWorkflow) {
+                const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
+                workflowObj.uuid = parsedWorkflow.uuid;
+                workflowObj.workflowStep = parsedWorkflow.workflowStep;
+                workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
+                workflowObj.state = parsedWorkflow.state;
+                workflowObj.name = parsedWorkflow.name;
+                workflowObj.persisted = parsedWorkflow.persisted;
+                workflowObj.drive_paths = parsedWorkflow.drive_paths;
+                workflowObj.restartable = parsedWorkflow.restartable;
+                currentWorkflow.value = workflowObj;
+            }
+        });
+    }
+
+    const persistWorkflow = (uploadEsdls) => {
+        if (currentWorkflow.value.persisted) {
+            const key = `wf.${currentWorkflow.value.uuid}`;
+            const jsonWorkflow = JSON.stringify(currentWorkflow.value);
+            localStorage.setItem(key, jsonWorkflow);
+            if (uploadEsdls) {
+                window.show_loader();
+                window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid, workflow_json: jsonWorkflow}, function (msg) {
+                    window.hide_loader();
+                    currentWorkflow.value.setDrivePaths(msg.drive_paths);
+                });
+            }
+        }
+    }
+
+    const deletePersistedWorkflow = (uuid) => {
+        window.show_loader();
+        window.socket.emit('/workflow/delete', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
+            window.hide_loader();
+            currentWorkflow.value.setDrivePaths([]);
+        });
+    }
+
+    /**
+     * Get values from the state, as a parameter mapping.
+     *
      * @param {*} to_obtain_params An object mapping a key (what it should be in the
      * result) to a value (the name in the state).
      */
@@ -84,6 +146,7 @@ export function useWorkflow() {
      */
     const goToNextStep = () => {
         currentWorkflow.value.doNext();
+        persistWorkflow();
     }
 
     /**
@@ -91,13 +154,24 @@ export function useWorkflow() {
      */
     const goToPreviousStep = () => {
         currentWorkflow.value.doPrevious();
+        persistWorkflow();
     }
 
     /**
-     * Go to the given workflow step.
+     * Go to given step.
      */
     const goToStep = (stepIdx) => {
         currentWorkflow.value.doNext(stepIdx);
+        persistWorkflow();
+    }
+
+    /**
+     * Unroll the previous steps to go to the first step.
+     */
+    const goToFirstStep = () => {
+        while (currentWorkflow.value.hasPreviousStep()) {
+            goToPreviousStep();
+        }
     }
 
     const closeWorkflow = () => {
@@ -107,6 +181,7 @@ export function useWorkflow() {
     return {
         currentWorkflow,
         goToStep,
+        goToFirstStep,
         goToNextStep,
         goToPreviousStep,
         getState,
@@ -115,17 +190,40 @@ export function useWorkflow() {
         startNewWorkflow,
         closeWorkflow,
         startOver,
+        setWorkflowName,
+        persistWorkflow,
+        deletePersistedWorkflow,
+        savedWorkflows,
+        loadSavedWorkflows,
+        activatePersistedWorkflow,
     }
 }
 
 export class Workflow {
     constructor(service_index, service) {
         // The array index in the list sent from the server.
+        this.uuid = uuidv4();
         this.service_index = service_index;
         this.service = service;
         this.workflowStep = service.workflow[0];
         this.prevWorkflowSteps = [];
         this.state = {};
+        this.name = null;
+        this.persisted = false;
+        this.restartable = service.restartable || false;
+        this.drive_paths = [];
+    }
+
+    setName(name) {
+        this.name = name;
+    }
+
+    setPersistence(truefalse) {
+        this.persisted = truefalse;
+    }
+
+    setDrivePaths(drive_paths) {
+        this.drive_paths = drive_paths;
     }
 
     /**
@@ -151,6 +249,6 @@ export class Workflow {
     }
 
     hasPreviousStep() {
-        return this.prevWorkflowSteps.length > 0;
+        return this.prevWorkflowSteps && this.prevWorkflowSteps.length > 0;
     }
 }

@@ -8,7 +8,6 @@ import ControlStrategy from './apps/ControlStrategy';
 import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
-//import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
@@ -42,6 +41,7 @@ import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import SidePane from './apps/SidePane';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
+import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -51,8 +51,8 @@ import {useUndoRedo} from "./composables/undoRedo";
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
-    if (currentWorkflow.value) {
+    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    if (currentWorkflow.value && currentWorkflow.value.restartable) {
         const result = await Swal.fire({
           title: "Would you like to continue the currently active workflow?",
           icon: 'question',
@@ -67,7 +67,7 @@ window.activate_service_workflow = async (serviceIndex, service) => {
         startNewWorkflow(serviceIndex, service);
     }
     mountSidebarComponent(Workflow);
-    window.sidebar.on("hide", closeWorkflow);
+    // window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -129,7 +129,7 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
-// createVueLControl(ActiveLongProcess);
+createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
 mountApp(ReleaseNotes, '#vue_show_release_notes')

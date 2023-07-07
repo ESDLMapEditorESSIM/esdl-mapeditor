@@ -10,6 +10,7 @@ export const MessageNames = Object.freeze({
     CARRIER_COLORS: 'CARRIER_COLORS',
     PROJECT_LOADED: 'PROJECT_LOADED',
     SOCKET_CONNECTED: 'SOCKET_CONNECTED',
+    SELECT_ACTIVE_LAYER: 'SELECT_ACTIVE_LAYER',
 });
 
 export const PubSubManager = {
@@ -20,6 +21,7 @@ export const PubSubManager = {
     'CARRIER_COLORS': [],
     'PROJECT_LOADED': [],
     'SOCKET_CONNECTED': [],
+    'SELECT_ACTIVE_LAYER': [],
   },
 
   subscribe: function(name, callback) {
