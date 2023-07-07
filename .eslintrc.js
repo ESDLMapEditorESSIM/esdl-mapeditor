@@ -7,6 +7,9 @@ module.exports = {
     'plugin:vue/vue3-recommended',
     'eslint:recommended'
   ],
+  parserOptions: {
+    parser: 'babel-eslint'
+  },
   rules: {
     'vue/singline-html-element': 'off',
     'vue/singleline-html-element-content-newline': 'off',
