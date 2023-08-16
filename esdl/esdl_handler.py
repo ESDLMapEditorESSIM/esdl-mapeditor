@@ -523,3 +523,6 @@ class StringURI(URI):
 
     def get_stream(self):
         return self.__stream
+
+    def __repr__(self):
+        return f"StringURI(uri={self.plain})"

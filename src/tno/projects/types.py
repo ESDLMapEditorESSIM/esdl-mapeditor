@@ -1,4 +1,4 @@
-from esdlproject import ESDLProject, Variant, BaseVariant, AbstractChange, HighLevelChange, DetailedChange
+from esdlproject import ESDLProject, Variant, ProjectEnergySystem, AbstractChange, HighLevelChange, DetailedChange
 from esdlproject.ProjectManager import ProjectManager
 
 
@@ -9,12 +9,12 @@ def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> dict:
     return dict(
         name=project.name,
         description=project.description,
-        base_variants=[serialize_base_variant(pm, base_variant) for base_variant in project.baseVariant],
+        base_variants=[serialize_base_variant(pm, base_variant) for base_variant in project.energySystem],
         active_variant_id=pm.active_variant.id,
     )
 
 
-def serialize_base_variant(pm: ProjectManager, base_variant: BaseVariant) -> dict:
+def serialize_base_variant(pm: ProjectManager, base_variant: ProjectEnergySystem) -> dict:
     """
     Serialize a project variant for usage in the frontend.
     """

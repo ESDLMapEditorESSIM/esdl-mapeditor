@@ -26,7 +26,7 @@ from extensions.session_manager import get_project_manager, set_handler, get_han
     set_session_for_esid, \
     set_session, \
     get_session_for_esid
-from src import executor
+from src.app import executor
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint

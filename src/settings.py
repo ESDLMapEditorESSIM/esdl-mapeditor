@@ -24,7 +24,7 @@ FLASK_SERVER_PORT = 8111
 _flask_debug = os.environ.get('FLASK_DEBUG', '')        # Do not use debug mode in production
 FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
 
-USER_LOGGING_ENABLED = True
+USER_LOGGING_ENABLED = False
 # ASYNC_MODE = 'gevent_uwsgi'
 ASYNC_MODE = None # default for non uWGSI deployments
 

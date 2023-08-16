@@ -21,7 +21,7 @@ from esdl.esdl_handler import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session
-from src import executor, socketio
+from src.app import executor, socketio
 import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
 from src.tno.projects.emits import emit_active_esdl_project
@@ -116,7 +116,7 @@ def set_active_variant(message: SetActiveVariantRequest):
 @socketio.on('create_base_variant', namespace='/esdl')
 def create_base_variant():
     pm = get_project_manager()
-    pm.create_new_base_variant()
+    pm.create_new_energysystem_proxy()
     emit_active_esdl_project()
 
 

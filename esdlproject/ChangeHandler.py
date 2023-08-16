@@ -9,7 +9,7 @@ from esdl import EnergySystem
 from esdl.esdl_handler import StringURI
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import UndoRedoCommandStack, LabelledAction
-from esdlproject import ESDLProject, HighLevelChange, Variant, Add, Set, BaseVariant
+from esdlproject import HighLevelChange, Variant, Add, Set, EnergySystemProxy
 from pyecore import commands as pyecore_commands
 
 
@@ -108,29 +108,29 @@ class ChangeHandler:
 
         # find closest snapshot and baseVariant (that contains main ES)
         es: EnergySystem
-        if variant.baseVariant:
-            es = variant.baseVariant.energysystemRef
-            baseVariant = variant.baseVariant
+        if variant.energySystemProxy:
+            es = variant.energySystemProxy.energysystemRef
+            proxy = variant.energySystemProxy
         else:
             variant_list: List[Variant] = []
-            v = variant.parentVariant
-            while not v.baseVariant:
+            v: Variant = variant.parentVariant
+            while not v.energySystemProxy:
                 if v.snapshotRef:
                     es = v.snapshotRef
                     v = v.parentVariant
-                    while v.baseVariant is None:
+                    while v.energySystemProxy is None:
                         v = v.parentVariant
-                    baseVariant = v.baseVariant
+                    proxy = v.energySystemProxy
                     break
                 else:
                     variant_list.append(v.parentVariant)
                     v = v.parentVariant
-            if v.baseVariant:
+            if v.energySystemProxy:
                 if v.snapshotRef:
                     es = v.snapshotRef
                 else:
-                    es = v.baseVariant.energysystemRef
-                baseVariant = v.baseVariant
+                    es = v.energySystemProxy.energysystemRef
+                proxy = v.energySystemProxy
             # replay all changes for the list of (parent) variants that have not been replayed yet
             for x in variant_list:
                 snapshot = self.createSnapshot(x)
@@ -138,11 +138,11 @@ class ChangeHandler:
 
 
 
-        if baseVariant.energysystemRef is not None and len(variant.change) > 0:
+        if proxy.energysystemRef is not None and len(variant.change) > 0:
 
             active_es_resource: XMLResource = self.get_or_create_resource(rset, StringURI('active.esdl'))
             new_snapshot_resource: XMLResource = self.get_or_create_resource(rset, self.get_variant_URI(variant))
-            base_variant_resource: XMLResource = self.get_or_create_resource(rset, self.get_variant_URI(baseVariant))
+            base_variant_resource: XMLResource = self.get_or_create_resource(rset, self.get_variant_URI(proxy))
 
 
 
@@ -151,15 +151,15 @@ class ChangeHandler:
                 return new_snapshot_resource.contents[0]
 
             if len(base_variant_resource.contents) == 0:
-                print(f'Creating new base variant (based on current active resource {baseVariant.energysystemRef.eResource.uri}')
+                print(f'Creating new base variant (based on current active resource {proxy.energysystemRef.eResource.uri}')
                 # no base variant resource yet, copy it from the source
-                es_original_base = baseVariant.energysystemRef.deepcopy()
+                es_original_base = proxy.energysystemRef.deepcopy()
                 es_original_base.name = "Original base"
                 base_variant_resource.set_content(es_original_base)
 
 
             #baseVariant.energysystemRef = es.deepcopy()  # assign snapshot to baseVariant es, as all changes are applied to that ES.
-            resource: XMLResource = baseVariant.energysystemRef.eResource
+            resource: XMLResource = proxy.energysystemRef.eResource
             print(f'Assigning base variant / snapshot as active ES: {resource.uri}')
             if es is not None:
                 resource.set_content(es.deepcopy())
@@ -167,9 +167,9 @@ class ChangeHandler:
             else:
                 resource.set_content(base_variant_resource.contents[0].deepcopy())
                 resource.contents[0].name = "Active ES = " + base_variant_resource.contents[0].name
-            baseVariant.energysystemRef = resource.contents[0]
+            proxy.energysystemRef = resource.contents[0]
 
-            print(f'Using Basevariant {baseVariant.name}({baseVariant.energysystemRef.eResource.uri}), replaying any tracked changes in variant {variant.name} ({variant.eURIFragment()})' )
+            print(f'Using Basevariant {proxy.name}({proxy.energysystemRef.eResource.uri}), replaying any tracked changes in variant {variant.name} ({variant.eURIFragment()})' )
             for highlevelchange in variant.change:
                 if isinstance(highlevelchange, HighLevelChange):
                     print(f'Handling High level change {highlevelchange.label}')
@@ -187,7 +187,7 @@ class ChangeHandler:
             print(f'Reset active es to base variant again')
             active_es_resource.set_content(base_variant_resource.contents[0])
             base_variant_resource.contents[0].name = base_variant_resource.contents[0].name + " reset to base variant"
-            baseVariant.energysystemRef = base_variant_resource.contents[0]
+            proxy.energysystemRef = base_variant_resource.contents[0]
             print(f'---  Adding snapshot to variant {variant.name} ({variant.eURIFragment()})')
             return variant.snapshotRef
 
@@ -211,7 +211,7 @@ class ChangeHandler:
                 pass  # TODO
 
     def get_variant_URI(self, v: Variant):
-        if isinstance(v, BaseVariant):
+        if isinstance(v, EnergySystemProxy):
             return StringURI(f'base_{v.name.replace(" ", "_")}.esdl')
         return StringURI(f'{v.name.replace(" ", "_")}.esdl')
 

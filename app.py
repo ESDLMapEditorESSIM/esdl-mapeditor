@@ -31,7 +31,7 @@ from pyecore.ecore import EDate
 
 from src.tno.events.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
-from src import create_app, executor, socketio
+from src.app import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
@@ -2923,7 +2923,7 @@ def process_command(message):
 
     if message['cmd'] == 'get_building_connections':
         bld_id = message['id']
-        building = esh.get_by_id(active_es_id, bld_id)
+        building = pm.get_by_id(active_es_id, bld_id)
         return get_building_connections(building)
 
     if message['cmd'] == 'accept_received_esdl':

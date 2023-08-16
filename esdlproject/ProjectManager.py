@@ -7,32 +7,16 @@ from pyecore.resources import ResourceSet, URI, Resource
 from pyecore import commands as pyecore_commands
 
 from esdl import EnergySystem, esdl, support_functions
-from esdl.esdl_handler import EnergySystemHandler, StringURI, patch_esdl
+from esdl.esdl_handler import StringURI, patch_esdl
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
-from esdlproject import (
-    Add,
-    BaseVariant,
-    Delete,
-    ESDLProject,
-    HighLevelChange,
-    Remove,
-    Set,
-    Variant,
-)
-from esdlproject.ChangeSerializer import (
-    deepcopy_eobject_change,
-    filterDoubleConnectedTo,
-)
+from esdlproject import Add, EnergySystemProxy, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant
+from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
 
-def create_empty_energysystem(
-    name, es_description, inst_title, area_title
-) -> esdl.EnergySystem:
-    energy_system = esdl.EnergySystem(
-        id=str(uuid4()), name=name, description=es_description
-    )
+def create_empty_energysystem(name, es_description, inst_title, area_title) -> esdl.EnergySystem:
+    energy_system = esdl.EnergySystem(id=str(uuid4()), name=name, description=es_description)
     instance = esdl.Instance(id=str(uuid4()), name=inst_title)
     energy_system.instance.append(instance)
     area = esdl.Area(id=str(uuid4()), name=area_title)
@@ -40,12 +24,12 @@ def create_empty_energysystem(
     return energy_system
 
 
-def get_base_variant_index(base_variant: BaseVariant) -> int:
-    """Returns the unique index in the baseVariant list"""
+def get_proxy_index(proxy: EnergySystemProxy) -> int:
+    """Returns the unique index in the EnergySystemProxy list"""
     return (
-        base_variant.eContainer()
-        .__getattribute__(base_variant.eContainmentFeature().name)
-        .index(base_variant)
+        proxy.eContainer()
+        .__getattribute__(proxy.eContainmentFeature().name)
+        .index(proxy)
     )
 
 
@@ -72,12 +56,8 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
         change = None
         print(f"------ Handling {command}")
         if isinstance(command, pyecore_commands.Add):
-            if isinstance(
-                command.value, EObject
-            ):  # could also be a numeric change or string change
-                if (
-                    command.feature.containment
-                ):  # isinstance(command.feature, EReference):
+            if isinstance(command.value, EObject):  # could also be a numeric change or string change
+                if command.feature.containment:  # isinstance(command.feature, EReference):
                     # value = command.value.serialized_deepcopy(resource=self.active_resource) #clone()
                     value, x_ref_changes = deepcopy_eobject_change(command.value)
                     # TODO make deepcopy() work
@@ -106,9 +86,7 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
 
         # variant.changes.append(change)
         if isinstance(command, pyecore_commands.Set):
-            if isinstance(command.value, EObject) or isinstance(
-                command.previous_value, EObject
-            ):  # could also be a numeric change or string change
+            if isinstance(command.value, EObject) or isinstance(command.previous_value, EObject):  # could also be a numeric change or string change
                 if command.feature.containment:
                     value, x_ref_changes = deepcopy_eobject_change(command.value)
                     change = Set(
@@ -119,12 +97,8 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
                     change_list.extend(x_ref_changes)
                 else:
                     if command.value:
-                        print(
-                            f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} "
-                        )
-                        refValue = (
-                            command.valueURIFragment
-                        )  # command.value.eURIFragment() -> See undo.py:230
+                        print(f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ")
+                        refValue = (command.valueURIFragment)  # command.value.eURIFragment() -> See undo.py:230
                     else:
                         refValue = ""
                     change = Set(
@@ -139,9 +113,7 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
                 else:
                     stringValue = command.feature.eType.to_string(command.value)
                 if command.previous_value:
-                    previousValue = command.feature.eType.to_string(
-                        command.previous_value
-                    )
+                    previousValue = command.feature.eType.to_string(command.previous_value)
                 change = Set(
                     ownerFragment=command.owner.eURIFragment(),
                     feature=command.feature.name,
@@ -150,9 +122,7 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
                 )
 
         if isinstance(command, pyecore_commands.Remove):
-            if isinstance(
-                command.value, EObject
-            ):  # could also be a numeric change or string change
+            if isinstance(command.value, EObject):  # could also be a numeric change or string change
                 if command.feature.containment:
                     change = Delete(ownerFragment=command.refURIFragment)
                 else:
@@ -165,9 +135,7 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
                         stringValue=ref,
                     )
 
-        if (
-            change
-        ):  # in case of x-ref: add it to the changeList instead directly in this list
+        if change:  # in case of x-ref: add it to the changeList instead directly in this list
             hlc.change.append(change)
 
     if len(change_list) > 0:  # add last, to make sure that x-ref targets are present
@@ -184,7 +152,7 @@ class ProjectManager:
     and for keeping track of changes to the project. It also provides functions to apply changes to the project.
 
     The project manager is responsible for keeping track of the active variant. This is the variant to which
-    changes are applied. The active variant is always a variant that is based on the base variant.
+    changes are applied. The active variant is always a variant that is based a Proxy of an esdl.EnergySystem.
     """
 
     # The resource set that contains all resources.
@@ -214,7 +182,7 @@ class ProjectManager:
         self.rset.resource_factory["project"] = XMLResource
         if uri:
             self.load(uri)
-            # TODO handle active esdl, is based on selected baseVariant
+            # TODO handle active esdl, is based on selected EnergySystemProxy
         else:
             self.init_empty_project()
 
@@ -240,20 +208,20 @@ class ProjectManager:
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
         self.project = ESDLProject(name="New ESDL Project", description="Base variant")
         self.project_resource.append(self.project)
-        base_variant = self.create_new_base_variant()
+        proxy = self.create_new_energysystem_proxy()
         # tracker = self.changeTracker.newTracker(resource=self.active_resource)
         # self.undoredo_stack = tracker.stack
-        self.set_active_variant(base_variant.variant[0])
+        self.set_active_variant(proxy.variant)
 
-    def create_new_base_variant(self) -> BaseVariant:
+    def create_new_energysystem_proxy(self) -> EnergySystemProxy:
         """
         Create a new, empty base variant.
         """
-        count = len(self.project.baseVariant) + 1
-        base_variant = BaseVariant(name=f"Base variant {count}", id=str(uuid4()))
-        self.project.baseVariant.append(base_variant)
-        variant = Variant(name="Untitled variant", id=str(uuid4()))
-        base_variant.variant.append(variant)
+        count = len(self.project.proxy) + 1
+        proxy = EnergySystemProxy(name=f"EnergySystem {count}", id=str(uuid4()))
+        self.project.proxy.append(proxy)
+        variant = Variant(name=f"Main Variant", id=str(uuid4()))
+        proxy.variant = variant
         es = create_empty_energysystem(
             "New Energy System", None, "Instance1", "Untitled Area"
         )
@@ -264,19 +232,19 @@ class ProjectManager:
         # base_variant_idx = self.get_base_variant_index(base_variant)
         # self.base_variant_resources[base_variant_idx].append(es.deepcopy())
 
-        base_variant_resource = self.rset.create_resource(StringURI("base.esdl"))
+        proxy_resource = self.rset.create_resource(StringURI(f"proxy_{count}.esdl"))
         new_es: EnergySystem = es.deepcopy()
-        base_variant_resource.append(new_es)
+        proxy_resource.append(new_es)
 
-        base_variant.energysystemRef = new_es
-        return base_variant
+        proxy.energysystemRef = new_es
+        return proxy
 
     def get_active_energy_system(self) -> esdl.EnergySystem:
         """
         Retrieve the energy system from the currently active variant. If no variant is active, the first one is made active.
         """
         if self.active_variant is None:
-            self.set_active_variant(self.project.baseVariant[0].variant[0])
+            self.set_active_variant(self.project.proxy[0].variant[0])
         return self.active_variant.snapshotRef
 
     def add_energy_system(self, uri: StringURI) -> Variant:
@@ -298,11 +266,11 @@ class ProjectManager:
         es_resource.load()
         es = es_resource.contents[0]
 
-        base_variant = BaseVariant(name=f"Base variant for {es.name}", id=str(uuid4()))
-        self.project.baseVariant.append(base_variant)
+        proxy = EnergySystemProxy(name=f"Proxy for {es.name}", id=str(uuid4()))
+        self.project.proxy.append(proxy)
         es_variant = Variant(name=f"1st variant of {es.name}", id=str(uuid4()))
-        base_variant.variant.append(es_variant)
-        base_variant.energysystemRef = es
+        proxy.variant.append(es_variant)
+        proxy.energysystemRef = es # link proxy to the loaded EnergySystem
         # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
         return es_variant
 
@@ -313,18 +281,17 @@ class ProjectManager:
         :param variant_id: the id of the variant to retrieve
         :return: the variant with the given id, or None if not found
         """
-        for bv in self.project.baseVariant:
-            bv: BaseVariant
-            result = self._get_variant_by_id_dfs(bv.variant, variant_id)
+        for proxy in self.project.proxy:
+            proxy: EnergySystemProxy
+            result = self._get_variant_by_id_dfs(proxy.variant, variant_id)
             if result is not None:
                 return result
         return None
 
-    def _get_variant_by_id_dfs(
-        self, v: list[Variant], variant_id: str
-    ) -> Optional[Variant]:
+    def _get_variant_by_id_dfs(self, v: list[Variant], variant_id: str) -> Optional[Variant]:
         """
-        Recursive function to search for a variant by its id. This function is called by get_variant_by_id.
+        Recursive function to search for a variant by its id using Depth First Search (DFS).
+        This function is called by get_variant_by_id.
 
         :param v: the list of variants to search through
         :param variant_id: the id of the variant to retrieve
@@ -359,7 +326,8 @@ class ProjectManager:
             # Right now we ignore any changes in the parent if we already have a snapshot.
 
             print(
-                "Variant snapshot already generated. No need to do anything but switch the active variant."
+                "Variant snapshot already generated. No need to do anything but switch the active variant. "
+                "And ignoring any changes in the parent currently... (TODO)"
             )
             self.active_variant = new_variant
         # TODO: I think this special case should not need special handling.
@@ -386,10 +354,10 @@ class ProjectManager:
             # 0: store current es as active snapshot for current active es
             # 1: load base variant
             # 2: replay changes in this variant
-            base_variant = get_base_variant(new_variant)
+            base_variant = get_energysystem_proxy(new_variant)
             # base_variant_resource = get_base_variant_resource(base_variant)
             # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
-            base_variant_resource = get_base_variant_resource(base_variant)
+            base_variant_resource = get_energysystem_proxy_resource(base_variant)
             base_variant.energysystemRef = base_variant_resource.contents[0]
             self.active_variant = new_variant
             variant_path_list = get_variant_path_list(new_variant)
@@ -405,9 +373,7 @@ class ProjectManager:
 
                 self.apply_variant_changes(parent_variant, variant_snapshot, True)
 
-    def apply_variant_changes(
-        self, variant: Variant, es: esdl.EnergySystem, record_changes: bool
-    ):
+    def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
         """
         Apply all changes from the given variant to the given resource. The resource should represent an energy system
         which is consequently updated to contain all changes from the variant.
@@ -451,13 +417,9 @@ class ProjectManager:
                 owner.eSet(change.feature, change.objectValue.deepcopy())
             elif change.stringValue is not None:
                 owner = resource.resolve(change.ownerFragment)
-                feature: EStructuralFeature = owner.eClass.findEStructuralFeature(
-                    change.feature
-                )
+                feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
                 if isinstance(feature, EAttribute):
-                    owner.eSet(
-                        change.feature, feature.eType.from_string(change.stringValue)
-                    )
+                    owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
                 else:  # eReference and not many
                     if change.stringValue == "":
                         owner.eSet(change.feature, None)
@@ -477,40 +439,29 @@ class ProjectManager:
                 owner: EObject = resource.resolve(change.ownerFragment)
                 abstractList = owner.eGet(change.feature)
                 eClass: EClass = owner.eClass
-                feature: EStructuralFeature = eClass.findEStructuralFeature(
-                    change.feature
-                )
+                feature: EStructuralFeature = eClass.findEStructuralFeature(change.feature)
                 if isinstance(feature, EReference):
                     eReference: EReference = feature
                     if eReference.containment:
                         print("processChange(): Not handled reference.containment")
                     else:
-                        print(
-                            f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}"
-                        )
+                        print(f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}")
                         ref = resource.resolve(change.stringValue)
                         abstractList.append(ref)
                 else:
-                    print(
-                        f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}"
-                    )
+                    print(f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
                     abstractList.append(change.stringValue)
         elif isinstance(change, Remove):
             # remove a value or reference from a list
             owner: EObject = resource.resolve(change.ownerFragment)
-            feature: EStructuralFeature = owner.eClass.findEStructuralFeature(
-                change.feature
-            )
+            feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             abstractList = owner.eGet(change.feature)
             if isinstance(feature, EReference):
                 try:
                     ref = resource.resolve(change.stringValue)
                     abstractList.remove(ref)
                 except Exception:
-                    print(
-                        f"\- ###: Cannot execute change, resolving of {change.stringValue} failed"
-                    )
-                    pass
+                    print(f"\- ###: Cannot execute change, resolving of {change.stringValue} failed")
             else:
                 # stringvalue is a value (enum, string, int, etc)
                 abstractList.remove(feature.eType.from_string(change.stringValue))
@@ -538,13 +489,11 @@ class ProjectManager:
         print(
             f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}'
         )
-        base_variant_resource = get_base_variant_resource(variant)
+        base_variant_resource = get_energysystem_proxy_resource(variant)
         es = base_variant_resource.contents[0]
 
         snapshot_resource.append(es.deepcopy())
-        variant.snapshotRef = snapshot_resource.contents[
-            0
-        ]  # link to snapshot resource energy system
+        variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
         variant.snapshotRef.id = str(uuid4())
         return variant.snapshotRef
 
@@ -564,7 +513,7 @@ class ProjectManager:
         parent = get_parent_variant(variant)
         parent.variant.remove(variant)
 
-    def delete_variant(self, variant: Union[BaseVariant, Variant]):
+    def delete_variant(self, variant: Union[EnergySystemProxy, Variant]):
         """
         Delete a variant and all its subvariants. This will also delete the snapshot of the variant.
         :param variant: the variant to delete
@@ -573,25 +522,20 @@ class ProjectManager:
             self._delete_variant_recursive(subvariant)
         print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
 
-        if (
-            variant in get_variant_path_list(self.active_variant)
-            or get_base_variant(variant) == variant
-        ):
+        if variant in get_variant_path_list(self.active_variant) or get_energysystem_proxy(variant) == variant:
             # todo reset active variant to other variant and check if there is at least 1 variant
             print("Deleted variant was active variant. Please set a new active variant")
             self.active_variant = None
 
-        if isinstance(variant, BaseVariant):
-            base_variant: BaseVariant = variant
-            if base_variant.energysystemRef:
+        if isinstance(variant, EnergySystemProxy):
+            proxy: EnergySystemProxy = variant
+            if proxy.energysystemRef:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
-                base_variant.energysystemRef = None
-                print(
-                    f"Removing BaseVariant energy system {base_variant.name} at {base_variant.eResource.uri}"
-                )
+                proxy.energysystemRef = None
+                print(f"Removing EnergySystemProxy energy system {proxy.name} at {proxy.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
-                self.rset.remove_resource(base_variant.eResource)
-            self.project.baseVariant.remove(base_variant)
+                self.rset.remove_resource(proxy.eResource)
+            self.project.proxy.remove(proxy)
         else:
             if variant.snapshotRef:
                 resource = variant.snapshotRef.eResource
@@ -612,15 +556,14 @@ class ProjectManager:
         # first store the active ES in the active BV
 
         # todo add changes to current variant that are still on the stack
-        print(
-            "Saving project, assuming all changes on the stack are put in the active variant"
-        )
+        print("Saving project, assuming all changes on the stack are put in the active variant")
 
-        for bv in self.project.baseVariant:
-            base_variant_resource = get_base_variant_resource(bv)
-            bv.energysystem = base_variant_resource.contents[0].deepcopy()
-            bv.energysystemRef = None
-            for variant in bv.variant:
+        for proxy in self.project.proxy:
+            base_variant_resource = get_energysystem_proxy_resource(proxy)
+            proxy.energysystem = base_variant_resource.contents[0].deepcopy()
+            proxy.energysystemRef = None
+            # todo: change such that we iterate over subvariants
+            for variant in proxy.variant:
                 if variant.snapshotRef:
                     variant_tracker = self.change_tracker.get_tracker(
                         variant.snapshotRef
@@ -636,10 +579,10 @@ class ProjectManager:
         project_as_string = uri.getvalue()
 
         # reset the energysystems in the project (might not be necessary as it is only used for serialization), but reduces memory consumption
-        for bv in self.project.baseVariant:
-            base_variant_resource = get_base_variant_resource(bv)
-            bv.energysystem = None
-            bv.energysystemRef = base_variant_resource.contents[0]
+        for proxy in self.project.proxy:
+            base_variant_resource = get_energysystem_proxy_resource(proxy)
+            proxy.energysystem = None
+            proxy.energysystemRef = base_variant_resource.contents[0]
 
         return project_as_string
 
@@ -666,38 +609,36 @@ class ProjectManager:
         # tracker = self.changeTracker.newTracker(resource=self.active_resource)
         # self.undoredo_stack = tracker.stack
 
-        if len(self.project.baseVariant) == 0:
+        if len(self.project.proxy) == 0:
             # no base variant exists: create one
             self.init_empty_project()
 
         # load the base variant energy systems into resources and set the references
-        for bv in self.project.baseVariant:
-            if bv.energysystem:
-                bv: BaseVariant = bv
-                index = get_base_variant_index(bv)
-                bv_uri = StringURI(uri=f"BaseVariant.{index}_{str(uuid4())[:4]}.esdl")
-                bv_resource = self.rset.create_resource(bv_uri)
-                if not isinstance(bv_resource, XMLResource):
-                    raise Exception(
-                        "ESDL files are mapped to the wrong Resource type. Should be XMLResource."
-                    )
-                bv_resource: XMLResource = bv_resource
+        for proxy in self.project.proxy:
+            if proxy.energysystem:
+                proxy: EnergySystemProxy = proxy
+                index = get_proxy_index(proxy)
+                bv_uri = StringURI(uri=f"EnergySystemProxy.{index}_{str(uuid4())[:4]}.esdl")
+                proxy_resource = self.rset.create_resource(bv_uri)
+                if not isinstance(proxy_resource, XMLResource):
+                    raise Exception("ESDL files are mapped to the wrong Resource type. Should be XMLResource.")
+                proxy_resource: XMLResource = proxy_resource
                 # self.base_variant_resources.insert(index, bv_resource)
-                bv_resource.set_content(bv.energysystem)
-                bv.energysystemRef = bv_resource.contents[0]
+                proxy_resource.set_content(proxy.energysystem)
+                proxy.energysystemRef = proxy_resource.contents[0]
 
         self.active_variant = None
-        self.set_active_variant(self.project.baseVariant[0].variant[0])
+        self.set_active_variant(self.project.proxy[0].variant[0])
         return self.project
 
-    def get_base_variant_by_id(self, base_variant_id: str) -> Optional[BaseVariant]:
+    def get_base_variant_by_id(self, base_variant_id: str) -> Optional[EnergySystemProxy]:
         """
         Get the base variant with the given id.
 
         :param base_variant_id: the id of the base variant
         :return: the base variant with the given id or None if it does not exist
         """
-        for base_variant in self.project.baseVariant:
+        for base_variant in self.project.proxy:
             if base_variant.id == base_variant_id:
                 return base_variant
         return None
@@ -708,7 +649,7 @@ class ProjectManager:
         It will include references to other ESDL resources.
 
         For a full contained version of this project use save(). This will serialize also the referenced energy
-        systems of BaseVariants inline in this project. This allows it to be passed on to others to load this project
+        systems of EnergySystemProxys inline in this project. This allows it to be passed on to others to load this project
         using the load() function
         """
         if isinstance(self.project_resource.uri, StringURI):
@@ -764,11 +705,11 @@ class ProjectManager:
         :param es_id: the id of the energy system to get
         :return: the energy system with the given id or None if it does not exist
         """
-        for base_variant in self.project.baseVariant:
-            if base_variant.energysystemRef and base_variant.energysystemRef.id == es_id:
-                return base_variant.energysystemRef
+        for proxy in self.project.proxy:
+            if proxy.energysystemRef and proxy.energysystemRef.id == es_id:
+                return proxy.energysystemRef
 
-            for variant in base_variant.variant:
+            for variant in proxy.variant:
                 # TODO: Recursion (variant of variant etc).
                 if variant.snapshotRef and variant.snapshotRef.id == es_id:
                     return variant.snapshotRef
@@ -790,16 +731,27 @@ class ProjectManager:
         # if es.id != es_id:
         #     raise RuntimeError("Active ES does not match requested ES. Needs a solution.")
 
+        # check if we can find it in the uuid_dict of the resource (faster), if not do it slow
+        resource:Resource = es.eResource
+        if object_id in resource.uuid_dict:
+            return resource.uuid_dict[object_id]
+
         # TODO: This is relatively slow. We need to migrate to a better solution (use uuid_dict again?).
         for entity in es.eAllContents():
             if hasattr(entity, "id") and entity.id == object_id:
                 return entity
 
-        raise KeyError(
-            "Can't find asset for id={} in uuid_dict of the ESDL model".format(
-                object_id
-            )
-        )
+        raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model".format(object_id))
+
+    def active_energy_system_to_string(self):
+        if isinstance(self.active_resource.uri, StringURI):
+            uri: StringURI = self.active_resource.uri
+            self.active_resource.save()
+            return uri.getvalue()
+        else:
+            uri = StringURI("print.esdl")
+            self.active_resource.save(output=uri)
+            return uri.getvalue()
 
 
 def resource_as_string(resource: Resource):
@@ -824,22 +776,22 @@ def resource_as_string(resource: Resource):
         return uri.getvalue()
 
 
-def get_base_variant(variant: Union[BaseVariant, Variant]) -> BaseVariant:
+def get_energysystem_proxy(variant: Union[EnergySystemProxy, Variant]) -> EnergySystemProxy:
     """
     Get the base variant of the given variant.
 
     :param variant: the variant to get the base variant for
     :return: the base variant of the given variant
     """
-    if isinstance(variant, BaseVariant):
+    if isinstance(variant, EnergySystemProxy):
         return variant
-    elif variant.baseVariant is None and variant.parentVariant is not None:
-        return get_base_variant(variant.parentVariant)
+    elif variant.energySystemProxy is None and variant.parentVariant is not None:
+        return get_energysystem_proxy(variant.parentVariant)
     else:
-        return get_base_variant(variant.baseVariant)
+        return get_energysystem_proxy(variant.energySystemProxy)
 
 
-def get_base_variant_resource(variant: Union[BaseVariant, Variant]) -> XMLResource:
+def get_energysystem_proxy_resource(variant: Union[EnergySystemProxy, Variant]) -> XMLResource:
     """
     Get the resource of the base variant of the given variant.
 
@@ -847,9 +799,10 @@ def get_base_variant_resource(variant: Union[BaseVariant, Variant]) -> XMLResour
     :return: the resource of the base variant of the given variant
     """
     if isinstance(variant, Variant):
-        base_variant = get_base_variant(variant)
+        proxy = get_energysystem_proxy(variant)
     else:
-        base_variant = variant
+        proxy = variant
     # index = self.get_base_variant_index(base_variant)
-    return base_variant.energysystemRef.eResource
+    return proxy.energysystemRef.eResource
     # return self.base_variant_resources[index]
+

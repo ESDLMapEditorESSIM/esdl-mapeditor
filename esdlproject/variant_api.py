@@ -15,27 +15,27 @@
 from typing import List, Optional, Union
 from uuid import uuid4
 
-from esdlproject import BaseVariant, Variant
+from esdlproject import EnergySystemProxy, Variant
 
 
-def get_parent_variant(variant: Variant) -> Union[BaseVariant, Variant]:
+def get_parent_variant(variant: Variant) -> Union[EnergySystemProxy, Variant]:
     """
     Return the parent variant or the base variant of this variant.
 
     :param variant: Variant to get the parent variant of.
-    :return: Parent variant or base variant.
+    :return: Parent variant or energy system proxy.
     """
-    if variant.parentVariant is None and variant.baseVariant is not None:
-        return variant.baseVariant
+    if variant.parentVariant is None and variant.energySystemProxy is not None:
+        return variant.energySystemProxy
     else:
         return variant.parentVariant
 
 
-def create_new_variant(parentVariant: Union[BaseVariant, Variant], variant_name: Optional[str] = None) -> Variant:
+def create_new_variant(parentVariant: Union[EnergySystemProxy, Variant], variant_name: Optional[str] = None) -> Variant:
     """
-    Create a new variant under a base variant or variant.
+    Create a new variant under an EnergySystemProxy or Variant.
 
-    :param parentVariant: Base variant or variant to create the new variant under.
+    :param parentVariant: EnergySystemProxy or variant to create the new variant under.
     :param variant_name: Name of the new variant.
     :return: The new variant.
     """
