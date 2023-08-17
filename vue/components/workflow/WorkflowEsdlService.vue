@@ -36,11 +36,19 @@ const props = defineProps({
 
 // eslint-disable-next-line no-unused-vars
 const { getParamsFromState, goToFirstStep, getState } = useWorkflow();
-const { clearEsdlLayers } = useEsdlLayers()
+const state = getState();
+const { clearEsdlLayers } = useEsdlLayers();
 
 const workflowStep = props.workflowStep;
 
 const esdlWasLoaded = () => {
+  if (workflowStep.target_variable && workflowStep.target_variable_value) {
+    state[workflowStep.target_variable] = {
+      ...state[workflowStep.target_variable] ?? {},
+      ...workflowStep.target_variable_value
+    };
+  }
+
   goToFirstStep();
 }
 

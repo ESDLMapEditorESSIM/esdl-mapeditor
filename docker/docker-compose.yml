@@ -23,7 +23,7 @@ services:
       - .env
 
   vue-watch:
-    image: node:14-slim
+    image: node:16-slim
     working_dir: /usr/src/app
     volumes:
       - ..:/usr/src/app
@@ -33,5 +33,5 @@ services:
 
 networks:
   mapeditor-net:
-    external:
-      name: mapeditor-net
+    name: mapeditor-net
+    external: true

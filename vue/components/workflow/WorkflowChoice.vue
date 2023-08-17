@@ -5,11 +5,19 @@
       :key="option.name"
       class="choice-entry"
     >
+      <div
+        v-if="option.type === 'header'"
+        class="choice-header"
+      >
+        {{ option.name }}
+      </div>
       <a-button
+        v-else
         :type="option.type || 'primary'"
         block
         :disabled="isOptionDisabled(option)"
         @click="goToStep(option.next_step)"
+        class="choice-button"
       >
         {{ option.name }}
       </a-button>
@@ -40,6 +48,11 @@ const isOptionDisabled = (option) => {
   if (option.disabled) {
     return true;
   }
+  if (option.disable_if_state && option.enable_if_state){
+    const disableStateField = getFromState(option.disable_if_state)
+    const enableStateField = getFromState(option.enable_if_state)
+    return Boolean(disableStateField) || !enableStateField; 
+  }
   if (option.disable_if_state) {
     const stateField = getFromState(option.disable_if_state);
     return Boolean(stateField);
@@ -57,8 +70,15 @@ const isOptionDisabled = (option) => {
 .choice-list .choice-entry {
   margin-bottom: 10px;
 }
+.choice-list .choice-entry .choice-button {
+  border-radius: 16px;
+}
 .choice-list .choice-entry p {
   margin-bottom: 0;
   color: #777;
+}
+.choice-list .choice-entry .choice-header {
+  text-align: center;
+  font-weight: bolder;
 }
 </style>

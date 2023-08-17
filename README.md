@@ -91,7 +91,7 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 
 1. Copy the proper env file to .env, for example `cp .env.open-source .env`
 
-2. Build the local Docker image: `docker-compose -f docker/docker-compose.dev.yml build`
+2. Build the local Docker image: `docker-compose -f docker/docker-compose.yml build`
 
 3. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`.
 

@@ -322,6 +322,30 @@ class ESDLServices:
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
                     return True, None, es
+
+                # TODO: figure out a way to deal with multiple ESDLs
+                # elif service["result"][0]["action"] == "multi_esdl":
+                #     esdl_response = r.text
+                    
+                #     start_tag = "<esdl:EnergySystem"
+                #     end_tag = "</esdl:EnergySystem"
+
+                #     while start_tag in esdl_response:
+                #         start_pos = esdl_response.find(start_tag)
+                #         end_pos = esdl_response.find(end_tag, start_pos)
+
+                #         if start_pos != -1 and end_pos != -1:
+                #             es_header = esdl_response[start_pos:esdl_response.find(">", start_pos)]
+                #             es_name_start = es_header.find("name=\"") + 6
+                #             es_name = es_header[es_name_start:es_header.find("\"", es_name_start)]
+                            
+                #             end_pos = esdl_response.find(">", end_pos) + 1
+                #             es = esdl_response[start_pos:end_pos]
+                #             logger.info(f"Start processing system with name: {es_name}")
+                #             es, parse_info = esh.add_from_string(es_name, es)
+
+                #             esdl_response = esdl_response[end_pos:]
+                    
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text), None
                 elif service["result"][0]["action"] == "add_assets":

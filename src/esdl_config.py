@@ -16,6 +16,8 @@ import os
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
+FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://flexscan:7200")
+FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
 
 esdl_config = {
     "control_strategies": [
@@ -353,36 +355,95 @@ esdl_config = {
                         "type": "choice",
                         "options": [
                             {
+                                "name": "EPS project",
+                                "type": "header",
+                            },
+                            {
                                 "name": "Create a new EPS project",
-                                "next_step": 1,
                                 "type": "primary",
+                                "next_step": 1,
+                                "disable_if_state": "flexscanf1.loaded",
                             },
                             {
                                 "name": "Adjust EPS input",
-                                "next_step": 13,
                                 "type": "default",
+                                "next_step": 13,
+                                "disable_if_state": "flexscanf1.loaded",
                             },
-                            {"name": "Run EPS", "next_step": 4, "type": "primary"},
+                            {
+                                "name": "Run EPS", 
+                                "type": "primary",
+                                "next_step": 4,
+                                "disable_if_state": "flexscanf1.loaded",
+                            },
                             {
                                 "name": "Load EPS",
                                 "type": "primary",
                                 "next_step": 6,
+                                "disable_if_state": "flexscanf1.loaded",
+                            },
+                            {
+                                "name": "FlexScan",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Run FlexScan F1",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "disable_if_state": "flexscanf1.loaded",
+                                "next_step": 22,
+                            },
+                            {
+                                "name": "Load FlexScan F1",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "disable_if_state": "flexscanf1.loaded",
+                                "next_step": 23,
+                            },
+                            {
+                                "name": "Explore FlexScan F1 results",
+                                "type": "default",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "next_step": 24,
+                            },
+                            {
+                                "name": "Adjust FlexScan F1 results",
+                                "type": "default",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "disable_if_state": "flexscanf1.confirmed",
+                                "next_step": 25,
+                            },
+                            {
+                                "name": "Confirm FlexScan F1 results",
+                                "type": "primary",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "disable_if_state": "flexscanf1.confirmed",
+                                "next_step": 26,
+                            },
+                            {
+                                "name": "EPS results",
+                                "type": "header",
                             },
                             {
                                 "name": "Select EPS measures",
                                 "type": "primary",
-                                "enable_if_state": "execution.success",
+                                "enable_if_state": "flexscanf1.confirmed",
                                 "next_step": 17,
                             },
                             {
                                 "name": "Explore EPS results",
                                 "type": "default",
-                                "enable_if_state": "execution.success",
+                                "enable_if_state": "flexscanf1.confirmed",
                                 "next_step": 11,
+                            },
+                            {
+                                "name": "Profiles",
+                                "type": "header",
                             },
                             {
                                 "name": "Generate profile template",
                                 "type": "default",
+                                "enable_if_state": "execution.success",
                                 "next_step": 20,
                             },
                             {
@@ -392,28 +453,38 @@ esdl_config = {
                                 "next_step": 21,
                             },
                             {
+                                "name": "Custom assets",
+                                "type": "header",
+                            },
+                            {
                                 "name": "Apply custom energy saving measures",
                                 "description": "beta",
                                 "type": "default",
-                                "enable_if_state": "execution.success",
+                                "enable_if_state": "flexscanf1.confirmed",
                                 # "disabled": True,
                                 "next_step": 18,
                             },
                             {
                                 "name": "Configure your own assets",
                                 "type": "default",
-                                "enable_if_state": "execution.success",
+                                "enable_if_state": "flexscanf1.confirmed",
                                 "next_step": 7,
                             },
                             {
+                                "name": "ESSIM",
+                                "type": "header",
+                            },
+                            {
                                 "name": "Export ESSIM results",
-                                "next_step": 19,
                                 "type": "primary",
+                                "enable_if_state": "flexscanf1.confirmed",
+                                "next_step": 19,
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
-                                "next_step": 12,
                                 "type": "dashed",
+                                "enable_if_state": "flexscanf1.confirmed",
+                                "next_step": 12,
                             },
                         ],
                     },
@@ -780,6 +851,109 @@ esdl_config = {
                         "name": "Upload profiles",
                         "type": "custom",
                         "component": "dice-upload-profiles",
+                    },
+                    {
+                        # 22
+                        "name": "Run FlexScan F1",
+                        "description": "Please wait a moment while we run the FlexScan phase 1",
+                        "type": "service",
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca0",
+                            "name": "Run FlexScan phase 1",
+                            "headers": {
+                                "Accept": "application/json",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{FLEX_BACKEND_HOST}/eps/<execution_id>/import",
+                            "auto": True,
+                            "clearLayers": False,
+                            "http_method": "post",
+                            "type": "json",
+                            "result": [
+                                {
+                                    "code": 200, 
+                                    "action": "show_message",
+                                    "message": "FlexScan Phase 1 started",
+                                },
+                            ],
+                            "query_parameters": [
+                                {
+                                    "name": "Execution ID",
+                                    "parameter_name": "execution_id",
+                                    "location": "url",
+                                },
+                            ],
+                            "with_jwt_token": True,
+                        },
+                        "next_step": 23
+                    },
+                    {
+                        # 23
+                        "name": "Load FlexScan F1",
+                        "type": "service",
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
+                            "name": "Load FlexScan phase 1 results",
+                            "headers": {
+                                "Accept": "application/json",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{FLEX_BACKEND_HOST}/executions/<execution_id>/phase1/esdl",
+                            "auto": True,
+                            "clearLayers": False,
+                            "http_method": "post",
+                            "type": "json",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "query_parameters": [
+                                {
+                                    "name": "Execution ID",
+                                    "parameter_name": "execution_id",
+                                    "location": "url",
+                                },
+                            ],
+                            "with_jwt_token": True,
+                        },
+                        "target_variable": "flexscanf1",
+                        "target_variable_value": {
+                            "loaded": True
+                        },
+                    },
+                    {
+                        # 24
+                        # TODO: for now link to FlexScan dashboard F1 results table, optionally later this table could be displayed in the map-editor or KPI layers could be added like for EPS
+                        "name": "Explore FlexScan F1 results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "flexscan-inspect-phase1",
+                        "custom_data": {
+                            "flex_frontend_host": FLEX_FRONTEND_HOST,
+                        },
+                    },
+                    {
+                        # 25
+                        # TODO: for now link to FlexScan dashboard F1 results table, only able to modify if phase1 results were not confirmed already
+                        "name": "Adjust FlexScan F1 results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "flexscan-inspect-phase1",
+                        "custom_data": {
+                            "flex_backend_host": FLEX_BACKEND_HOST,
+                        },
+                        "next_step": 23,
+                    },
+                    {
+                        # 26
+                        # TODO: somehow disable this when the flexscan f1 results have already been confirmed?
+                        "name": "Confirm FlexScan F1 results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "flexscan-confirm-phase1",
+                        "custom_data": {
+                            "flex_backend_host": FLEX_BACKEND_HOST,
+                        },
+                        "target_variable": "flexscanf1",
                     },
                 ],
             }

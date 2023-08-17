@@ -8,6 +8,7 @@
 </template>
 
 <script setup="props">
+import {defineProps} from 'vue';
 import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspectResult';
 import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService';
 import {default as EpsCreateProject} from './custom/eps/EpsCreateProject';
@@ -16,7 +17,8 @@ import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures';
 import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM';
 import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate';
 import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles';
-import {defineProps} from 'vue'
+import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1';
+import {default as WorkflowFlexScanConfirmPhase1} from './custom/flexscan/WorkflowFlexScanConfirmPhase1';
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -27,6 +29,8 @@ const components = {
   "dice-export-essim": DiceExportEssim,
   "dice-generate-profile-template": DiceGenerateProfileTemplate,
   "dice-upload-profiles": DiceUploadProfiles,
+  "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,
+  "flexscan-confirm-phase1": WorkflowFlexScanConfirmPhase1,
 };
 const props = defineProps({
   workflowStep: {
