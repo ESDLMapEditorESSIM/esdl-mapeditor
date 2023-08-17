@@ -80,16 +80,40 @@ class ESDLFileIO:
     def load_esdl_in_esh(self, filename, file):
         esh = get_handler()
 
-        try:
-            result, parse_info = esh.add_from_string(esdl_string=file, name=filename)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                self.send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-        except Exception as e:
-            logger.exception(f"Error opening {filename}")
-            self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
+        def load_single_file(filename, file):
+            try:
+                result, parse_info = esh.add_from_string(esdl_string=file, name=filename)
+                if len(parse_info) > 0:
+                    info = ''
+                    for line in parse_info:
+                        info += line + "\n"
+                    self.send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+            except Exception as e:
+                logger.exception(f"Error opening {filename}")
+                self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
+    
+        if file.startswith("<EnergySystems>"):
+            logger.info("Multiple energy systems detected in this file, loading each as separate system")
+            start_tag = "<esdl:EnergySystem"
+            end_tag = "</esdl:EnergySystem"
+
+            while start_tag in file:
+                start_pos = file.find(start_tag)
+                end_pos = file.find(end_tag, start_pos)
+
+                if start_pos != -1 and end_pos != -1:
+                    es_header = file[start_pos:file.find(">", start_pos)]
+                    es_name_start = es_header.find("name=\"") + 6
+                    es_name = es_header[es_name_start:es_header.find("\"", es_name_start)]
+                    
+                    end_pos = file.find(">", end_pos) + 1
+                    es = file[start_pos:end_pos]
+                    logger.info("Start processing system with name: %s", es_name)
+                    load_single_file(es_name, es)
+
+                    file = file[end_pos:]
+        else:
+            load_single_file(filename, file)
 
     @staticmethod
     def call_process_energy_system(esh):
