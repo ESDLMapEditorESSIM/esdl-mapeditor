@@ -95,6 +95,7 @@ function query_esdl_service(service, state_params) {
         document.getElementById('query_service_button').style.display = 'none';
     }
     show_loader();
+    console.log("query_esdl_service params", params);
     socket.emit('command', { cmd: 'query_esdl_service', params: params });
 
     // TODO: Determine when to close
@@ -393,7 +394,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
         // document.getElementById('area_scope').onchange();  // force loading
     }
 
-    if (service['show_query_params'] != false && (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl' || service['type'] == 'json')) {
+    if (service['show_query_params'] != false && (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'].startsWith('send_esdl') || service['type'] == 'json')) {
         let q_params = service['query_parameters'];
 
         if (q_params.length > 0) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import base64
 #  This work is based on original code developed and copyrighted by TNO 2020.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -30,6 +30,7 @@ from flask_executor import Executor
 from flask_oidc import OpenIDConnect
 from flask_session import Session
 from flask_socketio import SocketIO, emit
+from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 import src.esdl_config as esdl_config
@@ -90,6 +91,7 @@ from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
 logger = get_logger(__name__)
+
 
 if settings.USE_GEVENT:
     import gevent.monkey
@@ -392,13 +394,25 @@ def auth_status():
 
 @app.route('/logout')
 def logout():
+    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
-    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
+    # retrieve the ID token to inform keycloak with the correct information to logout
+    # otherwise you will get a popup that requests if you want to log out
+    from flask import g
+    creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
+    creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
+    id_token_hint = creds.id_token_jwt
     oidc.logout()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
-    return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    # keycloak <17 logout:
+    #return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
+    return redirect(oidc.client_secrets.get('issuer') +
+                    '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
+                    '&client_id=' + oidc.client_secrets.get('client_id') +
+                    '&id_token_hint=' + id_token_hint)
 
 
 # Cant find out why send_file does not work in uWSGI with threading.
@@ -3345,4 +3359,4 @@ if __name__ == '__main__':
     logger.info("Starting ESDL MapEditor application")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)

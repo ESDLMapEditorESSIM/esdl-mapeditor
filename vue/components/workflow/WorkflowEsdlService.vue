@@ -17,6 +17,7 @@
     >
       Run ESDL service
     </a-button>
+    <div id="service_results_div"></div>
   </div>
 </template>
 
