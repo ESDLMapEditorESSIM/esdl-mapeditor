@@ -16,6 +16,7 @@ import base64
 
 import importlib
 import json
+import os
 import urllib
 import uuid
 import traceback
@@ -407,12 +408,16 @@ def logout():
     oidc.logout()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     # keycloak <17 logout:
-    #return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
-    # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
-    return redirect(oidc.client_secrets.get('issuer') +
-                    '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
-                    '&client_id=' + oidc.client_secrets.get('client_id') +
-                    '&id_token_hint=' + id_token_hint)
+
+    new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
+    if not new_keycloak:
+        return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    else:
+        # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
+        return redirect(oidc.client_secrets.get('issuer') +
+                        '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
+                        '&client_id=' + oidc.client_secrets.get('client_id') +
+                        '&id_token_hint=' + id_token_hint)
 
 
 # Cant find out why send_file does not work in uWSGI with threading.
