@@ -238,9 +238,10 @@ class ESDLServices:
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                     body = esdlstr_base64_bytes.decode('utf-8')
             if service["body_config"]["type"] == "json":
-                body = {}
+                #body = {}
                 for param in service["body_config"]['parameters']:
                     if param["type"] == "esdl":
+                        del body['energysystem'] # added earlier
                         esdlstr = esh.to_string(active_es_id)
                         if param["encoding"] == "none":
                             body[param["parameter"]] = esdlstr
@@ -309,7 +310,10 @@ class ESDLServices:
                         if service["result"][0]["encoding"] == "url_encoded":
                             esdl_response = urllib.parse.quote(r.text)
                         elif service["result"][0]["encoding"] == "base64_encoded":
-                            esdlstr_bytes = r.text.encode('utf-8')
+                            response_with_esdl = r.text
+                            if "json_field" in service['result'][0]:  # use specific json field in result
+                                response_with_esdl = r.json()[service['result'][0]['json_field']]
+                            esdlstr_bytes = response_with_esdl.encode('utf-8')
                             esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                             esdl_response = esdlstr_base64_bytes.decode('utf-8')
                         else:
@@ -395,7 +399,13 @@ class ESDLServices:
                         "asset_feedback": asset_results_dict
                     }
                 elif service["result"][0]["action"] == "show_message":
-                    return True, {"message": service["result"][0]["message"]}
+                    message = service["result"][0]["message"]
+                    if 'json_field' in service["result"][0]:
+                        message = r.json()[service["result"][0]['json_field']]
+                        import html  # escape html entities in log file of NWN
+                        message = html.escape(message)
+                        message = message.replace("\n", "<br/>")
+                    return True, {"message": message}
             else:
                 logger.warning(
                     "Error running ESDL service - response "

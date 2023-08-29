@@ -184,7 +184,10 @@ class EnergySystemHandler:
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
+        uu = str(uuid4())[:4]
         uri = StringURI(name + '.esdl', esdl_string)
+        if uri in self.rset.resources:
+            uri = StringURI(name + uu + '.esdl', esdl_string)
         # self.add_uri(uri)
         try:
             tmp_resource = self.rset.get_resource(uri)
@@ -192,6 +195,10 @@ class EnergySystemHandler:
             if isinstance(tmp_resource, XMLResource):
                 parse_info = tmp_resource.get_parse_information()
             tmp_es = tmp_resource.contents[0]
+            if tmp_es.id in self.esid_uri_dict:
+                print("Detected duplicate Energy System id, adapting to a new one.")
+                tmp_es.id = tmp_es.id + uu
+                tmp_es.name = tmp_es.name + '_' + uu
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)

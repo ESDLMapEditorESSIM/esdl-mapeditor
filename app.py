@@ -3315,6 +3315,10 @@ def get_carrier_color_dict():
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
     user_email = get_session('user-email')
+    if user_email is None:
+        # no valid login credentials
+        emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
+        return
     role = get_session('user-role')
 
     view_modes = ViewModes.get_instance()
