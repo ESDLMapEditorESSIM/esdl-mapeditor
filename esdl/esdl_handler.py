@@ -184,6 +184,7 @@ class EnergySystemHandler:
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
+        print("Adding new ESDL system", name)
         uu = str(uuid4())[:4]
         uri = StringURI(name + '.esdl', esdl_string)
         if uri in self.rset.resources:
@@ -300,7 +301,9 @@ class EnergySystemHandler:
             return
         else:
             my_uri = self.esid_uri_dict[es_id]
+            print(my_uri)
             del self.rset.resources[my_uri]
+            print(self.rset.resources)
             del self.esid_uri_dict[es_id]
 
     def get_energy_systems(self):

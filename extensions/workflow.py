@@ -68,9 +68,13 @@ class Workflow:
             del other_args["url"]
             with_jwt_token = request.args.get("with_jwt_token", True)
             jwt_token = get_session("jwt-token")
+            email = get_session("user-email")
             headers = (
                 {"Authorization": f"Bearer {jwt_token}"} if with_jwt_token else None
             )
+            for key, value in dict(other_args).items():
+                if value == "session.email":  # assumes email in query or url param
+                    other_args[key] = email
             url = url.format(**other_args)
             r = requests.get(url, headers=headers, params=other_args, timeout=DEFAULT_TIMEOUT)
             try:

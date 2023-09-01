@@ -91,7 +91,6 @@ export class Workflow {
             } else if (this.workflow_step.type === WorkflowStepTypes.SERVICE) {
                 // Continue with the service. Provide state params.
                 let params = this.get_from_state(this.workflow_step.state_params);
-                console.log("RENDER SERVICE!");
                 window.render_service(this.workflow_step['service'], service_settings_div, params);
                 service_settings_div.innerHTML += this.render_prev_next();
             } else {

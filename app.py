@@ -3018,6 +3018,8 @@ def process_command(message):
 
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
+        es_info_list = get_session("es_info_list")
+        del es_info_list[remove_es_id]  # update es info list too
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':

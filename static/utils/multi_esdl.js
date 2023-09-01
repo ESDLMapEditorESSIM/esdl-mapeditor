@@ -278,7 +278,11 @@ function find_layer_by_id(es_id, layer_name, id) {
 
 function clear_layers(es_id, layer_name) {
     if (es_id != null) {
-        esdl_list[es_id].layers[layer_name].clearLayers();
+        if (es_id in esdl_list) {
+            esdl_list[es_id].layers[layer_name].clearLayers();
+        } else {
+            console.log("Error clearing layers: es_id not found", es_id, layer_name);
+        }
     }
 }
 

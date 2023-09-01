@@ -27,10 +27,12 @@
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowSelectQuery
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY
-      "
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
       :key="currentWorkflow.workflowStep.name"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowTableQuery
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"      
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowEsdlService
@@ -85,6 +87,7 @@
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
 import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
 import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
+import {default as WorkflowTableQuery} from "../components/workflow/WorkflowTableQuery";
 import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
 import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
 import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
@@ -106,6 +109,7 @@ export default {
       WorkflowCustomComponent,
       WorkflowChoice,
       WorkflowSelectQuery,
+      WorkflowTableQuery,
       WorkflowEsdlService,
       WorkflowProgress,
       WorkflowDownloadFile,

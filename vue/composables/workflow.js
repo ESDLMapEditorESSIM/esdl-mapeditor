@@ -6,6 +6,7 @@ export const WorkflowStepTypes = Object.freeze({
     FORM: 'form',
     MULTI_SELECT_QUERY: 'multi-select-query',
     SELECT_QUERY: 'select-query',
+    TABLE_QUERY: 'table-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
     JSON_FORM: 'json_form',

@@ -29,7 +29,8 @@ import {
     Table,
     Transfer,
     Tree,
-    Upload
+    Upload,
+    Tag
 } from 'ant-design-vue';
 
 export function mountSidebarComponent(component) {
@@ -75,6 +76,7 @@ export function mountApp(component, elementSelector) {
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
+    app.use(Tag);
 
     app.mount(elementSelector);
 }
