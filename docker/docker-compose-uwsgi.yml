@@ -1,0 +1,20 @@
+version: "3.3"
+
+services:
+  mapeditor:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile-uwsgi
+    image: esdl-mapeditor:production
+    networks:
+      - mapeditor-net
+    ports:
+      - "${MAPEDITOR_PORT:-8111}:8111"
+    env_file:
+      - .env
+
+
+networks:
+  mapeditor-net:
+    external:
+      name: mapeditor-net

@@ -81,7 +81,10 @@ from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections
 from src.user_logging import UserLogging
-from src.version import __long_version__ as mapeditor_version
+from src.version import __long_version__ as mapeditor_long_version
+from src.version import __version__ as mapeditor_version
+from src.version import __git_branch__ as mapeditor_branch
+from src.version import __git_commit__ as mapeditor_commit
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
@@ -91,6 +94,9 @@ from src.custom_icons import CustomIcons
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
+print('MapEditor git describe {}'.format(mapeditor_long_version))
+print('MapEditor branch {}'.format(mapeditor_branch))
+print('MapEditor commit {}'.format(mapeditor_commit))
 logger = get_logger(__name__)
 
 
@@ -3025,7 +3031,7 @@ def process_command(message):
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
         esh = get_handler()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in separate thread
 
     set_handler(esh)
     session.modified = True

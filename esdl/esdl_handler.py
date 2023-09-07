@@ -197,7 +197,7 @@ class EnergySystemHandler:
                 parse_info = tmp_resource.get_parse_information()
             tmp_es = tmp_resource.contents[0]
             if tmp_es.id in self.esid_uri_dict:
-                print("Detected duplicate Energy System id, adapting to a new one.")
+                print("Detected duplicate Energy System Id, adapting to a new one.")
                 tmp_es.id = tmp_es.id + uu
                 tmp_es.name = tmp_es.name + '_' + uu
             self.validate(es=tmp_es)

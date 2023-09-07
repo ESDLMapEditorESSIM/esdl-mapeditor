@@ -49,7 +49,7 @@ logging.config.dictConfig(
         },
         "handlers": {
             "default": {
-                "level": "INFO" if FLASK_DEBUG else "DEBUG",
+                "level": "INFO" if not FLASK_DEBUG else "DEBUG",
                 "class": "logging.StreamHandler",
                 "formatter": "colored" if FLASK_DEBUG else "json",
             }

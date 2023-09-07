@@ -339,129 +339,6 @@ esdl_config = {
             ],
         },
         {
-            "id": "12345a2b-8eee-46f7-a225-87c5f8512345",
-            "name": "Heat network optimization",
-            "explanation": "This service allows you execute a heat network optimization and view results",
-            "type": "workflow",
-            "workflow": [
-                {
-                    #0
-                    "name": "Select action",
-                    "description": "Please select the next action",
-                    "type": "choice",
-                    "options": [
-                        {
-                            "name": "Run an heat network optimization",
-                            "next_step": 1,
-                            "type": "primary",
-                        },
-                        {
-                            "name": "View optimization results",
-                            "next_step": 2,
-                            "type": "default",
-                        }
-                    ]
-                },
-                # {
-                #     # 1
-                #     "name": "Configure optimization",
-                #     #"description": "Sends the current ESDL to the optimizer",
-                #     "type": "json_form",
-                #     "state_params": {"scenario": "scenario.name"},
-                #     "fields": [
-                #         {
-                #             "type": "text",
-                #             "target_variable": "scenario",
-                #             "description": "Fill in a name for this scenario"
-                #         }
-                #     ],
-                #     "url": "http://localhost:9200/dispatch",
-                #     #"state_params": True,
-                #     "next_step": 2, # or go to progress page / result page with state
-                #
-                # },
-                {
-                    #1
-                    "name": "Run optimization",
-                    "description": "Sends the current ESDL to the optimizer",
-                    "type": "service",
-                    "state_params": {"name": "scenario.name"},
-                    "service": {
-                        "id": "123451a2-c92a-46ed-a7e4-993197712345",
-                        "name": "Dispatch optimizer",
-                        "headers": {
-                            "User-Agent": "ESDL Mapeditor/1.0",
-                            "Content-Type": "application/json",
-                        },
-                        "url": f"{HEATNETWORK_DISPATCHER_URL}/dispatch",
-                        "http_method": "post",
-                        "type": "send_esdl_json",
-                        "send_email_in_post_body_parameter": "user_name",
-                        "show_query_params": True,
-                        "query_parameters": [
-                            {
-                                "type": "string",
-                                "name": "Scenario name",
-                                "description": "Give this scenario a unique name",
-                                "parameter_name": "job_name",
-                                "location": "body"
-                            },
-                            {
-                                "type": "selection",
-                                "name": "Workflow type",
-                                "description": "Select the workflow to execute",
-                                "parameter_name": "work_flow_type",
-                                "location": "body",
-                                "possible_values": [
-                                    "Network optimization",
-                                ],
-
-                            }
-                        ],
-                        "body": "base64_encoded",
-                        "result": [
-                            {"code": 200, "action": "show_message", "message": "Optimization successfully submitted."},
-                            {"code": 404, "action": "show_message", "message": "Error in submitting optimization."}
-                        ],
-                        "with_jwt_token": False,
-                        "state_params": False,
-                    },
-                    "next_step": 0,  # or go to progress page / result page with state
-                },
-                {
-                    # 2
-                    "name": "View optimization results",
-                    "description": "View optimization results",
-                    "type": "service",
-                    # "state_params": {"schemas": "schema.id"},
-                    "service": {
-                        "id": "123451a2-c92a-46ed-a7e4-993197712345",
-                        "name": "Query optimization results",
-                        "headers": {
-                            "User-Agent": "ESDL Mapeditor/1.0",
-                            "Content-Type": "application/json",
-                        },
-                        "url": f"{HEATNETWORK_DISPATCHER_URL}/jobs",
-                        "http_method": "post",
-                        "type": "",
-                        # "query_parameters": [
-                        #    {
-                        #        "name": "Schemas",
-                        #        "description": "ID of the schema to validate this ESDL against",
-                        #        "parameter_name": "schemas",
-                        #    }
-                        # ],
-                        #"body": "base64_encoded",
-                        "send_email_in_post_body_parameter": "username",
-                        "result": [{"code": 200, "action": "esdl"}],
-                        "with_jwt_token": False,
-                        "state_params": False,
-                    },
-                    "next_step": 0,
-                },
-            ],
-        },
-        {
                 "id": "123451a2-c92a-46ed-a7e4-993197712345",
                 "name": "Start Heat Network calculation",
                 "description": "Submit a heat network to the calculation service",
@@ -516,137 +393,211 @@ esdl_config = {
                         "message": "Error in submitting calculation."
                     }
                 ],
-                "with_jwt_token": False,
+                "with_jwt_token": True,
                 "state_params": False
             },
-            {
-                "id": "a12c4a2b-8eee-46f7-a225-87c5f85e645f",
-                "name": "View Heat Network optimization results",
-                "explanation": "This service allows you to view results from heat network simulations and optimizations",
-                "type": "vueworkflow",
-                "workflow": [
-                    {
-                        "name": "Select result",
-                        "description": "",
-                        "type": "select-query",
-                        "multiple": False,
-                        "source": {
-                            "url": f"{HEATNETWORK_DISPATCHER_URL}/job/",
-                            "http_method": "get",
-                            "label_fields": [
-                                "job_name",
-                                "status",
-                                "work_flow_type",
-                                "stopped_at"
-                            ],
-                            "value_field": "job_id"
-                        },
-                        "target_variable": "job",
-                        "next_step": 1
-                    },
-                    {
-                        "name": "Result selected",
-                        "state_params": {
-                            "job_id": "job.job_id"
-                        },
-                        "description": "How would you like to proceed?",
-                        "type": "choice",
-                        "options": [
+        {
+            "id": "x12c4a2b-8eee-46f7-a225-87c5f85e645f",
+            "name": "Heat Network calculation results",
+            "explanation": "This service allows you to view results from heat network simulations and optimizations",
+            "type": "vueworkflow",
+            "workflow": [
+                {
+                    "name": "Results overview",
+                    "description": "",
+                    "type": "table-query",
+                    "source": {
+                        "url": HEATNETWORK_DISPATCHER_URL + "/job/user/{username}",
+                        "http_method": "get",
+                        "request_params": {"username": "session.email"},
+                        "columns": [
                             {
-                                "name": "Load ESDL result",
-                                "description": "Load the results as ESDL on the map.",
-                                "type": "primary",
+                                "dataIndex": "job_name",
+                                "title": "Name",
+                                "ellipsis": True
+                            },
+                            {
+                                "dataIndex": "status",
+                                "title": "Status",
+                                "align": "center",
+                                "slots": {
+                                    "customRender": "tags"
+                                }
+                            },
+                            {
+                                "dataIndex": "stopped_at",
+                                "title": "Finished at",
+                                "formatter": "formatDate",
+                                "defaultSortOrder": "descend"
+                            }
+                        ],
+                        "actions": [
+                            {
+                                "title": "Load result",
                                 "next_step": 2
                             },
                             {
-                                "name": "View log output",
-                                "description": "View the log output of this execution.",
-                                "type": "default",
+                                "title": "Show log",
                                 "next_step": 3
+                            },
+                            {
+                                "title": "Delete",
+                                "next_step": 4
                             }
-                        ]
+                        ],
+                        "value_field": "job_id"
                     },
-                    {
-                        "name": "Load ESDL",
-                        "description": "Loads the result in the ESDL MapEditor",
-                        "type": "service",
-                        "state_params": {
-                            "job_id": "job.job_id"
-                        },
-                        "service": {
-                            "id": "b4c9d1a2-c92a-46ed-a7e4-9931971cbb27",
-                            "name": "Load ESDL results",
-                            "auto": True,
-                            "headers": {
-                                "User-Agent": "ESDL Mapeditor/0.1",
-                                "Content-Type": "application/xml"
-                            },
-                            "url": f"{HEATNETWORK_DISPATCHER_URL}/job/<job_id>/result",
-                            "http_method": "get",
-                            "type": "",
-                            "query_parameters": [
-                                {
-                                    "name": "Job id",
-                                    "description": "Job id",
-                                    "parameter_name": "job_id",
-                                    "location": "url"
-                                }
-                            ],
-                            "body": "",
-                            "result": [
-                                {
-                                    "code": 200,
-                                    "action": "esdl",
-                                    "encoding": "base64_encoded",
-                                    "json_field": "output_esdl"
-                                }
-                            ],
-                            "with_jwt_token": False,
-                            "state_params": True,
-                            "next_step": 0
-                        }
+                    "target_variable": "job",
+                    "with_jwt_token": True,
+                    "next_step": 0
+                },
+                {
+                    "name": "Result selected",
+                    "state_params": {
+                        "job_id": "job.job_id"
                     },
-                    {
-                        "name": "Show log file",
-                        "description": "Show the log file",
-                        "type": "service",
-                        "state_params": {
-                            "job_id": "job.job_id"
+                    "description": "How would you like to proceed?",
+                    "type": "choice",
+                    "options": [
+                        {
+                            "name": "Load ESDL result",
+                            "description": "Load the results as ESDL on the map.",
+                            "type": "primary",
+                            "next_step": 2
                         },
-                        "service": {
-                            "id": "c4c9d1a2-c92a-46ed-a7e4-9931971cbb27",
-                            "name": "Request the log file",
-                            "headers": {
-                                "User-Agent": "ESDL Mapeditor/0.1",
-                                "Content-Type": "application/xml"
-                            },
-                            "url": f"{HEATNETWORK_DISPATCHER_URL}/job/<job_id>/logs",
-                            "http_method": "get",
-                            "type": "",
-                            "query_parameters": [
-                                {
-                                    "name": "Job id",
-                                    "description": "Job id",
-                                    "parameter_name": "job_id",
-                                    "location": "url"
-                                }
-                            ],
-                            "body": "",
-                            "result": [
-                                {
-                                    "code": 200,
-                                    "action": "show_message",
-                                    "message": "Show log",
-                                    "json_field": "logs"
-                                }
-                            ],
-                            "with_jwt_token": False,
-                            "state_params": True,
-                            "next_step": 0
+                        {
+                            "name": "View log output",
+                            "description": "View the log output of this execution.",
+                            "type": "default",
+                            "next_step": 3
                         }
+                    ]
+                },
+                {
+                    "name": "Load ESDL",
+                    "description": "Loads the result in the ESDL MapEditor",
+                    "type": "service",
+                    "state_params": {
+                        "job_id": "job.job_id"
+                    },
+                    "service": {
+                        "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+                        "name": "Load ESDL results",
+                        "description": "The results should have been loaded in the MapEditor",
+                        "button_label": "Go back to results",
+                        "auto": True,
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/0.1",
+                            "Content-Type": "application/xml"
+                        },
+                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>/result",
+                        "http_method": "get",
+                        "type": "",
+                        "query_parameters": [
+                            {
+                                "name": "Job id",
+                                "description": "Job id",
+                                "parameter_name": "job_id",
+                                "location": "url"
+                            }
+                        ],
+                        "body": "",
+                        "result": [
+                            {
+                                "code": 200,
+                                "action": "esdl",
+                                "encoding": "base64_encoded",
+                                "json_field": "output_esdl"
+                            }
+                        ],
+                        "with_jwt_token": True,
+                        "state_params": True,
+                        "next_step": 0
                     }
-                ]
-            }
+                },
+                {
+                    "name": "Show log file",
+                    "type": "service",
+                    "state_params": {
+                        "job_id": "job.job_id"
+                    },
+                    "service": {
+                        "id": "x5c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+                        "name": "Request the log file",
+                        "description": "The logfile is shown below:",
+                        "button_label": "Go back",
+                        "auto": True,
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/0.1",
+                            "Content-Type": "application/xml"
+                        },
+                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>/logs",
+                        "http_method": "get",
+                        "type": "",
+                        "query_parameters": [
+                            {
+                                "name": "Job id",
+                                "description": "Job id",
+                                "parameter_name": "job_id",
+                                "location": "url"
+                            }
+                        ],
+                        "body": "",
+                        "result": [
+                            {
+                                "code": 200,
+                                "action": "show_message",
+                                "message": "Show log",
+                                "json_field": "logs"
+                            }
+                        ],
+                        "with_jwt_token": True,
+                        "state_params": True,
+                        "next_step": 0
+                    }
+                },
+                {
+                    "name": "Delete result",
+                    "description": "Delete the selected result",
+                    "type": "service",
+                    "state_params": {
+                        "job_id": "job.job_id"
+                    },
+                    "service": {
+                        "id": "x9c9d1a2-c92a-46ed-a7e4-9931971cbb2e",
+                        "name": "Delete the result",
+                        "description": "Press the button below to delete the result",
+                        "button_label": "Delete result",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/1.0",
+                            "Content-Type": "application/json"
+                        },
+                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>",
+                        "http_method": "delete",
+                        "type": "",
+                        "query_parameters": [
+                            {
+                                "name": "Job id",
+                                "description": "Job id",
+                                "parameter_name": "job_id",
+                                "location": "url"
+                            }
+                        ],
+                        "body": "",
+                        "result": [
+                            {
+                                "code": 200,
+                                "action": "show_message",
+                                "message": "Result succesfully removed"
+                            }
+                        ],
+                        "with_jwt_token": True,
+                        "state_params": True,
+                        "next_step": 0
+                    }
+                }
+            ]
+        }
 
     ],
     "role_based_esdl_services": {

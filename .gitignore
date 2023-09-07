@@ -60,7 +60,7 @@ instance/
 .env
 
 # virtualenv
-venv/
+venv_old/
 ENV/
 
 # Directory for cvustom env files.
@@ -81,7 +81,7 @@ yarn-error.log
 
 credentials/
 environments/
-venv*/
+venv_old/
 node_modules/
 
 credentials/client_secrets_remote*.json
