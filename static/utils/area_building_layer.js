@@ -682,7 +682,7 @@ function add_building_layer(building_data) {
         onEachFeature: function(feature, layer) {
             if (feature.properties) {
                 let text = "<table>";
-                // Render the KPI's. These were set in the preprocess_layer_data function.
+                // Render the KPI's for a popup. These were set in the preprocess_layer_data function.
                 for (let key in feature.properties.KPIs) {
                     const kpi = feature.properties.KPIs[key]
                     if (typeof kpi === "number") {
@@ -697,7 +697,8 @@ function add_building_layer(building_data) {
                 }
                 text += "</table>";
 
-                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, offset: L.point(0, -20)});
+                // Bind the KPI popup on hover of a building.
+                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, autoPan: false, offset: L.point(0, -20)});
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }

@@ -18,8 +18,6 @@ const L = window.L;
 const map = window.map;
 
 class MapEditorDialog extends L.Control.Dialog {
-  onClose = null;
-
   initialize(options) {
     if (options) {
       this.onClose = options.onClose;

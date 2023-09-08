@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from typing import Tuple
 
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -202,7 +203,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
             logger.error("Exception when loading resource: {}: {}".format(name, e))
             raise
 
-    def load_external_string(self, esdl_string, name='from_string'):
+    def load_external_string(self, esdl_string, name='from_string') -> Tuple[esdl.EnergySystem, list]:
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
         It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
         """
@@ -221,7 +222,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
-        uri = StringURI(name + '.esdl', esdl_string)
+        uri = StringURI(name + '_' + str(uuid4()) + '.esdl', esdl_string)
         # self.add_uri(uri)
         try:
             tmp_resource = self.rset.get_resource(uri)

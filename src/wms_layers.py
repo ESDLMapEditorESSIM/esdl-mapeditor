@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from flask import Flask
+from flask_socketio import SocketIO
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
@@ -23,13 +25,59 @@ LAYERS_SETTING = 'layers'
 
 
 class WMSLayers:
-    def __init__(self, settings_storage: SettingsStorage):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
+        self.flask_app = flask_app
+        self.socketio = socket
         self.settings_storage = settings_storage
+        self.register()
+
         # add initial layers when not in the system settings
         if not self.settings_storage.has_system(LAYERS_SETTING):
             self.settings_storage.set_system(LAYERS_SETTING, default_wms_layers)
         else:
             logger.info('Found WMS layers in User Settings')
+
+    def register(self):
+        logger.info('Registering WMS layer extension')
+
+        @self.socketio.on('get_wms_layer', namespace='/esdl')
+        def _get_wms_layer(params):
+            print(params)
+            # with self.flask_app.app_context():
+            return self.get_wms_layer(params['id'])
+
+        @self.socketio.on('save_wms_layer', namespace='/esdl')
+        def _save_wms_layer(params):
+            self.save_wms_layer(params['id'], params['lyr_info'])
+
+        @self.socketio.on('add_wms_layer', namespace='/esdl')
+        def _add_wms_layer(params):
+            id = params['id']
+            descr = params['descr']
+            url = params['url']
+            name = params['name']
+            setting_type = params['setting_type']
+            project_name = params['project_name']
+            legend_url = params['legend_url']
+            visible = params['visible']
+
+            layer = {
+                "description": descr,
+                "url": url,
+                "layer_name": name,
+                "setting_type": setting_type,
+                "project_name": project_name,
+                "legend_url": legend_url,
+                "layer_ref": None,
+                "visible": visible
+            }
+
+            self.add_wms_layer(id, layer)
+
+        @self.socketio.on('remove_wms_layer', namespace='/esdl')
+        def _remove_wms_layer(params):
+            id = params['id']
+            self.remove_wms_layer(id)
 
     def add_wms_layer(self, layer_id, layer):
         setting_type = SettingType(layer['setting_type'])
@@ -42,6 +90,23 @@ class WMSLayers:
             layers = dict()
         layers[layer_id] = layer
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
+
+    def get_wms_layer(self, layer_id):
+        # as we only have an ID, we don't know if it is a user, project or system layer
+        # get the whole list, so we can find out the setting_type
+        layer = self.get_layers()[LAYERS_SETTING][layer_id]
+        return layer
+
+    def save_wms_layer(self, layer_id, lyr_info):
+        layer = self.get_wms_layer(layer_id)
+
+        layer["description"] = lyr_info["description"]
+        layer["url"] = lyr_info["url"]
+        layer["layer_name"] = lyr_info["layer_name"]
+        layer["legend_url"] = lyr_info["legend_url"]
+        layer["attribution"] = lyr_info["attribution"]
+
+        self.add_wms_layer(layer_id, layer)
 
     def remove_wms_layer(self, layer_id):
         # as we only have an ID, we don't know if it is a user, project or system layer

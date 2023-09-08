@@ -14,8 +14,7 @@ from src.tno.events.config import AMQP_URL
 
 logger = get_logger(__name__)
 
-mgr = KombuManager(AMQP_URL)
-socketio = SocketIO(client_manager=mgr)
+socketio = SocketIO()
 executor = Executor()
 
 

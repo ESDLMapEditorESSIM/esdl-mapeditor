@@ -141,6 +141,7 @@ unitdict = {
     'PASCAL': 'Pa',
     'NEWTON': 'N',
     'DEGREES': '\u00b0',  # Sign for degrees
+    'HOUR': 'h'
 }
 
 
@@ -194,7 +195,10 @@ def unit_to_string(qau):
     if unit != 'NONE' and unit != 'UNDEFINED':
         if mult != 'NONE' and mult != 'UNDEFINED':
             s += multiplierdict[mult]
-        s += unitdict[unit]
+        try:
+            s += unitdict[unit]
+        except KeyError:
+            s += unit
     if punit != 'NONE' and punit != 'UNDEFINED':
         s += '/'
         if pmult != 'NONE' and pmult != 'UNDEFINED':
