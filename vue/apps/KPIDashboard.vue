@@ -12,6 +12,14 @@
           :dashboard-id="dashboard_config.id.value"
           @update:dashboardId="handleLoadDashboard"
         />
+        <load-dashboard
+          :dashboards-info="dashboards_info"
+          :dashboard-id="dashboard_config.id.value"
+          load-dashboard-icon="fas fa-paint-brush"
+          load-dashboard-title="Load dashboard template"
+          load-dashboard-text="Select the existing dashboard configuration that is used as a template for the current data"
+          @update:dashboardId="handleLoadDashboardTemplate"
+        />
         <save-dashboard
           :dashboards-info="dashboards_info"
           :dashboard-id="dashboard_config.id.value"
@@ -202,6 +210,58 @@ const handleLoadDashboard = (dashboard_id) => {
           new_panel_id = layout.value[i].i + 1;
         }
       }
+    } else {
+      console.log('Error: empty response');
+    }
+  });
+}
+
+const findTemplatePanelInData = (template_panel, layout) => {
+  for (let i in layout) {
+    let panel = layout[i];
+    if ('kpi_name' in panel && 'kpi_name' in template_panel && panel['kpi_name'] == template_panel['kpi_name']) {
+      panel.x = template_panel.x;
+      panel.y = template_panel.y;
+      panel.w = template_panel.w;
+      panel.h = template_panel.h;
+      panel.type = template_panel.type;
+      panel.chart_options = template_panel.chart_options; // TODO: chart type doesn't seem to work yet
+      return true;
+    }
+  }
+  return false;
+}
+
+const addTemplatePanelToDashboard = (template_panel, layout) => {
+  console.log(template_panel);
+}
+
+const handleLoadDashboardTemplate = (dashboard_id) => {
+  window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
+    if (response) {
+      // layout.value = [];
+      // layout.value = response.layout;
+      // dashboard_config.id.value = response.id;
+      // dashboard_config.name.value = response.name;
+      // dashboard_config.group.value = response.group;
+      // dashboard_config.layout.value = response.layout;
+
+      // for (let i=0; i<layout.value.length; i++) {
+      //   if (layout.value[i].i >= new_panel_id) {
+      //     new_panel_id = layout.value[i].i + 1;
+      //   }
+      // }
+
+      let template_layout = response.layout;
+
+      for (let i in template_layout) {
+        let template_panel = template_layout[i];
+        let found = findTemplatePanelInData(template_panel, layout.value);
+        if (!found) {
+          addTemplatePanelToDashboard(template_panel, layout.value);
+        }
+      }
+
     } else {
       console.log('Error: empty response');
     }

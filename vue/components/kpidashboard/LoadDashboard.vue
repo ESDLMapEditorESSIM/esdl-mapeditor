@@ -1,12 +1,12 @@
 <template>
   <div>
     <a-button type="primary" @click="showModal">
-      <i class="fas fa-folder-open" />
+      <i :class="load_dashboard_icon" />
     </a-button>
-    <a-modal v-model:visible="visible" title="Load dashboard" width="750px" @ok="handleOk">
+    <a-modal v-model:visible="visible" :title="loadDashboardTitle" width="750px" @ok="handleOk">
       <a-card>
         <span>
-          Select the existing dashboard configuration to overwrite from the list below
+          {{ loadDashboardText }}
         </span>
         <a-select
           v-model:value="dashboard_id"
@@ -52,6 +52,18 @@ export default {
     dashboardId: {
       type: String,
       default: ""
+    },
+    loadDashboardIcon: {
+      type: String,
+      default: "fas fa-folder-open"
+    },
+    loadDashboardTitle: {
+      type: String,
+      default: "Load Dashboard"
+    },
+    loadDashboardText: {
+      type: String,
+      default: "Select the existing dashboard configuration to overwrite from the list below"
     }
   },
   emits: ['update:dashboardId'],
@@ -59,6 +71,7 @@ export default {
     return {
         visible: false,
         dashboard_id: this.dashboardId,
+        load_dashboard_icon: this.loadDashboardIcon,
     }
   },
   watch: {
