@@ -20,6 +20,7 @@
       </li>
     </ul>
     <ProjectView v-if="isActiveTab('Project')"/>
+    <WmsLayersView v-if="isActiveTab('WMSLayers')"/>
   </div>
 </template>
 
@@ -28,6 +29,7 @@ import {ref} from "vue"
 import {useESDLProjects} from "../composables/esdlProjects";
 import {useSidePane} from "../composables/sidePane";
 import ProjectView from "./ProjectView";
+import WmsLayersView from "./WmsLayersView";
 
 const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
 const {showSidePane, toggleSidePaneView, initTabs, clickTab, isActiveTab} = useSidePane();

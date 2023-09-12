@@ -128,7 +128,7 @@ restrictedpython==6.0
     # via pyecore
 rsa==4.9
     # via oauth2client
-shapely==1.7.1
+shapely
     # via
     #   -r requirements.in
     #   shapely-geojson
@@ -154,7 +154,7 @@ tzdata==2023.3
     # via pandas
 urllib3==2.0.3
     # via requests
-uwsgi==2.0.21
+# uwsgi==2.0.21
     # via -r requirements.in
 werkzeug==2.3.6
     # via flask
