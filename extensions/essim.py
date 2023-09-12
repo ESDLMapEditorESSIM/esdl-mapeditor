@@ -555,6 +555,7 @@ class ESSIM:
         return result
 
     def emit_kpis_for_visualization(self, kpi_result_list):
+        kpis_description = None
         kpi_list = []
 
         for sim_id in kpi_result_list["kpis_per_simid"]:
@@ -589,11 +590,16 @@ class ESSIM:
                     kpi_list.append(kpi)
 
         if kpi_list:
+            kpi_info = {
+                'kpis_description': kpis_description,
+                'kpi_list': kpi_list
+            }
+
             print("Emit kpi_list for visualization:")
-            print(kpi_list)
+            print(kpi_info)
             with self.flask_app.app_context():
                 es_id = get_session('active_es_id')
-                emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_list': kpi_list})
+                emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_info': kpi_info})
 
     def process_sub_kpi(self, sub_kpi):
         sub_kpi_res = dict()

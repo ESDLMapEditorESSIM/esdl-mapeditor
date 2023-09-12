@@ -122,7 +122,18 @@ function createChartOptions(kpi_info) {
             kpi_item = kpi_info[i];
 
             let dataset = {}
-            dataset['label'] = i.toString();  // kpi_item['es_id'];
+            // dataset['label'] = i.toString();  // kpi_item['es_id'];
+            let label = kpi_item['kpis_description'];
+            if (!label) {
+                label = i.toString();   // if no kpis_description was given, use an index
+            } else {
+                // make sure labels are not longer than 10 characters
+                if (label.length > 10) {
+                    label = label.substring(0, 7) + '...';
+                }
+            }
+            dataset['label'] = label;
+
             let data = new Array(labels.length);
             data = data.fill(0);
             for (let lbl_info in label_info_array) {
