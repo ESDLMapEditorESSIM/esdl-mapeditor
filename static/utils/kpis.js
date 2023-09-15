@@ -31,7 +31,11 @@ class KPIs {
             let kpi_info = data['kpi_info'];    // kpi_info: {'kpis_description': ..., 'kpi_list': ...}
             // Store or replace the kpi info for this energy system
             set_kpi_info(es_id, {scope: scope, kpis_description: kpi_info.kpis_description, kpi_list: kpi_info.kpi_list});
-            kpis.show_all_kpis();
+
+            // Don't show the old small KPI dialog anymore by default.
+            // There is an AnnounceKPI control, that allows to open the bigger dashboard.
+            // The old small KPI dialog can still be opened from the menu
+            // kpis.show_all_kpis();
         });
 
         socket.on('show_kpis', function() {

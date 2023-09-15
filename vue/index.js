@@ -35,6 +35,7 @@ import {useAssetFeedbackList} from './composables/assetFeedback';
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
 
 
 // Vue.config.productionTip = false
@@ -145,3 +146,7 @@ window.activate_table_editor_window = () => {
 window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');
 }
+
+createVueLControl(AnnouceKPIsToolbar, {
+        position: 'bottomright',
+    });
