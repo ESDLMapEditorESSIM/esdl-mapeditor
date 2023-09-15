@@ -7,4 +7,6 @@ environments
 *.lock
 !yarn.lock
 node_modules
+.yarn
+.yarnrc.yml
 tests
