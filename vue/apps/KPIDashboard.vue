@@ -2,7 +2,7 @@
   <a-row>
     <a-col span="20">
       <h1>
-        KPI Dashboard - {{ dashboard_config.name.value }}
+        KPI Dashboard (Experimental) - {{ dashboard_config.name.value }}
       </h1>
     </a-col>
     <a-col span="4">
@@ -42,9 +42,9 @@
                 <a-menu-item key="Title">
                   Add Title panel
                 </a-menu-item>
-                <a-menu-item key="Sankey">
-                  Add Sankey panel
-                </a-menu-item>
+<!--                <a-menu-item key="Sankey">-->
+<!--                  Add Sankey panel-->
+<!--                </a-menu-item>-->
               </a-menu>
             </template>
           </a-dropdown>
@@ -95,10 +95,10 @@
           v-if="item.type == 'titlepanel'"
           :options="item.options"
         />
-        <SankeyPanel
-          v-if="item.type == 'sankeypanel'"
-          :options="item.options"
-        />
+<!--        <SankeyPanel-->
+<!--          v-if="item.type == 'sankeypanel'"-->
+<!--          :options="item.options"-->
+<!--        />-->
       </grid-item>
     </grid-layout>
   </div>
@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 // eslint-disable-next-line no-unused-vars
 import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
 // eslint-disable-next-line no-unused-vars
@@ -173,6 +173,7 @@ const getAllKPIData = () => {
     } else {
         let chart_options = window.createChartOptions(kpi_info);
         chart_options.title = kpi_name;
+        // console.log(chart_options);
 
         layout.value.push({
           x: (kpi_nr % 3) * 3,
@@ -194,6 +195,15 @@ const getAllKPIData = () => {
 };
 getAllKPIData();
 
+const findNewPanelId = () => {
+  new_panel_id = 0;
+  for (let i=0; i<layout.value.length; i++) {
+    if (layout.value[i].i >= new_panel_id) {
+      new_panel_id = layout.value[i].i + 1;
+    }
+  }
+}
+
 // eslint-disable-next-line no-unused-vars
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
@@ -205,27 +215,48 @@ const handleLoadDashboard = (dashboard_id) => {
       dashboard_config.group.value = response.group;
       dashboard_config.layout.value = response.layout;
 
-      for (let i=0; i<layout.value.length; i++) {
-        if (layout.value[i].i >= new_panel_id) {
-          new_panel_id = layout.value[i].i + 1;
-        }
-      }
+      findNewPanelId();
     } else {
       console.log('Error: empty response');
     }
   });
 }
 
-const findTemplatePanelInData = (template_panel, layout) => {
-  for (let i in layout) {
-    let panel = layout[i];
+const applyTemplatePanelToDashbaordPanel = (template_panel, layout) => {
+  for (let i in layout.value) {
+    let panel = layout.value[i];
     if ('kpi_name' in panel && 'kpi_name' in template_panel && panel['kpi_name'] == template_panel['kpi_name']) {
       panel.x = template_panel.x;
       panel.y = template_panel.y;
       panel.w = template_panel.w;
       panel.h = template_panel.h;
-      panel.type = template_panel.type;
-      panel.chart_options = template_panel.chart_options; // TODO: chart type doesn't seem to work yet
+      panel.type = template_panel.type;  // panel type (charttable/textpanel/titlepanel/imagepanel)
+
+      if (template_panel.type == "charttable") {
+        // console.log('Adjusting scales...', template_panel.options.options.scales);
+        panel.options.options.scales = template_panel.options.options.scales;  // chart scales (x/y)
+        if (template_panel.options.type == 'pie' || template_panel.options.type == 'doughnut') {
+          // for a pie or doughnut chart remove the axis and scales
+          panel.options.options.scales = {};
+        }
+        // console.log('Adjusting chart type to ' + template_panel.options.type);
+        // This should trigger a re-render of the jschart
+        panel.options.type = template_panel.options.type;  // chart type (pie/bar/...)
+      }
+
+      // This doesn't work yet
+      panel.type = '';
+      panel.options.type = '';
+      nextTick();
+      panel.type = template_panel.type;  // panel type (charttable/textpanel/titlepanel/imagepanel)
+      panel.options.type = template_panel.options.type;
+
+      // console.log("Applying template to existing panel " + panel['kpi_name']);
+      // console.log("Dashboard panel:");
+      // console.log(panel);
+      // console.log("Template panel:");
+      // console.log(template_panel);
+
       return true;
     }
   }
@@ -233,35 +264,28 @@ const findTemplatePanelInData = (template_panel, layout) => {
 }
 
 const addTemplatePanelToDashboard = (template_panel, layout) => {
-  console.log(template_panel);
+  // console.log("Adding template panel to dashboard");
+  // console.log(template_panel);
+  // console.log(layout.value);
+  layout.value.push(template_panel);
 }
 
+// eslint-disable-next-line no-unused-vars
 const handleLoadDashboardTemplate = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
-      // layout.value = [];
-      // layout.value = response.layout;
-      // dashboard_config.id.value = response.id;
-      // dashboard_config.name.value = response.name;
-      // dashboard_config.group.value = response.group;
-      // dashboard_config.layout.value = response.layout;
-
-      // for (let i=0; i<layout.value.length; i++) {
-      //   if (layout.value[i].i >= new_panel_id) {
-      //     new_panel_id = layout.value[i].i + 1;
-      //   }
-      // }
-
       let template_layout = response.layout;
 
       for (let i in template_layout) {
         let template_panel = template_layout[i];
-        let found = findTemplatePanelInData(template_panel, layout.value);
+        let found = applyTemplatePanelToDashbaordPanel(template_panel, layout);
         if (!found) {
-          addTemplatePanelToDashboard(template_panel, layout.value);
+          addTemplatePanelToDashboard(template_panel, layout);
         }
       }
 
+      findNewPanelId();
+      dashboard_config.layout.value = [...layout.value];
     } else {
       console.log('Error: empty response');
     }
@@ -271,7 +295,14 @@ const handleLoadDashboardTemplate = (dashboard_id) => {
 // To keep the dashboard information in the vue component and in the database settings in sync
 // Assume order in layout array doesn't change...     Maybe add id to panel data, use i attribute?
 const copyDashboardLayoutToSettings = () => {
+  // console.log("copyDashboardLayoutToSettings");
+  // console.log(dashboard_config);
+  // console.log(layout.value);
+
   for (let i=0; i<layout.value.length; i++) {
+    // console.log(i);
+    // console.log(dashboard_config.layout.value[i]);
+    // console.log(layout.value[i]);
     if (dashboard_config.layout.value[i].i != layout.value[i].i) {
       console.log('ERROR: Dashboard panel IDs are not the same!');
     } else {
