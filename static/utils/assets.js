@@ -16,6 +16,197 @@
 
 
 // ------------------------------------------------------------------------------------------------------------
+//  Splitting conductors (cables or pipes)
+// ------------------------------------------------------------------------------------------------------------
+function emit_split_conductor(id, location, mode) {
+    socket.emit('command', {cmd: 'split_conductor', id: id, location: location, mode: mode});
+}
+
+function split_conductor(e, id) {
+    emit_split_conductor(id, e.latlng, 'no_connect');
+    // only remove conductor from UI, let server side remove conductor in ESDL
+    clear_layer = true;
+    //esdl_layer.removeLayer(e.relatedTarget);
+    remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
+    clear_layer = false;
+}
+
+function split_conductor_connect(e, id) {
+    emit_split_conductor(id, e.latlng, 'connect');
+    // only remove conductor from UI, let server side remove conductor in ESDL
+    clear_layer = true;
+    //esdl_layer.removeLayer(e.relatedTarget);
+    remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
+    clear_layer = false;
+}
+
+function split_conductor_add_joint(e, id) {
+    emit_split_conductor(id, e.latlng, 'add_joint');
+    // only remove conductor from UI, let server side remove conductor in ESDL
+    clear_layer = true;
+    //esdl_layer.removeLayer(e.relatedTarget);
+    remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
+    clear_layer = false;
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Asset port operations
+// ------------------------------------------------------------------------------------------------------------
+function add_port(direction, asset_id) {
+    // get name
+    pname = document.getElementById('name_add_port').value;
+    socket.emit('command', {cmd: 'add_port', direction: direction, asset_id: asset_id, pname: pname});
+}
+
+function remove_port(pid) {
+    socket.emit('command', {cmd: 'remove_port', port_id: pid});
+}
+
+function set_port_profile(e, marker_id, port_id) {
+    // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
+    socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Change asset attribute
+// ------------------------------------------------------------------------------------------------------------
+function change_param(obj) {
+    let asset_id = $(obj).attr('assetid');
+    let asset_fragment = $(obj).attr('fragment'); // in case there is no id present
+    let asset_param_name = obj.name;
+    let asset_param_value = obj.value;
+
+    socket.emit('command', {cmd: 'set_asset_param', id: asset_id, fragment: asset_fragment, param_name: asset_param_name, param_value: asset_param_value});
+
+    let object_type = $(obj).attr('object_type'); // also use asset type
+    let parent_asset_id = $(obj).attr('parent_asset_id');   // in case an asset reference is being edited
+    window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: asset_id, object_type: object_type, parent_asset_id: parent_asset_id, fragment: asset_fragment, name: asset_param_name, value: asset_param_value });
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Add and remove connection
+// ------------------------------------------------------------------------------------------------------------
+function connect_asset(feature_id, port_id) {
+    // console.log('connect_asset(feature_id=' + feature_id + ', port_id=' + port_id + ')');
+    if (bld_edit_id) {
+        console.log('Asset in building');
+    }
+    if (connect_ports != null) {
+        socket.emit('command', {'cmd': 'connect_ports', port1id: connect_ports, port2id: port_id});
+        connect_ports = null;
+    } else {
+        connect_ports = port_id;
+    }
+}
+
+function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
+    socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
+}
+
+function remove_single_connection(from_id, to_id, es_id) {
+    let id = from_id + to_id;
+    let conn = find_layer_by_id(es_id, 'connection_layer', id);
+    if (conn !== undefined) {
+        remove_object_from_layer(es_id, 'connection_layer', conn);
+    }
+    // also remove connection if connected from the other side
+    let id2 = to_id + from_id;
+    conn = find_layer_by_id(es_id, 'connection_layer', id2);
+    if (conn !== undefined) {
+        remove_object_from_layer(es_id, 'connection_layer', conn);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Deletes a building (Marker or Polygon) and its connections
+// ------------------------------------------------------------------------------------------------------------
+function remove_building_from_building_layer(bld) {
+    let asset = find_layer_by_id(active_layer_id, 'bld_layer', bld.id);
+
+    let geojson_layers = get_layers(active_layer_id, 'bld_layer').getLayers();
+    for (let i=0; i<geojson_layers.length; i++) {
+      if (geojson_layers[i] instanceof L.FeatureGroup) {
+        let bld_layers = geojson_layers[i].getLayers();
+        for (let j=0; j<bld_layers.length; j++) {
+          if (bld_layers[j].feature.properties.id == bld.id) {
+            geojson_layers[i].removeLayer(bld_layers[j]);
+            return;
+          }
+        }
+      }
+    }
+
+}
+
+function remove_building(bld) {
+    socket.emit('command', {cmd: 'get_building_connections', id: bld.id}, function(conn_list) {
+      if (conn_list) {
+        for (let i=0; i<conn_list.length; i++) {
+          remove_single_connection(conn_list[i]["from_id"], conn_list[i]["to_id"], active_layer_id);
+        }
+      }
+
+      remove_building_from_building_layer(bld);     // remove geojson polygon from building layer
+      delete_asset(bld);
+    });
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Deletes an asset (Marker, Polyline or Polygon) and its connections
+// ------------------------------------------------------------------------------------------------------------
+function delete_asset(clicked_asset) {
+    $(".ui-tooltip-content").parents('div').remove();
+
+    let asset_list = [clicked_asset.id];
+    if (select_assets.is_select_mode()) {
+        // One or more assets have been selected
+        if (select_assets.is_selected(clicked_asset)) {
+            // the current asset is part of this selection
+            asset_list = select_assets.get_selected_assets();
+        }
+    }
+
+    // asset_list now contains a list of all IDs of the selected assets
+    all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+    for (let idx=0; idx<asset_list.length; idx++) {
+        asset_id = asset_list[idx];
+        let asset = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+
+        if (asset instanceof L.Polygon) {
+            // Remove maker that belongs to polygon
+            if (asset.marker) {
+                remove_object_from_layer(active_layer_id, 'esdl_layer', asset.marker)
+            }
+        } else if (asset instanceof L.Polyline) {
+            if (asset.mouseOverArrowHead !== undefined) {
+                remove_object_from_layer(es_bld_id, 'connection_layer', asset.mouseOverArrowHead);
+                delete asset.mouseOverArrowHead;
+            }
+
+            if (asset.selectline) {  // remove highlight if selected
+                remove_object_from_layer(es_bld_id, 'esdl_layer', asset.selectline);
+                delete asset.selectline;
+            }
+        }
+
+        // remove connections manually
+        for (let i in asset.ports) {
+            let from_id = asset.ports[i].id;
+            for (let j in asset.ports[i].conn_to) {
+                remove_single_connection(from_id, asset.ports[i].conn_to[j], asset.esid)
+            }
+        }
+
+        // remove the asset itself
+        remove_object_from_layer(asset.esid, 'esdl_layer', asset);
+        socket.emit('command', {cmd: 'remove_object', id: asset.id, asspot: asset.asspot});
+    }
+    if (select_assets.is_select_mode()) {
+        select_assets.deselect_all_assets();
+    }
+}
+
+// ------------------------------------------------------------------------------------------------------------
 //  Handlers for clicking on an asset or potential
 // ------------------------------------------------------------------------------------------------------------
 function set_marker_handlers(marker) {
@@ -130,37 +321,41 @@ function set_marker_handlers(marker) {
                     icon: 'icons/Costs.png',
                     text: 'Set marginal costs...',
                     callback: function(e) {
-                        socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
-                        //marginal_costs_window(asset_id);
+                        // socket.emit('command', {cmd: 'set_marginal_costs_get_info', asset_id: asset_id})
+                        marginal_costs_window(asset_id);
                     }
                 });
             }
-
-            marker.options.contextmenuItems.push('-');
-            marker.options.contextmenuItems.push({
-                // icon: 'icons/Costs.png',
-                text: 'Set sector...',
-                callback: function(e) {
-                    select_sector_menu(asset_id);
-                }
-            });
-            // TODO: decide on seperators
-            marker.options.contextmenuItems.push('-');
-            marker.options.contextmenuItems.push({
-                icon: 'icons/Delete.png',
-                text: 'Delete',
-                callback: function(e) {
-                    delete_asset_marker(marker);
-                }
-            });
         }
     }
 
+    marker.options.contextmenuItems.push('-');
+    marker.options.contextmenuItems.push({
+        // icon: 'icons/Costs.png',
+        text: 'Set sector...',
+        callback: function(e) {
+            select_sector_menu(asset_id);
+        }
+    });
+    // TODO: decide on seperators
+    marker.options.contextmenuItems.push('-');
+    marker.options.contextmenuItems.push({
+        icon: 'icons/Delete.png',
+        text: 'Delete',
+        callback: function(e) {
+            delete_asset(marker);
+        }
+    });
+
+    // TODO: after editing the layers in LeafletDraw, these events are removed and need to be added again
     marker.off('dragend')
     marker.on('dragend', function(e) {
         var marker = e.target;
         var pos = marker.getLatLng();
+        update_marker_ports(marker);
+        console.log('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
         socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+
         // console.log(e.oldLatLng.lat);
         // console.log(pos.lat + ', ' + pos.lng );
     });
@@ -292,7 +487,7 @@ function set_line_handlers(line) {
         icon: 'icons/Delete.png',
         text: 'Delete',
         callback: function(e) {
-            delete_asset_line(line);
+            delete_asset(line);
         }
     });
 
@@ -300,7 +495,7 @@ function set_line_handlers(line) {
     line.on('remove', function(e) {
         let layer = e.target;
         if (layer.mouseOverArrowHead !== undefined) {
-            map.removeLayer(layer.mouseOverArrowHead)
+            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
 
@@ -378,25 +573,25 @@ function set_line_handlers(line) {
 
 function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping, tt_format) {
     // Format of asset_info
-    // 0         1          2     3   4           5          6      7      8        9
-    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability
+    // 0         1          2     3   4           5          6      7      8        9           10
+    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
     // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability
+    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
     // 'point'   potential  name  id  class_name  [lat,lon]
     // 'polygon' potential  name  id  class_name  [...]
+    let classname = '';
+    let extra_attrs = null;
     if ((asset_info[0] == 'point' && asset_info[1] == 'asset' && asset_info[4] != 'Joint') ||
         (asset_info[0] == 'polygon' && asset_info[1] == 'asset' )) {
-        capability = asset_info[9];
-        classname = 'circle ' + capability;
+        classname = 'circle ' + asset_info[9];
         if (!add_to_building) classname = 'zoom '+classname;
+        extra_attrs = asset_info[10];
     } else if (asset_info[1] == 'potential') {
         classname = 'circle Potential';
         if (!add_to_building) classname = 'zoom '+classname;
-    } else {
-        classname = '';
     }
     let img_class = "circle-img";
-    if (!add_to_building) img_class = 'zoom '+img_class;
+    if (!add_to_building) img_class = 'hide_when_small zoom '+img_class;
     if (asset_info[1] == 'asset') {
         if (asset_info[7] == 'o') {
             classname += ' Optional';       // will become 'Producer Optional'
@@ -411,7 +606,12 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
     if (!assets_for_icons.includes(asset_info[4])) {
         imgsrc = drawTextImage(getAbbrevation(asset_info[4]));
     }
-  
+    if (custom_icons_plugin.custom_icons) {
+        let custom_icon = custom_icons_plugin.get_icon_for(asset_info[4], extra_attrs);
+        if (custom_icon) {
+            imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
+        }
+    }
     var divicon = L.divIcon({
         className: classname,
         html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
@@ -431,7 +631,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point' && !('surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'point' && !(asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -444,7 +644,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -456,14 +656,17 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-        if (spatial_buffers_plugin.show_spatial_buffers())
-            spatial_buffers_plugin.add_spatial_buffers(marker);
-  
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
-            marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
-                { permanent: true, className: 'marker-tooltip' });
+
+        if (asset_info[1] == 'asset') {
+            if (spatial_buffers_plugin.show_spatial_buffers())
+                spatial_buffers_plugin.add_spatial_buffers(marker);
+
+            if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+                marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
+                    { permanent: true, className: 'marker-tooltip' });
+        }
     }
-    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
         // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
         var coords = asset_info[5]
         let polygon_color;
@@ -482,7 +685,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         polygon.title = title;
         polygon.id = asset_info[3];
-        polygon.esid = es_id;
+        polygon.esid = es_bld_id;
         polygon.name = asset_info[2];
         polygon.type = asset_info[4];
         polygon.asspot = asset_info[1];
@@ -500,7 +703,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
         marker.title = title;
         marker.id = asset_info[3];
-        marker.esid = es_id;
+        marker.esid = es_bld_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
@@ -543,7 +746,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         // line.bindPopup(asset_info[4]+': '+asset_info[2]+ '('+ asset_info[3] + ')');
         line.title = title;
         line.id = asset_info[3];
-        line.esid = es_id;
+        line.esid = es_bld_id;
         line.ports = asset_info[8];
         line.type = asset_info[4];
         line.asspot = asset_info[1];
@@ -650,4 +853,59 @@ function update_line_color(line_layer) {
     line_layer.setStyle(line_options);
     line_layer.color = line_color;
     //console.log('line color', line_options['color'], line_color, line_layer.selected)
+}
+
+// ------------------------------------------------------------------------------------------------------------
+//  Calculates leaflet sizes of assets, joints, ...
+// ------------------------------------------------------------------------------------------------------------
+// optional map reference (e.g. building editor map)
+function set_leaflet_sizes(mp) {
+    let active_map = map;
+    if (mp !== undefined) {
+        active_map = mp;
+    }
+    map_id = active_map.getContainer().id;
+    let zoom_level = active_map.getZoom();
+    let size = Math.pow(zoom_level/8+1,3);
+
+    /* Markers */
+    let marker_border = '1px';
+    if (zoom_level > 12 && zoom_level <= 15) marker_border = '2px';
+    if (zoom_level > 15) marker_border = '3px';
+
+    let size_marker = '' + size + 'px';
+    let margin_marker = '-' + (size + 6)/2 + 'px';      /* border is 3px, so add twice the border */
+    let size_image = '' + 0.7*size + 'px';              /* image size 70% of marker size */
+
+    $('#'+map_id+' .zoom.circle').css({
+        'width': size_marker,
+        'height': size_marker,
+        'line-height': size_marker,
+        'margin-left': margin_marker,
+        'margin-top': margin_marker,
+        'border-width': marker_border
+    });
+    $('#'+map_id+' .image-div').css({'text-align':'center'});
+    $('#'+map_id+' .zoom.circle-img').css({'width':size_image, 'height':size_image});
+
+    if (zoom_level < 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'none'}); }
+    if (zoom_level >= 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'inline'}); }
+
+    /* Joints */
+    if (size/3 < 3) size_joint = 3; else size_joint = size/3;
+    let size_joint_px = '' + size_joint + 'px';                /* markers were 30px, joints were 10px */
+    let margin_joint_px = '-' + size_joint/2 + 'px';           /* center joint */
+
+    $('#'+map_id+' .zoom.Joint').css({'width':size_joint_px, 'height':size_joint_px, 'margin-left':margin_joint_px, 'margin-top':margin_joint_px});
+    $('#'+map_id+' .zoom.circle-img-joint').css({'width':size_joint_px, 'height':size_joint_px});
+
+    /* Lines */
+    let size_line = 2;
+    if (zoom_level > 15) size_line = '' + 2 * zoom_level - 27;
+    $('#'+map_id+' .zoomline').css({'stroke-width': size_line + 'px'});
+    $('#'+map_id+' .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
+
+    set_port_size_and_position(active_map);       /* Ports */
+
+    // todo create pane for select line when pipes and cables are supported in the building editor
 }

@@ -54,16 +54,9 @@
             <a-select
               v-model:value="edit_carrier.type"
               style="width: 100%"
+              :options="carrier_types"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="carr in carrier_types"
-                :key="carr.value"
-                :value="carr.value"
-              >
-                {{ carr.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -126,16 +119,9 @@
             <a-select
               v-model:value="edit_carrier.energy_content_unit"
               style="width: 100%"
+              :options="energy_content_units"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="ecu in energy_content_units"
-                :key="ecu.value"
-                :value="ecu.value"
-              >
-                {{ ecu.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -150,16 +136,9 @@
             <a-select
               v-model:value="edit_carrier.state_of_matter"
               style="width: 100%"
+              :options="state_of_matters"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="som in state_of_matters"
-                :key="som.value"
-                :value="som.value"
-              >
-                {{ som.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -174,16 +153,9 @@
             <a-select
               v-model:value="edit_carrier.renewable_type"
               style="width: 100%"
+              :options="renewable_types"
               @change="value_changed"
-            >
-              <a-select-option
-                v-for="rt in renewable_types"
-                :key="rt.value"
-                :value="rt.value"
-              >
-                {{ rt.name }}
-              </a-select-option>
-            </a-select>
+            />
           </a-col>
         </a-row>
 
@@ -250,6 +222,65 @@
             />
           </a-col>
         </a-row>
+
+        <a-row v-if="edit_carrier.type != 'None'" :gutter="[0, 4]" type="flex" align="middle">
+          <a-col :span="9">
+            <span>Carrier cost</span>
+          </a-col>
+          <a-col :span="15">
+            <a-select
+              v-model:value="edit_carrier.cost_sort"
+              style="width: 100%"
+              :options="cost_sorts"
+              @change="value_changed"
+            />
+          </a-col>
+        </a-row>
+
+        <a-row v-if="edit_carrier.cost_sort == 'SingleValue'" :gutter="[0, 4]" type="flex" align="middle">
+          <a-col :span="9">
+            <span>Value</span>
+          </a-col>
+          <a-col :span="15">
+            <FancyNumberEdit
+              v-model:value="edit_carrier.cost_value"
+              size="small"
+              @update:value="value_changed"
+            />
+          </a-col>
+        </a-row>
+
+        <a-row v-if="edit_carrier.cost_sort == 'Profile'" :gutter="[0, 4]" type="flex" align="middle">
+          <a-col :span="9">
+            <span>Profile</span>
+          </a-col>
+          <a-col :span="15">
+            <a-select
+              v-model:value="edit_carrier.cost_profile"
+              show-search
+              style="width: 100%"
+              :options="profiles_options"
+              @change="value_changed"
+            />
+          </a-col>
+        </a-row>
+
+        <a-row v-if="edit_carrier.cost_sort != undefined" :gutter="[0, 4]" type="flex" align="middle">
+          <a-col :span="9">
+            <span>Unit</span>
+          </a-col>
+          <a-col :span="15">
+            <a-select
+              v-model:value="edit_carrier.cost_unit"
+              show-search
+              placeholder="Please select a unit..."
+              style="width: 100%"
+              :options="cost_units"
+              @change="value_changed"
+            />
+          </a-col>
+        </a-row>
+
         <a-space>
           <a-button
             :disabled="!edit_carrier_changed"
@@ -301,29 +332,53 @@ export default {
       carrier_info_mapping: {},
 
       carrier_types: [
-        {name: 'No Carrier selected', value: 'None'},
-        {name: 'Energy carrier', value: 'EnergyCarrier'},
-        {name: 'Electricity Commodity', value: 'ElectricityCommodity'},
-        {name: 'Gas Commodity', value: 'GasCommodity'},
-        {name: 'Heat Commodity', value: 'HeatCommodity'},
-        {name: 'EnergyCommodity', value: 'EnergyCommodity'},
+        {label: 'No Carrier selected', value: 'None'},
+        {label: 'Energy carrier', value: 'EnergyCarrier'},
+        {label: 'Electricity Commodity', value: 'ElectricityCommodity'},
+        {label: 'Gas Commodity', value: 'GasCommodity'},
+        {label: 'Heat Commodity', value: 'HeatCommodity'},
+        {label: 'EnergyCommodity', value: 'EnergyCommodity'},
       ],
       renewable_types: [
-        {name: 'Undefined', value: 'Undefined'},
-        {name: 'Fossil', value: 'Fossil'},
-        {name: 'Renewable', value: 'Renewable'},
+        {label: 'Undefined', value: 'Undefined'},
+        {label: 'Fossil', value: 'Fossil'},
+        {label: 'Renewable', value: 'Renewable'},
       ],
       state_of_matters: [
-        {name: 'Undefined', value: 'Undefined'},
-        {name: 'Solid', value: 'Solid'},
-        {name: 'Liquid', value: 'Liquid'},
-        {name: 'Gaseous', value: 'Gaseous'},
+        {label: 'Undefined', value: 'Undefined'},
+        {label: 'Solid', value: 'Solid'},
+        {label: 'Liquid', value: 'Liquid'},
+        {label: 'Gaseous', value: 'Gaseous'},
       ],
       energy_content_units: [
-        {name: 'Please select...', value: 'Undefined'},
-        {name: 'MJ/kg', value: 'MJ/kg'},
-        {name: 'MJ/Nm3', value: 'MJ/m3'},
-        {name: 'MJ/MJ', value: 'MJ/MJ'},
+        {label: 'Please select...', value: 'Undefined'},
+        {label: 'MJ/kg', value: 'MJ/kg'},
+        {label: 'MJ/Nm3', value: 'MJ/m3'},
+        {label: 'MJ/MJ', value: 'MJ/MJ'},
+      ],
+      cost_sorts: [
+        {label: 'Please select...', value: 'Undefined'},
+        {label: 'Single value', value: 'SingleValue'},
+        {label: 'Profile', value: 'Profile'},
+      ],
+      cost_profiles: [
+        {label: 'Please select...', value: 'Undefined'},
+      ],
+      // For the time being a fixed list of possible options
+      cost_units: [
+        { value: '', label: "Please select a unit..."},
+        { value: 'EUR', label: "EUR"},
+        { value: 'EUR/Wh', label: "EUR/Wh"},
+        { value: 'EUR/kWh', label: "EUR/kWh"},
+        { value: 'EUR/MWh', label: "EUR/MWh"},
+        { value: 'EUR/GWh', label: "EUR/GWh"},
+        { value: 'EUR/TWh', label: "EUR/TWh"},
+        { value: 'EUR/J', label: "EUR/J"},
+        { value: 'EUR/kJ', label: "EUR/kJ"},
+        { value: 'EUR/MJ', label: "EUR/MJ"},
+        { value: 'EUR/GJ', label: "EUR/GJ"},
+        { value: 'EUR/TJ', label: "EUR/TJ"},
+        { value: 'EUR/m3', label: "EUR/m3"},
       ],
 
       clear_inputs: false,
@@ -342,7 +397,12 @@ export default {
         pressure: undefined,
         supply_temperature: undefined,
         return_temperature: undefined,
+        cost_sort: undefined,
+        cost_value: undefined,
+        cost_profile: undefined,
+        cost_unit: undefined,
       },
+      profiles_options: [],
     }
   },
   computed: {
@@ -356,6 +416,28 @@ export default {
       this.carrier_info_mapping = window.get_carrier_info_mapping(window.active_layer_id);
       for (let i=0; i<this.carrier_list.length; i++) {
         this.carrier_list[i]['color'] = this.carrier_info_mapping[this.carrier_list[i]['id']]['color'];
+      }
+      let profiles_list = window.profiles_plugin.profiles_list;
+      console.log(profiles_list);
+      let profiles = Object.entries(window.profiles_plugin.profiles_list['profiles']);
+      for (let gr=0; gr<profiles_list['groups'].length; gr++) {
+        let options = [];
+        for (let pr=0; pr<profiles.length; pr++) {
+          if (profiles_list['groups'][gr].setting_type == profiles[pr][1].setting_type) {
+            if (profiles[pr][1].setting_type == 'project' &&
+              profiles[pr][1].project_name != profiles_list['groups'][gr].project_name) continue;
+
+            options.push({
+              'value': profiles[pr][1].profile_uiname,
+              'label': profiles[pr][1].profile_uiname
+            });
+          }
+        }
+        console.log(options);
+        this.profiles_options.push({
+          'label': profiles_list['groups'][gr].name,
+          'options': options
+        });
       }
       this.isLoading = false;
     },
@@ -408,19 +490,17 @@ export default {
       this.edit_carrier.supply_temperature = undefined;
       this.edit_carrier.return_temperature = undefined;
 
+      this.edit_carrier.cost_sort = undefined
+      this.edit_carrier.cost_value = undefined
+      this.edit_carrier.cost_profile = undefined
+      this.edit_carrier.cost_unit = undefined
+
       this.edit_carrier_changed = false;
       this.clear_inputs = false;
     },
     addCarrier() {
       this.edit_carrier.id = uuidv4();
-      window.socket.emit(
-        'DLA_update_carrier_info',
-        {'id': this.edit_carrier.id, 'carr_info': this.edit_carrier},
-        (res) => {
-          window.set_carrier_list(window.active_layer_id, res);
-          this.getData();
-        });
-      this.clearInput();
+      this.saveCarrier();
     },
     saveCarrier() {
       window.socket.emit('DLA_update_carrier_info', {'id': this.edit_carrier.id, 'carr_info': this.edit_carrier},

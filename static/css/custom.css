@@ -103,6 +103,10 @@ h6 {
     height: 23px;
 }
 
+.circle-img.hide_when_small {
+    display: none;
+}
+
 .circle-img-disabled {
     vertical-align: middle;
     width: 23px;
@@ -771,6 +775,14 @@ z-index for jstree context menu, sidebar has 2000
     padding: 5px 10px 5px 10px;
     margin: 10px 0px 0px 0px;
     border: 1px solid #cccccc;
+}
+
+/*
+    Profile group select (readonly standard/system profiles depending on user role)
+*/
+#profile_group_select option:disabled {
+    color: #bababa;
+    font-style: italic;
 }
 
 /*

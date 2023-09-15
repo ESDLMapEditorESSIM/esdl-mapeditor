@@ -5,16 +5,20 @@
  */
 import {createApp} from "vue";
 import ControlStrategy from './apps/ControlStrategy';
+import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 //import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import AboutBox from './apps/AboutBox';
+import ReleaseNotes from './apps/ReleaseNotes';
+import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import KPIDashboard from './apps/KPIDashboard';
 import AssetTableEditor from './apps/AssetTableEditor';
+import CustomIconsSettings from "./apps/CustomIconsSettings";
 import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
@@ -23,6 +27,8 @@ import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetD
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import {useWorkflow} from "./composables/workflow";
 import Workflow from "./apps/Workflow";
+import ServicesToolbar from './components/toolbars/ServicesToolbar'
+import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
@@ -57,6 +63,12 @@ window.control_strategy_window = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(ControlStrategy);
+}
+
+window.marginal_costs_window = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(MarginalCostsEdit);
 }
 
 window.carriers_window = () => {
@@ -98,16 +110,29 @@ window.activate_asset_draw_toolbar_standard_assets_settings = () => {
     // mountApp(AssetDrawToolbarStandardAssetsSettings, '#settings_module_contents')
 }
 
+window.activate_custom_icons_settings = () => {
+    mountSettingsComponent(CustomIconsSettings);
+}
+
 window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
 // createVueLControl(ActiveLongProcess);
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
+mountApp(AboutBox, '#vue_show_about_box')
+mountApp(ReleaseNotes, '#vue_show_release_notes')
+window.show_new_release_notes = () => {
+   const { showNewReleaseNotes } = useReleaseNotes();
+   // show new release notes if any...
+   showNewReleaseNotes();
+}
+
+createVueLControl(ServicesToolbar, {position: 'topleft'});
+createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-mountApp(AboutBox, '#vue_show_about_box')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

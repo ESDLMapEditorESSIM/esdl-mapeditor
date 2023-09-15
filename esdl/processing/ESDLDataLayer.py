@@ -23,7 +23,7 @@ from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
-from extensions.vue_backend.cost_information import get_cost_information
+from extensions.vue_backend.cost_information import get_cost_information, _create_cost_qau
 from extensions.vue_backend.table_data import get_table_data, set_table_data
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
@@ -107,6 +107,12 @@ class ESDLDataLayer:
             return common_obj_data
 
     def get_object_parameters_by_asset_type(self, asset_type):
+        """
+        This function is used by the Table Editor to gather information of all assets of a certain type
+
+        :param asset_type: esdl asset type
+        :return: list with information per asset instance
+        """
         asset_list = self.get_esdl_objects_of_type(asset_type)
 
         attrs_per_asset_list = list()
@@ -119,7 +125,13 @@ class ESDLDataLayer:
 
             view_mode = ViewModes.get_instance()
             cat_attrs = view_mode.categorize_object_attributes_and_references(asset, attrs, refs)
-            attrs_per_asset_list.append(cat_attrs)
+
+            cost_information = get_cost_information(asset)
+
+            attrs_per_asset_list.append({
+                "attributes": cat_attrs,
+                "cost_information": cost_information,
+            })
 
         return attrs_per_asset_list
 
@@ -134,8 +146,8 @@ class ESDLDataLayer:
         for pkey in profiles:
             p = profiles[pkey]
             profiles_list.append({
-                'id': pkey,
-                'name': p['profile_uiname']
+                'value': pkey,
+                'label': p['profile_uiname']
             })
         return profiles_list
 
@@ -649,6 +661,32 @@ class ESDLDataLayer:
                 response.supply_temperature = carr.supplyTemperature
                 response.return_temperature = carr.returnTemperature
 
+            if carr.cost:
+                if isinstance(carr.cost, esdl.SingleValue):
+                    response.cost_sort = "SingleValue"
+                    response.cost_value = carr.cost.value
+                    if carr.cost.profileQuantityAndUnit:
+                        response.cost_unit = unit_to_string(carr.cost.profileQuantityAndUnit)
+                elif isinstance(carr.cost, esdl.InfluxDBProfile):
+                    response.cost_sort = "Profile"
+
+                    database = carr.cost.database
+                    measurement = carr.cost.measurement
+                    field = carr.cost.field
+
+                    profile_name = None
+                    profiles = Profiles.get_instance().get_profiles()['profiles']
+                    for pkey in profiles:
+                        p = profiles[pkey]
+                        if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
+                            profile_name = p['profile_uiname']
+                    if profile_name == None:
+                        profile_name = field
+
+                    response.cost_profile = profile_name
+                    if carr.cost.profileQuantityAndUnit:
+                        response.cost_unit = unit_to_string(carr.cost.profileQuantityAndUnit)
+
         return response
 
     @staticmethod
@@ -691,6 +729,13 @@ class ESDLDataLayer:
                 carrier.supplyTemperature = float(carrier_info.supply_temperature)
             if carrier_info.return_temperature is not None:
                 carrier.returnTemperature = float(carrier_info.return_temperature)
+
+        if carrier_info.cost_sort == 'SingleValue':
+            carrier.cost = esdl.SingleValue(id=str(uuid4()), value=float(carrier_info.cost_value))
+            carrier.cost.profileQuantityAndUnit = _create_cost_qau(carrier_info.cost_unit)
+        elif carrier_info.cost_sort == 'Profile':
+            carrier.cost = Profiles.get_instance().create_esdl_influxdb_profile(carrier_info.cost_profile, 1)
+            carrier.cost.profileQuantityAndUnit = _create_cost_qau(carrier_info.cost_unit)
 
         if add_carrier:
             esi = es.energySystemInformation

@@ -257,7 +257,8 @@ function process_service_results(results) {
         service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
     }
 
-    if (!('show_asset_results' in results) && !('asset_feedback' in results) && !('show_url' in results)) {
+    if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
+        !('show_url' in results) && !('message' in results)) {
         sidebar.hide();
     }
 }
@@ -499,6 +500,17 @@ function esdl_services_info() {
     sidebar_ctr.innerHTML += '<div id="service_results_div"></div>';
 
     sidebar.show();
+}
+
+function show_esdl_service_sidebar(id) {
+    for (let i=0; i<esdl_services_information.length; i++) {
+        if (esdl_services_information[i].id == id) {
+            let sidebar_ctr = sidebar.getContainer();
+            sidebar_ctr.innerHTML = '<div id="service_settings_div"></div>'
+            show_service_settings(i);
+            sidebar.show();
+        }
+    }
 }
 
 /**

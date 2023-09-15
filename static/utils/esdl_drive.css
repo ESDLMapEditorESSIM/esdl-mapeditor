@@ -14,11 +14,13 @@
  *      TNO
  */
 
-#treebrowsercontainer { min-width:405px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; height:100%}
-#treebrowser { float:left; min-width:400px; border-right:1px solid silver; overflow:auto; padding:0px 0; height:100%; overflow: auto; padding-right: 20px; margin-right: 10px}
-#data { margin-left:400px; height: 100%; /*float: left;*/}
+#treebrowsercontainer { min-width:305px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; height:100%}
+#treebrowser { float:left; min-width:300px; max-width: 520px; overflow:auto; padding:0px 0; height:100%; overflow: auto; /* padding-right: 20px; */ margin-right: 2px;  }
+#splitter { height: 100%; float: left; width:4px; min-width:4px; padding:0px; background: #efefef; /*border:solid 1px silver;*/ border-left: 1px solid silver; border-right: 1px solid silver; cursor:col-resize; margin-left:2px; }
+#data { margin-left:300px; height: 100%; /*float: left;*/}
 /* #data textarea { margin:0; padding:0; height:100%; width:100%; border:0; background:white; display:block; line-height:18px; resize:none; } */
 /* #data, #code { font: normal normal normal 12px/18px 'Consolas', monospace !important; } */
+#data .folder { padding: 20px; overflow: auto; height:100%; }
 #data .esdl { padding: 20px; overflow: auto; height:100%; }
 #data .history { padding: 20px; overflow: auto; height:100%; }
 

@@ -24,7 +24,7 @@ function new_ESDL() {
     table = '<table>';
     table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="new_name"></td></tr>';
     table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="new_description"></td></tr>';
-    table += '<tr><td width=180>Email address</td><td><input type="text" width="60" id="new_email"></td></tr>';
+    table += '<tr><td width=180>Instance name</td><td><input type="text" width="60" id="new_instance_name"></td></tr>';
     table += '<tr><td width=180></td><td></td></tr>';
     table += '<tr><td width=180>Top-level area name</td><td><input type="text" width="60" id="new_area_name"></td></tr>';
     table += '</table>';
@@ -38,11 +38,11 @@ function new_ESDL() {
 function click_new_ESDL_button(obj) {
     new_name = document.getElementById('new_name').value;
     new_description = document.getElementById('new_description').value;
-    new_email = document.getElementById('new_email').value;
+    new_instance_name = document.getElementById('new_instance_name').value;
     new_top_area_name = document.getElementById('new_area_name').value;
 
     socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
-        email: new_email, top_area_name: new_top_area_name});
+        instance_name: new_instance_name, top_area_name: new_top_area_name});
 }
 
 function open_ESDL(event) {
@@ -93,9 +93,9 @@ function send_cmd_import_ESDL() {
 }
 
 function click_load_ESDL_button(obj) {
-    select = document.getElementById('load_es_selection');
-    es_id = select.options[select.selectedIndex].value;
-    es_title = select.options[select.selectedIndex].innerHTML;
+    let select = document.getElementById('load_es_selection');
+    let es_id = select.options[select.selectedIndex].value;
+    // let es_title = select.options[select.selectedIndex].innerHTML;
     // console.log(es_id);
 
     // title_div = document.getElementById('es_title');
@@ -108,26 +108,23 @@ function click_load_ESDL_button(obj) {
 }
 
 function click_import_ESDL_button(obj) {
-    select = document.getElementById('load_es_selection');
-    es_id = select.options[select.selectedIndex].value;
+    let select = document.getElementById('load_es_selection');
+    let es_id = select.options[select.selectedIndex].value;
     socket.emit('file_command', {cmd: 'import_esdl_from_store', id: es_id})
     show_loader();
 }
 
-// Save ESDL: creates an IFrame to download, otherwise the websocket connection will be reset
-// if we set the window.location.href directly...
-var $idown;  // Keep it outside of the function, so it's initialized once.
 function save_ESDL(e, prefix) {
-    let url = prefix+'/esdl'
-    //if ($idown) {
-    //    $idown.attr('src',url);
-    //} else {
-    //    $idown = $('<iframe>', { id:'idown', src:url }).hide().appendTo('body');
-    //}
-    // The following code does a HTML5 download request.
-    // From stackoverflow:
-    // simply setting the window.url to the download url does not work as it navigates away from the current
-    // page, releasing the websocket connection.
+    let url = prefix+'/esdl';
+    download_file(e, url);
+}
+
+function export_as_shapefiles(e, prefix) {
+    let url = prefix+'/esdl2shapefile';
+    download_file(e, url);
+}
+
+function download_file(e, url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';

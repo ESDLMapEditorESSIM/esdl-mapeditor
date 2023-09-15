@@ -26,10 +26,10 @@ function getESDLFileContextMenu(node, tree)
             'icon': 'fa fa-trash-o',
             'action' : function () {
                 let id = node.id;
-//                console.log('removing '+id);
+                // console.log('removing '+id);
                 remove_esdl_layer(id);
-//                $('#esdl_layer_control_tree').jstree("delete_node", '#'+node.id);
-//                tree.jstree("delete_node", '#'+node.id);
+                // $('#esdl_layer_control_tree').jstree("delete_node", '#'+node.id);
+                // tree.jstree("delete_node", '#'+node.id);
                 tree.delete_node(node.id);
             }
         },
@@ -38,7 +38,7 @@ function getESDLFileContextMenu(node, tree)
             'icon': 'far fa-edit',
             'action': function () {
                 tree.edit(node);
-//                console.log(node.text);
+                // console.log(node.text);
             }
         }
     }
@@ -61,17 +61,17 @@ function add_layer_control() {
         $base_layer_control_tree
             .on('ready.jstree', function() {
                 let tree = $('#blct').jstree(true);
-//                console.log(baseTree.children[0].label);
+                // console.log(baseTree.children[0].label);
                 tree.select_node([baseTree.children[0].label]);
             })
             .on('select_node.jstree', function(e, data) {
                 let node = data.node;
                 base_layer_group = $("#blct").jstree("get_node", 'group_es_layers');
-//                console.log(base_layer_group);
+                // console.log(base_layer_group);
                 if (base_layer_group)
                     for (let bl=0; bl<base_layer_group.children.length; bl++) {
                         base_layer = base_layer_group.children[bl];
-//                        console.log(base_layer);
+                        // console.log(base_layer);
                         bl_node = $("#blct").jstree("get_node", base_layer);
                         if ($("#blct").jstree(true).is_selected(bl_node)) {
                             if (!map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
@@ -85,16 +85,16 @@ function add_layer_control() {
                     }
             })
             // These two events do only work if tie_selection is set to false
-//            .on('check_node.jstree', function(e, data) {
-//                let node = data.node;
-//                if (!map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
-//                    map.addLayer(baseTree.children[node.data.baseTreeIndex].layer);
-//            })
-//            .on('uncheck_node.jstree', function(e, data) {
-//                let node = data.node;
-//                if (map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
-//                    map.removeLayer(baseTree.children[node.data.baseTreeIndex].layer);
-//            })
+            // .on('check_node.jstree', function(e, data) {
+            //     let node = data.node;
+            //     if (!map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
+            //         map.addLayer(baseTree.children[node.data.baseTreeIndex].layer);
+            // })
+            // .on('uncheck_node.jstree', function(e, data) {
+            //     let node = data.node;
+            //     if (map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
+            //         map.removeLayer(baseTree.children[node.data.baseTreeIndex].layer);
+            // })
             .jstree({
                 "core" : {
                     "data": get_base_layers_control_tree_data(),
@@ -109,7 +109,7 @@ function add_layer_control() {
                 },
                 "contextmenu": {
                     "items": {}
-//                    "select_node": false
+                    // "select_node": false
                 },
                 "types" : {
                     "group" : {
@@ -127,10 +127,12 @@ function add_layer_control() {
         $(div).append($esdl_layer_control_tree);
 
         $esdl_layer_control_tree
-//            .on('select_node.jstree', function(e, data) {
-//                console.log('select_node event');
-//                console.log(data);
-//            })
+            .on('select_node.jstree', function(node, selected, event) {
+                if (selected.event !== undefined) { // undefined when manually selecting this node (e.g. initialization)
+                    console.log('set active layer to ', selected.node.text, selected.node.id);
+                    select_active_layer(selected.node.id);
+                }
+            })
             .on('ready.jstree', function() {
                 let tree = $('#esdl_lct').jstree(true);
                 tree.select_node(active_layer_id);
@@ -150,45 +152,45 @@ function add_layer_control() {
             .on('check_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
                 let node = data.node;
-				if(node.type === 'esdl-file') {    // check an entire ESDL file, show the ESDL layers that were visible
-				    for (let c=0; c<node.children.length; c++) {
+                if (node.type === 'esdl-file') {    // check an entire ESDL file, show the ESDL layers that were visible
+                    for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
                         if (tree.is_checked(child)) {
                             show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
                         }
-				    }
-				}
-				if(node.type === 'layer') {    // check an individual ESDL layer
-				    if (tree.is_checked(node.parent)) {
+                    }
+                }
+                if (node.type === 'layer') {    // check an individual ESDL layer
+                    if (tree.is_checked(node.parent)) {
                         show_esdl_layer_on_map(node.data.es_id, node.data.layer_name);
                     }
-				}
+                }
+                set_leaflet_sizes();
             })
             .on('uncheck_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
                 let node = data.node;
-				if(node.type === 'esdl-file') {    // uncheck an entire ESDL file, hide the ESDL layers that are visible
-				    for (let c=0; c<node.children.length; c++) {
+                if (node.type === 'esdl-file') {    // uncheck an entire ESDL file, hide the ESDL layers that are visible
+                    for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
                         if (tree.is_checked(child)) {
                             hide_esdl_layer_from_map(child.data.es_id, child.data.layer_name);
                         }
-				    }
-				}
-				if(node.type === 'layer') {    // uncheck an individual ESDL layer
+                    }
+                }
+                if (node.type === 'layer') {    // uncheck an individual ESDL layer
                     hide_esdl_layer_from_map(node.data.es_id, node.data.layer_name);
-				}
-			})
-//            .on("dblclick.jstree", function (e) {
-//                var instance = $.jstree.reference(this),
-//                node = instance.get_node(e.target);
-//                console.log('Double click event');
-//            })
+                }
+            })
+            // .on("dblclick.jstree", function (e) {
+            //     var instance = $.jstree.reference(this),
+            //     node = instance.get_node(e.target);
+            //     console.log('Double click event');
+            // })
             .on('click', '.jstree-anchor', function (e, data) {
-//                console.log('click event on .jstree-anchor');
-//                console.log($('#esdl_lct').jstree(true).is_checked(e.target));
-//                console.log($(e.target.parentNode).hasClass('jstree-checked'))
-//                if ($(e.target.parentNode).hasClass('jstree-checked'))
+                // console.log($('#esdl_lct').jstree(true).is_checked(e.target));
+                // console.log($(e.target.parentNode).hasClass('jstree-checked'))
+                // if ($(e.target.parentNode).hasClass('jstree-checked'))
 
                 // only has this behaviour on the sublayer level...   else check-uncheck again
                 // TODO: find better way of solving this
@@ -204,7 +206,7 @@ function add_layer_control() {
                 let tree = $("#esdl_lct").jstree(true);
                 node = data.obj;
                 new_title = data.text;
-//                console.log('Set EnergySystem name');
+                // console.log('Set EnergySystem name');
                 rename_esdl_energy_system(node.id, node.text);
             })
             .jstree({
@@ -218,10 +220,10 @@ function add_layer_control() {
                 "contextmenu": {
                     "items": function ($node) {
                         var tree = $("#esdl_lct").jstree(true);
-						if($node.type === 'esdl-file')
-							return getESDLFileContextMenu($node, tree);
-						else
-							return {};
+                        if ($node.type === 'esdl-file')
+                            return getESDLFileContextMenu($node, tree);
+                        else
+                            return {};
                     },
                     "select_node": false
                 },
@@ -231,13 +233,9 @@ function add_layer_control() {
                     "tie_selection": false      // uncouple selecting and checking
                 },
                 "conditionalselect" : function (node, e) {
-//                    console.log(node);
                     if(node.type === 'esdl-file') {
-                        // console.log('Selected an ESDL file with id: '+node.id);
-                        select_active_layer(node.id);
-                        // The next line checks the checkbox when clicking the title, but prevent the checkbox
-                        // from being clicked itself --> results in check-uncheck
-//                        $('#esdl_lct').jstree(true).check_node(e.target);
+                        // only allow node type == esdl-file to be selected, others are not
+                        // handling of selection event is in select_node event
                         return true;
                     } else
                         return false;
@@ -259,7 +257,7 @@ function add_layer_control() {
 
         $('.vakata-context').css('z-index', 20000);
 
-//        div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
+        // div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
         div.onmousedown = div.ondblclick = div.oncontextmenu = L.DomEvent.stopPropagation;
         return div;
     };

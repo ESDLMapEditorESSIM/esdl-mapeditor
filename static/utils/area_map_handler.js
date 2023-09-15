@@ -155,22 +155,28 @@ function add_area_map_handlers(socket, map) {
     });
 
     // To prevent the onclick functionality when removing objects
-	map.on(L.Draw.Event.DELETESTART, function (event) {
-        deleting_objects = true;
-	});
+    map.on(L.Draw.Event.DELETESTART, function (event) {
+	      // unselect all assets, as the selections are leaflet layers too and could then be moved independently of
+	      // the asset itself
+	      select_assets.deselect_all_assets();
+	      deleting_objects = true;
+    });
 
-	map.on(L.Draw.Event.DELETESTOP, function (event) {
+    map.on(L.Draw.Event.DELETESTOP, function (event) {
         deleting_objects = false;
-	});
+    });
 
     // To prevent the onclick functionality when editing objects
-	map.on(L.Draw.Event.EDITSTART, function (event) {
-        editing_objects = true;
-	});
+    map.on(L.Draw.Event.EDITSTART, function (event) {
+	      // unselect all assets, as the selections are leaflet layers too and could then be moved independently of
+	      // the asset itself
+	      select_assets.deselect_all_assets();
+	      editing_objects = true;
+    });
 
-	map.on(L.Draw.Event.EDITSTOP, function (event) {
+    map.on(L.Draw.Event.EDITSTOP, function (event) {
         editing_objects = false;
-	});
+    });
 
     map.on('draw:stopdrawing', function(event) {
         socket.emit('command', {'cmd': 'set_asset_drawing_mode', 'mode': 'empty_assets'});
@@ -219,7 +225,7 @@ function add_area_map_handlers(socket, map) {
         var event = e.originalEvent
         if (event.keyCode === 27) {
             // cancel drawing a connection if necessary
-            cancel_connection();
+            cancel_connection(e);
             map.contextmenu.hide();
             remove_tooltip(); // clear tooltips if they are sticky
             select_assets.deselect_all_assets(); //from select_asset.js

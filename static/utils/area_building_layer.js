@@ -450,10 +450,10 @@ function delete_area(e, area_id) {
     socket.emit('command', {cmd: 'remove_area', id: a_id});
 }
 
-function request_bag_info(e, area_id) {
-    area_polygon = e.relatedTarget;
-    latlngs = area_polygon.getLatLngs();
-    socket.emit('get_bag_contours', {id: area_polygon.id, polygon: latlngs});
+function request_bag_info(area) {
+    let latlngs = area.getLatLngs();
+    show_loader();
+    socket.emit('get_bag_contours', {id: area.id, polygon: latlngs});
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -478,7 +478,7 @@ function set_area_handlers(area) {
         area.options.contextmenuItems.push({
             icon: resource_uri + '/icons/BuildingContents.png',
             text: 'request BAG building',
-            callback: function(e) { request_bag_info(e, area_id); }
+            callback: function(e) { request_bag_info(area); }
         });
         area.options.contextmenuItems.push('-');
     }
@@ -655,10 +655,15 @@ function set_building_contextmenu(layer, id) {
 
     layer.options.contextmenuItems.push({
         text: 'Building ESDL contents',
-        icon: 'icons/BuildingContents.png',
+        icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
     layer.options.contextmenuItems.push('-');
+    layer.options.contextmenuItems.push({
+        text: 'Delete',
+        icon: resource_uri + 'icons/Delete.png',
+        callback: function(e) { remove_building(layer); }
+    });
     layer.options.contextmenuItems.push({
         text: 'Edit building properties',
         icon: resource_uri + 'icons/Edit.png',
@@ -964,10 +969,11 @@ function add_geojson_listener(socket, map) {
         }
 
         // add_building_geojson_layer_with_legend is now called from the 'add_building_objects' socketIO handler
-        // if (layer == 'bld_layer') {
-        //    geojson_building_data = message['geojson']; // store for redraw based on other property
-        //    add_building_geojson_layer_with_legend(geojson_building_data);
-        // }
+        // This code was commented out with the above command, but is required for the BAG service
+        if (layer == 'bld_layer') {
+            geojson_building_data = message['geojson']; // store for redraw based on other property
+            add_building_geojson_layer_with_legend(geojson_building_data);
+        }
 
         if (layer == 'pot_layer') {
             add_potential_geojson_layer(message['geojson']);

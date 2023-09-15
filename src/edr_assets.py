@@ -48,7 +48,7 @@ class EDRAssets:
 
         @self.flask_app.route('/edr_assets')
         def get_edr_assets():
-            edr_url = self.ESDLDrive_config['hostname'] + \
+            edr_url = self.EDR_config['host'] + \
                       "/store/edr/query?addESDL=false&addImageData=false&esdlType=EnergyAsset&maxResults=-1"
             # logger.debug('accessing URL: '+edr_url)
 
@@ -64,15 +64,15 @@ class EDRAssets:
                             asset_type_list.append(asset_type)
 
                         asset = {
-                            'id': a["id"],
-                            'title': a["title"],
+                            'value': a["id"],
+                            'label': a["title"],
                             'asset_type': asset_type,
-                            'description': a["description"] if 'description' in a else '',
+                            'description': a["description"] if ('description' in a and a['description'] is not None) else '',
                         }
                         asset_list.append(asset)
 
                     asset_type_list.sort()
-                    asset_list.sort(key=lambda x: x["title"])
+                    asset_list.sort(key=lambda x: x["label"])
 
                     return (jsonify({'asset_list': asset_list, 'asset_type_list': asset_type_list})), 200
                 else:
@@ -86,7 +86,7 @@ class EDRAssets:
                 abort(500, 'Error accessing EDR API')
 
     def get_asset_from_EDR(self, edr_asset_id):
-        url = self.ESDLDrive_config['hostname'] + "/store/edr/query?addESDL=true&path=" + \
+        url = self.EDR_config['host'] + "/store/edr/query?addESDL=true&path=" + \
               urllib.parse.quote(edr_asset_id, safe='')
         print('EDR url: ', url)
         headers = {
