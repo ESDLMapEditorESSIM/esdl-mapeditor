@@ -159,19 +159,14 @@ function createChartOptions(kpi_info) {
                 }
             },
             scales: {
-//                   xAxes: [{
-//                       stacked: false,
-//                   }],
-                yAxes: [{
-//                       stacked: true,
+                y: {
                     ticks: {
                         beginAtZero: true,
-//                            maxTicksLimit: 6,
                         callback: function(value) {
                             return formatN(value).toString();
                         }
                     }
-                }]
+                }
             },
             title: {
                 display: true,
@@ -218,15 +213,14 @@ function createChartOptions(kpi_info) {
                 text: kpi_item.name
             },
             scales: {
-                yAxes: [{
+                y: {
                     ticks: {
                         beginAtZero: true,
-//                            maxTicksLimit: 6,
                         callback: function(value) {
                             return formatN(value).toString();
                         }
                     }
-                }]
+                }
             }
         }
     }

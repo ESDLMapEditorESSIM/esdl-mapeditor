@@ -201,7 +201,7 @@ L.Control.KPICharts = L.Control.extend({
             'rgba(153, 102, 255, 0.2)',
             'rgba(255, 159, 64, 0.2)'
         ];
-        return colors[idx];
+        return colors[idx % colors.length];
     },
     createKPIvis: function(kpi_info, chart_box) {
         // This function is being called with a parameter kpi_info that is an array with objects for each loaded
@@ -361,7 +361,7 @@ L.Control.KPICharts = L.Control.extend({
  //                   xAxes: [{
  //                       stacked: false,
  //                   }],
-                    yAxes: [{
+                    y: {
  //                       stacked: true,
                         ticks: {
                             beginAtZero: true,
@@ -370,7 +370,7 @@ L.Control.KPICharts = L.Control.extend({
                                 return formatN(value).toString();
                             }
                         }
-                    }]
+                    }
                 },
                 title: {
                     display: true,
@@ -417,7 +417,7 @@ L.Control.KPICharts = L.Control.extend({
                     text: kpi_item.name
                 },
                 scales: {
-                    yAxes: [{
+                    y: {
                         ticks: {
                             beginAtZero: true,
 //                            maxTicksLimit: 6,
@@ -425,8 +425,7 @@ L.Control.KPICharts = L.Control.extend({
                                 return formatN(value).toString();
                             }
                         }
-                    }]
-                }
+                    }                }
             }
         }
 
