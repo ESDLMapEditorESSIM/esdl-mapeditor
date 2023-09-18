@@ -10,7 +10,7 @@
           <span
             v-if="isActiveTab(tab.key)"
             style="font-weight:bold"
-          >
+          > 
             {{ tab.title }}
           </span>
           <span v-else>
@@ -19,36 +19,42 @@
         </a>
       </li>
     </ul>
-    <ProjectView v-if="isActiveTab('Project')"/>
-    <WmsLayersView v-if="isActiveTab('WMSLayers')"/>
+    <div id="tab_area">
+      <MapsView v-if="isActiveTab('Maps')" />
+      <ProjectView v-if="isActiveTab('Project')" />
+      <VisibleView />
+    </div>
   </div>
 </template>
 
 <script setup>
 import {ref} from "vue"
-import {useESDLProjects} from "../composables/esdlProjects";
 import {useSidePane} from "../composables/sidePane";
+// eslint-disable-next-line no-unused-vars
 import ProjectView from "./ProjectView";
-import WmsLayersView from "./WmsLayersView";
+// eslint-disable-next-line no-unused-vars
+import MapsView from "./MapsPane.vue";
+// eslint-disable-next-line no-unused-vars
+import VisibleView from "./VisibleItemsPane.vue";
 
-const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
-const {showSidePane, toggleSidePaneView, initTabs, clickTab, isActiveTab} = useSidePane();
+// eslint-disable-next-line no-unused-vars
+const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
 
 const sidePaneTabs = ref([{
-    key: 'Project',
-    title: 'Project',
-    icon: 'fas fa-project-diagram',
-    active: false
-  }, {
-    key: 'Workflow',
-    title: 'Workflow',
-    icon: 'fas fa-tasks',
-    active: false
-  }, {
-    key: 'WMSLayers',
-    title: 'WMS Layers',
-    icon: 'fas fa-map',
-    active: false
+  key: 'Project',
+  title: 'Project',
+  icon: 'fas fa-project-diagram',
+  active: false
+}, {
+  key: 'Workflow',
+  title: 'Workflow',
+  icon: 'fas fa-tasks',
+  active: false
+}, {
+  key: 'Maps',
+  title: 'Maps',
+  icon: 'far fa-map',
+  active: false
 }]);
 
 initTabs(sidePaneTabs);

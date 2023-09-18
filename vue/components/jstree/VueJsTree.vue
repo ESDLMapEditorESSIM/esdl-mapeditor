@@ -40,7 +40,9 @@ const contextMenusByType = {};
 for (const treeTypeSpec of props.treeTypeSpecs) {
   types[treeTypeSpec.type] = {
     icon: treeTypeSpec.icon,
+    max_depth: treeTypeSpec.max_depth,
   }
+
   if (treeTypeSpec.contextMenus) {
     contextMenusByType[treeTypeSpec.type] = treeTypeSpec.contextMenus;
   }
@@ -75,6 +77,9 @@ onMounted(() => {
         return {};
       },
       select_node: false,
+    },
+    dnd: {
+      "inside_pos": "first",
     },
     types: types,
   });
