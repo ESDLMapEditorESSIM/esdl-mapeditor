@@ -181,17 +181,29 @@ function create_new_esdl_layer(es_id, title) {
 }
 
 function remove_esdl_layer_from_ui(es_id) {
-    esdl_list_item = esdl_list[es_id]
-    for (let lyr in esdl_list_item.layers) {
-        if (map.hasLayer(esdl_list_item.layers[lyr]))
-            map.removeLayer(esdl_list_item.layers[lyr])
+    if (es_id in esdl_list) {
+
+        esdl_list_item = esdl_list[es_id]
+        for (let lyr in esdl_list_item.layers) {
+            if (map.hasLayer(esdl_list_item.layers[lyr]))
+                map.removeLayer(esdl_list_item.layers[lyr])
+        }
+        delete esdl_list[es_id];
+    } else {
+        console.log("Cannot remove layers from ui for esdl_id ", es_id);
     }
-    delete esdl_list[es_id];
 }
 
 function remove_esdl_layer(es_id) {
     remove_esdl_layer_from_ui(es_id);
     socket.emit('command', {cmd: 'remove_energysystem', remove_es_id: es_id});
+    // set new active_es_id
+    let list = Object.keys(esdl_list);
+    if (list.length > 0) {
+        active_es_id = list[list.length-1];  // select last esdl from the list
+        es_bld_id = active_es_id
+        select_active_layer(active_es_id);
+    }
 }
 
 function rename_esdl_energy_system(es_id, name) {

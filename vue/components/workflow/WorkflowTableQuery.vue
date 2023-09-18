@@ -11,7 +11,7 @@
                :pagination="pagination" 
                :loading="isLoading" 
                size="small" 
-               :class="resulttable"                
+               class="resulttable"                
                style="font-size: 12px;"
       >
         <template #action="{ record }">
@@ -75,7 +75,7 @@ Syntax for WorkflowTableQuery.
 					"actions": [                           // Defines the actions that can be done on the column
 						{
 							"title": "Load result",            // title of the action
-							"next_step": 2                     // when button is clicked, the workflow moves to this step.
+							"next_step": 2                     // when button is clicked, the workflow moves to this step (e.g. call ESDL Service).
 						},
 						{
 							"title": "Show log",
@@ -130,26 +130,23 @@ const formatDate = (row) => {
 // eslint-disable-next-line no-unused-vars
 const getTagColor = (text) => {
   let up = text.toUpperCase();
-  if (up === "FINISHED" || up === "SUCCESS" || up === "OK") {
+  if (up === "FINISHED" || up === "SUCCESS" || up === "OK" || up === "READY") {
     return "green";
-  } else if (up === "REGISTERED" || up === "INITIALIZED") {
+  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
     return "blue";
-  } else if (up === "RUNNING" || up === "IN_PROGRESS") {
+  } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
     return "orange";
-  } else if (up === "ERROR") {
+  } else if (up === "ERROR" || up === "FAILED") {
     return "red";
   } else {
     return "black";
   }
-
-
 }
 
 // eslint-disable-next-line no-unused-vars
 const doAction = (job_id, next_step) => {
   console.log('Action selected: ', job_id, next_step);  
   state[workflowStep.target_variable] = {};
-  console.log("rowkey", rowkey.value);
   state[workflowStep.target_variable][rowkey.value] = job_id;
   goToStep(next_step);
 }
@@ -191,7 +188,6 @@ const doGetData = async () => {
           }
         });
     }
-    console.log(source.columns);
     actions.value = source.actions;
     columns.value = source.columns;
     rowkey.value = source.value_field; // "job_id"; // "record => record." + source.value_field

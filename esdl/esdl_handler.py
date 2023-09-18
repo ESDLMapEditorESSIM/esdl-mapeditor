@@ -185,10 +185,10 @@ class EnergySystemHandler:
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
         print("Adding new ESDL system", name)
-        uu = str(uuid4())[:4]
         uri = StringURI(name + '.esdl', esdl_string)
-        if uri in self.rset.resources:
-            uri = StringURI(name + uu + '.esdl', esdl_string)
+        #uu = str(uuid4())[:4]
+        #if uri.normalize() in self.rset.resources:
+        #    uri = StringURI(name + '-' + uu + '.esdl', esdl_string)
         # self.add_uri(uri)
         try:
             tmp_resource = self.rset.get_resource(uri)
@@ -196,10 +196,10 @@ class EnergySystemHandler:
             if isinstance(tmp_resource, XMLResource):
                 parse_info = tmp_resource.get_parse_information()
             tmp_es = tmp_resource.contents[0]
-            if tmp_es.id in self.esid_uri_dict:
-                print("Detected duplicate Energy System Id, adapting to a new one.")
-                tmp_es.id = tmp_es.id + uu
-                tmp_es.name = tmp_es.name + '_' + uu
+            #if tmp_es.id in self.esid_uri_dict:
+            #    print("Detected duplicate Energy System Id, adapting to a new one.")
+            #    tmp_es.id = tmp_es.id + '-' + uu
+            #    tmp_es.name = tmp_es.name + '_' + uu
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
@@ -301,10 +301,11 @@ class EnergySystemHandler:
             return
         else:
             my_uri = self.esid_uri_dict[es_id]
-            print(my_uri)
+            print(f'Removing energy system {my_uri}, with es id {es_id}')
             del self.rset.resources[my_uri]
-            print(self.rset.resources)
             del self.esid_uri_dict[es_id]
+            print('Resources in RSet: ', self.rset.resources)
+            print('esid_uri_dict', self.esid_uri_dict)
 
     def get_energy_systems(self):
         es_list = []
