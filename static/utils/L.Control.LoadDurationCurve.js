@@ -156,13 +156,13 @@ L.Control.LoadDurationCurve = L.Control.extend({
                     text: 'Load Duration Curve - ' + asset_name
                 },
                 scales: {
-                    yAxes: [{
+                    y: {
                         ticks: {
                             callback: function(value) {
                                 return formatN(value).toString();
                             }
                         }
-                    }]
+                    }
                 }
             }
         });

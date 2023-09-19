@@ -394,6 +394,7 @@ function get_kpi_info(es_id) {
 }
 
 function get_all_kpi_info() {
+    // returns a dictionary with the energy system ID as a key and the KPI information of that energy system as a value
     kpi_info = {};
     for (let es_id in esdl_list) {
         kpi_es = esdl_list[es_id].kpi_info;

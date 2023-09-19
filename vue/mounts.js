@@ -3,6 +3,7 @@
  */
 import {createApp} from "vue"
 import VueComponentLControl from './components/leaflet/VueComponentLControl'
+import VueGridLayout from 'vue-grid-layout'
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
@@ -19,6 +20,7 @@ import {
     Form,
     Input,
     InputNumber,
+    Menu,
     Modal,
     Radio,
     Row,
@@ -54,8 +56,9 @@ export function createVueLControl(component, options) {
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
 
-    app.use(Button);
+    // Components from ant-design-vue
     app.use(Breadcrumb);
+    app.use(Button);
     app.use(Card);
     app.use(Col);
     app.use(Radio);
@@ -66,6 +69,7 @@ export function mountApp(component, elementSelector) {
     app.use(Input);
     app.use(InputNumber);
     app.use(Form);
+    app.use(Menu);
     app.use(Modal);
     app.use(Row);
     app.use(Select);
@@ -77,6 +81,8 @@ export function mountApp(component, elementSelector) {
     app.use(Tree);
     app.use(Upload);
     app.use(Tag);
+
+    app.use(VueGridLayout);
 
     app.mount(elementSelector);
 }

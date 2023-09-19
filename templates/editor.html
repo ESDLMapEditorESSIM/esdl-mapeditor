@@ -177,8 +177,10 @@
     <link rel="stylesheet" href="./utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.KPICharts.js"></script>
     <script type="text/javascript" src="./utils/kpis.js"></script>
+    <script type="text/javascript" src="./utils/kpi_data.js"></script>
 
-    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+<!--    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>-->
+    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="./utils/L.Control.LoadDurationCurve.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.LoadDurationCurve.js"></script>
     <script type="text/javascript" src="./utils/ldc.js"></script>
@@ -215,6 +217,7 @@
     <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
+    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1592,6 +1595,7 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
+                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
@@ -1785,6 +1789,18 @@
     };
     var table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
+
+    let kpi_dashboard_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    };
+    var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);

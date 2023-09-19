@@ -91,6 +91,7 @@ from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
+from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -198,6 +199,7 @@ ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
+KPIDashboard(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
