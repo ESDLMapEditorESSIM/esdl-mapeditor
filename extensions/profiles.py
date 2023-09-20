@@ -11,7 +11,9 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import datetime
 
+import pytz
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
@@ -209,12 +211,22 @@ class Profiles:
 
     def process_csv_file(self, name, uuid, content):
         logger.debug("Processing csv file(s) (threaded): ".format(name))
+
+        tz_string = datetime.datetime.now().astimezone().tzname()
+
         try:
             logger.info("process CSV")
             measurement = name.split('.')[0]
 
-            csv_file = StringIO(content)
-            reader = csv.reader(csv_file, delimiter=';')
+            try:
+                csv_file = StringIO(content)
+                dialect = csv.Sniffer().sniff(csv_file.read(4096))
+                csv_file = StringIO(content)
+                reader = csv.reader(csv_file, dialect)
+            except:
+                # If format cannot be determined automatically, try ; as a default
+                csv_file = StringIO(content)
+                reader = csv.reader(csv_file, delimiter=';')
 
             column_names = next(reader)
             num_fields = len(column_names)
@@ -223,6 +235,7 @@ class Profiles:
             locale.setlocale(locale.LC_ALL, '')
             start_datetime = None
             end_datetime = ""
+            previous_datetime = None
 
             for row in reader:
                 fields = {}
@@ -230,17 +243,32 @@ class Profiles:
                     if row[i]:
                         fields[column_names[i]] = locale.atof(row[i])
 
-                dt = self.format_datetime(row[0])
+                dt = parse_date(row[0])
+                try:
+                    aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given (as asked in the UI)
+                except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
+                    aware_dt = dt
+
+                dt_string = aware_dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+
+                if previous_datetime:
+                    if previous_datetime == aware_dt:
+                        raise(Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
+                                        format(dt_string)))
+                previous_datetime = aware_dt
+
                 if not start_datetime:
-                    start_datetime = dt
+                    start_datetime = dt_string
                 else:
-                    end_datetime = dt
+                    end_datetime = dt_string
 
                 json_body.append({
                     "measurement": measurement,
-                    "time": dt,
+                    "time": dt_string,
                     "fields": fields
                 })
+
+            logger.info("CSV processing finished, now writing to database...")
 
             with self.flask_app.app_context():
                 profiles_settings = self.get_profiles_settings()
@@ -277,6 +305,8 @@ class Profiles:
                 username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
                 password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
             )
+
+            logger.info("Store profile information in settings")
 
             # Store profile information in settings
             group = self.csv_files[uuid]['group']
