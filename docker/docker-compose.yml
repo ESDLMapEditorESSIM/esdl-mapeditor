@@ -20,7 +20,7 @@ services:
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
-      - .env
+      - ../.env
 
   vue-watch:
     image: node:14-slim
