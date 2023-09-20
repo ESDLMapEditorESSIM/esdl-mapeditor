@@ -23,12 +23,13 @@ services:
       - ../.env
 
   vue-watch:
-    image: node:14-slim
+    image: node:20
     working_dir: /usr/src/app
     volumes:
       - ..:/usr/src/app
     command: ["yarn", "run", "watch"]
     environment:
+      - NODE_OPTIONS=--openssl-legacy-provider
       - NODE_ENV=development
 
 networks:
