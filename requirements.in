@@ -20,7 +20,6 @@ shapely==1.7.1
 shapely-geojson==0.0.1
 si-prefix==1.2.2
 xmldiff
-uWSGI==2.0.21
 
 # RabbitMQ things
 pika

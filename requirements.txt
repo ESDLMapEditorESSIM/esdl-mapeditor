@@ -154,8 +154,6 @@ tzdata==2023.3
     # via pandas
 urllib3==2.0.3
     # via requests
-uwsgi==2.0.21
-    # via -r requirements.in
 werkzeug==2.3.6
     # via flask
 wheel==0.40.0

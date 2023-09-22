@@ -10,8 +10,8 @@ RUN pip install --upgrade pip
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
-COPY requirements-uwsgi.txt /usr/src/app/
-RUN pip install -r requirements-uwsgi.txt
+COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
+RUN pip install -r requirements.txt -r requirements-uwsgi.txt
 
 COPY . /usr/src/app
 ENV PYTHONPATH=.:/usr/src/app
