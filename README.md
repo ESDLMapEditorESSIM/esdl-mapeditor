@@ -97,7 +97,7 @@ Perform the following steps to run the mapeditor directly on your own machine.
 
 4. Install all vue dependencies: `yarn`
 
-5. Run the Vue code compiler in watch mode: `yarn run watch`
+5. Run the Vue code compiler in watch mode: `yarn run watch`. If you get an 'ERR_OSSL_EVP_UNSUPPORTED' error, set the NODE_OPTIONS environment variable to '--openssl-legacy-provider' (without the quotes).
 
 6. Run the application: `python app.py`
 
