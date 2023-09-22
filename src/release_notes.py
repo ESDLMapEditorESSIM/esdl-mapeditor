@@ -40,6 +40,20 @@ release_notes = [
     #     ]
     # },
     {
+        "version": "23.5.0",
+        "date": "2023-5-25T13:32:00Z",
+        "general_message": "On May 25th 2023, we've released the new ESDL MapEditor version 23.5.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Implement export of ESSIM results to Excel",
+                ]
+            }
+        ]
+    },
+    {
         "version": "23.3.0",
         "date": "2023-4-5T17:02:00Z",
         "general_message": "On April 5th 2023, we've released the new ESDL MapEditor version 23.3.0. " +
