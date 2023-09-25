@@ -764,6 +764,39 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
+def find_area_location_based(esh, active_es_id, geometry):
+    shape_dictionary = get_session('shape_dictionary')
+
+    obj_geometry_shape = Shape.create(geometry)
+    areas_that_contain_obj = list()
+
+    for key in shape_dictionary.keys():
+        area_shp = shape_dictionary[key]
+        if area_shp.shape.contains(obj_geometry_shape.shape):
+            areas_that_contain_obj.append(key)
+
+    if len(areas_that_contain_obj) == 0:
+        es = esh.get_energy_system(es_id=active_es_id)
+        return es.instance[0].area.id   # If no area is found, return the id of the top level area
+    elif len(areas_that_contain_obj) == 1:
+        return areas_that_contain_obj[0]
+    else:
+        # Find area that is 'lowest' in the area hierarchy
+        lowest_level = 0
+        lowest_area_id = None
+        for ar_id in areas_that_contain_obj:
+            area = esh.get_by_id(active_es_id, ar_id)
+            area_level = 1
+            while isinstance(area.eContainer(), esdl.Area):
+                area_level += 1
+                area = area.eContainer()
+            if area_level > lowest_level:
+                lowest_level = area_level
+                lowest_area_id = ar_id
+
+        return lowest_area_id
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Get building information
 # ---------------------------------------------------------------------------------------------------------------------
