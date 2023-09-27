@@ -37,7 +37,13 @@ release_notes = [
                     "Improved the processing of CSV based profile information.",
                     "Implement automatic placement of assets in right area based on location.",
                 ]
-            }
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error with splitting pipe in sub area"
+                ]
+            },
         ]
     },
     {
