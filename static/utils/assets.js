@@ -29,6 +29,7 @@ function split_conductor(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 function split_conductor_connect(e, id) {
@@ -38,6 +39,7 @@ function split_conductor_connect(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 function split_conductor_add_joint(e, id) {
@@ -47,6 +49,7 @@ function split_conductor_add_joint(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 // ------------------------------------------------------------------------------------------------------------

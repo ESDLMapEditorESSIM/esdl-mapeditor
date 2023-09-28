@@ -496,14 +496,20 @@
         //  Update the select element to indicate to what area or building to add assets
         // ------------------------------------------------------------------------------------------------------------
         function update_area_bld_list_select() {
-            var select = document.getElementById('area_bld_select');
+            let select = document.getElementById('area_bld_select');
             select.innerHTML = '';
+
+            let option = document.createElement("option");
+            option.classList.add("ui-state-active");
+            option.text = 'Add assets to Area based on location';
+            option.value = 'find_area_location_based';
+            select.add(option, null);
+
             area_bld_list = get_area_bld_list(active_layer_id);
             if (area_bld_list) {
                 for (i=0; i<area_bld_list.length; i++) {
-                    var option = document.createElement("option");
-                    if (i==0) { option.classList.add("ui-state-active"); }
-                    var level = area_bld_list[i][3];
+                    let option = document.createElement("option");
+                    let level = area_bld_list[i][3];
                     option.text = '';
                     if (level > 0) {
                          for (j=0; j<level; j++) option.text = option.text + '-';

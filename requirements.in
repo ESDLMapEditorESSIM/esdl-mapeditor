@@ -1,37 +1,34 @@
-Flask==1.1.2
-Flask-Executor==0.9.3
-Flask-SocketIO==5.0.0
-Flask-Session==0.3.2
+Flask==2.1.3
+Flask-Executor==1.0.0
+Flask-SocketIO==5.3.4
+Flask-Session==0.4.1
 flask-oidc==1.4.0
 geomet==0.2.1.post1
-geojson==2.5.0
+geojson
 influxdb==5.3.0
-openpyxl==3.0.7
+openpyxl==3.1.2
 pyecore==0.12.1
+# PyJWT cannot be upgraded to >= 2 because of flask-oidc.
 PyJWT==1.7.1
 pymongo==3.11.0
-pyproj==2.6.1.post1
+pandas
+pyproj==3.6.0
 PyShp==2.1.0
-python-dotenv==0.14.0
-requests==2.24.0
-shapely==1.7.1
-shapely-geojson==0.0.1
+python-dotenv
+requests
+shapely==2.0.1
 si-prefix==1.2.2
-xmldiff==2.4
+xmldiff
+
+# RabbitMQ things
+pika
 
 # Logging
-colorama==0.4.4
-structlog==21.1.0
+colorama
+structlog
 
 # Development
-watchdog==0.9.0
 pip-tools
 
-# Temp fix for error cannot import name ‘json’ from itsdangerous
-itsdangerous==2.0.1
-
-# Temp fix for error cannot import name 'escape' from 'jinja2'
-Jinja2==3.0.3
-
-# Temp fix for cannot import name 'BaseResponse' from 'werkzeug.wrappers'
-werkzeug==2.0.2
+# Temp fix for error cannot import name ‘json’ from itsdangerous. Need to migrate to other dependency.
+itsdangerous<2.1
