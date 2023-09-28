@@ -12,12 +12,11 @@ pyecore==0.12.1
 PyJWT==1.7.1
 pymongo==3.11.0
 pandas
-pyproj==3.5.0
+pyproj==3.6.0
 PyShp==2.1.0
 python-dotenv
 requests
-shapely==1.7.1
-shapely-geojson==0.0.1
+shapely==2.0.1
 si-prefix==1.2.2
 xmldiff
 

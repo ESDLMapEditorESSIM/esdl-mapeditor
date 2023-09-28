@@ -25,20 +25,27 @@ logger = log.get_logger(__name__)
 
 # Add new release notes at the beginning of this list
 release_notes = [
-    # {
-    #     "version": "23.9.0",
-    #     "date": "2023-9-7T12:17:00Z",
-    #     "general_message": "On September 7th 2023, we've released the new ESDL MapEditor version 23.9.0. " +
-    #                        "See below for a list of new features and bug fixes",
-    #     "categories": [
-    #         {
-    #             "name": "New features",
-    #             "items": [
-    #                 "Improved the processing of CSV based profile information.",
-    #             ]
-    #         }
-    #     ]
-    # },
+    {
+        "version": "23.9.0",
+        "date": "2023-9-25T22:52:00Z",
+        "general_message": "On September 25th 2023, we've released the new ESDL MapEditor version 23.9.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Improved the processing of CSV based profile information.",
+                    "Implement automatic placement of assets in right area based on location.",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error with splitting pipe in sub area"
+                ]
+            },
+        ]
+    },
     {
         "version": "23.5.0",
         "date": "2023-5-25T13:32:00Z",
