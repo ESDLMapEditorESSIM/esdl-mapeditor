@@ -13,11 +13,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-try:
-    import numpy as np
-except Exception:
-    pass
-
 import importlib
 import json
 import urllib
