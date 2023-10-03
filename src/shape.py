@@ -14,10 +14,9 @@
 
 import geojson
 import json
-from shapely import wkt, wkb
+from shapely import wkt, wkb, to_geojson
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, GeometryCollection, shape
 from shapely.ops import transform
-from shapely_geojson import Feature, dumps
 import esdl
 import pyproj
 
@@ -131,8 +130,15 @@ class Shape:
         return self.shape.wkt
 
     def get_geojson_feature(self, properties={}):
-        feature = Feature(self.shape, properties=properties)
-        return json.loads(dumps(feature))
+        geojson_geometry_str = to_geojson(self.shape)
+        geojson_geometry = json.loads(geojson_geometry_str)
+        geojson_feature = {
+            "type": "Feature",
+            "geometry": geojson_geometry,
+            "properties": properties
+        }
+
+        return geojson_feature
 
     @staticmethod
     def transform_crs(shp, from_crs):

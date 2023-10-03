@@ -70,7 +70,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                 // Legacy support for older ESDLs.
                 KPI_value = kpi_obj;
             }
-            if (KPI_value != "") {
+            if (KPI_value !== "") {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
                     if (layer_type === "building" && !buildingLegendChoice) { buildingLegendChoice = kpi; }

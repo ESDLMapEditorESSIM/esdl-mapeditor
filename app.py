@@ -82,7 +82,9 @@ from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import call_process_energy_system, get_building_information
 from src.tno.undoredo.types import serialize_command_stack
-from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections
+from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
+    find_area_location_based
+from src.shape import Shape
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
@@ -1510,6 +1512,9 @@ def process_command(message):
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
+        if area_bld_id == 'find_area_location_based':
+            area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
@@ -1517,6 +1522,11 @@ def process_command(message):
                 if isinstance(geometry, esdl.Polygon):
                     new_area = esdl.Area(id=asset_id, name=asset_name)
                     new_area.geometry = geometry
+
+                    # Update shape dictionary
+                    shape_dictionary = get_session('shape_dictionary')
+                    shape_dictionary[new_area.id] = Shape.create(geometry)
+                    set_session('shape_dictionary', shape_dictionary)
 
                     # Update drop down list with areas and buildings
                     add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)

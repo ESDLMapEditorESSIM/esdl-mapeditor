@@ -82,7 +82,9 @@ def find_asset_in_building_and_container(building, asset_id):
 
 
 def find_asset_and_container(area, asset_id):
+    print(f"checking area {area.name}")
     for ass in area.asset:
+        print(f"checking asset {ass.eClass.name}")
         if ass.id == asset_id:
             return ass, area
         if isinstance(ass, esdl.AbstractBuilding):
@@ -95,7 +97,7 @@ def find_asset_and_container(area, asset_id):
         if asset:
             return asset, ar
 
-    return None
+    return None, None
 
 
 def add_object_to_area(es, obj, area_id):
