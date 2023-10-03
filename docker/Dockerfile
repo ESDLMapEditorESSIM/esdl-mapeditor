@@ -23,6 +23,13 @@ RUN apt-get -y update && \
 # Prepare directory for the app.
 WORKDIR /usr/src/app
 
+# Python dependencies.
+COPY requirements.txt /usr/src/app/
+RUN pip install -r requirements.txt
+
+# Add everything in the image.
+COPY . /usr/src/app
+
 # Overwrite the built frontend with the one from the frontend image.
 COPY --from=frontend /src/js/static/dist static/dist
 
@@ -32,4 +39,4 @@ ENV PYTHONPATH=.:/usr/src/app
 
 EXPOSE 8111
 
-CMD cd /usr/src/app && uwsgi docker/uwsgi-long-polling.ini
+CMD python app.py
