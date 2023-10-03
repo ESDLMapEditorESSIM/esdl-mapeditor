@@ -9,7 +9,7 @@ pip-compile-docker:
 requirements:
 	pip install -r requirements.txt
 requirements-uwsgi:
-	pip install -r requirements-uwsgi.txt
+	pip install -r requirements.txt -r requirements-uwsgi.txt
 yarn:
 	yarn
 
