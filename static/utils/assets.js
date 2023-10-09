@@ -718,7 +718,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
   
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+        if (user_settings.ui_settings.tooltips.show_asset_information_on_map && asset_info[1] == 'asset')
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
                 { permanent: true, className: 'marker-tooltip' });
     }
