@@ -26,7 +26,7 @@ from flask_socketio import SocketIO, emit
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
-from esdl.processing import ESDLAsset
+from esdl.processing import ESDLAsset, ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
@@ -352,6 +352,43 @@ class ESDLServices:
                                 "add_connections",
                                 {"es_id": active_es_id, "conn_list": conn_list},
                             )
+                    except Exception as e:
+                        logger.warning("Exception occurred: " + str(e))
+                        return False, None
+
+                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "add_potentials":
+                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    instance = es_edit.instance
+                    area = instance[0].area
+                    potential_str_list = json.loads(r.text)
+
+                    # Fix for services that return an ESDL string that represents one asset
+                    if isinstance(potential_str_list, str):
+                        potential_str_list = [potential_str_list]
+
+                    try:
+                        potentials_to_be_added = list()
+                        for potential_str in potential_str_list:
+                            potential = ESDLAsset.load_asset_from_string(potential_str)
+                            esh.add_object_to_dict(active_es_id, potential, recursive=True)
+                            ESDLAsset.add_object_to_area(es_edit, potential, area.id)
+                            # asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, potential)
+
+                            coords = ESDLGeometry.parse_esdl_subpolygon(potential.geometry.exterior,
+                                                                        False)  # [lon, lat]
+                            coords = ESDLGeometry.exchange_coordinates(coords)
+                            potentials_to_be_added.append(['polygon', 'potential', potential.name, potential.id,
+                                                           type(potential).__name__, coords])
+
+                        emit(
+                            "add_esdl_objects",
+                            {
+                                "es_id": active_es_id,
+                                "asset_pot_list": potentials_to_be_added,
+                                "zoom": False,
+                            },
+                        )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None

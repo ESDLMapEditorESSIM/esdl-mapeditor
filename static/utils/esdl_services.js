@@ -91,7 +91,7 @@ function query_esdl_service(service, state_params) {
     }
 
     // Only for services that are triggered from the sidebar, hide the query button
-    if (service['type'] !== "map_context_menu") {
+    if (service['type'] !== "map_context_menu" && service['type'] !== "area_context_menu") {
         document.getElementById('query_service_button').style.display = 'none';
     }
     show_loader();
@@ -484,7 +484,7 @@ function esdl_services_info() {
         let table = '<table>';
         for (let i = 0; i < esdl_services_information.length; i++) {
             // id, name
-            if (esdl_services_information[i]['type'] !== "map_context_menu") {
+            if (esdl_services_information[i]['type'] !== "map_context_menu" && service['type'] !== "area_context_menu") {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
             }
         }
@@ -554,3 +554,35 @@ function update_service_contextmenus(services_list) {
     }
 }
 
+function update_esdl_services(event) {
+    if (event.type === 'add_contextmenu') {
+        let layer = event.layer;
+        let id = layer.id;
+
+        if (event.layer_type === 'area') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "area_context_menu") {
+                    // if (esdl_services_information[i]['area_scope'] == layer.scope) {
+                        layer.options.contextmenuItems.push({
+                            text: esdl_services_information[i]['name'],
+                            icon: resource_uri + 'icons/service.png',
+                            callback: function (e) {
+                                console.log(e)
+                                let service = esdl_services_information[i];
+                                let state = {
+                                    area_id: id,
+                                }
+                                query_esdl_service(service, state);
+                            }
+                        });
+                    // }
+                }
+            }
+        }
+    }
+
+}
+
+$(document).ready(function() {
+    extensions.push(update_esdl_services)
+});
