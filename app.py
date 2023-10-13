@@ -13,7 +13,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
 import importlib
 import json
 import urllib
