@@ -6,7 +6,7 @@
     For now you can view the results in the FlexScan Dashoard.
     If you have not yet confirmed these results, you can change them there.
   </p>
-  <a-button type="primary" :href="flexDashboardResultUrl" target="_blank" >Go to FlexScan F1 results dashboard</a-button>
+  <a-button type="primary" :href="flexDashboardResultUrl" target="_blank">Go to FlexScan F1 results dashboard</a-button>
 </template>
 
 <script setup="props">
@@ -24,5 +24,6 @@ const props = defineProps({
   },
 });
 
+// eslint-disable-next-line no-unused-vars
 const flexDashboardResultUrl = workflowStep.custom_data.flex_frontend_host + "/#/scans/" + getFromState("execution.id") + "/phase1";
 </script>

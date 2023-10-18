@@ -324,6 +324,7 @@ class ESDLServices:
                     return True, None, es
 
                 # TODO: figure out a way to deal with multiple ESDLs
+                # TODO: or implement multiple instances within one ESDL
                 # elif service["result"][0]["action"] == "multi_esdl":
                 #     esdl_response = r.text
                     

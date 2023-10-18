@@ -21,10 +21,10 @@
 </template>
 
 <script setup="props">
+import {setattrd} from "../../utils/utils.js";
 import {useWorkflow} from "../../composables/workflow.js";
 import {useEsdlLayers} from "../../composables/esdlLayers.js";
 import {defineProps} from 'vue'
-// eslint-disable-next-line no-unused-vars
 
 const props = defineProps({
   workflowStep: {
@@ -41,12 +41,10 @@ const { clearEsdlLayers } = useEsdlLayers();
 
 const workflowStep = props.workflowStep;
 
+// eslint-disable-next-line no-unused-vars
 const esdlWasLoaded = () => {
   if (workflowStep.target_variable && workflowStep.target_variable_value) {
-    state[workflowStep.target_variable] = {
-      ...state[workflowStep.target_variable] ?? {},
-      ...workflowStep.target_variable_value
-    };
+    setattrd(state, workflowStep.target_variable, workflowStep.target_variable_value);
   }
 
   goToFirstStep();
