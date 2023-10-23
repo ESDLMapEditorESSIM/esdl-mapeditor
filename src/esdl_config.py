@@ -31,6 +31,27 @@ esdl_config = {
     ],
     "predefined_quantity_and_units": [
         {
+            "id": "12c481c0-f81e-49b6-9767-90457684d24a",
+            "description": "Energy in kWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "KILO",
+            "unit": "WATTHOUR",
+        },
+        {
+            "id": "93aa23ea-4c5d-4969-97d4-2a4b2720e523",
+            "description": "Energy in MWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "MEGA",
+            "unit": "WATTHOUR",
+        },
+        {
+            "id": "6fcd2303-b504-4939-8312-8cba25749265",
+            "description": "Energy in GWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "GIGA",
+            "unit": "WATTHOUR",
+        },
+        {
             "id": "eb07bccb-203f-407e-af98-e687656a221d",
             "description": "Energy in GJ",
             "physicalQuantity": "ENERGY",
