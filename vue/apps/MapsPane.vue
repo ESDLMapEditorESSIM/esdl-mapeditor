@@ -35,10 +35,10 @@ import {computed} from 'vue'
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
 import {useBaseLayers,} from "../composables/baseLayers";
-import {useVisibleItemList} from "../composables/useVisibleItemList"
+import {useVisibleLayerList} from "../composables/useVisibleLayerList"
 
 
-const {addToVisibleItemList, removeFromVisibleItemList} = useVisibleItemList();
+const {addToVisibleItemList, removeFromVisibleItemList} = useVisibleLayerList();
 
 const {
   addBaseLayerToMap,

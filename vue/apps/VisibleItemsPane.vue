@@ -31,11 +31,11 @@ import {computed, ref, defineProps} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
-import {useVisibleItemList} from "../composables/useVisibleItemList"
+import {useVisibleLayerList} from "../composables/useVisibleLayerList"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {getVisibleItemList, updateDisplayOrderVisibleItems} = useVisibleItemList();
+const {getVisibleItemList, updateDisplayOrderVisibleItems} = useVisibleLayerList();
 
 const treeId = "visible_items_tree"
 const $ = window.$;

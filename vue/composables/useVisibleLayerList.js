@@ -6,7 +6,7 @@ import {ref, toValue} from "vue";
 
 const globalVisibleItemList = ref([]);
 
-export function useVisibleItemList() {
+export function useVisibleLayerList() {
     /**
      * Get list of visible items. This is a list of dictionaries with 'text' and 'type' entries.
      */
