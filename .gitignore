@@ -78,6 +78,10 @@ html/
 flask_session/
 node_modules
 yarn-error.log
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+.pnp.*
 
 credentials/
 environments/
