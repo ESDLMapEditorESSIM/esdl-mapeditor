@@ -4,7 +4,7 @@ MAINTAINER Ewoud Werkman <ewoud.werkman@tno.nl>
 
 #RUN apk add --update --no-cache g++ gcc libxslt-dev linux-headers musl-dev pcre pcre-dev zlib zlib-dev openssl-dev mailcap libffi-dev libffi
 RUN apt-get -y update
-RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
+RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev libgeos-dev
 RUN pip install --upgrade pip
 
 RUN mkdir -p /usr/src/app

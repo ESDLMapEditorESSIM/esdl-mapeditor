@@ -23,10 +23,15 @@ services:
       - ../.env
 
   vue-watch:
-    image: node:20
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+      target: frontend
+    image: esdl-mapeditor:dev-watch
     working_dir: /usr/src/app
     volumes:
       - ..:/usr/src/app
+    # command: ["tail", "-f", "/dev/null"]
     command: ["yarn", "run", "watch"]
     environment:
       - NODE_OPTIONS=--openssl-legacy-provider
