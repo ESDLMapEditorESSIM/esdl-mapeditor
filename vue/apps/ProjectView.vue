@@ -38,10 +38,10 @@ import {useMultiEsdl} from "../composables/multiEsdl";
 import {useBaseLayers,} from "../composables/baseLayers";
 
 const {
-  addBaseLayerToMap,
+  showBaseLayer,
   baseLayerDefinitions,
   getBaseLayerByLabel,
-  removeBaseLayerFromMap
+  hideBaseLayer
 } = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject} = useESDLProjects();
@@ -317,7 +317,7 @@ const eventHandlersByName = [{
       }
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
-      addBaseLayerToMap(baseLayer);
+      showBaseLayer(baseLayer);
     }
   }
 }, {
@@ -329,7 +329,7 @@ const eventHandlersByName = [{
       hideEsdlLayerFromMap(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
-      removeBaseLayerFromMap(baseLayer);
+      hideBaseLayer(baseLayer);
     }
   }
 }];

@@ -16,7 +16,7 @@
 
 <template>
   <div id="maps_view">
-    <h3>Visible items</h3>
+    <h3>Visible layers</h3>
     <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
                  :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
     />
@@ -31,42 +31,43 @@ import {computed, ref, defineProps} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
-import {useVisibleLayerList} from "../composables/useVisibleLayerList"
+import {useVisibleLayers} from "../composables/visibleLayers"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {getVisibleItemList, updateDisplayOrderVisibleItems} = useVisibleLayerList();
+const {getVisibleLayerList, updateDisplayOrderVisibleLayers} = useVisibleLayers();
 
-const treeId = "visible_items_tree"
+const treeId = "visible_layer_tree"
 const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
-  if (getVisibleItemList()) {
-    let visibleItemsJsreeData = [];
-    for (const visibleItem of getVisibleItemList()) {
-      visibleItemsJsreeData.push({
-        text: visibleItem.text,
-        type: "movable_item",
+  if (getVisibleLayerList()) {
+    let visibleLayersJsreeData = [];
+    for (const visibleLayer of getVisibleLayerList()) {
+      visibleLayersJsreeData.push({
+        id : visibleLayer.id,
+        text: visibleLayer.description,
+        type: "movable_layer",
       });
     }
-    return visibleItemsJsreeData;
+    return visibleLayersJsreeData;
   } else {
     return null;
   }
 });
 
-class MovableItemTreeSpec {
+class MovableLayerTreeSpec {
   constructor() {
-    this.type = "movable_item";
+    this.type = "movable_layer";
     this.icon = "fas fa-grip-lines";
     this.max_depth = 0;
   }
 }
 
-const treeTypeSpecs = [new MovableItemTreeSpec()];
+const treeTypeSpecs = [new MovableLayerTreeSpec()];
 
 // TODO: Move into tree specs
 const eventHandlersByName = [{
@@ -76,13 +77,7 @@ const eventHandlersByName = [{
 }, {
   eventName: 'move_node.jstree',
   handler: function (e, data, treeElement) {
-    const type = data.node.type;
-    const original = data.node.original;
-    console.log(e)
-    console.log(data)
-    console.log(treeElement)
-      console.log(treeData.value);
-    updateDisplayOrderVisibleItems(data.node.text, data.node.position);
+    updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
   }
 }];
 

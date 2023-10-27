@@ -22,6 +22,7 @@ import src.log as log
 logger = log.get_logger(__name__)
 
 LAYERS_SETTING = 'layers'
+LAYERS_GROUP_SETTING = 'layer_groups'
 
 
 class WMSLayers:
@@ -37,6 +38,11 @@ class WMSLayers:
         else:
             logger.info('Found WMS layers in User Settings')
 
+        if not self.settings_storage.has_system(LAYERS_GROUP_SETTING):
+            self.settings_storage.set_system(LAYERS_GROUP_SETTING, default_wms_layers)
+        else:
+            logger.info('Found WMS layers in User Settings')
+
     def register(self):
         logger.info('Registering WMS layer extension')
 
@@ -49,6 +55,24 @@ class WMSLayers:
         @self.socketio.on('save_wms_layer', namespace='/esdl')
         def _save_wms_layer(params):
             self.save_wms_layer(params['id'], params['lyr_info'])
+
+        @self.socketio.on('add_wms_layer_group', namespace='/esdl')
+        def _add_wms_layer_group(params):
+            logger.info('add wms layer group')
+            id = params['id']
+            name = params['name']
+            setting_type = params['setting_type']
+            parent_group_id = params['parent_group_id']
+            children = []
+
+            layer_group = {
+                "group_name": name,
+                "setting_type": setting_type,
+                "parent_group_id": parent_group_id,
+                "children": children
+            }
+
+            self.add_wms_layer_group(id, layer_group)
 
         @self.socketio.on('add_wms_layer', namespace='/esdl')
         def _add_wms_layer(params):
@@ -78,6 +102,16 @@ class WMSLayers:
         def _remove_wms_layer(params):
             id = params['id']
             self.remove_wms_layer(id)
+
+    def add_wms_layer_group(self, layer_group__id, layer_group):
+        setting_type = SettingType(layer_group['setting_type'])
+        identifier = self._get_identifier(setting_type)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
+            layer_groups = self.settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
+        else:
+            layer_groups = dict()
+        layer_groups[layer_group__id] = layer_group
+        self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
 
     def add_wms_layer(self, layer_id, layer):
         setting_type = SettingType(layer['setting_type'])
@@ -120,7 +154,7 @@ class WMSLayers:
             # update layer dict
             layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
             logger.info('Deleting layer {}'.format(layers[layer_id]))
-            del(layers[layer_id])
+            del (layers[layer_id])
             self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
@@ -157,6 +191,11 @@ class WMSLayers:
             # add user layers if available
             all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
 
+        layer_groups = dict()
+        if user is not None and self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
+            # add user layers if available
+            layer_groups.update(self.settings_storage.get_user(user, LAYERS_GROUP_SETTING))
+
         if user_group is not None:
             for group in user_group:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
@@ -174,6 +213,7 @@ class WMSLayers:
                     g['readonly'] = False
         possible_groups.extend(self._create_group_layers_for_projects(user_group))
         message[LAYERS_SETTING] = all_layers
+        message[LAYERS_GROUP_SETTING] = layer_groups
         # logger.debug(message)
         return message
 
@@ -182,19 +222,34 @@ class WMSLayers:
         if groups is not None:
             for group in groups:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
-                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier, "name": "Project Layers for " + group, "readonly": False}
+                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier,
+                        "name": "Project Layers for " + group, "readonly": False}
                 project_list.append(json)
         return project_list
 
 
 default_wms_layer_groups = {
     "groups": [
-        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal Layers", "readonly": False},
-        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard Layers", "readonly": True}
+        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal Layers",
+         "readonly": False},
+        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard Layers",
+         "readonly": True}
     ]
 }
 
-#{"id": SettingType.PROJECT.value, "name": "Project Layers"},
+# default_wms_layer_groups = {
+#     "layer_groups": [
+#         {"setting_type": SettingType.USER.value, "group_name": "Personal Layers", "parent_group_id": "root",
+#          "children": []},
+#         {"setting_type": SettingType.SYSTEM.value, "group_name": "Standard Layers", "parent_group_id": "root",
+#          "children": [
+#              "ahn2_5m", "liggingindustrieco2", "hoogspanningskabels", "middenspanningskabels", "LT_WarmteBronnen_ECW",
+#              "WarmteNetten", "GasLeidingenEnexis", "GasLeidingenStedin", "CO2EmissieBedrijven", "AardwarmteKrijtJura",
+#              "AardwarmteRotliegend", "CondensWarmte", "DataCentraWarmte", "Hoogspanningsnet_2018",
+#              "a3643e0e53fa4174a4ead41f56659a6e"
+#          ]}
+#     ]
+# }
 
 default_wms_layers = {
     "AHN2_5m": {
@@ -375,7 +430,6 @@ default_wms_layers = {
         "attribution": 'Stowa'
     }
 }
-
 
 # zie https://stowa.geoapps.nl/Overzichtskaart voor meer TEO/TEA kaartlagen
 # TEA - economische potentie - direct - RWZI: https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02c.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?

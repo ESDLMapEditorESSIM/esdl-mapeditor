@@ -15,14 +15,13 @@
   -->
 
 <template>
-  <div id="maps_view">
-    <div>
-      <button style="float:right" @click="showAddLayerDialog">Add WMS layer</button>
-      <br>
+  <div id="layers_view">
+    <div v-if="treeData != null">
+      <vue-js-tree tree-id="layer_tree" :plugins="['contextmenu', 'types', 'checkbox']"
+                   :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+      />
+      <VisibleView />
     </div>
-    <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
-                 :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-    />
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
     </div>
@@ -35,34 +34,28 @@ import {computed} from 'vue'
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
 import {useBaseLayers,} from "../composables/baseLayers";
-import {useVisibleLayerList} from "../composables/useVisibleLayerList"
+// eslint-disable-next-line no-unused-vars
+import VisibleView from "./VisibleLayersView.vue";
+import {useWmsLayers} from "../composables/wmsLayers";
 
+const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
+const {getWmsLayerList, showWmsLayer, hideWmsLayer, removeWmsLayer} = useWmsLayers();
 
-const {addToVisibleItemList, removeFromVisibleItemList} = useVisibleLayerList();
-
-const {
-  addBaseLayerToMap,
-  baseLayerDefinitions,
-  getBaseLayerByLabel,
-  removeBaseLayerFromMap
-} = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
 
-const treeId = "maps_tree"
-const $ = window.$;
-const wmsLayerList = window.wms_layer_list;
-
-const getTree = () => $('#' + treeId).jstree(true);
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
-  if (wmsLayerList) {
+  if (getWmsLayerList()) {
     let wmsGroupsJstreeData = [];
-    for (const wmsGroup of wmsLayerList.groups) {
+    for (const wmsGroup of getWmsLayerList().groups) {
       const children = getGroupLayers(wmsGroup.setting_type);
       wmsGroupsJstreeData.push({
-        text: wmsGroup.name, type: 'wms_layer_folder', state: {opened: true},
+        id: wmsGroup.setting_type,
+        text: wmsGroup.name,
+        type: 'wms_layer_folder',
+        state: {opened: true},
         children: children,
         a_attr: {
           "class": "no_checkbox"
@@ -79,51 +72,58 @@ const treeData = computed(() => {
   }
 });
 
-function showAddLayerDialog() {
-  let sidebar_ctr = window.sidebar.getContainer();
-  sidebar_ctr.innerHTML = '<h1>Add WMS layer</h1>';
-  sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + window.create_add_layer_div();
-  window.sidebar.show();
+// eslint-disable-next-line no-unused-vars
+function showAddLayerDialog(objectId) {
+  window.add_edit_wms_layer(objectId);
 }
 
 function getGroupLayers(setting_type) {
   const layers = [];
-  for (const [key, layer] of Object.entries(wmsLayerList.layers)) {
+  for (const [key, layer] of Object.entries(getWmsLayerList().layers)) {
     if (layer.setting_type === setting_type) {
       layers.push({
+        id: key,
         text: layer.description,
+        setting_type: setting_type,
         type: "wms_layer",
         a_attr: {
           "class": layer.active ? "bold" : "",
         },
-        state: {"checked": layer.active, opened: true},
+        state: {"checked": layer.visible, opened: true},
       })
     }
   }
   return layers;
 }
 
-function show_wms_layer(id) {
-  wmsLayerList['layers'][id].layer_ref.addTo(window.map);
-  wmsLayerList['layers'][id].layer_ref.bringToFront();
-  wmsLayerList['layers'][id].visible = true;
-  if (wmsLayerList['layers'][id].legend_url !== "") {
-    window.show_wms_legend(wmsLayerList['layers'][id].legend_url);
-  }
-}
-
-function hide_wms_layer(id) {
-  window.map.removeLayer(wmsLayerList['layers'][id].layer_ref);
-  wmsLayerList['layers'][id].visible = false;
-  if (wmsLayerList['layers'][id].legend_url !== "") {
-    window.remove_wms_legend();
-  }
-}
-
 class LayerFolderTreeSpec {
   constructor() {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
+  }
+
+  contextMenus() {
+    return {
+      'add_layer': {
+        'label': 'Add WMS layer',
+        'icon': 'fas fa-plus',
+        'action': function () {
+          showAddLayerDialog(null);
+        }
+      },
+      'add_folder': {
+        'label': 'Add folder',
+        'icon': 'fas fa-plus',
+        'action': function () {
+          window.socket.emit('add_wms_layer_group', {
+            'id': 'groupID',
+            'name': 'groupName',
+            'setting_type': 'user',
+            'parent_group_id': 'user',
+          })
+        }
+      },
+    }
   }
 }
 
@@ -132,6 +132,27 @@ class LayerTreeSpec {
     this.type = "wms_layer";
     this.icon = 'fas fa-map';
     this.max_depth = 0;
+  }
+
+  contextMenus(node) {
+    return {
+      'edit': {
+        'label': 'Edit WMS layer',
+        'icon': 'far fa-edit',
+        'action': function () {
+          showAddLayerDialog(node.id);
+        },
+        '_disabled': node.original.setting_type === 'system',
+      },
+      'delete': {
+        'label': 'Remove WMS layer',
+        'icon': 'fa fa-trash-o',
+        'action': function () {
+          removeWmsLayer(node.id);
+        },
+        '_disabled': node.original.setting_type === 'system',
+      },
+    };
   }
 }
 
@@ -150,53 +171,55 @@ class BaseLayerTreeSpec {
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new LayerTreeSpec];
 
 // TODO: Move into tree specs
+// eslint-disable-next-line no-unused-vars
 const eventHandlersByName = [{
   eventName: 'ready.jstree',
   handler: function () {
   }
 }, {
+  eventName: 'create_node.jstree',
+  handler: function () {
+  }
+}, {
   eventName: 'select_node.jstree',
-  handler: function (e, data, treeElement) {
-    const type = data.node.type;
-    const original = data.node.original;
+  handler: function () {
   }
 }, {
   eventName: 'check_node.jstree',
-  handler: function (e, data) {
+  handler: function (e, data, treeElement) {
     const type = data.node.type;
-    const original = data.node.original;
+    const id = data.node.id;
     if (type === 'base_layer') {
       // Single base layer selection
-      for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
-        if (checkedNode !== data.node.id) {
-          getTree().uncheck_node(checkedNode)
+      for (const checkedNode of treeElement.get_checked_descendants(data.node.parent)) {
+        if (checkedNode !== id) {
+          treeElement.uncheck_node(checkedNode)
         }
       }
       for (const baseLayer of baseLayerDefinitions) {
-        removeBaseLayerFromMap(baseLayer);
+        hideBaseLayer(baseLayer);
       }
 
-      const baseLayer = getBaseLayerByLabel(original.text);
-      addBaseLayerToMap(baseLayer);
+      const baseLayer = getBaseLayerByLabel(id);
+      showBaseLayer(baseLayer);
     } else if (type === 'wms_layer') {
-      show_wms_layer(original.text);
-      addToVisibleItemList(data.node, 0);
+      showWmsLayer(id);
     }
   }
 }, {
   eventName: 'uncheck_node.jstree',
   handler: function (e, data) {
     const type = data.node.type;
-    const original = data.node.original;
+    const id = data.node.id;
     if (type === 'base_layer') {
-      const baseLayer = getBaseLayerByLabel(original.text);
-      removeBaseLayerFromMap(baseLayer);
+      const baseLayer = getBaseLayerByLabel(id);
+      hideBaseLayer(baseLayer);
     } else if (type === 'wms_layer') {
-      hide_wms_layer(original.text);
-      removeFromVisibleItemList(data.node);
+      hideWmsLayer(id);
     }
   }
 }];
@@ -219,7 +242,7 @@ function get_base_layers_control_tree_data() {
     children.push(child);
   }
 
-  const group = {
+  return {
     id: "group_base_layers",
     text: "Base layers",
     type: "base_layer_folder",
@@ -230,15 +253,13 @@ function get_base_layers_control_tree_data() {
     a_attr: {
       "class": "no_checkbox"
     }
-  }
-
-  return group;
+  };
 }
 
 </script>
 
 <style lang="scss">
-#maps_view {
+#layers_view {
   padding: 8px 5px 8px 2px;
   overflow: scroll;
   //resize: horizontal;

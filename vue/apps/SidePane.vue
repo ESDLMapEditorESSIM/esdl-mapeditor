@@ -20,9 +20,8 @@
       </li>
     </ul>
     <div id="tab_area">
-      <MapsView v-if="isActiveTab('Maps')" />
+      <LayersView v-if="isActiveTab('Maps')" />
       <ProjectView v-if="isActiveTab('Project')" />
-      <VisibleView />
     </div>
   </div>
 </template>
@@ -31,11 +30,9 @@
 import {ref} from "vue"
 import {useSidePane} from "../composables/sidePane";
 // eslint-disable-next-line no-unused-vars
-import ProjectView from "./ProjectView";
+import ProjectView from "./ProjectView.vue";
 // eslint-disable-next-line no-unused-vars
-import MapsView from "./MapsPane.vue";
-// eslint-disable-next-line no-unused-vars
-import VisibleView from "./VisibleItemsPane.vue";
+import LayersView from "./LayersView.vue";
 
 // eslint-disable-next-line no-unused-vars
 const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
