@@ -39,28 +39,25 @@ import VisibleView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "../composables/wmsLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
-const {getWmsLayerList, showWmsLayer, hideWmsLayer, removeWmsLayer} = useWmsLayers();
+const {
+  getWmsLayerList,
+  showWmsLayer,
+  hideWmsLayer,
+  removeWmsLayer,
+  addWmsLayerGroup,
+  renameWmsLayerGroup,
+  removeWmsLayerGroup
+} = useWmsLayers();
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
   if (getWmsLayerList()) {
     let wmsGroupsJstreeData = [];
-    for (const wmsGroup of getWmsLayerList().groups) {
-      const children = getGroupLayers(wmsGroup.setting_type);
-      wmsGroupsJstreeData.push({
-        id: wmsGroup.setting_type,
-        text: wmsGroup.name,
-        type: 'wms_layer_folder',
-        state: {opened: true},
-        children: children,
-        a_attr: {
-          "class": "no_checkbox"
-        }
-      })
+    for (const [key, rootGroup] of Object.entries(getRootGroupsWithChildren())) {
+      addTreeItem(wmsGroupsJstreeData, rootGroup, key, "wms_layer_folder", rootGroup.children);
     }
 
     return [
@@ -72,28 +69,74 @@ const treeData = computed(() => {
   }
 });
 
-// eslint-disable-next-line no-unused-vars
-function showAddLayerDialog(objectId) {
+const showAddLayerDialog = (objectId) => {
   window.add_edit_wms_layer(objectId);
 }
 
-function getGroupLayers(setting_type) {
-  const layers = [];
+const getRootGroupsWithChildren = () => {
+  const rootGroups = [];
+  const foundChildIds = []
+  for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
+    if (layerGroup.parent_group_id === 'root') {
+      rootGroups[key] = {...layerGroup};
+      rootGroups[key]['children'] = getChildrenOfGroup(layerGroup, foundChildIds);
+    }
+  }
+
+  // add 'non-root' groups that are not found in any 'children' list (legacy) to the 'Personal Layers' folder
+  for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
+    if (layerGroup.parent_group_id !== 'root' && !foundChildIds.includes(key)) {
+      addTreeItem(rootGroups['personal_layers'].children, layerGroup, key, "wms_layer_folder", getChildrenOfGroup(layerGroup, foundChildIds));
+    }
+  }
+  // add layers that are not found in any 'children' list (legacy) to the 'Personal Layers' folder
   for (const [key, layer] of Object.entries(getWmsLayerList().layers)) {
-    if (layer.setting_type === setting_type) {
-      layers.push({
-        id: key,
-        text: layer.description,
-        setting_type: setting_type,
-        type: "wms_layer",
-        a_attr: {
-          "class": layer.active ? "bold" : "",
-        },
-        state: {"checked": layer.visible, opened: true},
-      })
+    if (!foundChildIds.includes(key)) {
+      addTreeItem(rootGroups['personal_layers'].children, layer, key, "wms_layer", []);
+    }
+  }
+
+  return rootGroups;
+}
+
+const getChildrenOfGroup = (layerGroup, foundChildIds) => {
+  const layers = [];
+  if (typeof layerGroup.child_ids !== 'undefined' && layerGroup.child_ids.length > 0) {
+    for (const childId of layerGroup.child_ids) {
+      // check if child is a group
+      let child = getWmsLayerList().layer_groups[childId];
+      let type = "wms_layer";
+      let children = [];
+      if (child !== undefined && child !== null) {  // if a group, find children
+        type = "wms_layer_folder";
+        children = getChildrenOfGroup(child, foundChildIds);
+      } else { // get layer
+        child = getWmsLayerList().layers[childId];
+      }
+
+      if (child !== undefined && child !== null) {
+        addTreeItem(layers, child, childId, type, children);
+        foundChildIds.push(childId);
+      }
     }
   }
   return layers;
+}
+
+const addTreeItem = (items, item, itemId, type, children) => {
+  let a_attr = {"class": "no_checkbox"};
+  if (type === "wms_layer") {
+    a_attr = {"class": item.active ? "bold" : ""};
+  }
+  items.push({
+    id: itemId,
+    text: item.description,
+    setting_type: item.setting_type,
+    type: type,
+    a_attr: a_attr,
+    state: {"checked": item.visible, opened: true},
+    children: children,
+  });
 }
 
 class LayerFolderTreeSpec {
@@ -102,26 +145,41 @@ class LayerFolderTreeSpec {
     this.icon = 'fas fa-layer-group';
   }
 
-  contextMenus() {
+  contextMenus(node, tree) {
+    console.log(node)
     return {
       'add_layer': {
         'label': 'Add WMS layer',
         'icon': 'fas fa-plus',
         'action': function () {
-          showAddLayerDialog(null);
+          showAddLayerDialog("__" + node.id);
         }
       },
       'add_folder': {
         'label': 'Add folder',
         'icon': 'fas fa-plus',
         'action': function () {
-          window.socket.emit('add_wms_layer_group', {
-            'id': 'groupID',
-            'name': 'groupName',
-            'setting_type': 'user',
-            'parent_group_id': 'user',
-          })
+          addWmsLayerGroup(node.id);
         }
+      },
+      'rename_folder': {
+        'label': 'Rename folder',
+        'icon': 'far fa-edit',
+        'action': function () {
+          tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
+            if (isSuccessful && !isCancelled) {
+              renameWmsLayerGroup(node.id, node.text);
+            }
+          });
+        }
+      },
+      'delete': {
+        'label': 'Delete folder',
+        'icon': 'fa fa-trash-o',
+        'action': function () {
+          removeWmsLayerGroup(node.id);
+        },
+        '_disabled': node.original.setting_type === 'system' || node.parents.length < 2, // do not delete root folders
       },
     }
   }
@@ -145,7 +203,7 @@ class LayerTreeSpec {
         '_disabled': node.original.setting_type === 'system',
       },
       'delete': {
-        'label': 'Remove WMS layer',
+        'label': 'Delete WMS layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
           removeWmsLayer(node.id);

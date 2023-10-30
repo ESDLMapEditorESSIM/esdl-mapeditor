@@ -15,16 +15,16 @@
         </a-col>
         <a-col :span="15">
           <a-input
-            v-if="key !== 'addToGroup'"
+            v-if="key !== 'projectName'"
             v-model:value="wmsLayer[key]"
             class="fe_box"
             size="small"
             type="text"
           />
           <a-select
-            v-if="isNewLayer && key === 'addToGroup'"
+            v-if="isNewLayer && key === 'projectName'"
             v-model:value="wmsLayer[key]" size="small" style="width: 100%"
-            :options="groupOptions()"
+            :options="projectOptions()"
           />
         </a-col>
       </a-row>
@@ -47,12 +47,7 @@ import {ref, onBeforeMount, defineExpose, defineEmits} from "vue";
 import {useObject} from "../composables/ObjectID";
 import {useWmsLayers} from "../composables/wmsLayers";
 
-const {getWmsLayerList, addWmsLayer, updateLayer} = useWmsLayers()
-const wmsLayerList = ref(null);
-
-onBeforeMount(() => {
-  wmsLayerList.value = getWmsLayerList();
-});
+const {getWmsLayerList, addWmsLayer, updateLayer} = useWmsLayers();
 
 const wmsLayer = ref(null);
 const isNewLayer = ref(false);
@@ -61,16 +56,16 @@ const isLoading = ref(false);
 const {currentObjectID} = useObject();
 
 onBeforeMount(() => {
-  if (currentObjectID.value == null) {
+  if (currentObjectID.value.startsWith("__")) {
+    isNewLayer.value = true;
     wmsLayer.value = {
       description: 'AardwarmteKrijtJura',
       url: 'https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?',
       layerName: 'AardwarmteKrijtJura',
       legendUrl: '',
       attribution: '',
-      addToGroup: '',
+      projectName: '',
     }
-    isNewLayer.value = true;
   } else {
     window.socket.emit('get_wms_layer', {id: currentObjectID.value}, function (lyr_info) {
       wmsLayer.value = {
@@ -90,18 +85,22 @@ const camelCase = (str) => {
   return window.camelCaseToWords(str);
 };
 
+
 // eslint-disable-next-line no-unused-vars
-const groupOptions = () => {
-  let options = [];
-  for (const idx in wmsLayerList.value['groups']) {
-    let group = wmsLayerList.value['groups'][idx];
-    if (!group.readonly) {
-      options.push({
-            label: group.name,
-            value: idx,
-          }
-      )
+const projectOptions = () => {
+  const projectNames = [];
+  for (const [key, layer] of Object.entries(getWmsLayerList()['layers'])) {
+    if (layer.project_name !== undefined) {
+      projectNames.push(layer.project_name);
     }
+  }
+
+  const options = [];
+  for (const uniqueName of [...new Set(projectNames)]) {
+    options.push({
+      label: uniqueName,
+      value: uniqueName,
+    })
   }
   return options;
 }
@@ -109,15 +108,18 @@ const groupOptions = () => {
 // eslint-disable-next-line no-unused-vars
 const addUpdate = () => {
   if (isNewLayer.value) {
-    const group = wmsLayerList.value['groups'][wmsLayer.value.addToGroup];
+    const folderId = currentObjectID.value.replace("__", "");
+    console.log(wmsLayer.value.project_name)
+    const parentGroup = getWmsLayerList()['layer_groups'][currentObjectID.value.replace("__", "")]
     addWmsLayer(
         wmsLayer.value.description,
         wmsLayer.value.url,
         wmsLayer.value.layerName,
         wmsLayer.value.legendUrl,
         wmsLayer.value.attribution,
-        group.project_name,
-        group.setting_type,
+        wmsLayer.value.projectName,
+        'user',
+        currentObjectID.value.replace("__", ""),
     );
   } else {
     updateLayer(

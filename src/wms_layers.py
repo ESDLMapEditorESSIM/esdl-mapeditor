@@ -36,12 +36,7 @@ class WMSLayers:
         if not self.settings_storage.has_system(LAYERS_SETTING):
             self.settings_storage.set_system(LAYERS_SETTING, default_wms_layers)
         else:
-            logger.info('Found WMS layers in User Settings')
-
-        if not self.settings_storage.has_system(LAYERS_GROUP_SETTING):
-            self.settings_storage.set_system(LAYERS_GROUP_SETTING, default_wms_layers)
-        else:
-            logger.info('Found WMS layers in User Settings')
+            logger.info('Found WMS layers in System Settings')
 
     def register(self):
         logger.info('Registering WMS layer extension')
@@ -60,24 +55,32 @@ class WMSLayers:
         def _add_wms_layer_group(params):
             logger.info('add wms layer group')
             id = params['id']
-            name = params['name']
+            description = params['description']
             setting_type = params['setting_type']
             parent_group_id = params['parent_group_id']
-            children = []
 
             layer_group = {
-                "group_name": name,
+                "description": description,
                 "setting_type": setting_type,
                 "parent_group_id": parent_group_id,
-                "children": children
+                "child_ids": []
             }
 
             self.add_wms_layer_group(id, layer_group)
 
+        @self.socketio.on('add_child_to_layer_group', namespace='/esdl')
+        def _add_child_to_layer_group(params):
+            self.add_child_to_layer_group(params['group_id'], params['child_id'])
+
+        @self.socketio.on('rename_layer_group', namespace='/esdl')
+        def _add_child_to_layer_group(params):
+            self.rename_layer_group(params['group_id'], params['group_name'])
+
         @self.socketio.on('add_wms_layer', namespace='/esdl')
         def _add_wms_layer(params):
+            logger.info(params)
             id = params['id']
-            descr = params['descr']
+            description = params['description']
             url = params['url']
             name = params['name']
             setting_type = params['setting_type']
@@ -86,7 +89,7 @@ class WMSLayers:
             visible = params['visible']
 
             layer = {
-                "description": descr,
+                "description": description,
                 "url": url,
                 "layer_name": name,
                 "setting_type": setting_type,
@@ -103,15 +106,36 @@ class WMSLayers:
             id = params['id']
             self.remove_wms_layer(id)
 
-    def add_wms_layer_group(self, layer_group__id, layer_group):
+        @self.socketio.on('remove_wms_layer_group', namespace='/esdl')
+        def _remove_wms_layer(params):
+            id = params['id']
+            self.remove_wms_layer_group(id)
+
+    def add_wms_layer_group(self, layer_group_id, layer_group):
         setting_type = SettingType(layer_group['setting_type'])
         identifier = self._get_identifier(setting_type)
         if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
             layer_groups = self.settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
         else:
             layer_groups = dict()
-        layer_groups[layer_group__id] = layer_group
+        layer_groups[layer_group_id] = layer_group
         self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
+
+    def get_wms_layer_group(self, group_id):
+        # as we only have an ID, we don't know if it is a user, project or system layer
+        # get the whole list, so we can find out the setting_type
+        group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
+        return group
+
+    def add_child_to_layer_group(self, group_id, child_id):
+        group = self.get_wms_layer_group(group_id)
+        group["child_ids"].append(child_id)
+        self.add_wms_layer_group(group_id, group)
+
+    def rename_layer_group(self, group_id, group_name):
+        group = self.get_wms_layer_group(group_id)
+        group["description"] = group_name
+        self.add_wms_layer_group(group_id, group)
 
     def add_wms_layer(self, layer_id, layer):
         setting_type = SettingType(layer['setting_type'])
@@ -151,11 +175,24 @@ class WMSLayers:
         if identifier is None:
             return
         if self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
-            # update layer dict
+            # update layers dict
             layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
             logger.info('Deleting layer {}'.format(layers[layer_id]))
             del (layers[layer_id])
             self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
+
+    def remove_wms_layer_group(self, group_id):
+        group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
+        setting_type = SettingType(group['setting_type'])
+        identifier = self._get_identifier(setting_type)
+        if identifier is None:
+            return
+        if self.settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
+            # update layer groups dict
+            groups = self.settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
+            logger.info('Deleting layer group {}'.format(groups[group_id]))
+            del (groups[group_id])
+            self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, groups)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -192,8 +229,9 @@ class WMSLayers:
             all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
 
         layer_groups = dict()
-        if user is not None and self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
-            # add user layers if available
+        if user is not None:
+            if not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
+                self.settings_storage.set_for_current_user(LAYERS_GROUP_SETTING, default_wms_layer_groups)
             layer_groups.update(self.settings_storage.get_user(user, LAYERS_GROUP_SETTING))
 
         if user_group is not None:
@@ -204,52 +242,56 @@ class WMSLayers:
                     all_layers.update(self.settings_storage.get_project(identifier, LAYERS_SETTING))
 
         # generate message
-        message = copy.deepcopy(default_wms_layer_groups)
-        possible_groups = message["groups"]
-        # if enough rights, mark Standard layers editable
-        if 'mapeditor-admin' in mapeditor_role:
-            for g in possible_groups:
-                if g['setting_type'] == SettingType.SYSTEM.value:
-                    g['readonly'] = False
-        possible_groups.extend(self._create_group_layers_for_projects(user_group))
+        message = {}
         message[LAYERS_SETTING] = all_layers
         message[LAYERS_GROUP_SETTING] = layer_groups
+        # message = copy.deepcopy(default_wms_layer_groups)
+        # possible_groups = message["layer_groups"]
+        # if enough rights, mark Standard layers editable
+        if 'mapeditor-admin' in mapeditor_role:
+            for g in message[LAYERS_GROUP_SETTING]:
+                if g['setting_type'] == SettingType.SYSTEM.value:
+                    g['readonly'] = False
+        # possible_groups.extend(self._create_group_layers_for_projects(user_group))
         # logger.debug(message)
         return message
 
-    def _create_group_layers_for_projects(self, groups):
-        project_list = list()
-        if groups is not None:
-            for group in groups:
-                identifier = self._get_identifier(SettingType.PROJECT, group)
-                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier,
-                        "name": "Project Layers for " + group, "readonly": False}
-                project_list.append(json)
-        return project_list
+    # def _create_group_layers_for_projects(self, groups):
+    #     project_list = list()
+    #     if groups is not None:
+    #         for group in groups:
+    #             identifier = self._get_identifier(SettingType.PROJECT, group)
+    #             json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier,
+    #                     "name": "Project Layers for " + group, "readonly": False}
+    #             project_list.append(json)
+    #     return project_list
 
-
-default_wms_layer_groups = {
-    "groups": [
-        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal Layers",
-         "readonly": False},
-        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard Layers",
-         "readonly": True}
-    ]
-}
 
 # default_wms_layer_groups = {
-#     "layer_groups": [
-#         {"setting_type": SettingType.USER.value, "group_name": "Personal Layers", "parent_group_id": "root",
-#          "children": []},
-#         {"setting_type": SettingType.SYSTEM.value, "group_name": "Standard Layers", "parent_group_id": "root",
-#          "children": [
-#              "ahn2_5m", "liggingindustrieco2", "hoogspanningskabels", "middenspanningskabels", "LT_WarmteBronnen_ECW",
-#              "WarmteNetten", "GasLeidingenEnexis", "GasLeidingenStedin", "CO2EmissieBedrijven", "AardwarmteKrijtJura",
-#              "AardwarmteRotliegend", "CondensWarmte", "DataCentraWarmte", "Hoogspanningsnet_2018",
-#              "a3643e0e53fa4174a4ead41f56659a6e"
-#          ]}
+#     "groups": [
+#         {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal Layers",
+#          "readonly": False},
+#         {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard Layers",
+#          "readonly": True}
 #     ]
 # }
+
+default_wms_layer_groups = {
+    "personal_layers": {
+        "setting_type": SettingType.USER.value,
+        "description": "Personal Layers",
+        "parent_group_id": "root",
+        "child_ids": []},
+    "standard_layers": {
+        "setting_type": SettingType.SYSTEM.value,
+        "description": "Standard Layers",
+        "parent_group_id": "root",
+        "child_ids": [
+            "AHN2_5m", "RVO_Restwarmte", "LianderHS", "LianderMS", "LT_WarmteBronnen_ECW", "WarmteNetten",
+            "GasLeidingenEnexis", "GasLeidingenStedin", "CO2EmissieBedrijven", "AardwarmteKrijtJura",
+            "AardwarmteRotliegend", "CondensWarmte", "DataCentraWarmte", "PICO_Hoogspanningsnet_2018", "TEO"
+        ]}
+}
 
 default_wms_layers = {
     "AHN2_5m": {
@@ -407,7 +449,7 @@ default_wms_layers = {
     #     "visible": False,
     #     "attribution": 'Mapdata  <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a> &copy; <a href="http://www.warmteatlas.nl">WarmteAtlas RVO</a>'
     # }
-    "PICO Hoogspanningsnet 2018": {
+    "PICO_Hoogspanningsnet_2018": {
         "description": "PICO Hoogspanningsnet 2018",
         "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
         "layer_name": "Hoogspanningsnet_2018",

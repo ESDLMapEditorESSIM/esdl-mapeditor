@@ -44,99 +44,115 @@ export function useWmsLayers() {
      */
     const getWmsLayerList = () => toValue(globalWmsLayerList);
 
-    const addWmsLayer = (layer_descr, layer_url, layer_name, legend_url, layer_attr, project_name, setting_type) => {
+    const addWmsLayer = (layerDescr, layerUrl, layerName, legendUrl, layerAttr, projectName, settingtype, groupId) => {
         /**
          * Add wms layer
          */
-        const layer_id = window.uuidv4();
+        const layerId = window.uuidv4();
 
-        socket.emit('add_wms_layer', {
-            id: layer_id,
-            descr: layer_descr,
-            url: layer_url,
-            name: layer_name,
-            setting_type: setting_type,
-            project_name: project_name,
-            legend_url: legend_url,
+        const wmsLayer = {
+            id: layerId,
+            description: layerDescr,
+            url: layerUrl,
+            name: layerName,
+            setting_type: settingtype,
+            project_name: projectName,
+            legend_url: legendUrl,
             visible: true
-        });
-
-        globalWmsLayerList.value['layers'][layer_id] = {
-            id: layer_id,
-            description: layer_descr,
-            url: layer_url,
-            legend_url: legend_url,
-            layer_name: layer_name,
-            setting_type: setting_type,
-            project_name: project_name
         };
+        socket.emit('add_wms_layer', wmsLayer);
+        addChildToGroup(groupId, layerId);
 
-        globalWmsLayerList.value['layers'][layer_id].layer_ref = L.tileLayer.wms(layer_url, {
-            layers: layer_name,
+        globalWmsLayerList.value['layers'][layerId] = wmsLayer;
+
+        globalWmsLayerList.value['layers'][layerId].layer_ref = L.tileLayer.wms(layerUrl, {
+            layers: layerName,
             format: 'image/png',
             transparent: true
         });
-        showWmsLayer(layer_id);
+        showWmsLayer(layerId);
         for (const visibleLayer of getVisibleLayerList()) {
             globalWmsLayerList.value['layers'][visibleLayer.id].visible = true;
         }
     };
 
-    function updateLayer(layer_id, layer_descr, layer_url, layer_name, legend_url, layer_attr) {
+    function updateLayer(layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) {
         socket.emit('save_wms_layer', {
-            id: layer_id,
+            id: layerId,
             lyr_info: {
-                description: layer_descr,
-                url: layer_url,
-                layer_name: layer_name,
-                legend_url: legend_url,
-                attribution: layer_attr
+                description: layerDescr,
+                url: layerUrl,
+                layer_name: layerName,
+                legend_url: legendUrl,
+                attribution: layerattr
             }
         });
 
-        hideWmsLayer(layer_id);
+        hideWmsLayer(layerId);
 
-        globalWmsLayerList.value['layers'][layer_id].layer_ref = L.tileLayer.wms(layer_url, {
-            layers: layer_name,
+        globalWmsLayerList.value['layers'][layerId].layer_ref = L.tileLayer.wms(layerUrl, {
+            layers: layerName,
             format: 'image/png',
             transparent: true
         });
-        globalWmsLayerList.value['layers'][layer_id].description = layer_descr;
-        globalWmsLayerList.value['layers'][layer_id].url = layer_url;
-        globalWmsLayerList.value['layers'][layer_id].layer_name = layer_name;
-        globalWmsLayerList.value['layers'][layer_id].legend_url = legend_url;
-        globalWmsLayerList.value['layers'][layer_id].layer_attr = layer_attr;
+        globalWmsLayerList.value['layers'][layerId].description = layerDescr;
+        globalWmsLayerList.value['layers'][layerId].url = layerUrl;
+        globalWmsLayerList.value['layers'][layerId].layer_name = layerName;
+        globalWmsLayerList.value['layers'][layerId].legend_url = legendUrl;
+        globalWmsLayerList.value['layers'][layerId].layer_attr = layerattr;
 
-        showWmsLayer(layer_id);
+        showWmsLayer(layerId);
         for (const visibleLayer of getVisibleLayerList()) {
             globalWmsLayerList.value['layers'][visibleLayer.id].visible = true;
         }
     }
 
-    const showWmsLayer = (layer_id) => {
-        console.log(globalWmsLayerList.value['layers'][layer_id].layer_ref.addTo(map))
-        globalWmsLayerList.value['layers'][layer_id].layer_ref.bringToFront();
-        if (globalWmsLayerList.value['layers'][layer_id].legend_url !== "") {
-            showWmsLegend(globalWmsLayerList.value['layers'][layer_id].legend_url);
+    const showWmsLayer = (layerId) => {
+        globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
+        globalWmsLayerList.value['layers'][layerId].layer_ref.bringToFront();
+        if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
+            showWmsLegend(globalWmsLayerList.value['layers'][layerId].legend_url);
         }
-        addToVisibleLayerList(globalWmsLayerList.value['layers'][layer_id], 0);
+        addToVisibleLayerList(globalWmsLayerList.value['layers'][layerId], 0);
     };
 
-    const hideWmsLayer = (layer_id) => {
-        console.log('hide', globalWmsLayerList.value['layers'][layer_id].description)
-        map.removeLayer(globalWmsLayerList.value['layers'][layer_id].layer_ref);
-        globalWmsLayerList.value['layers'][layer_id].visible = false;
-        if (globalWmsLayerList.value['layers'][layer_id].legend_url !== "") {
+    const hideWmsLayer = (layerId) => {
+        console.log('hide', globalWmsLayerList.value['layers'][layerId].description)
+        map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+        globalWmsLayerList.value['layers'][layerId].visible = false;
+        if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
             removeWmsLegend();
         }
-        removeFromVisibleLayerList(layer_id);
+        removeFromVisibleLayerList(layerId);
     };
 
-    const removeWmsLayer = (layer_id) => {
-        socket.emit('remove_wms_layer', {id: layer_id});
-        map.removeLayer(globalWmsLayerList.value['layers'][layer_id].layer_ref);
-        delete globalWmsLayerList.value['layers'][layer_id];
-        removeFromVisibleLayerList(layer_id);
+    const removeWmsLayer = (layerId) => {
+        socket.emit('remove_wms_layer', {id: layerId});
+        map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+        delete globalWmsLayerList.value['layers'][layerId];
+        removeFromVisibleLayerList(layerId);
+    }
+
+    const addWmsLayerGroup = (parentId) => {
+        const groupId = window.uuidv4();
+        const layerGroup = {
+            'id': groupId,
+            'description': 'new folder',
+            'setting_type': 'user',
+            'parent_group_id': parentId,
+        };
+        socket.emit('add_wms_layer_group', layerGroup);
+        globalWmsLayerList.value['layer_groups'][groupId] = layerGroup;
+        addChildToGroup(parentId, groupId);
+    }
+
+    const renameWmsLayerGroup = (groupId, name) => {
+        socket.emit('rename_layer_group', {group_id: groupId, group_name: name});
+    }
+
+    const removeWmsLayerGroup = (groupId) => {
+        socket.emit('remove_wms_layer_group', {id: groupId});
+        delete globalWmsLayerList.value['layer_groups'][groupId];
     }
 
     return {
@@ -146,6 +162,9 @@ export function useWmsLayers() {
         showWmsLayer,
         hideWmsLayer,
         removeWmsLayer,
+        renameWmsLayerGroup,
+        addWmsLayerGroup,
+        removeWmsLayerGroup,
     };
 }
 
@@ -176,4 +195,9 @@ const removeWmsLegend = () => {
     if (wmsLegend) {
         map.removeControl(wmsLegend);
     }
+}
+
+const addChildToGroup = (groupId, childId) => {
+    socket.emit('add_child_to_layer_group', {group_id: groupId, child_id: childId});
+    globalWmsLayerList.value['layer_groups'][groupId]['child_ids'].push(childId);
 }
