@@ -17,7 +17,7 @@
 <template>
   <div id="layers_view">
     <div v-if="treeData != null">
-      <vue-js-tree tree-id="layer_tree" :plugins="['contextmenu', 'types', 'checkbox']"
+      <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
                    :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
       />
       <VisibleView />
@@ -46,12 +46,17 @@ const {
   removeWmsLayer,
   addWmsLayerGroup,
   renameWmsLayerGroup,
-  removeWmsLayerGroup
+  removeWmsLayerGroup,
+  moveWmsItem
 } = useWmsLayers();
+
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
+const treeId = "layer_tree"
+const $ = window.$;
 
+const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
   if (getWmsLayerList()) {
@@ -61,7 +66,7 @@ const treeData = computed(() => {
     }
 
     return [
-      get_base_layers_control_tree_data(),
+      getBaseLayersControlTreeData(),
       ...wmsGroupsJstreeData,
     ];
   } else {
@@ -146,13 +151,12 @@ class LayerFolderTreeSpec {
   }
 
   contextMenus(node, tree) {
-    console.log(node)
     return {
       'add_layer': {
         'label': 'Add WMS layer',
         'icon': 'fas fa-plus',
         'action': function () {
-          showAddLayerDialog("__" + node.id);
+          showAddLayerDialog("__" + node.id); // add '__' to give parent folder id
         }
       },
       'add_folder': {
@@ -171,13 +175,14 @@ class LayerFolderTreeSpec {
               renameWmsLayerGroup(node.id, node.text);
             }
           });
-        }
+        },
+        '_disabled': node.original.setting_type === 'system' || node.parents.length < 2, // do not delete root folders
       },
       'delete': {
         'label': 'Delete folder',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          removeWmsLayerGroup(node.id);
+          removeWmsLayerGroup(node.id, node.parents[0]);
         },
         '_disabled': node.original.setting_type === 'system' || node.parents.length < 2, // do not delete root folders
       },
@@ -206,7 +211,8 @@ class LayerTreeSpec {
         'label': 'Delete WMS layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          removeWmsLayer(node.id);
+          console.log(node)
+          removeWmsLayer(node.id, node.parents[0]);
         },
         '_disabled': node.original.setting_type === 'system',
       },
@@ -216,7 +222,7 @@ class LayerTreeSpec {
 
 class BaseLayerFolderTreeSpec {
   constructor() {
-    this.type = "base_layer_folder";
+    this.type = "root_layer_folder";
     this.icon = "fas fa-layer-group";
   }
 }
@@ -280,9 +286,24 @@ const eventHandlersByName = [{
       hideWmsLayer(id);
     }
   }
+}, {
+  eventName: 'move_node.jstree',
+  handler: function (e, data) {
+    moveWmsItem(data.node.id, data.old_parent, data.node.parents[0]);
+  },
+
+}, {
+  eventName: 'create_node.jstree',
+  handler: function (e, data, treeElement) {
+    getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
+      if (isSuccessful && !isCancelled) {
+        renameWmsLayerGroup(node.id, node.text);
+      }
+    });
+  }
 }];
 
-function get_base_layers_control_tree_data() {
+function getBaseLayersControlTreeData() {
   let children = [];
 
   for (const baseLayer of baseLayerDefinitions) {
@@ -303,7 +324,7 @@ function get_base_layers_control_tree_data() {
   return {
     id: "group_base_layers",
     text: "Base layers",
-    type: "base_layer_folder",
+    type: "wms_layer_folder",
     state: {
       opened: true
     },

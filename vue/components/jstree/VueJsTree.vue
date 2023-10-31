@@ -60,6 +60,8 @@ onMounted(() => {
     core: {
       data: props.data,
       check_callback: true,
+      animation: 200,
+      multiple: false
     },
     plugins: props.plugins,
     checkbox: {
@@ -80,6 +82,9 @@ onMounted(() => {
     },
     dnd: {
       "inside_pos": "first",
+      "is_draggable": node => {
+        return node[0].type === "visible_layer" || node[0].parents.length >= 2; // do not drag root folders
+      }
     },
     types: types,
   });

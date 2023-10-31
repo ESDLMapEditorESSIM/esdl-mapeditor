@@ -21,11 +21,7 @@ export function useVisibleLayers() {
         const layerToRemove = globalVisibleLayerList.value.find(
             element => element.id === id
         );
-        console.log(layerToRemove)
         if (layerToRemove !== undefined) {
-        console.log('remove layer', layerToRemove.description)
-            console.log(globalVisibleLayerList.value.indexOf(layerToRemove))
-            console.log(globalVisibleLayerList.value[globalVisibleLayerList.value.indexOf(layerToRemove)])
             globalVisibleLayerList.value.splice(globalVisibleLayerList.value.indexOf(layerToRemove), 1);
         }
         return layerToRemove;
@@ -45,15 +41,25 @@ export function useVisibleLayers() {
         const movedlayer = removeFromVisibleLayerList(id);
         addToVisibleLayerList(movedlayer, newPosition);
 
-        getVisibleLayerList().slice().reverse().forEach(
+        globalVisibleLayerList.value.slice().reverse().forEach(
             layer => getWmsLayerList()['layers'][layer.id].layer_ref.bringToFront()
         )
     };
+
+    const layerIsVisible = (layerId) => {
+        for (const visibleLayer of globalVisibleLayerList.value) {
+            if (visibleLayer.id === layerId) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     return {
         getVisibleLayerList,
         removeFromVisibleLayerList,
         addToVisibleLayerList,
-        updateDisplayOrderVisibleLayers
+        updateDisplayOrderVisibleLayers,
+        layerIsVisible
     }
 }

@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import {computed, ref, defineProps} from 'vue'
+import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
@@ -37,10 +37,8 @@ import {useVisibleLayers} from "../composables/visibleLayers"
 const {socket} = useSocketIO();
 const {getVisibleLayerList, updateDisplayOrderVisibleLayers} = useVisibleLayers();
 
+// eslint-disable-next-line no-unused-vars
 const treeId = "visible_layer_tree"
-const $ = window.$;
-
-const getTree = () => $('#' + treeId).jstree(true);
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
@@ -48,9 +46,9 @@ const treeData = computed(() => {
     let visibleLayersJsreeData = [];
     for (const visibleLayer of getVisibleLayerList()) {
       visibleLayersJsreeData.push({
-        id : visibleLayer.id,
+        id: visibleLayer.id,
         text: visibleLayer.description,
-        type: "movable_layer",
+        type: "visible_layer",
       });
     }
     return visibleLayersJsreeData;
@@ -61,22 +59,24 @@ const treeData = computed(() => {
 
 class MovableLayerTreeSpec {
   constructor() {
-    this.type = "movable_layer";
+    this.type = "visible_layer";
     this.icon = "fas fa-grip-lines";
     this.max_depth = 0;
   }
 }
 
+// eslint-disable-next-line no-unused-vars
 const treeTypeSpecs = [new MovableLayerTreeSpec()];
 
 // TODO: Move into tree specs
+// eslint-disable-next-line no-unused-vars
 const eventHandlersByName = [{
   eventName: 'ready.jstree',
   handler: function () {
   }
 }, {
   eventName: 'move_node.jstree',
-  handler: function (e, data, treeElement) {
+  handler: function (e, data) {
     updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
   }
 }];
