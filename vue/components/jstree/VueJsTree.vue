@@ -27,7 +27,17 @@ const props = defineProps({
   plugins: Array,
   treeTypeSpecs: Array,
   eventHandlersByName: Object,
-})
+  checkCallBack: {
+    type: Function,
+    required: false,
+    default: () => true,
+  },
+  dndIsDraggable: {
+    type: Function,
+    required: false,
+    default: () => true,
+  },
+});
 
 const $ = window.$;
 
@@ -59,7 +69,8 @@ onMounted(() => {
   treeElement.jstree({
     core: {
       data: props.data,
-      check_callback: true,
+      check_callback: (operation, node, node_parent, node_position, more) =>
+          props.checkCallBack(operation, node, node_parent, node_position, more),
       animation: 200,
       multiple: false
     },
@@ -81,10 +92,8 @@ onMounted(() => {
       select_node: false,
     },
     dnd: {
-      "inside_pos": "first",
-      "is_draggable": node => {
-        return node[0].type === "visible_layer" || node[0].parents.length >= 2; // do not drag root folders
-      }
+      inside_pos: "first",
+      is_draggable: (node) => props.dndIsDraggable(node),
     },
     types: types,
   });

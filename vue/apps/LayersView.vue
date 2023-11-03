@@ -19,6 +19,7 @@
     <div v-if="treeData != null">
       <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
                    :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                   :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleView />
     </div>
@@ -53,7 +54,7 @@ const {
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const treeId = "layer_tree"
+const treeId = "layer_tree";
 const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
@@ -211,7 +212,6 @@ class LayerTreeSpec {
         'label': 'Delete WMS layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          console.log(node)
           removeWmsLayer(node.id, node.parents[0]);
         },
         '_disabled': node.original.setting_type === 'system',
@@ -254,14 +254,14 @@ const eventHandlersByName = [{
   }
 }, {
   eventName: 'check_node.jstree',
-  handler: function (e, data, treeElement) {
+  handler: function (e, data) {
     const type = data.node.type;
     const id = data.node.id;
     if (type === 'base_layer') {
       // Single base layer selection
-      for (const checkedNode of treeElement.get_checked_descendants(data.node.parent)) {
+      for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
         if (checkedNode !== id) {
-          treeElement.uncheck_node(checkedNode)
+          getTree().uncheck_node(checkedNode)
         }
       }
       for (const baseLayer of baseLayerDefinitions) {
@@ -291,17 +291,46 @@ const eventHandlersByName = [{
   handler: function (e, data) {
     moveWmsItem(data.node.id, data.old_parent, data.node.parents[0]);
   },
-
 }, {
   eventName: 'create_node.jstree',
-  handler: function (e, data, treeElement) {
+  handler: function (e, data) {
     getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
       if (isSuccessful && !isCancelled) {
         renameWmsLayerGroup(node.id, node.text);
       }
     });
-  }
+  },
 }];
+
+// $(document).on('dnd_start.vakata', function (e, data, tree, dd) {
+//   data.event.originalEvent.preventDefault();
+// });
+
+// eslint-disable-next-line no-unused-vars
+const checkCallBack = (operation, node, node_parent, node_position, more) => {
+  if (operation === 'move_node') {
+    const old_root_folder_id = node.parents[node.parents.length - 2];
+    let new_root_folder_id;
+    if (node_parent.parents.length > 1) {
+      new_root_folder_id = node_parent.parents[node_parent.parents.length - 2];
+    } else {
+      new_root_folder_id = node_parent.id;
+    }
+    if (old_root_folder_id === new_root_folder_id) { // always allow within root folder
+      return true;
+    } else if (new_root_folder_id === '#' || new_root_folder_id === 'group_base_layers'
+        || new_root_folder_id === 'standard_layers') { // don't move into 'root'', 'Base layers' and 'Standard layers'
+      return false;
+    }
+  }
+  return true;
+};
+
+// eslint-disable-next-line no-unused-vars
+const dnbIsDraggable = (node) => {
+  return node[0].original.setting_type !== 'system' && node[0].type !== "visible_layer" &&
+      node[0].type !== "base_layer" && node[0].parents.length > 1; // do not move specific layers and root folders
+};
 
 function getBaseLayersControlTreeData() {
   let children = [];
