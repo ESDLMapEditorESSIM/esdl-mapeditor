@@ -769,7 +769,7 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
-def find_area_location_based(esh, active_es_id, geometry):
+def find_area_location_based(pm: ProjectManager, active_es_id, geometry):
     shape_dictionary = get_session('shape_dictionary')
 
     obj_geometry_shape = Shape.create(geometry)
@@ -781,7 +781,7 @@ def find_area_location_based(esh, active_es_id, geometry):
             areas_that_contain_obj.append(key)
 
     if len(areas_that_contain_obj) == 0:
-        es = esh.get_energy_system(es_id=active_es_id)
+        es = pm.get_active_energy_system()
         return es.instance[0].area.id   # If no area is found, return the id of the top level area
     elif len(areas_that_contain_obj) == 1:
         return areas_that_contain_obj[0]
@@ -790,7 +790,7 @@ def find_area_location_based(esh, active_es_id, geometry):
         lowest_level = 0
         lowest_area_id = None
         for ar_id in areas_that_contain_obj:
-            area = esh.get_by_id(active_es_id, ar_id)
+            area = pm.get_by_id(active_es_id, ar_id)
             area_level = 1
             while isinstance(area.eContainer(), esdl.Area):
                 area_level += 1

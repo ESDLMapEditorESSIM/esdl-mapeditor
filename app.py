@@ -1513,7 +1513,7 @@ def process_command(message):
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
         if area_bld_id == 'find_area_location_based':
-            area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+            area_bld_id = find_area_location_based(pm, active_es_id, geometry)
 
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
