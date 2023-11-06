@@ -16,7 +16,6 @@ from flask_socketio import SocketIO
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
-import copy
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -43,9 +42,11 @@ class WMSLayers:
 
         @self.socketio.on('get_wms_layer', namespace='/esdl')
         def _get_wms_layer(params):
-            print(params)
-            # with self.flask_app.app_context():
             return self.get_wms_layer(params['id'])
+
+        @self.socketio.on('get_wms_layer_group', namespace='/esdl')
+        def _get_wms_layer_group(params):
+            return self.get_wms_layer_group(params['id'])
 
         @self.socketio.on('save_wms_layer', namespace='/esdl')
         def _save_wms_layer(params):
@@ -61,9 +62,9 @@ class WMSLayers:
             parent_group_id = params['parent_group_id']
 
             layer_group = {
-                "description": description,
-                "setting_type": setting_type,
-                "parent_group_id": parent_group_id,
+                "description": params['description'],
+                "setting_type": params['setting_type'],
+                "project_name": params['project_name'],
                 "child_ids": []
             }
 
@@ -71,12 +72,8 @@ class WMSLayers:
 
             return self.get_layers()
 
-        # @self.socketio.on('add_child_to_layer_group', namespace='/esdl')
-        # def _add_child_to_layer_group(params):
-        #     self.add_child_to_layer_group(params['group_id'], params['child_id'])
-
         @self.socketio.on('rename_layer_group', namespace='/esdl')
-        def _add_child_to_layer_group(params):
+        def _rename_layer_group(params):
             self.rename_layer_group(params['group_id'], params['group_name'])
             return self.get_layers()
 
@@ -132,13 +129,17 @@ class WMSLayers:
 
     def add_wms_layer_group(self, layer_group_id, layer_group, parent_group_id=None):
         setting_type = SettingType(layer_group['setting_type'])
-        identifier = self._get_identifier(setting_type)
+        identifier = self._get_identifier(setting_type, layer_group['project_name'])
+
         if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
             layer_groups = self.settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
         else:
             layer_groups = dict()
+
         layer_groups[layer_group_id] = layer_group
+        print(layer_group)
         self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
+        print(parent_group_id)
         if parent_group_id:
             self.add_child_to_layer_group(parent_group_id, layer_group_id)
 
@@ -151,11 +152,13 @@ class WMSLayers:
     def add_child_to_layer_group(self, group_id, child_id):
         group = self.get_wms_layer_group(group_id)
         group["child_ids"].append(child_id)
+        print('GROUP', group)
         self.add_wms_layer_group(group_id, group)
 
     def remove_child_from_layer_group(self, group_id, child_id):
         group = self.get_wms_layer_group(group_id)
-        group['child_ids'].remove(child_id)
+        if child_id in group['child_ids']:
+            group['child_ids'].remove(child_id)
         self.add_wms_layer_group(group_id, group)
 
     def move_wms_item(self, item_id, old_parent_id, new_parent_id):
@@ -167,7 +170,7 @@ class WMSLayers:
         group["description"] = group_name
         self.add_wms_layer_group(group_id, group)
 
-    def add_wms_layer(self, layer_id, layer, parent_group_id):
+    def add_wms_layer(self, layer_id, layer, parent_group_id=None):
         setting_type = SettingType(layer['setting_type'])
         project_name = layer['project_name']
         identifier = self._get_identifier(setting_type, project_name)
@@ -177,9 +180,11 @@ class WMSLayers:
         else:
             layers = dict()
         layers[layer_id] = layer
+        print(setting_type, identifier, layer_id, layer)
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
-        self.add_child_to_layer_group(parent_group_id, layer_id)
+        if parent_group_id:
+            self.add_child_to_layer_group(parent_group_id, layer_id)
 
     def get_wms_layer(self, layer_id):
         # as we only have an ID, we don't know if it is a user, project or system layer
@@ -201,6 +206,8 @@ class WMSLayers:
     def remove_wms_layer(self, layer_id, parent_id):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
+        if layer_id not in self.get_layers()[LAYERS_SETTING]:
+            return False
         layer = self.get_layers()[LAYERS_SETTING][layer_id]
         setting_type = SettingType(layer['setting_type'])
         identifier = self._get_identifier(setting_type, layer['project_name'])
@@ -212,10 +219,13 @@ class WMSLayers:
             logger.info('Deleting layer {}'.format(layers[layer_id]))
             del (layers[layer_id])
             self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
-        self.remove_child_from_layer_group(parent_id, layer_id)
+            self.remove_child_from_layer_group(parent_id, layer_id)
+            return True
 
     def remove_wms_layer_group(self, group_id, parent_id):
         group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
+        if group['child_ids']:
+            self.remove_wms_layer_group_children(group_id)
         setting_type = SettingType(group['setting_type'])
         identifier = self._get_identifier(setting_type)
         if identifier is None:
@@ -227,6 +237,16 @@ class WMSLayers:
             del (groups[group_id])
             self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, groups)
         self.remove_child_from_layer_group(parent_id, group_id)
+
+    def remove_wms_layer_group_children(self, group_id):
+        group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
+        for child_id in group['child_ids']:
+            if not self.remove_wms_layer(child_id, group_id):
+                # if not wms layer then wms_group:
+                child_group = self.get_layers()[LAYERS_GROUP_SETTING][child_id]
+                if child_group['child_ids']:
+                    self.remove_wms_layer_group_children(child_id)
+                self.remove_wms_layer_group(child_id, group_id)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -262,11 +282,11 @@ class WMSLayers:
             # add user layers if available
             all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
 
-        layer_groups = dict()
+        all_layer_groups = dict()
         if user is not None:
             if not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
                 self.settings_storage.set_for_current_user(LAYERS_GROUP_SETTING, default_wms_layer_groups)
-            layer_groups.update(self.settings_storage.get_user(user, LAYERS_GROUP_SETTING))
+            all_layer_groups.update(self.settings_storage.get_user(user, LAYERS_GROUP_SETTING))
 
         if user_group is not None:
             for group in user_group:
@@ -274,18 +294,35 @@ class WMSLayers:
                 if self.settings_storage.has_project(identifier, LAYERS_SETTING):
                     # add project layers if available
                     all_layers.update(self.settings_storage.get_project(identifier, LAYERS_SETTING))
+                if not self.settings_storage.has_project(identifier, LAYERS_GROUP_SETTING):
+                    default_project_group = dict()
+                    default_project_group[identifier] = {
+                        "setting_type": SettingType.PROJECT.value,
+                        "project_name": identifier,
+                        "description": "Project Layers for " + group,
+                        "parent_group_id": "root",
+                        "child_ids": []}
+                    self.settings_storage.set_project(identifier, LAYERS_GROUP_SETTING, default_project_group)
+                all_layer_groups.update(self.settings_storage.get_project(identifier, LAYERS_GROUP_SETTING))
 
         # generate message
-        message = {}
-        message[LAYERS_SETTING] = all_layers
-        message[LAYERS_GROUP_SETTING] = layer_groups
+        message = {
+            LAYERS_SETTING: all_layers,
+            LAYERS_GROUP_SETTING: all_layer_groups
+        }
         # message = copy.deepcopy(default_wms_layer_groups)
         # possible_groups = message["layer_groups"]
-        # if enough rights, mark Standard layers editable
-        if 'mapeditor-admin' in mapeditor_role:
-            for g in message[LAYERS_GROUP_SETTING]:
-                if g['setting_type'] == SettingType.SYSTEM.value:
-                    g['readonly'] = False
+        # if enough rights, mark Standard layers and layer groups editable
+        for layer in message[LAYERS_SETTING].values():
+            if 'mapeditor-admin' in mapeditor_role:
+                layer['readonly'] = False
+            else:
+                layer['readonly'] = layer['setting_type'] == SettingType.SYSTEM.value
+        for layer_group in message[LAYERS_GROUP_SETTING].values():
+            if 'mapeditor-admin' in mapeditor_role:
+                layer_group['readonly'] = False
+            else:
+                layer_group['readonly'] = layer_group['setting_type'] == SettingType.SYSTEM.value
         # possible_groups.extend(self._create_group_layers_for_projects(user_group))
         # logger.debug(message)
         return message
@@ -313,11 +350,13 @@ class WMSLayers:
 default_wms_layer_groups = {
     "personal_layers": {
         "setting_type": SettingType.USER.value,
+        "project_name": SettingType.USER.value,
         "description": "Personal Layers",
         "parent_group_id": "root",
         "child_ids": []},
     "standard_layers": {
         "setting_type": SettingType.SYSTEM.value,
+        "project_name": SettingType.SYSTEM.value,
         "description": "Standard Layers",
         "parent_group_id": "root",
         "child_ids": [

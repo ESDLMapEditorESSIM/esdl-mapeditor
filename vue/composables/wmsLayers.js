@@ -25,6 +25,7 @@ const globalWmsLayerList = ref([]);
 
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     console.log('getting wms layer list');
+    console.log(wmsLayerList)
     globalWmsLayerList.value = wmsLayerList;
     for (const key in globalWmsLayerList.value['layers']) {
         const layer_info = globalWmsLayerList.value['layers'][key];
@@ -68,10 +69,7 @@ export function useWmsLayers() {
             parent_group_id: groupId,
         };
         socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
-            console.log(allLayers)
-            console.log(layerId)
             allLayers['layers'][layerId].visible = true;
-            console.log(allLayers)
             updateGlobalWmsLayerList(allLayers, layerId);
             showWmsLayer(layerId);
         });
@@ -80,7 +78,6 @@ export function useWmsLayers() {
 
     function updateLayer(layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) {
         hideWmsLayer(layerId);
-        // addToVisibleLayerList(layerId); // make sure that the layer is checked
         socket.emit('save_wms_layer', {
             id: layerId, lyr_info: {
                 description: layerDescr,
@@ -90,7 +87,6 @@ export function useWmsLayers() {
                 attribution: layerattr
             }
         }, (allLayers) => {
-            console.log(allLayers)
             allLayers['layers'][layerId].visible = true;
             updateGlobalWmsLayerList(allLayers);
             showWmsLayer(layerId);
@@ -108,7 +104,6 @@ export function useWmsLayers() {
 
     const hideWmsLayer = (layerId) => {
         map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
-        // globalWmsLayerList.value['layers'][layerId].visible = false;
         if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
             removeWmsLegend();
         }
@@ -121,20 +116,24 @@ export function useWmsLayers() {
         removeFromVisibleLayerList(layerId);
     }
 
-    const addWmsLayerGroup = (parentId) => {
+    const addWmsLayerGroup = (parentId, setting_type, project_name) => {
         const groupId = window.uuidv4();
         const layerGroup = {
-            'id': groupId, 'description': 'new folder', 'setting_type': 'user', 'parent_group_id': parentId,
+            'id': groupId,
+            'description': 'new folder',
+            'setting_type': setting_type,
+            'project_name': project_name,
+            'parent_group_id': parentId,
         };
+        console.log(layerGroup)
         socket.emit('add_wms_layer_group', layerGroup);
-        // globalWmsLayerList.value['layer_groups'][groupId] = layerGroup;
-        // globalWmsLayerList.value['layer_groups'][parentId]['child_ids'].push(groupId);
         getTree().create_node(parentId, {
             id: groupId,
             text: 'new folder',
-            setting_type: 'user',
+            setting_type: setting_type,
+            project_name: project_name,
             type: 'wms_layer_folder',
-            state: { opened: true},
+            state: {opened: true},
         });
     }
 

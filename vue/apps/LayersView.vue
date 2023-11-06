@@ -60,6 +60,7 @@ const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
+  console.log(getWmsLayerList())
   if (getWmsLayerList()) {
     let wmsGroupsJstreeData = [];
     for (const [key, rootGroup] of Object.entries(getRootGroupsWithChildren())) {
@@ -89,13 +90,13 @@ const getRootGroupsWithChildren = () => {
     }
   }
 
-  // add 'non-root' groups that are not found in any 'children' list (legacy) to the 'Personal Layers' folder
+  // add 'non-root' groups that are not found in any 'child_ids' list (legacy) to the 'Personal Layers' folder
   for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
     if (layerGroup.parent_group_id !== 'root' && !foundChildIds.includes(key)) {
       addTreeItem(rootGroups['personal_layers'].children, layerGroup, key, "wms_layer_folder", getChildrenOfGroup(layerGroup, foundChildIds));
     }
   }
-  // add layers that are not found in any 'children' list (legacy) to the 'Personal Layers' folder
+  // add layers that are not found in any 'child_ids' list (legacy) to the 'Personal Layers' folder
   for (const [key, layer] of Object.entries(getWmsLayerList().layers)) {
     if (!foundChildIds.includes(key)) {
       addTreeItem(rootGroups['personal_layers'].children, layer, key, "wms_layer", []);
@@ -138,6 +139,8 @@ const addTreeItem = (items, item, itemId, type, children) => {
     id: itemId,
     text: item.description,
     setting_type: item.setting_type,
+    project_name: item.project_name,
+    readonly: item.readonly,
     type: type,
     a_attr: a_attr,
     state: {"checked": item.visible, opened: true},
@@ -158,14 +161,24 @@ class LayerFolderTreeSpec {
         'icon': 'fas fa-plus',
         'action': function () {
           showAddLayerDialog("__" + node.id); // add '__' to give parent folder id
-        }
+        },
+        '_disabled': node.original.readonly
       },
       'add_folder': {
         'label': 'Add folder',
         'icon': 'fas fa-plus',
         'action': function () {
-          addWmsLayerGroup(node.id);
-        }
+          console.log(node)
+          let project_name;
+          if (Object.hasOwn(node.original, 'project_name')) {
+            project_name = node.original.project_name;
+          } else {
+            project_name = node.original.setting_type;
+          }
+          console.log(project_name)
+          addWmsLayerGroup(node.id, node.original.setting_type, project_name);
+        },
+        '_disabled': node.original.readonly
       },
       'rename_folder': {
         'label': 'Rename folder',
@@ -177,7 +190,7 @@ class LayerFolderTreeSpec {
             }
           });
         },
-        '_disabled': node.original.setting_type === 'system' || node.parents.length < 2, // do not delete root folders
+        '_disabled': node.original.readonly || node.parents.length < 2, // do not rename root folders
       },
       'delete': {
         'label': 'Delete folder',
@@ -185,7 +198,7 @@ class LayerFolderTreeSpec {
         'action': function () {
           removeWmsLayerGroup(node.id, node.parents[0]);
         },
-        '_disabled': node.original.setting_type === 'system' || node.parents.length < 2, // do not delete root folders
+        '_disabled': node.original.readonly || node.parents.length < 2, // do not delete root folders
       },
     }
   }
@@ -206,7 +219,7 @@ class LayerTreeSpec {
         'action': function () {
           showAddLayerDialog(node.id);
         },
-        '_disabled': node.original.setting_type === 'system',
+        '_disabled': node.original.readonly,
       },
       'delete': {
         'label': 'Delete WMS layer',
@@ -214,7 +227,7 @@ class LayerTreeSpec {
         'action': function () {
           removeWmsLayer(node.id, node.parents[0]);
         },
-        '_disabled': node.original.setting_type === 'system',
+        '_disabled': node.original.readonly,
       },
     };
   }
@@ -328,8 +341,8 @@ const checkCallBack = (operation, node, node_parent, node_position, more) => {
 
 // eslint-disable-next-line no-unused-vars
 const dnbIsDraggable = (node) => {
-  return node[0].original.setting_type !== 'system' && node[0].type !== "visible_layer" &&
-      node[0].type !== "base_layer" && node[0].parents.length > 1; // do not move specific layers and root folders
+  return !node[0].original.readonly && node[0].type !== "visible_layer" &&
+      node[0].type !== "base_layer";
 };
 
 function getBaseLayersControlTreeData() {
@@ -354,6 +367,7 @@ function getBaseLayersControlTreeData() {
     id: "group_base_layers",
     text: "Base layers",
     type: "wms_layer_folder",
+    readonly: true,
     state: {
       opened: true
     },

@@ -15,17 +15,17 @@
         </a-col>
         <a-col :span="15">
           <a-input
-            v-if="key !== 'projectName'"
             v-model:value="wmsLayer[key]"
             class="fe_box"
             size="small"
             type="text"
           />
-          <a-select
-            v-if="isNewLayer && key === 'projectName'"
-            v-model:value="wmsLayer[key]" size="small" style="width: 100%"
-            :options="projectOptions()"
-          />
+          <!--          <a-select-->
+          <!--            v-if="isNewLayer && key === 'projectName'"-->
+          <!--            v-model:value="wmsLayer[key]" size="small" style="width: 100%"-->
+          <!--            :options="projectOptions()"-->
+          <!--          />-->
+          <!--        </a-col>-->
         </a-col>
       </a-row>
     </div>
@@ -50,6 +50,8 @@ import {useWmsLayers} from "../composables/wmsLayers";
 const {getWmsLayerList, addWmsLayer, updateLayer} = useWmsLayers();
 
 const wmsLayer = ref(null);
+const parentId = ref(null);
+const parentLayerGroup = ref(null);
 const isNewLayer = ref(false);
 const isLoading = ref(false);
 
@@ -57,6 +59,10 @@ const {currentObjectID} = useObject();
 
 onBeforeMount(() => {
   if (currentObjectID.value.startsWith("__")) {
+    parentId.value = currentObjectID.value.replace("__", "");
+    window.socket.emit('get_wms_layer_group', {id: parentId.value}, function (group_info) {
+      parentLayerGroup.value = group_info;
+    });
     isNewLayer.value = true;
     wmsLayer.value = {
       description: 'AardwarmteKrijtJura',
@@ -64,7 +70,6 @@ onBeforeMount(() => {
       layerName: 'AardwarmteKrijtJura',
       legendUrl: '',
       attribution: '',
-      projectName: '',
     }
   } else {
     window.socket.emit('get_wms_layer', {id: currentObjectID.value}, function (lyr_info) {
@@ -108,18 +113,15 @@ const projectOptions = () => {
 // eslint-disable-next-line no-unused-vars
 const addUpdate = () => {
   if (isNewLayer.value) {
-    const folderId = currentObjectID.value.replace("__", "");
-    console.log(wmsLayer.value.project_name)
-    const parentGroup = getWmsLayerList()['layer_groups'][currentObjectID.value.replace("__", "")]
     addWmsLayer(
         wmsLayer.value.description,
         wmsLayer.value.url,
         wmsLayer.value.layerName,
         wmsLayer.value.legendUrl,
         wmsLayer.value.attribution,
-        wmsLayer.value.projectName,
-        'user',
-        currentObjectID.value.replace("__", ""),
+        parentLayerGroup.value.project_name,
+        parentLayerGroup.value.setting_type,
+        parentId.value,
     );
   } else {
     updateLayer(
