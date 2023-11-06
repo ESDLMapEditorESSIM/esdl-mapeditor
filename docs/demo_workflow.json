@@ -1,0 +1,95 @@
+{
+  "id": "9951c271-f9b6-4c4e-873f-b309dff19e05",
+  "name": "Demo workflow",
+  "explanation": "Demo workflow for conditional next steps",
+  "type": "vueworkflow",
+  "workflow": [
+    {
+      "name": "Begin",
+      "description": "Select the demo",
+      "type": "choice",
+      "options": [
+        {
+          "name": "Conditional next steps",
+          "next_step": 1,
+          "type": "primary"
+        }
+      ]
+    },
+    {
+      "name": "Conditional next steps: Form",
+      "type": "json-form",
+      "data": {
+        "schema": {
+          "title": "Person",
+          "description": "Data from a person",
+          "type": "object",
+          "properties": {
+            "age": {
+              "description": "How old are you?",
+              "type": "integer"
+            },
+            "programming_languages": {
+              "description": "How many programming languages do you know?",
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "next_step": {
+        "if": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "field": "age",
+                "operator": "gte",
+                "value": 30
+              },
+              {
+                "field": "programming_languages",
+                "operator": "gte",
+                "value": 3
+              }
+            ],
+            "then": 2
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "field": "age",
+                "operator": "gte",
+                "value": 18
+              },
+              {
+                "field": "age",
+                "operator": "lt",
+                "value": 30
+              }
+            ],
+            "then": 3
+          }
+        ],
+        "else": {
+          "then": 4
+        }
+      }
+    },
+    {
+      "name": "Senior",
+      "type": "text",
+      "text": "Looks like you are a senior!"
+    },
+    {
+      "name": "Junior",
+      "type": "text",
+      "text": "Keep it up!"
+    },
+    {
+      "name": "Else",
+      "type": "text",
+      "text": "You hit the else branch."
+    }
+  ]
+}

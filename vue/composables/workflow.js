@@ -1,6 +1,8 @@
 import {ref} from "vue";
 import {getattrd} from "../utils/utils";
 import {v4 as uuidv4} from 'uuid';
+import {nextStepsSchemaValidator} from "../utils/workflowSchemas";
+import workflow from "../apps/Workflow.vue";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -9,7 +11,7 @@ export const WorkflowStepTypes = Object.freeze({
     SELECT_QUERY: 'select-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
-    JSON_FORM: 'json_form',
+    JSON_FORM: 'json-form',
     DOWNLOAD_FILE: 'download_file',
     UPLOAD_FILE: 'upload_file',
     GET_DATA: 'get_data',
@@ -21,6 +23,34 @@ export const WorkflowStepTypes = Object.freeze({
     // Custom component.
     CUSTOM: 'custom',
 });
+
+// TODO: Move to different file
+function evaluateRule(rule, data) {
+    const { field, operator, value } = rule;
+    switch (operator) {
+        case 'eq': return data[field] === value;
+        case 'gt': return data[field] > value;
+        case 'lt': return data[field] < value;
+        case 'gte': return data[field] >= value;
+        case 'lte': return data[field] <= value;
+        default: return false;
+    }
+}
+
+// TODO: Move to different file
+// Recursive function to evaluate conditions with AND/OR logic
+function evaluateConditions(conditions, data) {
+    if (conditions.condition === 'AND') {
+        return conditions.rules.every(rule =>
+            rule.condition ? evaluateConditions(rule, data) : evaluateRule(rule, data)
+        );
+    } else if (conditions.condition === 'OR') {
+        return conditions.rules.some(rule =>
+            rule.condition ? evaluateConditions(rule, data) : evaluateRule(rule, data)
+        );
+    }
+    return false;
+}
 
 // The currently active workflow.
 export const currentWorkflow = ref(null);
@@ -231,7 +261,30 @@ export class Workflow {
      */
     doNext(targetStepIdx = null) {
         if (targetStepIdx === null || targetStepIdx === undefined) {
-            targetStepIdx = this.workflowStep.next_step;
+            const nextStepData = this.workflowStep.next_step;
+            if (typeof nextStepData === 'object') {
+                // Step with multiple next steps.
+                const ifRules = nextStepData.if;
+                for (const ifRule of ifRules) {
+                    const isValid = nextStepsSchemaValidator(ifRule);
+                    if (!isValid) {
+                        console.error("Invalid next steps schema", ifRule);
+                        continue
+                    }
+                    const isConditionMet = evaluateConditions(ifRule, this.state);
+                    if (isConditionMet) {
+                        targetStepIdx = ifRule.then;
+                        break
+                    }
+                }
+                if (targetStepIdx === null && nextStepData.else !== undefined) {
+                    // No if rule matches. Trigger the else if it's there.
+                    targetStepIdx = nextStepData.else.then;
+                }
+            } else {
+                // Step with a single next step.
+                targetStepIdx = nextStepData;
+            }
         }
         if (targetStepIdx >= 0) {
             this.prevWorkflowSteps.push(this.workflowStep);
