@@ -13,7 +13,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
 import importlib
 import json
 import urllib
@@ -45,7 +44,7 @@ from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
 from extensions.esdl_compare import ESDLCompare
-from extensions.esdl_drive.esdl_drive import ESDLDrive
+from extensions.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
@@ -65,7 +64,6 @@ from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
@@ -78,7 +76,9 @@ from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.log import get_logger
-from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections
+from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
+    find_area_location_based
+from src.shape import Shape
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_version
 from src.view_modes import ViewModes
@@ -167,8 +167,7 @@ essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
-Workflow(app, socketio, settings_storage, executor)
-DiceWorkflow(app, socketio, executor, settings_storage)
+Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
@@ -1530,6 +1529,9 @@ def process_command(message):
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
+        if area_bld_id == 'find_area_location_based':
+            area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
@@ -1537,6 +1539,11 @@ def process_command(message):
                 if isinstance(geometry, esdl.Polygon):
                     new_area = esdl.Area(id=asset_id, name=asset_name)
                     new_area.geometry = geometry
+
+                    # Update shape dictionary
+                    shape_dictionary = get_session('shape_dictionary')
+                    shape_dictionary[new_area.id] = Shape.create(geometry)
+                    set_session('shape_dictionary', shape_dictionary)
 
                     # Update drop down list with areas and buildings
                     add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
@@ -3017,31 +3024,20 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result, es = esdl_services.call_esdl_service(params)
+        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
-        es = None
 
     logger.debug('emitting result to browser')
     if esdl_service_ok:
-        result = dict(
-            esdl_service_result=esdl_service_result,
-            es_id=es.id if es is not None else None,
-            es_name=es.name if es is not None else None,
-        )
-        emit('esdl_service_result', result)
+        if esdl_service_result is not None:
+            emit('esdl_service_result', esdl_service_result)
     else:
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):
             message += ': ' + esdl_service_result
-        elif isinstance(esdl_service_result, requests.Response):
-            status_code = esdl_service_result.status_code
-            reason = esdl_service_result.reason
-            message += f': {status_code} - {reason}.'
-            if status_code == 401:
-                message += " Please refresh the page."
         send_alert(message)
     # logger.debug('processing energy system')
     call_process_energy_system.submit(esh)
@@ -3358,4 +3354,4 @@ if __name__ == '__main__':
     logger.info("Starting ESDL MapEditor application")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)

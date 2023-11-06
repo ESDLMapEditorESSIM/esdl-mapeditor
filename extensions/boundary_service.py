@@ -450,5 +450,7 @@ class BoundaryService:
             first_sub_area = sub_areas[0]
             sub_area_scope = first_sub_area.scope
 
-            if top_area_scope and sub_area_scope and is_valid_boundary_id(top_area_id):
+            if top_area_scope and top_area_scope is not esdl.AreaScopeEnum.UNDEFINED and \
+                sub_area_scope and sub_area_scope is not esdl.AreaScopeEnum.UNDEFINED and \
+                is_valid_boundary_id(top_area_id):
                 self.__preload_subboundaries_in_cache(boundaries_year, top_area_scope, sub_area_scope, top_area_id)

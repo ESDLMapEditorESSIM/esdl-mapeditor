@@ -1,5 +1,5 @@
 {
-  "version": "23.5.0",
+  "version": "23.9.0",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
@@ -37,5 +37,6 @@
     "> 1%",
     "last 2 versions",
     "not dead"
-  ]
+  ],
+  "packageManager": "yarn@3.6.3"
 }

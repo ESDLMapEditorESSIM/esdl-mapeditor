@@ -71,6 +71,7 @@ class PortProfileViewer:
                     database = profile.database
                     multiplier = profile.multiplier
                     measurement = profile.measurement
+                    field = profile.field
                     profiles = Profiles.get_instance().get_profiles()['profiles']
                     for pkey in profiles:
                         p = profiles[pkey]
