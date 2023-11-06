@@ -143,26 +143,28 @@ function update_asset_state(asset_id_or_list, new_state) {
 
 
 $(document).ready(function() {
-    window.PubSubManager.subscribe('ASSET_PROPERTIES', (name, message) => {
-        // window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: currentObjectID.value, name: name, value: new_value });
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map) {
-            update_asset_tooltip(message.id, message.name, message.value);
-        }
-        if (message.name === 'state') {
-            update_asset_state(message.id, message.value);
-        }
-
-        // See if it's distance or type of an BufferDistance object. Those we can update in the gui
-        if ((message.name === 'distance' || message.name === 'type') && message.object_type === 'BufferDistance') {
-            //let is_buffer_distance = message.fragment.match(/\/@bufferDistance/g);
-            //if (is_buffer_distance) {
-            // we need a fragment to find out which buffer distance element is edited...
-            if (message.parent_asset_id && message.fragment) { // parent energyAsset id and fragment is required in this message
-                spatial_buffers_plugin.update_buffer_distance_info(message.parent_asset_id, message.fragment, message.name, message.value);
-            } else {
-                console.log('No parent asset id or fragment for updating buffer distances');
+    if (window.PubSubManager) {
+        window.PubSubManager.subscribe('ASSET_PROPERTIES', (name, message) => {
+            // window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: currentObjectID.value, name: name, value: new_value });
+            if (user_settings.ui_settings.tooltips.show_asset_information_on_map) {
+                update_asset_tooltip(message.id, message.name, message.value);
             }
-            //}
-        }
-    });
+            if (message.name === 'state') {
+                update_asset_state(message.id, message.value);
+            }
+
+            // See if it's distance or type of an BufferDistance object. Those we can update in the gui
+            if ((message.name === 'distance' || message.name === 'type') && message.object_type === 'BufferDistance') {
+                //let is_buffer_distance = message.fragment.match(/\/@bufferDistance/g);
+                //if (is_buffer_distance) {
+                // we need a fragment to find out which buffer distance element is edited...
+                if (message.parent_asset_id && message.fragment) { // parent energyAsset id and fragment is required in this message
+                    spatial_buffers_plugin.update_buffer_distance_info(message.parent_asset_id, message.fragment, message.name, message.value);
+                } else {
+                    console.log('No parent asset id or fragment for updating buffer distances');
+                }
+                //}
+            }
+        });
+    }
 });

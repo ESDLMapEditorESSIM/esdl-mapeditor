@@ -3,7 +3,7 @@
     <p>
       The ESDL service will be called automatically. Please click the button below when the ESDL was loaded fully.
     </p>
-    <a-button type="primary" @click="goToPreviousStep()"> ESDL was loaded </a-button>
+    <a-button type="primary" @click="esdlWasLoaded()"> ESDL was loaded </a-button>
   </div>
   <div v-else>
     <p>
@@ -35,10 +35,14 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getParamsFromState, goToPreviousStep  } = useWorkflow();
+const { getParamsFromState, goToFirstStep, getState } = useWorkflow();
 const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
+
+const esdlWasLoaded = () => {
+  goToFirstStep();
+}
 
 const clearLayersAndLoadEsdl = () => {
   if (workflowStep.service.clearLayers) {
@@ -68,4 +72,5 @@ if (workflowStep.service.auto) {
   // Load the ESDL upon loading of this step.
   clearLayersAndLoadEsdl();
 }
+
 </script>

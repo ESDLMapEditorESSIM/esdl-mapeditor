@@ -856,6 +856,7 @@ def get_building_connections(building):
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
 def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    # NOTE: filename, es_title and app_context are currently not used.
     # emit('clear_ui')
     print("Processing energysystems in esh")
     print("active_es_id at start: {}".format(get_session('active_es_id')))

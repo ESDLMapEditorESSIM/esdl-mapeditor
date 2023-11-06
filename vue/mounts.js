@@ -11,6 +11,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Checkbox,
     Col,
     Collapse,
     DatePicker,
@@ -29,6 +30,7 @@ import {
     Table,
     Transfer,
     Tree,
+    Menu,
     Upload
 } from 'ant-design-vue';
 
@@ -56,6 +58,7 @@ export function mountApp(component, elementSelector) {
     app.use(Button);
     app.use(Breadcrumb);
     app.use(Card);
+    app.use(Checkbox);
     app.use(Col);
     app.use(Radio);
     app.use(Collapse);
@@ -75,6 +78,7 @@ export function mountApp(component, elementSelector) {
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
+    app.use(Menu);
 
     app.mount(elementSelector);
 }
