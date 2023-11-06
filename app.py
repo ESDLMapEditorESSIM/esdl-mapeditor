@@ -44,7 +44,7 @@ from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
 from extensions.esdl_compare import ESDLCompare
-from extensions.esdl_drive import ESDLDrive
+from extensions.esdl_drive.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
@@ -167,7 +167,7 @@ essim_kpis = ESSIM_KPIs(app, socketio)
 essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
-Workflow(app, socketio, settings_storage)
+Workflow(app, socketio, settings_storage, executor)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
