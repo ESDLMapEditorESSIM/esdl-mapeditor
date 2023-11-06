@@ -484,7 +484,7 @@ function esdl_services_info() {
         let table = '<table>';
         for (let i = 0; i < esdl_services_information.length; i++) {
             // id, name
-            if (esdl_services_information[i]['type'] !== "map_context_menu" && service['type'] !== "area_context_menu") {
+            if (esdl_services_information[i]['type'] !== "map_context_menu" && esdl_services_information[i]['type'] !== "area_context_menu") {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
             }
         }
