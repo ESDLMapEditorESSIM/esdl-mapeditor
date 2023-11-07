@@ -302,7 +302,7 @@ const eventHandlersByName = [{
 }, {
   eventName: 'move_node.jstree',
   handler: function (e, data) {
-    moveWmsItem(data.node.id, data.old_parent, data.node.parents[0]);
+    moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
   },
 }, {
   eventName: 'create_node.jstree',

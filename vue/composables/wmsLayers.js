@@ -125,7 +125,6 @@ export function useWmsLayers() {
             'project_name': project_name,
             'parent_group_id': parentId,
         };
-        console.log(layerGroup)
         socket.emit('add_wms_layer_group', layerGroup);
         getTree().create_node(parentId, {
             id: groupId,
@@ -142,12 +141,13 @@ export function useWmsLayers() {
     }
 
     const removeWmsLayerGroup = (groupId, parentId) => {
+        removeGroupChildrenFromMap(groupId);
         socket.emit('remove_wms_layer_group', {id: groupId, parent_id: parentId}, updateGlobalWmsLayerList);
     }
 
-    const moveWmsItem = (itemId, oldParentId, newParentId) => {
+    const moveWmsItem = (itemId, oldParentId, newParentId, position) => {
         socket.emit('move_wms_item', {
-            item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId
+            item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
         });
     }
 
@@ -192,4 +192,20 @@ const removeWmsLegend = () => {
     if (wmsLegend) {
         map.removeControl(wmsLegend);
     }
+}
+
+const removeGroupChildrenFromMap = (layerGroupId) => {
+    const group = globalWmsLayerList.value['layer_groups'][layerGroupId]
+    console.log(group)
+    for (const childId of group['child_ids']) {
+        console.log(childId, globalWmsLayerList.value)
+        if (childId in globalWmsLayerList.value['layer_groups'][layerGroupId]) {
+            removeGroupChildrenFromMap((childId))
+        } else if (childId in globalWmsLayerList.value['layers']) {
+            console.log('remove map', childId)
+            map.removeLayer(globalWmsLayerList.value['layers'][childId].layer_ref);
+            removeFromVisibleLayerList(childId);
+        }
+    }
+
 }
