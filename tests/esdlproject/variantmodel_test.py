@@ -9,7 +9,7 @@ from esdl import EnergySystem, Pipe, Instance, Area, InPort, OutPort
 from esdl.esdl_handler import StringURI, EnergySystemHandler
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker
-from esdlproject import EnergySystemProxy, Variant, ESDLProject, HighLevelChange, Add, Set
+from esdlproject import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set
 from esdl.support_functions import clone, deepcopy
 from esdlproject.ChangeHandler import ChangeHandler
 
@@ -77,13 +77,13 @@ class VariantModelTestCase(unittest.TestCase):
         es_copy = es.deepcopy()
 
         project = ESDLProject(name="Test variants Project", description="This is a test case", version="1")
-        proxy = EnergySystemProxy(name="EnergySystemProxy 1" )
+        collection = VariantCollection(name="VariantCollection 1" )
         v1 = Variant(name="1st variant")
 
         #vb.snapshot = es
-        proxy.energysystem = es
-        project.proxy.append(proxy)
-        proxy.variant = v1
+        collection.energysystem = es
+        project.variantCollection.append(collection)
+        collection.variant = v1
 
         h = HighLevelChange(label="HighlevelChange", commitMessage="Added a pipe")
         v1.change.append(h)
@@ -108,7 +108,7 @@ class VariantModelTestCase(unittest.TestCase):
         es_resource = rset.create_resource(StringURI('active.esdl'))
 
         project = ESDLProject(name="Test variants Project", description="This is a test case", version="1")
-        es_proxy = EnergySystemProxy(name="Base variant")
+        collection = VariantCollection(name="Variant collection")
         v1 = Variant(name="1st variant")
 
         project_resource.append(project)
@@ -120,9 +120,9 @@ class VariantModelTestCase(unittest.TestCase):
         es_resource.append(es)
 
         #vb.energysystem = es
-        es_proxy.energysystemRef = es
-        project.proxy.append(es_proxy)
-        es_proxy.variant = v1
+        collection.energysystemRef = es
+        project.variantCollection.append(collection)
+        collection.variant = v1
 
         #undoredo: UndoRedoCommandStack = esh.change_tracker.get_tracker_stack(es)
         ct = ChangeTracker()

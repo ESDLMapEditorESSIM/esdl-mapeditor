@@ -3117,7 +3117,6 @@ def process_file_command(message):
             uri = StringURI(filename, file_content)
             # TODO: Look at parse info! Otherwise we accept invalid files in our resources.
             es_variant = pm.add_energy_system(uri)
-            pm.set_active_variant(es_variant)
             emit_active_esdl_project()
             call_process_energy_system.submit()  # run in seperate thread
             # TODO: This seems unused.

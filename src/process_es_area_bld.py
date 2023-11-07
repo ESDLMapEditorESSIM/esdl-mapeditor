@@ -851,7 +851,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
         conn_list = []
 
         if not isinstance(es, esdl.EnergySystem):
-            raise RuntimeError("Active energy system is not of type esdl.EnergySystem!")
+            raise RuntimeError(f"Active energy system is not of type esdl.EnergySystem! es={es}")
 
         if force_update_es_id == es.id or es.id not in es_info_list:
             logger.info(f"- Processing energysystem with id {es.id}")

@@ -1,22 +1,22 @@
 from pyecore.resources import global_registry
 from .esdlproject import getEClassifier, eClassifiers
 from .esdlproject import name, nsURI, nsPrefix, eClass
-from .esdlproject import ESDLProject, Variant, AbstractChange, HighLevelChange, DetailedChange, Set, Delete, Move, Add, Remove, EnergySystemProxy
+from .esdlproject import ESDLProject, Variant, AbstractChange, HighLevelChange, DetailedChange, Set, Delete, Move, Add, Remove, VariantCollection
 
-from esdl import EnergySystem
 from pyecore.ecore import EObject
+from esdl import EnergySystem
 
 from . import esdlproject
 
 __all__ = ['ESDLProject', 'Variant', 'AbstractChange', 'HighLevelChange',
-           'DetailedChange', 'Set', 'Delete', 'Move', 'Add', 'Remove', 'EnergySystemProxy']
+           'DetailedChange', 'Set', 'Delete', 'Move', 'Add', 'Remove', 'VariantCollection']
 
 eSubpackages = []
 eSuperPackage = None
 esdlproject.eSubpackages = eSubpackages
 esdlproject.eSuperPackage = eSuperPackage
 
-ESDLProject.proxy.eType = EnergySystemProxy
+ESDLProject.variantCollection.eType = VariantCollection
 Variant.snapshot.eType = EnergySystem
 Variant.snapshotRef.eType = EnergySystem
 Variant.lastProcessedChange.eType = AbstractChange
@@ -24,17 +24,17 @@ HighLevelChange.change.eType = DetailedChange
 DetailedChange.owner.eType = EObject
 DetailedChange.objectValue.eType = EObject
 DetailedChange.objectReference.eType = EObject
-EnergySystemProxy.energysystem.eType = EnergySystem
-EnergySystemProxy.energysystemRef.eType = EnergySystem
+VariantCollection.energysystem.eType = EnergySystem
+VariantCollection.energysystemRef.eType = EnergySystem
 Variant.change.eType = AbstractChange
 Variant.variant.eType = Variant
 Variant.parentVariant.eType = Variant
 Variant.parentVariant.eOpposite = Variant.variant
-Variant.energySystemProxy.eType = EnergySystemProxy
+Variant.variantCollection.eType = VariantCollection
 AbstractChange.variant.eType = Variant
 AbstractChange.variant.eOpposite = Variant.change
-EnergySystemProxy.variant.eType = Variant
-EnergySystemProxy.variant.eOpposite = Variant.energySystemProxy
+VariantCollection.variant.eType = Variant
+VariantCollection.variant.eOpposite = Variant.variantCollection
 
 otherClassifiers = []
 

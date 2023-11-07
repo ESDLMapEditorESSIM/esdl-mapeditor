@@ -9,7 +9,7 @@ from esdl import EnergySystem
 from esdl.esdl_handler import StringURI
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import UndoRedoCommandStack, LabelledAction
-from esdlproject import HighLevelChange, Variant, Add, Set, EnergySystemProxy
+from esdlproject import HighLevelChange, Variant, Add, Set
 from pyecore import commands as pyecore_commands
 
 

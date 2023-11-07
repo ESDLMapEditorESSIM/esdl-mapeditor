@@ -13,8 +13,11 @@
 #      TNO
 import os
 
+from src.settings import heatnetwork_dispatcher_config
+
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
+HEATNETWORK_DISPATCHER_URL = heatnetwork_dispatcher_config["host"] + ":" + str(heatnetwork_dispatcher_config["port"])
 
 esdl_config = {
     "control_strategies": [
@@ -312,7 +315,7 @@ esdl_config = {
                     "state_params": {"schemas": "schema.id"},
                     "service": {
                         "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb27",
-                        "name": "Validate ESDL against scehema",
+                        "name": "Validate ESDL against schema",
                         "headers": {
                             "User-Agent": "ESDL Mapeditor/0.1",
                             "Content-Type": "application/xml",
@@ -332,6 +335,98 @@ esdl_config = {
                         "with_jwt_token": False,
                         "state_params": True,
                     },
+                },
+            ],
+        },
+        {
+            "id": "12345a2b-8eee-46f7-a225-87c5f8512345",
+            "name": "Heat network optimization",
+            "explanation": "This service allows you execute a heat network optimization and view results",
+            "type": "vueworkflow",
+            "workflow": [
+                {
+                    #0
+                    "name": "Select action",
+                    "description": "Please select the next action",
+                    "type": "choice",
+                    "options": [
+                        {
+                            "name": "Run an optimization",
+                            "next_step": 1,
+                            "type": "primary",
+                        },
+                        {
+                            "name": "View optimization results",
+                            "next_step": 2,
+                            "type": "default",
+                        }
+                    ]
+                },
+                {
+                    #1
+                    "name": "Run optimization",
+                    "description": "Sends the current ESDL to the optimizer",
+                    "type": "service",
+                    #"state_params": {"schemas": "schema.id"},
+                    "service": {
+                        "id": "123451a2-c92a-46ed-a7e4-993197712345",
+                        "name": "Dispatch optimizer",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/1.0",
+                            "Content-Type": "application/json",
+                        },
+                        "url": f"{HEATNETWORK_DISPATCHER_URL}/dispatch",
+                        "http_method": "post",
+                        "type": "send_esdl_json",
+                        "send_email_in_post_body_parameter": "username",
+                        "query_parameters": [
+                            {
+                                "name": "Name",
+                                "description": "Give this optimization a unique name",
+                                "parameter_name": "name",
+                                "location": "body"
+                            }
+                        ],
+                        "body": "base64_encoded",
+                        "result": [
+                            {"code": 200, "action": "show_message", "message": "Optimization successfully submitted."},
+                            {"code": 404, "action": "show_message", "message": "Error in submitting optimization."}
+                        ],
+                        "with_jwt_token": False,
+                        #"state_params": True,
+                    },
+                    "next_step": 0, # or go to progress page / result page with state
+                },
+                {
+                    # 2
+                    "name": "View optimization results",
+                    "description": "View optimization results",
+                    "type": "service",
+                    # "state_params": {"schemas": "schema.id"},
+                    "service": {
+                        "id": "123451a2-c92a-46ed-a7e4-993197712345",
+                        "name": "Query optimization results",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/1.0",
+                            "Content-Type": "application/json",
+                        },
+                        "url": f"{HEATNETWORK_DISPATCHER_URL}/jobs",
+                        "http_method": "post",
+                        "type": "",
+                        # "query_parameters": [
+                        #    {
+                        #        "name": "Schemas",
+                        #        "description": "ID of the schema to validate this ESDL against",
+                        #        "parameter_name": "schemas",
+                        #    }
+                        # ],
+                        #"body": "base64_encoded",
+                        "send_email_in_post_body_parameter": "username",
+                        "result": [{"code": 200, "action": "esdl"}],
+                        "with_jwt_token": False,
+                        "state_params": True,
+                    },
+                    "next_step": 0,
                 },
             ],
         },

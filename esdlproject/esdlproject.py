@@ -19,9 +19,10 @@ class ESDLProject(EObject, metaclass=MetaEClass):
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     version = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
-    proxy = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variantCollection = EReference(ordered=True, unique=True,
+                                   containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, name=None, description=None, proxy=None, version=None):
+    def __init__(self, *, name=None, description=None, variantCollection=None, version=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -36,8 +37,8 @@ class ESDLProject(EObject, metaclass=MetaEClass):
         if version is not None:
             self.version = version
 
-        if proxy:
-            self.proxy.extend(proxy)
+        if variantCollection:
+            self.variantCollection.extend(variantCollection)
 
 
 class Variant(EObject, metaclass=MetaEClass):
@@ -51,11 +52,11 @@ When serializing the changes of a variant are serialized in XML. """
     variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     parentVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshot = EReference(ordered=True, unique=True, containment=True, derived=False)
-    energySystemProxy = EReference(ordered=True, unique=True, containment=False, derived=False)
+    variantCollection = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshotRef = EReference(ordered=True, unique=True, containment=False, derived=False)
     lastProcessedChange = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, energySystemProxy=None, snapshotRef=None, id=None, lastProcessedChange=None):
+    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, variantCollection=None, snapshotRef=None, id=None, lastProcessedChange=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -85,8 +86,8 @@ When serializing the changes of a variant are serialized in XML. """
         if snapshot is not None:
             self.snapshot = snapshot
 
-        if energySystemProxy is not None:
-            self.energySystemProxy = energySystemProxy
+        if variantCollection is not None:
+            self.variantCollection = variantCollection
 
         if snapshotRef is not None:
             self.snapshotRef = snapshotRef
@@ -114,7 +115,7 @@ class AbstractChange(EObject, metaclass=MetaEClass):
             self.variant = variant
 
 
-class EnergySystemProxy(EObject, metaclass=MetaEClass):
+class VariantCollection(EObject, metaclass=MetaEClass):
     """An EnergySystemProxy proxies an actual EnergySystem. This proxy is needed as we want to seperate the ESDL ecore model from this ecore model. It is a bit inconvenient, but allows us to have the loaded EnergySystems and its variants in seperate EMF Resources when editing them. When Serializing the ESDLProject, each EnergySystem that is loaded in the project is serialized using the energysystem containment relation. When loaded, the EnergySystem is moved out of the ESDLProject into its own EMF Resource and is then referenced by the energysystemRef. This allows for multiple (same) EnergySystems with same IDs of assets to work in parallel without ID clashes."""
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)

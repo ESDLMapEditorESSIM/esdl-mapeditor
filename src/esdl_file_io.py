@@ -18,8 +18,8 @@ from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 
-from esdl.esdl_handler import EnergySystemHandler
-from extensions.session_manager import set_session, set_handler, get_handler
+from esdl.esdl_handler import EnergySystemHandler, StringURI
+from extensions.session_manager import set_session, get_project_manager
 import src.log as log
 from src.process_es_area_bld import process_energy_system
 
@@ -39,9 +39,6 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             with self.flask_app.app_context():
-                esh = EnergySystemHandler()
-                set_handler(esh)
-
                 # len(request.values) seems to be a multiple of 2
                 for i in range(int(len(request.values)/2)):
                     base64_file_contents = request.values.get(f'file_info[{i}][file]')
@@ -63,9 +60,7 @@ class ESDLFileIO:
         def process_loaded_energysystems():
             with self.flask_app.app_context():
                 self.clear_mapeditor_ui()
-
-                esh = get_handler()
-                self.executor.submit(self.call_process_energy_system, esh)  # run in seperate thread
+                self.executor.submit(self.call_process_energy_system)  # run in seperate thread
 
     def send_alert(self, message):
         logger.warning(message)
@@ -78,10 +73,11 @@ class ESDLFileIO:
         emit('clear_esdl_layer_list')
 
     def load_esdl_in_esh(self, filename, file):
-        esh = get_handler()
+        pm = get_project_manager()
 
         try:
-            result, parse_info = esh.add_from_string(esdl_string=file, name=filename)
+            uri = StringURI(filename, file)
+            result, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:
@@ -92,5 +88,5 @@ class ESDLFileIO:
             self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
 
     @staticmethod
-    def call_process_energy_system(esh):
-        process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True)
+    def call_process_energy_system():
+        process_energy_system(force_update_es_id=None, zoom=True)

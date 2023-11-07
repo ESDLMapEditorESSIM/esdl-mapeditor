@@ -38,8 +38,8 @@ def get_active_esdl_project(_):
     pm = get_project_manager()
     project: ESDLProject = pm.project
 
-    variant_names = [v.name for v in project.baseVariant]
-    print(f'Returning project {project.name}, containing {len(project.baseVariant)} variants: {variant_names}')
+    variant_names = [v.name for v in project.variantCollection]
+    print(f'Returning project {project.name}, containing {len(project.variantCollection)} variants: {variant_names}')
 
     return serialize_esdl_project(pm, project)
 
@@ -106,6 +106,8 @@ def set_active_variant(message: SetActiveVariantRequest):
     variant = pm.get_variant_by_id(message['id'])
     if variant:
         pm.set_active_variant(variant)
+        es = pm.get_active_energy_system()
+        set_session('active_es_id', es.id)
         executor.submit(process_energy_system)
         emit_active_esdl_project()
         emit_update_undo_redo_stack(pm.active_tracker.stack)
@@ -116,7 +118,7 @@ def set_active_variant(message: SetActiveVariantRequest):
 @socketio.on('create_base_variant', namespace='/esdl')
 def create_base_variant():
     pm = get_project_manager()
-    pm.create_new_energysystem_proxy()
+    pm.create_new_variant_collection()
     emit_active_esdl_project()
 
 

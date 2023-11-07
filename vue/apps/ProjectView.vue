@@ -56,17 +56,16 @@ const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
   if (esdlProject.value) {
-    const baseVariants = esdlProject.value.base_variants;
-    // const variants = baseVariant.children;
-    const baseVariantJstreeDatas = [];
-    for (const baseVariant of baseVariants) {
-      const baseVariantJstreeData = baseVariantToJstreeData(baseVariant);
-      baseVariantJstreeDatas.push(baseVariantJstreeData)
+    const variants = esdlProject.value.variants;
+    const variantJstreeDatas = [];
+    for (const variant of variants) {
+      const variantJstreeData = variantToJstreeData(variant);
+      variantJstreeDatas.push(variantJstreeData)
     }
 
     const projectData = {
       text: esdlProject.value.name, type: 'project', state: {opened: true},
-      children: [...baseVariantJstreeDatas],
+      children: [...variantJstreeDatas],
       a_attr: {
         "class": "no_checkbox"
       }
@@ -80,25 +79,25 @@ const treeData = computed(() => {
   }
 });
 
-function baseVariantToJstreeData(baseVariant) {
-  const variantsData = [];
-  for (const variant of baseVariant.variants) {
-    const variantTreeData = variantToJstreeData(variant);
-    variantsData.push(variantTreeData);
-  }
-  return {
-    baseVariantId: baseVariant.id,
-    text: baseVariant.name,
-    children: variantsData,
-    type: "base_variant",
-    state: {
-      opened: true
-    },
-    a_attr: {
-      "class": "no_checkbox"
-    },
-  }
-}
+// function baseVariantToJstreeData(baseVariant) {
+//   const variantsData = [];
+//   for (const variant of baseVariant.variants) {
+//     const variantTreeData = variantToJstreeData(variant);
+//     variantsData.push(variantTreeData);
+//   }
+//   return {
+//     baseVariantId: baseVariant.id,
+//     text: baseVariant.name,
+//     children: variantsData,
+//     type: "base_variant",
+//     state: {
+//       opened: true
+//     },
+//     a_attr: {
+//       "class": "no_checkbox"
+//     },
+//   }
+// }
 
 function variantToJstreeData(variant) {
   const children = [];
@@ -167,7 +166,7 @@ class ProjectTreeSpec {
   contextMenus(node, tree) {
     return {
       'create': {
-        'label': 'Create new Base Variant',
+        'label': 'Create new Energy System',
         'icon': 'fas fa-plus',
         'action': function () {
           socket.value.emit("create_base_variant");
@@ -188,43 +187,43 @@ class ProjectTreeSpec {
   }
 }
 
-class BaseVariantTreeSpec {
-  constructor() {
-    this.type = "base_variant";
-    this.icon = 'fas fa-bezier-curve';
-  }
+// class BaseVariantTreeSpec {
+//   constructor() {
+//     this.type = "base_variant";
+//     this.icon = 'fas fa-bezier-curve';
+//   }
 
-  contextMenus(node, tree) {
-    return {
-      'create': {
-        'label': 'Create new Variant',
-        'icon': 'fas fa-plus',
-        'action': function () {
-          const msg = {base_variant_id: node.original.baseVariantId};
-          socket.value.emit("create_variant", msg);
-        }
-      },
-      'rename': {
-        'label': 'Rename Base Variant',
-        'icon': 'far fa-edit',
-        'action': function () {
-          tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
-            if (isSuccessful && !isCancelled) {
-              socket.value.emit("rename_base_variant", {id: node.original.baseVariantId, name: node.text});
-            }
-          });
-        }
-      },
-      'delete': {
-        'label': 'Remove Base Variant',
-        'icon': 'fa fa-trash-o',
-        'action': function () {
-          socket.value.emit("delete_base_variant", {id: node.original.baseVariantId});
-        }
-      },
-    }
-  }
-}
+//   contextMenus(node, tree) {
+//     return {
+//       'create': {
+//         'label': 'Create new Variant',
+//         'icon': 'fas fa-plus',
+//         'action': function () {
+//           const msg = {base_variant_id: node.original.baseVariantId};
+//           socket.value.emit("create_variant", msg);
+//         }
+//       },
+//       'rename': {
+//         'label': 'Rename Energy System',
+//         'icon': 'far fa-edit',
+//         'action': function () {
+//           tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
+//             if (isSuccessful && !isCancelled) {
+//               socket.value.emit("rename_base_variant", {id: node.original.baseVariantId, name: node.text});
+//             }
+//           });
+//         }
+//       },
+//       'delete': {
+//         'label': 'Remove Energy System',
+//         'icon': 'fa fa-trash-o',
+//         'action': function () {
+//           socket.value.emit("delete_base_variant", {id: node.original.baseVariantId});
+//         }
+//       },
+//     }
+//   }
+// }
 
 class VariantTreeSpec {
   constructor() {
@@ -281,7 +280,7 @@ class BaseLayerTreeSpec {
   }
 }
 
-const treeTypeSpecs = [new ProjectTreeSpec(), new BaseVariantTreeSpec(), new BaseVariantTreeSpec(), new VariantTreeSpec(), new BaseLayerTreeSpec()];
+const treeTypeSpecs = [new ProjectTreeSpec(), new VariantTreeSpec(), new BaseLayerTreeSpec()];
 
 // TODO: Move into tree specs
 const eventHandlersByName = [{

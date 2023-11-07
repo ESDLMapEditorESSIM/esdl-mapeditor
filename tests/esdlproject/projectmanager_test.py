@@ -10,9 +10,11 @@ from esdlproject.variant_api import create_new_variant
 class MyTestCase(unittest.TestCase):
     def test_basic_functionality(self):
         pm = ProjectManager()
-        pm.save()
+        #string = pm.save()
+        #print(string)
         print(pm.to_debug_string())
         print(pm.active_energy_system_to_string())
+        print(pm.rset.resources)
 
 
     def test_track_changes(self):

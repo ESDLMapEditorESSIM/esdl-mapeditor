@@ -22,7 +22,7 @@ import esdl
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 
-from extensions.session_manager import get_session, set_session, get_handler
+from extensions.session_manager import get_session, set_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 import src.log as log
 from extensions.vue_backend.cost_information import _change_cost_unit
@@ -76,19 +76,19 @@ class TableEditor:
             attr = info['attr']
             value = info['value']
 
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
-            asset = esh.get_by_id(active_es_id, id)
+            asset = pm.get_by_id(active_es_id, id)
 
             self.set_cost_attr(asset, attr, value)
 
         @self.socketio.on('change_multiple_attributes', namespace='/esdl')
         def change_multiple_attributes(info):
             changed_attr_list = info['changed_attr_list']
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             for mutation in changed_attr_list:
-                asset = esh.get_by_id(active_es_id, mutation['id'])
+                asset = pm.get_by_id(active_es_id, mutation['id'])
                 # print(mutation)
                 param_name = mutation['attr']
                 param_value = mutation['value']
@@ -111,23 +111,24 @@ class TableEditor:
                             else:
                                 parsed_value = attribute.eType.from_string(param_value)
                             if attribute.name == 'id':
-                                esh.remove_object_from_dict(active_es_id, asset)
+                                pm.remove_object_from_dict(active_es_id, asset)
                                 asset.eSet(param_name, parsed_value)
-                                esh.add_object_to_dict(active_es_id, asset)
+                                pm.add_object_to_dict(active_es_id, asset)
                             else:
                                 asset.eSet(param_name, parsed_value)
 
                     else:
                         try:
                             self.set_cost_attr(asset, mutation['attr'], mutation['value'])
-                        except AttributeError:
+                        except AttributeError as e:
                             logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
-                                                                                                          asset.name,
-                                                                                                          str(e)))
+                                                                                                            asset.name,
+                                                                                                            param_value,
+                                                                                                            str(e)))
                 except Exception as e:
-                    logger.error(
-                        'Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name,
-                                                                                              param_value))
+                    logger.error('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name,
+                                                                                                    asset.name,
+                                                                                                    param_value))
 
     def filter_cost_information(self, asset_info_list):
         set_ci = set()

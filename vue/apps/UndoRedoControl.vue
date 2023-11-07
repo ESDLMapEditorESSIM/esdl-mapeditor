@@ -17,7 +17,7 @@
 <template>
   <div v-show="showUndoRedoControl" class="leaflet-undo-redo">
     <h1>
-      UndoRedo
+      Action history
       <a-button type="default" shape="circle" title="Refresh" size="small" @click="loadUndoRedoStack">
         <template #icon><i class="fas fa-sync-alt" /></template>
       </a-button>
