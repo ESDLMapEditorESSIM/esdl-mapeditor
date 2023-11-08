@@ -20,7 +20,7 @@ from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, get_or_create_esi_qau
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
-from extensions.session_manager import get_handler, get_project_manager, get_session
+from extensions.session_manager import get_project_manager, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
 from extensions.vue_backend.cost_information import get_cost_information, _create_cost_qau
@@ -200,15 +200,15 @@ class ESDLDataLayer:
 
     def delete_ref(self, message: DeleteRefMessage):
         parent_object = self.get_object_from_identifier(message.parent)
-        esh = get_handler()
+        pm = get_project_manager()
         active_es_id = get_session('active_es_id')
         reference: EReference = parent_object.eClass.findEStructuralFeature(message.ref_name)
         ref_object = parent_object.eGet(reference)
         print('deleting', message, ref_object)
         if reference.containment:
             try:
-                esh.remove_object_from_dict(active_es_id, ref_object, True)
-                resource = esh.get_energy_system_resource_by_id(active_es_id)
+                pm.remove_object_from_dict(active_es_id, ref_object, True)
+                resource = pm.get_energy_system_resource_by_id(active_es_id)
                 fragment = ref_object.eURIFragment()
                 del resource._resolve_mem[fragment] # update fragment cache for pyecore<0.12.0
             except KeyError as e:
@@ -226,14 +226,14 @@ class ESDLDataLayer:
         return response
 
     def get_or_create_qau(self, qau_id):
-        esh = get_handler()
+        pm = get_project_manager()
         active_es_id = get_session('active_es_id')
         try:
-            qau = esh.get_by_id(active_es_id, qau_id)
+            qau = pm.get_by_id(active_es_id, qau_id)
             return qau
         except KeyError:
             # qua does not exist, create it
-            global_qua = get_or_create_esi_qau(esh, active_es_id)
+            global_qua = get_or_create_esi_qau(pm, active_es_id)
             if qau_id == 'flow':
                 qau = esdl.QuantityAndUnitType(id=qau_id)
                 qau.physicalQuantity = esdl.PhysicalQuantityEnum.FLOW
@@ -263,7 +263,7 @@ class ESDLDataLayer:
                 qau.perUnit = esdl.UnitEnum.BAR
                 qau.description = "Coefficient in m³/h/bar"
             global_qua.quantityAndUnit.append(qau)
-            esh.add_object_to_dict(active_es_id, qau)
+            pm.add_object_to_dict(active_es_id, qau)
             return qau
 
     def get_filtered_type(self, esdl_object, reference):
@@ -408,8 +408,8 @@ class ESDLDataLayer:
         """
         active_es_id = get_session('active_es_id')
         logger.info(active_es_id)
-        esh = get_handler()
-        energy_system = esh.get_energy_system(es_id=active_es_id)
+        pm = get_project_manager()
+        energy_system = pm.get_active_energy_system()
 
         instance = energy_system.instance[0]
         profile_fields = []
@@ -680,7 +680,7 @@ class ESDLDataLayer:
                         p = profiles[pkey]
                         if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
                             profile_name = p['profile_uiname']
-                    if profile_name == None:
+                    if profile_name is None:
                         profile_name = field
 
                     response.cost_profile = profile_name
@@ -692,14 +692,14 @@ class ESDLDataLayer:
     @staticmethod
     def update_carrier(carr_id, carr_info):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
 
         carrier_info = CarrierMessage(**carr_info)
 
         add_carrier = False
         try:
-            carrier = esh.get_by_id(active_es_id, carr_id)
+            carrier = pm.get_by_id(active_es_id, carr_id)
         except KeyError:
             module = importlib.import_module('esdl.esdl')
             carr_class_ = getattr(module, carrier_info.type)
@@ -742,15 +742,15 @@ class ESDLDataLayer:
             if not esi:
                 esi = esdl.EnergySystemInformation(id=str(uuid4()))
                 es.energySystemInformation = esi
-                esh.add_object_to_dict(active_es_id, esi)
+                pm.add_object_to_dict(active_es_id, esi)
 
             ecs = esi.carriers
             if not ecs:
                 ecs = esdl.Carriers(id=str(uuid4()))
                 esi.carriers = ecs
-                esh.add_object_to_dict(active_es_id, ecs)
+                pm.add_object_to_dict(active_es_id, ecs)
             ecs.carrier.append(carrier)
-            esh.add_object_to_dict(active_es_id, carrier)
+            pm.add_object_to_dict(active_es_id, carrier)
 
         # send list as a result
         carrier_list = ESDLEnergySystem.get_carrier_list(es)

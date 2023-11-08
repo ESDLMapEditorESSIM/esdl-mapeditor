@@ -26,8 +26,9 @@ from flask_socketio import SocketIO, emit
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
+from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLAsset
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 
@@ -152,7 +153,7 @@ class ESDLServices:
     def call_esdl_service(self, service_params) -> Tuple[bool, Optional[dict], Optional[esdl.EnergySystem]]:
         """Actually call an ESDL service."""
 
-        esh = get_handler()
+        pm = get_project_manager()
         active_es_id = get_session("active_es_id")
 
         # {'service_id': '18d106cf-2af1-407d-8697-0dae23a0ac3e', 'area_scope': 'provincies', 'area_id': '12',
@@ -205,7 +206,7 @@ class ESDLServices:
                 area_subscope = service_params["area_subscope"]
                 url = url.replace(area_subscope_tag, area_subscope)
         elif service["type"].startswith("send_esdl"):
-            esdlstr = esh.to_string(active_es_id)
+            esdlstr = pm.active_energy_system_to_string()
 
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
@@ -217,7 +218,7 @@ class ESDLServices:
             else:
                 body = esdlstr
         elif service["type"] == "simulation":
-            esdlstr = esh.to_string(active_es_id)
+            esdlstr = pm.active_energy_system_to_string()
 
             if service["body"] == "url_encoded":
                 body["energysystem"] = urllib.parse.quote(esdlstr)
@@ -230,7 +231,7 @@ class ESDLServices:
 
         if "body_config" in service:
             if service["body_config"]["type"] == "text":
-                esdlstr = esh.to_string(active_es_id)
+                esdlstr = pm.active_energy_system_to_string()
                 if service["body_config"]["encoding"] == "none":
                     body = esdlstr
                 if service["body_config"]["encoding"] == "url_encoded":
@@ -243,7 +244,7 @@ class ESDLServices:
                 body = {}
                 for param in service["body_config"]['parameters']:
                     if param["type"] == "esdl":
-                        esdlstr = esh.to_string(active_es_id)
+                        esdlstr = pm.active_energy_system_to_string()
                         if param["encoding"] == "none":
                             body[param["parameter"]] = esdlstr
                         if param["encoding"] == "url_encoded":
@@ -319,13 +320,13 @@ class ESDLServices:
                     else:
                         esdl_response = r.text
 
-                    esh.add_from_string(service["name"], esdl_response)
+                    variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
                     # TODO deal with parse_info?
-                    return True, None, es
+                    return True, None, pm.get_energy_system(variant)
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text), None
                 elif service["result"][0]["action"] == "add_assets":
-                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
                     area = instance[0].area
                     asset_str_list = json.loads(r.text)
@@ -339,9 +340,9 @@ class ESDLServices:
                     try:
                         for asset_str in asset_str_list["add_assets"]:
                             asset = ESDLAsset.load_asset_from_string(asset_str)
-                            esh.add_object_to_dict(active_es_id, asset, recursive=True)
+                            pm.add_object_to_dict(active_es_id, asset, recursive=True)
                             ESDLAsset.add_object_to_area(es_edit, asset, area.id)
-                            asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
+                            asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
                             emit(
                                 "add_esdl_objects",
                                 {
@@ -360,22 +361,22 @@ class ESDLServices:
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}, None
                 elif service["result"][0]["action"] == "add_notes":
-                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    es_edit = pm.get_active_energy_system()
                     esi = es_edit.energySystemInformation
                     if not esi:
                         esi = es_edit.energySystemInformation = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
-                        esh.add_object_to_dict(active_es_id, esi)
+                        pm.add_object_to_dict(active_es_id, esi)
                     notes = esi.notes
                     if not notes:
                         notes = esi.notes = esdl.Notes(id=str(uuid.uuid4()))
-                        esh.add_object_to_dict(active_es_id, notes)
+                        pm.add_object_to_dict(active_es_id, notes)
 
                     notes_from_service = ESDLAsset.load_asset_from_string(esdl_string=r.text)
                     if isinstance(notes_from_service, esdl.Notes):
                         notes_list = []
                         for note in list(notes_from_service.note):
                             notes.note.append(note)
-                            esh.add_object_to_dict(active_es_id, note)
+                            pm.add_object_to_dict(active_es_id, note)
                             map_location = note.mapLocation
                             if map_location:
                                 coords = {'lng': map_location.lon, 'lat': map_location.lat}

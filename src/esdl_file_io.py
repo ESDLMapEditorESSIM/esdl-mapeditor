@@ -12,13 +12,12 @@
 #  Manager:
 #      TNO
 import base64
-import io
 
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 
-from esdl.esdl_handler import EnergySystemHandler, StringURI
+from esdl.processing.string_uri import StringURI
 from extensions.session_manager import set_session, get_project_manager
 import src.log as log
 from src.process_es_area_bld import process_energy_system

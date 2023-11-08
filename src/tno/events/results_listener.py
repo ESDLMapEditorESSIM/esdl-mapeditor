@@ -19,8 +19,9 @@ from pika.spec import Basic
 
 from threading import Thread
 
-from src import EnvSettings, get_logger, socketio
-
+from src.app import socketio
+from src.log import get_logger
+from src.tno.envsettings import EnvSettings
 from src.tno.events.config import AMQP_URL
 from src.tno.events.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 

@@ -9,7 +9,8 @@ from pyecore.resources import ResourceSet, URI, Resource
 from pyecore import commands as pyecore_commands
 
 from esdl import EnergySystem, esdl, support_functions
-from esdl.esdl_handler import StringURI, patch_esdl
+from esdl.esdl_handler import patch_esdl
+from esdl.processing.string_uri import StringURI
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
 from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
@@ -17,6 +18,9 @@ from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, 
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
+import src.log as log
+
+logger = log.get_logger(__name__)
 
 def create_empty_energysystem(name, es_description, inst_title, area_title) -> esdl.EnergySystem:
     energy_system = esdl.EnergySystem(id=str(uuid4()), name=name, description=es_description)
@@ -25,6 +29,40 @@ def create_empty_energysystem(name, es_description, inst_title, area_title) -> e
     area = esdl.Area(id=str(uuid4()), name=area_title)
     instance.area = area
     return energy_system
+
+def load_external_string(esdl_string, name='external_string') -> Tuple[esdl.EnergySystem, list]:
+    """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
+    It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
+    """
+    if not name.endswith('.esdl'):
+        name = name + ".esdl"
+    uri = StringURI(name, esdl_string)
+    external_rset = ResourceSet()
+    external_resource = external_rset.create_resource(uri)
+    external_resource.load()
+    parse_info = []
+    if isinstance(external_resource, XMLResource):
+        parse_info = external_resource.get_parse_information()
+    external_energy_system = external_resource.contents[0]
+    #self.validate(es=external_energy_system)
+    return external_energy_system, parse_info
+
+
+def update_energy_system_version(self, es: EnergySystem) -> str:
+    """
+    Increments the version of this Energy System and returns it
+
+    """
+    version = '' if es.version is None else str(es.version)
+    try:
+        import re
+        splitted = re.split(r"\D", version)
+        major = splitted[0]
+        major = int(major) + 1
+    except ValueError:
+        major = 1
+    es.version = str(major)
+    return es.version
 
 
 def get_variant_collection_index(variantCollection: VariantCollection) -> int:
@@ -221,9 +259,9 @@ class ProjectManager:
         Create a new, empty base variant.
         """
         count = len(self.project.variantCollection) + 1
-        new_collection = VariantCollection(name=f"EnergySystem {count}", id=str(uuid4()))
+        new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
         self.project.variantCollection.append(new_collection)
-        variant = Variant(name=f"Main Variant", id=str(uuid4()))
+        variant = Variant(name=f"Untitled Energy System", id=str(uuid4()))
         new_collection.variant = variant
         es = create_empty_energysystem("New Energy System", None, "Instance1", "Untitled Area")
         # self.active_resource.append(es)
@@ -262,19 +300,23 @@ class ProjectManager:
             orig_uri = uri.plain
             uri.__init__(f"{uri.plain}_{str(uuid4())[:4]}")  # update uri
             print(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
-        es_resource: XMLResource = self.rset.create_resource(uri)
-        es_resource.load()
-        es = es_resource.contents[0]
-        parse_info = []
-        if isinstance(es_resource, XMLResource):
-            parse_info = es_resource.get_parse_information()
-            if len(parse_info) > 0:
-                # TODO: handle parse information to gui
-                print(f"Resource {uri} contains parse information/errors: {parse_info}")
-        #self.validate(es=tmp_es)
-        #self.esid_uri_dict[tmp_es.id] = uri.normalize()
-        self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary
-        #return es_resource.contents[0], parse_info
+        try:
+            es_resource: XMLResource = self.rset.create_resource(uri)
+            es_resource.load()
+            es = es_resource.contents[0]
+            parse_info = []
+            if isinstance(es_resource, XMLResource):
+                parse_info = es_resource.get_parse_information()
+                if len(parse_info) > 0:
+                    # TODO: handle parse information to gui
+                    print(f"Resource {uri} contains parse information/errors: {parse_info}")
+            #self.validate(es=tmp_es)
+            #self.esid_uri_dict[tmp_es.id] = uri.normalize()
+            self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary
+            #return es_resource.contents[0], parse_info
+        except Exception as e:
+            logger.error("Exception when loading resource: {}: {}".format(uri, e))
+            raise
 
 
         variantCollection = VariantCollection(name=f"VariantCollection for {es.name}", id=str(uuid4()))
@@ -283,7 +325,7 @@ class ProjectManager:
         # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
         es_variant = Variant(name=f"{es.name}", id=str(uuid4()))
         variantCollection.variant = es_variant
-        self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
+        snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
         return es_variant, parse_info
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:
@@ -385,6 +427,8 @@ class ProjectManager:
 
                 self.apply_variant_changes(parent_variant, variant_snapshot, True)
 
+        self.debug()
+
     def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
         """
         Apply all changes from the given variant to the given resource. The resource should represent an energy system
@@ -481,6 +525,32 @@ class ProjectManager:
             owner: EObject = resource.resolve(change.ownerFragment)
             owner.delete()
 
+    def get_energy_systems(self) -> List[esdl.EnergySystem]:
+        """"
+        Creates a list of all the variants associated energy systems (but not of the variantCollection energy system,
+        as each variantCollection has its own main variant by convention)
+        """
+        variants: List[Variant] = []
+        for vc in self.project.variantCollection:
+            vc: VariantCollection = vc
+            self.get_variant_list(vc.variant, variants)
+        energy_systems: List[EnergySystem] = []
+        for v in variants:
+            es = self.get_variant_snapshot(v)
+            energy_systems.append(es)
+        return energy_systems
+
+    def get_variant_list(self, v: Variant, variant_list: List[Variant]):
+        """
+        Flattens the tree structure of a variant and its sub variants into a list of Variants of this variants,
+        including itself.
+        :param v - Variant - start variant to build the list
+        :param variant_list the list where all variants should be stored in
+        """
+        variant_list.append(v)
+        for v in v.variant:
+            self.get_variant_list(v, variant_list)
+
     def get_energy_system(self, variant: Variant) -> esdl.EnergySystem:
         return self.get_variant_snapshot(variant)
 
@@ -530,20 +600,26 @@ class ProjectManager:
         parent = get_parent_variant(variant)
         parent.variant.remove(variant)
 
+    def select_new_active_variant(self) -> Variant:
+        for vc in self.project.variantCollection:
+            if vc.variant:
+                return vc.variant
+
     def delete_variant(self, variant: Union[VariantCollection, Variant]):
         """
         Delete a variant and all its subvariants. This will also delete the snapshot of the variant.
         :param variant: the variant to delete
         """
-        for subvariant in variant.variant:
-            self._delete_variant_recursive(subvariant)
+        if variant.variant:
+            for subvariant in variant.variant:
+                self._delete_variant_recursive(subvariant)
         print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
 
-        if variant in get_variant_path_list(self.active_variant) or get_variant_collection(
-                variant) == variant:
+        if variant in get_variant_path_list(self.active_variant): # or get_variant_collection(variant) == variant:
             # todo reset active variant to other variant and check if there is at least 1 variant
             print("Deleted variant was active variant. Please set a new active variant")
-            self.active_variant = None
+            #self.active_variant = None
+            self.set_active_variant(self.select_new_active_variant())
 
         if isinstance(variant, VariantCollection):
             variantCollection: VariantCollection = variant
@@ -551,7 +627,7 @@ class ProjectManager:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
                 variantCollection.energysystemRef = None
                 print(
-                    f"Removing VariantCollection energy system {variantCollection.name} at {variantCollection.eResource.uri}")
+                    f"Removing VariantCollection energy system {variantCollection.name} from {variantCollection.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
                 self.rset.remove_resource(variantCollection.eResource)
             self.project.variantCollection.remove(variantCollection)
@@ -692,16 +768,22 @@ class ProjectManager:
             self.project_resource.save(output=uri)
             return uri.getvalue()
 
-    def get_undo_redo_stack(self, eobj: EObject = None) -> UndoRedoCommandStack:
+    def get_undo_redo_stack(self, eobj: EObject = None, es_id: str = None) -> UndoRedoCommandStack:
         """
         Return the undo-redo stack of this EnergySystemHandler for a specific ESDL object (when eobj = not None)
         or by the current active es_id (es_id is not None)
 
         :param eobj: the ESDL object to get the undo-redo stack for
+        :param es_id: the ESDL energy system ID to get the undo-redo stack for
         :return: the undo-redo stack of this EnergySystemHandler for a specific ESDL object
+
+
         """
         if eobj:
             return self.change_tracker.get_tracker_stack(eobj=eobj)
+        elif es_id:
+            es = self.get_energy_system_by_id(es_id)
+            return self.change_tracker.get_tracker_stack(eobj=es)
         else:
             return self.active_tracker.stack
 
@@ -759,7 +841,10 @@ class ProjectManager:
 
         return None
 
-    def add_object_to_dict(self, es_id:str, eobject:EObject):
+    def add_object_to_dict(self, es_id:str, eobject:EObject, recursive=False):
+        if recursive:
+            for obj in eobject.eAllContents():
+                self.add_object_to_dict(es_id, obj)
         es = self.get_energy_system_by_id(es_id)
         if hasattr(eobject, 'id'):
             try:
@@ -821,7 +906,7 @@ class ProjectManager:
 
     def debug(self):
         print('ProjectManager debug:')
-        print(self.rset.resources)
+        print('All resources: ', self.rset.resources)
         for key, value in self.rset.resources.items():
             if isinstance(value.contents[0], esdl.EnergySystem):
                 print(f"resource: {key}: es_name={value.contents[0].name}, id={value.contents[0].id}")
@@ -831,9 +916,23 @@ class ProjectManager:
         for vc in self.project.variantCollection:
             vc: VariantCollection
             print(f"- {vc.name}: RS={vc.energysystemRef.eResource.uri}, ES={vc.energysystemRef}")
-            print(f"\t- {vc.variant.name}: RS={vc.variant.snapshotRef.eResource.uri}, ES={vc.variant.snapshotRef}")
-            for v in vc.variant.variant:
-                print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
+            rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
+            print(f"\t- {vc.variant.name}: RS={rs_uri}, ES={vc.variant.snapshotRef}")
+            x = vc.variant.variant
+            depth = 2
+            todo_list: List[Tuple[int, Variant]] = []
+            todo_list.extend([(depth, p) for p in x])
+            while len(todo_list) > 0:
+                for (d, v) in list(todo_list):
+                    indent = "\t" * d
+                    rs_uri = v.snapshotRef.eResource.uri if v.snapshotRef else None
+                    print(f"{indent}- {v.name}: RS={rs_uri}, ES={v.snapshotRef}")
+                    todo_list.remove((d,v))
+                    if len(v.variant) > 0:
+                        todo_list.extend([(d+1, p) for p in v.variant])
+
+            #for v in vc.variant.variant:
+            #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
 
 def resource_as_string(resource: Resource):

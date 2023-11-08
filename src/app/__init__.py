@@ -27,7 +27,6 @@ from src import settings
 from src.log import get_logger
 from flask import Flask
 
-from src.tno.envsettings import EnvSettings
 from src.tno.events.config import AMQP_URL
 
 logger = get_logger(__name__)

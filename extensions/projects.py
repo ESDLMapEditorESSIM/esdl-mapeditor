@@ -17,7 +17,7 @@ from typing import TypedDict
 
 from flask import Blueprint, jsonify, request
 
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session

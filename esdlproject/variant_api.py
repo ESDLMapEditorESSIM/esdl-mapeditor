@@ -56,6 +56,9 @@ def get_variant_path_list(variant: Variant) -> List[Variant]:
     :param variant: Variant to get the path of.
     :return: List of variants between this variant and its base variant.
     """
+    if variant is None:
+        return []
+
     variant_list = [variant]
     current_variant = variant
     while current_variant.parentVariant:

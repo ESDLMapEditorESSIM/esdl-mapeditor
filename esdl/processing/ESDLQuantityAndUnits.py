@@ -16,7 +16,6 @@ import uuid
 from esdl import esdl
 from pyecore.ecore import EClass, EEnum, EAttribute, EOrderedSet, EObject
 from uuid import uuid4
-from esdl.esdl_handler import EnergySystemHandler
 from esdlproject.ProjectManager import ProjectManager
 
 

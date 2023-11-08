@@ -22,7 +22,7 @@ import esdl
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 
-from extensions.session_manager import get_session, set_session, get_project_manager
+from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 import src.log as log
 from extensions.vue_backend.cost_information import _change_cost_unit

@@ -14,13 +14,12 @@
 
 import re
 
-from esdl.esdl_handler import EnergySystemHandler
 from flask_socketio import emit
 from pyecore.ecore import EEnum
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
+from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
 from esdlproject.ProjectManager import ProjectManager
 
@@ -268,15 +267,15 @@ def energy_asset_to_ui(esh: ProjectManager, es_id, asset):  # , port_asset_mappi
 
 
 def update_carrier_conn_list():
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
     for c in conn_list:
-        from_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        from_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if from_port.carrier:
             c['from-port-carrier'] = from_port.carrier.id
-        to_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        to_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if to_port.carrier:
             c['to-port-carrier'] = to_port.carrier.id
 

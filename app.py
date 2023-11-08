@@ -36,7 +36,8 @@ from src.app import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler, StringURI
+from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
@@ -59,7 +60,7 @@ from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, get_project_manager, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_project_manager, set_session, \
+    get_session_for_esid, schedule_session_clean_up, set_project_manager, set_session, \
     set_session_for_esid, valid_session
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
@@ -258,7 +259,7 @@ def editor():
     #set_session('client_id', session['client_id'])
     logger.info('client_id is set to %s' % session['client_id'])
     if oidc.user_loggedin:
-        if session['client_id'] == None:
+        if session['client_id'] is None:
             warn('WARNING: No client_id in session!!')
 
         whole_token = oidc.get_access_token()
@@ -2992,10 +2993,10 @@ def process_command(message):
         es_rename = pm.get_energy_system_by_id(es_id=rename_es_id)
         es_rename.name = name
 
-    if message['cmd'] == 'remove_energysystem':
-        #TODO PM: handle?
-        remove_es_id = message['remove_es_id']
-        pm.remove_energy_system(es_id=remove_es_id)
+    # if message['cmd'] == 'remove_energysystem':
+    #     #TODO PM: handle?
+    #     remove_es_id = message['remove_es_id']
+    #     pm.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
@@ -3122,10 +3123,11 @@ def process_file_command(message):
         set_session('es_filename', filename)
 
     # if message['cmd'] == 'load_esdl_from_file':
-    #     # TODO PM: Deprecated
+    #     # clears all loaded projects.
     #     file_content = message['file_content']
     #     filename = message['filename']
-    #     pm = EnergySystemHandler()
+    #     pm = get_project_manager()
+    #
     #
     #     try:
     #         result, parse_info = pm.load_from_string(esdl_string=file_content, name=filename)
@@ -3163,7 +3165,6 @@ def process_file_command(message):
 
         try:
             uri = StringURI(filename, file_content)
-            # TODO: Look at parse info! Otherwise we accept invalid files in our resources.
             es_variant, parse_info = pm.add_energy_system(uri)
             if len(parse_info) > 0:
                 info = ''

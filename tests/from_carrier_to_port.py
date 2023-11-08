@@ -14,7 +14,7 @@
 
 from esdl.esdl_handler import EnergySystemHandler
 from esdl import esdl
-from pyecore.ecore import EStructuralFeature, EReference
+from pyecore.ecore import EReference
 
 if __name__ == '__main__':
     esh = EnergySystemHandler()

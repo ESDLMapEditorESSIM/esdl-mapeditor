@@ -12,7 +12,6 @@
 #  Manager:
 #      TNO
 
-from extensions.session_manager import get_session, set_session
 import src.log as log
 
 logger = log.get_logger(__name__)

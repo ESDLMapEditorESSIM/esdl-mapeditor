@@ -22,10 +22,7 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
-from extensions.session_manager import get_project_manager, set_handler, get_handler, get_session, set_project_manager, \
-    set_session_for_esid, \
-    set_session, \
-    get_session_for_esid
+from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session
 from src.app import executor
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes

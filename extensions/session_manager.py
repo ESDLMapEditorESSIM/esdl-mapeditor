@@ -11,7 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from esdl.esdl_handler import EnergySystemHandler
 from flask import session
 from datetime import datetime
 import threading

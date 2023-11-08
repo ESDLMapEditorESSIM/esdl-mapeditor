@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from influxdb import InfluxDBClient
 import src.settings as settings
@@ -103,8 +103,8 @@ class IELGAS:
             asset_id = info['id']
             # set_session('ielgas_monitor_id', asset_id)
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
-            asset = esh.get_by_id(active_es_id, asset_id)
+            pm = get_project_manager()
+            asset = pm.get_by_id(active_es_id, asset_id)
             asset_name = asset.name
             power = None
             if hasattr(asset, 'power'):

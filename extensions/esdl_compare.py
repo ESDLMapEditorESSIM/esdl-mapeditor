@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler
+from extensions.session_manager import get_project_manager
 from xmldiff import main
 import src.log as log
 
@@ -33,13 +33,13 @@ class ESDLCompare:
         @self.socketio.on('esdl_compare', namespace='/esdl')
         def compare(esdls):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
 
                 es_id1 = esdls['esdl1']
                 es_id2 = esdls['esdl2']
 
-                es1_str = esh.to_string(es_id1).encode()    # convert string to bytes
-                es2_str = esh.to_string(es_id2).encode()    # convert string to bytes
+                es1_str = pm.energy_system_to_string(es_id1).encode()    # convert string to bytes
+                es2_str = pm.energy_system_to_string(es_id2).encode()    # convert string to bytes
 
                 logger.info("Comparing EnergySystems with id {} and {}".format(es_id1, es_id2))
                 results = main.diff_texts(es1_str, es2_str)

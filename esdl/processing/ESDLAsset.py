@@ -15,7 +15,7 @@
 from esdl import esdl
 from pyecore.ecore import EClass
 from pyecore.resources import ResourceSet
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLEnergySystem
 from extensions.session_manager import get_session, get_project_manager
 
@@ -248,7 +248,7 @@ def add_profile_to_port(port, profile):
 
 
 def remove_profile_from_port(port, profile_id):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
 
     profile_list = port.profile
@@ -256,4 +256,4 @@ def remove_profile_from_port(port, profile_id):
     for profile in set(profile_list):
         if profile.id == profile_id:
             profile_list.remove(profile)
-            esh.remove_object_from_dict(active_es_id, profile, True)
+            pm.remove_object_from_dict(active_es_id, profile, True)

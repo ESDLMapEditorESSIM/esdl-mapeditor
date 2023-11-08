@@ -1,7 +1,7 @@
 import unittest
 
 from esdl import esdl, EnergySystem, GenericProducer, InPort, OutPort, GenericConsumer, Instance, HeatCommodity
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdlproject.ChangeSerializer import deepcopy_eobject_change
 from esdlproject.ProjectManager import ProjectManager, convertActionToVariantChanges, resource_as_string
 from esdlproject.variant_api import create_new_variant

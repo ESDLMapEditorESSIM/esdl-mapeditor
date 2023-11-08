@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime
 from typing import List
 
-from pyecore.ecore import EDate, EObject
+from pyecore.ecore import EObject
 from pyecore.resources import Resource, ResourceSet, URI
 
 from esdl import EnergySystem
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.resources.xmlresource import XMLResource
-from esdl.undo import UndoRedoCommandStack, LabelledAction
-from esdlproject import HighLevelChange, Variant, Add, Set
+from esdl.undo import LabelledAction
+from esdlproject import HighLevelChange, Variant, Add, Set, VariantCollection
 from pyecore import commands as pyecore_commands
 
 
@@ -105,35 +105,35 @@ class ChangeHandler:
 
     def createSnapshot2(self, variant: Variant, rset: ResourceSet) -> EnergySystem:
         print(f'Creating snapshot for Variant \'{variant.name}\' ({variant.eURIFragment()})')
-
+        proxy = None
         # find closest snapshot and baseVariant (that contains main ES)
-        es: EnergySystem
-        if variant.energySystemProxy:
-            es = variant.energySystemProxy.energysystemRef
-            proxy = variant.energySystemProxy
+        es: EnergySystem = None
+        if variant.variantCollection:
+            es = variant.variantCollection.energysystemRef
+            proxy = variant.variantCollection
         else:
             variant_list: List[Variant] = []
             v: Variant = variant.parentVariant
-            while not v.energySystemProxy:
+            while not v.variantCollection:
                 if v.snapshotRef:
                     es = v.snapshotRef
                     v = v.parentVariant
-                    while v.energySystemProxy is None:
+                    while v.variantCollection is None:
                         v = v.parentVariant
-                    proxy = v.energySystemProxy
+                    proxy = v.variantCollection
                     break
                 else:
                     variant_list.append(v.parentVariant)
                     v = v.parentVariant
-            if v.energySystemProxy:
+            if v.variantCollection:
                 if v.snapshotRef:
                     es = v.snapshotRef
                 else:
-                    es = v.energySystemProxy.energysystemRef
-                proxy = v.energySystemProxy
+                    es = v.variantCollection.energysystemRef
+                proxy = v.variantCollection
             # replay all changes for the list of (parent) variants that have not been replayed yet
             for x in variant_list:
-                snapshot = self.createSnapshot(x)
+                snapshot = self.createSnapshot2(x)
                 x.snapshotRef = snapshot
 
 
@@ -211,8 +211,8 @@ class ChangeHandler:
                 pass  # TODO
 
     def get_variant_URI(self, v: Variant):
-        if isinstance(v, EnergySystemProxy):
-            return StringURI(f'base_{v.name.replace(" ", "_")}.esdl')
+        if isinstance(v, VariantCollection):
+            return StringURI(f'variantcollection_{v.name.replace(" ", "_")}.esdl')
         return StringURI(f'{v.name.replace(" ", "_")}.esdl')
 
     def get_or_create_resource(self, rset: ResourceSet, uri: URI):

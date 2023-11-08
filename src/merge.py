@@ -15,7 +15,7 @@
 import esdl.esdl
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import EAbstractSet
-import pyecore.behavior
+import pyecore.behavior  # this import is used
 from uuid import uuid4
 """
 Merges 2 EnergySystems into one

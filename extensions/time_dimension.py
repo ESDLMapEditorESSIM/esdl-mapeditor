@@ -23,7 +23,7 @@ from geojson import Feature, MultiLineString, FeatureCollection, dumps
 from math import fabs
 import pytz
 
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 
@@ -214,11 +214,11 @@ class TimeDimension:
 
     def get_colors(self):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
         colors = dict()
         num_default_colors = 0
 
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_active_energy_system()
         esi = es.energySystemInformation
         if esi:
             carriers = esi.carriers
@@ -296,7 +296,7 @@ class TimeDimension:
         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        esh = get_handler()
+        pm = get_project_manager()
         monitor_asset_ids = get_session('ielgas_monitor_ids')
         networks_list = get_session('timedimension-networks-list')
 
@@ -307,7 +307,7 @@ class TimeDimension:
             date_cet = start_cet.strftime('%Y-%m-%d')
             monitor_asset_data = dict()
             for aid in monitor_asset_ids:
-                asset = esh.get_by_id(active_es_id, aid)
+                asset = pm.get_by_id(active_es_id, aid)
                 asset_name = asset.name + ' - ' + date_cet
 
                 monitor_asset_data[aid] = {
@@ -347,7 +347,7 @@ class TimeDimension:
                 fid = 1
                 for item in series:
                     try:
-                        current_asset = esh.get_by_id(active_es_id, item['assetId'])
+                        current_asset = pm.get_by_id(active_es_id, item['assetId'])
                     except:
                         print("Asset id not found.")
                         continue

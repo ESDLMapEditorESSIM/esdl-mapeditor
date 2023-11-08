@@ -27,7 +27,7 @@ Contributors:
 #      TNO
 
 from esdl.esdl_handler import EnergySystemHandler
-from extensions.merge import ESDLMerge
+from extensions.esdl_merge import ESDLMerge
 
 
 def test():

@@ -14,8 +14,8 @@
 
 from flask import Flask
 from flask_executor import Executor
-from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler
+from flask_socketio import SocketIO
+from extensions.session_manager import get_project_manager
 import src.log as log
 from src.merge import ESDLMerger
 from src.process_es_area_bld import process_energy_system
@@ -37,17 +37,17 @@ class ESDLMerge:
         @self.socketio.on('esdl_merge', namespace='/esdl')
         def merge(message):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
 
                 esdl_source_id = message['esdl_source_id']
                 esdl_destination_id = message['esdl_destination_id']
 
-                es_source = esh.get_energy_system(es_id=esdl_source_id)
-                es_destination = esh.get_energy_system(es_id=esdl_destination_id)
+                es_source = pm.get_energy_system_by_id(es_id=esdl_source_id)
+                es_destination = pm.get_energy_system_by_id(es_id=esdl_destination_id)
 
                 logger.info("Merging EnergySystem with id {} into EnergySystem with id {}".format(esdl_source_id,
                                                                                                   esdl_destination_id))
 
                 self.merger.merge(es_destination, es_source)
-                self.executor.submit(process_energy_system, esh=esh, filename=None,
+                self.executor.submit(process_energy_system, esh=pm, filename=None,
                                      force_update_es_id=esdl_destination_id)

@@ -1,5 +1,7 @@
 """Definition of meta model 'esdlproject'."""
 from functools import partial
+from typing import List
+
 import pyecore.ecore as Ecore
 from pyecore.ecore import *
 
@@ -49,7 +51,7 @@ When serializing the changes of a variant are serialized in XML. """
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     change = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
-    variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variant: List = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     parentVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshot = EReference(ordered=True, unique=True, containment=True, derived=False)
     variantCollection = EReference(ordered=True, unique=True, containment=False, derived=False)
@@ -121,7 +123,7 @@ class VariantCollection(EObject, metaclass=MetaEClass):
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
-    variant = EReference(ordered=True, unique=True, containment=True, derived=False)
+    variant: Variant = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystem = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystemRef = EReference(ordered=True, unique=True, containment=False, derived=False)
 

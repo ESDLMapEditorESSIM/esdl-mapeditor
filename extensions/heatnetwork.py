@@ -20,12 +20,14 @@ from builtins import isinstance
 
 import esdl
 from esdl.esdl_handler import EnergySystemHandler
-from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Port, InPort, OutPort, Polygon
+from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Polygon
 from esdl.processing import ESDLAsset
 from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
+
+from esdlproject.ProjectManager import ProjectManager
+from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
 import src.log as log
 from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes
 from esdl.processing import ESDLGeometry
@@ -49,30 +51,30 @@ class HeatNetwork:
         @self.socketio.on('duplicate', namespace='/esdl')
         def socketio_duplicate(message):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
                 print('Duplicate EnergyAsset: %s' % message)
-                stack = esh.get_undo_redo_stack(es_id=active_es_id)
+                stack = pm.get_undo_redo_stack(es_id=active_es_id)
                 stack.start_recording(label="Duplicate asset")
-                duplicate = duplicate_energy_asset(esh, active_es_id, message['asset_id'])
+                duplicate = duplicate_energy_asset(pm, active_es_id, message['asset_id'])
                 stack.update_label("Duplicate {} {}".format(duplicate.eClass.name, duplicate.name or ""))
-                self.add_asset_and_emit(esh, active_es_id, duplicate, message['area_bld_id'])
+                self.add_asset_and_emit(pm, active_es_id, duplicate, message['area_bld_id'])
                 stack.stop_recording()
 
         @self.socketio.on('reverse_conductor', namespace='/esdl')
         def reverse_conductor(message):
             # reverses the points in the line, so the in and outport are swapped
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             print('Reverse conductor: %s' % message)
             asset_id = message['asset_id']
-            conductor = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
-            stack = esh.get_undo_redo_stack(es_id=active_es_id)
+            conductor = pm.get_by_id(es_id=active_es_id, object_id=asset_id)
+            stack = pm.get_undo_redo_stack(es_id=active_es_id)
             stack.start_recording(label="Reverse {}".format(conductor.eClass.name))
             self.reverse_conductor(active_es_id, conductor)
             stack.stop_recording()
 
-    def add_asset_and_emit(self, esh: EnergySystemHandler, es_id: str, asset: EnergyAsset, area_bld_id: str):
+    def add_asset_and_emit(self, pm: ProjectManager, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():
             asset_to_be_added_list = list()
             port_list = self.calculate_port_list(asset)
@@ -80,8 +82,8 @@ class HeatNetwork:
             asset_to_be_added_list.append(message)
 
             add_to_building = False
-            if not ESDLAsset.add_object_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
-                ESDLAsset.add_object_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
+            if not ESDLAsset.add_object_to_area(pm.get_energy_system_by_id(es_id), asset, area_bld_id):
+                ESDLAsset.add_object_to_building(pm.get_energy_system_by_id(es_id), asset, area_bld_id)
                 add_to_building = True
 
             emit('add_esdl_objects', {'es_id': es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
@@ -269,8 +271,8 @@ def _shift_point(point: Point):
         point.lon = point.lon - DEFAULT_SHIFT_LON
 
 
-def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str):
-    original_asset = esh.get_by_id(es_id, energy_asset_id)
+def duplicate_energy_asset(pm: ProjectManager, es_id, energy_asset_id: str):
+    original_asset = pm.get_by_id(es_id, energy_asset_id)
 
     duplicate_asset = original_asset.deepcopy()
     # reset all id's
@@ -304,5 +306,5 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
     for port in duplicate_asset.port:
         port.connectedTo.clear()
 
-    esh.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
+    pm.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

@@ -127,7 +127,7 @@ class RabbitMQConsumer(object):
         """This method is invoked by pika when the connection to RabbitMQ is
         closed unexpectedly. Since it is unexpected, we will reconnect to
         RabbitMQ if it disconnects.
-        :param pika.connection.Connection connection: The closed connection obj
+        :param pika.connection.Connection _unused_connection: The closed connection obj
         :param Exception reason: exception representing reason for loss of
             connection.
         """
@@ -204,7 +204,7 @@ class RabbitMQConsumer(object):
     def on_exchange_declareok(self, _unused_frame, userdata):
         """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
         command.
-        :param pika.Frame.Method unused_frame: Exchange.DeclareOk response frame
+        :param pika.Frame.Method _unused_frame: Exchange.DeclareOk response frame
         :param str|unicode userdata: Extra user data (exchange name)
         """
         logger.info("Exchange declared", exchange=userdata)

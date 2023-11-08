@@ -1,4 +1,3 @@
-from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import *
 from esdl.esdl_handler import EnergySystemHandler
 
