@@ -18,16 +18,17 @@
 //  WMS Layer functionality
 // ------------------------------------------------------------------------------------------------------------
 function add_layer() {
-    layer_descr = document.getElementById('layer_descr').value;
-    layer_url = document.getElementById('layer_url').value;
-    layer_name = document.getElementById('layer_name').value;
-    legend_url = document.getElementById('legend_url').value;
+    layer_descr = document.getElementById('add_layer_descr').value;
+    layer_url = document.getElementById('add_layer_url').value;
+    layer_name = document.getElementById('add_layer_name').value;
+    legend_url = document.getElementById('add_legend_url').value;
+    layer_attr = document.getElementById('add_layer_attr').value;
     select_layer_group = document.getElementById('add_to_group');
     project_name = select_layer_group[select_layer_group.selectedIndex].value;
     setting_type = select_layer_group[select_layer_group.selectedIndex].getAttribute('setting_type');
     layer_id = uuidv4();
 
-    socket.emit('command', {cmd: 'add_layer', id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, setting_type: setting_type, project_name: project_name, legend_url: legend_url, visible: true});
+    socket.emit('add_wms_layer', {id: layer_id, descr: layer_descr, url: layer_url, name: layer_name, setting_type: setting_type, project_name: project_name, legend_url: legend_url, visible: true});
     wms_layer_list['layers'][layer_id] = { description: layer_descr, url: layer_url, legend_url: legend_url, layer_name: layer_name, setting_type: setting_type, project_name: project_name };
 
     wms_layer_list['layers'][layer_id].layer_ref = L.tileLayer.wms(layer_url, {
@@ -46,8 +47,17 @@ function add_layer() {
     $('#layer_tree').jstree("open_node", parent);
 }
 
+function edit_layer(id) {
+    console.log(id);
+    socket.emit('get_wms_layer', {id: id}, function(lyr_info) {
+        let my_id = id;
+        console.log(lyr_info);
+        show_edit_layer_div(my_id, lyr_info);
+    });
+}
+
 function remove_layer(id) {
-    socket.emit('command', {cmd: 'remove_layer', id: id});
+    socket.emit('remove_wms_layer', {id: id});
     // console.log('remove layer: '+id);
     map.removeLayer(wms_layer_list['layers'][id].layer_ref);
     delete wms_layer_list['layers'][id];
@@ -77,6 +87,15 @@ function wmsLayerContextMenu(node)
     var items = {}
     if (!node.data.readonly) {
         items = {
+            'edit' : {
+                'label' : 'Edit layer',
+                'icon': 'fa fa-edit',
+                'action' : function () {
+                    let id = node.id.substring(3);
+                    console.log('edit '+id);
+                    edit_layer(id);
+                }
+            },
             'delete' : {
                 'label' : 'Delete layer',
                 'icon': 'fa fa-trash-o',
@@ -93,12 +112,80 @@ function wmsLayerContextMenu(node)
     return items;
 }
 
+function add_layer_div_edit_boxes(prefix, descr, url, name, legend_url, attr) {
+    let html_str = "";
+    html_str += '<tr><td width=180>Description</td><td><input type="text" width="60" id="'+prefix+'layer_descr" value="'+descr+'"></td></tr>';
+    html_str += '<tr><td width=180>URL</td><td><input type="text" width="60" id="'+prefix+'layer_url" value="'+url+'"></td></tr>';
+    html_str += '<tr><td width=180>Layer name</td><td><input type="text" width="60" id="'+prefix+'layer_name" value="'+name+'"></td></tr>';
+    html_str += '<tr><td width=180>Legend URL</td><td><input type="text" width="60" id="'+prefix+'legend_url" value="'+legend_url+'"></td></tr>';
+    html_str += '<tr><td width=180>Attribution</td><td><input type="text" width="60" id="'+prefix+'layer_attr" value="'+attr+'"></td></tr>';
+    return html_str;
+}
+
+function create_add_layer_div() {
+    let add_layer_title = '<h2>Add layer:</h2>';
+    let table = '<table>';
+    table += add_layer_div_edit_boxes('add_','','','','','');
+    table += '<tr><td width=180>Add to group</td><td><select id="add_to_group">';
+    for (var idx in wms_layer_list['groups']) {
+        let group = wms_layer_list['groups'][idx];
+        if (!group.readonly) {
+            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</option>';
+        }
+    }
+    table += '</select></td></tr>';
+
+    table += '<tr><td><button id="layer_button" onclick="add_layer();">Add layer</button></td><td>&nbsp;</td>';
+    table += '</table>';
+    return '<div id="add_layer_div">' + add_layer_title + table + '</div>';
+}
+
+function show_edit_layer_div(id, lyr_info) {
+    let edit_layer_title = '<h2>Edit layer:</h2>';
+    let table = '<table>';
+    table = table + add_layer_div_edit_boxes(
+        'edit_',
+        lyr_info.description,
+        lyr_info.url,
+        lyr_info.layer_name,
+        lyr_info.legend_url,
+        lyr_info.attribution
+    );
+    table += '<tr><td><button id="save_layer_button" onclick="save_layer(\'' + id + '\');">Save layer</button>';
+    table += '<button id="stop_edit_button" onclick="stop_edit_layer();">Cancel</button></td><td>&nbsp;</td>';
+    table += '</table>';
+
+    document.getElementById('add_layer_div').style.display = 'none';
+
+    let edit_layer_div = document.getElementById('edit_layer_div');
+    edit_layer_div.innerHTML = edit_layer_title + table;
+}
+
+function stop_edit_layer() {
+    document.getElementById('add_layer_div').style.display = '';
+    document.getElementById('edit_layer_div').innerHTML = '';
+}
+
+function save_layer(id) {
+    socket.emit('save_wms_layer', {
+        id: id,
+        lyr_info: {
+            description: document.getElementById('edit_layer_descr').value,
+            url: document.getElementById('edit_layer_url').value,
+            layer_name: document.getElementById('edit_layer_name').value,
+            legend_url: document.getElementById('edit_legend_url').value,
+            attribution: document.getElementById('edit_layer_attr').value
+        }
+    });
+    stop_edit_layer();
+}
+
 var tree_data = [];
 function show_layers() {
-    sidebar_ctr = sidebar.getContainer();
+    let sidebar_ctr = sidebar.getContainer();
 
     sidebar_ctr.innerHTML = '<h1>WMS Layers</h1>';
-    tree = '<p><div id="layer_tree"></div></p>';
+    let tree = '<p><div id="layer_tree"></div></p>';
     sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + tree;
 
     tree_data = [];
@@ -140,25 +227,10 @@ function show_layers() {
                         }};
         tree_data.push(tree_obj);
     }
+    let add_layer_div = create_add_layer_div();
+    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + add_layer_div;
 
-    sidebar_ctr.innerHTML += '<h2>Add layers:</h2>';
-    table = '<table>';
-    table += '<tr><td width=180>Description</td><td><input type="text" width="60" id="layer_descr"></td></tr>';
-    table += '<tr><td width=180>URL</td><td><input type="text" width="60" id="layer_url"></td></tr>';
-    table += '<tr><td width=180>Layer name</td><td><input type="text" width="60" id="layer_name"></td></tr>';
-    table += '<tr><td width=180>Legend URL</td><td><input type="text" width="60" id="legend_url"></td></tr>';
-    table += '<tr><td width=180>Add to group</td><td><select id="add_to_group">';
-    for (var idx in wms_layer_list['groups']) {
-        let group = wms_layer_list['groups'][idx];
-        if (!group.readonly) {
-            table += '<option setting_type="' + group.setting_type +'" value="'+group.project_name+'">'+group.name+'</option>';
-        }
-    }
-    table += '</select></td></tr>';
-
-    table += '<tr><td><button onclick="add_layer();">Add layer</button></td><td>&nbsp;</td>';
-    table += '</table>';
-    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + '<div id="edit_layer_div"></div>';
 
     // https://github.com/vakata/jstree/issues/593
     // Set the z-index of the contextmenu of jstree

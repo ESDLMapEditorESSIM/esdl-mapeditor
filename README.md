@@ -67,7 +67,27 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 ## Starting a local instance of the application (with the docker-toolsuite)
 
-Perform the following steps to run the mapeditor directly on your own machine. Prerequisites are Python3 and pip. You also need to be running the Docker Toolsuite.
+### Prerequisites
+
+Python 3: Please make sure you have installed the appropriate version of Python 3. For the most actual up to date
+version, please refer to the `Dockerfile` in the `docker` directory.
+
+Make sure that pip is installed. We use pip-tools to manage our dependencies. For just running the mapeditor it is not
+required to install it, but if you want to update dependencies, you do need it. You can install it through pip, using
+`pip install pip-tools`. If in a terminal, you might need to close it and start it again for the commands to work.
+
+The frontend code is written in JavaScript, using the Vue framework. Please make sure you have an up to date version of
+NodeJS installed (please refer to the `Dockerfile`).
+
+We use Yarn Modern to manage our JavaScript dependencies. Yarn Modern is **not** installable through npm but is
+distributed through `Corepack`. It is not required for you to install as the binary is included in the project in the
+.yarn folder. But you do need to enable Corepack by running `corepack enable` in your terminal.
+
+You also need to be running the Docker Toolsuite.
+
+### Installation
+
+Perform the following steps to run the mapeditor directly on your own machine.
 
 1. Clone this repository.
 
@@ -77,7 +97,7 @@ Perform the following steps to run the mapeditor directly on your own machine. P
 
 4. Install all vue dependencies: `yarn`
 
-5. Run the Vue code compiler in watch mode: `yarn run watch`
+5. Run the Vue code compiler in watch mode: `yarn run watch`. If you get an 'ERR_OSSL_EVP_UNSUPPORTED' error, set the NODE_OPTIONS environment variable to '--openssl-legacy-provider' (without the quotes).
 
 6. Run the application: `python app.py`
 
@@ -98,6 +118,7 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 
 ## Releasing versions
+
 For a new release or deployment, commit all your changes and then use `npm version patch` to update patch 
 version `z` in version `x.y.z` (e.g. `21.4.1`). `x` is the year,
 `y` is the month and `z` is the patch number in that month, according to our current versioning scheme.
@@ -107,6 +128,33 @@ This command will update the version in package.json and git tag the current rel
 number and commit these changes in your local repository. Do a manual `git push && git push --tags` to send
 this to the remote repository.
 
+## Coding guidelines
+
+### Python
+
+We follow PEP8 coding guidelines. Use `flake8` to check your code.
+
+All Python code is found under src and extensions, except for the app.py in the root. This app.py is the entry point for
+the application. It is a Flask application, and it serves the frontend code.
+
+The app.py file is too big. We are working on splitting it up into smaller files. For this, we introduced the concept
+of extensions, which are classes that can be registered with the Flask application. The extensions are located in the
+`extensions` directory. The extensions are registered in the `app.py` file. They contain one or more request handlers.
+
+### JavaScript
+
+We use eslint and jshint to check our JavaScript code. Make sure to install the eslint and jshint plugins in your IDE
+and configure them to use the `.eslintrc` and `.jshintrc` files in the project root.
+
+Casing is camelCase for variables and functions, PascalCase for classes and constructors, and UPPER_CASE for constants.
+
+### Vue
+
+We use the Vue framework for the frontend. We use the Vue CLI to build the frontend code. The Vue code is located in the
+`vue` directory. The entry point is `vue/index.js`. The Vue components are located in the `vue/components` directory.
+
+There is no Vue router. The applicaiton was initially built with plain JavaScript, and Vue was added later. The Vue
+files are now built like a library, and we mount Vue applications through plain JavaScript code.
 
 ## License
 

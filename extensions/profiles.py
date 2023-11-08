@@ -11,10 +11,15 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import datetime
 
+import pytz
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
+from pyecore.ecore import EDate
+
+from esdl import esdl
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -26,6 +31,8 @@ import locale
 from io import StringIO
 from uuid import uuid4
 import src.settings as settings
+from utils.datetime_utils import parse_date
+from utils.utils import str2float
 
 logger = log.get_logger(__name__)
 
@@ -33,6 +40,11 @@ logger = log.get_logger(__name__)
 PROFILES_LIST = 'PROFILES'                  # To store profiles
 PROFILES_SETTINGS = 'PROFILES_SETTINGS'     # To store information about profiles servers, ...
 profiles = None
+
+
+def send_alert(message):
+    print(message)
+    # emit('alert', message, namespace='/esdl')
 
 
 class Profiles:
@@ -199,12 +211,22 @@ class Profiles:
 
     def process_csv_file(self, name, uuid, content):
         logger.debug("Processing csv file(s) (threaded): ".format(name))
+
+        tz_string = datetime.datetime.now().astimezone().tzname()
+
         try:
             logger.info("process CSV")
             measurement = name.split('.')[0]
 
-            csv_file = StringIO(content)
-            reader = csv.reader(csv_file, delimiter=';')
+            try:
+                csv_file = StringIO(content)
+                dialect = csv.Sniffer().sniff(csv_file.read(4096))
+                csv_file = StringIO(content)
+                reader = csv.reader(csv_file, dialect)
+            except:
+                # If format cannot be determined automatically, try ; as a default
+                csv_file = StringIO(content)
+                reader = csv.reader(csv_file, delimiter=';')
 
             column_names = next(reader)
             num_fields = len(column_names)
@@ -213,6 +235,7 @@ class Profiles:
             locale.setlocale(locale.LC_ALL, '')
             start_datetime = None
             end_datetime = ""
+            previous_datetime = None
 
             for row in reader:
                 fields = {}
@@ -220,17 +243,32 @@ class Profiles:
                     if row[i]:
                         fields[column_names[i]] = locale.atof(row[i])
 
-                dt = self.format_datetime(row[0])
+                dt = parse_date(row[0])
+                try:
+                    aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given (as asked in the UI)
+                except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
+                    aware_dt = dt
+
+                dt_string = aware_dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+
+                if previous_datetime:
+                    if previous_datetime == aware_dt:
+                        raise(Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
+                                        format(dt_string)))
+                previous_datetime = aware_dt
+
                 if not start_datetime:
-                    start_datetime = dt
+                    start_datetime = dt_string
                 else:
-                    end_datetime = dt
+                    end_datetime = dt_string
 
                 json_body.append({
                     "measurement": measurement,
-                    "time": dt,
+                    "time": dt_string,
                     "fields": fields
                 })
+
+            logger.info("CSV processing finished, now writing to database...")
 
             with self.flask_app.app_context():
                 profiles_settings = self.get_profiles_settings()
@@ -267,6 +305,8 @@ class Profiles:
                 username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
                 password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
             )
+
+            logger.info("Store profile information in settings")
 
             # Store profile information in settings
             group = self.csv_files[uuid]['group']
@@ -409,6 +449,12 @@ class Profiles:
     def get_profile_groups(self):
         user_group = get_session('user-group')
         dpg = copy.deepcopy(default_profile_groups)
+
+        # Make system profiles editable for the MapEditor admin role
+        mapeditor_role = get_session('user-mapeditor-role')
+        if 'mapeditor-admin' in mapeditor_role:
+            dpg['groups'][1]['readonly'] = False
+
         possible_groups = dpg["groups"]
         possible_groups.extend(self._create_group_profiles_for_projects(user_group))
         return possible_groups
@@ -470,7 +516,7 @@ class Profiles:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
                 if self.settings_storage.has_project(identifier, PROFILES_SETTINGS):
                     # add project profiles server settings if available
-                    # Note: this is a a specific implementation for a dict element with a list of servers. When
+                    # Note: this is a specific implementation for a dict element with a list of servers. When
                     #       additional settings must be added, this implementation must be extended.
                     project_profiles_settings = self.settings_storage.get_project(identifier, PROFILES_SETTINGS)
                     if 'profiles_servers' in project_profiles_settings:
@@ -494,6 +540,46 @@ class Profiles:
             }]
             self.settings_storage.set_system(PROFILES_SETTINGS, profiles_settings)
         return profiles_settings
+
+    def create_esdl_influxdb_profile(self, profile_uiname, multiplier):
+        profiles = self.get_profiles()['profiles']
+        esdl_profile = None
+        for pkey in profiles:
+            p = profiles[pkey]
+
+            if p['profile_uiname'] == profile_uiname:
+                esdl_profile = esdl.InfluxDBProfile()
+                esdl_profile.multiplier = str2float(multiplier)
+
+                esdl_profile.measurement = p['measurement']
+                esdl_profile.field = p['field']
+                if 'host' in p and p['host']:
+                    esdl_profile.host = p['host']
+                    if 'port' in p and p['port']:
+                        esdl_profile.port = int(p['port'])
+                else:
+                    esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                                        settings.profile_database_config['host']
+                    esdl_profile.port = int(settings.profile_database_config['port'])
+
+                esdl_profile.database = p['database']
+                esdl_profile.filters = settings.profile_database_config['filters']
+
+                if 'start_datetime' in p:
+                    dt = parse_date(p['start_datetime'])
+                    if dt:
+                        esdl_profile.startDate = EDate.from_string(str(dt))
+                    else:
+                        send_alert('Invalid datetime format')
+                if 'end_datetime' in p:
+                    dt = parse_date(p['end_datetime'])
+                    if dt:
+                        esdl_profile.endDate = EDate.from_string(str(dt))
+                    else:
+                        send_alert('Invalid datetime format')
+                break
+
+        return esdl_profile
 
 
 default_profile_groups = {

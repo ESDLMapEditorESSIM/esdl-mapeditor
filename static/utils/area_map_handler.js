@@ -225,7 +225,7 @@ function add_area_map_handlers(socket, map) {
         var event = e.originalEvent
         if (event.keyCode === 27) {
             // cancel drawing a connection if necessary
-            cancel_connection();
+            cancel_connection(e);
             map.contextmenu.hide();
             remove_tooltip(); // clear tooltips if they are sticky
             select_assets.deselect_all_assets(); //from select_asset.js

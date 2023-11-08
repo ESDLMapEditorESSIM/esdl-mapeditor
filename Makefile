@@ -4,10 +4,12 @@ all: requirements yarn
 pip-compile:
 	pip-compile
 	pip-compile requirements-uwsgi.in
+pip-compile-docker:
+	docker-compose -f docker/docker-compose.yml run --rm --entrypoint pip-compile mapeditor
 requirements:
 	pip install -r requirements.txt
 requirements-uwsgi:
-	pip install -r requirements-uwsgi.txt
+	pip install -r requirements.txt -r requirements-uwsgi.txt
 yarn:
 	yarn
 

@@ -79,7 +79,7 @@ class ESSIM_KPIs:
         if active_simulation:
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
-            es = pm.get_energy_system(active_es_id)
+            es = pm.get_energy_system_by_id(active_es_id)
             sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
             edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')

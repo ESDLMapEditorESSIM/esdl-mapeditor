@@ -7,7 +7,6 @@ import { download_binary_file_from_base64_str_with_type } from "../../utils/file
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
 import { defineProps } from 'vue'
-import { workflowPostData } from "./utils/api.js";
 import {checkAndRefreshAuthStatus} from "../../utils/status";
 
 const props = defineProps({

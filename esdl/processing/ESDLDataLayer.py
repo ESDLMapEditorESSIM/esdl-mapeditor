@@ -23,7 +23,7 @@ from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_project_manager, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.object_properties import get_object_properties_info
-from extensions.vue_backend.cost_information import get_cost_information
+from extensions.vue_backend.cost_information import get_cost_information, _create_cost_qau
 from extensions.vue_backend.table_data import get_table_data, set_table_data
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
@@ -157,9 +157,9 @@ class ESDLDataLayer:
     @staticmethod
     def get_area_object_list_of_type(type):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
         
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(active_es_id)
         area = es.instance[0].area
         object_list = list()
         for area_asset in area.eAllContents():
@@ -170,20 +170,20 @@ class ESDLDataLayer:
     @staticmethod
     def remove_control_strategy(asset):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
         cs = asset.controlStrategy
         if cs:
             services = cs.eContainer()
             services.service.remove(cs)
-            esh.remove_object_from_dict(active_es_id, cs, True)
+            pm.remove_object_from_dict(active_es_id, cs, True)
             asset.controlStrategy = None
 
     def get_services(self):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(active_es_id)
         services = es.services
         if not services:
             services = esdl.Services(id=str(uuid4()))
@@ -311,8 +311,8 @@ class ESDLDataLayer:
     def get_esdl_objects_of_type(self, asset_type):
         asset_list = list()
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
+        pm = get_project_manager()
+        es = pm.get_energy_system_by_id(active_es_id)
 
         # module = importlib.import_module('esdl.esdl')
         # esdl_asset_class = getattr(module, asset_type)
@@ -451,11 +451,11 @@ class ESDLDataLayer:
 
     def get_environmental_profiles(self):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
         result = list()
 
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(active_es_id)
         esi = es.energySystemInformation
 
         for x in esdl.EnvironmentalProfiles.eClass.eAllStructuralFeatures():
@@ -505,9 +505,9 @@ class ESDLDataLayer:
 
     def update_environmental_profiles(self, action, profile_info):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(active_es_id)
         esi = es.energySystemInformation
 
         print(profile_info)
@@ -518,17 +518,17 @@ class ESDLDataLayer:
                     if profile_info['name'] == x.name:
                         if not esi:
                             esi = es.energySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
-                            esh.add_object_to_dict(active_es_id, esi)
+                            pm.add_object_to_dict(active_es_id, esi)
                         if not esi.environmentalProfiles:
                             esi.environmentalProfiles = esdl.EnvironmentalProfiles(id=str(uuid4()))
-                            esh.add_object_to_dict(active_es_id, esi.environmentalProfiles)
+                            pm.add_object_to_dict(active_es_id, esi.environmentalProfiles)
                         env_profiles = esi.environmentalProfiles
 
                         profile = env_profiles.eGet(x)
                         if not profile:
                             profile = instantiate_type(profile_info['type'])
                             profile.id = str(uuid4())
-                            esh.add_object_to_dict(active_es_id, profile)
+                            pm.add_object_to_dict(active_es_id, profile)
                         else:
                             if type(profile) != profile_info['type']:
                                 profile = instantiate_type(profile_info['type'])
@@ -557,10 +557,10 @@ class ESDLDataLayer:
                         # Create a QuantityAndUnit instance and set the unit based on the information received
                         if 'unit' in profile_info:
                             profile.profileQuantityAndUnit = build_qau_from_unit_string(profile_info['unit'])
-                            esh.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
+                            pm.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
                         elif 'default_unit' in profile_info:
                             profile.profileQuantityAndUnit = build_qau_from_unit_string(profile_info['default_unit'])
-                            esh.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
+                            pm.add_object_to_dict(active_es_id, profile.profileQuantityAndUnit)
 
                         # Set the physical quantity based on the name of the profile reference
                         self.update_quantity_in_qau(profile.profileQuantityAndUnit, x.name)
@@ -638,10 +638,10 @@ class ESDLDataLayer:
     @staticmethod
     def get_carrier(carr_id):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
         response = CarrierMessage()
-        carr = esh.get_by_id(active_es_id, carr_id)
+        carr = pm.get_by_id(active_es_id, carr_id)
         if carr:
             response.id = carr_id
             response.name = carr.name
@@ -660,6 +660,32 @@ class ESDLDataLayer:
             if isinstance(carr, esdl.HeatCommodity):
                 response.supply_temperature = carr.supplyTemperature
                 response.return_temperature = carr.returnTemperature
+
+            if carr.cost:
+                if isinstance(carr.cost, esdl.SingleValue):
+                    response.cost_sort = "SingleValue"
+                    response.cost_value = carr.cost.value
+                    if carr.cost.profileQuantityAndUnit:
+                        response.cost_unit = unit_to_string(carr.cost.profileQuantityAndUnit)
+                elif isinstance(carr.cost, esdl.InfluxDBProfile):
+                    response.cost_sort = "Profile"
+
+                    database = carr.cost.database
+                    measurement = carr.cost.measurement
+                    field = carr.cost.field
+
+                    profile_name = None
+                    profiles = Profiles.get_instance().get_profiles()['profiles']
+                    for pkey in profiles:
+                        p = profiles[pkey]
+                        if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
+                            profile_name = p['profile_uiname']
+                    if profile_name == None:
+                        profile_name = field
+
+                    response.cost_profile = profile_name
+                    if carr.cost.profileQuantityAndUnit:
+                        response.cost_unit = unit_to_string(carr.cost.profileQuantityAndUnit)
 
         return response
 
@@ -703,6 +729,13 @@ class ESDLDataLayer:
                 carrier.supplyTemperature = float(carrier_info.supply_temperature)
             if carrier_info.return_temperature is not None:
                 carrier.returnTemperature = float(carrier_info.return_temperature)
+
+        if carrier_info.cost_sort == 'SingleValue':
+            carrier.cost = esdl.SingleValue(id=str(uuid4()), value=float(carrier_info.cost_value))
+            carrier.cost.profileQuantityAndUnit = _create_cost_qau(carrier_info.cost_unit)
+        elif carrier_info.cost_sort == 'Profile':
+            carrier.cost = Profiles.get_instance().create_esdl_influxdb_profile(carrier_info.cost_profile, 1)
+            carrier.cost.profileQuantityAndUnit = _create_cost_qau(carrier_info.cost_unit)
 
         if add_carrier:
             esi = es.energySystemInformation

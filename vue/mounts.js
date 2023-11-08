@@ -11,6 +11,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Checkbox,
     Col,
     Collapse,
     DatePicker,
@@ -24,11 +25,13 @@ import {
     Row,
     Select,
     Space,
+    Spin,
     Switch,
     Table,
     Transfer,
     Tree,
     Timeline,
+    Menu,
     Upload
 } from 'ant-design-vue';
 import MapEditorDialog from "../static/utils/MapEditorDialog";
@@ -65,6 +68,7 @@ export function mountApp(component, elementSelector) {
     app.use(Button);
     app.use(Breadcrumb);
     app.use(Card);
+    app.use(Checkbox);
     app.use(Col);
     app.use(Radio);
     app.use(Collapse);
@@ -78,11 +82,13 @@ export function mountApp(component, elementSelector) {
     app.use(Row);
     app.use(Select);
     app.use(Space);
+    app.use(Spin);
     app.use(Switch);
     app.use(Table);
     app.use(Timeline);
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
+    app.use(Menu);
     app.mount(elementSelector);
 }

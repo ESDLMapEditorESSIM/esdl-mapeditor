@@ -1,33 +1,34 @@
 Flask==2.1.3
-Flask-Executor==0.9.3
+Flask-Executor==1.0.0
 Flask-SocketIO==5.3.4
-Flask-Session==0.3.2
+Flask-Session==0.4.1
 flask-oidc==1.4.0
 geomet==0.2.1.post1
-geojson==2.5.0
+geojson
 influxdb==5.3.0
-restrictedpython==6.2  # fix for dependency issue in pyecore, as restrictedpython==5.2 is not available anymore :-|
-pyecore==0.13.1
+openpyxl==3.1.2
+pyecore==0.12.1
+# PyJWT cannot be upgraded to >= 2 because of flask-oidc.
 PyJWT==1.7.1
 pymongo==3.11.0
+pandas
 pyproj==3.6.0
 PyShp==2.1.0
-python-dotenv==0.14.0
-requests==2.24.0
+python-dotenv
+requests
 shapely==2.0.1
-shapely-geojson==0.0.1
 si-prefix==1.2.2
-xmldiff==2.4
-# uWSGI only needed for production, not development and does not work on Windows machines
-#uWSGI==2.0.19.1
+xmldiff
+
+# Pin to keep things working.
+Werkzeug==2.3.7
 
 # RabbitMQ things
 pika
-kombu
 
 # Logging
-colorama==0.4.4
-structlog==21.1.0
+colorama
+structlog
 
 # Development
 pip-tools

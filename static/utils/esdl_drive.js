@@ -88,8 +88,8 @@ class ESDLDrive {
                     'multiple': false,
                     'data' : function (node, callback) {
                             //console.log("Getting data ", node)
-                            socket.emit('cdo_browse', {'operation': 'get_node', 'id': node.id, 'depth': 3}, function(data) {
-                                //console.log(data)
+                            window.socket.emit('cdo_browse', {'operation': 'get_node', 'id': node.id, 'depth': 3}, function(data) {
+                                console.log(data)
                                 if (data.error !== undefined) {
                                     alert(data.error)
                                 } else {

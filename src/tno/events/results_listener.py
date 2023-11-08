@@ -18,15 +18,11 @@ from pika.exchange_type import ExchangeType
 from pika.spec import Basic
 
 from threading import Thread
-from socketio.kombu_manager import KombuManager
 
-from src.tno.envsettings import EnvSettings
-from src.log import get_logger
+from src import EnvSettings, get_logger, socketio
 
 from src.tno.events.config import AMQP_URL
 from src.tno.events.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
-
-external_sio = KombuManager(AMQP_URL, write_only=True)
 
 logger = get_logger(__name__)
 
@@ -40,7 +36,7 @@ def on_result_message(channel, basic_deliver: Basic.Deliver, properties: BasicPr
     del message["user_email"]
     # TODO: Send message to only the user.
     exclude_sessions = []
-    external_sio.emit(
+    socketio.emit(
         "results.asset.positioning",
         message,
         skip_sid=exclude_sessions,

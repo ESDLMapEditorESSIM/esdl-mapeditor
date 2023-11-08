@@ -501,6 +501,10 @@ def add_asset_to_asset_list(asset_list, asset):
             {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list,
              'carrier': p_carr_id})
 
+    # Collect extra attributes that might be required to draw specific icons, ...
+    extra_attributes = dict()
+    extra_attributes['assetType'] = asset.assetType
+
     state = asset_state_to_ui(asset)
     geom = asset.geometry
     if geom:
@@ -512,7 +516,7 @@ def add_asset_to_asset_list(asset_list, asset):
             attrs = get_tooltip_asset_attrs(asset, 'marker')
             add_spatial_attributes(asset, attrs)
             asset_list.append(['point', 'asset', asset.name, asset.id, type(asset).__name__, [lat, lon],
-                               attrs, state, port_list, capability_type])
+                               attrs, state, port_list, capability_type, extra_attributes])
         if isinstance(geom, esdl.Line):
             coords = []
             for point in geom.point:
@@ -529,7 +533,7 @@ def add_asset_to_asset_list(asset_list, asset):
             add_spatial_attributes(asset, attrs)
             asset_list.append(
                 ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, attrs, state,
-                 port_list, capability_type])
+                 port_list, capability_type, extra_attributes])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -551,17 +555,24 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
     if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
         geometry = building.geometry
         bld_KPIs = create_building_KPIs(building)
+
+        # Collect extra attributes that might be required to draw specific icons, ...
+        extra_attributes = dict()
+        extra_attributes['assetType'] = building.assetType
+
         if geometry:
             if isinstance(geometry, esdl.Point):
                 building_list.append(
-                    ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon], building_has_assets, bld_KPIs])
+                    ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon],
+                     building_has_assets, bld_KPIs, extra_attributes])
                 bld_coord = (geometry.lat, geometry.lon)
             elif isinstance(geometry, esdl.Polygon):
                 coords = ESDLGeometry.parse_esdl_subpolygon(building.geometry.exterior, False)  # [lon, lat]
                 coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
                 # building_list.append(['polygon', building.name, building.id, type(building).__name__, coords, building_has_assets])
                 boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
-                building_list.append(['polygon', building.name, building.id, type(building).__name__, boundary['coordinates'], building_has_assets, bld_KPIs])
+                building_list.append(['polygon', building.name, building.id, type(building).__name__,
+                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes])
                 # bld_coord = coords
                 bld_coord = ESDLGeometry.calculate_polygon_center(geometry)
     elif building.containingBuilding:       # BuildingUnit
@@ -599,8 +610,10 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
                     state = asset_state_to_ui(basset)
                     if bld_editor:
                         tooltip_asset_attrs = get_tooltip_asset_attrs(basset, 'marker')
+                        extra_attributes = dict()
+                        extra_attributes['assetType'] = basset.assetType
                         asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon],
-                                           tooltip_asset_attrs, state, port_list, capability_type])
+                                           tooltip_asset_attrs, state, port_list, capability_type, extra_attributes])
                 else:
                     send_alert("Assets within buildings with geometry other than esdl.Point are not supported")
 
@@ -756,6 +769,39 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
+def find_area_location_based(pm, active_es_id, geometry):
+    shape_dictionary = get_session('shape_dictionary')
+
+    obj_geometry_shape = Shape.create(geometry)
+    areas_that_contain_obj = list()
+
+    for key in shape_dictionary.keys():
+        area_shp = shape_dictionary[key]
+        if area_shp.shape.contains(obj_geometry_shape.shape):
+            areas_that_contain_obj.append(key)
+
+    if len(areas_that_contain_obj) == 0:
+        es = pm.get_energy_system_by_id(es_id=active_es_id)
+        return es.instance[0].area.id   # If no area is found, return the id of the top level area
+    elif len(areas_that_contain_obj) == 1:
+        return areas_that_contain_obj[0]
+    else:
+        # Find area that is 'lowest' in the area hierarchy
+        lowest_level = 0
+        lowest_area_id = None
+        for ar_id in areas_that_contain_obj:
+            area = pm.get_by_id(active_es_id, ar_id)
+            area_level = 1
+            while isinstance(area.eContainer(), esdl.Area):
+                area_level += 1
+                area = area.eContainer()
+            if area_level > lowest_level:
+                lowest_level = area_level
+                lowest_area_id = ar_id
+
+        return lowest_area_id
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Get building information
 # ---------------------------------------------------------------------------------------------------------------------
@@ -766,14 +812,14 @@ def get_building_information(building):
     conn_list = []
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
-    process_building(esh, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
+    process_building(pm, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
     return {
         "id": building.id,
         "asset_list": asset_list,
         "building_list": building_list,
-        "aera_bld_list": bld_list,
+        "area_bld_list": bld_list,
         "conn_list": conn_list
     }
 
@@ -783,7 +829,7 @@ def get_building_information(building):
 # ---------------------------------------------------------------------------------------------------------------------
 def get_building_connections(building):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
     conn_list = []
 
@@ -793,7 +839,7 @@ def get_building_connections(building):
                 conn_to = p.connectedTo
                 if conn_to:
                     for pc in conn_to:
-                        pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, active_es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset['asset'].containingBuilding:
@@ -818,7 +864,7 @@ def get_building_connections(building):
 @executor.job
 def call_process_energy_system(force_update_es_id=None, zoom=True):
     # emit('clear_ui')
-    print("Processing energysystems in esh")
+    print("Processing energysystems contained in Project manager")
     print("active_es_id at start: {}".format(get_session('active_es_id')))
 
     try:

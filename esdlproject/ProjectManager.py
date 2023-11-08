@@ -481,6 +481,9 @@ class ProjectManager:
             owner: EObject = resource.resolve(change.ownerFragment)
             owner.delete()
 
+    def get_energy_system(self, variant: Variant) -> esdl.EnergySystem:
+        return self.get_variant_snapshot(variant)
+
     def get_variant_snapshot(self, variant: Variant) -> esdl.EnergySystem:
         """
         Saves the current active energy system as the variant snapshot for this variant by saving this
@@ -766,9 +769,13 @@ class ProjectManager:
                 for line in traceback.format_stack():
                     print(line.strip())
                 self.debug()
-    def remove_object_from_dict(self, es_id: str, eobject: EObject):
+    def remove_object_from_dict(self, es_id: str, eobject: EObject, recursive=False):
+        if recursive:
+            for obj in eobject.eAllContents():
+                self.remove_object_from_dict(es_id, obj)
         es = self.get_energy_system_by_id(es_id)
-        del es.eResource.uuid_dict[eobject.id]
+        if hasattr(eobject, 'id') and eobject.id is not None:
+            del es.eResource.uuid_dict[eobject.id]
 
     def get_by_id(self, es_id: str, object_id: str):
         """

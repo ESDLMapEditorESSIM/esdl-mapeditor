@@ -16,22 +16,62 @@
 
 <template>
   <div v-if="currentWorkflow" id="app">
-    <template v-if="currentWorkflow.hasPreviousStep()">
-      <a-button
-        type="link"
-        @click="goToPreviousStep()"
-      >
-        <i class="fas fa-long-arrow-alt-left small-icon" />
-      </a-button>
+    <div style="display: inline-block">
+      <template v-if="currentWorkflow.hasPreviousStep()">
+        <a-button
+          type="link"
+          @click="goToPreviousStep()"
+        >
+          <i class="fas fa-long-arrow-alt-left small-icon" />
+        </a-button>
+      </template>
 
+      <a-dropdown>
+        <a class="ant-dropdown-link" @click.prevent>
+          <a-button type="text" @click.prevent>
+            <template #icon>
+              <MenuOutlined />
+            </template>
+          </a-button>
+        </a>
+        <template #overlay>
+          <a-menu>
+            <a-menu-item v-if="currentWorkflow.name" disabled><strong>Name: {{ currentWorkflow.name }}</strong></a-menu-item>
+            <a-menu-item key="setname" disabled>Set workflow name</a-menu-item>
+            <a-menu-item key="save" @click="confirmPersistWorkflow">Save</a-menu-item>
+            <a-sub-menu key="load" title="Load workflow">
+              <a-menu-item
+                v-for="workflow in savedWorkflows"
+                :key="workflow.uuid"
+                @click="activatePersistedWorkflow(workflow.uuid)"
+              >
+                {{ workflow.name }}
+              </a-menu-item>
+            </a-sub-menu>
+            <a-sub-menu key="delete" title="Delete workflow">
+              <a-menu-item
+                v-for="workflow in savedWorkflows"
+                :key="workflow.uuid"
+                @click="deletePersistedWorkflow(workflow.uuid)"
+              >
+                {{ workflow.name }}
+              </a-menu-item>
+            </a-sub-menu>
+          </a-menu>
+        </template>
+      </a-dropdown>
+      <span style="color: var(--gray); vertical-align: sub; margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
+    </div>
+
+    <template v-if="currentWorkflow.hasPreviousStep()">
       <a-breadcrumb
         separator=">"
       >
         <a-breadcrumb-item v-for="prevStep in currentWorkflow.prevWorkflowSteps" :key="prevStep.id">{{ prevStep.name }}</a-breadcrumb-item>
       </a-breadcrumb>
-
-      <hr>
     </template>
+
+    <hr>
 
     <h1>{{ currentWorkflow.service.name }}</h1>
     <h3>{{ currentWorkflow.workflowStep.name }}</h3>
@@ -79,6 +119,12 @@
       "
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowText
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.TEXT
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowCustomComponent
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
@@ -92,29 +138,72 @@
     <p v-else>
       Unknown workflow step: {{ currentWorkflow.workflowStep.type }}.
       <br>
-      <a-button type="dashed" @click="goToStep(0)"> Start over. </a-button>
+      <a-button type="dashed" @click="goToFirstStep()"> Start over. </a-button>
     </p>
   </div>
 </template>
 
 <script>
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
-import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
-import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
-import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
-import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
-import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
-import {default as WorkflowHttpPost} from "../components/workflow/WorkflowHttpPost";
-import {default as WorkflowProgress} from "../components/workflow/WorkflowProgress";
-import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
-import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
+import {MenuOutlined} from "@ant-design/icons-vue";
+import {MessageNames, PubSubManager} from "../bridge";
+import {useEsdlLayers} from "../composables/esdlLayers.js";
+import {ref} from "vue";
+import WorkflowChoice from "../components/workflow/WorkflowChoice.vue";
+import WorkflowCustomComponent from "../components/workflow/WorkflowCustomComponent.vue";
+import WorkflowJsonForm from "../components/workflow/WorkflowJsonForm.vue";
+import WorkflowText from "../components/workflow/WorkflowText.vue";
+import WorkflowProgress from "../components/workflow/WorkflowProgress.vue";
+import WorkflowHttpPost from "../components/workflow/WorkflowHttpPost.vue";
+import WorkflowUploadFile from "../components/workflow/WorkflowUploadFile.vue";
+import WorkflowDownloadFile from "../components/workflow/WorkflowDownloadFile.vue";
+import WorkflowEsdlService from "../components/workflow/WorkflowEsdlService.vue";
+import WorkflowSelectQuery from "../components/workflow/WorkflowSelectQuery.vue";
+
+const { getActiveEsdlLayerId } = useEsdlLayers();
 
 export default {
+  components: {
+    WorkflowSelectQuery,
+    WorkflowEsdlService,
+    WorkflowDownloadFile,
+    WorkflowUploadFile,
+    WorkflowHttpPost,
+    WorkflowProgress, WorkflowText, WorkflowJsonForm, WorkflowCustomComponent, WorkflowChoice, MenuOutlined},
   setup() {
-    const { currentWorkflow, goToStep, goToPreviousStep } = useWorkflow();
+    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+
+    const activeEnergySystemTitle = ref("Please select an energy system");
+    try {
+      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+    } catch (e) {
+      // Skip.
+    }
+
+    PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+    });
+
+    function confirmPersistWorkflow() {
+      let workflowName = currentWorkflow.value.name;
+      if (!workflowName) {
+        workflowName = prompt("Please enter a workflow name")
+      }
+      if (workflowName) {
+        currentWorkflow.value.setName(workflowName);
+        currentWorkflow.value.setPersistence(true);
+        persistWorkflow(true);
+      }
+    }
+
+    loadSavedWorkflows();
+
     return {
+      activeEnergySystemTitle,
+      MenuOutlined,
+      confirmPersistWorkflow,
       currentWorkflow,
-      goToStep,
+      goToFirstStep,
       goToPreviousStep,
       WorkflowStepTypes,
       WorkflowUploadFile,
@@ -124,8 +213,12 @@ export default {
       WorkflowSelectQuery,
       WorkflowEsdlService,
       WorkflowProgress,
+      WorkflowText,
       WorkflowDownloadFile,
       WorkflowJsonForm,
+      savedWorkflows,
+      activatePersistedWorkflow,
+      deletePersistedWorkflow,
     };
   },
 };
