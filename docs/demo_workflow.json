@@ -2,7 +2,8 @@
   "id": "9951c271-f9b6-4c4e-873f-b309dff19e05",
   "name": "Demo workflow",
   "explanation": "Demo workflow for conditional next steps",
-  "type": "vueworkflow",
+  "type": "workflow",
+  "location": "services",
   "workflow": [
     {
       "name": "Begin",

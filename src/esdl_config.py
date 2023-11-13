@@ -365,7 +365,7 @@ esdl_config = {
                 "name": "Business Park Workflow",
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
-                "restartable": True,
+                "resumable": True,
                 "workflow": [
                     {
                         # 0

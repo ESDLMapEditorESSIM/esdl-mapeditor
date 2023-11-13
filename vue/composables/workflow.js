@@ -65,8 +65,8 @@ export function useWorkflow() {
      * @param {*} service_index
      * @param {*} service
      */
-    const startNewWorkflow = (service_index, service) => {
-        currentWorkflow.value = new Workflow(service_index, service);
+    const startNewWorkflow = (service_index, service, state) => {
+        currentWorkflow.value = new Workflow(service_index, service, state);
         return currentWorkflow;
     }
 
@@ -125,7 +125,7 @@ export function useWorkflow() {
                 workflowObj.name = parsedWorkflow.name;
                 workflowObj.persisted = parsedWorkflow.persisted;
                 workflowObj.drive_paths = parsedWorkflow.drive_paths;
-                workflowObj.restartable = parsedWorkflow.restartable;
+                workflowObj.resumable = parsedWorkflow.resumable;
                 currentWorkflow.value = workflowObj;
             }
         });
@@ -231,17 +231,20 @@ export function useWorkflow() {
 }
 
 export class Workflow {
-    constructor(service_index, service) {
+    constructor(service_index, service, initialState) {
         // The array index in the list sent from the server.
         this.uuid = uuidv4();
         this.service_index = service_index;
         this.service = service;
         this.workflowStep = service.workflow[0];
         this.prevWorkflowSteps = [];
-        this.state = {};
+        if (!initialState) {
+            initialState = {};
+        }
+        this.state = initialState;
         this.name = null;
         this.persisted = false;
-        this.restartable = service.restartable || false;
+        this.resumable = service.resumable || false;
         this.drive_paths = [];
     }
 
