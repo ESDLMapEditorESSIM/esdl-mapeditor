@@ -17,8 +17,9 @@
 <template>
   <div id="maps_view">
     <h3>Visible layers</h3>
-    <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+    <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
                  :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                 :check-call-back="checkCallBack"
     />
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
@@ -79,14 +80,32 @@ const eventHandlersByName = [{
   handler: function (e, data) {
     updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
   }
+}, {
+  eventName: 'hover_node.jstree',
+  handler: function (e, data, treeElement) {
+    console.log('hover')
+    treeElement.attr("title", data.node.text);
+  },
 }];
+
+// eslint-disable-next-line no-unused-vars
+const checkCallBack = (operation, node, node_parent, node_position, more) => {
+  if (operation === 'move_node') {
+    if (node.type !== 'visible_layer') {
+      return false;
+    }
+  } else if (operation === 'copy_node') {
+    return false;
+  }
+  return true;
+};
 
 </script>
 
 <style lang="scss">
 #maps_view {
   padding: 8px 5px 8px 2px;
-  overflow: scroll;
+  //overflow: scroll;
   //resize: horizontal;
   width: 100%;
 

@@ -21,7 +21,7 @@
                    :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
                    :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
-      <VisibleView />
+      <VisibleLayersView />
     </div>
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
@@ -36,7 +36,7 @@ import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
 import {useBaseLayers,} from "../composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
-import VisibleView from "./VisibleLayersView.vue";
+import VisibleLayersView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "../composables/wmsLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
@@ -48,7 +48,8 @@ const {
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
-  moveWmsItem
+  moveWmsItem,
+  copyWmsItem
 } = useWmsLayers();
 
 
@@ -60,7 +61,6 @@ const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
-  console.log(getWmsLayerList())
   if (getWmsLayerList()) {
     let wmsGroupsJstreeData = [];
     for (const [key, rootGroup] of Object.entries(getRootGroupsWithChildren())) {
@@ -131,10 +131,8 @@ const getChildrenOfGroup = (layerGroup, foundChildIds) => {
 }
 
 const addTreeItem = (items, item, itemId, type, children) => {
-  let a_attr = {"class": "no_checkbox"};
-  if (type === "wms_layer") {
-    a_attr = {"class": item.active ? "bold" : ""};
-  }
+  const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
+
   items.push({
     id: itemId,
     text: item.description,
@@ -168,14 +166,12 @@ class LayerFolderTreeSpec {
         'label': 'Add folder',
         'icon': 'fas fa-plus',
         'action': function () {
-          console.log(node)
           let project_name;
           if (Object.hasOwn(node.original, 'project_name')) {
             project_name = node.original.project_name;
           } else {
             project_name = node.original.setting_type;
           }
-          console.log(project_name)
           addWmsLayerGroup(node.id, node.original.setting_type, project_name);
         },
         '_disabled': node.original.readonly
@@ -305,6 +301,11 @@ const eventHandlersByName = [{
     moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
   },
 }, {
+  eventName: 'copy_node.jstree',
+  handler: function (e, data) {
+    copyWmsItem(data.original.id, data.node.parents[0], data.position);
+  },
+}, {
   eventName: 'create_node.jstree',
   handler: function (e, data) {
     getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
@@ -315,13 +316,9 @@ const eventHandlersByName = [{
   },
 }];
 
-// $(document).on('dnd_start.vakata', function (e, data, tree, dd) {
-//   data.event.originalEvent.preventDefault();
-// });
-
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
-  if (operation === 'move_node') {
+  if (operation === 'move_node' || operation === 'copy_node') {
     const old_root_folder_id = node.parents[node.parents.length - 2];
     let new_root_folder_id;
     if (node_parent.parents.length > 1) {
@@ -329,20 +326,25 @@ const checkCallBack = (operation, node, node_parent, node_position, more) => {
     } else {
       new_root_folder_id = node_parent.id;
     }
-    if (old_root_folder_id === new_root_folder_id) { // always allow within root folder
-      return true;
-    } else if (new_root_folder_id === '#' || new_root_folder_id === 'group_base_layers'
-        || new_root_folder_id === 'standard_layers') { // don't move into 'root'', 'Base layers' and 'Standard layers'
+    if (node.type === 'visible_layer' || new_root_folder_id === '#' || new_root_folder_id === 'group_base_layers'
+        || new_root_folder_id === 'standard_layers') {
+      // don't move from visible layers or into 'root', 'Base layers' or 'Standard layers'
       return false;
+    }
+    if (operation === 'move_node') { // don't move read only
+      if (node.original.readonly) {
+        return false;
+      }
     }
   }
   return true;
 };
 
+// make sure not to drag root folders
+
 // eslint-disable-next-line no-unused-vars
-const dnbIsDraggable = (node) => {
-  return !node[0].original.readonly && node[0].type !== "visible_layer" &&
-      node[0].type !== "base_layer";
+const dnbIsDraggable = (nodes) => {
+  return nodes[0].type !== "base_layer" && nodes[0].parent !== "#";
 };
 
 function getBaseLayersControlTreeData() {
@@ -383,9 +385,11 @@ function getBaseLayersControlTreeData() {
 <style lang="scss">
 #layers_view {
   padding: 8px 5px 8px 2px;
-  overflow: scroll;
-  //resize: horizontal;
-  width: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  resize: horizontal;
+  width: 300px;
+  height: 100%;
 
   .text-only {
     padding-left: 8px;

@@ -1,3 +1,19 @@
+/*
+ * This work is based on original code developed and copyrighted by TNO 2020.
+ * Subsequent contributions are licensed to you by the developers of such code and are
+ * made available to the Project under one or several contributor license agreements.
+ *
+ * This work is licensed to you under the Apache License, Version 2.0.
+ * You may obtain a copy of the license at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Contributors:
+ *     TNO         - Initial implementation
+ * Manager:
+ *     TNO
+ */
+
 /**
  * A composable for managing items currently visible.
  *
@@ -15,7 +31,7 @@ const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
 
-const globalWmsLayerList = ref([]);
+const globalWmsLayerList = ref(null);
 // retrieve wms layers info
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
@@ -25,14 +41,32 @@ const globalWmsLayerList = ref([]);
 
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     console.log('getting wms layer list');
-    console.log(wmsLayerList)
+    console.log(wmsLayerList);
+
+    if (globalWmsLayerList.value !== null) {
+        for (const layerId in globalWmsLayerList.value['layers']) {
+            if (layerId in wmsLayerList['layers']) {
+                // make sure not to lose the map reference
+                wmsLayerList['layers'][layerId].layer_ref = globalWmsLayerList.value['layers'][layerId].layer_ref;
+            } else {
+                // hide layer not present anymore
+                removeLayerFromMapAndVisibleLayers(layerId);
+            }
+        }
+    }
+
     globalWmsLayerList.value = wmsLayerList;
     for (const key in globalWmsLayerList.value['layers']) {
         const layer_info = globalWmsLayerList.value['layers'][key];
         layer_info.id = key;
-        layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
-            layers: layer_info.layer_name, format: 'image/png', transparent: true, attribution: layer_info.attribution
-        });
+        if (!layer_info.layer_ref) {
+            layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+                layers: layer_info.layer_name,
+                format: 'image/png',
+                transparent: true,
+                attribution: layer_info.attribution
+            });
+        }
         layer_info.visible = layerIsVisible(layer_info.id);
         if (visibleId !== undefined) {
             if (layer_info.id === visibleId) {
@@ -77,7 +111,7 @@ export function useWmsLayers() {
     };
 
     function updateLayer(layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) {
-        hideWmsLayer(layerId);
+        removeLayerFromMapAndVisibleLayers(layerId);
         socket.emit('save_wms_layer', {
             id: layerId, lyr_info: {
                 description: layerDescr,
@@ -103,11 +137,7 @@ export function useWmsLayers() {
     };
 
     const hideWmsLayer = (layerId) => {
-        map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
-        if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
-            removeWmsLegend();
-        }
-        removeFromVisibleLayerList(layerId);
+       removeLayerFromMapAndVisibleLayers(layerId);
     };
 
     const removeWmsLayer = (layerId, parentId) => {
@@ -150,6 +180,13 @@ export function useWmsLayers() {
             item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
         });
     }
+    const copyWmsItem = (itemId, newParentId, position) => {
+        socket.emit('copy_wms_item', {
+            item_id: itemId,
+            new_parent_id: newParentId,
+            position: position
+        }, updateGlobalWmsLayerList);
+    }
 
     return {
         getWmsLayerList,
@@ -161,9 +198,18 @@ export function useWmsLayers() {
         renameWmsLayerGroup,
         addWmsLayerGroup,
         removeWmsLayerGroup,
-        moveWmsItem
+        moveWmsItem,
+        copyWmsItem
     };
 }
+
+const removeLayerFromMapAndVisibleLayers = (layerId) => {
+    map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+    if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
+        removeWmsLegend();
+    }
+    removeFromVisibleLayerList(layerId);
+};
 
 const createWmsLayerLegend = (url) => {
     let legend_div = L.DomUtil.create('div', 'info legend');
