@@ -32,12 +32,56 @@
             "programming_languages": {
               "description": "How many programming languages do you know?",
               "type": "integer"
+            },
+            "favorite_language": {
+              "description": "What is your favorite programming language?",
+              "type": "string",
+              "enum": [
+                "Python",
+                "JavaScript",
+                "Java",
+                "C#",
+                "Ruby",
+                "Other"
+              ]
+            },
+            "is_student": {
+              "description": "Are you currently a student?",
+              "type": "boolean",
+              "title": "Student"
             }
           }
         }
       },
       "next_step": {
         "if": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "field": "is_student",
+                "operator": "eq",
+                "value": true
+              }
+            ],
+            "then": 4
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "field": "favorite_language",
+                "operator": "neq",
+                "value": "Python"
+              },
+              {
+                "field": "age",
+                "operator": "gte",
+                "value": 30
+              }
+            ],
+            "then": 5
+          },
           {
             "condition": "OR",
             "rules": [
@@ -69,10 +113,26 @@
               }
             ],
             "then": 3
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "field": "age",
+                "operator": "gte",
+                "value": 18
+              },
+              {
+                "field": "age",
+                "operator": "lt",
+                "value": 30
+              }
+            ],
+            "then": 3
           }
         ],
         "else": {
-          "then": 4
+          "then": 6
         }
       }
     },
@@ -85,6 +145,16 @@
       "name": "Junior",
       "type": "text",
       "text": "Keep it up!"
+    },
+    {
+      "name": "Student",
+      "type": "text",
+      "text": "You are a student!"
+    },
+    {
+      "name": "Hmmm...",
+      "type": "text",
+      "text": "You are old enough to know Python is a lot nicer!"
     },
     {
       "name": "Else",

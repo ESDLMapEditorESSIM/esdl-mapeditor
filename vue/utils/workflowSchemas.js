@@ -22,7 +22,7 @@ const nextStepsSchema = {
                             "field": { "type": "string" },
                             "operator": {
                                 "type": "string",
-                                "enum": ["eq", "gt", "lt", "gte", "lte"]
+                                "enum": ["eq", "gt", "lt", "gte", "lte", "neq"]
                             },
                             "value": {}
                         },

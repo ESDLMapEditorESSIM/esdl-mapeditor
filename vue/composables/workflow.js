@@ -29,6 +29,7 @@ function evaluateRule(rule, data) {
     const { field, operator, value } = rule;
     switch (operator) {
         case 'eq': return data[field] === value;
+        case 'neq': return data[field] !== value;
         case 'gt': return data[field] > value;
         case 'lt': return data[field] < value;
         case 'gte': return data[field] >= value;
