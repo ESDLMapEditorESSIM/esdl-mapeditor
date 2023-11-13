@@ -15,7 +15,7 @@
   -->
 
 <template>
-  <div id="maps_view">
+  <div id="visible_layers_view">
     <h3>Visible layers</h3>
     <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
                  :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
@@ -103,12 +103,7 @@ const checkCallBack = (operation, node, node_parent, node_position, more) => {
 </script>
 
 <style lang="scss">
-#maps_view {
-  padding: 8px 5px 8px 2px;
-  //overflow: scroll;
-  //resize: horizontal;
-  width: 100%;
-
+#visible_layers_view {
   .text-only {
     padding-left: 8px;
   }

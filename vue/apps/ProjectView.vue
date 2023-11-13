@@ -372,9 +372,8 @@ function get_base_layers_control_tree_data() {
 <style lang="scss">
 #project_view {
   padding: 8px 5px 8px 2px;
-  overflow: scroll;
-  //resize: horizontal;
-  width: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
 
   .text-only {
     padding-left: 8px;

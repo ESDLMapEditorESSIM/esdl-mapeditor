@@ -81,9 +81,9 @@ onBeforeMount(() => {
     });
     isNewLayer.value = true;
     wmsLayer.value = {
-      description: 'AardwarmteKrijtJura',
-      url: 'https://rvo.b3p.nl/geoserver/WarmteAtlas/wms?',
-      layerName: 'AardwarmteKrijtJura',
+      description: '',
+      url: '',
+      layerName: '',
       legendUrl: '',
       attribution: '',
     }

@@ -77,7 +77,6 @@ initTabs(sidePaneTabs);
 <style scoped lang="scss">
 #side_pane {
   display: flex;
-  height: 100%;
   margin-right: 1px;
   border-right: 1px solid #efeff1;
   box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);

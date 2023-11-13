@@ -15,7 +15,7 @@
   -->
 
 <template>
-  <div id="layers_view">
+  <div id="wms_layers_view">
     <div v-if="treeData != null">
       <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
                    :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
@@ -383,13 +383,13 @@ function getBaseLayersControlTreeData() {
 </script>
 
 <style lang="scss">
-#layers_view {
+#wms_layers_view {
   padding: 8px 5px 8px 2px;
   overflow-x: hidden;
   overflow-y: scroll;
-  resize: horizontal;
   width: 300px;
   height: 100%;
+  resize: horizontal;
 
   .text-only {
     padding-left: 8px;
