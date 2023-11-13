@@ -38,10 +38,10 @@ import {useMultiEsdl} from "../composables/multiEsdl";
 import {useBaseLayers,} from "../composables/baseLayers";
 
 const {
-  addBaseLayerToMap,
+  showBaseLayer,
   baseLayerDefinitions,
   getBaseLayerByLabel,
-  removeBaseLayerFromMap
+  hideBaseLayer
 } = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject} = useESDLProjects();
@@ -316,7 +316,7 @@ const eventHandlersByName = [{
       }
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
-      addBaseLayerToMap(baseLayer);
+      showBaseLayer(baseLayer);
     }
   }
 }, {
@@ -328,7 +328,7 @@ const eventHandlersByName = [{
       hideEsdlLayerFromMap(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
-      removeBaseLayerFromMap(baseLayer);
+      hideBaseLayer(baseLayer);
     }
   }
 }];
@@ -372,9 +372,8 @@ function get_base_layers_control_tree_data() {
 <style lang="scss">
 #project_view {
   padding: 8px 5px 8px 2px;
-  overflow: scroll;
-  //resize: horizontal;
-  width: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
 
   .text-only {
     padding-left: 8px;
