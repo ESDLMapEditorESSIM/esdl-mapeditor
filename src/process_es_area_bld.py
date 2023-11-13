@@ -22,11 +22,8 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
-from extensions.session_manager import get_project_manager, set_handler, get_handler, get_session, set_project_manager, \
-    set_session_for_esid, \
-    set_session, \
-    get_session_for_esid
-from src import executor
+from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session
+from src.app import executor
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.shape import Shape, ShapePoint
@@ -769,7 +766,7 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
-def find_area_location_based(esh, active_es_id, geometry):
+def find_area_location_based(pm, active_es_id, geometry):
     shape_dictionary = get_session('shape_dictionary')
 
     obj_geometry_shape = Shape.create(geometry)
@@ -781,7 +778,7 @@ def find_area_location_based(esh, active_es_id, geometry):
             areas_that_contain_obj.append(key)
 
     if len(areas_that_contain_obj) == 0:
-        es = esh.get_energy_system(es_id=active_es_id)
+        es = pm.get_energy_system_by_id(es_id=active_es_id)
         return es.instance[0].area.id   # If no area is found, return the id of the top level area
     elif len(areas_that_contain_obj) == 1:
         return areas_that_contain_obj[0]
@@ -790,7 +787,7 @@ def find_area_location_based(esh, active_es_id, geometry):
         lowest_level = 0
         lowest_area_id = None
         for ar_id in areas_that_contain_obj:
-            area = esh.get_by_id(active_es_id, ar_id)
+            area = pm.get_by_id(active_es_id, ar_id)
             area_level = 1
             while isinstance(area.eContainer(), esdl.Area):
                 area_level += 1
@@ -812,9 +809,9 @@ def get_building_information(building):
     conn_list = []
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
-    process_building(esh, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
+    process_building(pm, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
     return {
         "id": building.id,
         "asset_list": asset_list,
@@ -829,7 +826,7 @@ def get_building_information(building):
 # ---------------------------------------------------------------------------------------------------------------------
 def get_building_connections(building):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
     conn_list = []
 
@@ -839,7 +836,7 @@ def get_building_connections(building):
                 conn_to = p.connectedTo
                 if conn_to:
                     for pc in conn_to:
-                        pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, active_es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset['asset'].containingBuilding:
@@ -864,7 +861,7 @@ def get_building_connections(building):
 @executor.job
 def call_process_energy_system(force_update_es_id=None, zoom=True):
     # emit('clear_ui')
-    print("Processing energysystems in esh")
+    print("Processing energysystems contained in Project manager")
     print("active_es_id at start: {}".format(get_session('active_es_id')))
 
     try:
@@ -897,7 +894,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
         conn_list = []
 
         if not isinstance(es, esdl.EnergySystem):
-            raise RuntimeError("Active energy system is not of type esdl.EnergySystem!")
+            raise RuntimeError(f"Active energy system is not of type esdl.EnergySystem! es={es}")
 
         if force_update_es_id == es.id or es.id not in es_info_list:
             logger.info(f"- Processing energysystem with id {es.id}")

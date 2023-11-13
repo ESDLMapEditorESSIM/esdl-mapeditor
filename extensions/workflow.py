@@ -15,9 +15,8 @@ import json
 
 import base64
 import cgi
-from flask import Flask, jsonify, request
 from flask_executor import Executor
-from flask_socketio import SocketIO, emit
+from flask_socketio import emit
 import os
 import requests
 from flask import Flask, jsonify, request
@@ -34,7 +33,7 @@ from extensions.esdl_drive.api import (
     upload_esdl_to_drive,
 )
 from extensions.esdl_drive.esdl_drive import ESDLDriveHttpURI
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 from src.log import get_logger
 from src.process_es_area_bld import process_energy_system
@@ -203,11 +202,11 @@ class Workflow:
             workflow_json = json.loads(message["workflow_json"])
             user_email = get_session("user-email")
 
-            esh = get_handler()
-            energy_systems: List[esdl.EnergySystem] = esh.get_energy_systems()
+            pm = get_project_manager()
+            energy_systems: List[esdl.EnergySystem] = pm.get_energy_systems()
             drive_paths = []
             for energy_system in energy_systems:
-                esdl_contents = esh.to_string(energy_system.id).encode("utf-8")
+                esdl_contents = pm.energy_system_to_string(energy_system.id).encode("utf-8")
                 drive_path = f"/Users/{user_email}/workflows/{workflow_id}/{energy_system.name}.esdl"
                 response = upload_esdl_to_drive(
                     esdl_contents,
@@ -255,14 +254,16 @@ class Workflow:
                 )
             except EsdlDriveException:
                 return dict(message="Failed loading ESDLs from drive")
-            esh = get_handler()
+            pm = get_project_manager()
             for drive_item in drive_items:
                 uri = ESDLDriveHttpURI(
                     DRIVE_URL + resource_endpoint + drive_item["id"],
                     headers_function=get_drive_post_headers,
                     getparams={},
                 )
-                es, parse_info = esh.import_file(uri)
+                #es, parse_info = esh.import_file(uri)
+                variant, parse_info = pm.add_energy_system(uri)
+                es = pm.get_energy_system(variant)
                 if len(parse_info) > 0:
                     info = ""
                     for line in parse_info:
@@ -271,9 +272,7 @@ class Workflow:
                         uri.last_segment, info
                     )
                     emit("alert", message, namespace="/esdl")
-            self.executor.submit(
-                process_energy_system, esh, force_update_es_id="all", zoom=False
-            )
+            self.executor.submit(process_energy_system, force_update_es_id="all", zoom=False)
             return workflow
 
         @self.socketio.on("/workflow/delete", namespace="/esdl")

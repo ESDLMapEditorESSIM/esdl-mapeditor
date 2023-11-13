@@ -4,7 +4,7 @@ from esdl import esdl
 from uuid import uuid4
 from pyecore.resources import ResourceSet, Resource, URI
 from pyecore.resources.resource import HttpURI
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.resources.xmlresource import XMLResource
 from extensions.esdl_drive.esdl_drive import ESDLDriveHttpURI
 

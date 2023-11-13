@@ -12,15 +12,6 @@
 #  Manager:
 #      TNO
 
-from uuid import uuid4
-from pyecore.ecore import EDate
-from esdl import esdl
-from esdl.processing.ESDLEcore import instantiate_type
-from extensions.session_manager import get_handler, get_session
-from extensions.profiles import Profiles
-from utils.utils import str2float
-from utils.datetime_utils import parse_date
-
 
 def get_environmental_profiles_information(ep):
     """
@@ -29,4 +20,5 @@ def get_environmental_profiles_information(ep):
     :param ep: instance of the esdl.EnvironmentalProfiles class
     :return: information that can be send to the frontend
     """
+    pass
 

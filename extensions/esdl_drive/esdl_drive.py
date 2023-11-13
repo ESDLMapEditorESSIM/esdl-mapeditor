@@ -28,7 +28,9 @@ Connects to the ESDL Drive API for file sharing
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, set_session
+
+from esdlproject.ProjectManager import update_energy_system_version
+from extensions.session_manager import get_session, set_session, get_project_manager
 import requests
 from pyecore.resources import URI, Resource
 from io import BytesIO
@@ -76,19 +78,19 @@ class ESDLDrive:
                 #token = get_session('jwt-token')
                 uri = ESDLDriveHttpURI(DRIVE_URL + resource_endpoint + path, headers_function=get_drive_post_headers, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
-                esh = get_handler()
+                pm = get_project_manager()
                 try:
                     if import_es:
-                        es, parse_info = esh.import_file(uri)
+                        es, parse_info = pm.add_energy_system(uri)
                     else:
-                        es, parse_info = esh.load_file(uri)
+                        es, parse_info = pm.add_energy_system(uri)
                     if len(parse_info) > 0:
                         info = ''
                         for line in parse_info:
                             info += line + "\n"
                         message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
                         emit('alert', message, namespace='/esdl')
-                        print(esh.rset.resources)
+                        print(pm.rset.resources)
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
                     return
@@ -104,7 +106,7 @@ class ESDLDrive:
                 set_session("es_info_list", es_info_list)
                 emit('clear_ui')
                 emit('clear_esdl_layer_list')
-                self.executor.submit(process_energy_system, esh, uri.last_segment, title)  # run in seperate thread
+                self.executor.submit(process_energy_system, pm, uri.last_segment, title)  # run in seperate thread
 
         @self.socketio.on('cdo_save', namespace='/esdl')
         def socketio_esdldrive_save(message):
@@ -122,10 +124,10 @@ class ESDLDrive:
                 print(message)
 
                 uri = DRIVE_URL + resource_endpoint + path
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                esh.update_version(es_id=active_es_id)
-                resource: Resource = esh.get_energy_system_resource_by_id(active_es_id)
+                update_energy_system_version(pm.get_active_energy_system())
+                resource: Resource = pm.get_energy_system_resource_by_id(active_es_id)
                 logger.debug('ESDLDrive saving resource {}, commitMessage={}, overwrite={}'.format(resource.uri, commitMessage, overwrite))
 
                 if resource.uri.normalize() == uri:
@@ -138,7 +140,7 @@ class ESDLDrive:
                     logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
                     resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
                     response: requests.Response = resource.save()
-                    esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
+                    pm.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
                     # new resource
                 if response.ok:
                     return {'path': path, 'success': True}
@@ -224,7 +226,6 @@ class ESDLDrive:
 
     def save(self, path, content_as_string):
         location = DRIVE_URL + resource_endpoint + path
-        esh = get_handler()
 
         #active_es_id = get_session('active_es_id')
         # esh.get_energy_system(active_es_id)

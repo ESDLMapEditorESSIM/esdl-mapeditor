@@ -35,7 +35,7 @@ class UserLogging:
 
 
     def connect_to_database(self):
-        if self.config['host'] == None:
+        if self.config['host'] is None:
             logger.warn("User_logging not configured, disabling functionality")
             self.logging_enabled = False
         else:

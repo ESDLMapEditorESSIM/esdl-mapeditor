@@ -20,11 +20,10 @@ import requests
 import json
 import uuid
 import re
-import os
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_session, set_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 
 from src.shape import Shape
@@ -199,8 +198,9 @@ class BoundaryService:
                 return
 
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
-            es_edit = esh.get_energy_system(es_id=active_es_id)
+            pm = get_project_manager()
+            es_edit = pm.get_active_energy_system()
+            #es_edit = esh.get_energy_system(es_id=active_es_id)
             instance = es_edit.instance
             area = instance[0].area
 
@@ -246,7 +246,7 @@ class BoundaryService:
                     area.id = identifier
 
                 # Area ID has changed, re-add to dictionairy
-                esh.add_object_to_dict(active_es_id, area)
+                pm.add_object_to_dict(active_es_id, area)
 
                 area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
                 area.name = toparea_name
@@ -309,7 +309,7 @@ class BoundaryService:
                                     sub_area.geometry = geometry
 
                                 area.area.append(sub_area)
-                                esh.add_object_to_dict(active_es_id, sub_area)
+                                pm.add_object_to_dict(active_es_id, sub_area)
 
                             for i in range(0, len(geom['coordinates'])):
                                 if len(geom['coordinates']) > 1:
