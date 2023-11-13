@@ -334,7 +334,14 @@ function show_area_list(select_element_id, scope, filter_type, selected_filter) 
  * @param {*} state Optional initial state to pass to the workflow.
  */
 function show_service_settings(index, state=null) {
-    const service_settings_div = document.getElementById('service_settings_div');
+    let service_settings_div = document.getElementById('service_settings_div');
+    if (!service_settings_div) {
+        // The sidebar is not rendered. This happens when starting services from the context menu.
+        const sidebar_ctr = sidebar.getContainer();
+        sidebar_ctr.innerHTML += '<div id="service_settings_div"></div>';
+        sidebar.show();
+        service_settings_div = document.getElementById('service_settings_div');
+    }
 
     let service = esdl_services_information[index];
     service_settings_div.innerHTML = '<h1>' + service['name'] + '</h1>';
