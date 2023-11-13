@@ -544,8 +544,8 @@ function update_service_contextmenus(services_list) {
                 text: services_list[i]['name'],
                 icon: resource_uri + 'icons/service.png',
                 callback: function(e) {
-                    let service = services_list[i];
-                    let state = {
+                    const service = services_list[i];
+                    const state = {
                         lat: e.latlng.lat.toString(),
                         lng: e.latlng.lng.toString(),
                     };
@@ -573,13 +573,13 @@ function update_esdl_services(event) {
                             text: esdl_services_information[i]['name'],
                             icon: resource_uri + 'icons/service.png',
                             callback: function (e) {
-                                let service = esdl_services_information[i];
+                                const service = esdl_services_information[i];
+                                const state = {
+                                    area_id: id,
+                                }
                                 if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
-                                    window.show_service_settings(i);
+                                    window.show_service_settings(i, state);
                                 } else {
-                                    let state = {
-                                        area_id: id,
-                                    }
                                     query_esdl_service(service, state);
                                 }
                             }
