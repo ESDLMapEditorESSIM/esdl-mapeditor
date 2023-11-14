@@ -11,8 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from uuid import uuid4
-
 import cgi
 from collections import defaultdict
 
@@ -30,13 +28,15 @@ from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
 import zipfile
 
 from esdl import esdl
+from esdl.processing.string_uri import StringURI
+from esdlproject.ProjectManager import load_external_string
 from extensions.dice_workflow.export_bc import export_business_case
 from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.essim import (
     essim_esdl_contents_to_esdl_string,
     retrieve_simulation_from_essim,
 )
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 from src.esdl_config import ESDL_UPLOAD_PROFILES_HOST
 from src.log import get_logger
@@ -119,15 +119,10 @@ class DiceWorkflow:
         @self.flask_app.route("/dice_workflow/profiles/template", methods=["POST"])
         def generate_profile_template():
             url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/template"
-            active_es_id = get_session("active_es_id")
-            esh = get_handler()
+            pm = get_project_manager()
 
-            base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
-            ).decode()
-            payload = dict(
-                energysystem=base64_es,
-            )
+            base64_es = base64.b64encode(pm.active_energy_system_to_string().encode("utf-8")).decode()
+            payload = dict(energysystem=base64_es, )
 
             r = requests.post(url, json=payload, timeout=DEFAULT_TIMEOUT)
             return jsonify(r.json())
@@ -162,11 +157,8 @@ class DiceWorkflow:
             base64_file = request.json["base64_file"]
             profiles_upload_file = base64.b64decode(base64_file, b"-_")
             url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/profile"
-            active_es_id = get_session("active_es_id")
-            esh = get_handler()
-            base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
-            ).decode()
+            pm = get_project_manager()
+            base64_es = base64.b64encode(pm.active_energy_system_to_string().encode("utf-8")).decode()
             files = dict(energysystem=base64_es, profile_excel=profiles_upload_file)
 
             r = requests.post(url, files=files, timeout=DEFAULT_TIMEOUT)
@@ -184,8 +176,11 @@ class DiceWorkflow:
                 )
 
             content, filename = _download_profiles_result(process_id)
-            esh = get_handler()
-            esh.add_from_string(filename, content.decode("utf-8"))
+            pm = get_project_manager()
+            uri = StringURI(filename, content.decode("utf-8"))
+            #esh.add_from_string(filename, content.decode("utf-8"))
+            variant, parse_info = pm.add_energy_system(uri)
+            # TODO handle parse_info
             return (
                 jsonify(
                     dict(
@@ -347,13 +342,13 @@ def _export_energy_system_simulation_task(
         if not networks:
             networks = [x["name"] for x in influx_client.get_list_measurements()]
 
-        esh = get_handler()
+        pm = get_project_manager()
         # Get ESDL from ESSIM.
         essim_simulation_run = retrieve_simulation_from_essim(simulation_id)
         esdl_string = essim_esdl_contents_to_esdl_string(
             essim_simulation_run["esdlContents"]
         )
-        es, _ = esh.load_external_string(esdl_string, name=f"essim_{simulation_id}")
+        es, _ = load_external_string(esdl_string, name=f"essim_{simulation_id}")
 
         dir_path = tempfile.mkdtemp(
             prefix=f"ESSIM-export-{export_type}-{simulation_id}"
@@ -408,8 +403,8 @@ def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     Retrieve all buildings in the active energy system and returns it sorted by name.
     """
     active_es_id = get_session("active_es_id")
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    es = pm.get_active_energy_system()
     area = es.instance[0].area
     buildings: List[esdl.GenericBuilding] = []
     for asset in area.asset:

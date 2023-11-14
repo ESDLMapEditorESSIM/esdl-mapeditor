@@ -13,7 +13,7 @@
 #      TNO
 
 from extensions.session_manager import get_project_manager
-from src import socketio
+from src.app import socketio
 from src.log import get_logger
 from src.tno.undoredo.types import serialize_command_stack
 

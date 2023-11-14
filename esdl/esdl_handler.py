@@ -11,7 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from typing import Tuple
 
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -35,7 +34,8 @@ from pyecore.resources.resource import HttpURI
 from pyecore.utils import alias
 
 from esdl import esdl, support_functions
-from esdl.energy_projects import EnergyProjectHandlerMixin
+from esdl.processing.string_uri import StringURI
+#from esdl.energy_projects import EnergyProjectHandlerMixin
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker, UndoRedoCommandStack
 import src.log as log
@@ -79,7 +79,7 @@ def patch_esdl():
     setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)
 
 
-class EnergySystemHandler(EnergyProjectHandlerMixin):
+class EnergySystemHandler(): #EnergyProjectHandlerMixin):
     """
     The handler for energy systems. Also manages other resources through mixins.
     """
@@ -183,7 +183,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
          """
         if name == '':
             name = str(uuid4())
-        uri = StringURI(name+'.esdl', esdl_string)
+        uri = StringURI(name + '.esdl', esdl_string)
         self._new_resource_set()
         self.resource = self.rset.create_resource(uri)
         try:
@@ -207,7 +207,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
         """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
         It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
         """
-        uri = StringURI(name+'.esdl', esdl_string)
+        uri = StringURI(name + '.esdl', esdl_string)
         external_rset = ResourceSet()
         external_resource = external_rset.create_resource(uri)
         external_resource.load()
@@ -241,7 +241,7 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
 
     def to_string(self, es_id=None) -> str:
         # to use strings as resources, we simulate a string as being a URI
-        uri = StringURI('to_string_'+str(uuid4())+'.esdl')
+        uri = StringURI('to_string_' + str(uuid4()) + '.esdl')
         if es_id is None:
             self.resource.save(uri)
         else:
@@ -315,16 +315,16 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
             else:
                 return None
 
-    def get_energy_system(self, es_id=None):
-        if es_id is None:
-            return self.energy_system
-        else:
-            if es_id in self.esid_uri_dict:
-                my_uri = self.esid_uri_dict[es_id]
-                es = self.rset.resources[my_uri].contents[0]
-                return es
-            else:
-                return None
+    # def get_energy_system(self, es_id=None):
+    #     if es_id is None:
+    #         return self.energy_system
+    #     else:
+    #         if es_id in self.esid_uri_dict:
+    #             my_uri = self.esid_uri_dict[es_id]
+    #             es = self.rset.resources[my_uri].contents[0]
+    #             return es
+    #         else:
+    #             return None
 
     def remove_energy_system(self, es_id=None):
         if es_id is None:
@@ -497,30 +497,3 @@ class EnergySystemHandler(EnergyProjectHandlerMixin):
                 return self.change_tracker.get_tracker_stack(resource=resource)
 
 
-class StringURI(URI):
-    """
-    A subclass of URI, that also contains the contents of the resource in memory. This
-    can be provided in the text parameter. It implements the proper interface for
-    reading the resource, so that the resource set can read in the energy system from
-    memory.
-    """
-    def __init__(self, uri, text=None):
-        super(StringURI, self).__init__(uri)
-        if text is not None:
-            self.__stream = BytesIO(text.encode('UTF-8'))
-
-    def getvalue(self):
-        readbytes = self.__stream.getvalue()
-        # somehow stringIO does not work, so we use BytesIO
-        string = readbytes.decode('UTF-8')
-        return string
-
-    def create_instream(self):
-        return self.__stream
-
-    def create_outstream(self):
-        self.__stream = BytesIO()
-        return self.__stream
-
-    def get_stream(self):
-        return self.__stream

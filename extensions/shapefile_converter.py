@@ -17,7 +17,7 @@ import io
 from flask import Flask, session, request
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session
 import esdl.esdl as esdl
 import os
 import zipfile
@@ -115,9 +115,9 @@ class ShapefileConverter:
             with self.flask_app.app_context():
                 print("Received shpcvrt_receive_energyasset_info")
 
-                esh = get_handler()
+                esh = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                es = esh.get_active_energy_system()
                 area = es.instance[0].area
 
                 for shapefile_energyasset in shapefile_energyasset_list:

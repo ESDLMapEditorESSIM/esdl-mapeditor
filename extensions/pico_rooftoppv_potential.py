@@ -14,7 +14,9 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+
+from esdlproject.ProjectManager import load_external_string
+from extensions.session_manager import get_project_manager, get_session
 from extensions.boundary_service import is_valid_boundary_id
 from esdl import esdl
 from esdl.processing import ESDLAsset
@@ -72,23 +74,23 @@ class PICORooftopPVPotential:
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 asset_list = []
                 add_to_building = False
 
-                pot = esh.get_by_id(active_es_id, pot_id)
+                pot = pm.get_by_id(active_es_id, pot_id)
                 if pot.solarPotentialType != esdl.PVInstallationTypeEnum.ROOFTOP_PV:
                     send_alert('SolarPotential is not of type ROOFTOP_PV')
                 else:
-                    self.convert_potential(esh, active_es_id, pot, add_to_building, percentage, asset_list)
+                    self.convert_potential(pm, active_es_id, pot, add_to_building, percentage, asset_list)
                     emit('add_esdl_objects',
                          {'es_id': active_es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_list,
                           'zoom': False})
 
                     if all_potentials:
-                        es = esh.get_energy_system(active_es_id)
+                        es = pm.get_active_energy_system()
                         area = es.instance[0].area
 
                         for obj in area.eAllContents():
@@ -98,7 +100,7 @@ class PICORooftopPVPotential:
                                     asset_list = []
                                     add_to_building = False
 
-                                    pvi = self.convert_potential(esh, active_es_id, obj, add_to_building, percentage, asset_list)
+                                    pvi = self.convert_potential(pm, active_es_id, obj, add_to_building, percentage, asset_list)
                                     if add_to_building:
                                         # if the PVInstalliation is in the same building as the selected potential
                                         if pot.eContainer() == pvi.eContainer():
@@ -125,23 +127,23 @@ class PICORooftopPVPotential:
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 asset_list = []
                 if all_areas:
-                    es = esh.get_energy_system(active_es_id)
+                    es = pm.get_active_energy_system()
                     area = es.instance[0].area
                 else:
                     area_id = get_area_id_from_mapeditor_id(area_id)
-                    area = esh.get_by_id(active_es_id, area_id)
+                    area = pm.get_by_id(active_es_id, area_id)
                 if area:
                     for obj in area.eAllContents():
                         if isinstance(obj, esdl.SolarPotential):
                             if obj.solarPotentialType == esdl.PVInstallationTypeEnum.ROOFTOP_PV:
                                 asset_info = []
                                 add_to_building_list = [False]  # Put into list, to pass by reference
-                                self.convert_potential(esh, active_es_id, obj, add_to_building_list, percentage, asset_info)
+                                self.convert_potential(pm, active_es_id, obj, add_to_building_list, percentage, asset_info)
                                 if not add_to_building_list[0]:
                                     asset_list = asset_list + asset_info
 
@@ -164,19 +166,19 @@ class PICORooftopPVPotential:
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 shape_dictionary = get_session('shape_dictionary')
                 if not shape_dictionary:
                     shape_dictionary = {}
 
-                es = esh.get_energy_system(active_es_id)
+                es = pm.get_active_energy_system()
                 if all_areas:
                     area = es.instance[0].area
                 else:
                     area_id = get_area_id_from_mapeditor_id(area_id)
-                    area = esh.get_by_id(active_es_id, area_id)
+                    area = pm.get_by_id(active_es_id, area_id)
 
                 if area:
                     building_list = []
@@ -194,7 +196,7 @@ class PICORooftopPVPotential:
                                     building.geometry = esdl.Point(lat=center.y, lon=center.x)
                                 found_a_building = True
                                 subarea.asset.append(building)
-                                esh.add_object_to_dict(active_es_id, building, True)
+                                pm.add_object_to_dict(active_es_id, building, True)
                                 building_list.append(self.get_building_info_for_emit_list(building))
                             else:
                                 logger.warning('No correct information returned for area with ID {}'.format(subarea_id))
@@ -212,7 +214,7 @@ class PICORooftopPVPotential:
                                     center = shape.shape.centroid
                                     building.geometry = esdl.Point(lat=center.y, lon=center.x)
                                 area.asset.append(building)
-                                esh.add_object_to_dict(active_es_id, building, True)
+                                pm.add_object_to_dict(active_es_id, building, True)
                                 building_list.append(self.get_building_info_for_emit_list(building))
 
                     if building_list:
@@ -232,7 +234,7 @@ class PICORooftopPVPotential:
 
     @staticmethod
     def query_pico_rooftoppv_api(area):
-        esh = get_handler()
+        pm = get_project_manager()
 
         asset_copy = None
         for code in PICO_ID_TO_URL_MAPPING:
@@ -248,7 +250,7 @@ class PICORooftopPVPotential:
 
                     if r.status_code == 200:
                         # print(r.text)
-                        pzod_es, parse_info = esh.load_external_string(r.text, "pico_zon_op_dak")
+                        pzod_es, parse_info = load_external_string(r.text, "pico_zon_op_dak")
 
                         asset = pzod_es.instance[0].area.asset[0]
                         if asset:

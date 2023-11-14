@@ -19,7 +19,7 @@ Handles the messages belonging to utils/esdl_browser.js
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.ESDLQuantityAndUnits import qau_to_string
 from esdl import esdl
@@ -56,9 +56,9 @@ class ESDLBrowser:
         @self.socketio.on('esdl_browse_create_object', namespace='/esdl')
         def socketio_create_object(message):
             # {'parent': {'id': parent_object.id, 'fragment': parent_object.fragment}, 'name': reference_data.name, 'type': types[0]}
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
-            stack = esh.change_tracker.get_tracker_stack(esh.get_energy_system(active_es_id))
+            stack = pm.change_tracker.get_tracker_stack(pm.get_active_energy_system())
             stack.start_recording(combineCommands=True, label='Create {}'.format(message['type']))
             parent_object = self.get_object_from_identifier(message['parent'])
             reference_name = message['name']
@@ -75,8 +75,8 @@ class ESDLBrowser:
                 print("Error: Can't find reference {} of {}", reference_name, parent_object.name)
                 return
             if hasattr(new_object, 'id'):
-                new_object.id = esh.generate_uuid()
-                esh.add_object_to_dict(active_es_id, new_object)
+                new_object.id = pm.generate_uuid()
+                pm.add_object_to_dict(active_es_id, new_object)
                 print('adding to uuid dict ' + new_object.id)
             if hasattr(new_object, 'name'):
                 new_object.name = 'New' + new_object.eClass.name
@@ -88,9 +88,9 @@ class ESDLBrowser:
         def socket_io_delete_ref(message):
             # esdl_browse_delete_ref
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
+            pm = get_project_manager()
             reference_name = message['name']
-            stack = esh.get_undo_redo_stack(es_id=active_es_id)
+            stack = pm.get_undo_redo_stack(es_id=active_es_id)
             ref_object = self.get_object_from_identifier(message['ref_id'])
             parent_object = self.get_object_from_identifier(message['parent'])
             stack.start_recording(combineCommands=True,
@@ -102,8 +102,8 @@ class ESDLBrowser:
             reference: EReference = parent_object.eClass.findEStructuralFeature(reference_name)
             if reference.containment:
                 try:
-                    esh.remove_object_from_dict(active_es_id, ref_object, True)
-                    resource = esh.get_energy_system_resource_by_id(active_es_id)
+                    pm.remove_object_from_dict(active_es_id, ref_object, True)
+                    resource = pm.get_energy_system_resource_by_id(active_es_id)
                     fragment = ref_object.eURIFragment()
                     del resource._resolve_mem[fragment]
                 except KeyError as e:
@@ -153,9 +153,9 @@ class ESDLBrowser:
             #{'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             parent_object: EObject = self.get_object_from_identifier(message['parent'])
             reference = parent_object.eClass.findEStructuralFeature(message['name'])
-            esh = get_handler()
+            pm = get_project_manager()
             xref = self.get_object_from_identifier(message['xref'])
-            stack = esh.change_tracker.get_tracker_stack(parent_object)
+            stack = pm.change_tracker.get_tracker_stack(eobj=parent_object)
             description = "{} {}.{} to {}".format(
                 "Add" if reference.many else "Set",
                 parent_object.name if hasattr(parent_object, 'name') else parent_object.eClass.name,
@@ -174,18 +174,18 @@ class ESDLBrowser:
 
     def get_object_from_identifier(self, identifier):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
         if 'id' in identifier:
             object_id = identifier['id']
             #object_id is not None:
             try:
-                the_object = esh.get_by_id(active_es_id, object_id)
+                the_object = pm.get_by_id(active_es_id, object_id)
             except KeyError:
                 print('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
-                resource = esh.get_energy_system_resource_by_id(active_es_id)
+                resource = pm.get_energy_system_resource_by_id(active_es_id)
                 the_object = resource.resolve(identifier['fragment'])
         else:
-            resource = esh.get_energy_system_resource_by_id(active_es_id)
+            resource = pm.get_energy_system_resource_by_id(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
 
         return the_object

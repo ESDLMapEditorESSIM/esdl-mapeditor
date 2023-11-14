@@ -27,7 +27,17 @@ const props = defineProps({
   plugins: Array,
   treeTypeSpecs: Array,
   eventHandlersByName: Object,
-})
+  checkCallBack: {
+    type: Function,
+    required: false,
+    default: () => true,
+  },
+  dndIsDraggable: {
+    type: Function,
+    required: false,
+    default: () => true,
+  },
+});
 
 const $ = window.$;
 
@@ -40,7 +50,9 @@ const contextMenusByType = {};
 for (const treeTypeSpec of props.treeTypeSpecs) {
   types[treeTypeSpec.type] = {
     icon: treeTypeSpec.icon,
+    max_depth: treeTypeSpec.max_depth,
   }
+
   if (treeTypeSpec.contextMenus) {
     contextMenusByType[treeTypeSpec.type] = treeTypeSpec.contextMenus;
   }
@@ -57,7 +69,10 @@ onMounted(() => {
   treeElement.jstree({
     core: {
       data: props.data,
-      check_callback: true,
+      check_callback: (operation, node, node_parent, node_position, more) =>
+          props.checkCallBack(operation, node, node_parent, node_position, more),
+      animation: 200,
+      multiple: false
     },
     plugins: props.plugins,
     checkbox: {
@@ -75,6 +90,10 @@ onMounted(() => {
         return {};
       },
       select_node: false,
+    },
+    dnd: {
+      inside_pos: "first",
+      is_draggable: (node) => props.dndIsDraggable(node),
     },
     types: types,
   });

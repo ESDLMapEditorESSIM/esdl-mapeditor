@@ -16,7 +16,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit
 from si_prefix import si_format
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session, set_session, del_session
+from extensions.session_manager import get_project_manager, get_session, set_session, del_session
 from esdl.processing import ESDLEcore
 from src.esdl_helper import get_port_profile_info
 from extensions.essim import ESSIM
@@ -61,9 +61,9 @@ class ESSIMSensitivity:
         @self.socketio.on('essim_sensitivity_add_asset', namespace='/esdl')
         def essim_sensitivity_asset_info(id):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                asset = esh.get_by_id(active_es_id, id)
+                asset = pm.get_by_id(active_es_id, id)
 
                 asset_info = dict()
                 asset_info['attrs_sorted'] = ESDLEcore.get_asset_attributes(asset)
@@ -186,23 +186,23 @@ class ESSIMSensitivity:
 
     def get_obj_attr_name(self, asset_id, attr):
         with self.flask_app.app_context():
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
 
             if attr.startswith('attr_name_'):
-                object = esh.get_by_id(active_es_id, asset_id)
+                object = pm.get_by_id(active_es_id, asset_id)
                 attr_name = attr.replace('attr_name_', '')
             else:
                 # profile_id_
                 profile_id = attr.replace('profile_id_', '')
-                object = esh.get_by_id(active_es_id, profile_id)
+                object = pm.get_by_id(active_es_id, profile_id)
                 attr_name = 'multiplier'
 
             return object, attr_name
 
     def set_param(self, object, attr_name, attr_value):
         with self.flask_app.app_context():
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             try:
                 attribute = object.eClass.findEStructuralFeature(attr_name)
@@ -218,9 +218,9 @@ class ESSIMSensitivity:
                         object.eSet(attr_name, eOrderedSet)
                     else:
                         if attribute.name == 'id':
-                            esh.remove_object_from_dict(active_es_id, object)
+                            pm.remove_object_from_dict(active_es_id, object)
                             object.eSet(attr_name, parsed_value)
-                            esh.add_object_to_dict(active_es_id, object)
+                            pm.add_object_to_dict(active_es_id, object)
                         else:
                             object.eSet(attr_name, parsed_value)
                 else:

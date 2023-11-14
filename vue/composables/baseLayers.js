@@ -73,14 +73,14 @@ export function useBaseLayers() {
         return null;
     }
 
-    function addBaseLayerToMap(baseLayer) {
+    function showBaseLayer(baseLayer) {
         if (!map.hasLayer(baseLayer.layer)) {
             map.addLayer(baseLayer.layer);
             baseLayer.enabled = true;
         }
     }
 
-    function removeBaseLayerFromMap(baseLayer) {
+    function hideBaseLayer(baseLayer) {
         if (map.hasLayer(baseLayer.layer)) {
             map.removeLayer(baseLayer.layer);
             baseLayer.enabled = false;
@@ -89,8 +89,8 @@ export function useBaseLayers() {
 
     return {
         getBaseLayerByLabel,
-        addBaseLayerToMap,
-        removeBaseLayerFromMap,
+        showBaseLayer,
+        hideBaseLayer,
         baseLayerDefinitions,
     }
 }

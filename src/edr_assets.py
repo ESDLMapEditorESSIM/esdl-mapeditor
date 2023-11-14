@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 import base64
-import urllib
+from urllib import parse
 
 from flask import Flask, jsonify, abort
 from flask_socketio import SocketIO
@@ -87,7 +87,7 @@ class EDRAssets:
 
     def get_asset_from_EDR(self, edr_asset_id):
         url = self.EDR_config['host'] + "/store/edr/query?addESDL=true&path=" + \
-              urllib.parse.quote(edr_asset_id, safe='')
+              parse.quote(edr_asset_id, safe='')
         print('EDR url: ', url)
         headers = {
             'Accept': "application/json",

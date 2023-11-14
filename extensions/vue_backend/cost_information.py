@@ -13,7 +13,7 @@
 #      TNO
 
 from pyecore.ecore import EReference
-from extensions.session_manager import get_session, set_session, get_handler
+from extensions.session_manager import get_session, get_project_manager
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from esdl.esdl_handler import EnergySystemHandler
@@ -165,14 +165,14 @@ def _create_cost_qau(cost_unit_string):
 
 
 def set_cost_information(obj, cost_information_data):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
     
     obj_ci = obj.costInformation
     if not obj_ci:
         obj_ci = esdl.CostInformation(id=str(uuid4()))
         obj.costInformation = obj_ci
-        esh.add_object_to_dict(active_es_id, obj.costInformation)
+        pm.add_object_to_dict(active_es_id, obj.costInformation)
 
     for ci_component in cost_information_data:
         ci_component_name = ci_component['name']
@@ -207,4 +207,4 @@ def set_cost_information(obj, cost_information_data):
                             new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
                         obj_ci.eSet(ci_component_name, new_cost_component_profile)
-                        esh.add_object_to_dict(active_es_id, new_cost_component_profile)
+                        pm.add_object_to_dict(active_es_id, new_cost_component_profile)
