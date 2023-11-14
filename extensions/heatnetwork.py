@@ -285,7 +285,7 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
     geometry = duplicate_asset.geometry
     if isinstance(geometry, Line):
         line: Line = geometry  # geometry.clone()
-        rev_point = list(reversed(line.point)) # reverse coordinates
+        rev_point = list(reversed(line.point))  # reverse coordinates
         line.point.clear()
         line.point.extend(rev_point)
         for p in line.point:
@@ -296,7 +296,10 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
 
     # disconnect the ports as also the connectedTo has been duplicated, we need to remove this reference
     for port in duplicate_asset.port:
-        port.connectedTo.clear()
+        # port.connectedTo.clear()  # pyEcore bug: clear() does not work as expected.
+        connected_to_copy = list(port.connectedTo)
+        for p in connected_to_copy:
+            p.delete()
 
     esh.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

@@ -134,35 +134,36 @@ def add_object_to_building(es, obj, building_id):
         return 0
 
 
-def remove_object_from_building(building, object_id):
-    for ass in set(building.asset):
-        if ass.id == object_id:
-            # Remove port connections for EnergyAssets (and not for buildingunits)
-            if isinstance(ass, esdl.EnergyAsset):
-                for p in ass.port:
-                    p.connectedTo.clear()
-
-            building.asset.remove(ass)
-            print('Asset with id ' + object_id + ' removed from building with id: ', + building.id)
-
-
-def recursively_remove_object_from_area(area, object_id):
-    for ass in set(area.asset):
-        if ass.id == object_id:
-            # Only remove port connections for EnergyAssets (and not for buildings)
-            if isinstance(ass, esdl.EnergyAsset):
-                for p in ass.port:
-                    p.connectedTo.clear()
-            area.asset.remove(ass)
-            print('Asset with id ' + object_id + ' removed from area with id: ' + area.id)
-        if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
-            remove_object_from_building(ass, object_id)
-    for pot in set(area.potential):
-        if pot.id == object_id:
-            area.potential.remove(pot)
-            print('Potential with id ' + object_id + ' removed from area with id: ' + area.id)
-    for sub_area in area.area:
-        recursively_remove_object_from_area(sub_area, object_id)
+## Commented out by Ewoud on 14-11-2023, this code is not used and contains clear() which has a bug in pyEcore
+# def remove_object_from_building(building, object_id):
+#     for ass in set(building.asset):
+#         if ass.id == object_id:
+#             # Remove port connections for EnergyAssets (and not for buildingunits)
+#             if isinstance(ass, esdl.EnergyAsset):
+#                 for p in ass.port:
+#                     p.connectedTo.clear()
+#
+#             building.asset.remove(ass)
+#             print('Asset with id ' + object_id + ' removed from building with id: ', + building.id)
+#
+#
+# def recursively_remove_object_from_area(area, object_id):
+#     for ass in set(area.asset):
+#         if ass.id == object_id:
+#             # Only remove port connections for EnergyAssets (and not for buildings)
+#             if isinstance(ass, esdl.EnergyAsset):
+#                 for p in ass.port:
+#                     p.connectedTo.clear()
+#             area.asset.remove(ass)
+#             print('Asset with id ' + object_id + ' removed from area with id: ' + area.id)
+#         if isinstance(ass, esdl.AggregatedBuilding) or isinstance(ass, esdl.Building):
+#             remove_object_from_building(ass, object_id)
+#     for pot in set(area.potential):
+#         if pot.id == object_id:
+#             area.potential.remove(pot)
+#             print('Potential with id ' + object_id + ' removed from area with id: ' + area.id)
+#     for sub_area in area.area:
+#         recursively_remove_object_from_area(sub_area, object_id)
 
 
 # todo: move to EnergySystemHandler

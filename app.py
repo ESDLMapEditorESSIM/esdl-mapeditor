@@ -993,9 +993,14 @@ def split_conductor(conductor, location, mode, conductor_container):
             new_cond2.name = new_cond1.name + '_b'
             new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
+        # remove existing ports, as we add previous used ports later
+        for p in list(new_cond1.port):
+            p.delete()
+        #new_cond1.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         new_cond2.id = new_cond2_id
-        new_cond2.port.clear()
+        for p in list(new_cond2.port):
+            p.delete()
+        #new_cond2.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         esh.add_object_to_dict(active_es_id, new_cond1)
         esh.add_object_to_dict(active_es_id, new_cond2)
 
