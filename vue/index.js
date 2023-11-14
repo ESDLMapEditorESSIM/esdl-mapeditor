@@ -11,6 +11,7 @@ import EDRAssets from './apps/EDRAssets';
 //import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
+import Sectors from './apps/Sectors.vue';
 import AboutBox from './apps/AboutBox';
 import ReleaseNotes from './apps/ReleaseNotes';
 import {useReleaseNotes} from "./composables/releaseNotes";
@@ -139,4 +140,8 @@ createVueLControl(AssetsToBeAddedToolbar, {
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
+}
+
+window.sectors_window = () => {
+    mountSidebarComponent(Sectors);
 }

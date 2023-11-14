@@ -22,8 +22,8 @@ function get_edr_assets(url) {
     $.ajax({
         url: url,
         success: function(data){
-            edr_asset_list = data["asset_list"];
-            edr_asset_type_list = data["asset_type_list"];
+            edr_asset_list = data["item_list"];
+            edr_asset_type_list = data["item_type_list"];
         },
         dataType: "json"
     });

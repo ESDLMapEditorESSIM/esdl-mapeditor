@@ -221,3 +221,33 @@ class DataLayerAPI:
             Updates information about a carrier configured in the ESDL.
             """
             return self.datalayer.update_carrier(message['id'], message['carr_info'])
+
+        @self.socketio.on('DLA_add_EDR_carriers', namespace='/esdl')
+        def DLA_add_EDR_carriers(message):
+            """
+            Add carriers information from an EDR dataset.
+            """
+            return self.datalayer.add_EDR_carriers(message['id'])
+
+        @self.socketio.on('DLA_get_sector_info', namespace='/esdl')
+        def DLA_get_sector_info(message):
+            """
+            Gets information about a carrier configured in the ESDL.
+
+            :return: dictionary with carrier information
+            """
+            return asdict(self.datalayer.get_sector(message['id']))
+
+        @self.socketio.on('DLA_update_sector_info', namespace='/esdl')
+        def DLA_update_sector_info(message):
+            """
+            Updates information about a carrier configured in the ESDL.
+            """
+            return self.datalayer.update_sector(message['id'], message['sector_info'])
+
+        @self.socketio.on('DLA_add_EDR_sectors', namespace='/esdl')
+        def DLA_add_EDR_sectors(message):
+            """
+            Add sectors information from an EDR dataset.
+            """
+            return self.datalayer.add_EDR_sectors(message['id'])

@@ -55,6 +55,7 @@ from extensions.ielgas import IELGAS
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
+from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
@@ -67,7 +68,6 @@ from extensions.workflow import Workflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
-from src.edr_assets import EDRAssets
 from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
@@ -170,6 +170,7 @@ ESSIMSensitivity(app, socketio, settings_storage, essim)
 Workflow(app, socketio, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
+edr_client = EDRClient(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
 ESDLDrive(app, socketio, executor)
 ShapefileConverter(app, socketio, executor)
@@ -182,7 +183,6 @@ PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
-edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
@@ -2531,7 +2531,6 @@ def process_command(message):
                     {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
-
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
         asset = get_asset_from_port_id(esh, active_es_id, pid)
@@ -2885,7 +2884,7 @@ def process_command(message):
 
     if message['cmd'] == 'get_edr_asset':
         edr_asset_id = message['edr_asset_id']
-        edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
+        edr_asset_str = edr_client.get_object_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
             edr_asset_name = edr_asset.name
@@ -2939,7 +2938,7 @@ def process_command(message):
             # AssetDrawToolbar EDR assets that are stored in mongo, do not have the ESDL string stored.
             if 'edr_asset_str' not in edr_asset_info:
                 edr_asset_id = edr_asset_info['edr_asset_id']
-                edr_asset_info['edr_asset_str'] = edr_assets.get_asset_from_EDR(edr_asset_id)
+                edr_asset_info['edr_asset_str'] = edr_client.get_object_from_EDR(edr_asset_id)
             set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
         if mode == 'asset_from_measures':
             asset_from_measure_id = message['asset_from_measure_id']
