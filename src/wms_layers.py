@@ -353,9 +353,15 @@ class WMSLayers:
             all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
 
         # TODO this should be done in __init__ but then 'user = get_session('user-email')' does not work yet
-        if user is not None and not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
-            # add user default user group_layers if not present
-            self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, default_user_wms_layer_groups)
+        if user is not None:
+            if not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
+                # add user default user group_layers if not present
+                self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, default_user_wms_layer_groups)
+            else:
+                user_group_layers = self.settings_storage.get_user(user, LAYERS_GROUP_SETTING)
+                if 'personal_layers' not in user_group_layers:
+                    user_group_layers.update(default_user_wms_layer_groups)
+                    self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, user_group_layers)
 
         all_layer_groups = dict()
         if user is not None:
