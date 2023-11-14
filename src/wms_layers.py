@@ -41,7 +41,7 @@ class WMSLayers:
             logger.info('Found WMS layers in System Settings')
 
         if not self.settings_storage.has_system(LAYERS_GROUP_SETTING):
-            self.settings_storage.set_system(LAYERS_SETTING, default_system_wms_layer_groups)
+            self.settings_storage.set_system(LAYERS_GROUP_SETTING, default_system_wms_layer_groups)
 
     def register(self):
         logger.info('Registering WMS layer extension')
