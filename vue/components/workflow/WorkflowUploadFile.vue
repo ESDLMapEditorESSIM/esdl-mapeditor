@@ -48,9 +48,10 @@ const onSubmit = async () => {
       // Perform the request to the mapeditor backend, who will forward it to the service.
       const response = await workflowPostData(workflowStep.target.url, request_params);
       if (response != null && response.ok) {
+        const text = workflowStep.successText || "The file was uploaded successfully."
         await Swal.fire({
           title: "Upload successful!",
-          text: "The newly uploaded file can be used to start a new EPS run.",
+          text: text,
           icon: "success",
           confirmButtonText: "OK",
         });

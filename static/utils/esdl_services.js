@@ -91,7 +91,13 @@ function query_esdl_service(service, state_params) {
     }
 
     // Only for services that are triggered from the sidebar, hide the query button
-    if (service['type'] !== "map_context_menu" && service['type'] !== "area_context_menu") {
+    // Using "type" is legacy, use location instead.
+    if (
+        service['type'] !== "map_context_menu" &&
+        service['location'] !== "map_context_menu" &&
+        service['type'] !== "area_context_menu" &&
+        service['location'] !== "area_context_menu"
+    ) {
         document.getElementById('query_service_button').style.display = 'none';
     }
     show_loader();
@@ -325,32 +331,24 @@ function show_area_list(select_element_id, scope, filter_type, selected_filter) 
  * The entry point for using ESDL services.
  * 
  * @param {*} index The index of the active service in the esdl_config.py service list.
- * @param {*} new_workflow Whether or not to start a new workflow.
+ * @param {*} state Optional initial state to pass to the workflow.
  */
-function show_service_settings(index, new_workflow = true) {
-    const service_settings_div = document.getElementById('service_settings_div');
+function show_service_settings(index, state=null) {
+    let service_settings_div = document.getElementById('service_settings_div');
+    if (!service_settings_div) {
+        // The sidebar is not rendered. This happens when starting services from the context menu.
+        const sidebar_ctr = sidebar.getContainer();
+        sidebar_ctr.innerHTML += '<div id="service_settings_div"></div>';
+        sidebar.show();
+        service_settings_div = document.getElementById('service_settings_div');
+    }
 
     let service = esdl_services_information[index];
     service_settings_div.innerHTML = '<h1>' + service['name'] + '</h1>';
     service_settings_div.innerHTML += '<p>' + service['explanation'] + '</p>';
 
-    let workflow = null;
-    // let workflow_state_params = null;
-    if (service['type'] == 'workflow') {
-        // Start a new workflow by default, but continue if requested.
-        if (new_workflow) {
-            workflow = new modules.workflow.start_new_workflow(index, service)
-        } else {
-            workflow = modules.workflow.current_workflow;
-        }
-        workflow.show_service();
-        // Optionally autorefresh the step.
-        if (workflow.workflow_step && workflow.workflow_step.refresh >= 0) {
-            setTimeout(() => show_service_settings(index, false), workflow.workflow_step.refresh * 1000);
-        }
-    }
-    else if (service['type'] == 'vueworkflow') {
-        window.activate_service_workflow(index, service);
+    if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+        window.activate_service_workflow(index, service, state).then();
     } else {
         render_service(service, service_settings_div);
     }
@@ -484,7 +482,12 @@ function esdl_services_info() {
         let table = '<table>';
         for (let i = 0; i < esdl_services_information.length; i++) {
             // id, name
-            if (esdl_services_information[i]['type'] !== "map_context_menu" && service['type'] !== "area_context_menu") {
+            // Using type for this is legacy. We now use location instead.
+            if (esdl_services_information[i]['type'] !== "map_context_menu" &&
+                esdl_services_information[i]['location'] !== "map_context_menu" &&
+                esdl_services_information[i]['type'] !== "area_context_menu" &&
+                esdl_services_information[i]['location'] !== "area_context_menu"
+            ) {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
             }
         }
@@ -536,18 +539,21 @@ function update_service_contextmenus(services_list) {
     // For now, remove all contextmenu items
     map.contextmenu.removeAllItems();
     for (let i = 0; i < services_list.length; i++) {
-        if (services_list[i]['type'] == "map_context_menu") {
+        if (services_list[i]['type'] == "map_context_menu" || services_list[i]['location'] == "map_context_menu") {
             map.contextmenu.addItem({
                 text: services_list[i]['name'],
                 icon: resource_uri + 'icons/service.png',
                 callback: function(e) {
-                  console.log(e);
-                  let state = {
-                    lat: e.latlng.lat.toString(),
-                    lng: e.latlng.lng.toString(),
-                  };
-                  let service = services_list[i];
-                  query_esdl_service(service, state);
+                    const service = services_list[i];
+                    const state = {
+                        lat: e.latlng.lat.toString(),
+                        lng: e.latlng.lng.toString(),
+                    };
+                    if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                        window.show_service_settings(i, state);
+                    } else {
+                        query_esdl_service(service, state);
+                    }
                 }
             });
         }
@@ -561,18 +567,21 @@ function update_esdl_services(event) {
 
         if (event.layer_type === 'area') {
             for (let i = 0; i < esdl_services_information.length; i++) {
-                if (esdl_services_information[i]['type'] == "area_context_menu") {
+                if (esdl_services_information[i]['type'] == "area_context_menu" || esdl_services_information[i]['location'] == "area_context_menu") {
                     // if (esdl_services_information[i]['area_scope'] == layer.scope) {
                         layer.options.contextmenuItems.push({
                             text: esdl_services_information[i]['name'],
                             icon: resource_uri + 'icons/service.png',
                             callback: function (e) {
-                                console.log(e)
-                                let service = esdl_services_information[i];
-                                let state = {
+                                const service = esdl_services_information[i];
+                                const state = {
                                     area_id: id,
                                 }
-                                query_esdl_service(service, state);
+                                if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                                    window.show_service_settings(i, state);
+                                } else {
+                                    query_esdl_service(service, state);
+                                }
                             }
                         });
                     // }

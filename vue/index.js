@@ -8,7 +8,6 @@ import ControlStrategy from './apps/ControlStrategy';
 import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
-//import EsdlProfiles from './apps/EsdlProfiles';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import Carriers from './apps/Carriers.vue';
 import Sectors from './apps/Sectors.vue';
@@ -31,7 +30,7 @@ import ServicesToolbar from './components/toolbars/ServicesToolbar'
 import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
-// import ActiveLongProcess from './components/progress/ActiveProcess'
+import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -39,24 +38,23 @@ import Swal from "sweetalert2";
 
 // Vue.config.productionTip = false
 
-window.activate_service_workflow = async (serviceIndex, service) => {
-    const { startNewWorkflow, currentWorkflow, closeWorkflow } = useWorkflow();
-    if (currentWorkflow.value) {
+window.activate_service_workflow = async (serviceIndex, service, state) => {
+    const { startNewWorkflow, currentWorkflow } = useWorkflow();
+    if (currentWorkflow.value && currentWorkflow.value.resumable) {
         const result = await Swal.fire({
-          title: "Would you like to continue the currently active workflow?",
+          title: "Would you like to resume the currently active workflow?",
           icon: 'question',
           showDenyButton: true,
           confirmButtonText: "Yes",
           denyButtonText: "No, start from the beginning",
         })
         if (result.isDenied) {
-            startNewWorkflow(serviceIndex, service);
+            startNewWorkflow(serviceIndex, service, state);
         }
     } else {
-        startNewWorkflow(serviceIndex, service);
+        startNewWorkflow(serviceIndex, service, state);
     }
     mountSidebarComponent(Workflow);
-    window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -118,7 +116,7 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
-// createVueLControl(ActiveLongProcess);
+createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
 mountApp(ReleaseNotes, '#vue_show_release_notes')

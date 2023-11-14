@@ -65,8 +65,10 @@ function select_active_layer(active_esdl_layer) {
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
     let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
-    if (Object.keys(bounds).length !== 0)
-        map.flyToBounds(bounds, {padding: [50,50], animate: true});     // zoom to layer
+    if (Object.keys(bounds).length !== 0) {
+        map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
+    }
+    window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', { active_layer_id: active_layer_id });
 }
 
 function add_select_esdl() {

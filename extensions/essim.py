@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from typing import TypedDict
 
 import base64
 import collections
@@ -67,42 +68,31 @@ class ESSIM:
 
                 print('Set ESSIM simulationRun ID: '+sim_id)
                 set_session('simulationRun', sim_id)
-                ESSIM_config = settings.essim_config
-                url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id
 
                 try:
-                    r = requests.get(url)
-                    if r.status_code == 200:
-                        result = json.loads(r.text)
-                        active_simulation = {
-                            'sim_id': sim_id,
-                            'scenarioID': result['scenarioID'],
-                            'simulationDescription': result['simulationDescription'],
-                            'startDate': result['startDate'],
-                            'endDate': result['endDate'],
-                            'dashboardURL': result['dashboardURL']
-                        }
-                        set_session('active_simulation', active_simulation)
-                        try:
-                            esdlstr_base64 = result['esdlContents']
-                            esdlstr_base64_bytes = esdlstr_base64.encode('utf-8')
-                            esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
-                            esdlstr = esdlstr_bytes.decode('utf-8')
-                        except:
-                            esdlstr_urlenc = result['esdlContents']
-                            esdlstr = urllib.parse.unquote(esdlstr_urlenc)
+                    result = retrieve_simulation_from_essim(sim_id)
+                    active_simulation = {
+                        'sim_id': sim_id,
+                        'scenarioID': result['scenarioID'],
+                        'simulationDescription': result['simulationDescription'],
+                        'startDate': result['startDate'],
+                        'endDate': result['endDate'],
+                        'dashboardURL': result['dashboardURL']
+                    }
+                    set_session('active_simulation', active_simulation)
+                    esdl_string = essim_esdl_contents_to_esdl_string(result['esdlContents'])
 
-                        res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
-                        set_session('active_es_id', res_es.id)
+                    res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdl_string)
+                    set_session('active_es_id', res_es.id)
 
-                        sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-                        edt = datetime.strptime(result['endDate'], '%Y-%m-%dT%H:%M:%S%z')
-                        influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                        influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                    sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+                    edt = datetime.strptime(result['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                    influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                    influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-                        # Call init_simulation to enable the loadflow calculations
-                        self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
-                        self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
+                    # Call init_simulation to enable the loadflow calculations
+                    self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
+                    self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
 
                 except Exception as e:
                     # print('Exception: ')
@@ -456,7 +446,7 @@ class ESSIM:
 
         return sim_list
 
-    def store_simulation(self, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
+    def store_simulation(self, es_id, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None:
                 if self.settings_storage.has_user(user_email, essim_list):
@@ -465,6 +455,7 @@ class ESSIM:
                     sim_list = []
 
                 sim_list.insert(0, {
+                    "es_id": es_id,
                     "simulation_id": simulation_id,
                     "simulation_datetime": simulation_datetime,
                     "simulation_descr": simulation_descr,
@@ -570,7 +561,7 @@ class ESSIM:
                     set_session('es_simid', sim_id)
                     print("ESSIM started, sim_id: " + sim_id)
 
-                    self.store_simulation(user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
+                    self.store_simulation(active_es_id, user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
                     # emit('', {})
 
                     active_simulation = {
@@ -794,3 +785,42 @@ class ESSIM:
         return post_processed_results
 
 
+class EssimException(Exception):
+    pass
+
+
+class EssimSimulationDetails(TypedDict):
+    scenarioID: str
+    simulationDescription: str
+    startDate: str
+    endDate: str
+    dashboardURL: str
+    esdlContents: str
+
+
+def retrieve_simulation_from_essim(sim_id: str) -> EssimSimulationDetails:
+    """
+    Request simulation details from ESSIM.
+    """
+    ESSIM_config = settings.essim_config
+    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id
+    r = requests.get(url)
+    if r.status_code != 200:
+        raise EssimException("Failed to retrieve ESSIM simulation details from ESSIM.")
+    result = json.loads(r.text)
+    return result
+
+
+def essim_esdl_contents_to_esdl_string(esdl_contents: str):
+    """
+    Convert/decode esdl contents field from ESSIM to a string representing the ESDL.
+    """
+    try:
+        esdl_string_base64 = esdl_contents
+        esdl_string_base64_bytes = esdl_string_base64.encode('utf-8')
+        esdl_string_bytes = base64.decodebytes(esdl_string_base64_bytes)
+        esdl_string = esdl_string_bytes.decode('utf-8')
+    except:
+        esdl_string_urlenc = esdl_contents
+        esdl_string = urllib.parse.unquote(esdl_string_urlenc)
+    return esdl_string

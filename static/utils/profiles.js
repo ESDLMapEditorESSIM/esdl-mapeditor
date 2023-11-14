@@ -148,15 +148,15 @@ function select_qau_profile_type() {
 }
 
 function port_profile_info_window(port_profile_info) {
-    profile_info_list = port_profile_info['profile_info'];
-    port_id = port_profile_info['port_id'];
+    const profile_info_list = port_profile_info['profile_info'];
+    const port_id = port_profile_info['port_id'];
 
-    sidebar_ctr = sidebar.getContainer();
+    const sidebar_ctr = window.sidebar.getContainer();
 
     sidebar_ctr.innerHTML = '<h1>Current profiles of port:</h1>';
 
     if (profile_info_list.length > 0) {
-        table = '<table id="profiles_table">';
+        let table = '<table id="profiles_table">';
         table += '<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Value</b></td><td><b>Unit</b></td></tr>';
         for (let p=0; p<profile_info_list.length; p++) {
             let profile_info = profile_info_list[p];
@@ -166,12 +166,12 @@ function port_profile_info_window(port_profile_info) {
             let profile_id = profile_info['id'];
             let profile_value_or_multiplier = 0;
 
-            if (profile_class == 'SingleValue') {
+            if (profile_class === 'SingleValue') {
                 profile_value_or_multiplier = profile_info['value'];
                 profile_uiname = 'SingleValue';
-            } else if (profile_class == 'InfluxDBProfile') {
-                profile_value_or_multiplier = profile_info['multiplier'];
-            } else if (profile_class == 'DateTimeProfile') {
+            } else if (profile_class === 'InfluxDBProfile') {
+                profile_value_or_multiplier = (+profile_info['multiplier']).toFixed(4);
+            } else if (profile_class === 'DateTimeProfile') {
                 profile_value_or_multiplier = 0;
                 profile_uiname = 'DateTimeProfile';
             }
@@ -197,7 +197,7 @@ function port_profile_info_window(port_profile_info) {
     }
 
     sidebar_ctr.innerHTML += '<h1>Add profile to port:</h1>';
-    table = '<table>';
+    let table = '<table>';
 
     table += '<tr><input type="hidden" id="profile_port_id" value="'+port_id+'"><td width=180>Profile class</td>';
     let $select = $('<select>').attr('id', 'profile_class');
