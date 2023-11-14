@@ -17,8 +17,8 @@ RUN yarn build-prod
 
 FROM python:3.10-slim
 
-RUN apt-get -y update && \
-    apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg libgeos-dev
+RUN apt-get -y update
+RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg libgeos-dev
 
 # Prepare directory for the app.
 WORKDIR /usr/src/app
