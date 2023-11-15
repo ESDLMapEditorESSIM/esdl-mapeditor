@@ -53,7 +53,7 @@ class HeatNetwork:
                 active_es_id = get_session('active_es_id')
                 print('Duplicate EnergyAsset: %s' % message)
                 duplicate = duplicate_energy_asset(esh, active_es_id, message['asset_id'])
-                self.add_asset_and_emit(esh, active_es_id, duplicate, message['area_bld_id'])
+                self.add_asset_and_emit(active_es_id, duplicate)
 
         @self.socketio.on('reverse_conductor', namespace='/esdl')
         def reverse_conductor(message):
@@ -64,19 +64,15 @@ class HeatNetwork:
             asset_id = message['asset_id']
             conductor = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
             self.reverse_conductor(active_es_id, conductor)
-            resource = esh.get_resource(active_es_id)
 
-    def add_asset_and_emit(self, esh: EnergySystemHandler, es_id: str, asset: EnergyAsset, area_bld_id: str):
+    def add_asset_and_emit(self, es_id: str, asset: EnergyAsset):
         with self.flask_app.app_context():
+
             asset_to_be_added_list = list()
             port_list = self.calculate_port_list(asset)
             message = self.create_asset_description_message(asset, port_list)
             asset_to_be_added_list.append(message)
-
-            add_to_building = False
-            if not ESDLAsset.add_object_to_area(esh.get_energy_system(es_id), asset, area_bld_id):
-                ESDLAsset.add_object_to_building(esh.get_energy_system(es_id), asset, area_bld_id)
-                add_to_building = True
+            add_to_building = True if isinstance(asset.eContainer(), esdl.AbstractBuilding) else False
 
             emit('add_esdl_objects', {'es_id': es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
@@ -299,7 +295,9 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
         # port.connectedTo.clear()  # pyEcore bug: clear() does not work as expected.
         connected_to_copy = list(port.connectedTo)
         for p in connected_to_copy:
-            p.delete()
+            port.connectedTo.remove(p)
 
+    container = original_asset.eContainer()  # find the area or building the original asset is contained by
+    container.asset.append(duplicate_asset)
     esh.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

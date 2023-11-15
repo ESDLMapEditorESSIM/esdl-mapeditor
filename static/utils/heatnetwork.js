@@ -20,9 +20,7 @@
 //function init() {}
 
 function duplicate(event, id) {
-    // console.log('Duplicating layer id = ', id)
-    let area_bld_id = $( "#area_bld_select" ).val();
-    socket.emit('duplicate', {asset_id: id, area_bld_id: area_bld_id});
+    socket.emit('duplicate', {asset_id: id});
 }
 
 function reverse_conductor(event, id) {
