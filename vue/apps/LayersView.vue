@@ -82,31 +82,17 @@ const showAddLayerDialog = (objectId) => {
 
 const getRootGroupsWithChildren = () => {
   const rootGroups = [];
-  const foundChildIds = []
+  // const foundChildIds = [];
   for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
-    if (layerGroup.parent_group_id === 'root') {
+    if (layerGroup.is_root) {
       rootGroups[key] = {...layerGroup};
-      rootGroups[key]['children'] = getChildrenOfGroup(layerGroup, foundChildIds);
+      rootGroups[key]['children'] = getChildrenOfGroup(layerGroup);
     }
   }
-
-  // add 'non-root' groups that are not found in any 'child_ids' list (legacy) to the 'Personal Layers' folder
-  for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
-    if (layerGroup.parent_group_id !== 'root' && !foundChildIds.includes(key)) {
-      addTreeItem(rootGroups['personal_layers'].children, layerGroup, key, "wms_layer_folder", getChildrenOfGroup(layerGroup, foundChildIds));
-    }
-  }
-  // add layers that are not found in any 'child_ids' list (legacy) to the 'Personal Layers' folder
-  for (const [key, layer] of Object.entries(getWmsLayerList().layers)) {
-    if (!foundChildIds.includes(key)) {
-      addTreeItem(rootGroups['personal_layers'].children, layer, key, "wms_layer", []);
-    }
-  }
-
   return rootGroups;
 }
 
-const getChildrenOfGroup = (layerGroup, foundChildIds) => {
+const getChildrenOfGroup = (layerGroup) => {
   const layers = [];
   if (typeof layerGroup.child_ids !== 'undefined' && layerGroup.child_ids.length > 0) {
     for (const childId of layerGroup.child_ids) {
@@ -116,14 +102,13 @@ const getChildrenOfGroup = (layerGroup, foundChildIds) => {
       let children = [];
       if (child !== undefined && child !== null) {  // if a group, find children
         type = "wms_layer_folder";
-        children = getChildrenOfGroup(child, foundChildIds);
+        children = getChildrenOfGroup(child);
       } else { // get layer
         child = getWmsLayerList().layers[childId];
       }
 
       if (child !== undefined && child !== null) {
         addTreeItem(layers, child, childId, type, children);
-        foundChildIds.push(childId);
       }
     }
   }
@@ -319,7 +304,6 @@ const eventHandlersByName = [{
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
   if (operation === 'move_node' || operation === 'copy_node') {
-    const old_root_folder_id = node.parents[node.parents.length - 2];
     let new_root_folder_id;
     if (node_parent.parents.length > 1) {
       new_root_folder_id = node_parent.parents[node_parent.parents.length - 2];
