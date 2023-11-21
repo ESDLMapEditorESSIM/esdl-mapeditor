@@ -35,8 +35,7 @@
             class="fe_box"
             size="small"
             type="text"
-          />
-          <!--          <a-select-->
+          />          <!--          <a-select-->
           <!--            v-if="isNewLayer && key === 'projectName'"-->
           <!--            v-model:value="wmsLayer[key]" size="small" style="width: 100%"-->
           <!--            :options="projectOptions()"-->
@@ -59,16 +58,17 @@
 </template>
 
 <script setup>
-import {ref, onBeforeMount, defineExpose, defineEmits} from "vue";
+import {ref, onBeforeMount} from "vue";
 import {useObject} from "../composables/ObjectID";
 import {useWmsLayers} from "../composables/wmsLayers";
 
-const {getWmsLayerList, addWmsLayer, updateLayer} = useWmsLayers();
+const {addWmsLayer, updateLayer} = useWmsLayers();
 
 const wmsLayer = ref(null);
 const parentId = ref(null);
 const parentLayerGroup = ref(null);
 const isNewLayer = ref(false);
+// eslint-disable-next-line no-unused-vars
 const isLoading = ref(false);
 
 const {currentObjectID} = useObject();
@@ -105,26 +105,6 @@ const camelCase = (str) => {
   // TODO: import this function from utils.js and let utils.js export functions
   return window.camelCaseToWords(str);
 };
-
-
-// eslint-disable-next-line no-unused-vars
-const projectOptions = () => {
-  const projectNames = [];
-  for (const [key, layer] of Object.entries(getWmsLayerList()['layers'])) {
-    if (layer.project_name !== undefined) {
-      projectNames.push(layer.project_name);
-    }
-  }
-
-  const options = [];
-  for (const uniqueName of [...new Set(projectNames)]) {
-    options.push({
-      label: uniqueName,
-      value: uniqueName,
-    })
-  }
-  return options;
-}
 
 // eslint-disable-next-line no-unused-vars
 const addUpdate = () => {

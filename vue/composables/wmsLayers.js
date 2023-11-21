@@ -26,9 +26,8 @@ const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible} = useV
 const L = window.L;
 const map = window.map;
 let socket = null;
-const treeId = "layer_tree"
+const treeId = "layer_tree";
 const $ = window.$;
-
 const getTree = () => $('#' + treeId).jstree(true);
 
 const globalWmsLayerList = ref(null);
@@ -49,7 +48,7 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
                 // make sure not to lose the map reference
                 wmsLayerList['layers'][layerId].layer_ref = globalWmsLayerList.value['layers'][layerId].layer_ref;
             } else {
-                // hide layer not present anymore
+                // hide layer present in global (old) list, but not in new list from database: was deleted
                 removeLayerFromMapAndVisibleLayers(layerId);
             }
         }
@@ -78,7 +77,7 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
             layer_info.layer_ref.bringToFront();
         }
     }
-}
+};
 
 export function useWmsLayers() {
     /**
@@ -107,11 +106,11 @@ export function useWmsLayers() {
             updateGlobalWmsLayerList(allLayers, layerId);
             showWmsLayer(layerId);
         });
-
     };
 
-    function updateLayer(layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) {
+    const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) => {
         removeLayerFromMapAndVisibleLayers(layerId);
+        globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
             id: layerId, lyr_info: {
                 description: layerDescr,
@@ -122,10 +121,10 @@ export function useWmsLayers() {
             }
         }, (allLayers) => {
             allLayers['layers'][layerId].visible = true;
-            updateGlobalWmsLayerList(allLayers);
+            updateGlobalWmsLayerList(allLayers, layerId);
             showWmsLayer(layerId);
         });
-    }
+    };
 
     const showWmsLayer = (layerId) => {
         globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
@@ -137,14 +136,14 @@ export function useWmsLayers() {
     };
 
     const hideWmsLayer = (layerId) => {
-       removeLayerFromMapAndVisibleLayers(layerId);
+        removeLayerFromMapAndVisibleLayers(layerId);
     };
 
     const removeWmsLayer = (layerId, parentId) => {
         socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalWmsLayerList);
         map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
         removeFromVisibleLayerList(layerId);
-    }
+    };
 
     const addWmsLayerGroup = (parentId, setting_type, project_name) => {
         const groupId = window.uuidv4();
@@ -164,29 +163,30 @@ export function useWmsLayers() {
             type: 'wms_layer_folder',
             state: {opened: true},
         });
-    }
+    };
 
     const renameWmsLayerGroup = (groupId, name) => {
         socket.emit('rename_layer_group', {group_id: groupId, group_name: name}, updateGlobalWmsLayerList);
-    }
+    };
 
     const removeWmsLayerGroup = (groupId, parentId) => {
         removeGroupChildrenFromMap(groupId);
         socket.emit('remove_wms_layer_group', {id: groupId, parent_id: parentId}, updateGlobalWmsLayerList);
-    }
+    };
 
     const moveWmsItem = (itemId, oldParentId, newParentId, position) => {
         socket.emit('move_wms_item', {
             item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
         });
-    }
+    };
+
     const copyWmsItem = (itemId, newParentId, position) => {
         socket.emit('copy_wms_item', {
             item_id: itemId,
             new_parent_id: newParentId,
             position: position
         }, updateGlobalWmsLayerList);
-    }
+    };
 
     return {
         getWmsLayerList,
@@ -218,9 +218,9 @@ const createWmsLayerLegend = (url) => {
     legend_title_div.innerHTML += 'Legend';
 
     const LegendPicture_div = L.DomUtil.create('div', 'info legend', legend_div);
-    LegendPicture_div.innerHTML = '<img src="' + url + '" alt="wms legend">'
+    LegendPicture_div.innerHTML = '<img src="' + url + '" alt="wms legend">';
     return legend_div;
-}
+};
 
 let wmsLegend = null;
 const showWmsLegend = (url) => {
@@ -232,26 +232,22 @@ const showWmsLegend = (url) => {
         return createWmsLayerLegend(url);
     };
     wmsLegend.addTo(map);
-}
+};
 
 const removeWmsLegend = () => {
     if (wmsLegend) {
         map.removeControl(wmsLegend);
     }
-}
+};
 
 const removeGroupChildrenFromMap = (layerGroupId) => {
-    const group = globalWmsLayerList.value['layer_groups'][layerGroupId]
-    console.log(group)
+    const group = globalWmsLayerList.value['layer_groups'][layerGroupId];
     for (const childId of group['child_ids']) {
-        console.log(childId, globalWmsLayerList.value)
         if (childId in globalWmsLayerList.value['layer_groups'][layerGroupId]) {
-            removeGroupChildrenFromMap((childId))
+            removeGroupChildrenFromMap((childId));
         } else if (childId in globalWmsLayerList.value['layers']) {
-            console.log('remove map', childId)
             map.removeLayer(globalWmsLayerList.value['layers'][childId].layer_ref);
             removeFromVisibleLayerList(childId);
         }
     }
-
-}
+};

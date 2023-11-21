@@ -40,9 +40,6 @@ class WMSLayers:
         else:
             logger.info('Found WMS layers in System Settings')
 
-        if not self.settings_storage.has_system(LAYERS_GROUP_SETTING):
-            self.settings_storage.set_system(LAYERS_GROUP_SETTING, default_system_wms_layer_groups)
-
     def register(self):
         logger.info('Registering WMS layer extension')
 
@@ -144,8 +141,7 @@ class WMSLayers:
 
         layer_groups[layer_group_id] = layer_group
         self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
-        if parent_group_id:
-            self.add_child_to_layer_group(parent_group_id, layer_group_id, position)
+        self.add_child_to_layer_group(parent_group_id, layer_group_id, position)
 
     def get_wms_layer_group(self, group_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
@@ -154,12 +150,13 @@ class WMSLayers:
         return group
 
     def add_child_to_layer_group(self, group_id: str, child_id: str, position: int = None):
-        group = self.get_wms_layer_group(group_id)
-        if isinstance(position, int):
-            group["child_ids"].insert(position, child_id)
-        else:
-            group["child_ids"].append(child_id)
-        self.add_wms_layer_group(group_id, group)
+        if group_id:
+            group = self.get_wms_layer_group(group_id)
+            if isinstance(position, int):
+                group["child_ids"].insert(position, child_id)
+            else:
+                group["child_ids"].append(child_id)
+            self.add_wms_layer_group(group_id, group)
 
     def remove_child_from_layer_group(self, group_id: str, child_id: str):
         group = self.get_wms_layer_group(group_id)
@@ -251,8 +248,7 @@ class WMSLayers:
         layers[layer_id] = layer
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
-        if parent_group_id:
-            self.add_child_to_layer_group(parent_group_id, layer_id, position)
+        self.add_child_to_layer_group(parent_group_id, layer_id, position)
 
     def get_wms_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
@@ -340,97 +336,86 @@ class WMSLayers:
         return identifier
 
     def get_layers(self):
-        # gets the default list and adds the user layers
+        # gets the wms layer and group layer lists
         all_layers = dict()
-        if self.settings_storage.has_system(LAYERS_SETTING):
-            all_layers.update(self.settings_storage.get_system(LAYERS_SETTING))
-
-        user = get_session('user-email')
-        user_group = get_session('user-group')
-        mapeditor_role = get_session('user-mapeditor-role')
-        if user is not None and self.settings_storage.has_user(user, LAYERS_SETTING):
-            # add user layers if available
-            all_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
-
-        # TODO this should be done in __init__ but then 'user = get_session('user-email')' does not work yet
-        if user is not None:
-            if not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
-                # add user default user group_layers if not present
-                self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, default_user_wms_layer_groups)
-            else:
-                user_group_layers = self.settings_storage.get_user(user, LAYERS_GROUP_SETTING)
-                if 'personal_layers' not in user_group_layers:
-                    user_group_layers.update(default_user_wms_layer_groups)
-                    self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, user_group_layers)
-
         all_layer_groups = dict()
+
+        # add system layers and layer groups
+        system_layers = dict()
+        if self.settings_storage.has_system(LAYERS_SETTING):
+            system_layers.update(self.settings_storage.get_system(LAYERS_SETTING))
+        if not self.settings_storage.has_system(LAYERS_GROUP_SETTING):
+            # add root group
+            layer_groups = dict()
+            layer_groups['system_root_group'] = {
+                "setting_type": SettingType.SYSTEM.value,
+                "project_name": SettingType.SYSTEM.value,
+                "description": "Standard Layers",
+                "is_root": True,
+                "child_ids": [layer_id for layer_id in system_layers]
+            }
+            self.settings_storage.set_system(LAYERS_GROUP_SETTING, layer_groups)
+        all_layers.update(system_layers)
+        all_layer_groups.update(self.settings_storage.get_system(LAYERS_GROUP_SETTING))
+
+        # add user layers and layer groups
+        user = get_session('user-email')
         if user is not None:
-            all_layer_groups.update(self.settings_storage.get_system(LAYERS_GROUP_SETTING))
+            user_layers = dict()
+            if self.settings_storage.has_user(user, LAYERS_SETTING):
+                user_layers.update(self.settings_storage.get_user(user, LAYERS_SETTING))
+            if not self.settings_storage.has_user(user, LAYERS_GROUP_SETTING):
+                # add root group
+                layer_groups = dict()
+                layer_groups['user_root_group'] = {
+                    "setting_type": SettingType.USER.value,
+                    "project_name": SettingType.USER.value,
+                    "description": "Personal Layers",
+                    "is_root": True,
+                    "child_ids": [layer_id for layer_id in user_layers]
+                }
+                self.settings_storage.set_user(user, LAYERS_GROUP_SETTING, layer_groups)
+            all_layers.update(user_layers)
             all_layer_groups.update(self.settings_storage.get_user(user, LAYERS_GROUP_SETTING))
 
+        # add project layers and layer groups
+        user_group = get_session('user-group')
         if user_group is not None:
             for group in user_group:
+                project_layers = dict()
                 identifier = self._get_identifier(SettingType.PROJECT, group)
                 if self.settings_storage.has_project(identifier, LAYERS_SETTING):
-                    # add project layers if available
-                    all_layers.update(self.settings_storage.get_project(identifier, LAYERS_SETTING))
+                    project_layers.update(self.settings_storage.get_project(identifier, LAYERS_SETTING))
                 if not self.settings_storage.has_project(identifier, LAYERS_GROUP_SETTING):
-                    # add root project group if not present
-                    default_project_group = dict()
-                    default_project_group[identifier] = {
+                    # add root group
+                    layer_groups = dict()
+                    key = identifier + "_root_group"
+                    layer_groups[identifier + "_root_group"] = {
                         "setting_type": SettingType.PROJECT.value,
                         "project_name": identifier,
                         "description": "Project Layers for " + group,
-                        "parent_group_id": "root",
-                        "child_ids": []}
-                    self.settings_storage.set_project(identifier, LAYERS_GROUP_SETTING, default_project_group)
-                # add project group layers
+                        "is_root": True,
+                        "child_ids": [layer_id for layer_id in project_layers]
+                    }
+                    self.settings_storage.set_project(identifier, LAYERS_GROUP_SETTING, layer_groups)
+
+                all_layers.update(project_layers)
                 all_layer_groups.update(self.settings_storage.get_project(identifier, LAYERS_GROUP_SETTING))
 
-        # generate message
-        message = {
-            LAYERS_SETTING: all_layers,
-            LAYERS_GROUP_SETTING: all_layer_groups
-        }
-        # message = copy.deepcopy(default_wms_layer_groups)
-        # possible_groups = message["layer_groups"]
-        # if enough rights, mark Standard layers and layer groups editable
-        for layer in message[LAYERS_SETTING].values():
+        # set rights
+        mapeditor_role = get_session('user-mapeditor-role')
+        for layer in all_layers.values():
             if 'mapeditor-admin' in mapeditor_role:
                 layer['readonly'] = False
             else:
                 layer['readonly'] = layer['setting_type'] == SettingType.SYSTEM.value
-        for layer_group in message[LAYERS_GROUP_SETTING].values():
+        for layer_group in all_layer_groups.values():
             if 'mapeditor-admin' in mapeditor_role:
                 layer_group['readonly'] = False
             else:
                 layer_group['readonly'] = layer_group['setting_type'] == SettingType.SYSTEM.value
-        # possible_groups.extend(self._create_group_layers_for_projects(user_group))
-        # logger.debug(message)
-        return message
+        return {LAYERS_SETTING: all_layers, LAYERS_GROUP_SETTING: all_layer_groups}
 
-
-default_system_wms_layer_groups = {
-    "standard_layers": {
-        "setting_type": SettingType.SYSTEM.value,
-        "project_name": SettingType.SYSTEM.value,
-        "description": "Standard Layers",
-        "parent_group_id": "root",
-        "child_ids": [
-            "AHN2_5m", "RVO_Restwarmte", "LianderHS", "LianderMS", "LT_WarmteBronnen_ECW", "WarmteNetten",
-            "GasLeidingenEnexis", "GasLeidingenStedin", "CO2EmissieBedrijven", "AardwarmteKrijtJura",
-            "AardwarmteRotliegend", "CondensWarmte", "DataCentraWarmte", "PICO_Hoogspanningsnet_2018", "TEO"
-        ]},
-}
-
-default_user_wms_layer_groups = {
-    "personal_layers": {
-        "setting_type": SettingType.USER.value,
-        "project_name": SettingType.USER.value,
-        "description": "Personal Layers",
-        "parent_group_id": "root",
-        "child_ids": []},
-}
 
 default_wms_layers = {
     "AHN2_5m": {
@@ -592,8 +577,7 @@ default_wms_layers = {
         "description": "PICO Hoogspanningsnet 2018",
         "url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=120&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs",
         "layer_name": "Hoogspanningsnet_2018",
-        "setting_type": SettingType.PROJECT.value,
-        "project_name": "MCS",
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "https://pico.geodan.nl/cgi-bin/qgis_mapserv.fcgi?DPI=96&map=/usr/lib/cgi-bin/projects/Hoogspanningsnet_2018.qgs&request=GetLegendGraphic&service=WMS&itemFONTSIZE=7&format=png&layertitle=false&layer=Hoogspanningsnet_2018",
         "layer_ref": None,
         "visible": False,
@@ -603,8 +587,7 @@ default_wms_layers = {
         "description": "Thermische energie uit oppervlaktewater",
         "url": "https://stowa.geoapps.nl/proxy?auth=null&path=https://geosrv02a.geoapps.nl/geoserver/b8e2d7c2645c48359cc2994f45f10940/wms?",
         "layer_name": "a3643e0e53fa4174a4ead41f56659a6e",
-        "setting_type": SettingType.PROJECT.value,
-        "project_name": "MCS",
+        "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
         "layer_ref": None,
         "visible": False,
