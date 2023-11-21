@@ -83,8 +83,8 @@
     <!-- Edwin: Load JQuery-ui after bootstrap to prevent errors with tooltip -->
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
-    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/themes/default/style.min.css" />
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.min.js"></script>
 
     <!--script type="text/javascript" src="./plugins/socketio.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
@@ -163,7 +163,6 @@
     <script type="text/javascript" src="./utils/ielgas.js"></script>
 {% endif %}
 
-    <script type="text/javascript" src="./utils/wms_layers.js"></script>
     <script type="text/javascript" src="./utils/shapefiles.js"></script>
     <script type="text/javascript" src="./utils/asset_map_utils.js"></script>
     <script type="text/javascript" src="./utils/building_editor.js"></script>
@@ -590,25 +589,25 @@
                 set_esdl_services_information(list);
             });
 
-            socket.on('wms_layer_list', function(wms_layer_lst) {
-                wms_layer_list = wms_layer_lst;
-                // console.log(wms_layer_list);
-
-                for (var key in wms_layer_list['layers']) {
-                    var layer_info = wms_layer_list['layers'][key];
-
-                    layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
-                        layers: layer_info.layer_name,
-                        format: 'image/png',
-                        transparent: true,
-                        attribution: layer_info.attribution
-                    });
-                    if (layer_info.visible) {
-                        layer_info.layer_ref.addTo(map);
-                        layer_info.layer_ref.bringToFront();
-                    }
-                }
-            });
+            {#socket.on('wms_layer_list', function(wms_layer_lst) {#}
+            {#    wms_layer_list = wms_layer_lst;#}
+            {#    // console.log(wms_layer_list);#}
+            {##}
+            {#    for (var key in wms_layer_list['layers']) {#}
+            {#        var layer_info = wms_layer_list['layers'][key];#}
+            {##}
+            {#        layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {#}
+            {#            layers: layer_info.layer_name,#}
+            {#            format: 'image/png',#}
+            {#            transparent: true,#}
+            {#            attribution: layer_info.attribution#}
+            {#        });#}
+            {#        if (layer_info.visible) {#}
+            {#            layer_info.layer_ref.addTo(map);#}
+            {#            layer_info.layer_ref.bringToFront();#}
+            {#        }#}
+            {#    }#}
+            {#);#}
 
             // populate the asset menu grouped by capability
             socket.on('cap_pot_list', function(obj_list) {
