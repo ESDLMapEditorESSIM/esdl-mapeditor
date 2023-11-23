@@ -11,6 +11,7 @@ import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
 import AddEditWmsLayer from './apps/AddEditWmsLayer';
 import Carriers from './apps/Carriers.vue';
+import Sectors from './apps/Sectors.vue';
 import AboutBox from './apps/AboutBox';
 import ReleaseNotes from './apps/ReleaseNotes';
 import {useReleaseNotes} from "./composables/releaseNotes";
@@ -51,24 +52,23 @@ import {useUndoRedo} from "./composables/undoRedo";
 
 // Vue.config.productionTip = false
 
-window.activate_service_workflow = async (serviceIndex, service) => {
+window.activate_service_workflow = async (serviceIndex, service, state) => {
     const { startNewWorkflow, currentWorkflow } = useWorkflow();
-    if (currentWorkflow.value && currentWorkflow.value.restartable) {
+    if (currentWorkflow.value && currentWorkflow.value.resumable) {
         const result = await Swal.fire({
-          title: "Would you like to continue the currently active workflow?",
+          title: "Would you like to resume the currently active workflow?",
           icon: 'question',
           showDenyButton: true,
           confirmButtonText: "Yes",
           denyButtonText: "No, start from the beginning",
         })
         if (result.isDenied) {
-            startNewWorkflow(serviceIndex, service);
+            startNewWorkflow(serviceIndex, service, state);
         }
     } else {
-        startNewWorkflow(serviceIndex, service);
+        startNewWorkflow(serviceIndex, service, state);
     }
     mountSidebarComponent(Workflow);
-    // window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -173,4 +173,8 @@ createVueLControl(AssetsToBeAddedToolbar, {
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
+}
+
+window.sectors_window = () => {
+    mountSidebarComponent(Sectors);
 }

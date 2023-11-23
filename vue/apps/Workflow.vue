@@ -57,6 +57,7 @@
                 {{ workflow.name }}
               </a-menu-item>
             </a-sub-menu>
+            <a-menu-item key="logState" @click="logState">Log workflow state</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>
@@ -143,7 +144,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
@@ -162,64 +163,36 @@ import WorkflowSelectQuery from "../components/workflow/WorkflowSelectQuery.vue"
 
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
-export default {
-  components: {
-    WorkflowSelectQuery,
-    WorkflowEsdlService,
-    WorkflowDownloadFile,
-    WorkflowUploadFile,
-    WorkflowHttpPost,
-    WorkflowProgress, WorkflowText, WorkflowJsonForm, WorkflowCustomComponent, WorkflowChoice, MenuOutlined},
-  setup() {
-    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow, getState } = useWorkflow();
 
-    const activeEnergySystemTitle = ref("Please select an energy system");
-    try {
-      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-    } catch (e) {
-      // Skip.
-    }
+const activeEnergySystemTitle = ref("Please select an energy system");
+try {
+  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+} catch (e) {
+  // Skip.
+}
 
-    PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
-      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-    });
+PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+});
 
-    function confirmPersistWorkflow() {
-      let workflowName = currentWorkflow.value.name;
-      if (!workflowName) {
-        workflowName = prompt("Please enter a workflow name")
-      }
-      if (workflowName) {
-        currentWorkflow.value.setName(workflowName);
-        currentWorkflow.value.setPersistence(true);
-        persistWorkflow(true);
-      }
-    }
+function confirmPersistWorkflow() {
+  let workflowName = currentWorkflow.value.name;
+  if (!workflowName) {
+    workflowName = prompt("Please enter a workflow name")
+  }
+  if (workflowName) {
+    currentWorkflow.value.setName(workflowName);
+    currentWorkflow.value.setPersistence(true);
+    persistWorkflow(true);
+  }
+}
 
-    loadSavedWorkflows();
+function logState() {
+  console.log("State:", getState());
+  alert("See console for state.");
+}
 
-    return {
-      activeEnergySystemTitle,
-      MenuOutlined,
-      confirmPersistWorkflow,
-      currentWorkflow,
-      goToFirstStep,
-      goToPreviousStep,
-      WorkflowStepTypes,
-      WorkflowUploadFile,
-      WorkflowHttpPost,
-      WorkflowCustomComponent,
-      WorkflowChoice,
-      WorkflowSelectQuery,
-      WorkflowEsdlService,
-      WorkflowProgress,
-      WorkflowText,
-      WorkflowDownloadFile,
-      WorkflowJsonForm,
-      savedWorkflows,
-      activatePersistedWorkflow,
-      deletePersistedWorkflow,
-    };
-  },
-};
+loadSavedWorkflows();
+
 </script>

@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
 import datetime
 
 import pytz
@@ -20,6 +21,7 @@ from flask_executor import Executor
 from pyecore.ecore import EDate
 
 from esdl import esdl
+from esdl.esdl_handler import EnergySystemHandler
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -31,6 +33,7 @@ import locale
 from io import StringIO
 from uuid import uuid4
 import src.settings as settings
+from src.edr_client import EDRClient
 from utils.datetime_utils import parse_date
 from utils.utils import str2float
 
@@ -55,6 +58,8 @@ class Profiles:
         self.settings_storage = settings_storage
         self.csv_files = dict()
         self.register()
+
+        self.EDR_profiles_cache = self.generate_EDR_profiles_list()
 
         if settings.profile_database_config['host'] is None or settings.profile_database_config['host'] == "":
             logger.error("Profile database is not configured. Aborting...")
@@ -426,6 +431,10 @@ class Profiles:
             # add user profiles if available
             all_profiles.update(self.settings_storage.get_user(user, PROFILES_LIST))
 
+        edr_profiles = self.get_EDR_profiles()
+        if edr_profiles:
+            all_profiles.update(edr_profiles)
+
         if user_group is not None:
             for group in user_group:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
@@ -476,9 +485,96 @@ class Profiles:
         elif group == "Standard profiles":
             identifier = self._get_identifier(SettingType.SYSTEM)
             return SettingType.SYSTEM.value, identifier
+        elif group == "EDR profiles":
+            pass
         else:
             identifier = self._get_identifier(SettingType.USER)
             return SettingType.USER.value, identifier
+
+    def get_EDR_profiles(self):
+        return self.EDR_profiles_cache
+
+    def generate_EDR_profiles_list(self):
+        # {
+        #     'setting_type': 'project',
+        #     'project_name': 'CES_NZKG',
+        #     'profile_uiname': 'profielen CES_Reserve_profiel4',
+        #     'multiplier': 1,
+        #     'database': 'energy_profiles',
+        #     'measurement': 'profielen CES',
+        #     'field': 'Reserve_profiel4',
+        #     'profileType': '',
+        #     'start_datetime': '2014-12-31T23:00:00+0000',
+        #     'end_datetime': '2015-12-31T22:00:00+0000',
+        #     'embedUrl': 'https://panel-service.hesi.energy/grafana/d-solo/12lC8xg7z/project-profiles-for-ces_nzkg-reserve_profiel4?panelId=1&from=1420066800000&to=1451599200000&theme=light'
+        # }
+        esh = EnergySystemHandler()
+
+        edr_profiles = dict()
+        edr_client = EDRClient.get_instance()
+
+        field_map = {
+            "id": "id",
+            "label": "title",
+            "description": "description",
+            "embedUrl": "graphURL",
+            "esdl": "esdl"
+        }
+        return_code, profile_list = edr_client.get_EDR_profiles_list(field_map=field_map, include_esdl=True)
+
+        if return_code == 200:
+            for p in profile_list["item_list"]:
+                if not p["id"].startswith("/edr/Public/Profiles"):
+                    continue
+                    
+                p.update({
+                    "setting_type": "EDR",
+                    "project_name": "",
+                    "profile_uiname": p["id"].replace("/edr/Public/Profiles", "EDR").replace(".edd", ""),
+                    "profileType": ""
+                })
+
+                profile_esdl = p["esdl"]
+                esdlstr_base64_bytes = profile_esdl.encode("utf-8")
+                esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
+                esdlstr = esdlstr_bytes.decode("utf-8")
+
+                profile, parse_info = esh.load_from_string(esdlstr)
+                p.update({
+                    "host": profile.host,
+                    "port": profile.port,
+                    "database": profile.database,
+                    "measurement": profile.measurement,
+                    "field": profile.field,
+                    "multiplier": profile.multiplier,
+                    "profileType": "",
+                    "start_datetime": profile.startDate.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                    "end_datetime": profile.endDate.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                })
+
+                del p["esdl"]
+                profile_id = p["id"]
+                del p["id"]
+                edr_profiles[profile_id] = p
+
+        # {
+        #      'id': '/edr/Public/Test/standard_profiles - E3A [ENERGY in %].edd',
+        #      'title': 'standard_profiles - E3A [ENERGY in %]', 'description': None,
+        #      'tags': [],
+        #      'version': '1',
+        #      'author': None,
+        #      'validityYear': None,
+        #      'graphURL': 'http://localhost:6530/d-solo/lniEYFS4k/standard_profiles-e3a-energy-in?panelId=1&from=1546297200000&to=1577829600000&theme=light',
+        #      'esdl': 'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPGVzZGw6SW5mbHV4REJQcm9maWxlIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiIHhtbG5zOmVzZGw9Imh0dHA6Ly93d3cudG5vLm5sL2VzZGwiIG5hbWU9InN0YW5kYXJkX3Byb2ZpbGVzIC0gRTNBIFtFTkVSR1kgaW4gJV0iIGlkPSIwNmE2MjAzYS02YmViLTQ1NTItOGRjZi00NmMzMTc5N2EwODkiIHN0YXJ0RGF0ZT0iMjAxOC0xMi0zMVQyMzowMDowMC4wMDArMDAwMCIgZW5kRGF0ZT0iMjAxOS0xMi0zMVQyMjowMDowMC4wMDArMDAwMCIgaG9zdD0iaHR0cDovL2xvY2FsaG9zdCIgcG9ydD0iNjU4NiIgZGF0YWJhc2U9ImVkcl9wcm9maWxlcyIgbWVhc3VyZW1lbnQ9InN0YW5kYXJkX3Byb2ZpbGVzIiBmaWVsZD0iRTNBIj4KICA8cHJvZmlsZVF1YW50aXR5QW5kVW5pdCB4c2k6dHlwZT0iZXNkbDpRdWFudGl0eUFuZFVuaXRUeXBlIiBwaHlzaWNhbFF1YW50aXR5PSJFTkVSR1kiIHVuaXQ9IlBFUkNFTlQiIGlkPSJhOTRkODBhZC0xODA5LTQyYjQtYjBiYS03MWMxZjNjNzI1ZDIiLz4KPC9lc2RsOkluZmx1eERCUHJvZmlsZT4K',
+        #      'image': None,
+        #      'esdlType': 'InfluxDBProfile',
+        #      'lastChanged': 1665672977928,
+        #      'publicationDate': 1665672977928,
+        #      'history': [{'user': 'edwin.matthijssen@tno.nl', 'commitMessage': 'No commit message', 'timestamp': 1665672977928}],
+        #      'annotation': None
+        #  }
+
+        return edr_profiles
 
     def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime, end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
@@ -585,7 +681,8 @@ class Profiles:
 default_profile_groups = {
     "groups": [
         {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal profiles", "readonly": False},
-        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard profiles", "readonly": True}
+        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard profiles", "readonly": True},
+        {"setting_type": "EDR", "project_name": "EDR profiles", "name": "EDR profiles", "readonly": True}
     ]
 }
 

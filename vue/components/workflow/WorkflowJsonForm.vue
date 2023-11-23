@@ -1,8 +1,5 @@
 <template>
-  <p v-if="isLoading">
-    Loading...
-    <spinner />
-  </p>
+  <p v-if="isLoading">Loading...</p>
 
   <div v-else>
     <json-forms
@@ -19,7 +16,8 @@
 <script setup="props">
 import {defineProps, ref} from "vue";
 import {useWorkflow} from "../../composables/workflow.js";
-import {workflowGetData, workflowPostData} from "./utils/api.js";
+import {workflowGetJsonForm, workflowPostData} from "./utils/api.js";
+import { JsonForms } from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
 import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
 // eslint-disable-next-line no-unused-vars
@@ -49,18 +47,20 @@ const formData = {};
 const dataToSubmit = {};
 const isLoading = ref(true);
 
-const { goToNextStep } = useWorkflow();
+const { goToNextStep, getState } = useWorkflow();
 
 const doGetData = async () => {
-  const data = await workflowGetData(workflowStep.url, {})
-        // if (data == null || data == undefined) {
-        //   alert("No data received.");
-        //   return;
-        // }
-  schema.value = data.definitions[workflowStep.schema_name];
+   schema.value = await workflowGetJsonForm(workflowStep.url, workflowStep.data.schema_name)
   isLoading.value = false;
 }
-doGetData();
+if (workflowStep.url) {
+  // Retrieve schema remotely.
+  doGetData();
+} else {
+  // Retrieve schema from workflowStep.
+  schema.value = workflowStep.data.schema;
+  isLoading.value = false;
+}
 
 // eslint-disable-next-line no-unused-vars
 const onChange = (event) => {
@@ -70,17 +70,23 @@ const onChange = (event) => {
 
 // eslint-disable-next-line no-unused-vars
 const onSubmit = async () => {
-  console.log("submit");
-  console.log(dataToSubmit);
-  isLoading.value = true;
+  // Add data to state.
+  const state = getState();
+  Object.assign(state, dataToSubmit);
+  if (workflowStep.url) {
+    // POST data to remote URL.
+    isLoading.value = true;
 
-  try {
-    const response = await workflowPostData(workflowStep.url, dataToSubmit);
-    if (response != null && response.ok && workflowStep.auto) {
-      goToNextStep();
+    try {
+      const response = await workflowPostData(workflowStep.url, dataToSubmit);
+      if (response != null && response.ok && workflowStep.auto) {
+        goToNextStep();
+      }
+    } finally {
+      isLoading.value = false;
     }
-  } finally {
-    isLoading.value = false;
+  } else {
+    goToNextStep();
   }
 };
 </script>

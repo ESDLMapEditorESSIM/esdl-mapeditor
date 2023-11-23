@@ -263,16 +263,30 @@ view_modes_config = {
 asset_list = {
     "standard": {
         "Producer": [
-            "PVInstallation",
             "GeothermalSource",
+            "Import",
+            "PVInstallation",
+            "WindTurbine",
         ],
         "Consumer": [
             "ElectricityDemand",
+            "Export",
+            "HeatingDemand",
         ],
         "Conversion": [
             "CHP",
+            "GasHeater",
+            "HeatPump",
             "PowerPlant",
             "Electrolyzer",
+        ],
+        "Storage": [
+            "Battery",
+            "GasStorage",
+            "HeatStorage",
+        ],
+        "Transport": [
+            "Transformer",
         ]
     },
     "ESSIM": {
