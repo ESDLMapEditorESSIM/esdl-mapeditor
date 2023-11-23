@@ -15,10 +15,9 @@ import base64
 
 from flask import Flask
 from flask_socketio import SocketIO
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager
 import src.settings as settings
 import requests
-import urllib
 import json
 import src.log as log
 
@@ -39,9 +38,8 @@ class ESStatisticsService:
         @self.socketio.on('get_es_statistics', namespace='/esdl')
         def get_es_statistics():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                esdl_str = esh.to_string(active_es_id)
+                pm = get_project_manager()
+                esdl_str = pm.active_energy_system_to_string()
                 return self.call_es_statistics_service(esdl_str)
 
     def call_es_statistics_service(self, esdl_str):

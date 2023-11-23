@@ -15,30 +15,33 @@
 from typing import List, Optional, Union
 from uuid import uuid4
 
-from esdlproject import BaseVariant, Variant
+from esdlproject import VariantCollection, Variant
 
 
-def get_parent_variant(variant: Variant) -> Union[BaseVariant, Variant]:
+def get_parent_variant(variant: Variant) -> Union[VariantCollection, Variant]:
     """
     Return the parent variant or the base variant of this variant.
 
     :param variant: Variant to get the parent variant of.
-    :return: Parent variant or base variant.
+    :return: Parent variant or energy system proxy.
     """
-    if variant.parentVariant is None and variant.baseVariant is not None:
-        return variant.baseVariant
+    if variant.parentVariant is None and variant.variantCollection is not None:
+        return variant.variantCollection
     else:
         return variant.parentVariant
 
 
-def create_new_variant(parentVariant: Union[BaseVariant, Variant], variant_name: Optional[str] = None) -> Variant:
+def create_new_variant(parentVariant: Union[VariantCollection, Variant], variant_name: Optional[str] = None) -> Variant:
     """
-    Create a new variant under a base variant or variant.
+    Create a new variant under an VariantCollection or Variant.
 
-    :param parentVariant: Base variant or variant to create the new variant under.
+    :param parentVariant: VariantCollection or variant to create the new variant under.
     :param variant_name: Name of the new variant.
     :return: The new variant.
     """
+    print("Create new variant", parentVariant)
+    if isinstance(parentVariant, VariantCollection):
+        parentVariant = parentVariant.variant  #
     if variant_name is None:
         variant_name = f"Untitled variant {len(parentVariant.variant) + 1}"
     new_variant = Variant(name=variant_name, id=str(uuid4()))
@@ -53,6 +56,9 @@ def get_variant_path_list(variant: Variant) -> List[Variant]:
     :param variant: Variant to get the path of.
     :return: List of variants between this variant and its base variant.
     """
+    if variant is None:
+        return []
+
     variant_list = [variant]
     current_variant = variant
     while current_variant.parentVariant:

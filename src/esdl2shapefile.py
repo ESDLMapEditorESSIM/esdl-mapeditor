@@ -12,21 +12,19 @@
 #  Manager:
 #      TNO
 import glob
-
-from flask import Flask, send_from_directory, abort, make_response
-
-import os
 import io
-import shapefile
+import os
 import shutil
 import tempfile
 import zipfile
-import time
 
-from esdl import esdl
-from extensions.session_manager import set_session, get_session, get_handler
+import shapefile
+from flask import Flask, make_response
 from pyecore.ecore import EAttribute
+
 import src.log as log
+from esdl import esdl
+from extensions.session_manager import get_session, get_project_manager
 
 logger = log.get_logger(__name__)
 
@@ -83,8 +81,8 @@ class ESDL2Shapefile:
         @self.flask_app.route('/esdl2shapefile')
         def export_to_shapefile():
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
-            es = esh.get_energy_system(active_es_id)
+            pm = get_project_manager()
+            es = pm.get_active_energy_system()
             es_name = get_session('es_filename')
             if not es_name:
                 es_name = es.name if es.name else "Untitled EnergySystem"

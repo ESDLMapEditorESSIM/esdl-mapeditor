@@ -14,7 +14,9 @@
 
 from flask import Flask, session
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+
+from esdlproject.ProjectManager import ProjectManager
+from extensions.session_manager import get_project_manager, get_session
 import src.settings as settings
 import requests
 import json
@@ -39,13 +41,13 @@ class IBISBedrijventerreinen:
         def get_ibis_contours(info):
             with self.flask_app.app_context():
                 logger.info("getting ibis request")
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
                 rin_list = info["rin_list"]
 
-                es_edit = esh.get_energy_system(es_id=active_es_id)
+                es_edit = pm.get_energy_system_by_id(es_id=active_es_id)
                 instance = es_edit.instance
                 area = instance[0].area
 
@@ -61,8 +63,8 @@ class IBISBedrijventerreinen:
                     return None
 
                 if add_boundary_to_ESDL:
-                    self.add_geometries_to_esdl(esh, active_es_id, area_list)
-                self.emit_geometries_to_client(esh, active_es_id, area_list)
+                    self.add_geometries_to_esdl(pm, active_es_id, area_list)
+                self.emit_geometries_to_client(pm, active_es_id, area_list)
 
         @self.flask_app.route('/bedrijventerreinen_list')
         def get_ibis_list():
@@ -102,10 +104,10 @@ class IBISBedrijventerreinen:
             # emit('geojson', {"layer": "area_layer", "geojson": emit_area_list})
             emit('geojson', {"layer": "area_layer", "geojson": emit_area_list}, namespace='/esdl')
 
-    def add_geometries_to_esdl(self, esh, es_id, area_list):
+    def add_geometries_to_esdl(self, pm: ProjectManager, es_id: str, area_list):
         with self.flask_app.app_context():
 
-            es_edit = esh.get_energy_system(es_id)
+            es_edit = pm.get_energy_system_by_id(es_id)
             instance = es_edit.instance
             area = instance[0].area
 
@@ -120,4 +122,4 @@ class IBISBedrijventerreinen:
                     new_area.geometry = geometry
 
                 area.area.append(new_area)
-                esh.add_object_to_dict(es_id, new_area)
+                pm.add_object_to_dict(es_id, new_area)

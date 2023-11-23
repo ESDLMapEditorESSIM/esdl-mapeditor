@@ -16,19 +16,19 @@ import uuid
 from esdl import esdl
 from pyecore.ecore import EClass, EEnum, EAttribute, EOrderedSet, EObject
 from uuid import uuid4
-from esdl.esdl_handler import EnergySystemHandler
+from esdlproject.ProjectManager import ProjectManager
 
 
-def get_or_create_esi_qau(esh: EnergySystemHandler, active_es_id: str) -> esdl.QuantityAndUnits:
-    es: esdl.EnergySystem = esh.get_energy_system(active_es_id)
+def get_or_create_esi_qau(pm: ProjectManager, active_es_id: str) -> esdl.QuantityAndUnits:
+    es: esdl.EnergySystem = pm.get_energy_system_by_id(active_es_id)
     if not es.energySystemInformation:
         esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
         es.energySystemInformation = esi
-        esh.add_object_to_dict(active_es_id, esi)
+        pm.add_object_to_dict(active_es_id, esi)
     if not es.energySystemInformation.quantityAndUnits:
         qaus = esdl.QuantityAndUnits(id=str(uuid4()))
         es.energySystemInformation.quantityAndUnits = qaus
-        esh.add_object_to_dict(active_es_id, qaus)
+        pm.add_object_to_dict(active_es_id, qaus)
     return es.energySystemInformation.quantityAndUnits
 
 

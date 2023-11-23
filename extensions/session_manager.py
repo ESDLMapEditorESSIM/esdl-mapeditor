@@ -11,7 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from esdl.esdl_handler import EnergySystemHandler
 from flask import session
 from datetime import datetime
 import threading
@@ -30,32 +29,32 @@ SESSION_TIMEOUT = 60*60*24  # 1 day
 CLEANUP_INTERVAL = 60*60  # every hour
 
 
-def get_handler() -> EnergySystemHandler:
-    global managed_sessions
-    client_id = session['client_id']
-    if client_id in managed_sessions:
-        if ESH_KEY in managed_sessions[client_id]:
-            esh = managed_sessions[client_id][ESH_KEY]
-            logger.debug('Retrieve ESH client_id={}'.format(client_id))
-        else:
-            logger.warning('No EnergySystemHandler in session. Returning empty energy system')
-            esh = EnergySystemHandler()
-            set_handler(esh)
-        return esh
-    else:
-        logger.warning('Session has timed-out. Returning empty energy system')
-        esh = EnergySystemHandler()
-        from app import esdl_doc
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
-        set_handler(esh)
-        return esh
-
-
-def set_handler(esh):
-    global managed_sessions
-    client_id = session['client_id']
-    logger.debug('Set ESH client_id={}'.format(client_id))
-    set_session(ESH_KEY, esh)
+# def get_handler() -> EnergySystemHandler:
+#     global managed_sessions
+#     client_id = session['client_id']
+#     if client_id in managed_sessions:
+#         if ESH_KEY in managed_sessions[client_id]:
+#             esh = managed_sessions[client_id][ESH_KEY]
+#             logger.debug('Retrieve ESH client_id={}'.format(client_id))
+#         else:
+#             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
+#             esh = EnergySystemHandler()
+#             set_handler(esh)
+#         return esh
+#     else:
+#         logger.warning('Session has timed-out. Returning empty energy system')
+#         esh = EnergySystemHandler()
+#         from app import esdl_doc
+#         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
+#         set_handler(esh)
+#         return esh
+#
+#
+# def set_handler(esh):
+#     global managed_sessions
+#     client_id = session['client_id']
+#     logger.debug('Set ESH client_id={}'.format(client_id))
+#     set_session(ESH_KEY, esh)
 
 
 def get_project_manager() -> ProjectManager:

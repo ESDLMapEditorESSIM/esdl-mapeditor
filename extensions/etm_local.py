@@ -20,7 +20,6 @@ import codecs
 import json
 
 from extensions.settings_storage import SettingsStorage
-import src.settings as settings
 import src.log as log
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 

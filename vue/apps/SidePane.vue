@@ -1,3 +1,19 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
   <div id="side_pane" :class="{side_pane_hidden: !showSidePane}">
     <ul class="tabs">
@@ -10,7 +26,7 @@
           <span
             v-if="isActiveTab(tab.key)"
             style="font-weight:bold"
-          >
+          > 
             {{ tab.title }}
           </span>
           <span v-else>
@@ -19,34 +35,39 @@
         </a>
       </li>
     </ul>
-    <ProjectView v-if="isActiveTab('Project')"/>
+    <div id="tab_area">
+      <LayersView v-if="isActiveTab('Maps')" />
+      <ProjectView v-if="isActiveTab('Project')" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import {ref} from "vue"
-import {useESDLProjects} from "../composables/esdlProjects";
 import {useSidePane} from "../composables/sidePane";
-import ProjectView from "./ProjectView";
+// eslint-disable-next-line no-unused-vars
+import ProjectView from "./ProjectView.vue";
+// eslint-disable-next-line no-unused-vars
+import LayersView from "./LayersView.vue";
 
-const {energyProject, showProjectView, toggleProjectView} = useESDLProjects();
-const {showSidePane, toggleSidePaneView, initTabs, clickTab, isActiveTab} = useSidePane();
+// eslint-disable-next-line no-unused-vars
+const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
 
 const sidePaneTabs = ref([{
-    key: 'Project',
-    title: 'Project',
-    icon: 'fas fa-project-diagram',
-    active: false
-  }, {
-    key: 'Workflow',
-    title: 'Workflow',
-    icon: 'fas fa-tasks',
-    active: false
-  }, {
-    key: 'WMSLayers',
-    title: 'WMS Layers',
-    icon: 'fas fa-map',
-    active: false
+  key: 'Project',
+  title: 'Project',
+  icon: 'fas fa-project-diagram',
+  active: false
+}, {
+  key: 'Workflow',
+  title: 'Workflow',
+  icon: 'fas fa-tasks',
+  active: false
+}, {
+  key: 'Maps',
+  title: 'Maps',
+  icon: 'far fa-map',
+  active: false
 }]);
 
 initTabs(sidePaneTabs);
@@ -56,14 +77,13 @@ initTabs(sidePaneTabs);
 <style scoped lang="scss">
 #side_pane {
   display: flex;
-  height: 100%;
   margin-right: 1px;
   border-right: 1px solid #efeff1;
   box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
   transition: max-width .2s ease-in;
   min-width: 200px;
   max-width: 500px;
-  resize: both;
+  resize: horizontal;
 
   &.side_pane_hidden {
     min-width: 20px;

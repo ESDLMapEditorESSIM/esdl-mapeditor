@@ -16,12 +16,11 @@ import uuid
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from flask_executor import Executor
 from shapely.geometry import Polygon, MultiPoint, Point
 from shapely.ops import triangulate
-from pprint import pprint
 
-from extensions.session_manager import get_handler, get_session, set_session
+from esdlproject.ProjectManager import load_external_string
+from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 import esdl.esdl as esdl
 from src.shape import Shape
@@ -64,9 +63,9 @@ class SpatialOperations:
         @self.socketio.on('spatop_joint_middle_subarea', namespace='/esdl')
         def spatop_joint_middle_subarea():
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                es = pm.get_active_energy_system()
                 area = es.instance[0].area
 
                 sub_area_shape_list = get_session('sub_area_shape_list')
@@ -89,11 +88,11 @@ class SpatialOperations:
                         joint.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
                         joint.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
                         area.asset.append(joint)
-                        esh.add_object_to_dict(active_es_id, joint, recursive=True)
+                        pm.add_object_to_dict(active_es_id, joint, recursive=True)
                         # Mapping to ESDL object, such that connecting can be done easily later on
                         ar['esdl_joint'] = joint
 
-                        asset_to_ui, conn_list_to_ui = energy_asset_to_ui(esh, active_es_id, joint)
+                        asset_to_ui, conn_list_to_ui = energy_asset_to_ui(pm, active_es_id, joint)
                         asset_to_ui_list.append(asset_to_ui)
 
                 # Update the UI
@@ -106,9 +105,8 @@ class SpatialOperations:
         @self.socketio.on('spatop_joint_delaunay', namespace='/esdl')
         def spatop_joint_delaunay():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                pm = get_project_manager()
+                es = pm.get_active_energy_system()
                 area = es.instance[0].area
 
                 list_of_shapely_points = list()         # to feed the delaunay triangulation algorithm
@@ -130,9 +128,6 @@ class SpatialOperations:
         @self.socketio.on('spatop_joint_delaunay_subarea', namespace='/esdl')
         def spatop_joint_delaunay():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
 
                 sub_area_shape_list = get_session('sub_area_shape_list')
                 top_area_shape = get_session('top_area_shape')
@@ -151,9 +146,8 @@ class SpatialOperations:
         @self.socketio.on('spatop_get_asset_types', namespace='/esdl')
         def spatop_get_asset_types():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                pm = get_project_manager()
+                es = pm.get_active_energy_system()
 
                 asset_types_set = set()
                 for c in es.eAllContents():
@@ -170,9 +164,9 @@ class SpatialOperations:
                 connect_asset_type = params["connect_asset_type"]
                 connect_to_asset_type = params["connect_to_asset_type"]
 
-                esh = get_handler()
+                esh = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                es = esh.get_active_energy_system()
 
                 # Collect all assets of the required types
                 connect_asset_list = list()
@@ -263,9 +257,9 @@ class SpatialOperations:
 
     @staticmethod
     def create_pipes(edges, top_area_shape, mapping_centroid_wkt_to_joint):
-        esh = get_handler()
+        pm = get_project_manager()
         active_es_id = get_session('active_es_id')
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system(active_es_id)
         area = es.instance[0].area
 
         asset_to_ui_list = list()
@@ -300,10 +294,10 @@ class SpatialOperations:
             pipe.port.append(pipe_outport)
 
             area.asset.append(pipe)
-            esh.add_object_to_dict(active_es_id, pipe, recursive=True)
+            pm.add_object_to_dict(active_es_id, pipe, recursive=True)
 
             # Prepare updating UI
-            asset_to_ui, conn_list_to_ui = energy_asset_to_ui(esh, active_es_id, pipe)
+            asset_to_ui, conn_list_to_ui = energy_asset_to_ui(pm, active_es_id, pipe)
             asset_to_ui_list.append(asset_to_ui)
             connections_to_ui_list.extend(conn_list_to_ui)
 
@@ -316,9 +310,9 @@ class SpatialOperations:
         emit("add_connections", {"es_id": active_es_id, "conn_list": connections_to_ui_list})
 
     def collect_info(self, area, include_all_areas):
-        esh = get_handler()
+        pm = get_project_manager()
         active_es_id = get_session('active_es_id')
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_active_energy_system()
 
         heat_qau = esdl.QuantityAndUnitType(
                     physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
@@ -341,11 +335,11 @@ class SpatialOperations:
             asset_list, qau_list = self.call_residentail_EG_service(ar.id, ar.scope)
             for qau in qau_list:
                 try:
-                    q = esh.get_by_id(active_es_id, qau.id)
+                    q = pm.get_by_id(active_es_id, qau.id)
                 except:
                     # Only add qau if not already exists
                     qaus.quantityAndUnit.append(qau)
-                    esh.add_object_to_dict(active_es_id, qau)
+                    pm.add_object_to_dict(active_es_id, qau)
 
             for asset in list(asset_list):
                 if isinstance(asset, esdl.GasDemand):
@@ -358,10 +352,10 @@ class SpatialOperations:
                     hd.port[0].profile[0].profileQuantityAndUnit = esdl.QuantityAndUnitReference(reference=heat_qau)
 
                     ar.asset.append(hd)
-                    esh.add_object_to_dict(active_es_id, hd, True)
+                    pm.add_object_to_dict(active_es_id, hd, True)
 
     def call_residentail_EG_service(self, area_id, area_type):
-        esh = get_handler()
+        # TODO: hardcoded URL in code ~!!!! 10.30.2.1
         url = "http://10.30.2.1:4008/" + area_type.name + "/" + area_id + "?format=xml"
         headers = {"Accept": "test/xml", "User-Agent": "ESDL Mapeditor/0.1"}
 
@@ -372,7 +366,7 @@ class SpatialOperations:
             if r.status_code == 200:
                 corrected_esdl = r.text.replace('aggregationCount=""', 'aggregationCount="1"')
                 print(corrected_esdl)
-                res_eg_es = esh.load_external_string(corrected_esdl, "residentail_EG.esdl")
+                res_eg_es, parse_info = load_external_string(corrected_esdl, "residentail_EG.esdl")
 
                 for asset in res_eg_es.instance[0].area.asset:
                     asset_copy = asset.deepcopy()

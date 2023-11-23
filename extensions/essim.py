@@ -30,7 +30,8 @@ from influxdb.resultset import ResultSet
 
 import src.log as log
 import src.settings as settings
-from extensions.session_manager import del_session, get_handler, get_session, set_session
+from esdl.processing.string_uri import StringURI
+from extensions.session_manager import del_session, get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.essim_kpis import ESSIM_KPIs
 from src.process_es_area_bld import process_energy_system
@@ -64,7 +65,7 @@ class ESSIM:
         @self.socketio.on('essim_set_simulation_id', namespace='/esdl')
         def set_simulation_id(sim_id):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
 
                 print('Set ESSIM simulationRun ID: '+sim_id)
                 set_session('simulationRun', sim_id)
@@ -82,7 +83,9 @@ class ESSIM:
                     set_session('active_simulation', active_simulation)
                     esdl_string = essim_esdl_contents_to_esdl_string(result['esdlContents'])
 
-                    res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdl_string)
+                    #res_es, parse_info = pm.add_from_string(name=str(uuid.uuid4()), esdl_string=esdl_string)
+                    variant, parse_info = pm.add_energy_system(StringURI(str(uuid.uuid4()), esdl_string))
+                    res_es = pm.get_energy_system(variant)
                     set_session('active_es_id', res_es.id)
 
                     sdt = datetime.strptime(result['startDate'], '%Y-%m-%dT%H:%M:%S%z')
@@ -92,7 +95,7 @@ class ESSIM:
 
                     # Call init_simulation to enable the loadflow calculations
                     self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
-                    self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
+                    self.executor.submit(process_energy_system, pm, 'test')  # run in seperate thread
 
                 except Exception as e:
                     # print('Exception: ')
@@ -143,9 +146,8 @@ class ESSIM:
                                     self.update_stored_simulation(user_email, es_simid, 'dashboard_url', dashboardURL)
 
                                     # Initialize the essim kpi class instance, to be able to show load duration curves
-                                    esh = get_handler()
-                                    active_es_id = get_session('active_es_id')
-                                    current_es = esh.get_energy_system(es_id=active_es_id)
+                                    esh = get_project_manager()
+                                    current_es = esh.get_active_energy_system()
                                     sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
                                     edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
                                     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -327,7 +329,7 @@ class ESSIM:
         def download_simulation_results(sim_id):
             with self.flask_app.app_context():
                 user_email = get_session('user-email')
-                esh = get_handler()
+                pm = get_project_manager()
                 if user_email is not None:
                     result_name = sim_id
 
@@ -358,7 +360,8 @@ class ESSIM:
                                 esdlstr_urlenc = result['esdlContents']
                                 esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
-                            res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                            variant, parse_info = pm.add_energy_system(StringURI(str(uuid.uuid4()), esdlstr))
+                            res_es = pm.get_energy_system(variant)
                     except Exception as e:
                         # print('Exception: ')
                         # print(e)
@@ -484,18 +487,18 @@ class ESSIM:
             del_session('active_simulation')
             del_session('es_simid')
 
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             user_email = get_session('user-email')
             user_fullname = get_session('user-fullname')
             if user_fullname is None:
                 user_fullname = 'essim'
 
-            current_es = esh.get_energy_system(es_id=active_es_id)
+            current_es = pm.get_active_energy_system()
             current_es_name = current_es.name
             if current_es_name == "":
                 current_es_name = "Untitled energysystem"
-            esdlstr = esh.to_string(active_es_id)
+            esdlstr = pm.active_energy_system_to_string()
             esdlstr_bytes = esdlstr.encode('utf-8')
             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
             esdlstr_base64 = esdlstr_base64_bytes.decode('utf-8')

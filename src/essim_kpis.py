@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 import src.settings as settings
 from influxdb import InfluxDBClient
 from datetime import datetime
@@ -35,9 +35,9 @@ class ESSIM_KPIs:
         @self.socketio.on('calculate_load_duration_curve', namespace='/esdl')
         def calculate_ldc(asset_id):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                asset = esh.get_by_id(active_es_id, asset_id)
+                asset = pm.get_by_id(active_es_id, asset_id)
 
                 self.calculate_load_duration_curve(asset_id, asset.name)
 
@@ -78,15 +78,15 @@ class ESSIM_KPIs:
         active_simulation = get_session('active_simulation')
         if active_simulation:
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
-            es = esh.get_energy_system(active_es_id)
+            pm = get_project_manager()
+            es = pm.get_energy_system_by_id(active_es_id)
             sdt = datetime.strptime(active_simulation['startDate'], '%Y-%m-%dT%H:%M:%S%z')
             edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
             influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
             influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
             sim_id = active_simulation['sim_id']
-            asset = esh.get_by_id(active_es_id, asset_id)
+            asset = pm.get_by_id(active_es_id, asset_id)
             power = None
             if hasattr(asset, 'power'):
                 power = asset.power

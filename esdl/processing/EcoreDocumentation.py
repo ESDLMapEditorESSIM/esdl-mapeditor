@@ -14,7 +14,7 @@
 
 from pyecore.resources import ResourceSet, URI
 from pyecore.utils import DynamicEPackage
-from pyecore.ecore import EModelElement, EAnnotation
+from pyecore.ecore import EAnnotation
 from pyecore.resources.resource import HttpURI
 from esdl.resources.xmlresource import XMLResource
 import src.log as log

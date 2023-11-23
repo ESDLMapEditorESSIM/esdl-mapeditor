@@ -16,7 +16,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit
 from esdl import esdl
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager, get_session
 from extensions.profiles import create_panel
 from src.esdl_helper import get_port_profile_info
 from esdl.processing import ESDLQuantityAndUnits
@@ -45,21 +45,22 @@ class PortProfileViewer:
         @self.socketio.on('port_profile_viewer_request_asset', namespace='/esdl')
         def port_profile_viewer_request_asset(id):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                asset = esh.get_by_id(active_es_id, id)
+                asset = pm.get_by_id(active_es_id, id)
                 return get_port_profile_info(asset)
 
         @self.socketio.on('get_profile_panel', namespace='/esdl')
         def get_profile_panel(profile_id):
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
-            profile = esh.get_by_id(active_es_id, profile_id)
+            profile = pm.get_by_id(active_es_id, profile_id)
 
             if profile:
                 profile_class = type(profile).__name__
 
                 if profile_class == "InfluxDBProfile":
+                    profile: esdl.InfluxDBProfile = profile
                     profile_name = None
                     qau = profile.profileQuantityAndUnit
                     if isinstance(qau, esdl.QuantityAndUnitReference):
@@ -71,6 +72,7 @@ class PortProfileViewer:
                     database = profile.database
                     multiplier = profile.multiplier
                     measurement = profile.measurement
+                    field = profile.field
                     profiles = Profiles.get_instance().get_profiles()['profiles']
                     for pkey in profiles:
                         p = profiles[pkey]

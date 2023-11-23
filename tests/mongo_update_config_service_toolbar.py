@@ -1,5 +1,4 @@
 from extensions.settings_storage import SettingsStorage, SettingType
-from bson.objectid import ObjectId
 
 # Database: esdl_mapeditor_settings
 # Collection: settings

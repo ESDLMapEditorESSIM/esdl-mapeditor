@@ -1,5 +1,7 @@
 """Definition of meta model 'esdlproject'."""
 from functools import partial
+from typing import List
+
 import pyecore.ecore as Ecore
 from pyecore.ecore import *
 
@@ -19,9 +21,10 @@ class ESDLProject(EObject, metaclass=MetaEClass):
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     version = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
-    baseVariant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variantCollection = EReference(ordered=True, unique=True,
+                                   containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, name=None, description=None, baseVariant=None, version=None):
+    def __init__(self, *, name=None, description=None, variantCollection=None, version=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -36,24 +39,26 @@ class ESDLProject(EObject, metaclass=MetaEClass):
         if version is not None:
             self.version = version
 
-        if baseVariant:
-            self.baseVariant.extend(baseVariant)
+        if variantCollection:
+            self.variantCollection.extend(variantCollection)
 
 
 class Variant(EObject, metaclass=MetaEClass):
-
+    """A variant is a variant on a loaded esdl::EnergySystem (defined through the EnerySystemProxy). In principle it collects changes made to an ESDL in memory (referenced by the snapshotRef) and stores it in the change relations (as most tools edit an ESDL and not generate changes). To collect changes, a listener is added to the EMF Resource that each variant has. 
+When serializing the changes of a variant are serialized in XML. """
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     change = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
-    variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variant: List = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     parentVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshot = EReference(ordered=True, unique=True, containment=True, derived=False)
-    baseVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
+    variantCollection = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshotRef = EReference(ordered=True, unique=True, containment=False, derived=False)
+    lastProcessedChange = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, baseVariant=None, snapshotRef=None, id=None):
+    def __init__(self, *, name=None, description=None, change=None, lastChanged=None, variant=None, parentVariant=None, snapshot=None, variantCollection=None, snapshotRef=None, id=None, lastProcessedChange=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -83,11 +88,14 @@ class Variant(EObject, metaclass=MetaEClass):
         if snapshot is not None:
             self.snapshot = snapshot
 
-        if baseVariant is not None:
-            self.baseVariant = baseVariant
+        if variantCollection is not None:
+            self.variantCollection = variantCollection
 
         if snapshotRef is not None:
             self.snapshotRef = snapshotRef
+
+        if lastProcessedChange is not None:
+            self.lastProcessedChange = lastProcessedChange
 
 
 @abstract
@@ -109,13 +117,13 @@ class AbstractChange(EObject, metaclass=MetaEClass):
             self.variant = variant
 
 
-class BaseVariant(EObject, metaclass=MetaEClass):
-
+class VariantCollection(EObject, metaclass=MetaEClass):
+    """An EnergySystemProxy proxies an actual EnergySystem. This proxy is needed as we want to seperate the ESDL ecore model from this ecore model. It is a bit inconvenient, but allows us to have the loaded EnergySystems and its variants in seperate EMF Resources when editing them. When Serializing the ESDLProject, each EnergySystem that is loaded in the project is serialized using the energysystem containment relation. When loaded, the EnergySystem is moved out of the ESDLProject into its own EMF Resource and is then referenced by the energysystemRef. This allows for multiple (same) EnergySystems with same IDs of assets to work in parallel without ID clashes."""
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
-    variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variant: Variant = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystem = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystemRef = EReference(ordered=True, unique=True, containment=False, derived=False)
 
@@ -137,8 +145,8 @@ class BaseVariant(EObject, metaclass=MetaEClass):
         if id is not None:
             self.id = id
 
-        if variant:
-            self.variant.extend(variant)
+        if variant is not None:
+            self.variant = variant
 
         if energysystem is not None:
             self.energysystem = energysystem
