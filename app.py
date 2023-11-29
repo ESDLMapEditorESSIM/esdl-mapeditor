@@ -24,6 +24,7 @@ from warnings import warn
 
 import jwt
 import requests
+import structlog.contextvars
 from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
 from flask_executor import Executor
 from flask_oidc import OpenIDConnect
@@ -234,6 +235,13 @@ def add_header(r: Response):
 def before_request():
     # store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
+
+    user_email = get_session("user-email")
+
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        user=user_email
+    )
 
 
 @app.route('/')
