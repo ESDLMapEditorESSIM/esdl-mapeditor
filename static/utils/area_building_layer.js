@@ -1001,7 +1001,10 @@ function style_area(feature) {
         //if (feature.properties.get_area_color) {
         //    get_area_color = feature.properties.get_area_color;
         //}
-        var color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
+        let color = '#ffffff';
+        if (areaLegendChoice in feature.properties.KPIs) {
+            color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
+        }
         return {
             fillColor: color,
             weight: 2,
@@ -1023,7 +1026,10 @@ function style_area(feature) {
 }
 
 function style_building(feature) {
-    var b_color = get_building_color(feature.properties.KPIs[buildingLegendChoice]);
+    let b_color = '#ffffff';
+    if (buildingLegendChoice in feature.properties.KPIs) {
+        b_color = get_building_color(feature.properties.KPIs[buildingLegendChoice]);
+    }
     return {
         fillColor: b_color,
         weight: 2,
