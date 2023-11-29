@@ -75,9 +75,9 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
             "url": ps_influxdb_host,
             "database_name": database
         }
-        if ps_influxdb_user:
+        if ps_influxdb_user is not None:
             payload["basic_auth_user"] = ps_influxdb_user
-        if ps_influxdb_password:
+        if ps_influxdb_password is not None:
             payload["basic_auth_password"] = ps_influxdb_password
 
         try:
@@ -101,16 +101,16 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     if host is None and database is None and datasource is None:
         logger.error("Specify either host and database or datasource")
     if not datasource:
-        ps_influxdb_name = get_panel_service_datasource(database, host)
+        ps_influxdb_name = get_panel_service_datasource(database, host, "", "")
         if not ps_influxdb_name:
             logger.error("Could not find or create a datasource")
             return None
     else:
         ps_influxdb_name = datasource
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
-    if isinstance(filters, str) and filters == "":
+    if filters is None or filters == '':
         filters = []
-    if not isinstance(filters, list):
+    elif not isinstance(filters, list):
         filters = [filters]
 
     if isinstance(start_datetime, datetime.datetime):
