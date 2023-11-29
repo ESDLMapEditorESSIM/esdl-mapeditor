@@ -2003,8 +2003,12 @@ def process_command(message):
             if top_area:
                 if top_area.id == area_id:
                     send_alert('Can not remove top level area')
-                elif not ESDLEnergySystem.remove_area(top_area, area_id):
-                    send_alert('Area could not be removed')
+                else:
+                    if not ESDLEnergySystem.remove_area(top_area, area_id):
+                        send_alert('Area could not be removed')
+                    else:
+                        # If the user removes an area with assets and connection, redraw everything
+                        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
     if message['cmd'] == 'get_asset_ports':
         asset_id = message['id']

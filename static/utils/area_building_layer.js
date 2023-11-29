@@ -446,7 +446,7 @@ function resetHighlightBuilding(e) {
 
 function delete_area(e, area_id) {
     // Currently the area id can have (x of y) appended to it (in case of a multipolygon)
-    let a_id = e.relatedTarget.id.replace(/ \(\d+ of \d+\)/, '');
+    let a_id = area_id.replace(/ \(\d+ of \d+\)/, '');
     socket.emit('command', {cmd: 'remove_area', id: a_id});
 }
 
@@ -468,11 +468,11 @@ function set_area_handlers(area) {
         contextmenuInheritItems: false
     });
 
-//    area.options.contextmenuItems.push({
-//        icon: resource_uri + '/icons/Delete.png',
-//        text: 'delete area',
-//        callback: function(e) { delete_area(e, area_id); }
-//    });
+   area.options.contextmenuItems.push({
+       icon: resource_uri + '/icons/Delete.png',
+       text: 'delete area',
+       callback: function(e) { delete_area(e, area_id); }
+   });
 
     if (services_enabled['bag_service']) {
         area.options.contextmenuItems.push({
