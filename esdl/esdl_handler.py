@@ -31,9 +31,9 @@ from uuid import uuid4
 from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI
 from pyecore.resources.resource import HttpURI
-from pyecore.utils import alias
 
-from esdl import esdl, support_functions
+from esdl import esdl
+from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 #from esdl.energy_projects import EnergyProjectHandlerMixin
 from esdl.resources.xmlresource import XMLResource
@@ -41,42 +41,6 @@ from esdl.undo import ChangeTracker, UndoRedoCommandStack
 import src.log as log
 
 logger = log.get_logger(__name__)
-
-
-def patch_esdl():
-    """
-    Patch the ESDL classes to add some functionality that is not in the original ESDL classes.
-
-    TODO: Should be moved to PyESDL.
-    """
-    # fix python builtin 'from' that is also used in ProfileElement as attribute
-    # use 'start' instead of 'from' when using a ProfileElement
-    # and make sure that it is serialized back as 'from' instead of 'from_'
-    esdl.ProfileElement.from_.name = 'from'
-    setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
-    alias('start', esdl.ProfileElement.from_)
-    # also for FromToIntItem
-    esdl.FromToIntItem.from_.name = 'from'
-    setattr(esdl.FromToIntItem, 'from', esdl.FromToIntItem.from_)
-    alias('start', esdl.FromToIntItem.from_)
-    # also for FromToDoubleItem
-    esdl.FromToDoubleItem.from_.name = 'from'
-    setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
-    alias('start', esdl.FromToDoubleItem.from_)
-
-    # add support for cloning of EObjects and coppy.copy()
-    setattr(EObject, '__copy__', support_functions.clone)
-    setattr(EObject, 'clone', support_functions.clone)
-
-    # add support for deepcopying EObjects and copy.deepcopy()
-    setattr(EObject, '__deepcopy__', support_functions.deepcopy)
-    setattr(EObject, 'deepcopy', support_functions.deepcopy)
-
-    # have a nice __repr__ for some ESDL classes when printing ESDL objects (includes all Assets and EnergyAssets)
-    esdl.EnergySystem.__repr__ = \
-        lambda x: '{}: ({})'.format(x.name, EnergySystemHandler.attr_to_dict(x))
-
-    setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)
 
 
 class EnergySystemHandler(): #EnergyProjectHandlerMixin):

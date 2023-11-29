@@ -15,10 +15,18 @@ from flask import session
 from datetime import datetime
 import threading
 import time
+
+from pyecore.resources.json import JsonResource
+
 import src.log as log
 import os, glob
 
+from esdl.processing.string_uri import StringURI
 from esdlproject.ProjectManager import ProjectManager
+from esdlproject.actions import actionToHighlevelChange
+from esdlproject.encoders import DateTimeEncoder
+from src.tno.events.messages import HighLevelChangeMessage
+from src.tno.events.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
@@ -56,6 +64,29 @@ CLEANUP_INTERVAL = 60*60  # every hour
 #     logger.debug('Set ESH client_id={}'.format(client_id))
 #     set_session(ESH_KEY, esh)
 
+def on_change_recorded(action):
+    pm = get_project_manager()
+    pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
+
+    hlc = actionToHighlevelChange(action)
+    print(hlc)
+
+    uri = StringURI("test.json")
+    resource = pm.rset.create_resource(uri)
+    resource.append(hlc)
+    options = dict()
+    options['encoder'] = DateTimeEncoder
+    resource.save(options=options)
+    hlc_string = uri.getvalue()
+
+    user_email = get_session('user-email')
+    message = HighLevelChangeMessage(
+        user_email=user_email,
+        high_level_change=hlc_string
+    )
+    # logger.debug("Sending high level change on topic events.esdl.high_level_change")
+    send_rabbitmq_message(message, "events.esdl.high_level_change")
+
 
 def get_project_manager() -> ProjectManager:
     """
@@ -69,12 +100,12 @@ def get_project_manager() -> ProjectManager:
             logger.debug('Retrieve pm client_id={}'.format(client_id))
         else:
             logger.warning('No Project Manager in session. Returning empty project manager')
-            pm = ProjectManager()
+            pm = ProjectManager(on_change_recorded=on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
         logger.warning('Session has timed-out. Returning empty project manager')
-        pm = ProjectManager()
+        pm = ProjectManager(on_change_recorded=on_change_recorded)
         set_project_manager(pm)
         return pm
 

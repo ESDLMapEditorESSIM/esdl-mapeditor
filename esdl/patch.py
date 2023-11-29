@@ -1,0 +1,64 @@
+#  This work is based on original code developed and copyrighted by TNO 2023.
+#  Subsequent contributions are licensed to you by the developers of such code and are
+#  made available to the Project under one or several contributor license agreements.
+#
+#  This work is licensed to you under the Apache License, Version 2.0.
+#  You may obtain a copy of the license at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Contributors:
+#      TNO         - Initial implementation
+#  Manager:
+#      TNO
+
+from pyecore.ecore import EObject
+from pyecore.utils import alias
+
+from esdl import support_functions, esdl
+
+
+def esdl_attr_to_dict(esdl_object):
+    d = dict()
+    d['esdlType'] = esdl_object.eClass.name
+    for attr in dir(esdl_object):
+        attr_value = esdl_object.eGet(attr)
+        if attr_value is not None:
+            d[attr] = attr_value
+    return d
+
+
+def patch_esdl():
+    """
+    Patch the ESDL classes to add some functionality that is not in the original ESDL classes.
+
+    TODO: Should be moved to PyESDL.
+    """
+    # fix python builtin 'from' that is also used in ProfileElement as attribute
+    # use 'start' instead of 'from' when using a ProfileElement
+    # and make sure that it is serialized back as 'from' instead of 'from_'
+    esdl.ProfileElement.from_.name = 'from'
+    setattr(esdl.ProfileElement, 'from', esdl.ProfileElement.from_)
+    alias('start', esdl.ProfileElement.from_)
+    # also for FromToIntItem
+    esdl.FromToIntItem.from_.name = 'from'
+    setattr(esdl.FromToIntItem, 'from', esdl.FromToIntItem.from_)
+    alias('start', esdl.FromToIntItem.from_)
+    # also for FromToDoubleItem
+    esdl.FromToDoubleItem.from_.name = 'from'
+    setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
+    alias('start', esdl.FromToDoubleItem.from_)
+
+    # add support for cloning of EObjects and coppy.copy()
+    setattr(EObject, '__copy__', support_functions.clone)
+    setattr(EObject, 'clone', support_functions.clone)
+
+    # add support for deepcopying EObjects and copy.deepcopy()
+    setattr(EObject, '__deepcopy__', support_functions.deepcopy)
+    setattr(EObject, 'deepcopy', support_functions.deepcopy)
+
+    # have a nice __repr__ for some ESDL classes when printing ESDL objects (includes all Assets and EnergyAssets)
+    esdl.EnergySystem.__repr__ = \
+        lambda x: '{}: ({})'.format(x.name, esdl_attr_to_dict(x))
+
+    setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)

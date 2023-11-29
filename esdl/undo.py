@@ -21,47 +21,9 @@ from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, Ab
 
 from dataclasses import dataclass
 from esdl.undo_pyecore_patch import patch_notification_system
-
+from esdlproject.actions import LabelledAction
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
-
-
-class LabelledAction(Command, UserList):
-    """
-    A list of commands that are executed as one action. The label is used to describe the action.
-
-    Maps to a HighLevelChange in the ESDLProject model.
-    """
-    def __init__(self, label=None, *commands):
-        self.label = label
-        super().__init__(commands)
-
-    @property
-    def can_execute(self):
-        return all(command.can_execute for command in self)
-
-    def execute(self):
-        for command in self:
-            command.execute()
-
-    @property
-    def can_undo(self):
-        return all(command.can_undo for command in self)
-
-    def undo(self):
-        for command in reversed(self):
-            print("undo action:", command)
-            command.undo()
-
-    def redo(self):
-        for command in self:
-            command.redo()
-
-    def unwrap(self):
-        return self[0] if len(self) == 1 else self
-
-    def __repr__(self):
-        return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
 
 class UndoRedoCommandStack(CommandStack):
@@ -70,11 +32,12 @@ class UndoRedoCommandStack(CommandStack):
     Default maximum length of the stack is 100 (Labelled)Actions or Commands
     Use -1 to create an unlimited stack.
     """
-    def __init__(self, max_stack_length: int = 100):
+    def __init__(self, max_stack_length: int = 100, on_change_recorded = None):
         self._recording = False
         self._combineCommands = True
         self.compound = None
         self.max_stack_length = max_stack_length
+        self.on_change_recorded = on_change_recorded
         super().__init__()
 
     def start_recording(self, combineCommands: bool = True, label: str = None):
@@ -84,6 +47,7 @@ class UndoRedoCommandStack(CommandStack):
         :param bool combineCommands: collect all actions into one single LabelledAction (default = True)
         :param label: name of the label of the action that is recorded.
         """
+        print(f"=== start recording: {label} =====================================")
         self._recording = True
         self._combineCommands = combineCommands
         if combineCommands:
@@ -98,13 +62,19 @@ class UndoRedoCommandStack(CommandStack):
     def continue_recording(self):
         self._recording = True
 
-    def stop_recording(self):
+    def stop_recording(self, call_on_change_handler=True):
+        print("=== stop recording =====================================")
         self._combineCommands = False
         if self.compound is not None and len(self.compound) > 0:
             self.append(self.compound)
+
+            print(self.compound)
+            print(self.top)
+            if self.on_change_recorded and call_on_change_handler:
+                self.on_change_recorded(self.top)
+
             self.compound = None
         self._recording = False
-
 
     def add_undo_step(self, label=None):
         if self.compound is not None:
@@ -112,7 +82,6 @@ class UndoRedoCommandStack(CommandStack):
             self.append(self.compound)
             self._combineCommands = True
         self.compound = LabelledAction(label)
-
 
     def append(self, *commands):
         if self._combineCommands:
@@ -137,12 +106,12 @@ class UndoRedoCommandStack(CommandStack):
 
         for command in commands:
             if isinstance(command, LabelledAction):
+                # Very ugly stack implementation: top = .... to add something
                 self.top = command
                 print("Appended {} to the stack".format(command))
-
             else:
                 if command.can_execute:
-                    # command.execute()
+                    # Set _executed to True to activate correct behaviour in PyEcore code, such that undo works
                     command._executed = True
                     self.top = command
                     print("Appended {} to the stack".format(command))
@@ -178,9 +147,6 @@ class UndoRedoCommandStack(CommandStack):
                         del resource.uuid_dict[value.id]
 
         super().redo()
-
-
-
         self._recording = True
 
     def can_undo(self):
@@ -212,6 +178,7 @@ class UndoRedoCommandStack(CommandStack):
             self.compound.label = new_label
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
+    print(f"=== handleNotification ====== len(stack): {len(stack.stack)} ==================================================")
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
         print('!!! No eResource for', notification)
         return
@@ -308,6 +275,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     else:
         print("Not handled notification: ", notification)
 
+    print("**** exit handleNotification ****")
 
 
 # observe every change in the model, but this works for *all* EObjects in memory... so this is not very handy.
@@ -339,8 +307,9 @@ class Tracker:
 
 
 class ChangeTracker:
-    def __init__(self):
+    def __init__(self, on_change_recorded = None):
         self.trackers = []
+        self.on_change_recorded = on_change_recorded
 
     def newTracker(self, eobj: EObject = None, resource: Resource = None) -> Tracker:
         if eobj:
@@ -351,7 +320,7 @@ class ChangeTracker:
             raise Exception("Can't create new tracker: Resource is None")
 
         print("Tracking changes for resource with URI {}".format(resource.uri.plain))
-        stack = UndoRedoCommandStack()
+        stack = UndoRedoCommandStack(on_change_recorded=self.on_change_recorded)
         ro = ResourceObserver(command_stack=stack)
         ro.observe(resource)
         tracker: Tracker = Tracker(resource, stack, ro)

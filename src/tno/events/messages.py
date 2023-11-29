@@ -27,3 +27,14 @@ class AssetPositionMessage(TypedDict):
 class WindPotentialResultMessage(TypedDict):
     user_email: str
     wind_potential: float
+
+
+class NewESDLMessage(TypedDict):
+    user_email: str
+    b64_esdl: str
+
+
+class HighLevelChangeMessage(TypedDict):
+    user_email: str
+    high_level_change: str
+

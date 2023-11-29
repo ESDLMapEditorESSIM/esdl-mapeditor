@@ -1,18 +1,21 @@
 import unittest
 
+from pyecore.resources import ResourceSet
 from pyecore.resources.json import JsonResource
 
-from esdl import esdl, EnergySystem, GenericProducer, InPort, OutPort, GenericConsumer, Instance, HeatCommodity
+from esdl import esdl
 from esdl.processing.string_uri import StringURI
-from esdlproject.ChangeSerializer import deepcopy_eobject_change
-from esdlproject.ProjectManager import ProjectManager, convertActionToVariantChanges, resource_as_string, \
-    actionToHighlevelChange
-from esdlproject.variant_api import create_new_variant
-
-
+from esdlproject.ProjectManager import ProjectManager, convertActionToVariantChanges, resource_as_string
 
 import json
 import datetime
+
+from esdlproject.actions import actionToHighlevelChange
+
+
+# from esdlproject.actions import actionToHighlevelChange
+# from esdlproject.actions import actionToHighlevelChange
+# from esdlproject.encoders import DateTimeEncoder
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -25,51 +28,55 @@ class DateTimeEncoder(json.JSONEncoder):
 
         return super(DateTimeEncoder, self).default(obj)
 
-class EventTest(unittest.TestCase):
 
+class SerializeHLCTest(unittest.TestCase):
 
     def test_track_changes(self):
         pm = ProjectManager()
         es = pm.get_active_energy_system()
-
-
 
         stack = pm.get_undo_redo_stack()
         stack.start_recording(label="Add pipe1")
         pipe1 = esdl.Pipe(name="pipe1")
         es.instance[0].area.asset.append(pipe1)
         stack.stop_recording()
+
         print(f'pipe1 resource: {pipe1.eResource}, {pipe1.eURIFragment()}')
 
         hlc = actionToHighlevelChange(stack.top)
-
         print(hlc)
 
         pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
-
         uri = StringURI("test.json")
         resource = pm.rset.create_resource(uri)
         resource.append(hlc)
         options = dict()
         options['encoder'] = DateTimeEncoder
         resource.save(options=options)
-        print(uri.getvalue())
+        hlc_string = uri.getvalue()
+        print(hlc_string)
 
+        pm2 = ProjectManager()
+        es2 = pm2.get_active_energy_system()
+        resource2 = es2.eResource
+        tracker2 = pm2.active_tracker
 
+        uri = StringURI("hlc.json", hlc_string)
+        external_rset = ResourceSet()
+        external_resource = external_rset.create_resource(uri)
+        external_resource.load()
+        external_hlc = external_resource.contents[0]
+        print(external_hlc)
 
+        tracker2.stack.start_recording(label=external_hlc.label)
+        print(f"Handling High level change {external_hlc.label}")
+        for change in external_hlc.change:
+            pm2.processChange(change, resource2)
+        tracker2.stack.stop_recording()
 
-        # print(pm.to_debug_string())
-        # print("active es:")
-        # print(resource_as_string(es.eResource))
-
-
-
-
-
-
-
-
-
+        print(es2)
+        for a in es2.instance[0].area.asset:
+            print(a)
 
 
 if __name__ == '__main__':
