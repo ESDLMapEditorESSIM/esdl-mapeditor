@@ -588,8 +588,44 @@ function update_esdl_services(event) {
                 }
             }
         }
-    }
 
+        if (event.layer_type === 'marker') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "asset_context_menu" || esdl_services_information[i]['location'] == "asset_context_menu") {
+                    layer.options.contextmenuItems.push({
+                        text: esdl_services_information[i]['name'],
+                        icon: resource_uri + 'icons/service.png',
+                        callback: function (e) {
+                            const service = esdl_services_information[i];
+                            const state = {
+                                asset_id: id,
+                            }
+                            if ("options" in service && "send_esdl" in service["options"] && service["options"]["send_esdl"]) {
+                                $.ajax({
+                                    url: '/get_object_esdl/' + id,
+                                    success: function (data) {
+                                        console.log(data);
+                                        state['esdl'] = data['esdl'];
+                                        if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                                            window.show_service_settings(i, state);
+                                        } else {
+                                            query_esdl_service(service, state);
+                                        }
+                                    }
+                                })
+                            } else {
+                                if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                                    window.show_service_settings(i, state);
+                                } else {
+                                    query_esdl_service(service, state);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
 }
 
 $(document).ready(function() {
