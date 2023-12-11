@@ -18,7 +18,13 @@ import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
 import AssetTableEditor from './apps/AssetTableEditor';
 import CustomIconsSettings from "./apps/CustomIconsSettings";
-import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
+import {
+    createVueLControl,
+    mountApp,
+    mountSettingsComponent,
+    mountSidebarComponent,
+    mountTooltipComponent,
+} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
@@ -30,6 +36,8 @@ import ServicesToolbar from './components/toolbars/ServicesToolbar'
 import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
+import {useTooltipInfo} from './composables/TooltipInfo';
+import AssetTooltip from './apps/AssetTooltip';
 import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
@@ -82,6 +90,13 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.show_tooltip = (object_title, object_id) => {
+    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+    newTooltipObjectID(object_id);
+    newTitle(object_title);
+    mountTooltipComponent(AssetTooltip);
 }
 
 window.search_assets_window = () => {

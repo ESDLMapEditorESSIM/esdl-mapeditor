@@ -64,6 +64,7 @@ from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
+from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
 from src.asset_draw_toolbar import AssetDrawToolbar
@@ -191,6 +192,7 @@ ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
+TooltipInfo(app, socketio)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here

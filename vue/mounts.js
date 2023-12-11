@@ -52,6 +52,10 @@ export function createVueLControl(component, options) {
     lcontrol.addTo(window.map).mount(component);
 }
 
+export function mountTooltipComponent(component) {
+    mountApp(component, '#tooltip_contents_div');
+}
+
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
 
