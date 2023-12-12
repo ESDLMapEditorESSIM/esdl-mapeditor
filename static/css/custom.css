@@ -281,6 +281,20 @@ h6 {
     margin-left: 32px;
 }
 
+.InteractiveTooltip {
+    background: #eeeeee;
+    border: 1px solid #505050;
+    padding: 4px 4px;
+    font-size: 10px;
+}
+.icon-info-present {
+    color: green;
+}
+
+.icon-info-not-present {
+    color: red;
+}
+
 /*
 .leaflet-tooltip-top::before,
 .leaflet-tooltip-bottom::before,

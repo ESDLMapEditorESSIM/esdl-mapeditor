@@ -12,6 +12,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Checkbox,
     Col,
     Collapse,
     DatePicker,
@@ -29,10 +30,10 @@ import {
     Spin,
     Switch,
     Table,
+    Tag,
     Transfer,
     Tree,
-    Upload,
-    Tag
+    Upload
 } from 'ant-design-vue';
 
 export function mountSidebarComponent(component) {
@@ -53,6 +54,10 @@ export function createVueLControl(component, options) {
     lcontrol.addTo(window.map).mount(component);
 }
 
+export function mountTooltipComponent(component) {
+    mountApp(component, '#tooltip_contents_div');
+}
+
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
 
@@ -60,28 +65,28 @@ export function mountApp(component, elementSelector) {
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
+    app.use(Checkbox);
     app.use(Col);
-    app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
     app.use(Divider);
     app.use(Dropdown);
+    app.use(Form);
     app.use(Input);
     app.use(InputNumber);
-    app.use(Form);
     app.use(Menu);
     app.use(Modal);
+    app.use(Radio);
     app.use(Row);
     app.use(Select);
     app.use(Space);
     app.use(Spin);
     app.use(Switch);
     app.use(Table);
+    app.use(Tag);
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
-    app.use(Tag);
-
     app.use(VueGridLayout);
 
     app.mount(elementSelector);

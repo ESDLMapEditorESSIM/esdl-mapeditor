@@ -20,7 +20,7 @@
     </template>
   </a-tree>
   <p v-else>
-    Please right-click on a building and select "Show EPS results" to view detailed information.
+    Please right-click on a building in an unmodified EPS ESDL and select "Show EPS results" to view detailed information.
   </p>
 </template>
 
@@ -28,7 +28,6 @@
 import {defineProps, onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
-import {genericErrorHandler} from "../../../../utils/errors.js";
 import {useWorkflow} from "../../../../composables/workflow.js";
 import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
 import {workflowGetData} from "../../utils/api.js";

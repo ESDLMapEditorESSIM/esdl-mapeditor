@@ -4674,8 +4674,9 @@ class WindTurbine(ElectricityProducer):
     rotorDiameter = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     type = EAttribute(eType=WindTurbineTypeEnum, unique=True, derived=False, changeable=True)
+    powerCurveTable = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, rotorDiameter=None, height=None, type=None, **kwargs):
+    def __init__(self, *, rotorDiameter=None, height=None, type=None, powerCurveTable=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4687,6 +4688,9 @@ class WindTurbine(ElectricityProducer):
 
         if type is not None:
             self.type = type
+
+        if powerCurveTable is not None:
+            self.powerCurveTable = powerCurveTable
 
 
 class PVPanel(ElectricityProducer):
@@ -5527,13 +5531,17 @@ class PVPark(PVPanel):
 class WindPark(WindTurbine):
     """Defines a wind park of multiple turbines"""
     numberOfTurbines = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    turbinePower = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, numberOfTurbines=None, **kwargs):
+    def __init__(self, *, numberOfTurbines=None, turbinePower=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if numberOfTurbines is not None:
             self.numberOfTurbines = numberOfTurbines
+
+        if turbinePower is not None:
+            self.turbinePower = turbinePower
 
 
 class CheckValve(AbstractPassiveSwitch):

@@ -440,6 +440,7 @@ function set_marker_handlers(marker) {
 
     set_marker_port_handlers(marker);
     select_assets.add_asset_handler(marker);
+    set_marker_tooltip_handlers(marker);
 
     // let extensions know they can update this layer.
     // e.g. add a context menu item
@@ -638,7 +639,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
-                title: title,
+                title: '',
                 riseOnHover: true,
                 draggable: true,
                 autoPan: true,
@@ -721,7 +722,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
   
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
+        if (user_settings.ui_settings.tooltips.show_asset_information_on_map && asset_info[1] == 'asset')
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
                 { permanent: true, className: 'marker-tooltip' });
     }
@@ -909,6 +910,7 @@ function set_leaflet_sizes(mp) {
     $('#'+map_id+' .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
     set_port_size_and_position(active_map);       /* Ports */
+    set_tooltip_position();                       /* Tooltips */
 
     // todo create pane for select line when pipes and cables are supported in the building editor
 }

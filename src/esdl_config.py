@@ -13,11 +13,9 @@
 #      TNO
 import os
 
-from src.settings import heatnetwork_dispatcher_config
-
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
-HEATNETWORK_DISPATCHER_URL = heatnetwork_dispatcher_config["host"] + ":" + str(heatnetwork_dispatcher_config["port"])
+ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
 
 esdl_config = {
     "control_strategies": [
@@ -33,6 +31,27 @@ esdl_config = {
         },
     ],
     "predefined_quantity_and_units": [
+        {
+            "id": "12c481c0-f81e-49b6-9767-90457684d24a",
+            "description": "Energy in kWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "KILO",
+            "unit": "WATTHOUR",
+        },
+        {
+            "id": "93aa23ea-4c5d-4969-97d4-2a4b2720e523",
+            "description": "Energy in MWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "MEGA",
+            "unit": "WATTHOUR",
+        },
+        {
+            "id": "6fcd2303-b504-4939-8312-8cba25749265",
+            "description": "Energy in GWh",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "GIGA",
+            "unit": "WATTHOUR",
+        },
         {
             "id": "eb07bccb-203f-407e-af98-e687656a221d",
             "description": "Energy in GJ",
@@ -338,275 +357,15 @@ esdl_config = {
                 },
             ],
         },
-        {
-                "id": "123451a2-c92a-46ed-a7e4-993197712345",
-                "name": "Start Heat Network calculation",
-                "description": "Submit a heat network to the calculation service",
-                "headers": {
-                    "User-Agent": "ESDL Mapeditor/1.0",
-                    "Content-Type": "application/json"
-                },
-                "url": f"{HEATNETWORK_DISPATCHER_URL}/job/",
-                "http_method": "post",
-                "type": "send_esdl",
-                "send_email_in_post_body_parameter": "user_name",
-                "show_query_params": True,
-                "query_parameters": [
-                    {
-                        "type": "string",
-                        "name": "Scenario name",
-                        "description": "Give this scenario a unique name",
-                        "parameter_name": "job_name",
-                        "location": "body"
-                    },
-                    {
-                        "type": "selection",
-                        "name": "Workflow type",
-                        "description": "Select the calculation type to execute",
-                        "parameter_name": "work_flow_type",
-                        "location": "body",
-                        "possible_values": [
-                            "GROWTH_OPTIMIZER"
-                        ]
-                    }
-                ],
-                "body_config": {
-                    "type": "json",
-                    "parameters": [
-                        {
-                            "type": "esdl",
-                            "encoding": "base64_encoded",
-                            "parameter": "input_esdl"
-                        }
-                    ]
-                },
-                "body": "base64_encoded",
-                "result": [
-                    {
-                        "code": 200,
-                        "action": "show_message",
-                        "message": "Calculation successfully submitted."
-                    },
-                    {
-                        "code": 404,
-                        "action": "show_message",
-                        "message": "Error in submitting calculation."
-                    }
-                ],
-                "with_jwt_token": True,
-                "state_params": False
-            },
-        {
-            "id": "x12c4a2b-8eee-46f7-a225-87c5f85e645f",
-            "name": "Heat Network calculation results",
-            "explanation": "This service allows you to view results from heat network simulations and optimizations",
-            "type": "vueworkflow",
-            "workflow": [
-                {
-                    "name": "Results overview",
-                    "description": "",
-                    "type": "table-query",
-                    "source": {
-                        "url": HEATNETWORK_DISPATCHER_URL + "/job/user/{username}",
-                        "http_method": "get",
-                        "request_params": {"username": "session.email"},
-                        "columns": [
-                            {
-                                "dataIndex": "job_name",
-                                "title": "Name",
-                                "ellipsis": True
-                            },
-                            {
-                                "dataIndex": "status",
-                                "title": "Status",
-                                "align": "center",
-                                "slots": {
-                                    "customRender": "tags"
-                                }
-                            },
-                            {
-                                "dataIndex": "stopped_at",
-                                "title": "Finished at",
-                                "formatter": "formatDate",
-                                "defaultSortOrder": "descend"
-                            }
-                        ],
-                        "actions": [
-                            {
-                                "title": "Load result",
-                                "next_step": 2
-                            },
-                            {
-                                "title": "Show log",
-                                "next_step": 3
-                            },
-                            {
-                                "title": "Delete",
-                                "next_step": 4
-                            }
-                        ],
-                        "value_field": "job_id"
-                    },
-                    "target_variable": "job",
-                    "with_jwt_token": True,
-                    "next_step": 0
-                },
-                {
-                    "name": "Result selected",
-                    "state_params": {
-                        "job_id": "job.job_id"
-                    },
-                    "description": "How would you like to proceed?",
-                    "type": "choice",
-                    "options": [
-                        {
-                            "name": "Load ESDL result",
-                            "description": "Load the results as ESDL on the map.",
-                            "type": "primary",
-                            "next_step": 2
-                        },
-                        {
-                            "name": "View log output",
-                            "description": "View the log output of this execution.",
-                            "type": "default",
-                            "next_step": 3
-                        }
-                    ]
-                },
-                {
-                    "name": "Load ESDL",
-                    "description": "Loads the result in the ESDL MapEditor",
-                    "type": "service",
-                    "state_params": {
-                        "job_id": "job.job_id"
-                    },
-                    "service": {
-                        "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb27",
-                        "name": "Load ESDL results",
-                        "description": "The results should have been loaded in the MapEditor",
-                        "button_label": "Go back to results",
-                        "auto": True,
-                        "headers": {
-                            "User-Agent": "ESDL Mapeditor/0.1",
-                            "Content-Type": "application/xml"
-                        },
-                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>/result",
-                        "http_method": "get",
-                        "type": "",
-                        "query_parameters": [
-                            {
-                                "name": "Job id",
-                                "description": "Job id",
-                                "parameter_name": "job_id",
-                                "location": "url"
-                            }
-                        ],
-                        "body": "",
-                        "result": [
-                            {
-                                "code": 200,
-                                "action": "esdl",
-                                "encoding": "base64_encoded",
-                                "json_field": "output_esdl"
-                            }
-                        ],
-                        "with_jwt_token": True,
-                        "state_params": True,
-                        "next_step": 0
-                    }
-                },
-                {
-                    "name": "Show log file",
-                    "type": "service",
-                    "state_params": {
-                        "job_id": "job.job_id"
-                    },
-                    "service": {
-                        "id": "x5c9d1a2-c92a-46ed-a7e4-9931971cbb27",
-                        "name": "Request the log file",
-                        "description": "The logfile is shown below:",
-                        "button_label": "Go back",
-                        "auto": True,
-                        "headers": {
-                            "User-Agent": "ESDL Mapeditor/0.1",
-                            "Content-Type": "application/xml"
-                        },
-                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>/logs",
-                        "http_method": "get",
-                        "type": "",
-                        "query_parameters": [
-                            {
-                                "name": "Job id",
-                                "description": "Job id",
-                                "parameter_name": "job_id",
-                                "location": "url"
-                            }
-                        ],
-                        "body": "",
-                        "result": [
-                            {
-                                "code": 200,
-                                "action": "show_message",
-                                "message": "Show log",
-                                "json_field": "logs"
-                            }
-                        ],
-                        "with_jwt_token": True,
-                        "state_params": True,
-                        "next_step": 0
-                    }
-                },
-                {
-                    "name": "Delete result",
-                    "description": "Delete the selected result",
-                    "type": "service",
-                    "state_params": {
-                        "job_id": "job.job_id"
-                    },
-                    "service": {
-                        "id": "x9c9d1a2-c92a-46ed-a7e4-9931971cbb2e",
-                        "name": "Delete the result",
-                        "description": "Press the button below to delete the result",
-                        "button_label": "Delete result",
-                        "headers": {
-                            "User-Agent": "ESDL Mapeditor/1.0",
-                            "Content-Type": "application/json"
-                        },
-                        "url": HEATNETWORK_DISPATCHER_URL + "/job/<job_id>",
-                        "http_method": "delete",
-                        "type": "",
-                        "query_parameters": [
-                            {
-                                "name": "Job id",
-                                "description": "Job id",
-                                "parameter_name": "job_id",
-                                "location": "url"
-                            }
-                        ],
-                        "body": "",
-                        "result": [
-                            {
-                                "code": 200,
-                                "action": "show_message",
-                                "message": "Result succesfully removed"
-                            }
-                        ],
-                        "with_jwt_token": True,
-                        "state_params": True,
-                        "next_step": 0
-                    }
-                }
-            ]
-        }
-
     ],
     "role_based_esdl_services": {
         "eps": [
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
-                "name": "Energy Potential Scan",
-                "explanation": "This workflow allows you to run the EPS web service and view the EPS results.",
+                "name": "Business Park Workflow",
+                "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
+                "resumable": True,
                 "workflow": [
                     {
                         # 0
@@ -626,14 +385,56 @@ esdl_config = {
                             },
                             {"name": "Run EPS", "next_step": 4, "type": "primary"},
                             {
-                                "name": "Inspect EPS results",
+                                "name": "Load EPS",
+                                "type": "primary",
                                 "next_step": 6,
+                            },
+                            {
+                                "name": "Select EPS measures",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 17,
+                            },
+                            {
+                                "name": "Explore EPS results",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 11,
+                            },
+                            {
+                                "name": "Generate profile template",
+                                "type": "default",
+                                "next_step": 20,
+                            },
+                            {
+                                "name": "Upload profiles",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 21,
+                            },
+                            {
+                                "name": "Apply custom energy saving measures",
+                                "description": "beta",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                # "disabled": True,
+                                "next_step": 18,
+                            },
+                            {
+                                "name": "Configure your own assets",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 7,
+                            },
+                            {
+                                "name": "Export ESSIM results",
+                                "next_step": 19,
                                 "type": "primary",
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
                                 "next_step": 12,
-                                "type": "default",
+                                "type": "dashed",
                             },
                         ],
                     },
@@ -673,6 +474,7 @@ esdl_config = {
                             "request_params": {"project_id": "project.id"},
                             "response_params": {"name": "file_name"},
                         },
+                        "success_text": "The newly uploaded file can be used to start a new EPS run.",
                         "next_step": 0,
                     },
                     {
@@ -714,9 +516,9 @@ esdl_config = {
                     },
                     {
                         # 6
-                        "name": "EPS execution",
+                        "name": "Select EPS execution",
                         "description": "",
-                        "label": "Select EPS execution to inspect:",
+                        "label": "Choose the EPS execution from which to load the results.",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -727,39 +529,14 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "execution",
-                        "next_step": 7,
+                        "next_step": 10,
                     },
                     {
                         # 7
-                        "name": "Execution selected",
-                        "description": "How would you like to proceed?",
-                        "type": "choice",
-                        "options": [
-                            {
-                                "name": "Load EPS result",
-                                "description": "Load the results as ESDL on the map. Your current layers will be overwritten!",
-                                "type": "primary",
-                                "enable_if_state": "execution.success",
-                                "next_step": 10,
-                            },
-                            {
-                                "name": "Inspect EPS results",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 11,
-                            },
-                            {
-                                "name": "Download project file",
-                                "type": "default",
-                                "next_step": 9,
-                            },
-                            # {
-                            #     "name": "View progress",
-                            #     "type": "default",
-                            #     "disable_if_state": "execution.finished_on",
-                            #     "next_step": 8,
-                            # },
-                        ],
+                        "name": "Configure your own assets",
+                        "description": "",
+                        "type": "text",
+                        "text": "At this point of the workflow you can safely add any assets and connections, to model your energy system. Please make sure that you have selected the EPS measures you are interested in, and that you have applied any custom measures if applicable. Selecting different EPS measures will result in a new ESDL being generated, such that your previous changes will not be preserved.",
                     },
                     {
                         # 8
@@ -787,9 +564,8 @@ esdl_config = {
                     },
                     {
                         # 10
-                        "name": "Load EPS results",
-                        "description": "Please wait a moment while we load an ESDL with the EPS results. When the EPS "
-                        "is loaded, please continue.",
+                        "name": "Load EPS",
+                        "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied. When the EPS is loaded, please continue.",
                         "type": "service",
                         "state_params": {"execution_id": "execution.id"},
                         "service": {
@@ -799,11 +575,11 @@ esdl_config = {
                                 "Accept": "application/esdl+xml",
                                 "User-Agent": "ESDL Mapeditor/0.1",
                             },
-                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl",
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl/variant",
                             "auto": True,
                             "clearLayers": True,
-                            "http_method": "get",
-                            "type": "",
+                            "http_method": "post",
+                            "type": "json",
                             "result": [{"code": 200, "action": "esdl"}],
                             "query_parameters": [
                                 {
@@ -813,12 +589,11 @@ esdl_config = {
                                 }
                             ],
                             "with_jwt_token": True,
-                            "state_params": True,
                         }
                     },
                     {
                         # 11
-                        "name": "Inspect EPS results",
+                        "name": "Explore EPS results",
                         "description": "",
                         "type": "custom",
                         "component": "eps-inspect-result",
@@ -919,6 +694,113 @@ esdl_config = {
                             },
                         },
                         "next_step": 0,
+                    },
+                    {
+                        # 17
+                        "name": "Select EPS measures",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-select-measures",
+                        "state_params": {"execution_id": "execution.id"},
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b14",
+                            "name": "Select EPS measures",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/eps/<execution_id>/esdl/variant",
+                            "http_method": "post",
+                            "type": "json",
+                            "query_parameters": [
+                                {
+                                    "name": "Execution ID",
+                                    "parameter_name": "execution_id",
+                                    "location": "url",
+                                },
+                                {
+                                    "parameter_name": "isolation_roof",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "isolation_facade",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "isolation_glass",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "wtw",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "led",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "heat_pump",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "pv",
+                                    "location": "body",
+                                },
+                            ],
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        }
+                    },
+                    {
+                        # 18
+                        "name": "Custom energy saving measures",
+                        "description": "",
+                        "type": "custom",
+                        "component": "eps-custom-measures",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b15",
+                            "name": "Custom EPS measures",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/custom_measures/",
+                            "http_method": "post",
+                            "type": "send_esdl_json",
+                            "body": "base64_encoded",
+                            "query_parameters": [
+                                {
+                                    "parameter_name": "measures_to_apply",
+                                    "location": "body",
+                                },
+                                {
+                                    "parameter_name": "building_ids",
+                                    "location": "body",
+                                },
+                            ],
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        }
+                    },
+                    {
+                        # 19
+                        "name": "Export ESSIM results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "dice-export-essim",
+                    },
+                    {
+                        # 20
+                        "name": "Generate profile template",
+                        "description": "",
+                        "type": "custom",
+                        "component": "dice-generate-profile-template",
+                    },
+                    {
+                        # 21
+                        "name": "Upload profiles",
+                        "type": "custom",
+                        "component": "dice-upload-profiles",
                     },
                 ],
             }

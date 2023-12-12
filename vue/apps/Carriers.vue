@@ -303,12 +303,43 @@
         </a-space>
       </a-space>
     </a-card>
+    <a-card
+      v-if="edr_carriers_list"
+      style="width: 100%"
+    >
+      <a-space
+        direction="vertical"
+        style="width: 100%"
+      >
+        <a-row :gutter="[0, 4]" type="flex" align="middle">
+          <a-col :span="9">
+            <span>EDR Carriers</span>
+          </a-col>
+          <a-col :span="15">
+            <a-select
+              v-model:value="edr_carriers"
+              style="width: 100%"
+              :options="edr_carriers_list"
+            />
+          </a-col>
+        </a-row>
+        <a-space>
+          <a-button
+            :disabled="edr_carriers == undefined"
+            @click="addEDRCarriers"
+          >
+            Add
+          </a-button>
+        </a-space>
+      </a-space>
+    </a-card>
   </a-space>
 </template>
 
 <script>
 import FancyNumberEdit from "../components/forms/FancyNumberEdit"
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 const carrierColumns = [
   { title: 'Name', dataIndex: 'name', key: 'name' },
@@ -403,12 +434,16 @@ export default {
         cost_unit: undefined,
       },
       profiles_options: [],
+
+      edr_carriers_list: undefined,
+      edr_carriers: undefined,
     }
   },
   computed: {
   },
   mounted() {
     this.getData();
+    this.getEDRCarriersList();
   },
   methods: {
     getData: function() {
@@ -454,7 +489,6 @@ export default {
       window.socket.emit('command', {cmd: 'remove_carrier', carrier_id: id});
     },
     editCarrier: function(id) {
-      this.edit_carrier_id = id;
       window.socket.emit('DLA_get_carrier_info', {'id': id}, (res) => {
         this.edit_carrier = res;
       });
@@ -512,6 +546,23 @@ export default {
     },
     cancelEditCarrier() {
       this.clearInput();
+    },
+    getEDRCarriersList() {
+      const path = '/edr_carriers';
+      axios.get(path)
+        .then((res) => {
+          let result = res['data'];
+          let carrier_list = result['item_list'];
+          this.edr_carriers_list = carrier_list;
+        });
+    },
+    addEDRCarriers() {
+      console.log('add EDR Carriers', this.edr_carriers);
+      window.socket.emit('DLA_add_EDR_carriers', {'id': this.edr_carriers},
+        (res) => {
+          window.set_carrier_list(window.active_layer_id, res);
+          this.getData();
+        });
     },
   }
 };

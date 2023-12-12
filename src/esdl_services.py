@@ -22,11 +22,13 @@ from typing import Any, Dict, List
 import requests
 from flask import Flask
 from flask_socketio import SocketIO, emit
+from pyecore.resources import ResourceSet
 
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
-from esdl.processing import ESDLAsset
+from esdl.esdl_handler import StringURI
+from esdl.processing import ESDLAsset, ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
@@ -91,6 +93,23 @@ class ESDLServices:
                                 svc['icon_url'] = '/icons/' + service['icon']['filename']
                         services_list.append(svc);
             return {'services_list': services_list}
+
+        @self.flask_app.route('/get_object_esdl/<object_id>')
+        def get_object_esdl(object_id):
+            esh = get_handler()
+            active_es_id = get_session('active_es_id')
+
+            obj = esh.get_by_id(active_es_id, object_id)
+            if obj:
+                uri = StringURI('obj.esdl')
+                rset = ResourceSet()
+                resource = rset.create_resource(uri)
+                resource.append(obj)
+                resource.save()
+                obj_esdl_string =  uri.getvalue()
+                return {"esdl": obj_esdl_string}
+
+            return None
 
     def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
         """Get the user services from the settings storage. """
@@ -276,9 +295,13 @@ class ESDLServices:
                                         str(query_params[key]),
                                     )
                                 elif cfg_service_param["location"] == "body" and isinstance(body, dict):
+                                    if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
+                                        param_value = (base64.b64encode(query_params[key].encode('utf-8'))).decode('utf-8')
+                                    else:
+                                        param_value = query_params[key]
                                     body[
-                                        cfg_service_param["parameter_name"]
-                                    ] = query_params[key]
+                                        cfg_service_param["name"]
+                                    ] = param_value
                             else:
                                 if first_qp:
                                     url = url + "?"
@@ -358,6 +381,43 @@ class ESDLServices:
                                 "add_connections",
                                 {"es_id": active_es_id, "conn_list": conn_list},
                             )
+                    except Exception as e:
+                        logger.warning("Exception occurred: " + str(e))
+                        return False, None
+
+                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "add_potentials":
+                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    instance = es_edit.instance
+                    area = instance[0].area
+                    potential_str_list = json.loads(r.text)
+
+                    # Fix for services that return an ESDL string that represents one asset
+                    if isinstance(potential_str_list, str):
+                        potential_str_list = [potential_str_list]
+
+                    try:
+                        potentials_to_be_added = list()
+                        for potential_str in potential_str_list:
+                            potential = ESDLAsset.load_asset_from_string(potential_str)
+                            esh.add_object_to_dict(active_es_id, potential, recursive=True)
+                            ESDLAsset.add_object_to_area(es_edit, potential, area.id)
+                            # asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, potential)
+
+                            coords = ESDLGeometry.parse_esdl_subpolygon(potential.geometry.exterior,
+                                                                        False)  # [lon, lat]
+                            coords = ESDLGeometry.exchange_coordinates(coords)
+                            potentials_to_be_added.append(['polygon', 'potential', potential.name, potential.id,
+                                                           type(potential).__name__, coords])
+
+                        emit(
+                            "add_esdl_objects",
+                            {
+                                "es_id": active_es_id,
+                                "asset_pot_list": potentials_to_be_added,
+                                "zoom": False,
+                            },
+                        )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None

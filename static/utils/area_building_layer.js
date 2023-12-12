@@ -123,7 +123,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                 }
             }
         }
-    };
+    }
     if (layer_type === "area") {
         if (!get_area_color) { get_area_color = get_area_default_color; }
     }
@@ -446,7 +446,7 @@ function resetHighlightBuilding(e) {
 
 function delete_area(e, area_id) {
     // Currently the area id can have (x of y) appended to it (in case of a multipolygon)
-    let a_id = e.relatedTarget.id.replace(/ \(\d+ of \d+\)/, '');
+    let a_id = area_id.replace(/ \(\d+ of \d+\)/, '');
     socket.emit('command', {cmd: 'remove_area', id: a_id});
 }
 
@@ -468,11 +468,11 @@ function set_area_handlers(area) {
         contextmenuInheritItems: false
     });
 
-//    area.options.contextmenuItems.push({
-//        icon: resource_uri + '/icons/Delete.png',
-//        text: 'delete area',
-//        callback: function(e) { delete_area(e, area_id); }
-//    });
+   area.options.contextmenuItems.push({
+       icon: resource_uri + '/icons/Delete.png',
+       text: 'delete area',
+       callback: function(e) { delete_area(e, area_id); }
+   });
 
     if (services_enabled['bag_service']) {
         area.options.contextmenuItems.push({
@@ -682,7 +682,7 @@ function add_building_layer(building_data) {
         onEachFeature: function(feature, layer) {
             if (feature.properties) {
                 let text = "<table>";
-                // Render the KPI's. These were set in the preprocess_layer_data function.
+                // Render the KPI's for a popup. These were set in the preprocess_layer_data function.
                 for (let key in feature.properties.KPIs) {
                     const kpi = feature.properties.KPIs[key]
                     if (typeof kpi === "number") {
@@ -697,7 +697,8 @@ function add_building_layer(building_data) {
                 }
                 text += "</table>";
 
-                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, offset: L.point(0, -20)});
+                // Bind the KPI popup on hover of a building.
+                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, autoPan: false, offset: L.point(0, -20)});
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }
@@ -840,7 +841,7 @@ function createBuildingLegendDiv() {
     first_kpi_name = Object.keys(building_KPIs)[0];
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(first_kpi_name);
     return legendDiv;
-};
+}
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
@@ -861,7 +862,7 @@ function createAreaLegendDiv() {
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
     return legendDiv;
-};
+}
 
 function removeBuildingLegend() {
     if (buildingLegend) {
@@ -1000,7 +1001,10 @@ function style_area(feature) {
         //if (feature.properties.get_area_color) {
         //    get_area_color = feature.properties.get_area_color;
         //}
-        var color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
+        let color = '#ffffff';
+        if (areaLegendChoice in feature.properties.KPIs) {
+            color = get_area_color(feature.properties.KPIs[areaLegendChoice].value);
+        }
         return {
             fillColor: color,
             weight: 2,
@@ -1022,7 +1026,10 @@ function style_area(feature) {
 }
 
 function style_building(feature) {
-    var b_color = get_building_color(feature.properties.KPIs[buildingLegendChoice]);
+    let b_color = '#ffffff';
+    if (buildingLegendChoice in feature.properties.KPIs) {
+        b_color = get_building_color(feature.properties.KPIs[buildingLegendChoice]);
+    }
     return {
         fillColor: b_color,
         weight: 2,

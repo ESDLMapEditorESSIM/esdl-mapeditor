@@ -125,8 +125,6 @@
     <script type="text/javascript" src="./utils/profiles.js"></script>
     <script type="text/javascript" src="./utils/asset_from_edr.js"></script>
     <script type="text/javascript" src="./utils/esdl_services.js"></script>
-    <script type="module" src="./modules/workflow.js"></script>
-    <script type="module" src="./modules/register.js"></script>
     <script type="text/javascript" src="./utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src="./utils/esdl_store.js"></script>
     <script type="text/javascript" src="./utils/esdl_compare.js"></script>
@@ -195,6 +193,7 @@
     <script type="text/javascript" src="./utils/es_statistics.js"></script>
     <script type="text/javascript" src="./utils/shapefile_converter.js"></script>
     <script type="text/javascript" src="./utils/port_handlers.js"></script>
+    <script type="text/javascript" src="./utils/interactive_tooltip.js"></script>
 
     <link rel="stylesheet" href="./css/user_messages.css" type="text/css"/>
     <script type="text/javascript" src="./utils/user_messages.js"></script>
@@ -630,7 +629,7 @@
             // ------------------------------------------------------------------------------------------------------------
             //  Map functions
             // ------------------------------------------------------------------------------------------------------------
-            socket.on('clear_ui', function(msg) {
+            function clear_ui(msg) {
                 clear_layer = true;
                 if (msg == null || msg['layer'] == 'assets') {
                     // esdl_layer.clearLayers();
@@ -653,7 +652,10 @@
                     clear_layers(active_layer_id, 'connection_layer');
                 }
                 clear_layer = false;
-            });
+            }
+            window.clear_ui = clear_ui;
+
+            socket.on('clear_ui', clear_ui)
 
             socket.on('clear_esdl_layer_list', function() {
                 clear_esdl_layer_list();
@@ -1281,7 +1283,9 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                process_service_results(results)
+                if (results.esdl_service_result) {
+                    process_service_results(results.esdl_service_result)
+                }
             });
 
         });
@@ -1507,7 +1511,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>

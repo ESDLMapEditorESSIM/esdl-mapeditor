@@ -20,7 +20,7 @@ class ImplementingEsdlAsset extends EsdlAsset {
   // port s
   constructor(json) {
     super();
-    for (key, value in json) {
+    for (const [key, value] in json) {
       this[key] = value;
     }
   }

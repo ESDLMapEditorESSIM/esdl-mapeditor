@@ -77,7 +77,7 @@ export default {
   computed: {
     filtered_asset_list: function() {
       if (this.selected_asset_type != 'No filter' && this.selected_asset_type != undefined) {
-        return this.asset_list.filter(item => item.asset_type == this.selected_asset_type);
+        return this.asset_list.filter(item => item.item_type == this.selected_asset_type);
       } else {
         return this.asset_list;
       }
@@ -93,8 +93,8 @@ export default {
       const path = '/edr_assets';
       axios.get(path)
         .then((res) => {
-          this.asset_list = res['data']['asset_list'];
-          const asset_types = ['No filter'].concat(res['data']['asset_type_list']);
+          this.asset_list = res['data']['item_list'];
+          const asset_types = ['No filter'].concat(res['data']['item_type_list']);
           this.asset_type_list = asset_types.map((asset_type) => {
             return {
               label: asset_type,

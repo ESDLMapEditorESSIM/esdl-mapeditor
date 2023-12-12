@@ -1,4 +1,4 @@
-import { genericErrorHandler } from "../../../utils/errors.js";
+import {handleErrorResponse} from "../../../utils/api";
 import {checkAndRefreshAuthStatus} from "../../../utils/status";
 
 
@@ -92,28 +92,5 @@ export async function workflowGetJsonForm(queryString, schemaName) {
     } catch (e) {
         handleErrorResponse(e);
         return null;
-    }
-}
-
-/**
- * Function to handle errors thrown by workflow api module.
- * @param e Error we throw ourselves (containing the response).
- * @returns {null}
- */
-function handleErrorResponse(e) {
-    console.error(e);
-    if (e.status == 401) {
-        const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
-        if (answer) {
-            window.location.reload();
-        }
-    } else {
-        let message;
-        if (e.status) {
-            message = "Invalid response received - status " + e.status + " " + e.statusText;
-        } else {
-            message = "An unknown error occurred while retrieving data. If the problem persists, please contact us."
-        }
-        genericErrorHandler(message);
     }
 }

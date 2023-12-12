@@ -29,7 +29,7 @@ SESSION_TIMEOUT = 60*60*24  # 1 day
 CLEANUP_INTERVAL = 60*60  # every hour
 
 
-def get_handler():
+def get_handler() -> EnergySystemHandler:
     global managed_sessions
     client_id = session['client_id']
     if client_id in managed_sessions:
