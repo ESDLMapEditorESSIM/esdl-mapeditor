@@ -19,6 +19,7 @@ class KPIDashboard extends MapEditorDialog {
   open() {
     let jqueryNode = $('<div>').attr('id', 'kpi_dashboard_window');
     this.setContent(jqueryNode.get(0));
+    this.setTitle("KPI dashboard");
     activate_kpi_dashboard_window();
 
     return super.open();
