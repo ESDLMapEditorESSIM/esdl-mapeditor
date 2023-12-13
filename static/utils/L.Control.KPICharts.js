@@ -51,8 +51,8 @@ function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels,
     $(table_div).empty().show();
     $(canvas).hide();
 
-    console.log(labels);
-    console.log(datasets);
+    // console.log(labels);
+    // console.log(datasets);
 
     $(table_div).append($('<p>').text(kpi_name).addClass('kpi_table_title'));
     let $table = $('<table>').addClass('pure-table pure-table-striped');
@@ -140,7 +140,7 @@ L.Control.KPICharts = L.Control.extend({
     },
 
     onRemove: function(map) {
-        console.log('KPICharts.onRemove()')
+        // console.log('KPICharts.onRemove()')
         var container = this._container;
 
         // If the control is visible, hide it before removing it.
@@ -208,7 +208,7 @@ L.Control.KPICharts = L.Control.extend({
         // energy system. It allows side-by-side comparison of different energy system scenarios. The format of the
         // data is shown below
 
-        console.log(kpi_info);
+        // console.log(kpi_info);
         // Example KPI object (with just one energy system)
         //    0:
         //        distribution: Array(3)
@@ -294,7 +294,7 @@ L.Control.KPICharts = L.Control.extend({
                     }
                 }
             }
-            console.log(distr_labels_dict);
+            // console.log(distr_labels_dict);
 
             // Fill in energy system data
             for (let i=0; i<kpi_info.length; i++) {
