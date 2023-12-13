@@ -808,10 +808,12 @@ function selectAreaKPI(selectObject) {
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(kpi);
 
     geojson_area_layer.eachLayer(function (layer) {
-        layer.setStyle({
-            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
-            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
-        });
+        if (Object.keys(layer.feature.properties.KPIs).length > 0) {
+            layer.setStyle({
+                fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
+                color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
+            });
+        }
     });
 }
 
