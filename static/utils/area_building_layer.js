@@ -535,11 +535,64 @@ function format_KPI_unit(unit) {
 }
 
 function add_area_layer(area_data) {
+    // For DistributionKPIs: create the pie charts here, and visualize the first one.
+    for(let i=0; i<area_data.length; i++) {
+        let ar = area_data[i];
+        if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
+            let keys = Object.keys(ar.properties.dist_KPIs);
+
+            for (let j=0; j<keys.length; j++) {
+                let key = keys[j];
+
+                // Pie chart options.
+                var pieChartOptions = {
+                    radius: 50,
+                    fillOpacity: 1.0,
+                    opacity: 1.0,
+                    data: {},
+                    chartOptions: {},
+                    weight: 1,
+                };
+
+                for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
+                    let dist_kpi = ar.properties.dist_KPIs[key].value[k];
+
+                    pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
+                    pieChartOptions.chartOptions[dist_kpi["name"]] = {
+                        fillColor: pie_chart_color_list[k],
+                        minValue: 0,
+                        maxValue: 10,
+                        maxHeight: 10,
+                        displayText: function (value) {
+                            return 1;
+                        }
+                    }
+                }
+                ar.properties.dist_KPIs[key].pieChartMarker = new L.PieChartMarker(
+                    new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
+                    pieChartOptions
+                );
+
+                // Only show first DistributionKPI if it's also the first KPI in the list.
+                if (j==0 &&
+                    ('type' in area_KPIs[Object.keys(area_KPIs)[0]] &&
+                        area_KPIs[Object.keys(area_KPIs)[0]].type == "Distribution")) {
+                    ar.properties.dist_KPIs[key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                    ar.properties.dist_KPIs[key].pieChartMarker.bringToFront();
+                    ar.properties.dist_KPIs[key].pieChartMarkerVisible = true;
+                } else {
+                    ar.properties.dist_KPIs[key].pieChartMarkerVisible = false;
+                }
+            }
+        }
+    }
+
     geojson_area_layer = L.geoJson(area_data, {
         style: style_area,
         onEachFeature: function(feature, layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
+                layer.pieChartMarker = feature.pieChartMarker;  // add a reference to the leaflet area layer
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
@@ -596,50 +649,6 @@ function add_area_layer(area_data) {
             }
         }
     }).addTo(get_layers(active_layer_id, 'area_layer'));
-
-    // Pie chart options.
-    var pieChartOptions = {
-        radius: 50,
-        fillOpacity: 1.0,
-        opacity: 1.0,
-        data: {},
-        chartOptions: {},
-        weight: 1,
-    };
-    // Add the pie chart here
-    for(let i=0; i<area_data.length; i++) {
-        let ar = area_data[i];
-        if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
-            let keys = Object.keys(ar.properties.dist_KPIs);
-
-            for (let j=0; j<keys.length; j++) {
-                let key = keys[j];
-                for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
-                    let dist_kpi = ar.properties.dist_KPIs[key].value[k];
-
-                    pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
-                    pieChartOptions.chartOptions[dist_kpi["name"]] = {
-                        fillColor: pie_chart_color_list[k],
-                        minValue: 0,
-                        maxValue: 10,
-                        maxHeight: 10,
-                        displayText: function (value) {
-                            return 1;
-                        }
-                    }
-                }
-                var pieChartMarker = new L.PieChartMarker(
-                    new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
-                    pieChartOptions
-                );
-                pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
-                pieChartMarker.bringToFront();
-
-                // Only show first DistributionKPI found.
-                break;
-            }
-        }
-    }
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -703,7 +712,6 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
-                console.log("Add building layer")
                 window.PubSubManager.broadcast('ADD_FEATURE_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 set_building_contextmenu(layer, feature.properties.id);
             }
@@ -809,10 +817,51 @@ function selectAreaKPI(selectObject) {
 
     geojson_area_layer.eachLayer(function (layer) {
         if (Object.keys(layer.feature.properties.KPIs).length > 0) {
-            layer.setStyle({
-                fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
-                color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
-            });
+            if (areaLegendChoice in layer.feature.properties.KPIs) {
+                layer.setStyle({
+                    fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
+                    color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
+                });
+            } else {
+                layer.setStyle({
+                    fillColor: "blue",
+                    weight: 1,
+                    opacity: 1,
+                    color: "blue",
+                    dashArray: '',
+                    fillOpacity: 0.3
+                });
+            }
+        }
+
+        if (Object.keys(layer.feature.properties.dist_KPIs).length > 0) {
+            if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+                // A DistributionKPI was selected
+                for (let key in layer.feature.properties.dist_KPIs) {
+                    let kpi = layer.feature.properties.dist_KPIs[key];
+                    if (areaLegendChoice == key) {
+                        if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                            kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                            kpi.pieChartMarkerVisible = true;
+                        }
+                    } else {
+                        // remove all other distributionKPIs if applicable
+                        if (kpi.pieChartMarkerVisible) {
+                            kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
+                            kpi.pieChartMarkerVisible = false;
+                        }
+                    }
+                }
+            } else {
+                // A non DistributionKPI was selected, hide pieCharts if the previous KPI was a DistributionKPI
+                for (let key in layer.feature.properties.dist_KPIs) {
+                    let kpi = layer.feature.properties.dist_KPIs[key];
+                    if (kpi.pieChartMarkerVisible) {
+                        kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
+                        kpi.pieChartMarkerVisible = false;
+                    }
+                }
+            }
         }
     });
 }
