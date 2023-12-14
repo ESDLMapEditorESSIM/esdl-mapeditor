@@ -1283,8 +1283,8 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                if (results.esdl_service_result) {
-                    process_service_results(results.esdl_service_result)
+                if (results) {
+                    process_service_results(results)
                 }
             });
 
