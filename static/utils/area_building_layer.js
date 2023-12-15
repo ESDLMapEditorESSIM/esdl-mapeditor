@@ -275,7 +275,7 @@ function get_building_default_color(value) {
 }
 
 
-stdKPIs = {
+var stdKPIs = {
     "buildingYear": {
         "get_colors": get_buildingYear_colors,
         "color_grades": grades[num_building_year_categories],
@@ -534,57 +534,89 @@ function format_KPI_unit(unit) {
         return unit;
 }
 
+function create_area_pie_chart(ar, size) {
+    if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
+        let keys = Object.keys(ar.properties.dist_KPIs);
+
+        // create pieChartMwrkers for all DistributionKPIs
+        for (let j=0; j<keys.length; j++) {
+            let key = keys[j];
+
+            // Pie chart options.
+            var pieChartOptions = {
+                radius: size / 3,
+                fillOpacity: 1.0,
+                opacity: 1.0,
+                data: {},
+                chartOptions: {},
+                weight: 1,
+            };
+
+            for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
+                let dist_kpi = ar.properties.dist_KPIs[key].value[k];
+
+                pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
+                pieChartOptions.chartOptions[dist_kpi["name"]] = {
+                    fillColor: pie_chart_color_list[k],
+                    minValue: 0,
+                    maxValue: 10,
+                    maxHeight: 10,
+                    displayText: function (value) {
+                        return 1;
+                    }
+                }
+            }
+            ar.properties.dist_KPIs[key].pieChartMarker = new L.PieChartMarker(
+                new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
+                pieChartOptions
+            );
+            ar.properties.dist_KPIs[key].pieChartMarkerVisible = false;
+        }
+    }
+}
+
+function calculate_area_size(layer) {
+    // calculate the size of the area, see https://oliverroick.net/writing/2015/leaflet-deflate.html
+    let bounds = layer.getBounds();
+    let zoom = map.getZoom();
+    let ne_px = map.project(bounds.getNorthEast(), zoom);
+    let sw_px = map.project(bounds.getSouthWest(), zoom);
+    let width = ne_px.x - sw_px.x;
+    let height = sw_px.y - ne_px.y;
+    let size = Math.min(width, height);
+    return size
+}
+
+function resize_area_pi_charts() {
+    geojson_area_layer.eachLayer(function(layer) {
+        if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+            // if currently selected KPI is DistributionKPI, remove it from map
+            let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
+            if (kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
+                kpi.pieChartMarkerVisible = false;
+            }
+        }
+
+        let area_size = calculate_area_size(layer);
+        create_area_pie_chart(layer.feature, area_size);
+
+        if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+            let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
+
+            if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                kpi.pieChartMarkerVisible = true;
+            }
+        }
+    });
+}
+
+
 function add_area_layer(area_data) {
     // For DistributionKPIs: create the pie charts here, and visualize the first one.
     for(let i=0; i<area_data.length; i++) {
         let ar = area_data[i];
-        if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
-            let keys = Object.keys(ar.properties.dist_KPIs);
-
-            for (let j=0; j<keys.length; j++) {
-                let key = keys[j];
-
-                // Pie chart options.
-                var pieChartOptions = {
-                    radius: 50,
-                    fillOpacity: 1.0,
-                    opacity: 1.0,
-                    data: {},
-                    chartOptions: {},
-                    weight: 1,
-                };
-
-                for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
-                    let dist_kpi = ar.properties.dist_KPIs[key].value[k];
-
-                    pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
-                    pieChartOptions.chartOptions[dist_kpi["name"]] = {
-                        fillColor: pie_chart_color_list[k],
-                        minValue: 0,
-                        maxValue: 10,
-                        maxHeight: 10,
-                        displayText: function (value) {
-                            return 1;
-                        }
-                    }
-                }
-                ar.properties.dist_KPIs[key].pieChartMarker = new L.PieChartMarker(
-                    new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
-                    pieChartOptions
-                );
-
-                // Only show first DistributionKPI if it's also the first KPI in the list.
-                if (j==0 &&
-                    ('type' in area_KPIs[Object.keys(area_KPIs)[0]] &&
-                        area_KPIs[Object.keys(area_KPIs)[0]].type == "Distribution")) {
-                    ar.properties.dist_KPIs[key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
-                    ar.properties.dist_KPIs[key].pieChartMarker.bringToFront();
-                    ar.properties.dist_KPIs[key].pieChartMarkerVisible = true;
-                } else {
-                    ar.properties.dist_KPIs[key].pieChartMarkerVisible = false;
-                }
-            }
-        }
     }
 
     geojson_area_layer = L.geoJson(area_data, {
@@ -592,7 +624,17 @@ function add_area_layer(area_data) {
         onEachFeature: function(feature, layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
-                layer.pieChartMarker = feature.pieChartMarker;  // add a reference to the leaflet area layer
+
+                let area_size = calculate_area_size(layer);
+                create_area_pie_chart(feature, area_size);
+
+                // Only show first DistributionKPI if it's also the first KPI in the legend list.
+                let first_kpi_key = Object.keys(area_KPIs)[0];
+                if ('type' in area_KPIs[first_kpi_key] && area_KPIs[first_kpi_key].type == "Distribution") {
+                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
+                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
+                }
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
