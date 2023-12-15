@@ -20,6 +20,7 @@ RUN mkdir -p /etc/apt/keyrings && \
 # get nodejs from the nodistro repository otherwise newer nodejs will be installed from debian bookwurm.
 RUN apt-get install -y -t nodistro nodejs
 
+# install Yarn etc.
 RUN corepack enable
 
 #RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -33,7 +34,6 @@ WORKDIR /usr/src/app
 # Build frontend dependencies.
 RUN yarn set version 3.6.3
 COPY .yarnrc.yml yarn.lock package.json vue.config.js babel.config.js /usr/src/app/
-RUN ls -al
 RUN yarn install
 
 # Python dependencies.
@@ -46,7 +46,7 @@ RUN yarn build-prod
 ENV PYTHONPATH=.:/usr/src/app
 
 # Clean up.
-RUN rm -rf node_modules
+RUN rm -rf node_modules && rm -rf .git/ && rm -rf .yarn/cache/
 
 EXPOSE 8111
 
