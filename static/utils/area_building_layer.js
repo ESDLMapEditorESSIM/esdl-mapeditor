@@ -544,7 +544,7 @@ function create_area_pie_chart(ar, size) {
 
             // Pie chart options.
             var pieChartOptions = {
-                radius: size / 3,
+                radius: size / 4,
                 fillOpacity: 1.0,
                 opacity: 1.0,
                 data: {},
