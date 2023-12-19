@@ -21,7 +21,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ant-design/icons-vue@npm:^6.0.0":
+"@ant-design/icons-vue@npm:^6.1.0":
   version: 6.1.0
   resolution: "@ant-design/icons-vue@npm:6.1.0"
   dependencies:
@@ -2929,30 +2929,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ant-design-vue@npm:2.2.8":
-  version: 2.2.8
-  resolution: "ant-design-vue@npm:2.2.8"
+"ant-design-vue@npm:3.2.20":
+  version: 3.2.20
+  resolution: "ant-design-vue@npm:3.2.20"
   dependencies:
-    "@ant-design/icons-vue": ^6.0.0
+    "@ant-design/colors": ^6.0.0
+    "@ant-design/icons-vue": ^6.1.0
     "@babel/runtime": ^7.10.5
+    "@ctrl/tinycolor": ^3.4.0
     "@simonwep/pickr": ~1.8.0
     array-tree-filter: ^2.1.0
-    async-validator: ^3.3.0
+    async-validator: ^4.0.0
+    dayjs: ^1.10.5
     dom-align: ^1.12.1
     dom-scroll-into-view: ^2.0.0
     lodash: ^4.17.21
     lodash-es: ^4.17.15
-    moment: ^2.27.0
-    omit.js: ^2.0.0
     resize-observer-polyfill: ^1.5.1
     scroll-into-view-if-needed: ^2.2.25
     shallow-equal: ^1.0.0
     vue-types: ^3.0.0
     warning: ^4.0.0
   peerDependencies:
-    "@vue/compiler-sfc": ">=3.1.0"
-    vue: ">=3.1.0"
-  checksum: ad9a0d603b734e1bf1fb752e5ab337fe3cdd11c7a3bbacc2d3d44ef8bed502d90047f3b527f9859784bfaedc848444ceed98136b9030bd07be3c03b5917a4dfe
+    vue: ">=3.2.0"
+  checksum: cc0497ae86cf90c894177a0814df4baffc66d9e1bdd3c77d4d2a792e1371592ada391440dc1b8eededdd117c1b20448fa2da356bf4f739bcebfb7dffbd0f282b
   languageName: node
   linkType: hard
 
@@ -3154,10 +3154,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"async-validator@npm:^3.3.0":
-  version: 3.4.0
-  resolution: "async-validator@npm:3.4.0"
-  checksum: e07e9de73c8d73363a2e970a256cacb85ec75bf75c7f9b52f7cddc1ed00b5a1f27a099f16c4925cfab2feccec38023d5ec07e13cb35ece0951a1e83ec6bf6749
+"async-validator@npm:^4.0.0":
+  version: 4.2.5
+  resolution: "async-validator@npm:4.2.5"
+  checksum: 3e3d891a2e21497c8a646afeb7b1e6ed5f98de5f58ce3600732080f327cb581e65d8d8ff184273f1461dc84105d49f5cf31422a67ce50e787967c306838b6f40
   languageName: node
   linkType: hard
 
@@ -4789,6 +4789,13 @@ __metadata:
   dependencies:
     assert-plus: ^1.0.0
   checksum: 3634c249570f7f34e3d34f866c93f866c5b417f0dd616275decae08147dcdf8fccfaa5947380ccfb0473998ea3a8057c0b4cd90c875740ee685d0624b2983598
+  languageName: node
+  linkType: hard
+
+"dayjs@npm:^1.10.5, dayjs@npm:^1.11.10":
+  version: 1.11.10
+  resolution: "dayjs@npm:1.11.10"
+  checksum: a6b5a3813b8884f5cd557e2e6b7fa569f4c5d0c97aca9558e38534af4f2d60daafd3ff8c2000fed3435cfcec9e805bcebd99f90130c6d1c5ef524084ced588c4
   languageName: node
   linkType: hard
 
@@ -8578,13 +8585,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"moment@npm:^2.27.0":
-  version: 2.29.1
-  resolution: "moment@npm:2.29.1"
-  checksum: 1e14d5f422a2687996be11dd2d50c8de3bd577c4a4ca79ba5d02c397242a933e5b941655de6c8cb90ac18f01cc4127e55b4a12ae3c527a6c0a274e455979345e
-  languageName: node
-  linkType: hard
-
 "move-concurrently@npm:^1.0.1":
   version: 1.0.1
   resolution: "move-concurrently@npm:1.0.1"
@@ -9057,13 +9057,6 @@ __metadata:
   version: 1.1.2
   resolution: "obuf@npm:1.1.2"
   checksum: 41a2ba310e7b6f6c3b905af82c275bf8854896e2e4c5752966d64cbcd2f599cfffd5932006bcf3b8b419dfdacebb3a3912d5d94e10f1d0acab59876c8757f27f
-  languageName: node
-  linkType: hard
-
-"omit.js@npm:^2.0.0":
-  version: 2.0.2
-  resolution: "omit.js@npm:2.0.2"
-  checksum: 5d802b9fd7640250aada82f3b9b7243b554b38911f29b3de0d1066c00f24dd4ee72d3b9c94c582e373fb6511bd21e107917d419a7b2a04287f26c31133b48a15
   languageName: node
   linkType: hard
 
@@ -10693,11 +10686,12 @@ __metadata:
     "@vue/cli-service": 4.5.0
     "@vue/compiler-sfc": 3.0.4
     ajv: ^8.12.0
-    ant-design-vue: 2.2.8
+    ant-design-vue: 3.2.20
     axios: ^0.20.0
     babel-eslint: 10.1.0
     babel-plugin-import: 1.13.3
     core-js: ^3.21.1
+    dayjs: ^1.11.10
     eslint: 7.13.0
     eslint-plugin-vue: 7.1.0
     reqwest: ^2.0.5

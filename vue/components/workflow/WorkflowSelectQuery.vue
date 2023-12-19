@@ -2,12 +2,14 @@
   <p v-if="isLoading">Loading...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" />
+      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue" />
     </a-form-item>
     <a-form-item>
       <a-button type="primary" @click="onSubmit"> Select </a-button>
     </a-form-item>
   </a-form>
+  {{ form }}
+  {{form[workflowStep.target_variable]}}
 </template>
 
 <script setup="props">
@@ -46,6 +48,13 @@ const onSubmit = () => {
   state[workflowStep.target_variable] = choicesByValue.get(value);
   goToNextStep();
 };
+
+const selectValue = (value) => {
+  console.log("selectValue");
+  console.log(form[workflowStep.target_variable]);
+  form[workflowStep.target_variable] = value;
+  console.log(form[workflowStep.target_variable]);
+}
 
 const doGetData = async () => {
   const request_params = getParamsFromState(workflowStep.source.request_params);
