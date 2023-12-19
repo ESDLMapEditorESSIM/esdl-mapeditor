@@ -1692,6 +1692,7 @@
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
+        resize_area_pi_charts();
     });
 
     // use a pane to control line selection overlay with a different zIndex
