@@ -39,6 +39,7 @@ import {useAssetFeedbackList} from './composables/assetFeedback';
 import {useTooltipInfo} from './composables/TooltipInfo';
 import AssetTooltip from './apps/AssetTooltip';
 import ActiveLongProcess from './components/progress/ActiveProcess'
+import SidePane from "./apps/SidePane"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -146,6 +147,7 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+createApp(SidePane).mount('#vue_side_pane_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

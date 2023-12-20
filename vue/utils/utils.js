@@ -19,7 +19,9 @@ export function getattrd(obj, name) {
         return null;
     }
 }
-
+export function isDebug() {
+    return window.DEBUG;
+}
 export const unique = (a) => [...new Set(a)];
 export const uniqueBy = (x, f) => Object.values(x.reduce((a, b) => ((a[f(b)] = b), a), {}));
 export const intersection = (a, b) => a.filter((v) => b.includes(v));
