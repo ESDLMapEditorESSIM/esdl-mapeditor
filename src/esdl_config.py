@@ -343,7 +343,7 @@ esdl_config = {
         "eps": [
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
-                "name": "Business Park Workflow",
+                "name": "EIGEN Plan & Design Workflow",
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "restartable": True,
@@ -388,6 +388,17 @@ esdl_config = {
                                 "type": "default",
                                 "enable_if_state": "execution.success",
                                 "next_step": 11,
+                            },
+                            # INFRASTRUCTURE
+                            {
+                                "name": "Infrastructure",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Configure Energy Infrastructure",
+                                "type": "default",
+                                "enable_if_state":  "execution.success",
+                                "next_step": 33,
                             },
                             # PROFILES
                             {
@@ -454,26 +465,9 @@ esdl_config = {
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 26,
                             },
-                            # ERM
+                            # ASSETS
                             {
-                                "name": "ERM",
-                                "type": "header",
-                            },
-                            {
-                                "name": "Export to ERM (TODO)",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 27,
-                            },
-                            {
-                                "name": "Load ERM (TODO)",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 28,
-                            },
-                            # OWN ASSETS
-                            {
-                                "name": "Own assets",
+                                "name": "Assets",
                                 "type": "header",
                             },
                             {
@@ -482,25 +476,42 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                                 "next_step": 7,
                             },
+                            {
+                                "name": "Select energy hub assets",
+                                "type": "default",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "next_step": 32,
+                            },
+                            # ERM
+                            {
+                                "name": "ERM",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Export to ERM",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 27,
+                            },
+                            {
+                                "name": "Load ERM",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 28,
+                            },
                             # FLEXSCAN F2
                             {
                                 "name": "FlexScan phase 2 (F2)",
                                 "type": "header",
                             },
                             {
-                                "name": "Select energy hub assets (TODO)",
-                                "type": "default",
-                                "enable_if_state": "flexscanf1.loaded",
-                                "next_step": 32,
-                            },
-                            {
-                                "name": "Export to FlexScan F2 (TODO)",
+                                "name": "Export to FlexScan F2",
                                 "type": "primary",
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 29,
                             },
                             {
-                                "name": "Load FlexScan F2 (TODO)",
+                                "name": "Load FlexScan F2",
                                 "type": "primary",
                                 "enable_if_state": "flexscanf2.loaded",
                                 "next_step": 30,
@@ -517,13 +528,13 @@ esdl_config = {
                                 "next_step": 12,
                             },
                             {
-                                "name": "Run ESSIM (TODO)",
+                                "name": "Run ESSIM",
                                 "type": "primary",
                                 "enable_if_state": "execution.success",
                                 "next_step": 31,
                             },
                             {
-                                "name": "Export ESSIM results",
+                                "name": "Export results",
                                 "type": "primary",
                                 "enable_if_state": "essim.success",
                                 "next_step": 19,
@@ -1053,7 +1064,7 @@ esdl_config = {
                         "name": "Export for ERM",
                         "description": "",
                         "type": "text",
-                        "text": "TODO: implement this step",
+                        "text": "The currently active ESDL is being exported to the ERM...",
                     },
                     {
                         # 28
@@ -1095,6 +1106,14 @@ esdl_config = {
                         "type": "text",
                         "text": "TODO: implement this step",
                     },
+                    {
+                        # 33
+                        # TODO: choose correct type and implement
+                        "name": "",
+                        "description": "",
+                        "type": "text",
+                        "text": "Draw the energy infrastructure for the business park using the provided tools."
+                    }
                 ],
             }
         ]
