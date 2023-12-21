@@ -1,4 +1,4 @@
 __version__ = "23.12.0"
-__long_version__ = "23.12.0-g15f348d-nwn-poc"
-__git_commit__ = "15f348d94a7a4d9e9f26ab3185027f8197ee4fcc"
-__git_branch__ = "nwn-poc"
+__long_version__ = "23.12.0-gca3a03c-main"
+__git_commit__ = "ca3a03c196e3e2e32168cdf64937c66224051b0f"
+__git_branch__ = "main"
