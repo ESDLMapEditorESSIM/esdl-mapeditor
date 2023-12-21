@@ -252,7 +252,6 @@ export default {
       // true == valid input
       // false == invalid input
       if (this.selected==='DrivenByDemand' || this.selected==='DrivenBySupply' || this.selected==='DrivenByProfile') {
-          console.log(this.selected_port);
           if (this.selected ==='DrivenByProfile') {
             return (this.selected_port !== '' && this.dbp_radio !== '');
           } else {
