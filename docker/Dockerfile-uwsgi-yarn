@@ -1,3 +1,5 @@
+# Alternative way of building the complete image with uWSGI support and Yarn to build the javascript library.
+# Creates a bigger image than Dockerfile-uwsgi
 FROM python:3.10-slim
 
 # NodeJS major version, see https://github.com/nodesource/distributions

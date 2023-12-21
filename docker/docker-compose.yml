@@ -4,7 +4,7 @@ services:
   mapeditor:
     build:
       context: ..
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./docker/Dockerfile-dev
     image: esdl-mapeditor:dev
     networks:
       - mapeditor-net
