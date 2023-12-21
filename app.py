@@ -40,6 +40,7 @@ from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
@@ -1332,12 +1333,10 @@ def add_control_strategy_for_asset(asset_id, cs):
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
+    cs = instantiate_type(control_strategy)
 
-    module = importlib.import_module('esdl.esdl')
-    class_ = getattr(module, control_strategy)
-    cs = class_()
-
-    asset = esh.get_by_id(active_es_id, asset_id)
+    asset: esdl.EnergyAsset = esh.get_by_id(active_es_id, asset_id)
+    port: esdl.Port = esh.get_by_id(active_es_id, port_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
@@ -1347,9 +1346,9 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
     cs.energyAsset = asset
 
     if control_strategy == 'DrivenByDemand':
-        cs.outPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.outPort = port  # next((p for p in asset.port if p.id == port_id), None)
     if control_strategy == 'DrivenBySupply':
-        cs.inPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.inPort = port  # next((p for p in asset.port if p.id == port_id), None)
 
     add_control_strategy_for_asset(asset_id, cs)
 
