@@ -1,5 +1,5 @@
 {
-  "version": "23.9.0",
+  "version": "23.12.0",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
@@ -9,6 +9,7 @@
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
+    "@j-t-mcc/vue3-chartjs": "^1.2.0",
     "@jsonforms/core": "^2.5.2",
     "@jsonforms/vue": "^2.5.2",
     "@jsonforms/vue-vanilla": "^2.5.2",
@@ -16,12 +17,15 @@
     "ajv": "^8.12.0",
     "ant-design-vue": "2.2.8",
     "axios": "^0.20.0",
+    "chart.js": "^3.6.0",
+    "chartjs-chart-sankey": "^0.8.1",
     "core-js": "^3.21.1",
     "reqwest": "^2.0.5",
     "sass-loader": "^10.2.1",
     "sweetalert2": "^11.4.8",
     "uuid": "^8.3.1",
-    "vue": "3.0.4"
+    "vue": "3.0.4",
+    "vue-grid-layout": "3.0.0-beta1"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "4.5.0",

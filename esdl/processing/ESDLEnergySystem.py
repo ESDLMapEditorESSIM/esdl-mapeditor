@@ -149,6 +149,8 @@ def remove_sector(es, sector_id):
 
 def process_area_KPIs(area):
     kpi_list = []
+    kpis_description = None
+
     kpis = area.KPIs
     if kpis:
         for area_kpi in kpis.kpi:
@@ -199,4 +201,9 @@ def process_area_KPIs(area):
             kpi['sub_kpi'] = [sub_kpi]
             kpi_list.append(kpi)
 
-    return kpi_list
+        kpis_description = kpis.description
+
+    return {
+        'kpis_description': kpis_description,
+        'kpi_list': kpi_list
+    }

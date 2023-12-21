@@ -61,6 +61,8 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
+<!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
+
 
     <link rel="stylesheet" href="./vendor/code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="./vendor/code.jquery.com/jquery-1.12.4.js"></script>
@@ -173,8 +175,10 @@
     <link rel="stylesheet" href="./utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.KPICharts.js"></script>
     <script type="text/javascript" src="./utils/kpis.js"></script>
+    <script type="text/javascript" src="./utils/kpi_data.js"></script>
 
-    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+<!--    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>-->
+    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="./utils/L.Control.LoadDurationCurve.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.LoadDurationCurve.js"></script>
     <script type="text/javascript" src="./utils/ldc.js"></script>
@@ -212,6 +216,7 @@
     <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
+    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -692,7 +697,7 @@
                 // 'polygon' potential  name  id  class_name  [...]
 
                 // hide_loader();
-                // console.log(options);
+                //console.log('add_esdl_objects', options);
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
                 es_id = options['es_id'];
@@ -1278,8 +1283,8 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                if (results.esdl_service_result) {
-                    process_service_results(results.esdl_service_result)
+                if (results) {
+                    process_service_results(results)
                 }
             });
 
@@ -1325,7 +1330,7 @@
         $(function() {
             $("#asset_menu").selectmenu({ 'width': '200px', 'max-height': '500px' }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
-            $("#area_bld_select").selectmenu({ width:500 });
+            $("#area_bld_select").selectmenu({ width:350 });
             //$("#area_bld_select-menu").css({ 'max-height': '600px' });
             $("#carrier_select").selectmenu({ width:150 });
             $("#profile_menu").selectmenu({ width:150 });
@@ -1600,6 +1605,7 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
+                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
@@ -1708,8 +1714,15 @@
                 layer: osm.addTo(map)
             },
             {
+                label: 'OpenTopoMap',
+                layer: L.tileLayer(location.protocol + '//{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 17,
+                    attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
+                })
+            },
+            {
                 label: 'Google Streets',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                     maxZoom: 20,
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
                     attribution: 'Google'
@@ -1717,7 +1730,7 @@
             },
             {
                 label: 'Google Satellite',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
                     maxZoom: 20,
                     subdomains:['mt0','mt1','mt2','mt3'],
                     attribution: 'Google'
@@ -1794,6 +1807,18 @@
     };
     var table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
+
+    let kpi_dashboard_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    };
+    var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);

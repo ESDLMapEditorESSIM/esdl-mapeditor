@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import base64
 #  This work is based on original code developed and copyrighted by TNO 2020.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -15,6 +15,7 @@
 #      TNO
 import importlib
 import json
+import os
 import urllib
 import uuid
 import traceback
@@ -30,6 +31,7 @@ from flask_executor import Executor
 from flask_oidc import OpenIDConnect
 from flask_session import Session
 from flask_socketio import SocketIO, emit
+from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 import src.esdl_config as esdl_config
@@ -38,6 +40,7 @@ from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
@@ -82,17 +85,25 @@ from src.process_es_area_bld import get_building_information, process_energy_sys
     find_area_location_based
 from src.shape import Shape
 from src.user_logging import UserLogging
-from src.version import __long_version__ as mapeditor_version
+from src.version import __long_version__ as mapeditor_long_version
+from src.version import __version__ as mapeditor_version
+from src.version import __git_branch__ as mapeditor_branch
+from src.version import __git_commit__ as mapeditor_commit
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
+from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
+print('MapEditor git describe {}'.format(mapeditor_long_version))
+print('MapEditor branch {}'.format(mapeditor_branch))
+print('MapEditor commit {}'.format(mapeditor_commit))
 logger = get_logger(__name__)
+
 
 if settings.USE_GEVENT:
     import gevent.monkey
@@ -192,6 +203,7 @@ ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
+KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 
 
@@ -403,13 +415,29 @@ def auth_status():
 
 @app.route('/logout')
 def logout():
+    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
-    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
+    # retrieve the ID token to inform keycloak with the correct information to logout
+    # otherwise you will get a popup that requests if you want to log out
+    from flask import g
+    creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
+    creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
+    id_token_hint = creds.id_token_jwt
     oidc.logout()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
-    return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    # keycloak <17 logout:
+
+    new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
+    if not new_keycloak:
+        return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    else:
+        # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
+        return redirect(oidc.client_secrets.get('issuer') +
+                        '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
+                        '&client_id=' + oidc.client_secrets.get('client_id') +
+                        '&id_token_hint=' + id_token_hint)
 
 
 # Cant find out why send_file does not work in uWSGI with threading.
@@ -975,9 +1003,14 @@ def split_conductor(conductor, location, mode, conductor_container):
             new_cond2.name = new_cond1.name + '_b'
             new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
+        # remove existing ports, as we add previous used ports later
+        for p in list(new_cond1.port):
+            p.delete()
+        #new_cond1.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         new_cond2.id = new_cond2_id
-        new_cond2.port.clear()
+        for p in list(new_cond2.port):
+            p.delete()
+        #new_cond2.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         esh.add_object_to_dict(active_es_id, new_cond1)
         esh.add_object_to_dict(active_es_id, new_cond2)
 
@@ -1300,12 +1333,10 @@ def add_control_strategy_for_asset(asset_id, cs):
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
+    cs = instantiate_type(control_strategy)
 
-    module = importlib.import_module('esdl.esdl')
-    class_ = getattr(module, control_strategy)
-    cs = class_()
-
-    asset = esh.get_by_id(active_es_id, asset_id)
+    asset: esdl.EnergyAsset = esh.get_by_id(active_es_id, asset_id)
+    port: esdl.Port = esh.get_by_id(active_es_id, port_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
@@ -1315,9 +1346,9 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
     cs.energyAsset = asset
 
     if control_strategy == 'DrivenByDemand':
-        cs.outPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.outPort = port  # next((p for p in asset.port if p.id == port_id), None)
     if control_strategy == 'DrivenBySupply':
-        cs.inPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.inPort = port  # next((p for p in asset.port if p.id == port_id), None)
 
     add_control_strategy_for_asset(asset_id, cs)
 
@@ -3021,12 +3052,14 @@ def process_command(message):
 
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
+        es_info_list = get_session("es_info_list")
+        del es_info_list[remove_es_id]  # update es info list too
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
         esh = get_handler()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in separate thread
 
     set_handler(esh)
     session.modified = True
@@ -3318,6 +3351,10 @@ def get_carrier_color_dict():
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
     user_email = get_session('user-email')
+    if user_email is None:
+        # no valid login credentials
+        emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
+        return
     role = get_session('user-role')
 
     view_modes = ViewModes.get_instance()
