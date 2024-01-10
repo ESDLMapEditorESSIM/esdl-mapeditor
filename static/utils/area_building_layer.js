@@ -545,7 +545,7 @@ function create_area_pie_chart(ar, size) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
         let keys = Object.keys(ar.properties.dist_KPIs);
 
-        // create pieChartMarkers for all DistributionKPIs
+        // create pieChartMwrkers for all DistributionKPIs
         for (let j=0; j<keys.length; j++) {
             let key = keys[j];
 
