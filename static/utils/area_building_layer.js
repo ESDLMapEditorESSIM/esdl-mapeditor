@@ -545,7 +545,7 @@ function create_area_pie_chart(ar, size) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
         let keys = Object.keys(ar.properties.dist_KPIs);
 
-        // create pieChartMwrkers for all DistributionKPIs
+        // create pieChartMarkers for all DistributionKPIs
         for (let j=0; j<keys.length; j++) {
             let key = keys[j];
 
@@ -596,24 +596,26 @@ function calculate_area_size(layer) {
 
 function resize_area_pi_charts() {
     geojson_area_layer.eachLayer(function(layer) {
-        if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
-            // if currently selected KPI is DistributionKPI, remove it from map
-            let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
-            if (kpi.pieChartMarkerVisible) {   // don't add if it's already visible
-                kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
-                kpi.pieChartMarkerVisible = false;
+        if ("dist_KPIs" in layer.feature.properties) {
+            if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+                // if currently selected KPI is DistributionKPI, remove it from map
+                let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
+                if (kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                    kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
+                    kpi.pieChartMarkerVisible = false;
+                }
             }
-        }
 
-        let area_size = calculate_area_size(layer);
-        create_area_pie_chart(layer.feature, area_size);
+            let area_size = calculate_area_size(layer);
+            create_area_pie_chart(layer.feature, area_size);
 
-        if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
-            let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
+            if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+                let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
 
-            if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
-                kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
-                kpi.pieChartMarkerVisible = true;
+                if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                    kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                    kpi.pieChartMarkerVisible = true;
+                }
             }
         }
     });
