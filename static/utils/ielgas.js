@@ -151,13 +151,13 @@ L.Control.IELGASChart = L.Control.extend({
                     text: 'IELGAS chart - ' + data["time"]
                 },
                 scales: {
-                    yAxes: [{
+                    y: {
                         ticks: {
                             callback: function(value) {
                                 return formatN(value).toString();
                             }
                         }
-                    }]
+                    }
                 }
             }
         });

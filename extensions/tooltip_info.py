@@ -65,6 +65,8 @@ class TooltipInfo:
                     # for now take the first port that contains profile information
                     port_profile_info = {
                         "port_id": p.id,
+                        "port_type": p.eClass.name,
+                        "port_name": p.name,
                         "profs_info": []
                     }
                     profs_info = list()

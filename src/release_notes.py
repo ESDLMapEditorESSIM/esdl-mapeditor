@@ -26,6 +26,40 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "23.12.0",
+        "date": "2023-12-13T07:00:00Z",
+        "general_message": "On December 13th 2023, we've released the new ESDL MapEditor version 23.12.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "First version of interactive tooltips when hovering over an EnergyAsset on the map",
+                    "Support for ESDL update v2311",
+                    "Support for profiles, sectors and carriers from the EDR",
+                    "Add more assets to the AssetDrawToolbar default list",
+                    "Add kWh, MWh and GWh to the list of predefined quantity and units",
+                    "Areas now have a context menu for actions"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix double scroll bars in the TableEditor",
+                    "Fix updating asset state when changing multiple items in the TableEditor (issue NWN#14)",
+                    "Fix for specifying cost information without a unit",
+                    "Fix and enable delete area option",
+                    "Fix issue with pipe duplicate and reverse not working",
+                    "Work around EMF behavior with split_conductor() having ports that are not removed correctly",
+                    "Fix bugs in port profile viewer",
+                    "Fix loading of esdl.Potential",
+                    "Fix error with 'empty' area KPIs"
+
+                ]
+            },
+        ]
+    },
+    {
         "version": "23.9.0",
         "date": "2023-9-25T22:52:00Z",
         "general_message": "On September 25th 2023, we've released the new ESDL MapEditor version 23.9.0. " +

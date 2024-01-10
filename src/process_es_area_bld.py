@@ -907,8 +907,9 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             area_name = area.name
             if not area_name:
                 area_name = title
-            if area_kpis:
-                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
+            if area_kpis['kpi_list']:   # Only emit KPI info when there are KPIs available
+                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_info': area_kpis})
+                emit('kpis_present', True)
 
             # measures can contain assets that still need to be added to the energysystem
             assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)

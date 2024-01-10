@@ -65,6 +65,8 @@ class SettingsStorage:
 
     def set(self, setting_type: SettingType, identifier: str, setting_name: str, value):
         if not self.settings: return None
+        if identifier is None:
+            raise Exception("No identifier provided for setting.")
         mapeditor_settings_obj = self.settings.find_one_and_update({'type': setting_type.value, 'name': identifier},
                                                                    {'$set': {setting_name: value}}, upsert=False,
                                                                    projection={setting_name: 1},

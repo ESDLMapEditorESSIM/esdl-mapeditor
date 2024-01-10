@@ -31,16 +31,16 @@ build-mapeditor:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
   script:
     - docker pull $IMAGE:$BRANCH || true
-    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-    - docker push $IMAGE:$TAG
-    - docker push $IMAGE:$BRANCH
-
-build-mapeditor-uwsgi:
-  stage: build
-  variables:
-    IMAGE: $IMAGE_BASE/esdl-mapeditor-uwsgi
-  script:
-    - docker pull $IMAGE:$BRANCH || true
     - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
     - docker push $IMAGE:$TAG
     - docker push $IMAGE:$BRANCH
+
+#build-mapeditor-uwsgi:
+#  stage: build
+#  variables:
+#    IMAGE: $IMAGE_BASE/esdl-mapeditor-uwsgi
+#  script:
+#    - docker pull $IMAGE:$BRANCH || true
+#    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
+#    - docker push $IMAGE:$TAG
+#    - docker push $IMAGE:$BRANCH

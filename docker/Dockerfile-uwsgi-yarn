@@ -1,32 +1,54 @@
-FROM python:3.8-slim
+# Alternative way of building the complete image with uWSGI support and Yarn to build the javascript library.
+# Creates a bigger image than Dockerfile-uwsgi
+FROM python:3.10-slim
+
+# NodeJS major version, see https://github.com/nodesource/distributions
+ARG NODE_MAJOR=16
+#ENV NODE_OPTIONS=--openssl-legacy-provider
 
 # Install external dependencies.
 RUN apt-get -y update
-RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl
+RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg
+# configure nodeJS
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update
 
-RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && apt-get install -y nodejs yarn
+#    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
+#    echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+
+
+# get nodejs from the nodistro repository otherwise newer nodejs will be installed from debian bookwurm.
+RUN apt-get install -y -t nodistro nodejs
+
+# install Yarn etc.
+RUN corepack enable
+
+#RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
+#    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+#    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+#    apt-get update && apt-get install -y nodejs yarn
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 # Build frontend dependencies.
-COPY yarn.lock package.json vue.config.js babel.config.js /usr/src/app/
-RUN yarn
+RUN yarn set version 3.6.3
+COPY .yarnrc.yml yarn.lock package.json vue.config.js babel.config.js /usr/src/app/
+RUN yarn install
 
 # Python dependencies.
-COPY requirements-uwsgi.txt /usr/src/app/
-RUN pip install -r requirements-uwsgi.txt
+COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
+RUN pip install -r requirements.txt -r requirements-uwsgi.txt
 
 # Add everything in the image.
 COPY . /usr/src/app
 RUN yarn build-prod
-ENV PYTHONPATH=.:/usr/src/ap
+ENV PYTHONPATH=.:/usr/src/app
 
 # Clean up.
-RUN rm -rf node_modules
+RUN rm -rf node_modules && rm -rf .git/ && rm -rf .yarn/cache/
 
 EXPOSE 8111
 

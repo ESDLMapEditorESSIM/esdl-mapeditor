@@ -1,0 +1,23 @@
+version: "3.3"
+
+services:
+  mapeditor:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile-gunicorn
+    image: esdl-mapeditor:gunicorn
+    networks:
+      - mapeditor-net
+    ports:
+      - "${MAPEDITOR_PORT:-8111}:8111"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+
+networks:
+  mapeditor-net:
+    external:
+      name: mapeditor-net
+

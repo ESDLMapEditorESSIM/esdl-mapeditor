@@ -150,14 +150,14 @@ L.Control.ESSIMKPIs = L.Control.extend({
                         text: keys[i]
                     },
                     scales: {
-                        yAxes: [{
+                        y: {
                             ticks: {
                                 beginAtZero: true,
                                 callback: function(value) {
                                     return formatN(value).toString();
                                 }
                             }
-                        }]
+                        }
                     }
                 }
             });
