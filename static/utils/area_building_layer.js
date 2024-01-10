@@ -109,17 +109,24 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                 if (!(kpi in kpi_list)) {
                     if (layer_type === "area" && !areaLegendChoice) { areaLegendChoice = kpi; }
                     if (layer_type === "building" && !buildingLegendChoice) { buildingLegendChoice = kpi; }
+                    if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
+                    if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
+                    //value = parseFloat(KPI_value);
+                    kpi_list[kpi] = {"type": "distributionKPI", "names": []};
+                    for (let i=0; i<KPI_value.length; i++) {
+                        let val = KPI_value[i];
+                        kpi_list[kpi]["names"].push(val["name"]);
+                    }
 
-                        if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
-                        if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
-                        //value = parseFloat(KPI_value);
-                        kpi_list[kpi] = {"type": "distributionKPI", "names": []};
-                        for (i=0; i<KPI_value.length; i++) {
-                            val = KPI_value[i];
-                            kpi_list[kpi]["names"].push(val["name"]);
+                    //kpi_list[kpi] = { "min": value, "max": value };
+                } else {
+                    // if kpi information is already in kpi_list, check if new area contains other values
+                    // such that legend is extended with the new categories
+                    for (let i=0; i<KPI_value.length; i++) {
+                        if (!(kpi_list[kpi]["names"].includes(KPI_value[i]["name"]))) {
+                            kpi_list[kpi]["names"].push(KPI_value[i]["name"]);
                         }
-
-                        //kpi_list[kpi] = { "min": value, "max": value };
+                    }
                 }
             }
         }
@@ -977,7 +984,7 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
     if (!jQuery.isEmptyObject(area_KPIs)) {
         areaLegend = L.control({position: 'bottomright'});
         areaLegend.onAdd = function (map) {
-            return createAreaLegendDiv();
+                return createAreaLegendDiv();
         };
         areaLegend.addTo(map);
     }
