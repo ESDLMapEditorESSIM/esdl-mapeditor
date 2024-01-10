@@ -1,5 +1,5 @@
 {
-  "version": "24.1.0",
+  "version": "24.1.1",
   "scripts": {
     "lint": "vue-cli-service lint",
     "clean": "rm -rf static/dist",
