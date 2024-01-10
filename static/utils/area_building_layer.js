@@ -639,10 +639,10 @@ function add_area_layer(area_data) {
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
-                if ('type' in area_KPIs[first_kpi_key] && area_KPIs[first_kpi_key].type == "Distribution") {
-                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
-                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
-                    ar.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
+                if ('type' in area_KPIs[first_kpi_key] && area_KPIs[first_kpi_key].type == "distributionKPI") {
+                    feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                    feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
+                    feature.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
                 }
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
