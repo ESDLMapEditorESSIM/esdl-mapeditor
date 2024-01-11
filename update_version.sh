@@ -19,7 +19,31 @@ __git_branch__ = "$B"
 EOF
 )
 echo "$VERSION_PY" > src/version.py
+# check if current commit is pushed, if so add a new commit with this version information, else ammend the current commit
+#if [ -z `git branch -r --contains $C` ] ; then
+echo -n "Commit new version.py? (y/n) "
+read add_commit
+if [ $add_commit == 'y' ] ; then
+	git add  src/version.py
+	git commit -m "New release: version $V"
+	echo "Added new version.py to commit" 
+fi
+
+if [ -z `git tag | grep $V` ] ; then 
+	echo -n "There is no tag for version $V, create it (y/n)? "
+        read create_tag
+	if [ $create_tag == "y" ] ; then
+		git tag $V -m 'New version'
+		echo "New tag created"
+	fi 
+	     
+else 
+	echo "Git tag $V already exists" 
+	echo "If this version is not correct, update package.json"
+fi
 echo
-echo "Satified with this release? Do a "
-echo "   git push && git push --tags"
-echo "to push this release to the remote repository"
+echo -n "Satified with this release and push this release to repository (git push && git push --tags)? (y/n)"
+read $push
+if [ $push == "y" ] ; then
+	 git push && git push --tags
+fi
