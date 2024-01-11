@@ -8,8 +8,6 @@
       <a-button type="primary" @click="onSubmit"> Select </a-button>
     </a-form-item>
   </a-form>
-  {{ form }}
-  {{form[workflowStep.target_variable]}}
 </template>
 
 <script setup="props">
@@ -29,7 +27,7 @@ const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
 const options = ref([]);
-const form = {};
+const form = ref({});
 form[workflowStep.target_variable] = "";
 
 const { getParamsFromState, goToNextStep, getState } = useWorkflow();
@@ -50,10 +48,7 @@ const onSubmit = () => {
 };
 
 const selectValue = (value) => {
-  console.log("selectValue");
-  console.log(form[workflowStep.target_variable]);
   form[workflowStep.target_variable] = value;
-  console.log(form[workflowStep.target_variable]);
 }
 
 const doGetData = async () => {
