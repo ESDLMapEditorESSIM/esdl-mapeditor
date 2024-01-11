@@ -26,6 +26,26 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.1.1",
+        "date": "2024-01-10T14:58:00Z",
+        "general_message": "On January 10th 2024, we've released the new ESDL MapEditor version 24.4.1. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for ESDL update v2401",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error with 'empty' area DistributionKPIs",
+                    "Fix building proper legend for KPIs when not all areas have same labels"
+                ]
+            },
+        ]
+    },    {
         "version": "23.12.0",
         "date": "2023-12-13T07:00:00Z",
         "general_message": "On December 13th 2023, we've released the new ESDL MapEditor version 23.12.0. " +
