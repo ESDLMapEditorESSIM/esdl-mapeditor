@@ -6,7 +6,7 @@ stages:
 
 variables:
   TAG: $CI_COMMIT_SHA
-  BRANCH: $CI_COMMIT_REF_SLUG
+  BRANCH: $CI_COMMIT_REF_NAME
   REGISTRY: ci.tno.nl
   IMAGE_BASE: ci.tno.nl/geis/esdl-mapeditor
 
