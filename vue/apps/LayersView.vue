@@ -16,15 +16,18 @@
 
 <template>
   <div id="wms_layers_view">
-    <div v-if="treeData != null">
+    <a-space
+      v-if="treeData != null"
+      direction="vertical"
+    >
       <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
                    :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
                    :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleLayersView />
-    </div>
+    </a-space>
     <div v-else>
-      <p class="text-only">No map layers loaded.</p>
+      <p class="text-only">No WMS layers visible.</p>
     </div>
   </div>
 </template>
@@ -68,7 +71,7 @@ const treeData = computed(() => {
     }
 
     return [
-      getBaseLayersControlTreeData(),
+      // getBaseLayersControlTreeData(),
       ...wmsGroupsJstreeData,
     ];
   } else {

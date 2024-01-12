@@ -15,8 +15,8 @@
   -->
 
 <template>
-  <div id="visible_layers_view">
-    <h3>Visible layers</h3>
+  <a-card id="visible_layers_view">
+    <h3>Visible WMS layers</h3>
     <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
                  :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
                  :check-call-back="checkCallBack"
@@ -24,7 +24,7 @@
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
     </div>
-  </div>
+  </a-card>
 </template>
 
 <script setup>

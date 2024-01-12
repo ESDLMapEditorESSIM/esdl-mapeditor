@@ -36,7 +36,7 @@
       </li>
     </ul>
     <div id="tab_area">
-      <LayersView v-if="isActiveTab('Maps')" />
+      <LayersView v-if="isActiveTab('WMS_Layers')" />
     </div>
   </div>
 </template>
@@ -51,8 +51,8 @@ import LayersView from "./LayersView.vue";
 const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
 
 const sidePaneTabs = ref([{
-  key: 'Maps',
-  title: 'Maps',
+  key: 'WMS_Layers',
+  title: 'WMS Layers',
   icon: 'far fa-map',
   active: false
 }]);
