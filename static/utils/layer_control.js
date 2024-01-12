@@ -141,11 +141,21 @@ function add_layer_control() {
                 let tree = $('#esdl_lct').jstree(true);
                 let root_node = data.node;
                 for (ch=0; ch<root_node.children_d.length; ch++) {
-                    child = tree.get_node(root_node.children_d[ch]);
+                    let child = tree.get_node(root_node.children_d[ch]);
                     if (child.type === 'layer') {
                         layer_data = child.data;
                         if (map.hasLayer(esdl_list[layer_data.es_id].layers[layer_data.layer_name]))
                             tree.check_node(child);
+                    }
+
+                    // Area layer can have sub layers (grouped areas)
+                    if (child.hasOwnProperty("children_d")) {
+                        for (sch = 0; sch < child.children_d.length; sch++) {
+                            let subchild = tree.get_node(child.children_d[sch]);
+                            if (subchild.type === 'layer-group') {
+                                tree.check_node(subchild);
+                            }
+                        }
                     }
                 }
             })
@@ -165,6 +175,19 @@ function add_layer_control() {
                         show_esdl_layer_on_map(node.data.es_id, node.data.layer_name);
                     }
                 }
+                if (node.type === 'layer-group') {
+                    // Grouped areas are checked, show them on map
+                    // First, get all area_layers
+                    let area_layers = get_layers(node.data.es_id, node.data.layer_name);
+                    // For each of the area layers...
+                    area_layers.eachLayer(function (layer) {
+                        // ...check if it is the checked grouped area item
+                        if (layer.options.group_name === node.text) {
+                            // if it is not already on the map, add it to the map
+                            if (!map.hasLayer(layer)) layer.addTo(map);
+                        }
+                    });
+                }
                 set_leaflet_sizes();
             })
             .on('uncheck_node.jstree', function(e, data) {
@@ -177,6 +200,19 @@ function add_layer_control() {
                             hide_esdl_layer_from_map(child.data.es_id, child.data.layer_name);
                         }
                     }
+                }
+                if (node.type === 'layer-group') {
+                    // Grouped areas are unchecked, hide them from the map
+                    // First, get all area_layers
+                    let area_layers = get_layers(node.data.es_id, node.data.layer_name);
+                    // For each of the area layers...
+                    area_layers.eachLayer(function (layer) {
+                        // ...check if it is the unchecked grouped area item
+                        if (layer.options.group_name === node.text) {
+                            // if it is already on the map, remove it from the map
+                            if (map.hasLayer(layer)) layer.removeFrom(map);
+                        }
+                    });
                 }
                 if (node.type === 'layer') {    // uncheck an individual ESDL layer
                     hide_esdl_layer_from_map(node.data.es_id, node.data.layer_name);
@@ -194,7 +230,9 @@ function add_layer_control() {
 
                 // only has this behaviour on the sublayer level...   else check-uncheck again
                 // TODO: find better way of solving this
-                if ($(e.target.parentNode.parentNode).attr('aria-level') == 3) {
+
+                // layer 3 = Area, level 4 = grouped areas
+                if ($(e.target.parentNode.parentNode).attr('aria-level') >= 3) {
                     // this enables that esdl sublayers can be checked and unchecked while not being selected
                     if ($('#esdl_lct').jstree(true).is_checked(e.target))
                         $('#esdl_lct').jstree(true).uncheck_node(e.target);
@@ -250,6 +288,9 @@ function add_layer_control() {
                         "icon" : "fas fa-bezier-curve layer-node"
                     },
                     "layer" : {
+                        "icon" : "fas fa-layer-group layer-node"
+                    },
+                    "layer-group" : {
                         "icon" : "fas fa-layer-group layer-node"
                     }
                 }
@@ -324,8 +365,29 @@ function get_esdl_layer_control_tree_data() {
     for (let key in esdl_list) {
         let item = esdl_list[key];
 
+        // Dynamically create area list as ESDL can contain grouped area layers that must be turned on/off together
+        let area_layer = { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}};
+        let area_layer_children = []
+        let area_layer_data = item['layers']['area_layer'];
+        for (let l_idx in area_layer_data._layers) {
+            let layer = area_layer_data._layers[l_idx];
+            if (layer.options.hasOwnProperty("group_name") && layer.options.group_name != null) {
+                let child = {
+                    text: layer.options.group_name,
+                    type: "layer-group",
+                    state: {"checked": true},
+                    data: {es_id: key, layer_name: 'area_layer'}
+                };
+                if (area_layer.hasOwnProperty("children")) {
+                    area_layer["children"].push(child);
+                } else {
+                    area_layer["children"] = [child];
+                }
+            }
+        }
+
         let esdl_sublayers = [
-            { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}},
+            area_layer,
             { text: 'Assets', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'esdl_layer'}},
             { text: 'Connections', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'connection_layer'}},
             { text: 'Buildings', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'bld_layer'}},

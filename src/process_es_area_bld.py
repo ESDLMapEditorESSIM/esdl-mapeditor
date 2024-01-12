@@ -413,8 +413,24 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                 }))
                 shape_dictionary[potential.id] = shape
 
+    # Check if all sub areas have attribute logicalGroup set to true (must be clustered in UI)
+    logical_group = True
     for area in this_area.area:
-        find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
+        if not area.logicalGroup:
+            logical_group = False
+
+    if not logical_group:
+        for area in this_area.area:
+            find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
+    else:
+        for area in this_area.area:
+            grouped_area_info = {
+                "name": area.name,
+                "type": "group",
+                "area_list": list()
+            }
+            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary)
+            area_list.append(grouped_area_info)
 
 
 def create_area_info_geojson(area):
