@@ -147,7 +147,7 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-createApp(SidePane).mount('#vue_side_pane_root')
+mountApp(SidePane, '#vue_side_pane_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
