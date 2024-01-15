@@ -215,7 +215,7 @@ export default {
           // TODO: Find out why currentObjectID is changed (only when multiple assets are selected from left to right)
           // console.log(tmp_coid);
           // console.log(currentObjectID.value);
-          console.log(res);
+          console.log("Object properties:", res);
           this.isLoading = false;
           if (res) {
             this.obj_properties = res;
@@ -264,7 +264,7 @@ export default {
       });
     },
     get_default_date(value) {
-      //console.log(value);
+      console.log("Getting default date", value)
       if (value)
         return dayjs(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
       else

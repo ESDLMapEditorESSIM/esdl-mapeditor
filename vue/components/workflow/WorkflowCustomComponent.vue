@@ -16,6 +16,7 @@ import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures';
 import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM';
 import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate';
 import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles';
+import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 import {defineProps} from 'vue'
 
 const components = {
@@ -27,6 +28,7 @@ const components = {
   "dice-export-essim": DiceExportEssim,
   "dice-generate-profile-template": DiceGenerateProfileTemplate,
   "dice-upload-profiles": DiceUploadProfiles,
+  "demo-custom": DemoCustomComponent,
 };
 const props = defineProps({
   workflowStep: {

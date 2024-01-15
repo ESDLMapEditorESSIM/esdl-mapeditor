@@ -43,7 +43,6 @@ import ActiveLongProcess from './components/progress/ActiveProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
 
-
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service, state) => {

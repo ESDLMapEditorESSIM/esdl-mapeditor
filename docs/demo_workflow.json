@@ -19,6 +19,11 @@
           "name": "Select value from GET query",
           "next_step": 7,
           "type": "primary"
+        },
+        {
+          "name": "Custom component for workflow step",
+          "next_step": 9,
+          "type": "default"
         }
       ]
     },
@@ -185,6 +190,12 @@
       "name": "Result of select value from GET query",
       "type": "text",
       "text": "Good job! Click on the hamburger menu and then 'Log workflow state' to see the state."
+    },
+    {
+      "name": "Custom step",
+      "description": "",
+      "type": "custom",
+      "component": "demo-custom"
     }
   ]
 }

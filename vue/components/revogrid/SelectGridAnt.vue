@@ -12,9 +12,9 @@
 </template>
 
 <script>
-import {
-  Select as ASelect,
-} from "ant-design-vue";
+// import {
+//   Select as ASelect,
+// } from "ant-design-vue";
 
 export default {
   props: ["rowIndex", "prop", "model", "data", "close", "save", "column"],
@@ -35,8 +35,8 @@ export default {
       this.save(this.result);
     },
   },
-  components: {
-    ASelect,
-  },
+  // components: {
+  //   ASelect,
+  // },
 };
 </script>
