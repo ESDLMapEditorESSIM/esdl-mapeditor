@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import FancyNumberEdit from "../components/forms/FancyNumberEdit"
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue"
 import { useObject } from '../composables/ObjectID'
 
 const { currentObjectID } = useObject();

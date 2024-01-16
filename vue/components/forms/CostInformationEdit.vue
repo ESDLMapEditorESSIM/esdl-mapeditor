@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import FancyNumberEdit from "./FancyNumberEdit"
+import FancyNumberEdit from "./FancyNumberEdit.vue"
 
 const costInformationColumns = [
   { title: 'Type', dataIndex: 'uiname', key: 'citype' },

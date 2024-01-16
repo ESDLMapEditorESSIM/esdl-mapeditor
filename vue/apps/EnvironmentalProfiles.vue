@@ -122,8 +122,8 @@
 </template>
 
 <script>
-import FancyNumberEdit from "../components/forms/FancyNumberEdit"
-import ProfileTableEdit from "../components/forms/ProfileTableEdit"
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue"
+import ProfileTableEdit from "@/components/forms/ProfileTableEdit.vue"
 import { v4 as uuidv4 } from 'uuid';
 
 const defaultProfileTypeOptions = [

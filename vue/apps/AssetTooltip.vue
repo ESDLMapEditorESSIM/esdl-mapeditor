@@ -72,7 +72,7 @@ import { ref } from "vue";
 import { useTooltipInfo } from "../composables/TooltipInfo";
 import axios from 'axios';
 // eslint-disable-next-line no-unused-vars
-import spinner from "../components/Spinner";
+import spinner from "@/components/Spinner.vue";
 
 // eslint-disable-next-line no-unused-vars
 const { tooltipObjectID, tooltipTitle  } = useTooltipInfo();

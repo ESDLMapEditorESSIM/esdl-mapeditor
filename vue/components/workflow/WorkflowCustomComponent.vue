@@ -8,14 +8,14 @@
 </template>
 
 <script setup="props">
-import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspectResult';
-import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService';
-import {default as EpsCreateProject} from './custom/eps/EpsCreateProject';
-import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures';
-import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures';
-import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM';
-import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate';
-import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles';
+import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspectResult.vue';
+import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService.vue';
+import {default as EpsCreateProject} from './custom/eps/EpsCreateProject.vue';
+import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures.vue';
+import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures.vue';
+import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM.vue';
+import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate.vue';
+import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles.vue';
 import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 import {defineProps} from 'vue'
 

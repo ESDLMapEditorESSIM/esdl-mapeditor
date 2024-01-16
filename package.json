@@ -1,11 +1,11 @@
 {
   "version": "23.9.0",
   "scripts": {
-    "lint": "vue-cli-service lint",
+    "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
     "clean": "rm -rf static/dist",
-    "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
-    "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js --report",
-    "build-prod": "npx vue-cli-service build --inline-vue --mode production --dest static/dist --target lib vue/index.js",
+    "build": "vite build --outDir static/dist",
+    "serve": "vite preview",
+    "watch": "vite build --outDir static/dist --watch --minify false --debug",
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
@@ -13,27 +13,21 @@
     "@jsonforms/vue": "^3.1.0",
     "@jsonforms/vue-vanilla": "^3.1.0",
     "@revolist/vue3-datagrid": "^3.1.0",
+    "@vitejs/plugin-vue": "^5.0.3",
     "ajv": "^8.12.0",
     "ant-design-vue": "4.1.0",
     "axios": "^0.20.0",
-    "babel-plugin-import": "^1.13.8",
-    "core-js": "^3.21.1",
     "dayjs": "^1.11.10",
     "reqwest": "^2.0.5",
-    "sass-loader": "^10.2.1",
     "sweetalert2": "^11.4.8",
     "uuid": "^8.3.1",
+    "vite": "^5.0.11",
     "vue": "3.2.47"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "5.0.8",
-    "@vue/cli-plugin-eslint": "5.0.8",
-    "@vue/cli-service": "5.0.8",
     "@vue/compiler-sfc": "3.0.4",
-    "babel-eslint": "10.1.0",
-    "babel-plugin-import": "1.13.8",
-    "eslint": "7.13.0",
-    "eslint-plugin-vue": "7.1.0",
+    "eslint": "8",
+    "eslint-plugin-vue": "8",
     "sass": "1.26.11"
   },
   "browserslist": [

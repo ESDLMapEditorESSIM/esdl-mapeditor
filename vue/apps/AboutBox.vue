@@ -11,7 +11,7 @@
     </template>
     <a-row>
       <a-col :span="8">
-        <img src="images/esdl_logo_small.png">
+        <img src="../images/esdl_logo_small.png">
       </a-col>
       <a-col :span="16">
         <p>
