@@ -29,7 +29,7 @@
     <a-button type="primary" @click="showModal">
       Add port
     </a-button>
-    <a-modal v-model:visible="visible" title="Add port" @ok="handleOk">
+    <a-modal v-model:open="visible" title="Add port" @ok="handleOk">
       <table>
         <tr>
           <td>Port type</td>

@@ -2,7 +2,7 @@
   <a-modal
     :destroy-on-close="true"
     :title="title"
-    :visible="computedVisible"
+    :open="computedVisible"
     width="750px"
     @ok="handleOk"
     @cancel="handleCancel"   

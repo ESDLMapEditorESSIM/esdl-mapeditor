@@ -3,7 +3,7 @@
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-info-circle" aria-hidden="true" /></div>
     Release notes...
   </a>
-  <a-modal v-model:visible="visibleReleaseNotes" :title="'Release notes - version ' + current_release_notes.version" width="750px">
+  <a-modal v-model:open="visibleReleaseNotes" :title="'Release notes - version ' + current_release_notes.version" width="750px">
     <template #footer>
       <a-button
         v-if="current_release_notes_index < release_notes_info.length - 1"
