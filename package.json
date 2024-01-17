@@ -4,7 +4,7 @@
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
     "clean": "rm -rf static/dist",
     "build": "vite build --outDir static/dist",
-    "watch": "vite build --outDir static/dist --watch --minify false --debug",
+    "watch": "NODE_ENV=development vite build --outDir static/dist --watch --minify false --debug",
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
@@ -15,19 +15,18 @@
     "@vitejs/plugin-vue": "^5.0.3",
     "ajv": "^8.12.0",
     "ant-design-vue": "4.1.0",
-    "axios": "^0.20.0",
+    "axios": "^1.6.0",
     "dayjs": "^1.11.10",
     "reqwest": "^2.0.5",
     "sweetalert2": "^11.4.8",
     "uuid": "^8.3.1",
     "vite": "^5.0.11",
-    "vue": "3.2.47"
+    "vue": "3.4.14"
   },
   "devDependencies": {
-    "@vue/compiler-sfc": "3.0.4",
-    "eslint": "8",
-    "eslint-plugin-vue": "8",
-    "sass": "1.26.11"
+    "eslint": "8.56.0",
+    "eslint-plugin-vue": "9.20.1",
+    "sass": "1.69.7"
   },
   "browserslist": [
     "> 1%",

@@ -22,7 +22,7 @@
 </template>
 
 <script setup="props">
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { genericErrorHandler } from "../../../../utils/errors.js";
 import { useWorkflow } from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars

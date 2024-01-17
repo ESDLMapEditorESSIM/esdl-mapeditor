@@ -14,7 +14,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, ref} from "vue";
+import {ref} from "vue";
 import {useWorkflow} from "../../composables/workflow.js";
 import {workflowGetJsonForm, workflowPostData} from "./utils/api.js";
 import { JsonForms } from "@jsonforms/vue";

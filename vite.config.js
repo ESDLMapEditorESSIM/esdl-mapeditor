@@ -2,8 +2,6 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
-const path = require("path");
-
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
@@ -14,11 +12,12 @@ export default defineConfig({
       // the proper extensions will be added
       fileName: 'esdl-mapeditor',
     },
+    sourcemap: true
   },
   plugins: [vue()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./vue"),
+      "@": resolve(__dirname, "./vue"),
     },
   },
   define: {

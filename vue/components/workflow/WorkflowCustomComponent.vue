@@ -17,7 +17,6 @@ import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM.vue';
 import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate.vue';
 import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles.vue';
 import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
-import {defineProps} from 'vue'
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
