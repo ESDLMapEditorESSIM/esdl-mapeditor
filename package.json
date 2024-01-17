@@ -4,7 +4,6 @@
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
     "clean": "rm -rf static/dist",
     "build": "vite build --outDir static/dist",
-    "serve": "vite preview",
     "watch": "vite build --outDir static/dist --watch --minify false --debug",
     "version": "update_version.sh && git add src/version.py"
   },
