@@ -29,7 +29,7 @@ fi
 echo -n "Commit new version.py? (y/n) "
 read add_commit
 if [ $add_commit == 'y' ] ; then
-	git add  src/version.py
+	git add  src/version.py package.json
 	git commit -m "New release: version $V"
 	echo "Added new version.py to commit" 
 fi
