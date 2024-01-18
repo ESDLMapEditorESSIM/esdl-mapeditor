@@ -26,9 +26,32 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.1.2",
+        "date": "2024-01-18T16:08:00Z",
+        "general_message": "On January 18th 2024, we've released the new ESDL MapEditor version 24.1.2. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for logical area groups and being able to show/hide whole group in UI",
+                    "Automatic determination of profile aggregation method for the port profile viewer",
+                    "Added user feedback menu option"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error when sending ESDL on asset context menu service call",
+                    "Fix calling panel service when using filters"
+                ]
+            },
+        ]
+    },
+    {
         "version": "24.1.1",
         "date": "2024-01-10T14:58:00Z",
-        "general_message": "On January 10th 2024, we've released the new ESDL MapEditor version 24.4.1. " +
+        "general_message": "On January 10th 2024, we've released the new ESDL MapEditor version 24.1.1. " +
                            "See below for a list of new features and bug fixes",
         "categories": [
             {
@@ -45,7 +68,8 @@ release_notes = [
                 ]
             },
         ]
-    },    {
+    },
+    {
         "version": "23.12.0",
         "date": "2023-12-13T07:00:00Z",
         "general_message": "On December 13th 2023, we've released the new ESDL MapEditor version 23.12.0. " +
