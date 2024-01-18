@@ -343,9 +343,11 @@ def editor():
         statistics_service_enabled = not(settings.statistics_settings_config["host"] is None or settings.statistics_settings_config["host"] == "")
         bag_service_enabled = not(settings.bag_config["host"] is None or settings.bag_config["host"] == "")
         ibis_service_enabled = not(settings.ibis_config["host"] is None or settings.ibis_config["host"] == "")
+        user_feedback_url = settings.user_feedback_url_config["url"] if hasattr(settings, "user_feedback_url_config") else None
 
         logger.info("store:{} drive:{} edr:{} bound:{} stat:{} bag:{} ibis:{}".format(store_enabled, esdl_drive_enabled,
             edr_enabled, boundary_service_enabled, statistics_service_enabled,bag_service_enabled, ibis_service_enabled))
+        logger.info("Feedback URL: {}".format(user_feedback_url))
 
         return render_template('editor.html',async_mode=socketio.async_mode,
                                role=role,
@@ -357,6 +359,7 @@ def editor():
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
                                ibis_service_enabled=ibis_service_enabled,
+                               user_feedback_url=user_feedback_url,
                                debug=settings.FLASK_DEBUG,
                                version=mapeditor_version
                                )

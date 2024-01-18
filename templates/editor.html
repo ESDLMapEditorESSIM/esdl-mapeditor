@@ -1612,6 +1612,9 @@
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+{% if user_feedback_url %}
+                                    <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
+{% endif %}
                                     <li id="vue_show_release_notes"></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->

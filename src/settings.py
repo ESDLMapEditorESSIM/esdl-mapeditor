@@ -127,3 +127,7 @@ heatnetwork_dispatcher_config = {
     "host": os.environ.get('DISPATCHER_HOST', 'http://localhost'),
     "port": os.environ.get('DISPATCHER_PORT', 9200)
 }
+
+user_feedback_url_config = {
+    "url": os.environ.get('USER_FEEDBACK_URL', None)
+}
