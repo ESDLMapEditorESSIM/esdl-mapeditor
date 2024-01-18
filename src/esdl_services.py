@@ -104,7 +104,7 @@ class ESDLServices:
                 uri = StringURI('obj.esdl')
                 rset = ResourceSet()
                 resource = rset.create_resource(uri)
-                resource.append(obj)
+                resource.append(obj.deepcopy())
                 resource.save()
                 obj_esdl_string =  uri.getvalue()
                 return {"esdl": obj_esdl_string}
@@ -300,7 +300,7 @@ class ESDLServices:
                                     else:
                                         param_value = query_params[key]
                                     body[
-                                        cfg_service_param["parameter_name"]
+                                        cfg_service_param["name"]
                                     ] = param_value
                             else:
                                 if first_qp:
