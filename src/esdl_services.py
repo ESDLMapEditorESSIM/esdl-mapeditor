@@ -423,6 +423,41 @@ class ESDLServices:
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
+                elif service["result"][0]["action"] == "add_profile":
+                    rset = ResourceSet()
+
+                    profile_str = r.text
+                    uri = StringURI('profile.esdl', profile_str)
+                    resource = rset.create_resource(uri)
+                    resource.load()
+                    profile = resource.contents[0]
+
+                    if isinstance(profile, esdl.GenericProfile):
+                        # hack for now, how to find the asset for which the service was called
+                        b64_esdl = body["b64_esdl"]
+                        ascii_esdl_str = base64.b64decode(b64_esdl.encode("utf-8")).decode("utf-8")
+                        uri = StringURI('asset.esdl', ascii_esdl_str)
+                        resource = rset.create_resource(uri)
+                        resource.load()
+                        asset = resource.contents[0]
+                        asset_id = asset.id
+                        asset_in_es = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
+
+                        found_first_outport = False
+                        for p in asset_in_es.port:
+                            if isinstance(p, esdl.OutPort):
+                                found_first_outport = True
+                                break
+
+                        if not found_first_outport:
+                            p = esdl.OutPort(id=str(uuid.uuid4()), name="OutPort")
+                            asset_in_es.port.append(p)
+
+                        p.profile.append(profile)
+                        return True, {"send_message_to_UI_but_do_nothing": {}}
+                    else:
+                        logger.error("Service was expected to give back a profile")
+                        return False, None
                 elif service["result"][0]["action"] == "add_notes":
                     es_edit = esh.get_energy_system(es_id=active_es_id)
                     esi = es_edit.energySystemInformation
