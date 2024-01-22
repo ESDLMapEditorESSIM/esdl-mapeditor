@@ -208,7 +208,7 @@ class ProjectManager:
                     print(f"Resource {uri} contains parse information/errors: {parse_info}")
             #self.validate(es=tmp_es)
             #self.esid_uri_dict[tmp_es.id] = uri.normalize()
-            self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary
+            # self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary
             #return es_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(uri, e))
