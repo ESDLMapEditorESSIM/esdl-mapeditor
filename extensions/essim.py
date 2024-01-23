@@ -648,6 +648,7 @@ class ESSIM:
         if not one_still_calculating:
             # self.emit_kpis_for_visualization(kpi_result_list)
             print("All KPIs finished calculation")
+            print(kpi_result_list)
             set_session('kpi_result_list', kpi_result_list)
 
             user_email = get_session('user-email')
@@ -657,6 +658,7 @@ class ESSIM:
         return result
 
     def emit_kpis_for_visualization(self, kpi_result_list):
+        kpis_description = None
         kpi_list = []
 
         for sim_id in kpi_result_list["kpis_per_simid"]:
@@ -672,24 +674,36 @@ class ESSIM:
 
                     kpi['sub_kpi'] = list()
 
-                    for sub_kpi in sub_kpi_list:
-                        if "system" in sub_kpi:
-                            for sys_kpi in sub_kpi["system"]:
-                                sys_kpi_res = self.process_sub_kpi(sys_kpi)
-                                kpi['sub_kpi'].append(sys_kpi_res)
-                        if "per_carrier" in sub_kpi:
-                            for pc_kpi in sub_kpi["per_carrier"]:
-                                pc_kpi_res = self.process_sub_kpi(pc_kpi)
-                                kpi['sub_kpi'].append(pc_kpi_res)
+                    if sub_kpi_list and "from" in sub_kpi_list[0]:
+                        # Sankey results - quick fixes to fit into current KPI data structures
+                        sankey_kpi_res = self.process_sankey_kpi(sub_kpi_list)
+                        sankey_kpi_res['name'] = kpi['name']
+                        kpi['sub_kpi'].append(sankey_kpi_res)
+                    else:
+                        for sub_kpi in sub_kpi_list:
+                            if "system" in sub_kpi:
+                                for sys_kpi in sub_kpi["system"]:
+                                    sys_kpi_res = self.process_sub_kpi(sys_kpi)
+                                    kpi['sub_kpi'].append(sys_kpi_res)
+                            if "per_carrier" in sub_kpi:
+                                for pc_kpi in sub_kpi["per_carrier"]:
+                                    pc_kpi_res = self.process_sub_kpi(pc_kpi)
+                                    kpi['sub_kpi'].append(pc_kpi_res)
 
                     kpi_list.append(kpi)
 
         if kpi_list:
+            kpi_info = {
+                'kpis_description': kpis_description,
+                'kpi_list': kpi_list
+            }
+
             print("Emit kpi_list for visualization:")
-            print(kpi_list)
+            print(kpi_info)
             with self.flask_app.app_context():
                 es_id = get_session('active_es_id')
-                emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_list': kpi_list})
+                emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_info': kpi_info})
+                emit('kpis_present', True)
 
     def process_sub_kpi(self, sub_kpi):
         sub_kpi_res = dict()
@@ -728,6 +742,17 @@ class ESSIM:
         # else:
         #     kpi['value'] = kpi_res[0]['value']
         #     kpi['type'] = 'Double'
+
+    def process_sankey_kpi(self, sub_kpi_list):
+        sub_kpi_res = dict()
+        sub_kpi_res['type'] = 'Sankey'
+
+        sub_kpi_res['flows'] = list()
+        for values in sub_kpi_list:
+            if values["from"] != values["to"] and values["flow"] != 0:
+                sub_kpi_res['flows'].append(values)
+
+        return sub_kpi_res
 
     def post_process_essim_results(self, essim_results):
         # The results are ordered using a key consisting of "ESDL energy system name + network name + index"

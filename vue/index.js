@@ -18,6 +18,7 @@ import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
+import KPIDashboard from './apps/KPIDashboard.vue';
 import {
     createVueLControl,
     mountApp,
@@ -42,6 +43,7 @@ import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar.vue";
 
 // Vue.config.productionTip = false
 
@@ -153,6 +155,14 @@ createVueLControl(AssetsToBeAddedToolbar, {
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
 }
+
+window.activate_kpi_dashboard_window = () => {
+    mountApp(KPIDashboard, '#kpi_dashboard_window');
+}
+
+createVueLControl(AnnouceKPIsToolbar, {
+        position: 'bottomright',
+    });
 
 window.sectors_window = () => {
     mountSidebarComponent(Sectors);

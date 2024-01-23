@@ -81,7 +81,7 @@ function set_marker_tooltip_handlers(marker) {
         layer.mouseover = false;
 
         setTimeout(function() {
-            if (layer.tooltip.active === false && !layer.mouseover) {
+            if (layer.tooltip && layer.tooltip.active === false && !layer.mouseover) {
                 layer.tooltip.removeFrom(get_layers(active_layer_id, 'esdl_layer'));
                 layer.tooltip = undefined;
             }

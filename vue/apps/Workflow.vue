@@ -68,10 +68,11 @@
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowSelectQuery
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY
-      "
-      :key="currentWorkflow.workflowStep.name"
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowTableQuery
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"      
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowEsdlService

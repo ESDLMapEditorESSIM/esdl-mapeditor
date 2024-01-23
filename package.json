@@ -1,5 +1,5 @@
 {
-  "version": "23.9.0",
+  "version": "24.1.2",
   "scripts": {
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
     "clean": "rm -rf static/dist",
@@ -8,6 +8,7 @@
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
+    "@j-t-mcc/vue3-chartjs": "^1.2.0",
     "@jsonforms/core": "^3.1.0",
     "@jsonforms/vue": "^3.1.0",
     "@jsonforms/vue-vanilla": "^3.1.0",
@@ -16,12 +17,15 @@
     "ajv": "^8.12.0",
     "ant-design-vue": "4.1.0",
     "axios": "^1.6.0",
+    "chart.js": "^3.6.0",
+    "chartjs-chart-sankey": "^0.8.1",
     "dayjs": "^1.11.10",
     "reqwest": "^2.0.5",
     "sweetalert2": "^11.4.8",
     "uuid": "^8.3.1",
     "vite": "^5.0.11",
-    "vue": "3.4.14"
+    "vue": "3.4.14",
+    "vue-grid-layout": "3.0.0-beta1"
   },
   "devDependencies": {
     "eslint": "8.56.0",

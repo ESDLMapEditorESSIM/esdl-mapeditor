@@ -108,8 +108,10 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     else:
         ps_influxdb_name = datasource
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
-    if filters is None or filters == '':
+    if filters is None:
         filters = []
+    elif isinstance(filters, str):
+        filters = filters.split(' AND ')
     elif not isinstance(filters, list):
         filters = [filters]
 
