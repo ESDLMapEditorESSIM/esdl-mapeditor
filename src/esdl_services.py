@@ -300,7 +300,7 @@ class ESDLServices:
                                     else:
                                         param_value = query_params[key]
                                     body[
-                                        cfg_service_param["name"]
+                                        cfg_service_param["parameter_name"]
                                     ] = param_value
                             else:
                                 if first_qp:
