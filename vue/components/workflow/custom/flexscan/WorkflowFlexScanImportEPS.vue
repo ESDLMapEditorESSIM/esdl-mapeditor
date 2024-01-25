@@ -1,9 +1,9 @@
 <template>
   <p>
-    Click the button below to navigate to the FlexScan dashboard where you can import the EPS data.
+    In the FlexSCan, the capacities of current and future flex assets on the business park can be estimated.
   </p>
   <p>
-    Here, you can also edit the calculated FlexScan phase 1 results and accept them when they are correct.
+    Click the button below to navigate to the FlexScan dashboard. In this dashboard, you can import the EPS data, run the FlexScan phase 1, and edit/correct its results if more information is available.
   </p>
   <a-button type="primary" :href="flexDashboardImportEPSUrl" target="_blank">Go to FlexScan dashboard</a-button>
 </template>

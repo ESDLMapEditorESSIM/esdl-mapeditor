@@ -108,6 +108,8 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     else:
         ps_influxdb_name = datasource
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
+    if isinstance(filters, str) and filters == "":
+        filters = []
     if not isinstance(filters, list):
         filters = [filters]
 
