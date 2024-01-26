@@ -13,6 +13,7 @@
 #      TNO
 import base64
 
+from flask import session
 from flask_socketio import emit
 
 from extensions.session_manager import get_project_manager, get_session
@@ -39,9 +40,11 @@ def emit_active_esdl_project():
     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
     esdlstr_base64_str = esdlstr_base64_bytes.decode('utf-8')
 
+    client_id = session['client_id']
     user_email = get_session('user-email')
     message = NewESDLMessage(
         user_email=user_email,
+        client_id=client_id,
         b64_esdl=esdlstr_base64_str
     )
     logger.debug("Sending ESDL on topic events.esdl.new")

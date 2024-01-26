@@ -3396,7 +3396,7 @@ def default_error_handler(e):
 @app.before_first_request
 def before_first_request():
     start_rmq_thread()
-    start_live_model_interface_thread()
+    start_live_model_interface_thread(app)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

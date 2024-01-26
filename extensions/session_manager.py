@@ -80,8 +80,10 @@ def on_change_recorded(action):
     hlc_string = uri.getvalue()
 
     user_email = get_session('user-email')
+    client_id = session['client_id']
     message = HighLevelChangeMessage(
         user_email=user_email,
+        client_id=client_id,
         high_level_change=hlc_string
     )
     # logger.debug("Sending high level change on topic events.esdl.high_level_change")
@@ -94,6 +96,27 @@ def get_project_manager() -> ProjectManager:
     """
     global managed_sessions
     client_id = session['client_id']
+    if client_id in managed_sessions:
+        if PM_KEY in managed_sessions[client_id]:
+            pm = managed_sessions[client_id][PM_KEY]
+            logger.debug('Retrieve pm client_id={}'.format(client_id))
+        else:
+            logger.warning('No Project Manager in session. Returning empty project manager')
+            pm = ProjectManager(on_change_recorded=on_change_recorded)
+            set_project_manager(pm)
+        return pm
+    else:
+        logger.warning('Session has timed-out. Returning empty project manager')
+        pm = ProjectManager(on_change_recorded=on_change_recorded)
+        set_project_manager(pm)
+        return pm
+
+
+def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
+    """
+    Retrieve the ProjectManager from the session using the client_id but outside the request context.
+    """
+    global managed_sessions
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]

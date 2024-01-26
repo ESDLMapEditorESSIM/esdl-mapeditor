@@ -14,6 +14,7 @@
 
 import json
 
+from flask import session, request
 from pika import BasicProperties
 from pika.exchange_type import ExchangeType
 from pika.spec import Basic
@@ -23,7 +24,7 @@ from threading import Thread
 from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
-from extensions.session_manager import get_project_manager
+from extensions.session_manager import get_project_manager, get_project_manager_with_client_id, managed_sessions
 from src.app import socketio
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
@@ -33,6 +34,9 @@ from src.process_es_area_bld import call_process_energy_system
 
 logger = get_logger(__name__)
 
+# TODO: Find better way to get app here? import directly results in cyclic import error
+local_app = None
+
 
 def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, properties: BasicProperties, body):
     """
@@ -41,6 +45,7 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     message = json.loads(body.decode("utf-8"))
     logger.debug("Result message received", message=message)
     del message["user_email"]
+    client_id = message['client_id']
 
     uri = StringURI('hlc.json', message['high_level_change'])
     # user_email = msg['user_email']
@@ -49,7 +54,7 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     external_resource.load()
     hlc = external_resource.contents[0]
 
-    pm = get_project_manager()
+    pm = get_project_manager_with_client_id(client_id)
     es = pm.get_active_energy_system()
     tracker = pm.active_tracker
     tracker.stack.start_recording(label=hlc.label)
@@ -57,11 +62,22 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
         pm.processChange(change, es.eResource)
     tracker.stack.stop_recording(call_on_change_handler=False)
 
-    # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-    call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+    global local_app
+
+    # create request context (and session?)...
+    with local_app.test_request_context():
+        session['client_id'] = client_id
+        request.sid = managed_sessions[client_id]['socketio_sid']
+        request.namespace = '/esdl'
+
+        # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+        call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
 
 
-def start_live_model_interface_thread():
+def start_live_model_interface_thread(app):
+    global local_app
+    local_app = app
+
     """Start the RabbitMQ thread."""
     logger.info("Starting RabbitMQ thread for events listener")
     thread = LiveModelInterfaceThread()

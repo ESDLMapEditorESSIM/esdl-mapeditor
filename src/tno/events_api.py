@@ -18,7 +18,7 @@ from flask_socketio import SocketIO
 
 from extensions.session_manager import get_session, get_project_manager
 import src.log as log
-from flask import Flask
+from flask import Flask, session
 
 from extensions.settings_storage import SettingsStorage
 from src.tno.events.messages import AssetPositionMessage, Point, NewESDLMessage
@@ -47,7 +47,8 @@ class EventsAPI:
         def mouse_positioning(frontend_message: MousePositionMessage):
             logger.info("Positioning asset", message=frontend_message)
             user_email = get_session('user-email')
-            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email)
+            client_id = session['client_id']
+            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email, client_id=client_id)
             # rabbitmq_fanout_publisher.publish_message(message)
             send_rabbitmq_message(message, "events.asset.positioning")
 
@@ -63,8 +64,10 @@ class EventsAPI:
         esdlstr_base64_str = esdlstr_base64_bytes.decode('utf-8')
 
         user_email = get_session('user-email')
+        client_id = session['client_id']
         message: NewESDLMessage(
             user_email=user_email,
+            client_id=client_id,
             b64_esdl=esdlstr_base64_str
         )
 

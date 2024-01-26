@@ -21,20 +21,24 @@ class Point(TypedDict):
 
 class AssetPositionMessage(TypedDict):
     point: Point
+    client_id: str
     user_email: str
 
 
 class WindPotentialResultMessage(TypedDict):
     user_email: str
+    client_id: str
     wind_potential: float
 
 
 class NewESDLMessage(TypedDict):
     user_email: str
+    client_id: str
     b64_esdl: str
 
 
 class HighLevelChangeMessage(TypedDict):
     user_email: str
+    client_id: str
     high_level_change: str
 
