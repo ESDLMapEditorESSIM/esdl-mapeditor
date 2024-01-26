@@ -1,0 +1,24 @@
+version: "3.8"
+
+networks:
+  mapeditor-net:
+    driver: bridge
+    name: mapeditor-net
+
+volumes:
+  geoserver_storage:
+
+services:
+  geoserver:
+    image: kartoza/geoserver:2.19.0
+    ports:
+      - "${GEOSERVER_PORT:-9432}:8080"
+    volumes:
+      - geoserver_storage:/data/geoserver
+    environment:
+      - INSTALL_EXTENSIONS=true
+      - STABLE_EXTENSIONS=vectortiles,css-plugin
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=admin
+    networks:
+      - mapeditor-net
