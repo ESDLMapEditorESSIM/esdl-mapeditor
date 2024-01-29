@@ -25,6 +25,7 @@ import src.log as log
 
 logger = log.get_logger(__name__)
 
+DEFAULT_PROFILE_AGGREGATION_METHOD = "sum"
 
 def send_alert(message):
     print(message)
@@ -66,8 +67,10 @@ class PortProfileViewer:
                         qau = qau.reference
                     if qau:
                         profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
+                        aggr_method = PortProfileViewer.determine_profile_aggregation_method(qau)
                     else:
                         profile_type = profile.profileType.name
+                        aggr_method = DEFAULT_PROFILE_AGGREGATION_METHOD
                     database = profile.database
                     multiplier = profile.multiplier
                     measurement = profile.measurement
@@ -89,7 +92,7 @@ class PortProfileViewer:
                         field=profile.field,
                         filters=profile.filters,
                         qau=qau,
-                        prof_aggr_type="sum",
+                        prof_aggr_type=aggr_method,
                         start_datetime=profile.startDate,
                         end_datetime=profile.endDate
                     )
@@ -98,3 +101,14 @@ class PortProfileViewer:
                 else:
                     send_alert('ProfileType other than InfluxDBProfile not supported yet')
                     return None
+
+    @staticmethod
+    def determine_profile_aggregation_method(qau: esdl.QuantityAndUnitType):
+        # Whether to use "sum" or "mean" does not only depend on the physicalQuantity, but for now start with this list
+        # and correct it when we run into problems. This is just a first 'guess' of what parameters need to be summed
+        if qau.physicalQuantity in [esdl.PhysicalQuantityEnum.ENERGY, esdl.PhysicalQuantityEnum.VOLUME,
+                                    esdl.PhysicalQuantityEnum.COST, esdl.PhysicalQuantityEnum.LENGTH,
+                                    esdl.PhysicalQuantityEnum.DISTANCE, esdl.PhysicalQuantityEnum.WEIGHT]:
+            return "sum"
+        else:
+            return "mean"

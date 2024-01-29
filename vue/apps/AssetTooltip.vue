@@ -23,7 +23,9 @@
           :key="port_profile_info.port_id"
           @click="showProfileInformation(port_profile_info.port_id)"
         >
-          <i :class="'fa fa-line-chart small-icon' + ((port_profile_info.profs_info.length > 0)?' icon-info-present':' icon-info-not-present')" />
+          <i :class="'fa fa-line-chart small-icon' + ((port_profile_info.profs_info.length > 0)?' icon-info-present':' icon-info-not-present')" 
+             :title="generateProfileButtonTitle(port_profile_info)"
+          />
         </button>
       </a-col>
     </a-row>
@@ -54,7 +56,7 @@
             </td>
             <td>
               <button @click="editProfile(current_port_id)">
-                <i class="fa fa-edit small-icon" />
+                <i class="fa fa-edit small-icon" title="Edit profile" />
               </button>
             </td>
           </tr>
@@ -93,6 +95,11 @@ axios.get("/tooltip_info/"+ tooltipObjectID.value)
 // eslint-disable-next-line no-unused-vars
 function showCostInformation() {
   console.log('test');
+}
+
+// eslint-disable-next-line no-unused-vars
+function generateProfileButtonTitle(profile) {
+  return `Edit profile for ${profile.port_type} ${profile.port_name}`;
 }
 
 // eslint-disable-next-line no-unused-vars
