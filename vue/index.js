@@ -4,21 +4,21 @@
  * DOM.
  */
 import {createApp} from "vue";
-import ControlStrategy from './apps/ControlStrategy';
-import MarginalCostsEdit from "./apps/MarginalCostsEdit";
-import ObjectProperties from './apps/ObjectProperties';
-import EDRAssets from './apps/EDRAssets';
-import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
-import Carriers from './apps/Carriers.vue';
-import Sectors from './apps/Sectors.vue';
-import AboutBox from './apps/AboutBox';
-import ReleaseNotes from './apps/ReleaseNotes';
+import ControlStrategy from '@/apps/ControlStrategy.vue';
+import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
+import ObjectProperties from '@/apps/ObjectProperties.vue';
+import EDRAssets from '@/apps/EDRAssets.vue';
+import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
+import Carriers from '@/apps/Carriers.vue';
+import Sectors from '@/apps/Sectors.vue';
+import AboutBox from '@/apps/AboutBox.vue';
+import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
-import SearchAssets from './apps/SearchAssets';
-import AssetFeedback from './apps/AssetFeedback';
-import KPIDashboard from './apps/KPIDashboard';
-import AssetTableEditor from './apps/AssetTableEditor';
-import CustomIconsSettings from "./apps/CustomIconsSettings";
+import SearchAssets from '@/apps/SearchAssets.vue';
+import AssetFeedback from '@/apps/AssetFeedback.vue';
+import AssetTableEditor from '@/apps/AssetTableEditor.vue';
+import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
+import KPIDashboard from './apps/KPIDashboard.vue';
 import {
     createVueLControl,
     mountApp,
@@ -26,26 +26,25 @@ import {
     mountSidebarComponent,
     mountTooltipComponent,
 } from "./mounts";
-import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
-import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
-import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
-import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
-import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
-import {useWorkflow} from "./composables/workflow";
-import Workflow from "./apps/Workflow";
-import ServicesToolbar from './components/toolbars/ServicesToolbar'
-import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
-import {useObject} from './composables/ObjectID';
-import {useAssetFeedbackList} from './composables/assetFeedback';
-import {useTooltipInfo} from './composables/TooltipInfo';
-import AssetTooltip from './apps/AssetTooltip';
-import ActiveLongProcess from './components/progress/ActiveProcess'
-import SidePane from "./apps/SidePane"
+import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
+import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
+import AssetDrawToolbarEDRAssetsSettings from '@/components/toolbars/AssetDrawToolbarEDRAssetsSettings.vue'
+import AssetDrawToolbarStandardAssetsSettings from '@/components/toolbars/AssetDrawToolbarStandardAssetsSettings.vue'
+import ToggleShowAssetDrawToolbar from '@/components/toolbars/ToggleShowAssetDrawToolbar.vue'
+import {useWorkflow} from "@/composables/workflow";
+import Workflow from "@/apps/Workflow.vue";
+import ServicesToolbar from '@/components/toolbars/ServicesToolbar.vue'
+import ToggleShowServicesToolbar from '@/components/toolbars/ToggleShowServicesToolbar.vue'
+import {useObject} from '@/composables/ObjectID';
+import {useAssetFeedbackList} from '@/composables/assetFeedback';
+import {useTooltipInfo} from '@/composables/TooltipInfo';
+import AssetTooltip from '@/apps/AssetTooltip.vue';
+import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
+import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
-import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
-
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar.vue";
 
 // Vue.config.productionTip = false
 

@@ -3,7 +3,7 @@
     <a-button type="primary" @click="showModal">
       Change or add costs
     </a-button>
-    <a-modal v-model:visible="visible" title="Cost Information" width="750px" @ok="handleOk">
+    <a-modal v-model:open="visible" title="Cost Information" width="750px" @ok="handleOk">
       <a-table :columns="costInformationColumns" :data-source="costInformation" size="middle" :pagination="paginationConfig">
         <template #civalue="{ text, record }">
           <!--
@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import FancyNumberEdit from "./FancyNumberEdit"
+import FancyNumberEdit from "./FancyNumberEdit.vue"
 
 const costInformationColumns = [
   { title: 'Type', dataIndex: 'uiname', key: 'citype' },

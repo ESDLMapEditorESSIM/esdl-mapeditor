@@ -30,7 +30,7 @@
 <script setup>
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
-import VueJsTree from "../components/jstree/VueJsTree";
+import VueJsTree from "../components/jstree/VueJsTree.vue";
 import {useSocketIO} from "../composables/socketio";
 import {useVisibleLayers} from "../composables/visibleLayers"
 

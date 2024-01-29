@@ -34,9 +34,9 @@ import VGrid, {
   VGridVueEditor,
   VGridVueTemplate,
 } from "@revolist/vue3-datagrid";
-import SelectGridAnt from "../components/revogrid/SelectGridAnt.vue";
-import SelectGridAntViewer from "../components/revogrid/SelectGridAntViewer.vue";
-import SelectGridPlain from "../components/revogrid/SelectGridPlain.vue";
+import SelectGridAnt from "@/components/revogrid/SelectGridAnt.vue";
+import SelectGridAntViewer from "@/components/revogrid/SelectGridAntViewer.vue";
+import SelectGridPlain from "@/components/revogrid/SelectGridPlain.vue";
 
 const asset_list = ref([]);
 const asset_types_list = ref([]);

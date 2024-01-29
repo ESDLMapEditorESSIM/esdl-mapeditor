@@ -9,7 +9,6 @@
 <script setup="props">
 import { genericErrorHandler } from "../../utils/errors.js";
 import { useWorkflow } from "../../composables/workflow.js";
-import { defineProps } from 'vue'
 import { workflowPostData } from "./utils/api.js";
 import Swal from "sweetalert2";
 

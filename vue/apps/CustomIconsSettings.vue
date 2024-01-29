@@ -63,7 +63,7 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { UploadOutlined } from '@ant-design/icons-vue';
-import spinner from "../components/Spinner.vue";
+import spinner from "@/components/Spinner.vue";
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 

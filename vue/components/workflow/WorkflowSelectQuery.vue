@@ -2,7 +2,7 @@
   <p v-if="isLoading">Loading...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" />
+      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue" />
     </a-form-item>
     <a-form-item>
       <a-button type="primary" @click="onSubmit"> Select </a-button>
@@ -11,7 +11,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, ref} from "vue";
+import {ref} from "vue";
 import {useWorkflow} from "../../composables/workflow.js";
 import {workflowGetData} from "./utils/api.js";
 
@@ -27,7 +27,7 @@ const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
 const options = ref([]);
-const form = {};
+const form = ref({});
 form[workflowStep.target_variable] = "";
 
 const { getParamsFromState, goToNextStep, getState } = useWorkflow();
@@ -46,6 +46,10 @@ const onSubmit = () => {
   state[workflowStep.target_variable] = choicesByValue.get(value);
   goToNextStep();
 };
+
+const selectValue = (value) => {
+  form[workflowStep.target_variable] = value;
+}
 
 const doGetData = async () => {
   const request_params = getParamsFromState(workflowStep.source.request_params);
