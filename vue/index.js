@@ -45,6 +45,7 @@ import SidePane from "@/apps/SidePane.vue"
 import './bridge.js';
 import Swal from "sweetalert2";
 import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar.vue";
+import ActivityContextSelector from "./apps/ActivityContextSelector.vue";
 
 // Vue.config.productionTip = false
 
@@ -148,7 +149,9 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
-createApp(SidePane).mount('#vue_side_pane_root')
+mountApp(SidePane, '#vue_side_pane_root')
+
+createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

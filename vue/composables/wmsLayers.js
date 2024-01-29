@@ -145,6 +145,12 @@ export function useWmsLayers() {
         removeFromVisibleLayerList(layerId);
     };
 
+    const clearWmsLayers = () => {
+        for (const [key, value] of Object.entries(globalWmsLayerList.value['layers'])) {
+            hideWmsLayer(key)
+        }
+    };
+
     const addWmsLayerGroup = (parentId, setting_type, project_name) => {
         const groupId = window.uuidv4();
         const layerGroup = {
@@ -189,6 +195,7 @@ export function useWmsLayers() {
     };
 
     return {
+        clearWmsLayers,
         getWmsLayerList,
         addWmsLayer,
         updateLayer,
