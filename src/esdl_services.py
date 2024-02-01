@@ -357,10 +357,16 @@ class ESDLServices:
                     area = instance[0].area
                     asset_str_list = json.loads(r.text)
 
+                    # TODO: Find out if any service returns a dict?
                     # Fix for services that return an ESDL string that represents one asset
                     if isinstance(asset_str_list, str):
                         asset_str_list = {
                             "add_assets": [asset_str_list]
+                        }
+                    # Fix for services that return a list of ESDLs
+                    if isinstance(asset_str_list, list):
+                        asset_str_list = {
+                            "add_assets": asset_str_list
                         }
 
                     try:
