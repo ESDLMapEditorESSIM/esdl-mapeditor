@@ -440,7 +440,7 @@ class ESDLServices:
 
                     if isinstance(profile, esdl.GenericProfile):
                         # hack for now, how to find the asset for which the service was called
-                        b64_esdl = body["b64_esdl"]
+                        b64_esdl = body["esdl"]
                         ascii_esdl_str = base64.b64decode(b64_esdl.encode("utf-8")).decode("utf-8")
                         uri = StringURI('asset.esdl', ascii_esdl_str)
                         resource = rset.create_resource(uri)
@@ -449,17 +449,18 @@ class ESDLServices:
                         asset_id = asset.id
                         asset_in_es = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
 
-                        found_first_outport = False
+                        first_outport = None
                         for p in asset_in_es.port:
                             if isinstance(p, esdl.OutPort):
-                                found_first_outport = True
+                                first_outport = p
                                 break
 
-                        if not found_first_outport:
-                            p = esdl.OutPort(id=str(uuid.uuid4()), name="OutPort")
-                            asset_in_es.port.append(p)
+                        if not first_outport:
+                            first_outport = esdl.OutPort(id=str(uuid.uuid4()), name="OutPort")
+                            asset_in_es.port.append(first_outport)
 
-                        p.profile.append(profile)
+                        first_outport.profile.append(profile)
+                        esh.add_object_to_dict(active_es_id, profile, recursive=True)
                         return True, {"send_message_to_UI_but_do_nothing": {}}
                     else:
                         logger.error("Service was expected to give back a profile")
