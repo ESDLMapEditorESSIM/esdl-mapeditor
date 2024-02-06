@@ -19,6 +19,8 @@ from extensions.session_manager import get_session
 import src.log as log
 from enum import Enum
 
+from src.tno.mongo.core import mongo_client
+
 """
 UserSettings database based on MongoDB
 
@@ -51,13 +53,17 @@ class SettingType(Enum):
 
 class SettingsStorage:
 
-    SYSTEM_NAME_IDENTIFIER = 'mapeditor' # only one identifier of system settings for mapeditor
+    SYSTEM_NAME_IDENTIFIER = 'mapeditor'  # only one identifier of system settings for mapeditor
 
-    def __init__(self, database_uri: str = 'mongodb://localhost:27017/', database: str = 'esdl_mapeditor_settings'):
-        logger.info("Setting up UserSettings with mongoDB at " + database_uri)
+    def __init__(self, database_uri: str = None, database: str = 'esdl_mapeditor_settings'):
+        logger.info("Setting up UserSettings with mongoDB", database_uri=database_uri)
         self.database = database
         try:
-            self.client = MongoClient(database_uri)
+            # Either use the shared client, or create a specific client.
+            if database_uri is None:
+                self.client = mongo_client
+            else:
+                self.client = MongoClient(database_uri)
             self.db: Database = self.client[database] # esdl_mapeditor_settings
             self.settings: Collection = self.db.settings
         except Exception as e:

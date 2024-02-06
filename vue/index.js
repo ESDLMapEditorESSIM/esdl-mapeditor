@@ -46,6 +46,7 @@ import './bridge.js';
 import Swal from "sweetalert2";
 import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "./apps/ActivityContextSelector.vue";
+import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
 
 // Vue.config.productionTip = false
 
@@ -132,6 +133,10 @@ window.activate_custom_icons_settings = () => {
 
 window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
+}
+
+window.activate_admin_settings = () => {
+    mountApp(ActivityContextManagement, '#admin_dialog_window');
 }
 
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});

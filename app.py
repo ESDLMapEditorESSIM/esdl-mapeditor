@@ -42,6 +42,7 @@ from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from extensions.activity_context import ActivityContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
 from extensions.es_statistics import ESStatisticsService
@@ -118,7 +119,7 @@ user_actions_logging = UserLogging()
 if settings.settings_storage_config["host"] is None or settings.settings_storage_config["host"] == "":
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
-settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
+settings_storage = SettingsStorage()
 
 
 # handler to retrieve ESDL documentation
@@ -205,6 +206,7 @@ ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
+ActivityContextExtension(app, socketio)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
