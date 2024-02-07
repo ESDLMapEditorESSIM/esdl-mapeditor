@@ -4,6 +4,7 @@
     style="width: 100%"
     :options="asset_types_list"
     @change="selected_asset_changed"
+    @popupScroll="hide_jquery_ui_popup()"
   />
   <div v-if="selected_asset_type && !isLoading"
       id="grid_div"
@@ -210,6 +211,10 @@ function before_cell_focus(e) {
       window.select_assets.toggle_selected(active_es_asset_layers[i]);
     }
   }
+}
+
+function hide_jquery_ui_popup() {
+  $(".ui-tooltip-content").parents('div').remove();
 }
 
 const columns = ref([]);

@@ -26,6 +26,7 @@
         :filter-option="filter_asset_type"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
+        @popupScroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -39,6 +40,7 @@
         :filter-option="filter_asset"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
+        @popupScroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -127,6 +129,9 @@ export default {
     buildResultInfo: function() {
       let result = {};
       return result;
+    },
+    hide_jquery_ui_popup: function() {
+      $(".ui-tooltip-content").parents('div').remove();
     },
   }
 };
