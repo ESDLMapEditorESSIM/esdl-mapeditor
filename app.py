@@ -52,7 +52,7 @@ from extensions.esdl_drive.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.etm_local import ETMLocal
+from extensions.etm_interface import ETMInterface
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.ielgas import IELGAS
@@ -189,7 +189,7 @@ ESDLDrive(app, socketio, executor)
 ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage)
 IELGAS(app, socketio, settings_storage)
-ETMLocal(app, socketio, settings_storage)
+ETMInterface(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
 esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
