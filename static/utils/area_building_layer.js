@@ -1176,11 +1176,15 @@ function style_area(feature) {
             fillOpacity: 0.7
         };
     } else {
+        let color = "blue";
+        if (feature.properties.hasOwnProperty("type") && feature.properties.type == "SERVICE_AREA") {
+            color = "#ffcb00";  // "#bc9500";
+        }
         return {
-            fillColor: "blue",
+            fillColor: color,
             weight: 1,
             opacity: 1,
-            color: "blue",
+            color: color,
             dashArray: '',
             fillOpacity: 0.3
         };

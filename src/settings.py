@@ -48,7 +48,8 @@ boundaries_config = {
     "host": os.environ.get('BOUNDARY_SERVICE_HOST', None),  # "boundary-service",
     "port": os.environ.get('BOUNDARY_SERVICE_PORT', None),  # "4002",
     "path_names": "/names",
-    "path_boundaries": "/boundaries"
+    "path_boundaries": "/boundaries",
+    "path_service_areas": "/service_areas"
 }
 
 profile_database_config = {

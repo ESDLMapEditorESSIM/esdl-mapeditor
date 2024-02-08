@@ -329,14 +329,19 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
     area_shape = None
 
     if area_geometry:
+        area_geojson_properties = {
+            "id": area_id,
+            "name": area_name,
+            "KPIs": geojson_KPIs,
+            "dist_KPIs": geojson_dist_kpis
+        }
+
+        if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
+            area_geojson_properties["type"] = "SERVICE_AREA"
+
         if isinstance(area_geometry, esdl.Polygon):
             shape_polygon = Shape.create(area_geometry)
-            area_list.append(shape_polygon.get_geojson_feature({
-                "id": area_id,
-                "name": area_name,
-                "KPIs": geojson_KPIs,
-                "dist_KPIs": geojson_dist_kpis
-            }))
+            area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
             area_shape = shape_polygon
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary_wgs = ESDLGeometry.create_boundary_from_geometry(area_geometry)
@@ -347,21 +352,14 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
                     area_id_number = ""
+                area_geojson_properties["id"] = area_id + area_id_number;
+
                 shape_polygon = Shape.create(pol)
-                area_list.append(shape_polygon.get_geojson_feature({
-                    "id": area_id + area_id_number,
-                    "name": area_name,
-                    "KPIs": geojson_KPIs,
-                    "dist_KPIs": geojson_dist_kpis
-                }))
+                area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
             area_shape = shape_multipolygon
         if isinstance(area_geometry, esdl.WKT):
             shape_wkt = Shape.create(area_geometry)
-            area_list.append(shape_wkt.get_geojson_feature({
-                "id": area_id,
-                "name": area_name,
-                "KPIs": geojson_KPIs
-            }))
+            area_list.append(shape_wkt.get_geojson_feature(area_geojson_properties))
             area_shape = shape_wkt
     else:
         if area_id and area_scope.name != 'UNDEFINED':
@@ -952,6 +950,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             # add_missing_coordinates(area)
             print('- Processing area')
             process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+            print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
             notes_list = get_notes_list(es)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})

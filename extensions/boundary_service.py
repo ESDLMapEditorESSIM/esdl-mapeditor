@@ -154,12 +154,6 @@ class BoundaryService:
                     print('ERROR in accessing Boundaries service: ' + str(e))
                     return 'ERROR in accessing Boundaries service: ' + str(e), 404
 
-        @self.socketio.on('initialize_boundary_service_extension', namespace='/esdl')
-        def initialize_boundary_service_extension():
-            user = get_session('user-email')
-            user_settings = self.get_user_settings(user)
-            set_session('boundary_service_settings', user_settings)
-
         @self.socketio.on('get_boundary_service_settings', namespace='/esdl')
         def get_boundary_service_settings():
             user = get_session('user-email')
@@ -193,6 +187,8 @@ class BoundaryService:
             selected_subareas = info["selected_subareas"]
             initialize_ES = info["initialize_ES"]
             add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
+            add_service_area_info = info["add_service_area_info"]
+            add_station_info = info["add_station_info"]
 
             if not is_valid_boundary_id(identifier):
                 send_alert("Not a valid identifier. Try identifiers like PV27 (Noord-Holland) or GM0060 (Ameland)")
@@ -214,8 +210,6 @@ class BoundaryService:
                 boundary = self.get_boundary_from_service(boundaries_year, esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
                 if boundary:
                     geom = boundary['geom']
-                    # geometry = ESDLGeometry.create_geometry_from_geom()
-
                     shape = Shape.parse_geojson_geometry(boundary['geom'])
                     if shape:
                         shape_dictionary[identifier] = shape
@@ -277,6 +271,17 @@ class BoundaryService:
                 if not boundaries:
                     send_alert('Error processing boundary information or no boundary information returned')
 
+                if initialize_ES:
+                    # If "Add supply area DSO" is checked, also put the other areas in a logical group
+                    if add_service_area_info:
+                        cbs_area_logical_group = esdl.Area(id=str(uuid.uuid4()), name="CBS gebieden",
+                                                           logicalGroup=True)
+                        area.area.append(cbs_area_logical_group)
+                        esh.add_object_to_dict(active_es_id, cbs_area_logical_group)
+                        area_to_add = cbs_area_logical_group
+                    else:
+                        area_to_add = area
+
                 for boundary in boundaries:
                     geom = None
                     try:
@@ -308,7 +313,7 @@ class BoundaryService:
                                     geometry = ESDLGeometry.create_geometry_from_geom(geom)
                                     sub_area.geometry = geometry
 
-                                area.area.append(sub_area)
+                                area_to_add.area.append(sub_area)
                                 esh.add_object_to_dict(active_es_id, sub_area)
 
                             for i in range(0, len(geom['coordinates'])):
@@ -329,9 +334,96 @@ class BoundaryService:
                                     }
                                 })
 
+            if add_station_info:
+                stations = self.get_station_from_service(
+                    esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+                if stations:
+                    stations_dict = {}
+
+                    for st in stations:
+                        stations_dict[st["station"]] = st
+
+                    if not add_service_area_info:
+                        # If stations were requested but not the supply areas, add the stations to the main area
+                        for st in stations:
+                            transformer = esdl.Transformer(id=str(uuid.uuid4()), name=st["station"])
+                            shp = Shape.parse_geojson_geometry(st["geom"])
+                            transformer.geometry = shp.get_esdl()
+                            transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
+                            transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
+
+                            area.asset.append(transformer)
+                            esh.add_object_to_dict(active_es_id, transformer, recursive=True)
+                            # esh.add_object_to_dict(active_es_id, transformer.port[0])
+                            # esh.add_object_to_dict(active_es_id, transformer.port[1])
+
+
+            if add_service_area_info:
+                service_areas = self.get_service_area_from_service(
+                    esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+
+                if service_areas:
+                    service_area_logical_group = esdl.Area(id=str(uuid.uuid4()), name="Verzorgingsgebieden", logicalGroup=True)
+                    area.area.append(service_area_logical_group)
+                    esh.add_object_to_dict(active_es_id, service_area_logical_group)
+
+                    for sar in service_areas:
+                        service_area = esdl.Area()
+                        service_area.id = str(uuid.uuid4())
+                        service_area.name = sar["station"]
+                        service_area.scope = esdl.AreaScopeEnum.from_string("SERVICE_AREA")
+
+                        geometry = ESDLGeometry.create_geometry_from_geom(sar["geom"])
+                        service_area.geometry = geometry
+
+                        service_area_logical_group.area.append(service_area)
+                        esh.add_object_to_dict(active_es_id, service_area)
+
+                        if add_station_info:
+                            # if both supply areas and stations have been requested, add station to the belonging
+                            # service_area.
+                            if sar["station"] in stations_dict:
+                                station = stations_dict[sar["station"]]
+
+                                transformer = esdl.Transformer(id=str(uuid.uuid4()), name=station["station"])
+                                shp = Shape.parse_geojson_geometry(station["geom"])
+                                transformer.geometry = shp.get_esdl()
+                                transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
+                                transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
+
+                                service_area.asset.append(transformer)
+                                esh.add_object_to_dict(active_es_id, transformer, recursive=True)
+                            else:
+                                logger.error(f"Station {sar['station']} is not present in stations_dict. Change query!")
+
+                        geom = sar["geom"]
+                        for i in range(0, len(geom['coordinates'])):
+                            if len(geom['coordinates']) > 1:
+                                area_id_number = " ({} of {})".format(i + 1, len(geom['coordinates']))
+                            else:
+                                area_id_number = ""
+                            area_list.append({
+                                "type": "Feature",
+                                "geometry": {
+                                    "type": "Polygon",
+                                    "coordinates": geom['coordinates'][i]
+                                },
+                                "properties": {
+                                    "id": sar["station"] + area_id_number,
+                                    "name": sar["station"],
+                                    "type": "SERVICE_AREA",
+                                    "KPIs": []
+                                }
+                            })
+
             set_session('shape_dictionary', shape_dictionary)
             emit('geojson', {"layer": "area_layer", "geojson": area_list})
             print('Ready processing boundary information')
+
+            # Process area information in ESDL again and send to frontend, as logical groups could be present now, and
+            # that requires recreation of the layer control dialog
+            # TODO: Fix circular import
+            # find_boundaries_in_ESDL(area)
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, BOUNDARY_SERVICE_USER_CONFIG):
@@ -392,6 +484,68 @@ class BoundaryService:
 
             except Exception as e:
                 print('ERROR in accessing Boundary service for {} with id {}: {}'.format(scope.name, id, e))
+                return None
+        else:
+            return None
+
+    def get_service_area_from_service(self, scope, scope_id):
+        """
+         :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
+         :param id: the identifier of the 'scope'
+         :return: list of supply areas in the indicated 'scope'
+         """
+        if is_valid_boundary_id(scope_id):
+            time.sleep(0.01)  # yield a little concurrency when running this in a thread
+
+            if "SA_" + scope_id in boundary_cache:
+                # print('Retrieve boundary from cache', str(year)+id)
+                # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
+                # return res_boundary
+                return boundary_cache["SA_" + scope_id]
+
+            try:
+                url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
+                      settings.boundaries_config["path_service_areas"] + '/service_area/' + \
+                      boundary_service_mapping[scope.name] + '/' + scope_id
+                # print('Retrieve from boundary service', id)
+                r = requests.get(url)
+                if len(r.text) > 0:
+                    reply = json.loads(r.text)
+                    boundary_cache["SA_" + scope_id] = reply
+                    return reply
+                else:
+                    print("WARNING: Empty response for Boundary service supply area info for {} with id {}".format(scope.name, id))
+                    return None
+
+            except Exception as e:
+                print('ERROR in accessing Boundary service supply area info for {} with id {}: {}'.format(scope.name, id, e))
+                return None
+        else:
+            return None
+
+    def get_station_from_service(self, scope, scope_id):
+        """
+         :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
+         :param id: the identifier of the 'scope'
+         :return: list of stations in the indicated 'scope'
+         """
+        if is_valid_boundary_id(scope_id):
+            time.sleep(0.01)  # yield a little concurrency when running this in a thread
+
+            try:
+                url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
+                      settings.boundaries_config["path_service_areas"] + '/station/' + \
+                      boundary_service_mapping[scope.name] + '/' + scope_id
+                r = requests.get(url)
+                if len(r.text) > 0:
+                    reply = json.loads(r.text)
+                    return reply
+                else:
+                    print("WARNING: Empty response for Boundary service station info for {} with id {}".format(scope.name, id))
+                    return None
+
+            except Exception as e:
+                print('ERROR in accessing Boundary service station info for {} with id {}: {}'.format(scope.name, id, e))
                 return None
         else:
             return None

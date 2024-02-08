@@ -170,9 +170,9 @@ function boundary_info_window() {
 
         table = table + '<td><select id="scope" onchange="select_area_scope();">';
         table = table + '<option value="country">country</option>';
-        table = table + '<option value="province">province</option>';
+        table = table + '<option value="province" selected>province</option>';
         table = table + '<option value="region">region</option>';
-        table = table + '<option value="municipality" selected>municipality</option>';
+        table = table + '<option value="municipality">municipality</option>';
         table = table + '<option value="district">district</option>';
         table = table + '<option value="neighbourhood">neighbourhood</option>';
         table = table + '</select></td></tr></table>';
@@ -201,8 +201,17 @@ function boundary_info_window() {
         table = table + '<tr><td width=180>Add boundaries to energysystem</td>';
         table = table + '<td><input type="checkbox" id="add_boundary_to_ESDL" disabled></td></tr>';
         table = table + '</table>';
-        sidebar_ctr.innerHTML += table;
 
+        if (check_role('service_area_service')) {
+            table = table + '<table>';
+            table = table + '<tr><td width=180>Add service areas from DSOs</td>';
+            table = table + '<td><input type="checkbox" id="service_area_dso" checked></td></tr>';
+            table = table + '<tr><td width=180>Add DSO stations</td>';
+            table = table + '<td><input type="checkbox" id="station_dso" checked></td></tr>';
+            table = table + '</table>';
+        }
+
+        sidebar_ctr.innerHTML += table;
         sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();get_boundary_info(this);">Request</button></p>';
     }
 
@@ -237,12 +246,16 @@ function get_boundary_info(obj) {
     selected_subareas = $('#select_subareas').val();
     initialize_ES = document.getElementById('initialize_ES').checked;
     add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
+    add_service_area_info = document.getElementById('service_area_dso').checked;
+    add_station_info = document.getElementById('station_dso').checked;
 
     show_loader();
     socket.emit('get_boundary_info', {identifier: identifier, toparea_name: toparea_name, scope: scope,
         subscope_enabled: subscope_enabled, add_toparea: add_toparea, subscope: subscope,
         select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
-        add_boundary_to_ESDL: add_boundary_to_ESDL});
+        add_boundary_to_ESDL: add_boundary_to_ESDL, add_service_area_info: add_service_area_info,
+        add_station_info: add_station_info
+    });
 }
 
 function get_ibis_info(add_boundary_to_ESDL = null) {
