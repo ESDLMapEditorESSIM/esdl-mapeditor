@@ -703,24 +703,27 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
-                    var popup = e.target.getPopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    popup.setLatLng(e.latlng).openOn(this_map);
-
-                    highlightAreaOrBuilding(e);
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                        highlightAreaOrBuilding(e);
+                    }
                 });
 
                 layer.on('mouseout', function(e) {
                     e.target.closePopup();
-
                     resetHighlightArea(e);
                 });
 
                 layer.on('mousemove', function (e) {
                     e.target.closePopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    var popup = e.target.getPopup();
-                    popup.setLatLng(e.latlng).openOn(this_map);
+
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                    }
                 });
 
                 set_area_handlers(layer);
