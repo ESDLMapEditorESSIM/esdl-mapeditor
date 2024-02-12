@@ -20,9 +20,10 @@
       v-if="treeData != null"
       direction="vertical"
     >
-      <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
-                   :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                   :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
+      <vue-js-tree
+        :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
+        :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+        :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleLayersView />
     </a-space>
@@ -36,7 +37,6 @@
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree.vue";
-import {useSocketIO} from "../composables/socketio";
 import {useBaseLayers,} from "../composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
 import VisibleLayersView from "./VisibleLayersView.vue";
@@ -57,7 +57,6 @@ const {
 
 
 // eslint-disable-next-line no-unused-vars
-const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
 

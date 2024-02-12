@@ -101,17 +101,21 @@ class SettingsStorage:
                 {'_id': mapeditor_settings_obj['_id']},
                 {'$unset': {setting_name: ""}}, upsert=False)
 
-    def get(self, setting_type: SettingType, identifier: str, setting_name: str):
+    def get(self, setting_type: SettingType, identifier: str, setting_name: str, default=None):
         if not self.settings:
             return None
 
-        mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier}, {'type':1, 'name': 1, setting_name: 1})
+        mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier}, {'type': 1, 'name': 1, setting_name: 1})
         if mapeditor_settings_obj is None:
+            if default is not None:
+                return default
             raise KeyError('No such setting \'{}\' for {} {}'.format(setting_name, setting_type.value, identifier))
 
         if setting_name in mapeditor_settings_obj:
             return mapeditor_settings_obj[setting_name]
         else:
+            if default is not None:
+                return default
             raise KeyError('No such setting \'{}\' for {} {}'.format(setting_name, setting_type.value, identifier))
 
     def has(self, setting_type: SettingType, identifier: str, setting_name: str):
@@ -126,17 +130,26 @@ class SettingsStorage:
         """
         return self.set(SettingType.USER, user, setting_name, value)
 
-    def get_user(self, user:str, setting_name:str):
+    def get_user(self, user: str, setting_name: str, default=None):
         """
         Get a setting for the given user.
         """
-        return self.get(SettingType.USER, user, setting_name)
+        return self.get(SettingType.USER, user, setting_name, default)
 
     def has_user(self, user: str, setting_name: str):
+        """Check if setting exists for the given user."""
         return self.has(SettingType.USER, user, setting_name)
 
     def del_user(self, user:str, setting_name:str):
+        """Delete setting for the given user."""
         return self.delete(SettingType.USER, user, setting_name)
+
+    def has_for_current_user(self, setting_name: str):
+        """
+        Check if setting exists for the currently logged in user.
+        """
+        user = get_session('user-email')
+        return self.has_user(user, setting_name)
 
     def set_for_current_user(self, setting_name: str, value):
         """
@@ -145,12 +158,12 @@ class SettingsStorage:
         user = get_session('user-email')
         return self.set_user(user, setting_name, value)
 
-    def get_for_current_user(self, setting_name: str):
+    def get_for_current_user(self, setting_name: str, default=None):
         """
         Get setting for currently logged in user.
         """
         user = get_session('user-email')
-        return self.get_user(user, setting_name)
+        return self.get_user(user, setting_name, default)
 
     def del_for_current_user(self, setting_name: str):
         """

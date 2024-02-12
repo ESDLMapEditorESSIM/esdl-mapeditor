@@ -20,32 +20,46 @@
     v-model="selected_context"
     @change="handleChange"
   >
-    <option value="" disabled selected>I want to...</option>
-    <option v-for="(context, id) in ActivityContexts" :key="id" :value="id">{{ context.name }}</option>
-    <div v-for="(context, id) in ActivityContexts" :key="id">
-      {{ id }} - {{ context }}
-    </div>
+    <option value="" selected>I want to...</option>
+    <option
+      v-for="activityContext in activityContexts" :key="activityContext.activity_id"
+      :value="activityContext.activity_id"
+    >
+      {{ activityContext.name }}
+    </option>
   </select>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { ActivityContexts } from '../composables/activityContext.js';
-import { useWmsLayers } from '../composables/wmsLayers.js';
+import {onMounted, ref} from 'vue';
+import {useActivityContext} from '@/composables/activityContext';
 
-const { clearWmsLayers, showWmsLayer } = useWmsLayers();
+const {activateActivityContext, clearActivityContext} = useActivityContext();
 
 const selected_context = ref("");
+const activityContexts = ref([]);
 
-// onMounted( async () => {
-//   const $ = window.$;
-//   $("#activity_context").selectmenu({ width:350 });
-// })
+const get_activity_contexts = async () => {
+  const response = await fetch('/context/activities')
+  const data = await response.json()
+  activityContexts.value = data
+}
+get_activity_contexts();
+
+onMounted(async () => {
+  const $ = window.$;
+  $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
+    handleChange({target: {value: $(this).val()}});
+  })
+})
 
 const handleChange = (e) => {
-  clearWmsLayers()
-  for (const layer of ActivityContexts[selected_context.value].wms_layers) {
-    showWmsLayer(layer)
+  // Find the selected activity context.
+  const selectedActivityContext = activityContexts.value.find(context => context.activity_id === e.target.value);
+  if (selectedActivityContext) {
+    activateActivityContext(selectedActivityContext);
+  } else {
+    clearActivityContext();
   }
 }
 </script>

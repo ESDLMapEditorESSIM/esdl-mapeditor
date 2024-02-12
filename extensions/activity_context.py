@@ -17,29 +17,44 @@ from bson import json_util
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit
 import src.log as log
+from extensions.session_manager import get_session
+from extensions.settings_storage import SettingsStorage
+from src.roles import mapeditor_admin_required
 from src.tno.mongo.core import get_database
 from src.tno.mongo.models import ActivityContext
 
 logger = log.get_logger(__name__)
 
+ACTIVITY_CONTEXTS_SETTING = "ACTIVITY_CONTEXT_IDS"
+
 
 class ActivityContextExtension:
-    def __init__(self, flask_app: Flask, socket: SocketIO):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
+        self.settings_storage = settings_storage
         self.register()
 
     def register(self):
         logger.info('Registering ActivityContext extension')
 
-        @self.flask_app.route("/context/activities")
-        def get_contexts():
+        @self.flask_app.route('/context/activities')
+        def get_user_activity_contexts():
+            context_ids = self.settings_storage.get_for_current_user(ACTIVITY_CONTEXTS_SETTING, default=[])
+            # Get the actual activity contexts by querying mongodb for all entries with the given ids.
+            db = get_database()
+            activity_contexts = db.activity_contexts.find({"activity_id": {"$in": context_ids}})
+            return json_util.dumps(activity_contexts)
+
+        @self.flask_app.route("/admin/context/activities")
+        @mapeditor_admin_required
+        def get_all_contexts():
             db = get_database()
             contexts_result = db.activity_contexts.find()
             return json_util.dumps(contexts_result), 200
 
-
-        @self.flask_app.route("/context/activities", methods=["POST"])
+        @self.flask_app.route("/admin/context/activities", methods=["POST"])
+        @mapeditor_admin_required
         def create_context():
             activity_json = request.json
             activity_context = ActivityContext(**activity_json)
@@ -51,7 +66,8 @@ class ActivityContextExtension:
             db.activity_contexts.insert_one(asdict(activity_context))
             return {}, 201
 
-        @self.flask_app.route("/context/activities/<activity_id>", methods=["DELETE"])
+        @self.flask_app.route("/admin/context/activities/<activity_id>", methods=["DELETE"])
+        @mapeditor_admin_required
         def delete_context(activity_id):
             db = get_database()
             db.activity_contexts.delete_one({"activity_id": activity_id})

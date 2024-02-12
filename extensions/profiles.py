@@ -34,6 +34,7 @@ from io import StringIO
 from uuid import uuid4
 import src.settings as settings
 from src.edr_client import EDRClient
+from src.roles import is_mapeditor_admin
 from utils.datetime_utils import parse_date
 from utils.utils import str2float
 
@@ -421,8 +422,6 @@ class Profiles:
 
         user = get_session('user-email')
         user_group = get_session('user-group')
-        role = get_session('user-role')
-        mapeditor_role = get_session('user-mapeditor-role')
         # print('User: ', user)
         # print('Groups: ', user_group)
         # print('Roles: ', role)
@@ -446,7 +445,7 @@ class Profiles:
         message = copy.deepcopy(default_profile_groups)
         possible_groups = message["groups"]
         # if enough rights, mark Standard profiles editable
-        if mapeditor_role and 'mapeditor-admin' in mapeditor_role:
+        if is_mapeditor_admin():
             for g in possible_groups:
                 if g['setting_type'] == SettingType.SYSTEM.value:
                     g['readonly'] = False
@@ -460,8 +459,7 @@ class Profiles:
         dpg = copy.deepcopy(default_profile_groups)
 
         # Make system profiles editable for the MapEditor admin role
-        mapeditor_role = get_session('user-mapeditor-role')
-        if 'mapeditor-admin' in mapeditor_role:
+        if is_mapeditor_admin():
             dpg['groups'][1]['readonly'] = False
 
         possible_groups = dpg["groups"]
@@ -600,8 +598,6 @@ class Profiles:
 
         user = get_session('user-email')
         user_group = get_session('user-group')
-        role = get_session('user-role')
-        mapeditor_role = get_session('user-mapeditor-role')
 
         if user is not None and self.settings_storage.has_user(user, PROFILES_SETTINGS):
             # add user profiles settings if available

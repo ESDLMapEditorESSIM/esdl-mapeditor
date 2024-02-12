@@ -15,27 +15,29 @@
  */
 
 import {ref} from "vue";
+import {useWmsLayers} from "@/composables/wmsLayers";
 
-/**
- * An activity context is an activity the user is currently performing.
- */
-export class ActivityContext {
-    constructor(id, name, wms_layers) {
-        this.id = id;
-        this.name = name;
-        this.wms_layers = wms_layers;
-    }
-}
+const activeActivityContext = ref({});
 
-export const ActivityContexts = Object.freeze({
-    "ATES": new ActivityContext("ATES", 'Draw an ATES', ['AardwarmteRotliegend']),
-    "WINDTURBINE": new ActivityContext("WINDTURBINE", 'Place a windturbine', []),
-})
-
-const activeActivityContext = ref(null);
+const { clearWmsLayers, showWmsLayer } = useWmsLayers();
 
 export function useActivityContext() {
+    function activateActivityContext(activityContext) {
+        activeActivityContext.value = activityContext;
+        clearWmsLayers()
+        for (const layer of activityContext.wms_layers) {
+            showWmsLayer(layer)
+        }
+    }
+
+    function clearActivityContext() {
+        activeActivityContext.value = {};
+        clearWmsLayers()
+    }
+
     return {
-        activeActivityContext
+        activeActivityContext,
+        activateActivityContext,
+        clearActivityContext,
     }
 }

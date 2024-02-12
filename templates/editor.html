@@ -216,8 +216,6 @@
     <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
-    {#{% if 'mapeditor-admin' in role %}#}
-    {#{% endif %}#}
     <script type="text/javascript" src="./utils/admin_dialog.js"></script>
 
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
@@ -1626,7 +1624,9 @@
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
                             </li>
+                            {% if is_mapeditor_admin %}
                             <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.open()" href="#">Admin</a></li>
+                            {% endif %}
                         </ul>
                     </div>
                 </div>

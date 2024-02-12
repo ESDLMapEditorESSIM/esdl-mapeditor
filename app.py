@@ -84,6 +84,7 @@ from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based
+from src.roles import is_mapeditor_admin
 from src.shape import Shape
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_long_version
@@ -206,7 +207,7 @@ ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
-ActivityContextExtension(app, socketio)
+ActivityContextExtension(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -351,20 +352,23 @@ def editor():
             edr_enabled, boundary_service_enabled, statistics_service_enabled,bag_service_enabled, ibis_service_enabled))
         logger.info("Feedback URL: {}".format(user_feedback_url))
 
-        return render_template('editor.html',async_mode=socketio.async_mode,
-                               role=role,
-                               store_enabled=store_enabled,
-                               esdl_drive_enabled=esdl_drive_enabled,
-                               edr_enabled=edr_enabled,
-                               essim_enabled=essim_enabled,
-                               boundary_service_enabled=boundary_service_enabled,
-                               statistics_service_enabled=statistics_service_enabled,
-                               bag_service_enabled=bag_service_enabled,
-                               ibis_service_enabled=ibis_service_enabled,
-                               user_feedback_url=user_feedback_url,
-                               debug=settings.FLASK_DEBUG,
-                               version=mapeditor_version
-                               )
+        return render_template(
+            'editor.html',
+            async_mode=socketio.async_mode,
+            role=role,
+            is_mapeditor_admin=is_mapeditor_admin(),
+            store_enabled=store_enabled,
+            esdl_drive_enabled=esdl_drive_enabled,
+            edr_enabled=edr_enabled,
+            essim_enabled=essim_enabled,
+            boundary_service_enabled=boundary_service_enabled,
+            statistics_service_enabled=statistics_service_enabled,
+            bag_service_enabled=bag_service_enabled,
+            ibis_service_enabled=ibis_service_enabled,
+            user_feedback_url=user_feedback_url,
+            debug=settings.FLASK_DEBUG,
+            version=mapeditor_version
+        )
     else:
         return render_template('index.html')
         # to enable working offline without IDM:

@@ -39,8 +39,8 @@ const newActivityContextID = ref('');
 const newActivityContextName = ref('');
 const newWmsLayers = ref('');
 
-const get_activity_contexts = async (asset_type) => {
-  const response = await fetch('/context/activities')
+const get_activity_contexts = async () => {
+  const response = await fetch('/admin/context/activities')
   activityContexts.value = await response.json()
   console.log('Activity contexts', activityContexts.value)
 }
@@ -70,7 +70,7 @@ const columns = [
 
 const deleteActivityContext = async (id) => {
   console.log('Delete activity context', id)
-  const response = await fetch('/context/activities/' + id, {
+  const response = await fetch('/admin/context/activities/' + id, {
     method: 'DELETE'
   })
   if (!response.ok) {
@@ -84,7 +84,7 @@ const deleteActivityContext = async (id) => {
 const saveActivityContext = async () => {
   console.log('Save activity context', newActivityContextName.value)
   const wmsLayers = newWmsLayers.value.split(",")
-  const response = await fetch('/context/activities', {
+  const response = await fetch('/admin/context/activities', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
