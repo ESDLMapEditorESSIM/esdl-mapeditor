@@ -187,11 +187,15 @@ def load_layers():
                     print(f"'{layer_name}' already loaded in geoserver, skipping")
                     geoserver_upload_successful = True
             else:
-                # upload to postgis
-                postgis_upload_successful = load_wms_layer_postgis(
-                    os.environ.get('POSTGRES_HOST'), os.environ.get('POSTGRES_PORT'), os.environ.get('POSTGRES_USER'),
-                    os.environ.get('POSTGRES_PASSWORD'), os.environ.get('POSTGRES_DB'), file_path, layer_name
-                )
+                if file_path.endswith(tuple(os.environ.get('RASTER_EXTENSIONS').replace(" ", "").split(","))):
+                    postgis_upload_successful = True  # raster not to postgis
+                else:
+                    # upload to postgis
+                    postgis_upload_successful = load_wms_layer_postgis(
+                        os.environ.get('POSTGRES_HOST'), os.environ.get('POSTGRES_PORT'),
+                        os.environ.get('POSTGRES_USER'),
+                        os.environ.get('POSTGRES_PASSWORD'), os.environ.get('POSTGRES_DB'), file_path, layer_name
+                    )
                 # postgis_upload_successful=True
                 if postgis_upload_successful:
                     # upload to geoserver
