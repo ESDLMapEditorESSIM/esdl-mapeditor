@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def _get_identifier(setting_type: SettingType, project_name: str):
+def _get_identifier(setting_type: SettingType, project_name: str) -> str | None:
     if setting_type is None:
         return
     elif setting_type == SettingType.PROJECT:
@@ -74,13 +74,15 @@ def connect_to_geoserver(geo_server_url: str, geoserver_admin_user: str, geoserv
     return geo
 
 
-def add_wms_group(layer_groups: dict, parent_uuid: str, project_name: str, description: str) -> str:
+def add_wms_group(layer_groups: dict, parent_uuid: str, setting_type: SettingType, project_name: str,
+                  description: str) -> str:
     for group_id, group in layer_groups.items():
         if description == group['description'] and group_id in layer_groups[parent_uuid]['child_ids']:
             return group_id  # layer group already exits
-
+    if setting_type == SettingType.SYSTEM:
+        project_name = SettingType.SYSTEM.value
     group = {
-        "setting_type": SettingType.PROJECT.value,
+        "setting_type": setting_type.value,
         "project_name": project_name,
         "description": description,
         "child_ids": []
@@ -91,13 +93,16 @@ def add_wms_group(layer_groups: dict, parent_uuid: str, project_name: str, descr
     return group_uuid
 
 
-def add_wms_layer(wms_layers: dict, parent_group: dict, project_name: str, description: str, url: str, layer_name: str,
+def add_wms_layer(wms_layers: dict, parent_group: dict, setting_type: SettingType, project_name: str, description: str,
+                  url: str, layer_name: str,
                   legend_url: str):
+    if setting_type == SettingType.SYSTEM:
+        project_name = SettingType.SYSTEM.value
     layer = {
         "description": description,
         "url": url,
         "layer_name": layer_name,
-        "setting_type": SettingType.PROJECT.value,
+        "setting_type": setting_type.value,
         "project_name": project_name,
         "legend_url": legend_url,
         "layer_ref": None,
@@ -156,7 +161,8 @@ def load_layers():
 
     # add base folder
     base_folder_name = os.path.normpath(os.environ.get('FOLDER_PATH')).split(os.path.sep)[-1]
-    base_folder_uuid = add_wms_group(layer_groups, root_key, os.environ.get('PROJECT_NAME'), base_folder_name)
+    base_folder_uuid = add_wms_group(layer_groups, root_key, setting_type, os.environ.get('PROJECT_NAME'),
+                                     base_folder_name)
 
     with open(os.environ.get('LIST_TO_IMPORT_FILE'), newline='') as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='"')
@@ -226,11 +232,12 @@ def load_layers():
                 # load folders and WMS layers into mongodb for mapeditor tree
                 parent_folder_uuid = base_folder_uuid
                 for folder_name in parent_folders:
-                    parent_folder_uuid = add_wms_group(layer_groups, parent_folder_uuid, os.environ.get('PROJECT_NAME'),
-                                                       folder_name)
+                    parent_folder_uuid = add_wms_group(layer_groups, parent_folder_uuid, setting_type,
+                                                       os.environ.get('PROJECT_NAME'), folder_name)
                 add_wms_layer(
                     wms_layers,
                     layer_groups[parent_folder_uuid],
+                    setting_type,
                     os.environ.get('PROJECT_NAME'),
                     layer_name,
                     f"{os.environ.get('GEOSERVER_URL')}/wms",
