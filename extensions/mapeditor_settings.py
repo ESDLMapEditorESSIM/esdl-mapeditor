@@ -54,6 +54,9 @@ DEFAULT_USER_SETTING = {
                 'NOX_EMISSIONS': '#ffff00',         # yellow
             }
         },
+        'assets_on_map': {
+            'show_assets_without_location': False
+        }
     },
 }
 

@@ -37,9 +37,8 @@ class UISettings {
         return $div;
     }
 
-    // Asset UI information has no separate extension (it's part of the Vue code), so include settings div here
-    asset_ui_information_settings() {
-        let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Asset information on map'));
+    assets_settings() {
+        let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('Assets'));
 
         let $aivis_on_map = $('<input>').attr('type', 'checkbox').attr('id', 'ai_visible').attr('value', 'ai_visible').attr('name', 'ai_visible');
         let $aivis_label = $('<label>').attr('for', 'ai_visible').text('Asset information is visible on the map');
@@ -53,6 +52,21 @@ class UISettings {
         socket.emit('mapeditor_user_ui_setting_get', {category: 'tooltips', name: 'show_asset_information_on_map'}, function(res) {
             let ai_visible = res;
             $('#ai_visible').prop('checked', ai_visible);
+        });
+
+        // Settings for how to deal with assets that do not have an explicit location in the ESDL
+        let $awl = $('<input>').attr('type', 'checkbox').attr('id', 'awl_show').attr('value', 'awl_show').attr('name', 'awl_show');
+        let $awl_label = $('<label>').attr('for', 'awl_show').text('Show assets without location on map');
+        $div.append($('<p>').append($awl).append($awl_label));
+
+        $awl.change(function() {
+            let awl_show = $('#awl_show').is(':checked');
+            socket.emit('mapeditor_user_ui_setting_set', {category: 'assets_on_map', name: 'show_assets_without_location', value: awl_show});
+        });
+
+        socket.emit('mapeditor_user_ui_setting_get', {category: 'assets_on_map', name: 'show_assets_without_location'}, function(res) {
+            let awl_show = res;
+            $('#awl_show').prop('checked', awl_show);
         });
 
         return $div;
@@ -84,7 +98,7 @@ class UISettings {
         $div.append($('<h1>').text('UI Settings'));
 
         $div.append(ui_settings_plugin.asset_draw_toolbar_settings());
-        $div.append(ui_settings_plugin.asset_ui_information_settings());
+        $div.append(ui_settings_plugin.assets_settings());
         $div.append(ui_settings_plugin.services_toolbar_settings());
 
         for (let i=0; i<extensions.length; i++) {
