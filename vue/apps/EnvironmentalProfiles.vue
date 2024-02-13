@@ -261,7 +261,7 @@ export default {
       });
     },
     hide_jquery_ui_popup: function() {
-      $(".ui-tooltip-content").parents('div').remove();
+      window.jquery(".ui-tooltip-content").parents('div').remove();
     },
   },
 };

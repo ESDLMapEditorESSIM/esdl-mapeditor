@@ -214,7 +214,7 @@ function before_cell_focus(e) {
 }
 
 function hide_jquery_ui_popup() {
-  $(".ui-tooltip-content").parents('div').remove();
+  window.jquery(".ui-tooltip-content").parents('div').remove();
 }
 
 const columns = ref([]);
