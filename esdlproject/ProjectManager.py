@@ -1,12 +1,14 @@
 import threading
 import traceback
 from datetime import datetime
+from enum import Enum
 from typing import Final, Optional, Union, Tuple, List
 from uuid import uuid4
 
 from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
 from pyecore.resources import ResourceSet, URI, Resource
 from pyecore import commands as pyecore_commands
+from pyecore.resources.json import JsonResource
 
 from esdl import EnergySystem, esdl, support_functions
 from esdl.esdl_handler import patch_esdl
@@ -393,11 +395,15 @@ class ProjectManager:
             # need to make sure that any variant changes are persisted.
             # Right now we ignore any changes in the parent if we already have a snapshot.
 
-            print(
-                "Variant snapshot already generated. No need to do anything but switch the active variant. "
-                "And ignoring any changes in the parent currently... (TODO)"
-            )
+            print("Variant snapshot already generated. Creating new one based on changes (now always, should be smarter). "
+                  "(WIP)")
+            self.remove_variant_snapshot(new_variant)  # delete previous variant
+            self.replay_parent_variant_changes(new_variant)
             self.active_variant = new_variant
+            if len(new_variant.change) > 0:
+                # this variant has changes, replay these
+                pass
+
         # TODO: I think this special case should not need special handling.
         # elif get_parent_variant(new_variant) == self.active_variant:
         #     # current active variant is the parent, so we can continue with storing changes in this variant
@@ -413,35 +419,37 @@ class ProjectManager:
         #         self.apply_variant_changes(self.active_variant, new_variant.snapshotRef)
         #     self.active_variant = new_variant
         else:
-            print(
-                f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}"
-            )
+            print(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
             # workflow is discontinued: different variant is selected
-            # find base Variant energy system and set that as active variant
-
-            # 0: store current es as active snapshot for current active es
-            # 1: load base variant
-            # 2: replay changes in this variant
-            collection = get_variant_collection(new_variant)
-            # base_variant_resource = get_base_variant_resource(base_variant)
-            # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
-            collection_resource = get_variant_collection_resource(collection)
-            collection.energysystemRef = collection_resource.contents[0]
+            self.replay_parent_variant_changes(new_variant)
             self.active_variant = new_variant
-            variant_path_list = get_variant_path_list(new_variant)
-            variant_path_list.reverse()
-            # Ensure we have a snapshot.
-            variant_snapshot = self.get_variant_snapshot(self.active_variant)
-
-            # add changes to stack, clear stack
-            for parent_variant in variant_path_list:
-                print(
-                    f"set_active_variant(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}"
-                )
-
-                self.apply_variant_changes(parent_variant, variant_snapshot, True)
 
         self.debug()
+
+    def remove_variant_snapshot(self, variant):
+        print(f"Removing {variant.snapshotRef.eResource}")
+        self.rset.remove_resource(variant.snapshotRef.eResource)
+        variant.snapshotRef = None
+
+    def replay_parent_variant_changes(self, new_variant):
+        # find base Variant energy system and set that as active variant
+        # 0: store current es as active snapshot for current active es
+        # 1: load base variant
+        # 2: replay changes in this variant
+        collection = get_variant_collection(new_variant)
+        # base_variant_resource = get_base_variant_resource(base_variant)
+        # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
+        collection_resource = get_variant_collection_resource(collection)
+        collection.energysystemRef = collection_resource.contents[0]
+
+        variant_path_list = get_variant_path_list(new_variant)
+        variant_path_list.reverse()
+        # Ensure we have a snapshot.
+        variant_snapshot = self.get_variant_snapshot(new_variant)
+        # add changes to stack, clear stack
+        for parent_variant in variant_path_list:
+            print(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
+            self.apply_variant_changes(parent_variant, variant_snapshot, True)
 
     def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
         """
@@ -576,9 +584,6 @@ class ProjectManager:
         :param variant: the variant to save the snapshot for
         :return: the snapshot resource
         """
-
-
-
         if variant is None:
             return None
 
@@ -586,11 +591,11 @@ class ProjectManager:
             if variant.snapshotRef is not None:
                 return variant.snapshotRef
 
-
             snapshot_resource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             print(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
             es = base_variant_resource.contents[0]
+            es.name = variant.name # overwrite name of ES to match the variant name
 
             snapshot_resource.append(es.deepcopy())
             snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
@@ -969,6 +974,22 @@ def resource_as_string(resource: Resource):
         uri = StringURI("print." + extension)
         resource.save(output=uri)
         return uri.getvalue()
+
+
+class ESDLFormat(Enum):
+    XML = XMLResource
+    JSON = JsonResource
+def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML):
+    """"
+    Converts any eObject (and its contents) to a string
+
+    """
+    deepcopy = eobject.deepcopy()
+    string_uri = StringURI('variant1_output_shapshot.esdl')
+    resource = format.value(string_uri)
+    resource.append(deepcopy)
+    resource.save()
+    return string_uri.getvalue()
 
 
 def get_variant_collection(variant: Union[VariantCollection, Variant]) -> VariantCollection:
