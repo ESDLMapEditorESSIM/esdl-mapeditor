@@ -1,19 +1,44 @@
+# This Dockerfile is the main one to build a production image with uWSGI support
+
+# ----- BUILD javascript ------
+FROM node:20 as frontend
+
+# This is to avoid the ERR_OSSL_EVP_UNSUPPORTED error from webpack.
+# Can be removed when we upgrade webpack or move to another tool.
+ENV NODE_OPTIONS=--openssl-legacy-provider
+WORKDIR /src/js
+
+# Move the necessary files into the image.
+COPY yarn.lock .yarnrc.yml package.json vue.config.js babel.config.js .eslintrc.js .babelrc ./
+COPY .yarn .yarn
+COPY static static
+COPY vue vue
+RUN yarn
+
+# Build for production. Result is stored in static/dist.
+RUN yarn build-prod
+
+# --- build python
 FROM python:3.10-slim
-MAINTAINER Ewoud Werkman <ewoud.werkman@tno.nl>
-# Issues with PROJ and pyproj and Alpine linux: switch to debian base image. See https://pythonspeed.com/articles/alpine-docker-python/
 
-#RUN apk add --update --no-cache g++ gcc libxslt-dev linux-headers musl-dev pcre pcre-dev zlib zlib-dev openssl-dev mailcap libffi-dev libffi
-RUN apt-get -y update
-RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev
-RUN pip install --upgrade pip
+RUN apt-get -y update && \
+    apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg libgeos-dev
 
-RUN mkdir -p /usr/src/app
+# Prepare directory for the app.
 WORKDIR /usr/src/app
 
+# Python dependencies including uWSGI.
 COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
 RUN pip install -r requirements.txt -r requirements-uwsgi.txt
 
+# Add everything in the image.
 COPY . /usr/src/app
+
+# Overwrite the built frontend with the one from the frontend image.
+COPY --from=frontend /src/js/static/dist static/dist
+
+# Install the TNO package.
+RUN pip install -e src/
 ENV PYTHONPATH=.:/usr/src/app
 
 EXPOSE 8111
