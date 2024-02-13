@@ -26,6 +26,31 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.2.0",
+        "date": "2024-02-13T13:08:00Z",
+        "general_message": "On February 13th 2024, we've released the new ESDL MapEditor version 24.2.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for external services that result in a profile",
+                    "Make handling assets without a location user configurable",
+                    "Support for boundary service with DSO service areas",
+                    "Implement option to query ETM to build ESDL"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix non-disappearing tooltips",
+                    "Fix for moving zoomed in area when area popup is displayed",
+                    "Fix parameter handling for external service calls"
+                ]
+            },
+        ]
+    },
+    {
         "version": "24.1.2",
         "date": "2024-01-18T16:08:00Z",
         "general_message": "On January 18th 2024, we've released the new ESDL MapEditor version 24.1.2. " +
@@ -98,7 +123,6 @@ release_notes = [
                     "Fix bugs in port profile viewer",
                     "Fix loading of esdl.Potential",
                     "Fix error with 'empty' area KPIs"
-
                 ]
             },
         ]
