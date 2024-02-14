@@ -129,7 +129,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": item.visible, opened: true},
+    state: {"checked": item.visible, opened: false},
     children: children,
   });
 }

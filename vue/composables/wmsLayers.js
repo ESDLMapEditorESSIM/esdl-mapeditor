@@ -161,7 +161,7 @@ export function useWmsLayers() {
             setting_type: setting_type,
             project_name: project_name,
             type: 'wms_layer_folder',
-            state: {opened: true},
+            state: {opened: false},
         });
     };
 
