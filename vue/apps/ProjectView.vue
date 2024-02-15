@@ -373,7 +373,7 @@ function get_base_layers_control_tree_data() {
 #project_view {
   padding: 8px 5px 8px 2px;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
 
   .text-only {
     padding-left: 8px;

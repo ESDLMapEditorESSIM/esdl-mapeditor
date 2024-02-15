@@ -400,3 +400,15 @@ class ChangeTracker:
                 del t.observer
                 #del t.resource # needed?
 
+    def reset(self):
+        """
+        Resets the Tracker and removes everything.
+        -------
+
+        """
+        for t in list(self.trackers):
+            t:Tracker
+            t.stack.stack.clear()
+            t.resource = None
+            t.observer = None
+        self.trackers.clear()

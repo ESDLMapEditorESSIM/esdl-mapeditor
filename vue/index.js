@@ -29,6 +29,7 @@ import CustomIconsSettings from "./apps/CustomIconsSettings";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import UndoRedoControl from "./apps/UndoRedoControl";
+import UndoRedoMenu from "./components/toolbars/UndoRedoMenu";
 import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
 import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
 import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
@@ -147,7 +148,7 @@ window.show_new_release_notes = () => {
 }
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
-createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
+createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar');
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
@@ -158,14 +159,18 @@ const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
 });
 mapEditorDialog._handleMinimize();
 undoRedoMapEditorDialog.value = mapEditorDialog;
-createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
+createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control');
+var mountEl = document.querySelector("#vue_undo_menu");
+createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_undo_menu');
+mountEl = document.querySelector("#vue_redo_menu");
+createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_redo_menu');
 
 createVueLControl(AssetDrawToolbar, {});
-createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar');
 
-createApp(ToggleProjectView).mount('#vue_toggle_show_project_view')
-createApp(LoadProjectFileButton).mount('#vue_load_project_file')
-createApp(SidePane).mount('#vue_side_pane_root')
+createApp(ToggleProjectView).mount('#vue_toggle_show_project_view');
+createApp(LoadProjectFileButton).mount('#vue_load_project_file');
+createApp(SidePane).mount('#vue_side_pane_root');
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',

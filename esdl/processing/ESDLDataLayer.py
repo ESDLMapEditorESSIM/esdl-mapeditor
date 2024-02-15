@@ -289,21 +289,21 @@ class ESDLDataLayer:
         return types
 
     def get_object_from_identifier(self, identifier: Identifier):
-        esh = get_project_manager()
-        active_es_id = esh.get_active_energy_system().id
+        pm = get_project_manager()
+        active_es_id = pm.get_active_energy_system().id
         if 'id' in identifier:
             object_id = identifier['id']
             try:
-                the_object = esh.get_by_id(active_es_id, object_id)
+                the_object = pm.get_by_id(active_es_id, object_id)
             except KeyError:
                 logger.error('KeyError for getting id {} in uuid_dict. Trying fragment.'.format(object_id))
-                resource = esh.get_energy_system_resource_by_id(active_es_id)
+                resource = pm.get_energy_system_resource_by_id(active_es_id)
                 try:
                     the_object = resource.resolve(identifier['fragment'])
                 except KeyError:
                     return None
         else:
-            resource = esh.get_energy_system_resource_by_id(active_es_id)
+            resource = pm.get_energy_system_resource_by_id(active_es_id)
             the_object = resource.resolve(identifier['fragment'])
 
         return the_object

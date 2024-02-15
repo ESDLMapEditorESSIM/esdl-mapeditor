@@ -52,10 +52,10 @@ import Spinner from "../components/Spinner";
 import { useUndoRedo } from "../composables/undoRedo.js";
 
 // eslint-disable-next-line no-unused-vars
-const { showUndoRedoControl, toggleShowUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
+const { stack, stack_index, showUndoRedoControl, toggleShowUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
 
-const stack = ref([]);
-const stack_index = ref(null);
+//const stack = ref([]);
+//const stack_index = ref(null);
 const isLoading = ref(false);
 
 /**
@@ -72,6 +72,7 @@ function loadUndoRedoStack() {
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     isLoading.value = false;
+    console.log('undo', stack, stack_index)
   });
 }
 

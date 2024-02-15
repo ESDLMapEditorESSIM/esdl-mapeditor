@@ -1465,31 +1465,25 @@
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 
                         <!-- Left nav -->
-                        <ul class="nav navbar-nav mr-auto">
+                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400 } ">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
                                     <li id="vue_load_project_file"></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
+                                    <li><a class="dropdown-item" href="#" onclick="new_ESDL();">
+                                        <span class="menu-icon ui-icon ui-icon-document"></span>
+                                        New ESDL...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputFile').click();">
+                                        <span class="menu-icon ui-icon ui-icon-folder-open"></span>
+                                        Load ESDL(s)...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportFile').click();">
                                         <div class="menu-icon" id="menu_import"></div>
                                         Import ESDL...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>
-{% if store_enabled %}
-{% if 'mondaine' in role %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Load ESDL from Mondaine Hub...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_store_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
-                                        Save ESDL to Mondaine Hub...</a></li>
-{% else %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
-                                        Load ESDL from ESDL Store...</a></li>
-{% endif %}
-{% endif %}
 {% if esdl_drive_enabled %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="esdlDrive.file_open_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Load from ESDL Drive...</a></li>
@@ -1497,14 +1491,18 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Save to ESDL Drive...</a></li>
 {% endif %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        <div class="menu-icon" style="margin-top:0px"><i class="fa fa-file-export fa-smaller"></i></div>
                                         Export as shapefiles</a></li>
 
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
+                                    <li id="vue_undo_menu" data-type="undo"/>
+                                    <li id="vue_redo_menu" data-type="redo"/>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="table_editor.open()"><div class="menu-icon ui-icon ui-icon-calculator">&nbsp;</div>ESDL table editor...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
@@ -1526,6 +1524,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information...</a></li>
 {% endif %}
 {% if essim_enabled and 'essim' in role %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>ESSIM
                                         simulation</a>
                                         <ul class="dropdown-menu">
@@ -1563,9 +1562,10 @@
 {% endif %}
                                         </ul>
                                     </li>
-
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="continue_service_workflow();"><div class="menu-icon">&nbsp;</div>Continue active workflow</a></li>
 
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
                                 </ul>
@@ -1574,10 +1574,11 @@
                                 <ul class="dropdown-menu">
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="refresh_esdl();">
-                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
+                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw fa-smaller"></i></div>
                                             Refresh view (Ctrl+R)
                                         </a>
                                     </li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li>
@@ -1611,13 +1612,15 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
-                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
+                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings...</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
                                     <li id="vue_show_release_notes"></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>

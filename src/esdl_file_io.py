@@ -21,6 +21,7 @@ from esdl.processing.string_uri import StringURI
 from extensions.session_manager import set_session, get_project_manager
 import src.log as log
 from src.process_es_area_bld import process_energy_system
+from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)
 
@@ -37,28 +38,31 @@ class ESDLFileIO:
 
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
-            with self.flask_app.app_context():
-                # len(request.values) seems to be a multiple of 2
-                for i in range(int(len(request.values)/2)):
-                    base64_file_contents = request.values.get(f'file_info[{i}][file]')
-                    # base64_file_contents now contains something like
-                    # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
-                    # Only take the part after the comma
-                    base64_file_contents = base64_file_contents.split(',')[1]
-                    filename = request.values.get(f'file_info[{i}][filename]')
-                    if base64_file_contents:
-                        esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
-                        esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
-                        esdl_str = esdlstr_bytes.decode('utf-8')
+            #with self.flask_app.request_context():
+            # len(request.values) seems to be a multiple of 2
+            for i in range(int(len(request.values)/2)):
+                base64_file_contents = request.values.get(f'file_info[{i}][file]')
+                # base64_file_contents now contains something like
+                # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
+                # Only take the part after the comma
+                base64_file_contents = base64_file_contents.split(',')[1]
+                filename = request.values.get(f'file_info[{i}][filename]')
 
-                        self.load_esdl_in_esh(filename, esdl_str)
+                if base64_file_contents:
+                    esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
+                    esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
+                    esdl_str = esdlstr_bytes.decode('utf-8')
 
-                return {'message': 'all ESDL(s) received'}, 201
+                    self.add_esdl_to_project(filename, esdl_str)
+                    #emit_active_esdl_project() # cant do emit here, because it is not socket io request
+
+            return {'message': 'all ESDL(s) received'}, 201
 
         @self.socketio.on("process_loaded_energysystems", namespace='/esdl')
         def process_loaded_energysystems():
             with self.flask_app.app_context():
                 self.clear_mapeditor_ui()
+                emit_active_esdl_project()
                 self.executor.submit(self.call_process_energy_system)  # run in seperate thread
 
     def send_alert(self, message):
@@ -71,7 +75,7 @@ class ESDLFileIO:
         emit('clear_ui')
         emit('clear_esdl_layer_list')
 
-    def load_esdl_in_esh(self, filename, file):
+    def add_esdl_to_project(self, filename, file):
         pm = get_project_manager()
 
         try:

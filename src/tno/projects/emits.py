@@ -23,7 +23,9 @@ def emit_active_esdl_project():
     Send the entire active ESDL project to the frontend.
     """
     pm = get_project_manager()
-    emit('update_active_esdl_project', serialize_esdl_project(pm, pm.project))
+    project_data = serialize_esdl_project(pm, pm.project)
+    print("Active project data", project_data)
+    emit('update_active_esdl_project', project_data, namespace="/esdl")
 
 
 def emit_clear_frontend_esdls():

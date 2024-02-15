@@ -4,14 +4,14 @@
     New Project...
   </a>
   <a class="dropdown-item" href="#">
-    <div class="menu-icon fas fa-project-diagram" />
+    <div class="menu-icon fas fa-project-diagram fa-smaller" />
     <input id="upload-project-file" type="file" name="upload-file" hidden @change="onLoadProject">
     <label for="upload-project-file">
       Load project...
     </label>
   </a>
   <a class="dropdown-item" href="#">
-    <div class="menu-icon fas fa-project-diagram" />
+    <div class="menu-icon fas fa-project-diagram fa-smaller" />
     <input id="download-project-file" name="download-file" hidden @click="onSaveProject">
     <label for="download-project-file">
       Save project..

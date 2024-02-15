@@ -118,7 +118,7 @@ def set_active_variant(message: SetActiveVariantRequest):
 @socketio.on('create_base_variant', namespace='/esdl')
 def create_base_variant():
     pm = get_project_manager()
-    pm.create_new_variant_collection()
+    pm.add_new_variant_collection()
     emit_active_esdl_project()
 
 

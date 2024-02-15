@@ -783,6 +783,7 @@ Refreshes the line color based on the (updated) data of the layer
 */
 var ui_counter = 0;
 function update_line_color(line_layer) {
+    console.log("ll", line_layer);
     ui_counter++;
     debug_layer = line_layer;
     var line_color = colors[line_layer.type];
@@ -791,6 +792,9 @@ function update_line_color(line_layer) {
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
+                if (line_layer.esid !== undefined) {
+                    carrier_info_mapping = get_carrier_info_mapping(line_layer.esid)
+                }
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                 break;
             }

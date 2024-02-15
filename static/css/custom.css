@@ -615,11 +615,29 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 .dropdown-menu>li>a {
-    padding: 3px 0px;
+    padding: 2px 0px;
+    margin-top: 1px;
     /*    display: inline-block; */
     position: relative;
     left: 20px;
     float: left;
+}
+
+.dropdown-menu>li.separator {
+    margin-left: 5px;
+    margin-right: -15px;
+    height: 6px;
+}
+
+.menu-separator {
+    
+    padding-right: 0px;
+    border-top: 1px solid lightgray;
+}
+
+.fa-smaller {
+    font-size: 10px;
+    margin-left:3px;
 }
 
 /*

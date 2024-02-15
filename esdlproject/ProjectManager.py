@@ -256,30 +256,44 @@ class ProjectManager:
             active_tracker = self.change_tracker.newTracker(variant_snapshot)
         return active_tracker
 
-    def init_empty_project(self):
+    def init_empty_project(self,
+                           es_name="New Energy System",
+                           es_description=None,
+                           instance_name="Untitled Instance",
+                           top_area_name="Untitled Area"
+                           ):
         """
         Initialize an empty project. This is called when no project is loaded. It creates a new project with a base variant.
 
         """
+        # first delete existing resources
+        for key, value in dict(self.rset.resources).items():
+            del self.rset.resources[key]
+        self.change_tracker.reset()  # reset changetracker
         self.project_resource = self.rset.create_resource(StringURI("Untitled ESDL project.project"))  # type: ignore
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
         self.project = ESDLProject(name="Untitled ESDL Project")
         self.project_resource.append(self.project)
-        variantCollection = self.create_new_variant_collection()
+        variantCollection = self.add_new_variant_collection(es_name, es_description, instance_name, top_area_name)
         # tracker = self.changeTracker.newTracker(resource=self.active_resource)
         # self.undoredo_stack = tracker.stack
         self.set_active_variant(variantCollection.variant)
 
-    def create_new_variant_collection(self) -> VariantCollection:
+    def add_new_variant_collection(self,
+                                   es_name="New Energy System",
+                                   es_description=None,
+                                   instance_name="Untitled Instance",
+                                   top_area_name="Untitled Area") -> VariantCollection:
         """
-        Create a new, empty base variant.
+        Create a new, empty base variant. With an empty energy system with specified name, description, instance_name
+        and top_area_name
         """
         count = len(self.project.variantCollection) + 1
         new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
         self.project.variantCollection.append(new_collection)
-        variant = Variant(name=f"Untitled Energy System", id=str(uuid4()))
+        variant = Variant(name=es_name, id=str(uuid4()))
         new_collection.variant = variant
-        es = create_empty_energysystem("New Energy System", None, "Instance1", "Untitled Area")
+        es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
         # self.active_resource.append(es)
         # self.base_variant_resources.append(
         #     self.rset.create_resource(StringURI("base.esdl"))  # type: ignore
@@ -298,6 +312,7 @@ class ProjectManager:
         Retrieve the energy system from the currently active variant. If no variant is active, the first one is made active.
         """
         if self.active_variant is None:
+            print("Warning: no active variant, selecting first in the first variant collection")
             self.set_active_variant(self.project.variantCollection[0].variant)
         if self.active_variant.snapshotRef is None:
             self.get_variant_snapshot(self.active_variant)
@@ -310,7 +325,7 @@ class ProjectManager:
         :param uri: a StringURI with a unique uri and the esdl as string
            e.g. StringURI('my_energy_system.esdl', esdl_string)
 
-        :return: the newly created variant.
+        :return: Tuple of [the newly created variant, parse information from reading the input)
         """
         if uri.normalize() in self.rset.resources:
             orig_uri = uri.plain
@@ -328,7 +343,6 @@ class ProjectManager:
                     print(f"Resource {uri} contains parse information/errors: {parse_info}")
             #self.validate(es=tmp_es)
             #self.esid_uri_dict[tmp_es.id] = uri.normalize()
-            self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary
             #return es_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(uri, e))
@@ -342,6 +356,7 @@ class ProjectManager:
         es_variant = Variant(name=f"{es.name}", id=str(uuid4()))
         variantCollection.variant = es_variant
         snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
+        self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
         return es_variant, parse_info
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:
@@ -860,6 +875,12 @@ class ProjectManager:
 
         return None
 
+    def get_energy_system_by_id2(self, es_id: str):
+        for uri, resource in self.rset.resources.items():
+            if hasattr(resource.contents[0], 'id') and resource.contents[0].id == es_id:
+                return resource.contents[0]
+        raise Exception(f"EnergySystem ID es_id {es_id} not found in ResourceSet")
+
     def add_object_to_dict(self, es_id:str, eobject:EObject, recursive=False):
         if recursive:
             for obj in eobject.eAllContents():
@@ -890,7 +911,7 @@ class ProjectManager:
 
         :return: the entity with the given id
         """
-        es = self.get_energy_system_by_id(es_id)
+        es = self.get_energy_system_by_id2(es_id)
         if es is None:
             print(f'get_by_id() error es_id={es_id}, object_id={object_id}')
             self.debug()
@@ -949,7 +970,7 @@ class ProjectManager:
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
-
+        print(self.to_debug_string())
             #for v in vc.variant.variant:
             #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
