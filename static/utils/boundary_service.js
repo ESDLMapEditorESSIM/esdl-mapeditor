@@ -255,6 +255,10 @@ function get_boundary_info(obj) {
         select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
         add_boundary_to_ESDL: add_boundary_to_ESDL, add_service_area_info: add_service_area_info,
         add_station_info: add_station_info
+    }, function(res) {
+        if (res) {
+            window.refresh_esdl();
+        }
     });
 }
 
