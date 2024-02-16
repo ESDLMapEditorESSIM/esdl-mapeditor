@@ -21,25 +21,39 @@
 
     initSocketIO() {
         console.log("Registering socket io bindings for ETMInterface plugin")
+
+        socket.on('update-etm-query-log', function(text) {
+            etm_interface_plugin.update_etm_query_log(text);
+        });
     }
 
-    show_info(id, data) {
-        sidebar.setContent(etm_interface_plugin.create_sidebar_content(id, data).get(0));
+    show_info(id) {
+        sidebar.setContent(etm_interface_plugin.create_sidebar_content(id).get(0));
         sidebar.show();
     }
 
-    create_sidebar_content(id, data) {
+    update_etm_query_log(text) {
+        let $elem = document.createElement('div');
+        $elem.innerHTML = text;
+
+        document.getElementById('etm-query-log').appendChild($elem);
+    }
+
+    create_sidebar_content(id) {
         let $div = $('<div>').attr('id', 'etm-main-div');
         let $title = $('<h1>').text('ETMInterface - '+id);
         $div.append($title);
 
-        $div.append($('<p>').text(data));
+        $div.append($('<div>').attr('id', 'etm-query-log'));
         return $div;
     }
 
     area_info(event, id) {
-        socket.emit('etm_get_sankey_data', id, function(res) {
-            etm_interface_plugin.show_info(id, res);
+        etm_interface_plugin.show_info(id);
+        socket.emit('etm_get_sankey_data', id, function(success) {
+            if (success) {
+                window.refresh_esdl();
+            }
         });
     }
 

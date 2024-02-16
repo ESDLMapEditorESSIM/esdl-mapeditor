@@ -13,7 +13,7 @@
 #      TNO
 
 from flask import Flask
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import requests
 import csv
 import codecs
@@ -61,15 +61,49 @@ class ETMInterface:
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             area = esh.get_by_id(active_es_id, area_id)
-            if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
-                return "Can only be called for municipalities"
 
-            etm_sankey_data = self.request_sankey_info(area_id)
-            if etm_sankey_data:
-                self.process_data_and_add_to_area(esh, active_es_id, area, etm_sankey_data)
-                return "Ok"
+            emit("update-etm-query-log", f"Requested ETM Sankey data for {area.name} ({area.id})")
+            if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
+                area_with_scope_municipality_found = False
+                at_least_one_etm_query_succeeded = False
+                for logical_group in area.area:
+                    if logical_group.logicalGroup:
+                        for sub_area in logical_group.area:
+                            if sub_area.scope is esdl.AreaScopeEnum.MUNICIPALITY:
+                                if not area_with_scope_municipality_found:
+                                    # Only first time
+                                    emit("update-etm-query-log", f"area {area.name} contains sub areas of scope MUNICIPALITY")
+                                area_with_scope_municipality_found = True
+
+                                emit("update-etm-query-log", f"Query ETM for area {sub_area.name} ({sub_area.id})")
+                                etm_sankey_data = self.request_sankey_info_municipality(sub_area.id)
+                                if etm_sankey_data:
+                                    at_least_one_etm_query_succeeded = True
+                                    self.process_data_and_add_to_area(esh, active_es_id, sub_area, etm_sankey_data)
+                                else:
+                                    emit("update-etm-query-log", f"- ETM scenario for {sub_area.name} could not be created")
+                            else:
+                                continue
+
+                if area_with_scope_municipality_found:
+                    if at_least_one_etm_query_succeeded:
+                        emit("update-etm-query-log", "Done")
+                        return True
+                    else:
+                        emit("update-etm-query-log", "No ETM scenarios could be created for any of the sub areas with scope MUNICIPALITY")
+                        return False
+                else:
+                    emit("update-etm-query-log", f"area {area.name} doesn't contain sub areas of scope MUNICIPALITY")
+                    return False
             else:
-                return "Something went wrong"
+                etm_sankey_data = self.request_sankey_info_municipality(area_id)
+                if etm_sankey_data:
+                    self.process_data_and_add_to_area(esh, active_es_id, area, etm_sankey_data)
+                    emit("update-etm-query-log", "Done")
+                    return True
+                else:
+                    emit("update-etm-query-log", f"- ETM scenario for {area.name} could not be created")
+                    return False
 
     def get_settings(self):
         if self.settings_storage.has_system(ETM_INTERFACE_SYSTEM_CONFIG):
@@ -89,7 +123,7 @@ class ETMInterface:
 
         logger.debug(f"ETM plugin read {len(self.etm_municipalities)} municipalities from input file")
 
-    def request_sankey_info(self, municipality_code):
+    def request_sankey_info_municipality(self, municipality_code):
         if municipality_code not in self.etm_municipalities:
             return None
         else:
@@ -422,6 +456,9 @@ class ETMSankeyToESDL:
 
                     area.asset.append(demand)
                     self.find_carrier_network_and_connect(area, inport, conv_loss_carriers[0][0])
+
+    def add_energy_balance_kpi(self, area):
+        pass
 
     def add_final_demand_per_sector_kpi(self, area):
         for sect, sect_info in self.sectors.items():
