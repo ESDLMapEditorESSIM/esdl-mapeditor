@@ -1001,8 +1001,8 @@ class ProjectManager:
             vc: VariantCollection
             print(f"- {vc.name}: RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
             rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
-            rs_type = vc.variant.snapshotRef.eResource.type if vc.variant.snapshotRef else None
-            print(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type.name}), ES={vc.variant.snapshotRef}")
+            rs_type = vc.variant.snapshotRef.eResource.type.name if vc.variant.snapshotRef else None
+            print(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")
             x = vc.variant.variant
             depth = 2
             todo_list: List[Tuple[int, Variant]] = []
@@ -1011,8 +1011,8 @@ class ProjectManager:
                 for (d, v) in list(todo_list):
                     indent = "\t" * d
                     rs_uri = v.snapshotRef.eResource.uri if v.snapshotRef else None
-                    rs_type = v.snapshotRef.eResource.type if v.snapshotRef else None
-                    print(f"{indent}- {v.name}: RS={rs_uri} ({rs_type.name}), ES={v.snapshotRef}")
+                    rs_type = v.snapshotRef.eResource.type.name if v.snapshotRef else None
+                    print(f"{indent}- {v.name}: RS={rs_uri} ({rs_type}), ES={v.snapshotRef}")
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])

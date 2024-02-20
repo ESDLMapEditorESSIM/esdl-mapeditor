@@ -31,11 +31,11 @@ The mountEl.dataset is a list of all data- prefixed attributes on the element.
 
 -->
 <template>
-  <a v-if="type === 'undo'" class="dropdown-item" href="#" @click="undo" :class="{ 'disabled': !canUndo }">
+  <a v-if="type === 'undo'" class="dropdown-item" href="#" :class="{ 'disabled': !canUndo }" @click="undo">
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-undo fa-smaller" aria-hidden="true" /></div>
     Undo
   </a>
-  <a v-if="type === 'redo'" class="dropdown-item" href="#" @click="redo" :class="{ 'disabled': !canRedo }">
+  <a v-if="type === 'redo'" class="dropdown-item" href="#" :class="{ 'disabled': !canRedo }" @click="redo">
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-redo fa-smaller" aria-hidden="true" /></div>
     Redo
   </a>
@@ -45,8 +45,9 @@ The mountEl.dataset is a list of all data- prefixed attributes on the element.
 
 import {defineProps } from "vue";
 import { useUndoRedo } from "../../composables/undoRedo.js";
-const { stack, stack_index, canUndo, canRedo, undo, redo } = useUndoRedo();
-const props = defineProps({
+ // eslint-disable-next-line
+const { canUndo, canRedo, undo, redo } = useUndoRedo();
+defineProps({
   type: String  // String to define if we show undo or redo menu
 })
 

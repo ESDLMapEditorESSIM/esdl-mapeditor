@@ -15,6 +15,7 @@ export function useUndoRedo() {
         undoRedoMapEditorDialog.value._handleMinimize();
       }
       showUndoRedoControl.value = !showUndoRedoControl.value;
+      console.log("Undo redo control checked", showUndoRedoControl.value);
     }
   }
 

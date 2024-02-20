@@ -15,7 +15,7 @@
   -->
 
 <template>
-  <div id="project_view">
+  <div id="project_view" >
     <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
                  :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
     />
@@ -295,6 +295,7 @@ const eventHandlersByName = [{
     if (type === 'variant') {
       const tree = treeElement.jstree(true);
       tree.check_node(data.node);
+      hideOtherVariantsInTree(data.node);
       if (!original.active) {
         window.show_loader();
         socket.value.emit("set_active_variant", {id: original.id});
@@ -304,12 +305,12 @@ const eventHandlersByName = [{
 }, {
   eventName: 'check_node.jstree',
   handler: function (e, data) {
-    console.log("Checking node");
+    console.log("Checking node", data);
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
       if (original.esId in esdlList.value) {
-        showEsdlLayerOnMap(original.esId);
+        showEsdlLayerOnMap(original.esId);        
       } else {
         // TODO: Just get the energy system from this variant, it should not be necessary to also activate it.
         socket.value.emit("set_active_variant", {id: original.id});
@@ -325,6 +326,7 @@ const eventHandlersByName = [{
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
+      console.log("Uncheck", data);
       hideEsdlLayerFromMap(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
@@ -367,6 +369,22 @@ function get_base_layers_control_tree_data() {
   return group;
 }
 
+function hideOtherVariantsInTree(node) {
+  console.log('Treedata', treeData);
+  const parents = node.parents.slice(0, node.parents.length - 2); // last 2 elements are not variants
+  const children = node.children;
+  for(const es_id of children) {
+    console.log("Hiding", es_id);
+    getTree().uncheck_node(es_id);
+    hideEsdlLayerFromMap(es_id);
+  }
+  for(const es_id of parents) {
+    console.log("Hiding parent", es_id);
+    getTree().uncheck_node(es_id);
+    hideEsdlLayerFromMap(es_id);
+  }
+}
+
 </script>
 
 <style lang="scss">
@@ -374,6 +392,9 @@ function get_base_layers_control_tree_data() {
   padding: 8px 5px 8px 2px;
   overflow-x: hidden;
   overflow-y: auto;
+  resize: horizontal;
+  height: 100%;
+  min-width: 200px;
 
   .text-only {
     padding-left: 8px;
