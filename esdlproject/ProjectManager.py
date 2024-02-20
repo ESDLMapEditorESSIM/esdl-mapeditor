@@ -13,7 +13,7 @@ from pyecore.resources.json import JsonResource
 from esdl import EnergySystem, esdl, support_functions
 from esdl.esdl_handler import patch_esdl
 from esdl.processing.string_uri import StringURI
-from esdl.resources.xmlresource import XMLResource
+from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
 from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
     VariantCollection
@@ -86,19 +86,24 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
     :return: a list of changes
     """
     print(f"Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})")
-    hlc = actionToHighlevelChange(action)
-    variant.change.append(hlc)
+    hlc = actionToHighlevelChange(action, variant.lastChanged)
+    if hlc:
+        variant.change.append(hlc)
+    variant.lastChanged = datetime.now()
 
 
-def actionToHighlevelChange(action: LabelledAction) -> HighLevelChange:
+def actionToHighlevelChange(action: LabelledAction, last_changed: datetime) -> Optional[HighLevelChange]:
     """
     Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
 
     :param action: the action to convert
-    :param variant: the variant to store the changes in
+    :param last_changed: time to test if this action is already processed
 
     :return: a list of changes
     """
+    if last_changed is not None and action.created < last_changed:
+        print(f"Action  {action.label} already part of changes, ignoring")
+        return None
     print(f"Converting LabelledAction {action.label} )")
     hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
     change_list = []
@@ -271,6 +276,7 @@ class ProjectManager:
             del self.rset.resources[key]
         self.change_tracker.reset()  # reset changetracker
         self.project_resource = self.rset.create_resource(StringURI("Untitled ESDL project.project"))  # type: ignore
+        self.project_resource.type = ProjectManagerResourceType.PROJECT
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
         self.project = ESDLProject(name="Untitled ESDL Project")
         self.project_resource.append(self.project)
@@ -291,7 +297,7 @@ class ProjectManager:
         count = len(self.project.variantCollection) + 1
         new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
         self.project.variantCollection.append(new_collection)
-        variant = Variant(name=es_name, id=str(uuid4()))
+        variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now())
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
         # self.active_resource.append(es)
@@ -302,6 +308,7 @@ class ProjectManager:
         # self.base_variant_resources[base_variant_idx].append(es.deepcopy())
 
         variantCollection_resource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
+        variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
         new_es: EnergySystem = es.deepcopy()
         variantCollection_resource.append(new_es)
         new_collection.energysystemRef = new_es
@@ -333,6 +340,7 @@ class ProjectManager:
             print(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
         try:
             es_resource: XMLResource = self.rset.create_resource(uri)
+            es_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
             es_resource.load()
             es = es_resource.contents[0]
             parse_info = []
@@ -353,7 +361,7 @@ class ProjectManager:
         self.project.variantCollection.append(variantCollection)
         variantCollection.energysystemRef = es  # link variantCollection to the loaded EnergySystem
         # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
-        es_variant = Variant(name=f"{es.name}", id=str(uuid4()))
+        es_variant = Variant(name=f"{es.name}", id=str(uuid4()), lastChanged=datetime.now())
         variantCollection.variant = es_variant
         snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
         self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
@@ -412,12 +420,32 @@ class ProjectManager:
 
             print("Variant snapshot already generated. Creating new one based on changes (now always, should be smarter). "
                   "(WIP)")
-            self.remove_variant_snapshot(new_variant)  # delete previous variant
-            self.replay_parent_variant_changes(new_variant)
+            # if new_variant.snapshotRef:
+            #     variant_tracker = self.change_tracker.get_tracker(new_variant.snapshotRef)
+            #     if variant_tracker:
+            #         variant_stack = variant_tracker.stack
+            #         if variant_stack.lastChanged > new_variant.lastChanged:
+            #             for action in variant_stack.stack:
+            #                 convertActionToVariantChanges(action, new_variant)
+
+            # Calculate the list of variants between the VariantCollection and this variant such that we can check
+            # if there are changes there, newer than ours and apply them to the new snapshot
+            variant_path_list = get_variant_path_list(new_variant)
+            variant_path_list.remove(new_variant)
+            variant_path_list.reverse()
+            print("Checking following parent variants for changes: ", [v.name for v in variant_path_list])
+            for v in variant_path_list:
+                if v.lastChanged > new_variant.lastChanged:
+                    print(f"Variant {v.name} contains changes not in the snapshot, recreating")
+
+                    self.remove_variant_snapshot(new_variant)  # delete previous variant
+                    self.replay_parent_variant_changes(new_variant)
+                    self.active_variant = new_variant
+                    if len(new_variant.change) > 0:
+                        # this variant has changes, replay these
+                        #self.apply_variant_changes(new_variant, new_variant.snapshotRef, False)
+                        pass
             self.active_variant = new_variant
-            if len(new_variant.change) > 0:
-                # this variant has changes, replay these
-                pass
 
         # TODO: I think this special case should not need special handling.
         # elif get_parent_variant(new_variant) == self.active_variant:
@@ -607,6 +635,7 @@ class ProjectManager:
                 return variant.snapshotRef
 
             snapshot_resource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
+            snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             print(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
             es = base_variant_resource.contents[0]
@@ -639,6 +668,18 @@ class ProjectManager:
             if vc.variant:
                 return vc.variant
 
+    def clear_project(self):
+        """
+        Removes all VariantCollections and subvariants from the project
+
+        Any changes are abandoned
+        Returns
+        -------
+
+        """
+        for vc in self.project.variantCollection:
+            self.delete_variant(vc)
+
     def delete_variant(self, variant: Union[VariantCollection, Variant]):
         """
         Delete a variant and all its subvariants. This will also delete the snapshot of the variant.
@@ -659,11 +700,12 @@ class ProjectManager:
             variantCollection: VariantCollection = variant
             if variantCollection.energysystemRef:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
-                variantCollection.energysystemRef = None
-                print(
-                    f"Removing VariantCollection energy system {variantCollection.name} from {variantCollection.eResource.uri}")
+
+                print(f"Removing VariantCollection energy system {variantCollection.name} from "
+                      f"{variantCollection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
-                self.rset.remove_resource(variantCollection.eResource)
+                self.rset.remove_resource(variantCollection.energysystemRef.eResource)
+                variantCollection.energysystemRef = None
             self.project.variantCollection.remove(variantCollection)
         else:
             if variant.snapshotRef:
@@ -742,6 +784,7 @@ class ProjectManager:
         filename = uri.plain
         print(f"Loading {filename}")
         self.project_resource = self.rset.create_resource(uri)
+        self.project_resource.type = ProjectManagerResourceType.PROJECT
         self.project_resource.load()
         self.project = self.project_resource.contents[0]
 
@@ -758,8 +801,9 @@ class ProjectManager:
             if variantCollection.energysystem:
                 variantCollection: VariantCollection = variantCollection
                 index = get_variant_collection_index(variantCollection)
-                bv_uri = StringURI(uri=f"EnergySystemProxy.{index}_{str(uuid4())[:4]}.esdl")
+                bv_uri = StringURI(uri=f"VariantCollection.{index}_{str(uuid4())[:4]}.esdl")
                 variantCollection_resource = self.rset.create_resource(bv_uri)
+                variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
                 if not isinstance(variantCollection_resource, XMLResource):
                     raise Exception("ESDL files are mapped to the wrong Resource type. Should be XMLResource.")
                 variantCollection_resource: XMLResource = variantCollection_resource
@@ -949,15 +993,16 @@ class ProjectManager:
         print('All resources: ', self.rset.resources)
         for key, value in self.rset.resources.items():
             if isinstance(value.contents[0], esdl.EnergySystem):
-                print(f"resource: {key}: es_name={value.contents[0].name}, id={value.contents[0].id}")
+                print(f"resource: {key} ({value.type.name}): es_name={value.contents[0].name}, id={value.contents[0].id}")
             else:
-                print(f"resource: {key}: resource_root={value.contents[0]}")
+                print(f"resource: {key} ({value.type.name}): resource_root={value.contents[0]}")
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
-            print(f"- {vc.name}: RS={vc.energysystemRef.eResource.uri}, ES={vc.energysystemRef}")
+            print(f"- {vc.name}: RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
             rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
-            print(f"\t- {vc.variant.name}: RS={rs_uri}, ES={vc.variant.snapshotRef}")
+            rs_type = vc.variant.snapshotRef.eResource.type if vc.variant.snapshotRef else None
+            print(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type.name}), ES={vc.variant.snapshotRef}")
             x = vc.variant.variant
             depth = 2
             todo_list: List[Tuple[int, Variant]] = []
@@ -966,7 +1011,8 @@ class ProjectManager:
                 for (d, v) in list(todo_list):
                     indent = "\t" * d
                     rs_uri = v.snapshotRef.eResource.uri if v.snapshotRef else None
-                    print(f"{indent}- {v.name}: RS={rs_uri}, ES={v.snapshotRef}")
+                    rs_type = v.snapshotRef.eResource.type if v.snapshotRef else None
+                    print(f"{indent}- {v.name}: RS={rs_uri} ({rs_type.name}), ES={v.snapshotRef}")
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])

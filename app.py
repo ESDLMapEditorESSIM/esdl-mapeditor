@@ -3113,39 +3113,40 @@ def process_file_command(message):
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
 
-    if message['cmd'] == 'load_esdl_from_file':
-        # clears all loaded projects.
-        file_content = message['file_content']
-        filename = message['filename']
-        pm = get_project_manager()
-        try:
-            uri = StringURI(filename, file_content)
-            es_variant, parse_info = pm.add_energy_system(uri)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-        except Exception as e:
-            logger.exception(f"Error opening {filename}")
-            send_alert("Error opening {}. Exception is: {}".format(filename, e))
-            emit('clear_ui')
-            return
-
-        es = pm.get_active_energy_system()
-        emit_active_esdl_project()
-        es_info_list = {}
-        set_session("es_info_list", es_info_list)
-        emit('clear_ui')
-        emit('clear_esdl_layer_list')
-        call_process_energy_system.submit(filename) # run in seperate thread
-        #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
-        #thread.start()
-
-        del_session('store_item_metadata')
-        emit('store_item_metadata', {})
-        set_session('active_es_id', es.id)
-        set_session('es_filename', filename)
+    # 02-2024: is not used anymore, siee esdl_file_io
+    # if message['cmd'] == 'load_esdl_from_file':
+    #     # clears all loaded projects.
+    #     file_content = message['file_content']
+    #     filename = message['filename']
+    #     pm = get_project_manager()
+    #     try:
+    #         uri = StringURI(filename, file_content)
+    #         es_variant, parse_info = pm.add_energy_system(uri)
+    #         if len(parse_info) > 0:
+    #             info = ''
+    #             for line in parse_info:
+    #                 info += line + "\n"
+    #             send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #     except Exception as e:
+    #         logger.exception(f"Error opening {filename}")
+    #         send_alert("Error opening {}. Exception is: {}".format(filename, e))
+    #         emit('clear_ui')
+    #         return
+    #
+    #     es = pm.get_active_energy_system()
+    #     emit_active_esdl_project()
+    #     es_info_list = {}
+    #     set_session("es_info_list", es_info_list)
+    #     emit('clear_ui')
+    #     emit('clear_esdl_layer_list')
+    #     call_process_energy_system.submit(filename) # run in seperate thread
+    #     #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
+    #     #thread.start()
+    #
+    #     del_session('store_item_metadata')
+    #     emit('store_item_metadata', {})
+    #     set_session('active_es_id', es.id)
+    #     set_session('es_filename', filename)
 
 
     if message['cmd'] == 'import_esdl_from_file':

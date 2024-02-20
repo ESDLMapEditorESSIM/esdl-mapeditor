@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 from collections import UserList
+from datetime import datetime
 from typing import Optional, TypedDict
 
 from pyecore.notification import EObserver, Notification, Kind
@@ -27,6 +28,7 @@ patch_notification_system() # patch pyecores notification system, so notificatio
 
 
 class LabelledAction(Command, UserList):
+    created: datetime = None
     """
     A list of commands that are executed as one action. The label is used to describe the action.
 
@@ -34,6 +36,7 @@ class LabelledAction(Command, UserList):
     """
     def __init__(self, label=None, *commands):
         self.label = label
+        self.created = datetime.now()
         super().__init__(commands)
 
     @property
@@ -75,6 +78,7 @@ class UndoRedoCommandStack(CommandStack):
         self._combineCommands = True
         self.compound = None
         self.max_stack_length = max_stack_length
+        self.lastChanged: datetime = datetime.min
         super().__init__()
 
     def start_recording(self, combineCommands: bool = True, label: str = None):
@@ -145,6 +149,7 @@ class UndoRedoCommandStack(CommandStack):
                     # command.execute()
                     command._executed = True
                     self.top = command
+                    self.lastChanged = datetime.now()
                     print("Appended {} to the stack".format(command))
                 else:
                     raise ValueError('Cannot execute command {}'.format(command))
@@ -192,6 +197,7 @@ class UndoRedoCommandStack(CommandStack):
             return
         self._recording = False # suppress generated notification for undo
         action = self.top
+        self.lastChanged = datetime.now()
         print('Undo', action)
         super().undo()
         for command in action:

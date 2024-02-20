@@ -12,12 +12,15 @@
 #  Manager:
 #      TNO
 import base64
+from datetime import datetime
+from typing import List
 
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 
 from esdl.processing.string_uri import StringURI
+from esdlproject import Variant
 from extensions.session_manager import set_session, get_project_manager
 import src.log as log
 from src.process_es_area_bld import process_energy_system
@@ -39,6 +42,8 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             #with self.flask_app.request_context():
+            # first remove active variants
+            self.clear_current_loaded_variants()
             # len(request.values) seems to be a multiple of 2
             for i in range(int(len(request.values)/2)):
                 base64_file_contents = request.values.get(f'file_info[{i}][file]')
@@ -75,12 +80,29 @@ class ESDLFileIO:
         emit('clear_ui')
         emit('clear_esdl_layer_list')
 
+    def clear_current_loaded_variants(self):
+        pm = get_project_manager()
+        for vc in list(pm.project.variantCollection):
+            variants: List[Variant] = []
+            pm.get_variant_list(vc.variant, variants)
+            for v in variants:
+                es = pm.get_variant_snapshot(v)
+                stack = pm.get_undo_redo_stack(es)
+                if stack.lastChanged > datetime.min:
+                    # warn for unsaved changes
+                    self.send_alert(f"{v.name} contains unsaved changes")
+                    return
+
+                pm.delete_variant(v)
+            #pm.delete_variant(vc)
+
     def add_esdl_to_project(self, filename, file):
         pm = get_project_manager()
 
         try:
             uri = StringURI(filename, file)
-            result, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
+            variant, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
+            pm.set_active_variant(variant)
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:

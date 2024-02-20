@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from enum import Enum
+
 from pyecore.ecore import EObject
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 from lxml.etree import QName, Element, ElementTree
@@ -19,12 +21,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class ProjectManagerResourceType(Enum):
+    UNKNOWN = 0,
+    PROJECT = 1,
+    VARIANT_COLLECTION = 2
+    SNAPSHOT = 3
+    ENERGY_SYSTEM = 4
+
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.
 It basically removes the xmi:version stuff from the serialization.
 It also adds parse_information that can be inspected for errors when reading an ESDL file.
 """
 class XMLResource(XMIResource):
+    type: ProjectManagerResourceType = ProjectManagerResourceType.UNKNOWN
+
     def __init__(self, uri=None, use_uuid=False):
         super().__init__(uri, use_uuid)
         self._later = []
@@ -50,7 +61,7 @@ class XMLResource(XMIResource):
             root._container = None # as root is added to the resource, there is no container anymore
 
     def __str__(self):
-        return f'XMLResource(uri={self.uri}, content[0]={self.contents[0].name if len(self.contents) > 0 else None})'
+        return f'XMLResource(type={self.type}, uri={self.uri}, content[0]={self.contents[0].name if len(self.contents) > 0 else None})'
 
     def get_parse_information(self):
         return self.parse_information

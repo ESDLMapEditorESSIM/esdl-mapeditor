@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+from datetime import datetime
 from typing import List, Optional, Union
 from uuid import uuid4
 
@@ -44,7 +44,7 @@ def create_new_variant(parentVariant: Union[VariantCollection, Variant], variant
         parentVariant = parentVariant.variant  #
     if variant_name is None:
         variant_name = f"Untitled variant {len(parentVariant.variant) + 1}"
-    new_variant = Variant(name=variant_name, id=str(uuid4()))
+    new_variant = Variant(name=variant_name, id=str(uuid4()), lastChanged=datetime.now())
     parentVariant.variant.append(new_variant)
     return new_variant
 
