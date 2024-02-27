@@ -198,6 +198,8 @@ class ETMSankeyToESDL:
             "P": esdl.MultiplierEnum.PETA,
         }
 
+        # Note: Do not forget to add new assets to list of local_production_assets
+        # if you add assets to the next mapping
         self.category_to_asset_type_mapping = {
             "Import": {"type": esdl.Import},
             "Export": {"type": esdl.Export},
@@ -210,39 +212,45 @@ class ETMSankeyToESDL:
                 "Solar thermal": esdl.SolarCollector
             }}
         }
+        self.local_production_assets = {
+            "WindTurbine": {},
+            "PVInstallation": {},
+            "GeothermalSource": {},
+            "SolarCollector": {}
+        }
 
         self.carriers = {
-            "Ammonia": {"name": "Ammonia"},
-            "Biomass": {"name": "Biomass"},
-            "Coal": {"name": "Coal"},
-            "Electricity": {"name": "Electricity"},
-            "Geothermal": {"name": "Geothermal"},
-            "Hydrogen": {"name": "Hydrogen"},
-            "Liquid hydrogen": {"name": "Liquid hydrogen"},
-            "LOHC": {"name": "LOHC"},
-            "Natural gas": {"name": "Natural gas"},
-            "Oil": {"name": "Oil"},
-            "Solar thermal": {"name": "Solar thermal"},
-            "Steam hot water": {"name": "Steam hot water"},
-            "Uranium": {"name": "Uranium"}
+            "Ammonia": {"id": "etm_carrier_ammonia", "name": "Ammonia", "carrier": None},
+            "Biomass": {"id": "etm_carrier_biomass", "name": "Biomass", "carrier": None},
+            "Coal": {"id": "etm_carrier_coal", "name": "Coal", "carrier": None},
+            "Electricity": {"id": "etm_carrier_electricity", "name": "Electricity", "carrier": None},
+            "Geothermal": {"id": "etm_carrier_geothermal", "name": "Geothermal", "carrier": None},
+            "Hydrogen": {"id": "etm_carrier_h2", "name": "Hydrogen", "carrier": None},
+            "Liquid hydrogen": {"id": "etm_carrier_liquid_h2", "name": "Liquid hydrogen", "carrier": None},
+            "LOHC": {"id": "etm_carrier_lohc", "name": "LOHC", "carrier": None},
+            "Natural gas": {"id": "etm_carrier_natural_gas", "name": "Natural gas", "carrier": None},
+            "Oil": {"id": "etm_carrier_oil", "name": "Oil", "carrier": None},
+            "Solar thermal": {"id": "etm_carrier_solar_thermal", "name": "Solar thermal", "carrier": None},
+            "Steam hot water": {"id": "etm_carrier_shw", "name": "Steam hot water", "carrier": None},
+            "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None}
         }
 
         self.sectors = {
-            "Agriculture": {"name": "Agriculture"},
-            "Buildings excl. space heating": {"name": "Buildings excl. space heating"},
-            "Buildings space heating": {"name": "Buildings space heating"},
-            "Energy": {"name": "Energy"},
-            "Export": {"name": "Export"},
-            "Feedstock": {"name": "Feedstock"},
-            "Households excl. space heating and hot water": {"name": "Households excl. space heating and hot water"},
-            "Households space heating and hot water": {"name": "Households space heating and hot water"},
-            "Industry excl. ICT": {"name": "Industry excl. ICT"},
-            "Industry excl. ICT and power-to-heat": {"name": "Industry excl. ICT and power-to-heat"},
-            "Industry ICT": {"name": "Industry ICT"},
-            "Industry power-to-heat": {"name": "Industry power-to-heat"},
-            "International transport": {"name": "International transport"},
-            "National transport": {"name": "National transport"},
-            "Other": {"name": "Other"},
+            "Agriculture": {"id": "etm_sector_agri", "name": "Agriculture", "cluster": "Landbouw", "sector": None},
+            "Buildings excl. space heating": {"id": "etm_sector_buildings_excl_sh", "name": "Buildings excl. space heating", "cluster": "Utiliteiten", "sector": None},
+            "Buildings space heating": {"id": "etm_sector_buildings_sh", "name": "Buildings space heating", "cluster": "Utiliteiten", "sector": None},
+            "Energy": {"id": "etm_sector_energy", "name": "Energy", "cluster": "Overig", "sector": None},
+            "Export": {"id": "etm_sector_export", "name": "Export", "cluster": "Export", "sector": None},
+            "Feedstock": {"id": "etm_sector_feedstock", "name": "Feedstock", "cluster": "Industrie", "sector": None},
+            "Households excl. space heating and hot water": {"id": "etm_sector_hh_excl_sph_hw", "name": "Households excl. space heating and hot water", "cluster": "Huishoudens", "sector": None},
+            "Households space heating and hot water": {"id": "etm_sector_hh_sph_hw", "name": "Households space heating and hot water", "cluster": "Huishoudens", "sector": None},
+            "Industry excl. ICT": {"id": "etm_sector_industry_excl_ict", "name": "Industry excl. ICT", "cluster": "Industrie", "sector": None},
+            "Industry excl. ICT and power-to-heat": {"id": "etm_sector_industry_excl_ict_p2h", "name": "Industry excl. ICT and power-to-heat", "cluster": "Industrie", "sector": None},
+            "Industry ICT": {"id": "etm_sector_industry_ict", "name": "Industry ICT", "cluster": "Industrie", "sector": None},
+            "Industry power-to-heat": {"id": "etm_sector_industry_p2h", "name": "Industry power-to-heat", "cluster": "Industrie", "sector": None},
+            "International transport": {"id": "etm_sector_int_transp", "name": "International transport", "cluster": "Mobiliteit", "sector": None},
+            "National transport": {"id": "etm_sector_nat_transp", "name": "National transport", "cluster": "Mobiliteit", "sector": None},
+            "Other": {"id": "etm_sector_other", "name": "Other", "cluster": "Overig", "sector": None},
         }
 
     def set_etm_data(self, etm_data):
@@ -285,11 +293,11 @@ class ETMSankeyToESDL:
 
         for c in self.carriers:
             c_info = self.carriers[c]
-            carr_id = str(uuid4())
-            carr = esdl.EnergyCarrier(id=carr_id, name=c_info["name"])
-            c_info["id"] = carr_id
-            c_info["carrier"] = carr
-            ec.carrier.append(carr)
+            # Only add carrier if not done earlier already
+            if not c_info["carrier"]:
+                carr = esdl.EnergyCarrier(id=c_info["id"], name=c_info["name"])
+                c_info["carrier"] = carr
+                ec.carrier.append(carr)
 
     def create_sectors(self, es: esdl.EnergySystem):
         esi = es.energySystemInformation
@@ -304,11 +312,11 @@ class ETMSankeyToESDL:
 
         for s in self.sectors:
             s_info = self.sectors[s]
-            sector_id = str(uuid4())
-            sector = esdl.Sector(id=sector_id, name=s_info["name"])
-            s_info["id"] = sector_id
-            s_info["sector"] = sector
-            sects.sector.append(sector)
+            # Only add sector if not done earlier already
+            if not s_info["sector"]:
+                sector = esdl.Sector(id=s_info["id"], name=s_info["name"])
+                s_info["sector"] = sector
+                sects.sector.append(sector)
 
     def add_final_demands(self, area):
         for etm_item in self.etm_data:
@@ -458,7 +466,27 @@ class ETMSankeyToESDL:
                     self.find_carrier_network_and_connect(area, inport, conv_loss_carriers[0][0])
 
     def add_energy_balance_kpi(self, area):
-        pass
+        local_production = 0
+        local_consumption = 0
+
+        for asset in area.asset:
+            asset_class_name = asset.eClass.name
+            if isinstance(asset, esdl.EnergyDemand):
+                local_consumption += asset.port[0].profile[0].value
+            elif asset_class_name in self.local_production_assets:
+                local_production += asset.port[0].profile[0].value
+
+        kpi_name = "Local production vs. consumption [%]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        if local_consumption > 0:
+            distr_item = esdl.StringItem(label="Local consumption", value=local_consumption)
+            kpi.distribution.stringItem.append(distr_item)
+        if local_production > 0:
+            distr_item = esdl.StringItem(label="Local production", value=local_production)
+            kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
 
     def add_final_demand_per_sector_kpi(self, area):
         for sect, sect_info in self.sectors.items():
@@ -532,8 +560,95 @@ class ETMSankeyToESDL:
 
         area.KPIs.kpi.append(kpi)
 
+    def add_clustered_demand_kpi(self, area):
+        cluster_totals = dict()
+        for sect, sect_info in self.sectors.items():
+            if not sect_info["cluster"] in cluster_totals:
+                cluster_totals[sect_info["cluster"]] = 0.0
+
+        kpi_unit = None
+
+        for asset in area.asset:
+            if isinstance(asset, esdl.EnergyDemand):
+                this_sector = asset.sector
+                cluster = self.sectors[this_sector.name]["cluster"]
+                cluster_totals[cluster] += asset.port[0].profile[0].value
+
+                if not kpi_unit:
+                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+
+        kpi_name = "Clustered final demand [" + unit_to_string(kpi_unit) + "]"
+
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for cluster, cluster_total in cluster_totals.items():
+            if abs(cluster_totals[cluster]) > 1e-6:
+                distr_item = esdl.StringItem(label=cluster, value=cluster_total)
+                kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+    def add_local_production_kpi(self, area):
+        for local_prod, local_prod_info in self.local_production_assets.items():
+            local_prod_info["total"] = 0.0
+
+        kpi_unit = None
+
+        for asset in area.asset:
+            asset_class_name = asset.eClass.name
+            if asset_class_name in self.local_production_assets:
+                self.local_production_assets[asset_class_name]["total"] += asset.port[0].profile[0].value
+
+                if not kpi_unit:
+                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+
+        kpi_name = "Local production [" + unit_to_string(kpi_unit) + "]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for local_prod, local_prod_info in self.local_production_assets.items():
+            if local_prod_info["total"] > 0:
+                distr_item = esdl.StringItem(label=local_prod, value=local_prod_info["total"])
+                kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+    def add_local_production_incl_import_kpi(self, area):
+        for local_prod, local_prod_info in self.local_production_assets.items():
+            local_prod_info["total"] = 0.0
+        import_total = 0.0
+
+        kpi_unit = None
+
+        for asset in area.asset:
+            asset_class_name = asset.eClass.name
+            if asset_class_name in self.local_production_assets:
+                self.local_production_assets[asset_class_name]["total"] += asset.port[0].profile[0].value
+            elif asset_class_name == "Import":
+                import_total += asset.port[0].profile[0].value
+
+                if not kpi_unit:
+                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+
+        kpi_name = "Local production (incl. Import) [" + unit_to_string(kpi_unit) + "]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for local_prod, local_prod_info in self.local_production_assets.items():
+            if local_prod_info["total"] > 0:
+                distr_item = esdl.StringItem(label=local_prod, value=local_prod_info["total"])
+                kpi.distribution.stringItem.append(distr_item)
+
+        if import_total > 0:
+            distr_item = esdl.StringItem(label="Import", value=import_total)
+            kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
     def add_kpis(self, area):
         area.KPIs = esdl.KPIs(id=str(uuid4()), description="ETM KPIs present_year")
+        self.add_energy_balance_kpi(area)
+        self.add_clustered_demand_kpi(area)
+        self.add_local_production_kpi(area)
+        self.add_local_production_incl_import_kpi(area)
         self.add_final_demand_per_sector_kpi(area)
         self.add_final_demand_per_carrier_kpi(area)
         self.add_import_per_carrier_kpi(area)
