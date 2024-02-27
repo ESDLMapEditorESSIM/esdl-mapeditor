@@ -14,7 +14,7 @@
  *      TNO
  */
 
-class ViewModes {
+class ModelContexts {
     constructor() {
         console.log("Registering ViewModes plugin");
     }
@@ -22,29 +22,29 @@ class ViewModes {
     UISettings() {
         let $div = $('<div>').addClass('ui_settings_div').append($('<h3>').text('View modes'));
 
-        let $view_mode_select = $('<select>').attr('id', 'vm_select').attr('size', 5);
+        let $model_context_select = $('<select>').attr('id', 'vm_select').attr('size', 5);
         $div.append($('<p>')
             .text('Select your default view mode (the view mode influences what parameters are shown ' +
               'for ESDL assets and determines the available assets on the Asset Draw Toolbar. You need to refresh ' +
               'your browser to apply the changes.')
-            .append($('<p>')).append($view_mode_select));
+            .append($('<p>')).append($model_context_select));
 
-        $view_mode_select.change(function() {
+        $model_context_select.change(function() {
             let mode = $('#vm_select').val();
 
-            socket.emit('view_modes_set_mode', {
+            socket.emit('model_contexts_set_mode', {
                 mode: mode
             });
         });
 
-        socket.emit('view_modes_get_mode_info', function(res) {
+        socket.emit('model_contexts_get_mode_info', function(res) {
             let current_mode = res['current_mode'];
             let possible_modes = res['possible_modes'];
             for (let i=0; i<possible_modes.length; i++) {
                 let $option = $('<option>').attr('value',possible_modes[i]).text(possible_modes[i]);
                 if (possible_modes[i] === current_mode)
                     $option = $option.attr('selected', true);
-                $view_mode_select.append($option);
+                $model_context_select.append($option);
             }
         });
 
@@ -53,17 +53,17 @@ class ViewModes {
 
     static create(event) {
         if (event.type === 'client_connected') {
-            view_modes_plugin = new ViewModes();
-            return view_modes_plugin;
+            model_contexts_plugin = new ModelContexts();
+            return model_contexts_plugin;
         }
         if (event.type === 'ui_settings_div') {
-            return view_modes_plugin.UISettings();
+            return model_contexts_plugin.UISettings();
         }
     }
 }
 
-var view_modes_plugin;   // global variable for the ViewModes plugin
+var model_contexts_plugin;   // global variable for the ViewModes plugin
 
 $(document).ready(function() {
-    extensions.push(function(event) { return ViewModes.create(event) });
+    extensions.push(function(event) { return ModelContexts.create(event) });
 });

@@ -34,19 +34,13 @@
 import {onMounted, ref} from 'vue';
 import {useActivityContext} from '@/composables/activityContext';
 
-const {activateActivityContext, clearActivityContext} = useActivityContext();
+const {activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
 
 const selected_context = ref("");
 const activityContexts = ref([]);
 
-const get_activity_contexts = async () => {
-  const response = await fetch('/context/activities')
-  const data = await response.json()
-  activityContexts.value = data
-}
-get_activity_contexts();
-
 onMounted(async () => {
+  activityContexts.value = await fetchActivityContexts()
   const $ = window.$;
   $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
     handleChange({target: {value: $(this).val()}});

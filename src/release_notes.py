@@ -262,7 +262,7 @@ class ReleaseNotes:
         self.mapeditor_settings = MapEditorSettings.get_instance()
 
     def register(self):
-        logger.info("Registering ViewModes")
+        logger.info("Registering ModelContexts")
 
         @self.flask_app.route('/get_release_notes')
         def get_release_notes():

@@ -16,28 +16,82 @@
 
 import {ref} from "vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
-
-const activeActivityContext = ref({});
+import {useEsdlAreas} from "@/composables/esdlAreas";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
+const { esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
+
+// The active activity context is the context that is currently active in the map.
+const activeActivityContext = ref({});
+
+// Track the services that are enabled in the area context menu so we can remove them when the context is cleared.
+const enabledAreaEsdlServices = ref([]);
 
 export function useActivityContext() {
+    /**
+     * Activate the given activity context. This will update the activeActivityContext and show the WMS layers
+     * that are part of the activity context. It will also add the services that are part of the context to the
+     * context menus.
+     * @param activityContext
+     */
     function activateActivityContext(activityContext) {
         activeActivityContext.value = activityContext;
         clearWmsLayers()
         for (const layer of activityContext.wms_layers) {
             showWmsLayer(layer)
         }
+        const contextServices = activityContext.context_services;
+        if (contextServices) {
+            // For each contextService, find the corresponding service in the esdl_services_information.
+            // Then update the location of the service.
+            for (const contextService of contextServices) {
+                let foundService = null;
+                let foundServiceIdx = null;
+                for (let i = 0; i < esdl_services_information.length; i++) {
+                    const esdlService = esdl_services_information[i];
+                    if (esdlService.id === contextService.id) {
+                        foundService = esdlService;
+                        foundServiceIdx = i;
+                        break
+                    }
+                }
+                if (!foundService) {
+                    console.warn("Service with id " + contextService.id + " not found in esdl_services_information");
+                } else {
+                    if (contextService.location === "area_context_menu") {
+                        for (const [, esdlArea] of Object.entries(esdlAreas.value)) {
+                            window.add_service_to_area_contextmenu(esdlArea.layer, foundService, foundServiceIdx)
+                        }
+                        enabledAreaEsdlServices.value.push(foundService);
+                    } else if (contextService.location === "map_context_menu") {
+                        foundService.location = contextService.location;
+                    }
+
+                }
+            }
+            // Update the context menus for the services.
+            window.update_map_service_contextmenus(window.esdl_services_information)
+        }
     }
 
     function clearActivityContext() {
         activeActivityContext.value = {};
         clearWmsLayers()
+        for (const service of enabledAreaEsdlServices.value) {
+            removeAreaContextMenuItem(service.name)
+        }
+        enabledAreaEsdlServices.value = [];
+    }
+
+    const fetchActivityContexts = async () => {
+        const response = await fetch('/context/activities')
+        return await response.json()
     }
 
     return {
         activeActivityContext,
         activateActivityContext,
         clearActivityContext,
+        fetchActivityContexts,
     }
 }

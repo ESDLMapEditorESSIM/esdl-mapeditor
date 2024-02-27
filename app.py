@@ -91,7 +91,7 @@ from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
 from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
-from src.view_modes import ViewModes
+from src.model_contexts import ModelContexts
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
@@ -197,7 +197,7 @@ esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
-ViewModes(app, socketio, settings_storage)
+ModelContexts(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
@@ -1864,8 +1864,8 @@ def process_command(message):
 
                         # The view mode influences if single or double ports are added
                         double_line_mode = False
-                        view_modes = ViewModes.get_instance()
-                        if view_modes.get_user_settings(user_email)['mode'] == 'CHESS':
+                        model_contexts = ModelContexts.get_instance()
+                        if model_contexts.get_user_settings(user_email)['mode'] == 'CHESS':
                             double_line_mode = True
 
                         # For producers, consumers (and storage) check if a port already exists (coming from the EDR)
@@ -3366,8 +3366,8 @@ def browser_initialize():
         return
     role = get_session('user-role')
 
-    view_modes = ViewModes.get_instance()
-    view_modes.initialize_user(user_email)
+    model_contexts = ModelContexts.get_instance()
+    model_contexts.initialize_user(user_email)
 
     me_settings = MapEditorSettings.get_instance()
     user_settings = me_settings.get_user_settings(user_email)

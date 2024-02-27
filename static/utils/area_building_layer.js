@@ -502,7 +502,7 @@ function set_area_handlers(area) {
 
    area.options.contextmenuItems.push({
        icon: resource_uri + '/icons/Delete.png',
-       text: 'delete area',
+       text: 'Delete area',
        callback: function(e) { delete_area(e, area_id); }
    });
 
@@ -676,6 +676,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
             if (feature.properties && feature.properties.id) {
+                window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
                 let text = "ID: " + feature.properties.id;
@@ -815,7 +816,7 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
-                window.PubSubManager.broadcast('ADD_FEATURE_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
+                window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 set_building_contextmenu(layer, feature.properties.id);
             }
         }

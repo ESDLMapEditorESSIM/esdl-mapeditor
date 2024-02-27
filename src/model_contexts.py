@@ -23,7 +23,7 @@ import src.log as log
 
 logger = log.get_logger(__name__)
 
-view_modes_config = {
+model_contexts_config = {
     "standard": {
         "Basic": {
             "EnergyAsset": [
@@ -346,53 +346,53 @@ asset_list = {
 }
 
 
-VIEW_MODES_USER_CONFIG = "VIEW_MODES_USER_CONFIG"
-view_modes = None
+MODEL_CONTEXT_USER_CONFIG = "model_contextS_USER_CONFIG"
+model_contexts = None
 
 
-class ViewModes:
+class ModelContexts:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
         self.register()
 
-        global view_modes
-        if view_modes:
-            logger.error("ERROR: Only one ViewModes object can be instantiated")
+        global model_contexts
+        if model_contexts:
+            logger.error("ERROR: Only one ModelContexts object can be instantiated")
         else:
-            view_modes = self
+            model_contexts = self
 
     @staticmethod
     def get_instance():
-        global view_modes
-        return view_modes
+        global model_contexts
+        return model_contexts
 
     def initialize_user(self, user):
         settings = self.get_user_settings(user)
-        set_session('mapeditor_view_mode', settings['mode'])
+        set_session('mapeditor_model_context', settings['mode'])
         logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
         return settings['mode']
 
     def register(self):
-        logger.info("Registering ViewModes")
+        logger.info("Registering ModelContexts")
 
-        @self.socketio.on('view_modes_get_mode_info', namespace='/esdl')
-        def view_modes_get_mode_info():
-            return self.view_modes_get_mode_info()
+        @self.socketio.on('model_contexts_get_mode_info', namespace='/esdl')
+        def model_contexts_get_mode_info():
+            return self.model_contexts_get_mode_info()
 
-        @self.socketio.on('view_modes_set_mode', namespace='/esdl')
-        def view_modes_set_mode(mode):
+        @self.socketio.on('model_contexts_set_mode', namespace='/esdl')
+        def model_contexts_set_mode(mode):
             user = get_session('user-email')
             settings = self.get_user_settings(user)
             settings['mode'] = mode['mode']
             self.set_user_settings(user, settings)
-            set_session('mapeditor_view_mode', settings['mode'])
+            set_session('mapeditor_model_context', settings['mode'])
             logger.debug('User has MapEditor view mode: {}'.format(settings['mode']))
 
     def get_user_settings(self, user):
-        if self.settings_storage.has_user(user, VIEW_MODES_USER_CONFIG):
-            return self.settings_storage.get_user(user, VIEW_MODES_USER_CONFIG)
+        if self.settings_storage.has_user(user, MODEL_CONTEXT_USER_CONFIG):
+            return self.settings_storage.get_user(user, MODEL_CONTEXT_USER_CONFIG)
         else:
             user_settings = {
                 'mode': 'standard'
@@ -401,29 +401,29 @@ class ViewModes:
             return user_settings
 
     def set_user_settings(self, user, settings):
-        self.settings_storage.set_user(user, VIEW_MODES_USER_CONFIG, settings)
+        self.settings_storage.set_user(user, MODEL_CONTEXT_USER_CONFIG, settings)
 
-    def view_modes_get_mode_info(self):
+    def model_contexts_get_mode_info(self):
         user = get_session('user-email')
         settings = self.get_user_settings(user)
         return {
             'current_mode': settings['mode'],
-            'possible_modes': list(view_modes_config.keys())
+            'possible_modes': list(model_contexts_config.keys())
         }
 
     def categorize_object_attributes(self, object, attributes):
         attr_dict = {attr['name']: attr for attr in attributes}
-        view_mode = get_session('mapeditor_view_mode')
+        model_context = get_session('mapeditor_model_context')
 
-        this_view_mode_config = view_modes_config[view_mode]
+        this_model_context_config = model_contexts_config[model_context]
 
         categorized_attributes_list = dict()
-        for key in this_view_mode_config:
+        for key in this_model_context_config:
             categorized_attributes_list[key] = list()
 
-            for objtype in this_view_mode_config[key]:
+            for objtype in this_model_context_config[key]:
                 if isinstance(object, esdl.getEClassifier(objtype)):
-                    for attr in this_view_mode_config[key][objtype]:
+                    for attr in this_model_context_config[key][objtype]:
                         attr_info = deepcopy(attr_dict[attr])
                         del attr_dict[attr]
                         categorized_attributes_list[key].append(attr_info)
@@ -438,17 +438,17 @@ class ViewModes:
     def categorize_object_attributes_and_references(self, object, attributes, references):
         attr_dict = {attr['name']: attr for attr in attributes}
         ref_dict = {ref['name']: ref for ref in references}
-        view_mode = get_session('mapeditor_view_mode')
+        model_context = get_session('mapeditor_model_context')
 
-        this_view_mode_config = view_modes_config[view_mode]
+        this_model_context_config = model_contexts_config[model_context]
 
         categorized_list = dict()
-        for key in this_view_mode_config:
+        for key in this_model_context_config:
             categorized_list[key] = list()
 
-            for objtype in this_view_mode_config[key]:
+            for objtype in this_model_context_config[key]:
                 if isinstance(object, esdl.getEClassifier(objtype)):
-                    for feature in this_view_mode_config[key][objtype]:
+                    for feature in this_model_context_config[key][objtype]:
                         if feature in attr_dict:
                             attr_info = deepcopy(attr_dict[feature])
                             del attr_dict[feature]
@@ -469,12 +469,12 @@ class ViewModes:
         return categorized_list
 
     def get_asset_list(self):
-        view_mode = get_session('mapeditor_view_mode')
-        if not view_mode:
+        model_context = get_session('mapeditor_model_context')
+        if not model_context:
             user = get_session('user-email')
-            view_mode = self.initialize_user(user)
+            model_context = self.initialize_user(user)
 
-        return asset_list[view_mode]
+        return asset_list[model_context]
 
-    def get_asset_list_for_view_mode(self, view_mode):
-        return asset_list[view_mode]
+    def get_asset_list_for_model_context(self, model_context):
+        return asset_list[model_context]

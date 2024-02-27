@@ -205,7 +205,7 @@
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
     <script type="text/javascript" src="./utils/spatial_operations.js"></script>
     <script type="text/javascript" src="./utils/notes.js"></script>
-    <script type="text/javascript" src="./utils/view_modes.js"></script>
+    <script type="text/javascript" src="./utils/model_contexts.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
     <script type="text/javascript" src="./utils/select_asset.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
@@ -260,7 +260,7 @@
         var deleting_objects = false;   // to indicate if objects are being deleted (to prevent on click)
         var editing_objects = false;    // to indicate if objects are being edited (to prevent on click)
 
-        var extensions = [];            // list of extensions
+        const extensions = [];            // list of extensions
         var resource_uri = '';          // make the resource_prefix accessible by extensions
 
         var services_enabled = {
@@ -675,6 +675,8 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
+                console.log("ESDL list")
+                console.log(esdl_list)
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -1620,12 +1622,13 @@
                                     <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
 {% endif %}
                                     <li id="vue_show_release_notes"></li>
+                                    <li id="vue_model_context"></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
                             </li>
                             {% if is_mapeditor_admin %}
-                            <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.open()" href="#">Admin</a></li>
+                            <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.toggle()" href="#">Admin</a></li>
                             {% endif %}
                         </ul>
                     </div>

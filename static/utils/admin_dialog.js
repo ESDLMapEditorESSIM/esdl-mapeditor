@@ -16,13 +16,16 @@
 
 class AdminDialog extends MapEditorDialog {
 
-  open() {
+  toggle() {
     let jqueryNode = $('<div>').attr('id', 'admin_dialog_window').css({'height': '100%', 'display': 'flex', 'flex-direction': 'column'});
-    this.setContent(jqueryNode.get(0));
-    this.setTitle('Admin');
-    window.activate_admin_settings();
-
-    return super.open();
+    const content = this.getContent();
+    if (content) {
+      return super.close()
+    } else {
+      this.setContent(jqueryNode.get(0));
+      this.setTitle('Admin');
+      window.activate_admin_settings();
+      return super.open();
+    }
   }
-
 }

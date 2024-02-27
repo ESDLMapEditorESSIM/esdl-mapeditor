@@ -44,7 +44,8 @@ class ActivityContextExtension:
             # Get the actual activity contexts by querying mongodb for all entries with the given ids.
             db = get_database()
             activity_contexts = db.activity_contexts.find({"activity_id": {"$in": context_ids}})
-            return json_util.dumps(activity_contexts)
+            json_result = json_util.dumps(activity_contexts)
+            return json_result
 
         @self.flask_app.route("/admin/context/activities")
         @mapeditor_admin_required
