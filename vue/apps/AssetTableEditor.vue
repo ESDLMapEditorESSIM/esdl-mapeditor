@@ -5,11 +5,11 @@
     :options="asset_types_list"
     @change="selected_asset_changed"
   />
-
   <div v-if="selected_asset_type && !isLoading"
-       id="grid_div"
+      id="grid_div"
   >
-    <v-grid
+    <v-grid  v-if="selected_asset_type && !isLoading"
+      
       theme="compact"
       :source="rows"
       :columns="columns"
@@ -135,6 +135,14 @@ function change_multiple_attributes(changed_attr_list) {
   window.socket.emit("change_multiple_attributes", {
     changed_attr_list: changed_attr_list
   });
+  // also update gui for multiple attributes
+  for (let i in changed_attr_list) {
+    window.PubSubManager.broadcast('ASSET_PROPERTIES', {
+      id: changed_attr_list[i].id,
+      name: changed_attr_list[i].attr,
+      value: changed_attr_list[i].value,
+    });
+  }  
 }
 
 function process_changes(e) {

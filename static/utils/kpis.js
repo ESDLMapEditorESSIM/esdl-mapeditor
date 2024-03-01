@@ -28,10 +28,14 @@ class KPIs {
 
             let es_id = data['es_id'];
             let scope = data['scope'];
-            let kpi_list = data['kpi_list'];
+            let kpi_info = data['kpi_info'];    // kpi_info: {'kpis_description': ..., 'kpi_list': ...}
             // Store or replace the kpi info for this energy system
-            set_kpi_info(es_id, {scope: scope, kpi_list: kpi_list});
-            kpis.show_all_kpis();
+            set_kpi_info(es_id, {scope: scope, kpis_description: kpi_info.kpis_description, kpi_list: kpi_info.kpi_list});
+
+            // Don't show the old small KPI dialog anymore by default.
+            // There is an AnnounceKPI control, that allows to open the bigger dashboard.
+            // The old small KPI dialog can still be opened from the menu
+            // kpis.show_all_kpis();
         });
 
         socket.on('show_kpis', function() {
@@ -86,6 +90,7 @@ class KPIs {
         for (let es_id in kpi_data) {
             let kpis_per_es = kpi_data[es_id];
             let kpi_scope = kpis_per_es['scope'];
+            let kpis_description = kpis_per_es['kpis_description'];
             let kpi_list = kpis_per_es['kpi_list'];
             for (let i=0; i<kpi_list.length; i++) {
                 let kpi_name = kpi_list[i].name;
@@ -99,6 +104,7 @@ class KPIs {
                     let kpi_info = kpi_list[i].sub_kpi[j];
                     kpi_info['es_id'] = kpi_es_sim_id;
                     kpi_info['scope'] = kpi_scope;
+                    kpi_info['kpis_description'] = kpis_description;
 
                     if (kpi_info['name'] in kpi_dict)
                         kpi_dict[kpi_info['name']].push(kpi_info)

@@ -88,6 +88,7 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
                 logger.debug(result)
             else:
                 logger.debug("Error creating datasource - status code: " + str(r.status_code))
+                logger.debug(r.json()["message"])
                 ps_influxdb_name = None
         except Exception as e:
             ps_influxdb_name = None
@@ -108,8 +109,10 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     else:
         ps_influxdb_name = datasource
     logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
-    if filters is None or filters == '':
+    if filters is None:
         filters = []
+    elif isinstance(filters, str):
+        filters = filters.split(' AND ')
     elif not isinstance(filters, list):
         filters = [filters]
 
