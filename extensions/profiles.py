@@ -202,7 +202,14 @@ class Profiles:
         @self.socketio.on('get_profiles_settings', namespace='/esdl')
         def get_profiles_settings():
             with self.flask_app.app_context():
-                return self.get_profiles_settings()
+                prof_settings = self.get_profiles_settings()
+
+                # Only communicate the name to the frontend
+                ui_prof_settings_list = list()
+                for p in prof_settings['profiles_servers']:
+                    ui_prof_settings_list.append({"name": p["name"]})
+
+                return {"profiles_servers": ui_prof_settings_list}
 
     def update_profiles_list(self):
         emit('update_profiles_list', self.get_profiles())
