@@ -72,7 +72,7 @@ class EDRClient:
                 logger.error('Exception: ')
                 logger.error(e)
                 send_alert('Error accessing EDR API')
-                abort(500, 'Error accessing EDR API')\
+                abort(500, 'Error accessing EDR API')
 
         @self.flask_app.route('/edr_carriers')
         def get_edr_carriers():
@@ -150,6 +150,15 @@ class EDRClient:
         Retrieves a list of items from the EDR. Can be used for assets (type="EnergyAsset"), profiles
         (type="GenericProfile"), carrier lists (type="Carriers"),
         """
+        esdl_type_section_mapping = {
+            "EnergyAsset": "Assets",
+            "GenericProfile": "Profiles",
+        }
+        if esdl_type in esdl_type_section_mapping:
+            edr_section = esdl_type_section_mapping[esdl_type]
+        else:
+            edr_section = "Key figures"
+
         if not field_map:
             field_map = {
                 'value': 'id',
@@ -166,21 +175,33 @@ class EDRClient:
             result = json.loads(r.text)
             item_list = []
             item_type_list = []
+            edr_cat_list = []       # list of EDR Asset categories
             for a in result:
                 item_type = a['esdlType']
                 if not item_type in item_type_list:
                     item_type_list.append(item_type)
 
-                item = {'item_type': item_type}
+                edr_url_list = a['id'].split('/')
+                if edr_section in edr_url_list:
+                    item_section_index = edr_url_list.index(edr_section)
+                    item_cat = edr_url_list[item_section_index + 1]
+                else:
+                    # This skips elements outside of Assets, Profiles, Key figures sections (there is a Test section)
+                    continue
+                if not item_cat in edr_cat_list:
+                    edr_cat_list.append(item_cat)
+
+                item = {'item_type': item_type, 'edr_cat': item_cat}
                 for f in field_map:
                     item[f] = a[field_map[f]] if field_map[f] in a and a[field_map[f]] is not None else ''
 
                 item_list.append(item)
 
             item_type_list.sort()
+            edr_cat_list.sort()
             item_list.sort(key=lambda x: x["label"])
 
-            result = {'item_list': item_list, 'item_type_list': item_type_list}
+            result = {'item_list': item_list, 'item_type_list': item_type_list, 'edr_cat_list': edr_cat_list}
             return r.status_code, result
         else:
             return r.status_code, None
