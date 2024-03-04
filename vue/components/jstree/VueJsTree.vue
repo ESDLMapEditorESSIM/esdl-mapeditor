@@ -77,7 +77,7 @@ onMounted(() => {
     },
     plugins: props.plugins,
     checkbox: {
-      "three_state": false,
+      "three_state": true,
       "whole_node": false,
       // uncouple selecting and checking
       "tie_selection": false

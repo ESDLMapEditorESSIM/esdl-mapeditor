@@ -83,7 +83,6 @@ const eventHandlersByName = [{
 }, {
   eventName: 'hover_node.jstree',
   handler: function (e, data, treeElement) {
-    console.log('hover')
     treeElement.attr("title", data.node.text);
   },
 }];

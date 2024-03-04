@@ -118,17 +118,21 @@ def load_layers():
     geo = connect_to_geoserver(os.environ.get('GEOSERVER_URL'), os.environ.get('GEOSERVER_ADMIN_USER'),
                                os.environ.get('GEOSERVER_ADMIN_PASSWORD'))
 
-    geo.create_workspace(workspace=os.environ.get('GEOSERVER_WORKSPACE'))
+    workspace_names = [workspace_values[0]['name'] for workspace_values in geo.get_workspaces()['workspaces'].values()]
+    if os.environ.get('GEOSERVER_WORKSPACE') not in workspace_names:
+        geo.create_workspace(workspace=os.environ.get('GEOSERVER_WORKSPACE'))
 
-    geo.create_featurestore(
-        store_name=os.environ.get('GEOSERVER_STORENAME'),
-        workspace=os.environ.get('GEOSERVER_WORKSPACE'),
-        db=os.environ.get('POSTGRES_DB'),
-        host=os.environ.get('POSTGRES_HOST_INTERNAL'),
-        port=int(os.environ.get('POSTGRES_PORT_INTERNAL')),
-        pg_user=os.environ.get('POSTGRES_USER'),
-        pg_password=os.environ.get('POSTGRES_PASSWORD'),
-    )
+    datastore_names = [datastore_values[0]['name'] for datastore_values in geo.get_datastores()['dataStores'].values()]
+    if os.environ.get('GEOSERVER_STORENAME') not in datastore_names:
+        geo.create_featurestore(
+            store_name=os.environ.get('GEOSERVER_STORENAME'),
+            workspace=os.environ.get('GEOSERVER_WORKSPACE'),
+            db=os.environ.get('POSTGRES_DB'),
+            host=os.environ.get('POSTGRES_HOST_INTERNAL'),
+            port=int(os.environ.get('POSTGRES_PORT_INTERNAL')),
+            pg_user=os.environ.get('POSTGRES_USER'),
+            pg_password=os.environ.get('POSTGRES_PASSWORD'),
+        )
 
     # get project wms layers and groups
     settings_storage = SettingsStorage(database_uri=f"mongodb://{os.environ.get('MONGO_URL')}")
