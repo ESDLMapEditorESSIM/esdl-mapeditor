@@ -72,7 +72,8 @@ onMounted(() => {
       check_callback: (operation, node, node_parent, node_position, more) =>
           props.checkCallBack(operation, node, node_parent, node_position, more),
       animation: 200,
-      multiple: false
+      multiple: false,
+      expand_selected_onload : false,
     },
     plugins: props.plugins,
     checkbox: {

@@ -5,6 +5,7 @@ Flask-Session==0.4.1
 flask-oidc==1.4.0
 geomet==0.2.1.post1
 geojson
+geoserver-rest==2.6.0
 influxdb==5.3.0
 openpyxl==3.1.2
 pyecore==0.12.1

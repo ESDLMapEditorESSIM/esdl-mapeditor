@@ -358,7 +358,7 @@ function getBaseLayersControlTreeData() {
     type: "wms_layer_folder",
     readonly: true,
     state: {
-      opened: true
+      opened: false
     },
     children: children,
     a_attr: {
