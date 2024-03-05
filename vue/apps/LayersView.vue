@@ -51,6 +51,8 @@ const {
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
+  setWmsLayerGroupOpened,
+  setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
 } = useWmsLayers();
@@ -119,7 +121,7 @@ const getChildrenOfGroup = (layerGroup) => {
 }
 
 const addTreeItem = (items, item, itemId, type, children) => {
-  const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
+  const a_attr = {"class": item.active ? "bold" : "", title: item.description};
 
   items.push({
     id: itemId,
@@ -129,7 +131,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": item.visible, opened: false},
+    state: {"checked": item.visible, opened: item.opened},
     children: children,
   });
 }
@@ -264,11 +266,12 @@ const eventHandlersByName = [{
       for (const baseLayer of baseLayerDefinitions) {
         hideBaseLayer(baseLayer);
       }
-
       const baseLayer = getBaseLayerByLabel(id);
       showBaseLayer(baseLayer);
     } else if (type === 'wms_layer') {
       showWmsLayer(id);
+    } else if (type === 'wms_layer_folder') {
+      setVisibilityWmsLayerGroup(id, true);
     }
   }
 }, {
@@ -281,6 +284,8 @@ const eventHandlersByName = [{
       hideBaseLayer(baseLayer);
     } else if (type === 'wms_layer') {
       hideWmsLayer(id);
+    } else if (type === 'wms_layer_folder') {
+      setVisibilityWmsLayerGroup(id, false);
     }
   }
 }, {
@@ -302,6 +307,16 @@ const eventHandlersByName = [{
       }
     });
   },
+}, {
+  eventName: 'open_node.jstree',
+  handler: function (e, data) {
+    setWmsLayerGroupOpened(data.node.id, true);
+  }
+}, {
+  eventName: 'close_node.jstree',
+  handler: function (e, data) {
+    setWmsLayerGroupOpened(data.node.id, false);
+  }
 }];
 
 // eslint-disable-next-line no-unused-vars
@@ -358,7 +373,7 @@ function getBaseLayersControlTreeData() {
     type: "wms_layer_folder",
     readonly: true,
     state: {
-      opened: true
+      opened: false
     },
     children: children,
     a_attr: {

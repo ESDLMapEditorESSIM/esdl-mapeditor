@@ -9,6 +9,7 @@ import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
+import AddEditWmsLayer from './apps/AddEditWmsLayer';
 import Carriers from './apps/Carriers.vue';
 import Sectors from './apps/Sectors.vue';
 import AboutBox from './apps/AboutBox';
@@ -133,6 +134,13 @@ window.activate_custom_icons_settings = () => {
 window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
+
+window.add_edit_wms_layer = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AddEditWmsLayer)
+}
+
 
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');

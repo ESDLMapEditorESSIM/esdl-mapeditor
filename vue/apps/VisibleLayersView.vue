@@ -36,7 +36,12 @@ import {useVisibleLayers} from "../composables/visibleLayers"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {getVisibleLayerList, updateDisplayOrderVisibleLayers} = useVisibleLayers();
+const {
+  getVisibleLayerList,
+  updateDisplayOrderVisibleLayers,
+  hideVisibleLayer,
+  hideAllVisibleLayers
+} = useVisibleLayers();
 
 // eslint-disable-next-line no-unused-vars
 const treeId = "visible_layer_tree"
@@ -64,6 +69,25 @@ class MovableLayerTreeSpec {
     this.icon = "fas fa-grip-lines";
     this.max_depth = 0;
   }
+
+  contextMenus(node, tree) {
+    return {
+      'hide_layer': {
+        'label': 'Hide layer',
+        'icon': 'fas fa-minus',
+        'action': function () {
+          hideVisibleLayer(node.id);
+        }
+      },
+      'hide_all_layers': {
+        'label': 'Hide all layers',
+        'icon': 'fas fa-minus-square',
+        'action': function () {
+          hideAllVisibleLayers();
+        }
+      }
+    }
+  }
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -83,7 +107,6 @@ const eventHandlersByName = [{
 }, {
   eventName: 'hover_node.jstree',
   handler: function (e, data, treeElement) {
-    console.log('hover')
     treeElement.attr("title", data.node.text);
   },
 }];
