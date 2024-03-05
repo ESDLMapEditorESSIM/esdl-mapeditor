@@ -120,7 +120,8 @@ export function useWmsLayers() {
         removeLayerFromMapAndVisibleLayers(layerId);
         globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
-            id: layerId, lyr_info: {
+            id: layerId,
+            lyr_info: {
                 description: layerDescr,
                 url: layerUrl,
                 layer_name: layerName,
