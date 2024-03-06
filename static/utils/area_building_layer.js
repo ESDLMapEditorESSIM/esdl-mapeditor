@@ -35,9 +35,9 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
-var area_KPIs = {};
-var building_KPIs = {};
-pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
+let area_KPIs = {};
+let building_KPIs = {};
+const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
     '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
@@ -582,6 +582,10 @@ function create_area_pie_chart(ar, size) {
                 data: {},
                 chartOptions: {},
                 weight: 1,
+                // Use the popup method instead of LegendIcon method.
+                usePopup: true,
+                // Having a stroke causes an updateBounds error.
+                stroke: null,
             };
 
             for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
@@ -594,7 +598,7 @@ function create_area_pie_chart(ar, size) {
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return 1;
+                        return value.toFixed(2);
                     }
                 }
             }
