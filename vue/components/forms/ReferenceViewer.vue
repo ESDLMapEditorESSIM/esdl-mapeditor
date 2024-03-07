@@ -25,7 +25,7 @@
       <i class="fa fa-trash small-icon" />
     </a-button>
   </a-col>
-  <!-- <a-modal v-model:visible="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
+  <!-- <a-modal v-model:open="visible" :title="modalTitle" @ok="handleOk" width="750px"> -->
   <TableEditor v-if="ref.type == 'Table'" :parentObjectID="parentObjectIdentifier" :visible="visible" :title="modalTitle" :reference="ref" :ready="tableReady" @update="tableUpdate(ref, $event)" />
   <!-- <span v-else>Other editor</span> -->
   <!-- </a-modal> -->
@@ -33,7 +33,7 @@
 
 <script>
 import TableEditor from './TableEditor'
-import { Modal } from 'ant-design-vue';
+// import { Modal } from 'ant-design-vue';
 export default {
   name: "ReferenceViewer",
   components: {
@@ -101,7 +101,7 @@ export default {
     // },
     deleteRef: function(ref) {
       let self=this;
-      Modal.confirm({
+      window.Modal.confirm({
         title: 'Delete value of ' + ref.type,
         content: 'Are you sure you want to delete the data of ' + ref.name + ' with value \'' + ref.value.repr + '\'?',
         okText: 'Yes',
