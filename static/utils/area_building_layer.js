@@ -35,9 +35,9 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
-var area_KPIs = {};
-var building_KPIs = {};
-pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
+let area_KPIs = {};
+let building_KPIs = {};
+const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
     '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
@@ -582,6 +582,10 @@ function create_area_pie_chart(ar, size) {
                 data: {},
                 chartOptions: {},
                 weight: 1,
+                // Use the popup method instead of LegendIcon method.
+                usePopup: true,
+                // Having a stroke causes an updateBounds error.
+                stroke: null,
             };
 
             for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
@@ -594,7 +598,7 @@ function create_area_pie_chart(ar, size) {
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return 1;
+                        return value.toFixed(2);
                     }
                 }
             }
@@ -704,24 +708,27 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
-                    var popup = e.target.getPopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    popup.setLatLng(e.latlng).openOn(this_map);
-
-                    highlightAreaOrBuilding(e);
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                        highlightAreaOrBuilding(e);
+                    }
                 });
 
                 layer.on('mouseout', function(e) {
                     e.target.closePopup();
-
                     resetHighlightArea(e);
                 });
 
                 layer.on('mousemove', function (e) {
                     e.target.closePopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    var popup = e.target.getPopup();
-                    popup.setLatLng(e.latlng).openOn(this_map);
+
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                    }
                 });
 
                 set_area_handlers(layer);
@@ -1177,11 +1184,15 @@ function style_area(feature) {
             fillOpacity: 0.7
         };
     } else {
+        let color = "blue";
+        if (feature.properties.hasOwnProperty("type") && feature.properties.type == "SERVICE_AREA") {
+            color = "#ffcb00";  // "#bc9500";
+        }
         return {
-            fillColor: "blue",
+            fillColor: color,
             weight: 1,
             opacity: 1,
-            color: "blue",
+            color: color,
             dashArray: '',
             fillOpacity: 0.3
         };

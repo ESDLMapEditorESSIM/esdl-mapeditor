@@ -282,7 +282,8 @@ class ESDLServices:
                 #body = {}
                 for param in service["body_config"]['parameters']:
                     if param["type"] == "esdl":
-                        del body['energysystem'] # added earlier
+                        if "energysystem" in body:
+                            del body["energysystem"]  # added earlier
                         esdlstr = esh.to_string(active_es_id)
                         if param["encoding"] == "none":
                             body[param["parameter"]] = esdlstr
