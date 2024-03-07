@@ -4608,6 +4608,10 @@
 	    _bindMouseEvents: function (chartElement) {
 	        var self = this;
 	        var tooltipOptions = this.options.tooltipOptions;
+            if (this.options.usePopup) {
+                const popup = L.popup();
+                chartElement.bindPopup(popup);
+            }
 
 	        chartElement.on('mouseover', function (e) {
 	            var currentOptions = this.options;
@@ -4629,43 +4633,56 @@
 	                newPoint = new L.Point(newX, newY);
 	            }
 
-	            var legendOptions = {};
 	            var displayText = currentOptions.displayText ? currentOptions.displayText(value) : value;
 
-	            legendOptions[key] = {
-	                name: currentOptions.displayName,
-	                value: displayText
-	            };
+                if (currentOptions.usePopup) {
+                    // With the newer version of Leaflet, the method using a LegendIcon gives an error when doing
+                    // updateBounds inside setStyle. So, we use the popup method instead.
+                    const popup = e.target.getPopup();
+                    displayText = currentOptions.key + ": " + displayText;
+                    popup.setContent(displayText);
+                    const thisMap = e.sourceTarget._map;     // can be area map and building map
+                    popup.setLatLng(e.latlng).openOn(thisMap);
+                } else {
+                    var legendOptions = {};
+                    legendOptions[key] = {
+                        name: currentOptions.displayName,
+                        value: displayText
+                    };
 
-	            var icon = new L.LegendIcon(legendOptions, currentOptions, {
-	                className: 'leaflet-div-icon',
-	                iconSize: tooltipOptions ? tooltipOptions.iconSize : iconSize,
-	                iconAnchor: newPoint || new L.Point(-5, 0)
-	            });
+                    var icon = new L.LegendIcon(legendOptions, currentOptions, {
+                        className: 'leaflet-div-icon',
+                        iconSize: tooltipOptions ? tooltipOptions.iconSize : iconSize,
+                        iconAnchor: newPoint || new L.Point(-5, 0)
+                    });
+                    currentOptions.marker = new L.Marker(self._latlng, {
+                        icon: icon
+                    });
 
-	            currentOptions.marker = new L.Marker(self._latlng, {
-	                icon: icon
-	            });
+                    self.addLayer(currentOptions.marker);
+                }
 
 	            currentOptions = self._highlight(currentOptions);
 
 	            this.initialize(self._latlng, currentOptions);
 	            this.redraw();
 	            this.setStyle(currentOptions);
-
-	            self.addLayer(currentOptions.marker);
 	        });
 
 	        chartElement.on('mouseout', function (e) {
-	            var currentOptions = this.options;
+                var currentOptions = this.options;
 
-	            currentOptions = self._unhighlight(currentOptions);
+                currentOptions = self._unhighlight(currentOptions);
 
-	            this.initialize(self._latlng, currentOptions);
-	            this.redraw();
-	            this.setStyle(currentOptions);
+                this.initialize(self._latlng, currentOptions);
+                this.redraw();
+                this.setStyle(currentOptions);
 
-	            self.removeLayer(currentOptions.marker);
+                if (currentOptions.usePopup) {
+                    e.target.closePopup();
+                } else {
+                    self.removeLayer(currentOptions.marker);
+                }
 	        });
 	    },
 
