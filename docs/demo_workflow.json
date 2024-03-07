@@ -14,6 +14,16 @@
           "name": "Conditional next steps",
           "next_step": 1,
           "type": "primary"
+        },
+        {
+          "name": "Select value from GET query",
+          "next_step": 7,
+          "type": "primary"
+        },
+        {
+          "name": "Custom component for workflow step",
+          "next_step": 9,
+          "type": "default"
         }
       ]
     },
@@ -161,6 +171,31 @@
       "name": "Else",
       "type": "text",
       "text": "You hit the else branch."
+    },
+    {
+      "name": "Select",
+      "description": "The below options are retrieved from a GET query. The selected entry will be added to the state in the field specified in target_variable (in this demo this field is 'journey').",
+      "type": "select-query",
+      "multiple": false,
+      "source": {
+        "url": "http://localhost:8111/resources/demo_data.json",
+        "http_method": "get",
+        "label_fields": ["name"],
+        "value_field": "id"
+      },
+      "target_variable": "journey",
+      "next_step": 8
+    },
+    {
+      "name": "Result of select value from GET query",
+      "type": "text",
+      "text": "Good job! Click on the hamburger menu and then 'Log workflow state' to see the state."
+    },
+    {
+      "name": "Custom step",
+      "description": "",
+      "type": "custom",
+      "component": "demo-custom"
     }
   ]
 }
