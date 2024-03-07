@@ -8,6 +8,9 @@ module.exports = {
     'plugin:vue/vue3-recommended',
     'eslint:recommended'
   ],
+  parserOptions: {
+    parser: '@babel/eslint-parser'
+  },
   rules: {
     'vue/singline-html-element': 'off',
     'vue/singleline-html-element-content-newline': 'off',
@@ -16,6 +19,7 @@ module.exports = {
     'no-unused-vars': 'warn',
     'vue/multi-word-component-names': 'off',
     'vue/no-mutating-props': 'warn',
+    'no-undef': 'off',
     // 'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     // 'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
   }
