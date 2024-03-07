@@ -1,3 +1,4 @@
+import json
 import threading
 import traceback
 from datetime import datetime
@@ -7,17 +8,19 @@ from uuid import uuid4
 
 from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
 from pyecore.resources import ResourceSet, URI, Resource
+from pyecore.resources.json import JsonResource
 from pyecore import commands as pyecore_commands
 from pyecore.resources.json import JsonResource
 
 from esdl import EnergySystem, esdl, support_functions
-from esdl.esdl_handler import patch_esdl
+from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
 from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
     VariantCollection
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
+from esdlproject.actions import convertActionToVariantChanges
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
 import src.log as log
@@ -229,7 +232,7 @@ class ProjectManager:
 
     # undoredo_stack: UndoRedoCommandStack
 
-    def __init__(self, uri: URI = None):
+    def __init__(self, uri: URI = None, on_change_recorded = None):
         """
         Creates a new project manager with an empty project.
         If using uri to load a project, use StringURI(uri, text) to load a text string
@@ -237,11 +240,13 @@ class ProjectManager:
         patch_esdl()
 
         self.rset = ResourceSet()
-        self.change_tracker = ChangeTracker()
+        self.change_tracker = ChangeTracker(on_change_recorded=on_change_recorded)
         self.active_variant = None
         # self.base_variant_resources = []
         self.rset.resource_factory["esdl"] = XMLResource
         self.rset.resource_factory["project"] = XMLResource
+        self.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
+
         if uri:
             self.load(uri)
             # TODO handle active esdl, is based on selected VariantCollection

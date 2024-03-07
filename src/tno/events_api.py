@@ -11,16 +11,17 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
 from typing import TypedDict
 
 from flask_socketio import SocketIO
 
-from extensions.session_manager import get_session
+from extensions.session_manager import get_session, get_project_manager
 import src.log as log
-from flask import Flask
+from flask import Flask, session
 
 from extensions.settings_storage import SettingsStorage
-from src.tno.events.messages import AssetPositionMessage, Point
+from src.tno.events.messages import AssetPositionMessage, Point, NewESDLMessage
 
 from src.tno.events.publisher import send_rabbitmq_message
 
@@ -46,6 +47,28 @@ class EventsAPI:
         def mouse_positioning(frontend_message: MousePositionMessage):
             logger.info("Positioning asset", message=frontend_message)
             user_email = get_session('user-email')
-            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email)
+            client_id = session['client_id']
+            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email, client_id=client_id)
             # rabbitmq_fanout_publisher.publish_message(message)
             send_rabbitmq_message(message, "events.asset.positioning")
+
+    @staticmethod
+    def emit_new_esdl():
+        # What is the function of the EventsAPI?
+        # Is this a logical function here?
+        pm = get_project_manager()
+
+        esdlstr = pm.active_energy_system_to_string()
+        esdlstr_bytes = esdlstr.encode('utf-8')
+        esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+        esdlstr_base64_str = esdlstr_base64_bytes.decode('utf-8')
+
+        user_email = get_session('user-email')
+        client_id = session['client_id']
+        message: NewESDLMessage(
+            user_email=user_email,
+            client_id=client_id,
+            b64_esdl=esdlstr_base64_str
+        )
+
+        send_rabbitmq_message(message, "events.esdl.new")

@@ -11,11 +11,18 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import base64
 
+from flask import session
 from flask_socketio import emit
 
-from extensions.session_manager import get_project_manager
+from extensions.session_manager import get_project_manager, get_session
+from src.log import get_logger
+from src.tno.events.messages import NewESDLMessage
+from src.tno.events.publisher import send_rabbitmq_message
 from src.tno.projects.types import serialize_esdl_project
+
+logger = get_logger(__name__)
 
 
 def emit_active_esdl_project():
@@ -26,6 +33,24 @@ def emit_active_esdl_project():
     project_data = serialize_esdl_project(pm, pm.project)
     print("Active project data", project_data)
     emit('update_active_esdl_project', project_data, namespace="/esdl")
+
+    # Or maybe here? (see remark in events_api.py)
+    #esdlstr = pm.active_energy_system_to_string()
+    es = pm.get_active_energy_system()
+    esdlstr = pm.energy_system_to_string(es.id)
+    esdlstr_bytes = esdlstr.encode('utf-8')
+    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+    esdlstr_base64_str = esdlstr_base64_bytes.decode('utf-8')
+
+    client_id = session['client_id']
+    user_email = get_session('user-email')
+    message = NewESDLMessage(
+        user_email=user_email,
+        client_id=client_id,
+        b64_esdl=esdlstr_base64_str
+    )
+    logger.debug("Sending ESDL on topic events.esdl.new")
+    send_rabbitmq_message(message, "events.esdl.new")
 
 
 def emit_clear_frontend_esdls():
