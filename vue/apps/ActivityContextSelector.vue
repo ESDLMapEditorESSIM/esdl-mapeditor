@@ -42,9 +42,14 @@ const activityContexts = ref([]);
 onMounted(async () => {
   activityContexts.value = await fetchActivityContexts()
   const $ = window.$;
-  $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
-    handleChange({target: {value: $(this).val()}});
-  })
+  if (activityContexts.value.length > 0) {
+    $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
+      handleChange({target: {value: $(this).val()}})
+    })
+  } else {
+    // We cannot easily do this in vue, because the above .selectmenu also hides the select. So that conflicts.
+    $("#activity_context").hide()
+  }
 })
 
 const handleChange = (e) => {
