@@ -21,7 +21,7 @@
       direction="vertical"
     >
       <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
-                   :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                   :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
                    :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleLayersView />
@@ -134,6 +134,12 @@ const addTreeItem = (items, item, itemId, type, children) => {
   });
 }
 
+/**
+ * WMS Layer folder tree specification
+ * @type {LayerFolderTreeSpec}
+ *
+ * Represents the WMS layer folder tree specification for the jstree component.
+ */
 class LayerFolderTreeSpec {
   constructor() {
     this.type = "wms_layer_folder";
@@ -188,11 +194,31 @@ class LayerFolderTreeSpec {
   }
 }
 
-class LayerTreeSpec {
+/**
+ * WMS Layer tree specification
+ * @type {WmsLayerTreeSpec}
+ *
+ * Represents the WMS layer tree specification for the jstree component.
+ */
+class WmsLayerTreeSpec {
   constructor() {
     this.type = "wms_layer";
     this.icon = 'fas fa-map';
     this.max_depth = 0;
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        showWmsLayer(data.node.id);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        hideWmsLayer(data.node.id)
+      },
+      'move_node.jstree':function (e, data) {
+        moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
+      },
+      'copy_node.jstree': function (e, data) {
+        copyWmsItem(data.original.id, data.node.parents[0], data.position);
+      },
+    }
   }
 
   contextMenus(node) {
@@ -229,80 +255,44 @@ class BaseLayerTreeSpec {
     this.type = "base_layer";
     this.icon = 'far fa-map';
     this.max_depth = 0;
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        const id = data.node.id;
+        // Single base layer selection
+        for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
+          if (checkedNode !== id) {
+            getTree().uncheck_node(checkedNode)
+          }
+        }
+        for (const baseLayer of baseLayerDefinitions) {
+          hideBaseLayer(baseLayer);
+        }
+
+        const baseLayer = getBaseLayerByLabel(id);
+        showBaseLayer(baseLayer);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        const id = data.node.id;
+        const baseLayer = getBaseLayerByLabel(id);
+        hideBaseLayer(baseLayer);
+      },
+    }
   }
 }
 
 // eslint-disable-next-line no-unused-vars
-const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new LayerTreeSpec];
+const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new WmsLayerTreeSpec];
 
-// TODO: Move into tree specs
 // eslint-disable-next-line no-unused-vars
-const eventHandlersByName = [{
-  eventName: 'ready.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'create_node.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'select_node.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'check_node.jstree',
-  handler: function (e, data) {
-    const type = data.node.type;
-    const id = data.node.id;
-    if (type === 'base_layer') {
-      // Single base layer selection
-      for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
-        if (checkedNode !== id) {
-          getTree().uncheck_node(checkedNode)
-        }
-      }
-      for (const baseLayer of baseLayerDefinitions) {
-        hideBaseLayer(baseLayer);
-      }
-
-      const baseLayer = getBaseLayerByLabel(id);
-      showBaseLayer(baseLayer);
-    } else if (type === 'wms_layer') {
-      showWmsLayer(id);
-    }
-  }
-}, {
-  eventName: 'uncheck_node.jstree',
-  handler: function (e, data) {
-    const type = data.node.type;
-    const id = data.node.id;
-    if (type === 'base_layer') {
-      const baseLayer = getBaseLayerByLabel(id);
-      hideBaseLayer(baseLayer);
-    } else if (type === 'wms_layer') {
-      hideWmsLayer(id);
-    }
-  }
-}, {
-  eventName: 'move_node.jstree',
-  handler: function (e, data) {
-    moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
-  },
-}, {
-  eventName: 'copy_node.jstree',
-  handler: function (e, data) {
-    copyWmsItem(data.original.id, data.node.parents[0], data.position);
-  },
-}, {
-  eventName: 'create_node.jstree',
-  handler: function (e, data) {
+const eventHandlersByName = {
+  'create_node.jstree': function (e, data) {
     getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
       if (isSuccessful && !isCancelled) {
         renameWmsLayerGroup(node.id, node.text);
       }
     });
   },
-}];
+};
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
