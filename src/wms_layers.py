@@ -262,7 +262,7 @@ class WMSLayers:
         layer["description"] = lyr_info["description"]
         layer["url"] = lyr_info["url"]
         layer["layer_name"] = lyr_info["layer_name"]
-        layer["legend_url"] = lyr_info["legend_url"]
+        layer["legend_url"] = lyr_info.get("legend_url")
         layer["attribution"] = lyr_info["attribution"]
 
         self.add_wms_layer(layer_id, layer)
@@ -420,8 +420,8 @@ class WMSLayers:
 default_wms_layers = {
     "AHN2_5m": {
         "description": "AHN2 5 meter",
-        "url": "http://geodata.nationaalgeoregister.nl/ahn2/wms?",
-        "layer_name": "ahn2_5m",
+        "url": "https://service.pdok.nl/rws/ahn/wms/v1_0?",
+        "layer_name": "dtm_05m",
         "setting_type": SettingType.SYSTEM.value,
         "layer_ref": None,
         "visible": False,
@@ -429,7 +429,7 @@ default_wms_layers = {
     },
     "RVO_Restwarmte": {
         "description": "Restwarmte (RVO: ligging industrie)",
-        "url": "https://geodata.nationaalgeoregister.nl/restwarmte/wms?",
+        "url": "https://service.pdok.nl/rvo/restwarmte/wms/v1_0?",
         "layer_name": "liggingindustrieco2",
         "setting_type": SettingType.SYSTEM.value,
         "layer_ref": None,
@@ -438,7 +438,7 @@ default_wms_layers = {
     },
     "LianderHS": {
         "description": "Liander hoogspanningskabels",
-        "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
+        "url": "https://service.pdok.nl/liander/elektriciteitsnetten/wms/v1_0?",
         "layer_name": "hoogspanningskabels",
         "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
@@ -448,7 +448,7 @@ default_wms_layers = {
     },
     "LianderMS": {
         "description": "Liander middenspanningskabels",
-        "url": "https://geodata.nationaalgeoregister.nl/liander/elektriciteitsnetten/v1/wms?",
+        "url": "https://service.pdok.nl/liander/elektriciteitsnetten/wms/v1_0?",
         "layer_name": "middenspanningskabels",
         "setting_type": SettingType.SYSTEM.value,
         "legend_url": "",
