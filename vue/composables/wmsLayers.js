@@ -39,9 +39,6 @@ const globalWmsLayerList = ref(null);
 })();
 
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
-    console.log('getting wms layer list');
-    console.log(wmsLayerList);
-
     if (globalWmsLayerList.value !== null) {
         for (const layerId in globalWmsLayerList.value['layers']) {
             if (layerId in wmsLayerList['layers']) {
