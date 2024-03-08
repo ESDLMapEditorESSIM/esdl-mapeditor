@@ -17,13 +17,26 @@
     </a-card>
 
     <div>
+      <h3>Filter asset list on EDR asset category:</h3>
+      <a-select
+        v-model:value="selected_asset_category"
+        :options="asset_categories"
+        show-search
+        option-filter-prop="label"
+        :filter-option="filter_select"
+        placeholder="Filter EDR assets on..."
+        style="width: 100%"
+        @popupScroll="hide_jquery_ui_popup()"
+      />
+    </div>
+    <div>
       <h3>Filter asset list on type:</h3>
       <a-select
         v-model:value="selected_asset_type"
         :options="asset_type_list"
         show-search
         option-filter-prop="label"
-        :filter-option="filter_asset_type"
+        :filter-option="filter_select"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
         @popupScroll="hide_jquery_ui_popup()"
@@ -37,7 +50,7 @@
         :options="filtered_asset_list"
         show-search
         option-filter-prop="label"
-        :filter-option="filter_asset"
+        :filter-option="filter_select"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
         @popupScroll="hide_jquery_ui_popup()"
@@ -72,17 +85,22 @@ export default {
       asset_list: [],
       selected_asset: undefined,
       asset_type_list: [],
+      asset_categories: [],
+      selected_asset_category: undefined,
       selected_asset_type: undefined,
       isLoading: true
     }
   },
   computed: {
     filtered_asset_list: function() {
-      if (this.selected_asset_type != 'No filter' && this.selected_asset_type != undefined) {
-        return this.asset_list.filter(item => item.item_type == this.selected_asset_type);
-      } else {
-        return this.asset_list;
+      let temp_list = [...this.asset_list];
+      if (this.selected_asset_type !== 'No filter' && this.selected_asset_type !== undefined) {
+        temp_list = temp_list.filter(item => item.item_type === this.selected_asset_type);
       }
+      if (this.selected_asset_category !== 'No filter' && this.selected_asset_category !== undefined) {
+        temp_list = temp_list.filter(item => item.edr_cat === this.selected_asset_category);
+      }
+      return temp_list;
     }
   },
   mounted() {
@@ -96,13 +114,17 @@ export default {
       axios.get(path)
         .then((res) => {
           this.asset_list = res['data']['item_list'];
+          const cat_list = ['No filter'].concat(res['data']['edr_cat_list']);
           const asset_types = ['No filter'].concat(res['data']['item_type_list']);
+          // Create a list that can directly be used by the Antdv Select component
           this.asset_type_list = asset_types.map((asset_type) => {
             return {
               label: asset_type,
               value: asset_type,
             }
           });
+          // Create a list that can be used by the Antdv Select component
+          this.asset_categories = cat_list.map((cat) => {return {label:cat, value:cat};});
           this.isLoading = false;
         })
         .catch((error) => {
@@ -120,10 +142,7 @@ export default {
     cancel: function() {
       window.sidebar.hide();
     },
-    filter_asset_type: function(input, option) {
-      return option.props.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
-    },
-    filter_asset: function(input, option) {
+    filter_select: function(input, option) {
       return option.props.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
     },
     buildResultInfo: function() {
