@@ -39,9 +39,6 @@ const globalWmsLayerList = ref(null);
 })();
 
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
-    console.log('getting wms layer list');
-    console.log(wmsLayerList);
-
     if (globalWmsLayerList.value !== null) {
         for (const layerId in globalWmsLayerList.value['layers']) {
             if (layerId in wmsLayerList['layers']) {
@@ -50,6 +47,17 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
             } else {
                 // hide layer present in global (old) list, but not in new list from database: was deleted
                 removeLayerFromMapAndVisibleLayers(layerId);
+            }
+        }
+        for (const layerGroupId in globalWmsLayerList.value['layer_groups']) {
+            if (layerGroupId in wmsLayerList['layer_groups']) {
+                // make sure opened folders stay open
+                if ('opened' in globalWmsLayerList.value['layer_groups'][layerGroupId]) {
+                    wmsLayerList['layer_groups'][layerGroupId].opened =
+                        globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'];
+                } else {
+                    wmsLayerList['layer_groups'][layerGroupId].opened = false;
+                }
             }
         }
     }
@@ -112,7 +120,8 @@ export function useWmsLayers() {
         removeLayerFromMapAndVisibleLayers(layerId);
         globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
-            id: layerId, lyr_info: {
+            id: layerId,
+            lyr_info: {
                 description: layerDescr,
                 url: layerUrl,
                 layer_name: layerName,
@@ -127,12 +136,15 @@ export function useWmsLayers() {
     };
 
     const showWmsLayer = (layerId) => {
-        globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
-        globalWmsLayerList.value['layers'][layerId].layer_ref.bringToFront();
-        if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
-            showWmsLegend(globalWmsLayerList.value['layers'][layerId].legend_url);
+        if (!layerIsVisible(layerId)) {
+            globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
+            globalWmsLayerList.value['layers'][layerId].layer_ref.bringToFront();
+            if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
+                showWmsLegend(globalWmsLayerList.value['layers'][layerId].legend_url);
+            }
+            globalWmsLayerList.value['layers'][layerId].visible = true;
+            addToVisibleLayerList(globalWmsLayerList.value['layers'][layerId], 0);
         }
-        addToVisibleLayerList(globalWmsLayerList.value['layers'][layerId], 0);
     };
 
     const hideWmsLayer = (layerId) => {
@@ -161,13 +173,14 @@ export function useWmsLayers() {
             'parent_group_id': parentId,
         };
         socket.emit('add_wms_layer_group', layerGroup);
+        // Create node programmatically to enable entering into edit name mode
         getTree().create_node(parentId, {
             id: groupId,
             text: 'new folder',
             setting_type: setting_type,
             project_name: project_name,
             type: 'wms_layer_folder',
-            state: {opened: true},
+            state: {opened: false},
         });
     };
 
@@ -180,17 +193,33 @@ export function useWmsLayers() {
         socket.emit('remove_wms_layer_group', {id: groupId, parent_id: parentId}, updateGlobalWmsLayerList);
     };
 
+    const setWmsLayerGroupOpened = (layerGroupId, isOpen) => {
+        globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'] = isOpen;
+    };
+
+    const setVisibilityWmsLayerGroup = (itemId, isVisible) => {
+        if (itemId in globalWmsLayerList.value['layers']) { // for recursive call
+            if (isVisible) {
+                showWmsLayer(itemId);
+            } else {
+                hideWmsLayer(itemId);
+            }
+        } else {
+            for (const childId of globalWmsLayerList.value['layer_groups'][itemId]['child_ids']) {
+                setVisibilityWmsLayerGroup(childId, isVisible);
+            }
+        }
+    };
+
     const moveWmsItem = (itemId, oldParentId, newParentId, position) => {
         socket.emit('move_wms_item', {
             item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
-        });
+        }, updateGlobalWmsLayerList);
     };
 
     const copyWmsItem = (itemId, newParentId, position) => {
         socket.emit('copy_wms_item', {
-            item_id: itemId,
-            new_parent_id: newParentId,
-            position: position
+            item_id: itemId, new_parent_id: newParentId, position: position
         }, updateGlobalWmsLayerList);
     };
 
@@ -205,6 +234,8 @@ export function useWmsLayers() {
         renameWmsLayerGroup,
         addWmsLayerGroup,
         removeWmsLayerGroup,
+        setWmsLayerGroupOpened,
+        setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem
     };
@@ -215,6 +246,7 @@ const removeLayerFromMapAndVisibleLayers = (layerId) => {
     if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
         removeWmsLegend();
     }
+    globalWmsLayerList.value['layers'][layerId].visible = false;
     removeFromVisibleLayerList(layerId);
 };
 
@@ -250,8 +282,8 @@ const removeWmsLegend = () => {
 const removeGroupChildrenFromMap = (layerGroupId) => {
     const group = globalWmsLayerList.value['layer_groups'][layerGroupId];
     for (const childId of group['child_ids']) {
-        if (childId in globalWmsLayerList.value['layer_groups'][layerGroupId]) {
-            removeGroupChildrenFromMap((childId));
+        if (childId in globalWmsLayerList.value['layer_groups']) {
+            removeGroupChildrenFromMap(childId);
         } else if (childId in globalWmsLayerList.value['layers']) {
             map.removeLayer(globalWmsLayerList.value['layers'][childId].layer_ref);
             removeFromVisibleLayerList(childId);

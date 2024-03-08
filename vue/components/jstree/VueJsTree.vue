@@ -72,11 +72,12 @@ onMounted(() => {
       check_callback: (operation, node, node_parent, node_position, more) =>
           props.checkCallBack(operation, node, node_parent, node_position, more),
       animation: 200,
-      multiple: false
+      multiple: false,
+      expand_selected_onload : false,
     },
     plugins: props.plugins,
     checkbox: {
-      "three_state": false,
+      "three_state": true,
       "whole_node": false,
       // uncouple selecting and checking
       "tie_selection": false

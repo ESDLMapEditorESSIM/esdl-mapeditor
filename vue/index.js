@@ -9,6 +9,7 @@ import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
 import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
+import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
@@ -140,6 +141,12 @@ window.activate_admin_settings = () => {
     mountApp(ActivityContextManagement, '#admin_dialog_window');
 }
 
+window.add_edit_wms_layer = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AddEditWmsLayer)
+}
+
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
@@ -158,7 +165,6 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
-
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
 createVueLControl(AssetsToBeAddedToolbar, {
