@@ -123,8 +123,6 @@ initTreeTypeSpecs()
  * - tree: the tree object.
  */
 function initTreeEvents() {
-  console.log("HELLO")
-  console.log(props.events)
   for (const [eventName, handler] of Object.entries(props.events)) {
     if (!eventsByEventName[eventName]) {
       eventsByEventName[eventName] = handler;

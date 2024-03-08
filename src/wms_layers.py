@@ -238,7 +238,7 @@ class WMSLayers:
 
     def add_wms_layer(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
         setting_type = SettingType(layer['setting_type'])
-        project_name = layer['project_name']
+        project_name = layer.get('project_name')
         identifier = self._get_identifier(setting_type, project_name)
         layer['visible'] = False  # make sure we don't save the visibility
         if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
