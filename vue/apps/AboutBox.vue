@@ -3,7 +3,7 @@
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-info-circle" aria-hidden="true" /></div>
     About...
   </a>
-  <a-modal v-model:visible="visible" title="About" width="750px">
+  <a-modal v-model:open="visible" title="About" width="750px">
     <template #footer>
       <a-button key="ok" type="primary" @click="handleOk">
         Ok

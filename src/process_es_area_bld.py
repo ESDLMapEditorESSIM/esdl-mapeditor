@@ -50,7 +50,7 @@ def get_area_id_from_mapeditor_id(id):
     :param id: id from the frontend
     :return: clean id (without ' (1 of 4)')
     """
-    if re.match(r".* ([0-9]+ of [0-9]+)", id):
+    if re.match(r".* \([0-9]+ of [0-9]+\)", id):
         return id.split()[0]
     else:
         return id

@@ -47,7 +47,6 @@ import './bridge.js';
 import Swal from "sweetalert2";
 import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
 
-
 // Vue.config.productionTip = false
 
 window.activate_service_workflow = async (serviceIndex, service, state) => {

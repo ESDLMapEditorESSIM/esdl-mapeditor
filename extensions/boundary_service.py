@@ -192,7 +192,7 @@ class BoundaryService:
 
             if not is_valid_boundary_id(identifier):
                 send_alert("Not a valid identifier. Try identifiers like PV27 (Noord-Holland) or GM0060 (Ameland)")
-                return
+                return False
 
             active_es_id = get_session('active_es_id')
             esh = get_handler()
@@ -417,13 +417,10 @@ class BoundaryService:
                             })
 
             set_session('shape_dictionary', shape_dictionary)
-            emit('geojson', {"layer": "area_layer", "geojson": area_list})
-            print('Ready processing boundary information')
-
-            # Process area information in ESDL again and send to frontend, as logical groups could be present now, and
-            # that requires recreation of the layer control dialog
-            # TODO: Fix circular import
-            # find_boundaries_in_ESDL(area)
+            # By returning True the frontend requests a full refresh of the ESDL. So the geojson doesn't need to be
+            # sent right here.
+            # emit('geojson', {"layer": "area_layer", "geojson": area_list})
+            return True
 
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, BOUNDARY_SERVICE_USER_CONFIG):
