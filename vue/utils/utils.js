@@ -34,3 +34,7 @@ export const intersection = (a, b) => a.filter((v) => b.includes(v));
 export const diff = (a, b) => a.filter((v) => !b.includes(v));
 export const symDiff = (a, b) => diff(a, b).concat(diff(b, a));
 export const union = (a, b) => diff(a, b).concat(b);
+
+export const camelCase = (str) => {
+    return window.camelCaseToWords(str);
+};
