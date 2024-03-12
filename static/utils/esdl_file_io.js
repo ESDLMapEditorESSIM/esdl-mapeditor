@@ -34,7 +34,7 @@ function read_esdl_file_as_array_buffer(file) {
     });
 }
 
-function loas_esdl_files(event) {
+function load_esdl_files(event) {
     var file = event.target.files[0];
 
     let files = [];
