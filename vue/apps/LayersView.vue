@@ -20,9 +20,10 @@
       v-if="treeData != null"
       direction="vertical"
     >
-      <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
-                   :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                   :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
+      <vue-js-tree
+        :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
+        :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+        :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleLayersView />
     </a-space>
@@ -136,10 +137,30 @@ const addTreeItem = (items, item, itemId, type, children) => {
   });
 }
 
+/**
+ * WMS Layer folder tree specification
+ * @type {LayerFolderTreeSpec}
+ *
+ * Represents the WMS layer folder tree specification for the jstree component.
+ */
 class LayerFolderTreeSpec {
   constructor() {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, true);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, false);
+      },
+      'open_node.jstree': function (e, data) {
+        setWmsLayerGroupOpened(data.node.id, true);
+      },
+      'close_node.jstree': function (e, data) {
+        setWmsLayerGroupOpened(data.node.id, false);
+      }
+    }
   }
 
   contextMenus(node, tree) {
@@ -190,11 +211,31 @@ class LayerFolderTreeSpec {
   }
 }
 
-class LayerTreeSpec {
+/**
+ * WMS Layer tree specification
+ * @type {WmsLayerTreeSpec}
+ *
+ * Represents the WMS layer tree specification for the jstree component.
+ */
+class WmsLayerTreeSpec {
   constructor() {
     this.type = "wms_layer";
     this.icon = 'fas fa-map';
     this.max_depth = 0;
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        showWmsLayer(data.node.id);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        hideWmsLayer(data.node.id)
+      },
+      'move_node.jstree':function (e, data) {
+        moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
+      },
+      'copy_node.jstree': function (e, data) {
+        copyWmsItem(data.original.id, data.node.parents[0], data.position);
+      },
+    }
   }
 
   contextMenus(node) {
@@ -231,93 +272,43 @@ class BaseLayerTreeSpec {
     this.type = "base_layer";
     this.icon = 'far fa-map';
     this.max_depth = 0;
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        const id = data.node.id;
+        // Single base layer selection
+        for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
+          if (checkedNode !== id) {
+            getTree().uncheck_node(checkedNode)
+          }
+        }
+        for (const baseLayer of baseLayerDefinitions) {
+          hideBaseLayer(baseLayer);
+        }
+
+        const baseLayer = getBaseLayerByLabel(id);
+        showBaseLayer(baseLayer);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        const id = data.node.id;
+        const baseLayer = getBaseLayerByLabel(id);
+        hideBaseLayer(baseLayer);
+      },
+    }
   }
 }
 
 // eslint-disable-next-line no-unused-vars
-const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new LayerTreeSpec];
+const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new WmsLayerTreeSpec];
 
-// TODO: Move into tree specs
-// eslint-disable-next-line no-unused-vars
-const eventHandlersByName = [{
-  eventName: 'ready.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'create_node.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'select_node.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'check_node.jstree',
-  handler: function (e, data) {
-    const type = data.node.type;
-    const id = data.node.id;
-    if (type === 'base_layer') {
-      // Single base layer selection
-      for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
-        if (checkedNode !== id) {
-          getTree().uncheck_node(checkedNode)
-        }
-      }
-      for (const baseLayer of baseLayerDefinitions) {
-        hideBaseLayer(baseLayer);
-      }
-      const baseLayer = getBaseLayerByLabel(id);
-      showBaseLayer(baseLayer);
-    } else if (type === 'wms_layer') {
-      showWmsLayer(id);
-    } else if (type === 'wms_layer_folder') {
-      setVisibilityWmsLayerGroup(id, true);
-    }
-  }
-}, {
-  eventName: 'uncheck_node.jstree',
-  handler: function (e, data) {
-    const type = data.node.type;
-    const id = data.node.id;
-    if (type === 'base_layer') {
-      const baseLayer = getBaseLayerByLabel(id);
-      hideBaseLayer(baseLayer);
-    } else if (type === 'wms_layer') {
-      hideWmsLayer(id);
-    } else if (type === 'wms_layer_folder') {
-      setVisibilityWmsLayerGroup(id, false);
-    }
-  }
-}, {
-  eventName: 'move_node.jstree',
-  handler: function (e, data) {
-    moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
-  },
-}, {
-  eventName: 'copy_node.jstree',
-  handler: function (e, data) {
-    copyWmsItem(data.original.id, data.node.parents[0], data.position);
-  },
-}, {
-  eventName: 'create_node.jstree',
-  handler: function (e, data) {
+const eventHandlersByName = {
+  'create_node.jstree': function (e, data) {
     getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
       if (isSuccessful && !isCancelled) {
         renameWmsLayerGroup(node.id, node.text);
       }
     });
   },
-}, {
-  eventName: 'open_node.jstree',
-  handler: function (e, data) {
-    setWmsLayerGroupOpened(data.node.id, true);
-  }
-}, {
-  eventName: 'close_node.jstree',
-  handler: function (e, data) {
-    setWmsLayerGroupOpened(data.node.id, false);
-  }
-}];
+}
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
@@ -386,12 +377,12 @@ function getBaseLayersControlTreeData() {
 
 <style lang="scss">
 #wms_layers_view {
-  padding: 8px 5px 8px 2px;
-  overflow-x: hidden;
+  //padding: 8px 5px 8px 2px;
+  //overflow-x: hidden;
   overflow-y: scroll;
-  width: 300px;
-  height: 100%;
-  resize: horizontal;
+  //width: 300px;
+  //height: 100%;
+  //resize: horizontal;
 
   .text-only {
     padding-left: 8px;

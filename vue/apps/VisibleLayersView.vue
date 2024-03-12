@@ -17,9 +17,10 @@
 <template>
   <a-card id="visible_layers_view">
     <h3>Visible WMS layers</h3>
-    <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-                 :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                 :check-call-back="checkCallBack"
+    <vue-js-tree
+      v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+      :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+      :check-call-back="checkCallBack"
     />
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
@@ -93,23 +94,15 @@ class MovableLayerTreeSpec {
 // eslint-disable-next-line no-unused-vars
 const treeTypeSpecs = [new MovableLayerTreeSpec()];
 
-// TODO: Move into tree specs
 // eslint-disable-next-line no-unused-vars
-const eventHandlersByName = [{
-  eventName: 'ready.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'move_node.jstree',
-  handler: function (e, data) {
+const eventHandlersByName = {
+  'move_node.jstree': function (e, data) {
     updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
-  }
-}, {
-  eventName: 'hover_node.jstree',
-  handler: function (e, data, treeElement) {
+  },
+  'hover_node.jstree': function (e, data, treeElement) {
     treeElement.attr("title", data.node.text);
   },
-}];
+}
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
