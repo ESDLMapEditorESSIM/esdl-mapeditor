@@ -1,6 +1,4 @@
 import { ref, watchEffect } from "vue";
-import {useSocketIO} from "./socketio"
-
 const showSidePane = ref(false);
 const activeTabs = ref({});
 

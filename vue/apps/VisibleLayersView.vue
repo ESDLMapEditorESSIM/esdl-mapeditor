@@ -18,7 +18,7 @@
   <a-card id="visible_layers_view">
     <h3>Visible WMS layers</h3>
     <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-                 :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
                  :check-call-back="checkCallBack"
     />
     <div v-else>
@@ -30,18 +30,13 @@
 <script setup>
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
-import VueJsTree from "../components/jstree/VueJsTree.vue";
+import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "../composables/socketio";
 import {useVisibleLayers} from "../composables/visibleLayers"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {
-  getVisibleLayerList,
-  updateDisplayOrderVisibleLayers,
-  hideVisibleLayer,
-  hideAllVisibleLayers
-} = useVisibleLayers();
+const {getVisibleLayerList, updateDisplayOrderVisibleLayers} = useVisibleLayers();
 
 // eslint-disable-next-line no-unused-vars
 const treeId = "visible_layer_tree"
@@ -69,47 +64,20 @@ class MovableLayerTreeSpec {
     this.icon = "fas fa-grip-lines";
     this.max_depth = 0;
   }
-
-  contextMenus(node, tree) {
-    return {
-      'hide_layer': {
-        'label': 'Hide layer',
-        'icon': 'fas fa-minus',
-        'action': function () {
-          hideVisibleLayer(node.id);
-        }
-      },
-      'hide_all_layers': {
-        'label': 'Hide all layers',
-        'icon': 'fas fa-minus-square',
-        'action': function () {
-          hideAllVisibleLayers();
-        }
-      }
-    }
-  }
 }
 
 // eslint-disable-next-line no-unused-vars
 const treeTypeSpecs = [new MovableLayerTreeSpec()];
 
-// TODO: Move into tree specs
 // eslint-disable-next-line no-unused-vars
-const eventHandlersByName = [{
-  eventName: 'ready.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'move_node.jstree',
-  handler: function (e, data) {
+const eventHandlersByName = {
+  'move_node.jstree': function (e, data) {
     updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
-  }
-}, {
-  eventName: 'hover_node.jstree',
-  handler: function (e, data, treeElement) {
+  },
+  'hover_node.jstree': function (e, data, treeElement) {
     treeElement.attr("title", data.node.text);
   },
-}];
+}
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
