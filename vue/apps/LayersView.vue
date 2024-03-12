@@ -20,9 +20,10 @@
       v-if="treeData != null"
       direction="vertical"
     >
-      <vue-js-tree :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
-                   :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                   :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
+      <vue-js-tree
+        :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
+        :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+        :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <VisibleLayersView />
     </a-space>
@@ -361,12 +362,12 @@ function getBaseLayersControlTreeData() {
 
 <style lang="scss">
 #wms_layers_view {
-  padding: 8px 5px 8px 2px;
-  overflow-x: hidden;
+  //padding: 8px 5px 8px 2px;
+  //overflow-x: hidden;
   overflow-y: scroll;
-  width: 300px;
-  height: 100%;
-  resize: horizontal;
+  //width: 300px;
+  //height: 100%;
+  //resize: horizontal;
 
   .text-only {
     padding-left: 8px;

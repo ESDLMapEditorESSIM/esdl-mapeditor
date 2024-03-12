@@ -15,7 +15,7 @@
   -->
 
 <template>
-  <div id="side_pane" :class="{side_pane_hidden: !showSidePane}">
+  <div id="side_pane">
     <ul class="tabs">
       <li
         v-for="tab in sidePaneTabs"
@@ -24,7 +24,7 @@
         <a @click="clickTab(tab.key);">
           <span :class="tab.icon" />
           <span
-            v-if="isActiveTab(tab.key)"
+            v-if="isActiveTab(tab.key) && showSidePane"
             style="font-weight:bold"
           > 
             {{ tab.title }}
@@ -35,7 +35,7 @@
         </a>
       </li>
     </ul>
-    <div id="tab_area">
+    <div id="tab-content" :class="{side_pane_hidden: !showSidePane}">
       <LayersView v-if="isActiveTab('WMS_Layers')" />
     </div>
   </div>
@@ -67,25 +67,29 @@ initTabs(sidePaneTabs);
   margin-right: 1px;
   border-right: 1px solid #efeff1;
   box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
-  transition: max-width .2s ease-in;
-  min-width: 200px;
-  max-width: 500px;
-  resize: horizontal;
 
-  &.side_pane_hidden {
-    min-width: 20px;
-    max-width: 20px;
+  #tab-content {
+    &.side_pane_hidden {
+      min-width: 0;
+      max-width: 0;
+    }
+    min-width: 200px;
+    max-width: 500px;
+    transition: max-width .2s ease-in;
+    overflow: scroll;
+    resize: horizontal;
   }
 
   ul.tabs {
+    min-width: 20px;
+    max-width: 20px;
     padding: 8px 0 0 0;
     margin: 0;
-    // This only works in Firefox, not Chrome.
-    //writing-mode: sideways-lr;
     text-align: right;
     border-right: 1px solid #efeff1;
     box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
     background-color: #ffeffe;
+    overflow: hidden scroll;
 
     li {
       display: block;
