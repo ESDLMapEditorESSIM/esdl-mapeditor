@@ -44,7 +44,8 @@ import ActiveLongProcess from './components/progress/ActiveProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
 import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
-
+import ResidentialArea from "./apps/ResidentialArea";
+import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
 
@@ -168,3 +169,5 @@ createVueLControl(AnnouceKPIsToolbar, {
 window.sectors_window = () => {
     mountSidebarComponent(Sectors);
 }
+
+mountApp(ResidentialArea, '#vue_test_edr_residential_area')

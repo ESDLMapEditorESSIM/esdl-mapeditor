@@ -50,7 +50,7 @@ const isLoading = ref(true);
 const { goToNextStep, getState } = useWorkflow();
 
 const doGetData = async () => {
-   schema.value = await workflowGetJsonForm(workflowStep.url, workflowStep.data.schema_name)
+  schema.value = await workflowGetJsonForm(workflowStep.url, workflowStep.data.schema_name)
   isLoading.value = false;
 }
 if (workflowStep.url) {

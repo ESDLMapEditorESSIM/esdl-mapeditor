@@ -455,9 +455,11 @@ function highlightAreaOrBuilding(e) {
         fillOpacity: 0.5
     });
 
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
+    // Disable for RvE ESDL with DSO service areas and CBS areas
+    // Maybe this should be default behaviour
+    // if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+    //     layer.bringToFront();
+    // }
 
     layer.openPopup();
 }
@@ -570,7 +572,7 @@ function create_area_pie_chart(ar, size) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
         let keys = Object.keys(ar.properties.dist_KPIs);
 
-        // create pieChartMwrkers for all DistributionKPIs
+        // create pieChartMarkers for all DistributionKPIs
         for (let j=0; j<keys.length; j++) {
             let key = keys[j];
 
@@ -654,6 +656,9 @@ function resize_area_pi_charts() {
 }
 
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
+
+    console.log(area_data);
+
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
         group_name: group_name,
@@ -661,6 +666,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
+                console.log(layer);
                 let area_size = calculate_area_size(layer);
                 create_area_pie_chart(feature, area_size);
 

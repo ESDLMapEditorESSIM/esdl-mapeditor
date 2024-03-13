@@ -82,7 +82,7 @@ from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
-    find_area_location_based
+    find_area_location_based, calc_building_assets_location
 from src.shape import Shape
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_long_version
@@ -97,6 +97,7 @@ from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
 from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
+from extensions.residential_area.residential_area import ResidentialArea
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -205,6 +206,7 @@ ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
+ResidentialArea(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -1899,6 +1901,8 @@ def process_command(message):
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else:
+                    # Calculate location of building assets if building comes from EDR
+                    calc_building_assets_location(asset)
                     # Update drop down list with areas and buildings
                     add_bld_to_area_bld_list(asset, area_bld_id, area_bld_list)
                     emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
