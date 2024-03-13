@@ -8,7 +8,7 @@ module.exports = {
     'eslint:recommended'
   ],
   parserOptions: {
-    parser: 'babel-eslint'
+    parser: '@babel/eslint-parser'
   },
   rules: {
     'vue/singline-html-element': 'off',
@@ -16,6 +16,8 @@ module.exports = {
     'vue/max-attributes-per-line': 'off',
     'vue/no-unused-components': 'warn',
     'no-unused-vars': 'warn',
+    'vue/multi-word-component-names': 'off',
+    'vue/no-mutating-props': 'warn',
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
   }

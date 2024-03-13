@@ -1,6 +1,11 @@
 const webpack = require("webpack");
 
 module.exports = {
+  transpileDependencies: [
+    '@jsonforms/core',
+    '@jsonforms/vue',
+    '@jsonforms/vue-vanilla',
+  ],
   configureWebpack: (config) => {
     if (process.env.NODE_ENV === 'development') {
       config.devtool = 'eval-source-map';

@@ -85,8 +85,8 @@
     <!-- Edwin: Load JQuery-ui after bootstrap to prevent errors with tooltip -->
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
-    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/themes/default/style.min.css" />
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.min.js"></script>
 
     <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
@@ -561,6 +561,8 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+                window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
+                auth_status(true); // Check immediately if we have an autorized session
             });
 
             socket.on('user_info', function(ui) {
@@ -1447,7 +1449,7 @@
 
 </head>
 <body class="flexbox-parent">
-    <div class="flexbox-item topmenu">
+    <div class="topmenu">
         <div class="header">
             <div class="header-logo" ><img src="favicon.ico" height="20"></div>
             <div class="header-title" ><b>ESDL Map Editor - </b></div>
@@ -1630,7 +1632,7 @@
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
-            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" onclick="this.value=null;" multiple>
+            <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
 
 {% if edr_enabled %}
@@ -1646,7 +1648,11 @@
             <select id="area_bld_select"></select>
         </div>
     </div>
-    <div id="mapid" class="flexbox-item flexbox-item-grow" style="z-index:10"></div>
+
+    <div class="flexbox-content">
+        <div id="vue_side_pane_root"></div>
+        <div id="mapid" class="flexbox-item-grow" style="z-index:10"></div>
+    </div>
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
@@ -1774,8 +1780,8 @@
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
         var ass_name = assets_for_icons[i];
-        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png'}});
+        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(15, 15),
+            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png', className: 'leaflet-no-mouse-cursor'}});
     }
 
     sidebar = L.control.sidebar('sidebar', {
@@ -1833,6 +1839,9 @@
 
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
+<script>
+window.DEBUG = true;
+</script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>

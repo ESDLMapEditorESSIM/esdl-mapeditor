@@ -9,6 +9,7 @@ import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
+import AddEditWmsLayer from './apps/AddEditWmsLayer';
 import Carriers from './apps/Carriers.vue';
 import Sectors from './apps/Sectors.vue';
 import AboutBox from './apps/AboutBox';
@@ -40,6 +41,7 @@ import {useAssetFeedbackList} from './composables/assetFeedback';
 import {useTooltipInfo} from './composables/TooltipInfo';
 import AssetTooltip from './apps/AssetTooltip';
 import ActiveLongProcess from './components/progress/ActiveProcess'
+import SidePane from "./apps/SidePane"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -134,6 +136,13 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
+window.add_edit_wms_layer = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AddEditWmsLayer)
+}
+
+
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
@@ -149,6 +158,7 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+mountApp(SidePane, '#vue_side_pane_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
