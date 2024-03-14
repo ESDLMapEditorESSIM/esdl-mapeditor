@@ -377,7 +377,7 @@ function getBaseLayersControlTreeData() {
 
 <style lang="scss">
 #wms_layers_view {
-  overflow-y: scroll;
+  overflow-y: auto;
 
   .text-only {
     padding-left: 8px;

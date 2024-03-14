@@ -28,6 +28,7 @@ const props = defineProps({
 
 const workflowStep = props.workflowStep;
 
+const button_name = workflowStep["button_name"];
 const dom_elements = workflowStep["dom_elements"];
 const hidden_elements = [];
 for (const [id, state_param_name] of Object.entries(dom_elements)) {

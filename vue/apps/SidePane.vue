@@ -76,7 +76,7 @@ initTabs(sidePaneTabs);
     min-width: 200px;
     max-width: 500px;
     transition: max-width .2s ease-in;
-    overflow: scroll;
+    overflow: auto;
     resize: horizontal;
   }
 
@@ -89,7 +89,6 @@ initTabs(sidePaneTabs);
     border-right: 1px solid #efeff1;
     box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
     background-color: #ffeffe;
-    overflow: hidden scroll;
 
     li {
       display: block;
