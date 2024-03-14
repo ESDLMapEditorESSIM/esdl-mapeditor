@@ -11,6 +11,8 @@ class ActivityContext:
     """
     activity_id: str
     name: str
+    workflow: str | None
+    is_global: bool | None
     wms_layers: list[str]
     context_services: list[str]
     # _id: ObjectId | None = None

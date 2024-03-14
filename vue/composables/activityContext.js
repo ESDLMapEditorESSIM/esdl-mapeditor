@@ -36,10 +36,23 @@ export function useActivityContext() {
      */
     function activateActivityContext(activityContext) {
         activeActivityContext.value = activityContext;
+
+        // Clear the WMS layers and add the layers from the activity context.
+        if (activityContext.workflow) {
+            for (let i=0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i].name === activityContext.workflow) {
+                    window.show_service_settings(i)
+                }
+            }
+        }
+
+        // Clear the WMS layers and add the layers from the activity context.
         clearWmsLayers()
         for (const layer of activityContext.wms_layers) {
             showWmsLayer(layer)
         }
+
+        // Add the services to the context menus.
         const contextServices = activityContext.context_services;
         if (contextServices) {
             // For each contextService, find the corresponding service in the esdl_services_information.

@@ -43,7 +43,8 @@ class ActivityContextExtension:
             context_ids = self.settings_storage.get_for_current_user(ACTIVITY_CONTEXTS_SETTING, default=[])
             # Get the actual activity contexts by querying mongodb for all entries with the given ids.
             db = get_database()
-            activity_contexts = db.activity_contexts.find({"activity_id": {"$in": context_ids}})
+            # Find all activity contexts with the given ids, and also get all contexts with global set to True
+            activity_contexts = db.activity_contexts.find({"$or": [{"activity_id": {"$in": context_ids}}, {"is_global": True}]})
             json_result = json_util.dumps(activity_contexts)
             return json_result
 

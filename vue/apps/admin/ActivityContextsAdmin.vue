@@ -5,6 +5,8 @@
       <a-input v-model:value="newActivityContextID" type="text" placeholder="ID" />
       <a-input v-model:value="newActivityContextName" type="text" placeholder="Name" />
       <a-textarea v-model:value="newWmsLayers" :rows="4" placeholder="WMS layers (comma-separated)" />
+      <a-input v-model:value="newWorkflow" type="text" placeholder="Workflow" />
+      <a-checkbox v-model:checked="newIsGlobal">Global</a-checkbox>
       <a-space direction="horizontal">
         <a-button type="primary" @click="saveActivityContext">
           Save
@@ -23,6 +25,9 @@
           <a v-for="layer in record.wms_layers" :key="layer">{{ layer }}</a>
         </a-space>
       </template>
+      <template v-else-if="column.key === 'is_global'">
+        <a-checkbox :checked="record.is_global" disabled />
+      </template>
       <template v-else-if="column.key === 'actions'">
         <a-button @click="deleteActivityContext(record.activity_id)">Delete</a-button>
       </template>
@@ -38,6 +43,8 @@ const activityContexts = ref([]);
 const newActivityContextID = ref('');
 const newActivityContextName = ref('');
 const newWmsLayers = ref('');
+const newWorkflow = ref('');
+const newIsGlobal = ref(false);
 
 const get_activity_contexts = async () => {
   const response = await fetch('/admin/context/activities')
@@ -63,6 +70,16 @@ const columns = [
     key: 'wms_layers',
   },
   {
+    title: 'Workflow',
+    dataIndex: 'workflow',
+    key: 'workflow',
+  },
+  {
+    title: 'Global',
+    dataIndex: 'is_global',
+    key: 'is_global',
+  },
+  {
     title: 'Actions',
     key: 'actions',
   }
@@ -84,12 +101,14 @@ const deleteActivityContext = async (id) => {
 const saveActivityContext = async () => {
   console.log('Save activity context', newActivityContextName.value)
   const wmsLayers = newWmsLayers.value.split(",")
+  const workflow = newWorkflow.value || null;
+  const isGlobal = newIsGlobal.value;
   const response = await fetch('/admin/context/activities', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({activity_id: newActivityContextID.value, name: newActivityContextName.value, wms_layers: wmsLayers, context_services: []})
+    body: JSON.stringify({activity_id: newActivityContextID.value, name: newActivityContextName.value, wms_layers: wmsLayers, context_services: [], workflow: workflow, is_global: isGlobal})
   })
   if (!response.ok) {
     console.error('Error saving activity context', response)
