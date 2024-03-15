@@ -23,7 +23,7 @@ from uuid import uuid4
 
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 import src.settings as settings
 import src.log as log
@@ -59,8 +59,8 @@ class ETMInterface:
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
             active_es_id = get_session('active_es_id')
-            esh = get_handler()
-            area = esh.get_by_id(active_es_id, area_id)
+            pm = get_project_manager()
+            area = pm.get_by_id(active_es_id, area_id)
 
             emit("update-etm-query-log", f"Requested ETM Sankey data for {area.name} ({area.id})")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
@@ -79,7 +79,7 @@ class ETMInterface:
                                 etm_sankey_data = self.request_sankey_info_municipality(sub_area.id)
                                 if etm_sankey_data:
                                     at_least_one_etm_query_succeeded = True
-                                    self.process_data_and_add_to_area(esh, active_es_id, sub_area, etm_sankey_data)
+                                    self.process_data_and_add_to_area(pm, active_es_id, sub_area, etm_sankey_data)
                                 else:
                                     emit("update-etm-query-log", f"- ETM scenario for {sub_area.name} could not be created")
                             else:
@@ -98,7 +98,7 @@ class ETMInterface:
             else:
                 etm_sankey_data = self.request_sankey_info_municipality(area_id)
                 if etm_sankey_data:
-                    self.process_data_and_add_to_area(esh, active_es_id, area, etm_sankey_data)
+                    self.process_data_and_add_to_area(pm, active_es_id, area, etm_sankey_data)
                     emit("update-etm-query-log", "Done")
                     return True
                 else:
@@ -158,8 +158,8 @@ class ETMInterface:
                 logger.error(f"Response code: {response.status_code}")
                 return None
 
-    def process_data_and_add_to_area(self, esh, active_es_id, area, etm_sankey_data):
-        es = esh.get_energy_system(es_id=active_es_id)
+    def process_data_and_add_to_area(self, pm, active_es_id, area, etm_sankey_data):
+        es = pm.get_energy_system(es_id=active_es_id)
 
         etm_sankey = ETMSankeyToESDL(etm_sankey_data)
         etm_sankey.add_carriers_and_sectors(es)

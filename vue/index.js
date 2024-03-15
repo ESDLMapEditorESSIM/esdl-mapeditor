@@ -43,7 +43,6 @@ import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesT
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
-import SidePane from './apps/SidePane';
 import ActiveLongProcess from './components/progress/ActiveProcess'
 import SidePane from "./apps/SidePane"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
@@ -160,7 +159,7 @@ window.show_new_release_notes = () => {
 }
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
-createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
+mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 // const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
@@ -171,19 +170,18 @@ const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 // });
 // mapEditorDialog._handleMinimize();
 // undoRedoMapEditorDialog.value = mapEditorDialog;
-createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control')
+mountApp(ToggleShowUndoRedoControl, '#vue_toggle_show_undo_redo_control')
 
 createVueLControl(AssetDrawToolbar, {});
-createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+mountApp(ToggleShowAssetDrawToolbar, '#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
 
-createApp(ToggleProjectView).mount('#vue_toggle_show_project_view')
-createApp(LoadProjectFileButton).mount('#vue_load_project_file')
-createApp(SidePane).mount('#vue_side_pane_root')
+mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
+mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
 createVueLControl(AssetsToBeAddedToolbar, {
-        position: 'bottomright',
-    });
+    position: 'bottomright',
+});
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');

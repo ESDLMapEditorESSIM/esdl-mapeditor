@@ -17,7 +17,7 @@
 <template>
   <div id="project_view">
     <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
-                 :data="treeData" :event-handlers-by-name="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
     />
     <div v-else>
       <p class="text-only">No project loaded.</p>
@@ -283,13 +283,10 @@ class BaseLayerTreeSpec {
 const treeTypeSpecs = [new ProjectTreeSpec(), new VariantTreeSpec(), new BaseLayerTreeSpec()];
 
 // TODO: Move into tree specs
-const eventHandlersByName = [{
-  eventName: 'ready.jstree',
-  handler: function () {
-  }
-}, {
-  eventName: 'select_node.jstree',
-  handler: function (e, data, treeElement) {
+const eventHandlersByName = {
+  'ready.jstree': function () {
+  },
+  'select_node.jstree': function (e, data, treeElement) {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
@@ -300,10 +297,8 @@ const eventHandlersByName = [{
         socket.value.emit("set_active_variant", {id: original.id});
       }
     }
-  }
-}, {
-  eventName: 'check_node.jstree',
-  handler: function (e, data) {
+  },
+  'check_node.jstree': function (e, data) {
     console.log("Checking node");
     const type = data.node.type;
     const original = data.node.original;
@@ -318,10 +313,8 @@ const eventHandlersByName = [{
       const baseLayer = getBaseLayerByLabel(original.text);
       showBaseLayer(baseLayer);
     }
-  }
-}, {
-  eventName: 'uncheck_node.jstree',
-  handler: function (e, data) {
+  },
+  'uncheck_node.jstree': function (e, data) {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
@@ -331,7 +324,7 @@ const eventHandlersByName = [{
       hideBaseLayer(baseLayer);
     }
   }
-}];
+};
 
 function get_base_layers_control_tree_data() {
   let children = [];
