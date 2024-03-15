@@ -60,7 +60,7 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     tracker.stack.start_recording(label=hlc.label)
     for change in hlc.change:
         pm.processChange(change, es.eResource)
-    tracker.stack.stop_recording(call_on_change_handler=False)
+    tracker.stack.stop_recording(call_change_handler=False)
 
     global local_app
 

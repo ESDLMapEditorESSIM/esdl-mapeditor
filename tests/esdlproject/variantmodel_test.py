@@ -3,11 +3,11 @@ from uuid import uuid4
 
 from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet
-from pyecore.resources.json import JsonResource
 
 from esdl import EnergySystem, Pipe, Instance, Area, InPort, OutPort
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing.string_uri import StringURI
+from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker
 from esdlproject import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set

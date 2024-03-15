@@ -16,13 +16,12 @@ from datetime import datetime
 import threading
 import time
 
-from pyecore.resources.json import JsonResource
-
 import src.log as log
 import os, glob
 
 from esdl.processing.string_uri import StringURI
-from esdlproject.ProjectManager import ProjectManager
+from esdl.resources.json import JsonResource
+from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from esdlproject.actions import actionToHighlevelChange
 from esdlproject.encoders import DateTimeEncoder
 from src.tno.events.messages import HighLevelChangeMessage
@@ -65,19 +64,36 @@ CLEANUP_INTERVAL = 60*60  # every hour
 #     set_session(ESH_KEY, esh)
 
 def on_change_recorded(action):
+    """
+    This function is called when a change is recorded on the UndoRedoCommandStack by adding this function
+    as call back function to the ProjectManager's change listeners (see get_project_manager()).
+    It will convert the action to a high level change (see ESDLProject ecore model) and serializes
+    this to json to send to interested live models.
+
+    Parameters
+    ----------
+    action A LabelledAction
+
+    Returns
+    -------
+
+    """
     pm = get_project_manager()
     pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
     hlc = actionToHighlevelChange(action)
     print(hlc)
 
-    uri = StringURI("test.json")
-    resource = pm.rset.create_resource(uri)
-    resource.append(hlc)
-    options = dict()
-    options['encoder'] = DateTimeEncoder
-    resource.save(options=options)
-    hlc_string = uri.getvalue()
+    options = {'encoder': DateTimeEncoder, 'indent': 2}
+    hlc_string = eobject_to_string(hlc, ESDLFormat.JSON, options=options)
+
+    # uri = StringURI("high_level_change.json")
+    # resource = pm.rset.create_resource(uri)
+    # resource.append(hlc)
+    # options = dict()
+    # options['encoder'] = DateTimeEncoder
+    # resource.save(options=options)
+    # hlc_string = uri.getvalue()
 
     user_email = get_session('user-email')
     client_id = session['client_id']
@@ -102,12 +118,15 @@ def get_project_manager() -> ProjectManager:
             logger.debug('Retrieve pm client_id={}'.format(client_id))
         else:
             logger.warning('No Project Manager in session. Returning empty project manager')
-            pm = ProjectManager(on_change_recorded=on_change_recorded)
+            #pm = ProjectManager(on_change_recorded=on_change_recorded)
+            pm = ProjectManager()
+            pm.add_change_listener("session_manager", on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
         logger.warning('Session has timed-out. Returning empty project manager')
-        pm = ProjectManager(on_change_recorded=on_change_recorded)
+        pm = ProjectManager()
+        pm.add_change_listener("session_manager", on_change_recorded)
         set_project_manager(pm)
         return pm
 

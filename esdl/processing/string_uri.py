@@ -24,7 +24,7 @@ class StringURI(URI):
     reading the resource, so that the resource set can read in the energy system from
     memory.
     """
-    def __init__(self, uri: URI, text=None):
+    def __init__(self, uri: str, text=None):
         """
         Creates a new URI that can contain a string.
         This class is used to convert/parse ESDL strings to resources and classes.

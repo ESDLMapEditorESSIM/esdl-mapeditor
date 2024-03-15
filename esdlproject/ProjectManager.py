@@ -8,13 +8,12 @@ from uuid import uuid4
 
 from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
 from pyecore.resources import ResourceSet, URI, Resource
-from pyecore.resources.json import JsonResource
 from pyecore import commands as pyecore_commands
-from pyecore.resources.json import JsonResource
 
 from esdl import EnergySystem, esdl, support_functions
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
+from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
 from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
@@ -79,134 +78,6 @@ def get_variant_collection_index(variantCollection: VariantCollection) -> int:
     )
 
 
-def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
-    """
-    Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
-
-    :param action: the action to convert
-    :param variant: the variant to store the changes in
-
-    :return: a list of changes
-    """
-    print(f"Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})")
-    hlc = actionToHighlevelChange(action, variant.lastChanged)
-    if hlc:
-        variant.change.append(hlc)
-    variant.lastChanged = datetime.now()
-
-
-def actionToHighlevelChange(action: LabelledAction, last_changed: datetime) -> Optional[HighLevelChange]:
-    """
-    Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
-
-    :param action: the action to convert
-    :param last_changed: time to test if this action is already processed
-
-    :return: a list of changes
-    """
-    if last_changed is not None and action.created < last_changed:
-        print(f"Action  {action.label} already part of changes, ignoring")
-        return None
-    print(f"Converting LabelledAction {action.label} )")
-    hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
-    change_list = []
-
-    for command in action:
-        command: pyecore_commands.AbstractCommand
-        change = None
-        print(f"------ Handling {command}")
-        if isinstance(command, pyecore_commands.Add):
-            if isinstance(command.value, EObject):  # could also be a numeric change or string change
-                if command.feature.containment:  # isinstance(command.feature, EReference):
-                    # value = command.value.serialized_deepcopy(resource=self.active_resource) #clone()
-                    value, x_ref_changes = deepcopy_eobject_change(command.value)
-                    # TODO make deepcopy() work
-                    change = Add(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        objectValue=value,
-                    )
-                    change_list.extend(x_ref_changes)
-                else:
-                    # this is a x-reference, zo add it to the changeList, to add it as last, otherwise
-                    # some x-ref targets might not be available when deserializing
-                    print(f"convertActionToVariantChanges(): using ref for {command.value} to "
-                          f"{command.value.eURIFragment()} ")
-                    change = Add(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        stringValue=command.value.eURIFragment(),
-                    )
-                    change_list.append(change)
-                    change = None
-            else:
-                # TODO add numbers/enums to list
-                print(f"TODO Add: convert {command.value} to something")
-
-        # variant.changes.append(change)
-        if isinstance(command, pyecore_commands.Set):
-            if isinstance(command.value, EObject) or \
-                    isinstance(command.previous_value, EObject):  # could also be a numeric change or string change
-                if command.feature.containment:
-                    value, x_ref_changes = deepcopy_eobject_change(command.value)
-                    change = Set(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        objectValue=value,
-                    )
-                    change_list.extend(x_ref_changes)
-                else:
-                    if command.value:
-                        print(
-                            f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ")
-                        refValue = command.valueURIFragment  # command.value.eURIFragment() -> See undo.py:243
-                    else:
-                        refValue = ""
-                    change = Set(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        stringValue=refValue,
-                    )
-            else:  # enums / strings / numbers
-                previousValue = None
-                if command.value is None:
-                    stringValue = ""
-                else:
-                    stringValue = command.feature.eType.to_string(command.value)
-                if command.previous_value:
-                    previousValue = command.feature.eType.to_string(command.previous_value)
-                change = Set(
-                    ownerFragment=command.owner.eURIFragment(),
-                    feature=command.feature.name,
-                    stringValue=stringValue,
-                    previousValue=previousValue,
-                )
-
-        if isinstance(command, pyecore_commands.Remove):
-            if isinstance(command.value, EObject):  # could also be a numeric change or string change
-                if command.feature.containment:
-                    change = Delete(ownerFragment=command.refURIFragment)  # see undo.py:289
-                else:
-                    # owner = command.owner.eURIFragment()
-                    owner = command.ownerFragment
-                    ref = command.refURIFragment
-                    change = Remove(
-                        ownerFragment=owner,
-                        feature=command.feature.name,
-                        stringValue=ref,
-                    )
-
-        if change:  # in case of x-ref: add it to the changeList instead directly in this list
-            hlc.change.append(change)
-
-    if len(change_list) > 0:  # add last, to make sure that x-ref targets are present
-        cleanedChangeList = filterDoubleConnectedTo(change_list)
-        print(f"------ Adding cross-references of size {len(cleanedChangeList)}, "
-            f"(removed {len(change_list) - len(cleanedChangeList)} duplicates)")
-        hlc.change.extend(cleanedChangeList)  # add x-references from deepcopy()
-
-    return hlc
-
 class ProjectManager:
     """
     Class that manages the project and its variants. It is responsible for loading and saving the project,
@@ -225,6 +96,7 @@ class ProjectManager:
     change_tracker: Final[ChangeTracker]
     # The currently selected variant to which changes should be applied.
     active_variant: Optional[Variant]
+    change_listeners = dict()
 
     lock = threading.Lock()
 
@@ -232,7 +104,7 @@ class ProjectManager:
 
     # undoredo_stack: UndoRedoCommandStack
 
-    def __init__(self, uri: URI = None, on_change_recorded = None):
+    def __init__(self, uri: URI = None):
         """
         Creates a new project manager with an empty project.
         If using uri to load a project, use StringURI(uri, text) to load a text string
@@ -240,7 +112,7 @@ class ProjectManager:
         patch_esdl()
 
         self.rset = ResourceSet()
-        self.change_tracker = ChangeTracker(on_change_recorded=on_change_recorded)
+        self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
         # self.base_variant_resources = []
         self.rset.resource_factory["esdl"] = XMLResource
@@ -266,6 +138,35 @@ class ProjectManager:
             active_tracker = self.change_tracker.newTracker(variant_snapshot)
         return active_tracker
 
+    def add_change_listener(self, listener_id: str, call_back_fun):
+        """
+        Adds a listener to changes of ProjectManager's managed resources by informing listeners of changes
+        to the UndoRedoCommandStack
+        Parameters
+        ----------
+        listener_id - string to uniquely identify a listener
+        call_back_fun - function to call when a change is detected.
+        """
+        self.change_listeners[listener_id] = call_back_fun
+
+    def remove_change_listener(self, listener_id):
+        """ Remove listener_id from the list of listeners"""
+        if listener_id in self.change_listeners:
+            del self.change_listeners[listener_id]
+        else:
+            print(f"Cannot remove change listener with id={listener_id}")
+
+    def change_handler(self, action: LabelledAction):
+        """
+        Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
+        Parameters
+        ----------
+        action LabelledAction
+        """
+        for listener_id, call_back_fun in self.change_listeners.items():
+            print(f"Change detected, informing {listener_id}")
+            call_back_fun(action)
+
     def init_empty_project(self,
                            es_name="New Energy System",
                            es_description=None,
@@ -280,6 +181,7 @@ class ProjectManager:
         for key, value in dict(self.rset.resources).items():
             del self.rset.resources[key]
         self.change_tracker.reset()  # reset changetracker
+        self.change_listeners.clear() # reset listeners
         self.project_resource = self.rset.create_resource(StringURI("Untitled ESDL project.project"))  # type: ignore
         self.project_resource.type = ProjectManagerResourceType.PROJECT
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
@@ -996,11 +898,12 @@ class ProjectManager:
     def debug(self):
         print('ProjectManager debug:')
         print('All resources: ', self.rset.resources)
-        for key, value in self.rset.resources.items():
-            if isinstance(value.contents[0], esdl.EnergySystem):
-                print(f"resource: {key} ({value.type.name}): es_name={value.contents[0].name}, id={value.contents[0].id}")
+        for uri, resource in self.rset.resources.items():
+            rs_type = resource.type.name if resource.type else None
+            if isinstance(resource.contents[0], esdl.EnergySystem):
+                print(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
             else:
-                print(f"resource: {key} ({value.type.name}): resource_root={value.contents[0]}")
+                print(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
@@ -1051,16 +954,27 @@ def resource_as_string(resource: Resource):
 class ESDLFormat(Enum):
     XML = XMLResource
     JSON = JsonResource
-def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML):
-    """"
-    Converts any eObject (and its contents) to a string
 
+
+def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, options: dict = None):
     """
+    Converts any eObject (and its contents) to a string.
+
+    Uses eobject.deepcopy() to make sure the eObject won't be moved to another Resource (default Ecore behavior)
+
+    Parameters
+    ----------
+    eobject : any eobject than needs to be serialized (e.g. a part of an ESDL or a full EnergySystem)
+    format : one of ESDLFormat.XML or ESDLFormat.JSON as serialization format
+    options : dictionary with options passed to resource.save()
+    """
+    if options is None:
+        options = dict()
     deepcopy = eobject.deepcopy()
     string_uri = StringURI('variant1_output_shapshot.esdl')
     resource = format.value(string_uri)
     resource.append(deepcopy)
-    resource.save()
+    resource.save(options=options)
     return string_uri.getvalue()
 
 

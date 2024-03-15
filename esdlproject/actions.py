@@ -14,6 +14,7 @@
 
 from collections import UserList
 from datetime import datetime
+from typing import Optional
 
 from pyecore.commands import Command
 from pyecore.ecore import EObject
@@ -60,7 +61,6 @@ class LabelledAction(Command, UserList):
     def __repr__(self):
         return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
-
 def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
     """
     Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
@@ -71,19 +71,24 @@ def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
     :return: a list of changes
     """
     print(f"Converting LabelledAction {action.label} to changes in variant {variant.name} ({variant.eURIFragment()})")
-    hlc = actionToHighlevelChange(action)
-    variant.change.append(hlc)
+    hlc = actionToHighlevelChange(action, variant.lastChanged)
+    if hlc:
+        variant.change.append(hlc)
+    variant.lastChanged = datetime.now()
 
 
-def actionToHighlevelChange(action: LabelledAction) -> HighLevelChange:
+def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = None) -> Optional[HighLevelChange]:
     """
     Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
 
     :param action: the action to convert
-    :param variant: the variant to store the changes in
+    :param last_changed: time to test if this action is already processed
 
     :return: a list of changes
     """
+    if last_changed is not None and action.created < last_changed:
+        print(f"Action  {action.label} already part of changes according to last_changed value, ignoring")
+        return None
     print(f"Converting LabelledAction {action.label} )")
     hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
     change_list = []

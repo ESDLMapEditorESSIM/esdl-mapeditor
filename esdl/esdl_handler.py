@@ -161,7 +161,8 @@ class EnergySystemHandler(): #EnergyProjectHandlerMixin):
             # set to False, otherwise all the ids are added again after loading, is not smart and is slow
             # is only here to make sure the id of the energy system is also in the uuid_dict
             self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
-            self.change_tracker.newTracker(self.energy_system)
+            # don't track changes for resources not in the main ResourceSet
+            # self.change_tracker.newTracker(self.energy_system)
             return self.energy_system, parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))

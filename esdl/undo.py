@@ -32,14 +32,15 @@ class UndoRedoCommandStack(CommandStack):
     Creates a undo and redo command stack for ESDL documents
     Default maximum length of the stack is 100 (Labelled)Actions or Commands
     Use -1 to create an unlimited stack.
+    change_handler is a call back function that receives a LabeledAction when a new change is generated
     """
-    def __init__(self, max_stack_length: int = 100, on_change_recorded = None):
+    def __init__(self, max_stack_length: int = 100, change_handler = None):
         self._recording = False
         self._combineCommands = True
         self.compound = None
         self.max_stack_length = max_stack_length
         self.lastChanged: datetime = datetime.min
-        self.on_change_recorded = on_change_recorded
+        self.change_handler = change_handler
         super().__init__()
 
     def start_recording(self, combineCommands: bool = True, label: str = None):
@@ -64,18 +65,17 @@ class UndoRedoCommandStack(CommandStack):
     def continue_recording(self):
         self._recording = True
 
-    def stop_recording(self, call_on_change_handler=True):
+    def stop_recording(self, call_change_handler=True):
         print("=== stop recording =====================================")
         self._combineCommands = False
         if self.compound is not None and len(self.compound) > 0:
             self.append(self.compound)
 
-            # Edwin changed
-            # TODO: check why this is needed
-            print(self.compound)
-            print(self.top)
-            if self.on_change_recorded and call_on_change_handler:
-                self.on_change_recorded(self.top)
+            # Notify listeners in ProjectManger of this change
+            print('undo.py stop recording: self.compound:', self.compound)
+            print('undo.py stop recording: self.top:', self.top)
+            if self.change_handler and call_change_handler:
+                self.change_handler(self.top)
 
             self.compound = None
         self._recording = False
@@ -313,9 +313,9 @@ class Tracker:
 
 
 class ChangeTracker:
-    def __init__(self, on_change_recorded = None):
+    def __init__(self, change_handler = None):
         self.trackers = []
-        self.on_change_recorded = on_change_recorded
+        self.change_handler = change_handler
 
     def newTracker(self, eobj: EObject = None, resource: Resource = None) -> Tracker:
         if eobj:
@@ -325,8 +325,8 @@ class ChangeTracker:
         else:
             raise Exception("Can't create new tracker: Resource is None")
 
-        print("Tracking changes for resource with URI {}".format(resource.uri.plain))
-        stack = UndoRedoCommandStack(on_change_recorded=self.on_change_recorded)
+        print("undo.py: Tracking changes for resource with URI {}".format(resource.uri.plain))
+        stack = UndoRedoCommandStack(change_handler=self.change_handler)
         ro = ResourceObserver(command_stack=stack)
         ro.observe(resource)
         tracker: Tracker = Tracker(resource, stack, ro)
@@ -383,6 +383,7 @@ class ChangeTracker:
         """
         for t in list(self.trackers):
             t:Tracker
+            # make sure all references to stack items are removed.
             t.stack.stack.clear()
             t.resource = None
             t.observer = None

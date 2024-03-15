@@ -11,22 +11,18 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from enum import Enum
 
-from pyecore.ecore import EObject
-from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
-from lxml.etree import QName, Element, ElementTree
 import logging
 
+from lxml.etree import QName, Element, ElementTree
+from pyecore.ecore import EObject
+from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
+
+from esdl.resources.resource_type import ProjectManagerResourceType
 
 logger = logging.getLogger(__name__)
 
-class ProjectManagerResourceType(Enum):
-    UNKNOWN = 0,
-    PROJECT = 1,
-    VARIANT_COLLECTION = 2
-    SNAPSHOT = 3
-    ENERGY_SYSTEM = 4
+
 
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.

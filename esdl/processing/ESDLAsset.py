@@ -225,7 +225,7 @@ def get_potentials_list():
 
 
 def load_asset_from_string(esdl_string):
-    uri = StringURI('from_string.esdl', esdl_string)
+    uri = StringURI('load_asset_from_string.esdl', esdl_string)
     # self._new_resource_set()
     rset = ResourceSet()
     resource = rset.create_resource(uri)
