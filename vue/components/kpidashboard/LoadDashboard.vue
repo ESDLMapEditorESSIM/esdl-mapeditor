@@ -3,7 +3,7 @@
     <a-button type="primary" @click="showModal">
       <i :class="load_dashboard_icon" />
     </a-button>
-    <a-modal v-model:visible="visible" :title="loadDashboardTitle" width="750px" @ok="handleOk">
+    <a-modal v-model:open="open" :title="loadDashboardTitle" width="750px" @ok="handleOk">
       <a-card>
         <span>
           {{ loadDashboardText }}
@@ -69,7 +69,7 @@ export default {
   emits: ['update:dashboardId'],
   data() {
     return {
-        visible: false,
+        open: false,
         dashboard_id: this.dashboardId,
         load_dashboard_icon: this.loadDashboardIcon,
     }
@@ -109,10 +109,10 @@ export default {
   },
   methods: {
     showModal() {
-      this.visible = true;
+      this.open = true;
     },
     handleOk() {
-      this.visible = false;
+      this.open = false;
       this.$emit('update:dashboardId', this.dashboard_id);
     },
     filter_dashboards: function(input, option) {

@@ -3,7 +3,7 @@
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fas fa-home" aria-hidden="true" /></div>
     Residential Area
   </a>
-  <a-modal v-model:visible="visible" title="Residential Area" width="1200px">
+  <a-modal v-model:open="open" title="Residential Area" width="1200px">
     <template #footer>
       <a-button key="ok" type="primary" @click="handleOk">
         Ok
@@ -28,7 +28,7 @@ import {ref} from "vue";
 import {doGet, doPost} from "../utils/api";
 // import {startDrawAggregatedBuilding} from "../utils/startDrawAsset";
 
-const visible = ref(false);
+const open = ref(false);
 const building_list = ref([]);
 
 const buildingListColumns = [
@@ -38,7 +38,7 @@ const buildingListColumns = [
 
 const handleOk = () => {
   createAggregatedBuilding();
-  visible.value = false;
+  open.value = false;
 }
 
 const createAggregatedBuilding = async () => {
@@ -49,7 +49,7 @@ const createAggregatedBuilding = async () => {
 }
 
 const showWindowResidentialArea = () => {
-  visible.value = true;
+  open.value = true;
 }
 
 const get_building_list = async () => {

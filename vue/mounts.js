@@ -61,8 +61,7 @@ export function mountTooltipComponent(component) {
 }
 
 export function createVueMapEditorDialog(component, options) {
-    const mapEditorDialog = new MapEditorDialog();
-    mapEditorDialog.initialize(options);
+    const mapEditorDialog = new MapEditorDialog(options);
     mapEditorDialog.addTo(window.map);
     mountApp(component, mapEditorDialog._contentNode);
     return mapEditorDialog;

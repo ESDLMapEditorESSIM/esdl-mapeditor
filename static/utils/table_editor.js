@@ -14,7 +14,7 @@
  *      TNO
  */
 
-// import MapEditorDialog from "./MapEditorDialog.js";
+import MapEditorDialog from "./MapEditorDialog.js";
 
 class TableEditorDialog extends MapEditorDialog {
 
@@ -28,4 +28,4 @@ class TableEditorDialog extends MapEditorDialog {
   }
 }
 
-// export default TableEditorDialog;
+export default TableEditorDialog;

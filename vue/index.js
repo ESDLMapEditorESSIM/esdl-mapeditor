@@ -162,14 +162,14 @@ createVueLControl(ServicesToolbar, {position: 'topleft'});
 mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
-// const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
-//     initOpen: false,
-//     size: [300, 500],
-//     maxSize: [2000, 1200],
-//     onClose: () => showUndoRedoControl.value = false,
-// });
-// mapEditorDialog._handleMinimize();
-// undoRedoMapEditorDialog.value = mapEditorDialog;
+const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
+    initOpen: false,
+    size: [300, 500],
+    maxSize: [2000, 1200],
+    onClose: () => showUndoRedoControl.value = false,
+});
+mapEditorDialog._handleMinimize();
+undoRedoMapEditorDialog.value = mapEditorDialog;
 mountApp(ToggleShowUndoRedoControl, '#vue_toggle_show_undo_redo_control')
 
 createVueLControl(AssetDrawToolbar, {});

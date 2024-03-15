@@ -14,8 +14,6 @@
  *      TNO
  */
 
-// const L = window.L;
-// const map = window.map;
 
 class MapEditorDialog extends window.L.Control.Dialog {
   initialize(options) {
@@ -118,4 +116,4 @@ class MapEditorDialog extends window.L.Control.Dialog {
   }
 }
 
-// export default MapEditorDialog;
+export default MapEditorDialog;
