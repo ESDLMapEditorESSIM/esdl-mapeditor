@@ -19,6 +19,7 @@ requests
 shapely==2.0.1
 si-prefix==1.2.2
 xmldiff
+kombu
 
 # Pin to keep things working.
 Werkzeug==2.3.7
