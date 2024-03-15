@@ -44,7 +44,7 @@ import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import SidePane from './apps/SidePane';
-// import ActiveLongProcess from './components/progress/ActiveProcess'
+import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
 import AssetTooltip from './apps/AssetTooltip';

@@ -3,6 +3,7 @@
  */
 import {createApp} from "vue"
 import VueComponentLControl from './components/leaflet/VueComponentLControl'
+import VueGridLayout from 'vue-grid-layout'
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
@@ -35,6 +36,7 @@ import {
     Timeline,
     Upload
 } from 'ant-design-vue';
+import MapEditorDialog from "../static/utils/MapEditorDialog";
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
