@@ -36,7 +36,7 @@ class TooltipInfo:
         def get_tooltip_info(object_id):
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
-            es_edit = pm.get_energy_system(es_id=active_es_id)
+            es_edit = pm.get_active_energy_system()
             active_es_id = es_edit.id
 
             results = {
