@@ -101,6 +101,7 @@ function query_esdl_service(service, state_params) {
         document.getElementById('query_service_button').style.display = 'none';
     }
     show_loader();
+    console.log("query_esdl_service params", params);
     socket.emit('command', { cmd: 'query_esdl_service', params: params });
 
     // TODO: Determine when to close
@@ -129,7 +130,6 @@ var asset_severity_class = {
 
 function process_service_results(results) {
     let service_results_div = document.getElementById('service_results_div');
-
     hide_loader();
     // TODO: Make this more generic
 
@@ -391,7 +391,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
         // document.getElementById('area_scope').onchange();  // force loading
     }
 
-    if (service['show_query_params'] != false && (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'] == 'send_esdl' || service['type'] == 'json')) {
+    if (service['show_query_params'] != false && (service['type'] == 'geo_query' || service['type'] == 'simulation' || service['type'].startsWith('send_esdl') || service['type'] == 'json')) {
         let q_params = service['query_parameters'];
 
         if (q_params.length > 0) {
@@ -588,8 +588,44 @@ function update_esdl_services(event) {
                 }
             }
         }
-    }
 
+        if (event.layer_type === 'marker') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "asset_context_menu" || esdl_services_information[i]['location'] == "asset_context_menu") {
+                    layer.options.contextmenuItems.push({
+                        text: esdl_services_information[i]['name'],
+                        icon: resource_uri + 'icons/service.png',
+                        callback: function (e) {
+                            const service = esdl_services_information[i];
+                            const state = {
+                                asset_id: id,
+                            }
+                            if ("options" in service && "send_esdl" in service["options"] && service["options"]["send_esdl"]) {
+                                $.ajax({
+                                    url: '/get_object_esdl/' + id,
+                                    success: function (data) {
+                                        console.log(data);
+                                        state['esdl'] = data['esdl'];
+                                        if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                                            window.show_service_settings(i, state);
+                                        } else {
+                                            query_esdl_service(service, state);
+                                        }
+                                    }
+                                })
+                            } else {
+                                if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+                                    window.show_service_settings(i, state);
+                                } else {
+                                    query_esdl_service(service, state);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
 }
 
 $(document).ready(function() {

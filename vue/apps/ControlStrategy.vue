@@ -171,13 +171,14 @@
     <a-space>
       <a-button
         type="primary"
-        :disabled="selected == 'None'"
+        :disabled="selected === 'None'"
         @click="remove"
       >
         Remove strategy
       </a-button>
       <a-button
         type="primary"
+        :disabled="!valid_input"
         @click="save"
       >
         Save
@@ -262,7 +263,20 @@ export default {
         return this.ports.filter(p => p.type == portTypeForCS[this.selected]);
       }
       return this.ports;
+    },
+    valid_input: function() {
+      // true == valid input
+      // false == invalid input
+      if (this.selected==='DrivenByDemand' || this.selected==='DrivenBySupply' || this.selected==='DrivenByProfile') {
+          if (this.selected ==='DrivenByProfile') {
+            return (this.selected_port !== '' && this.dbp_radio !== '');
+          } else {
+            return (this.selected_port !== '');
+          }
+      }
+      return true; // default: user can save
     }
+
   },
   mounted() {
     this.getDataSocketIO();
@@ -329,7 +343,9 @@ export default {
     remove: function() {
       // console.log('Pressed remove strategy')
       window.socket.emit('DLA_remove_cs', {'id': currentObjectID.value});
-      this.selected = 'None'
+      this.selected = 'None';
+      this.selected_port = '';
+      this.dbp_radio = '';
     },
     save: function() {
       // console.log('Pressed save');

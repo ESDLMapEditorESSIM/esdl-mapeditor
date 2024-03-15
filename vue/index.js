@@ -17,13 +17,15 @@ import ReleaseNotes from './apps/ReleaseNotes';
 import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
+import KPIDashboard from './apps/KPIDashboard';
 import AssetTableEditor from './apps/AssetTableEditor';
 import {
     createVueLControl,
     createVueMapEditorDialog,
     mountApp,
     mountSettingsComponent,
-    mountSidebarComponent
+    mountSidebarComponent,
+    mountTooltipComponent,
 } from "./mounts";
 import CustomIconsSettings from "./apps/CustomIconsSettings";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
@@ -43,10 +45,12 @@ import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import SidePane from './apps/SidePane';
 // import ActiveLongProcess from './components/progress/ActiveProcess'
-import ActiveLongProcess from './components/progress/ActiveProcess'
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
+import {useTooltipInfo} from './composables/TooltipInfo';
+import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
 import {useUndoRedo} from "./composables/undoRedo";
 
 
@@ -96,6 +100,13 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.show_tooltip = (object_title, object_id) => {
+    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+    newTooltipObjectID(object_id);
+    newTitle(object_title);
+    mountTooltipComponent(AssetTooltip);
 }
 
 window.search_assets_window = () => {
@@ -174,6 +185,14 @@ createVueLControl(AssetsToBeAddedToolbar, {
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
 }
+
+window.activate_kpi_dashboard_window = () => {
+    mountApp(KPIDashboard, '#kpi_dashboard_window');
+}
+
+createVueLControl(AnnouceKPIsToolbar, {
+        position: 'bottomright',
+    });
 
 window.sectors_window = () => {
     mountSidebarComponent(Sectors);

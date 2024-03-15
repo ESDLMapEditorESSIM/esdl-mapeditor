@@ -22,6 +22,7 @@ EnergySystem.energySystemInformation.eType = EnergySystemInformation
 EnergySystem.parties.eType = Parties
 EnergySystem.services.eType = Services
 EnergySystem.templates.eType = Templates
+WindTurbine.powerCurveTable.eType = Table
 ElectricityCable.related.eType = ElectricityCable
 AggregatedConsumer.aggregationOf.eType = Consumer
 Area.socialProperties.eType = SocialProperties

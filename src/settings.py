@@ -24,7 +24,7 @@ FLASK_SERVER_PORT = 8111
 _flask_debug = os.environ.get('FLASK_DEBUG', '')        # Do not use debug mode in production
 FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
 
-USER_LOGGING_ENABLED = False
+USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
 ASYNC_MODE = None # default for non uWGSI deployments
 
@@ -124,6 +124,10 @@ ielgas_config = {
 }
 
 heatnetwork_dispatcher_config = {
-    "host": os.environ.get('DISPATCHER_HOST', "localhost"),
+    "host": os.environ.get('DISPATCHER_HOST', 'http://localhost'),
     "port": os.environ.get('DISPATCHER_PORT', 9200)
+}
+
+user_feedback_url_config = {
+    "url": os.environ.get('USER_FEEDBACK_URL', None)
 }

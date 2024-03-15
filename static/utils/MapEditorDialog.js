@@ -24,33 +24,52 @@ class MapEditorDialog extends L.Control.Dialog {
     }
     super.initialize(options);
 
-    this.state = 'custom';   /* alternatives: maximized, minimized */
+    this.allowable_states = options.allowable_states;
+    if (!options.allowable_states) {
+      this.allowable_states = ['custom', 'maximized', 'minimized'];
+    }
+
+    this.state = options.state;
+    if (!options.state) {
+      this.state = 'custom';   /* alternatives: maximized, minimized */
+    }
   }
 
   _initLayout() {
     super._initLayout();
-    
+
+    if (this.state == 'minimized') {
+      this._handleMinimize();
+    }
+    if (this.state == 'maximized') {
+      this._handleMaximize();
+    }
+
     let innerContainer = this._innerContainer;
-    
+
     var className = "leaflet-control-dialog";
-    var minimizeNode = (this._minimizeNode = L.DomUtil.create(
-      "div",
-      className + "-minimize"
-    ));
-    var minimizeIcon = L.DomUtil.create("i", "fa fa-window-minimize");
-    minimizeNode.appendChild(minimizeIcon);
-    L.DomEvent.on(minimizeNode, "click", this._handleMinimize, this);
 
-    var maximizeNode = (this._maximizeNode = L.DomUtil.create(
-      "div",
-      className + "-maximize"
-    ));
-    var maximizeIcon = L.DomUtil.create("i", "fa fa-window-maximize");
-    maximizeNode.appendChild(maximizeIcon);
-    L.DomEvent.on(maximizeNode, "click", this._handleMaximize, this);
+    if (this.options.allowable_states.includes('minimized')) {
+      var minimizeNode = (this._minimizeNode = L.DomUtil.create(
+        "div",
+        className + "-minimize"
+      ));
+      var minimizeIcon = L.DomUtil.create("i", "fa fa-window-minimize");
+      minimizeNode.appendChild(minimizeIcon);
+      L.DomEvent.on(minimizeNode, "click", this._handleMinimize, this);
+      innerContainer.appendChild(minimizeNode);
+    }
 
-    innerContainer.appendChild(minimizeNode);
-    innerContainer.appendChild(maximizeNode);
+    if (this.options.allowable_states.includes('maximized')) {
+      var maximizeNode = (this._maximizeNode = L.DomUtil.create(
+        "div",
+        className + "-maximize"
+      ));
+      var maximizeIcon = L.DomUtil.create("i", "fa fa-window-maximize");
+      maximizeNode.appendChild(maximizeIcon);
+      L.DomEvent.on(maximizeNode, "click", this._handleMaximize, this);
+      innerContainer.appendChild(maximizeNode);
+    }
 
     this._map.on('resize', () => {
       this._handleMapResize();

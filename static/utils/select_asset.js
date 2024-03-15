@@ -91,7 +91,7 @@ class SelectAssets {
             this.remove_from_selected_list(asset_leaflet_obj);
         }
         // console.log("asset is now selected: ", asset_leaflet_obj.selected);
-        if (asset_leaflet_obj instanceof L.Marker) {
+        if (asset_leaflet_obj instanceof L.Marker && asset_leaflet_obj.getElement() != null) {
             let cll = asset_leaflet_obj.getElement().classList;
             cll.toggle('Selected');
         }

@@ -19,8 +19,9 @@ import MapEditorDialog from "./MapEditorDialog.js";
 class TableEditorDialog extends MapEditorDialog {
 
   open() {
-    let jqueryNode = $('<div>').attr('id', 'table_editor_window').css('height', '100%');
+    let jqueryNode = $('<div>').attr('id', 'table_editor_window').css({'height': '100%', 'display': 'flex', 'flex-direction': 'column'});
     this.setContent(jqueryNode.get(0));
+    this.setTitle('Table editor');
     window.activate_table_editor_window();
 
     return super.open();

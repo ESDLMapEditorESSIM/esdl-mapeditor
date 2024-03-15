@@ -20,6 +20,7 @@ import {
     Form,
     Input,
     InputNumber,
+    Menu,
     Modal,
     Radio,
     Row,
@@ -28,13 +29,12 @@ import {
     Spin,
     Switch,
     Table,
+    Tag,
     Transfer,
     Tree,
     Timeline,
-    Menu,
     Upload
 } from 'ant-design-vue';
-import MapEditorDialog from "../static/utils/MapEditorDialog";
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -54,6 +54,10 @@ export function createVueLControl(component, options) {
     lcontrol.addTo(window.map).mount(component);
 }
 
+export function mountTooltipComponent(component) {
+    mountApp(component, '#tooltip_contents_div');
+}
+
 export function createVueMapEditorDialog(component, options) {
     const mapEditorDialog = new MapEditorDialog();
     mapEditorDialog.initialize(options);
@@ -65,30 +69,34 @@ export function createVueMapEditorDialog(component, options) {
 export function mountApp(component, elementSelector) {
     const app = createApp(component)
 
-    app.use(Button);
+    // Components from ant-design-vue
     app.use(Breadcrumb);
+    app.use(Button);
     app.use(Card);
     app.use(Checkbox);
     app.use(Col);
-    app.use(Radio);
     app.use(Collapse);
     app.use(DatePicker);
     app.use(Divider);
     app.use(Dropdown);
+    app.use(Form);
     app.use(Input);
     app.use(InputNumber);
-    app.use(Form);
+    app.use(Menu);
     app.use(Modal);
+    app.use(Radio);
     app.use(Row);
     app.use(Select);
     app.use(Space);
     app.use(Spin);
     app.use(Switch);
     app.use(Table);
+    app.use(Tag);
     app.use(Timeline);
     app.use(Transfer);
     app.use(Tree);
     app.use(Upload);
-    app.use(Menu);
+    app.use(VueGridLayout);
+
     app.mount(elementSelector);
 }

@@ -29,6 +29,7 @@ function split_conductor(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 function split_conductor_connect(e, id) {
@@ -38,6 +39,7 @@ function split_conductor_connect(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 function split_conductor_add_joint(e, id) {
@@ -47,6 +49,7 @@ function split_conductor_add_joint(e, id) {
     //esdl_layer.removeLayer(e.relatedTarget);
     remove_object_from_layer(active_layer_id, 'esdl_layer', e.relatedTarget);
     clear_layer = false;
+    select_assets.deselect_all_assets(); //from select_asset.js
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -437,6 +440,7 @@ function set_marker_handlers(marker) {
 
     set_marker_port_handlers(marker);
     select_assets.add_asset_handler(marker);
+    set_marker_tooltip_handlers(marker);
 
     // let extensions know they can update this layer.
     // e.g. add a context menu item
@@ -638,7 +642,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
-                title: title,
+                title: '',
                 riseOnHover: true,
                 draggable: true,
                 autoPan: true,
@@ -908,6 +912,7 @@ function set_leaflet_sizes(mp) {
     $('#'+map_id+' .overlayline').css({'stroke-width': (size_line + 6) + 'px' });
 
     set_port_size_and_position(active_map);       /* Ports */
+    set_tooltip_position();                       /* Tooltips */
 
     // todo create pane for select line when pipes and cables are supported in the building editor
 }
