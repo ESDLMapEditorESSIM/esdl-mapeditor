@@ -94,3 +94,53 @@ export async function workflowGetJsonForm(queryString, schemaName) {
         return null;
     }
 }
+
+
+export async function getJsonForm(url) {
+    try {
+        const is_logged_in = await checkAndRefreshAuthStatus();
+        if (is_logged_in) {
+            const response = await fetch(url)
+            if (response.ok) {
+                const data = await response.json();
+                return data;
+            } else {
+                throw response;
+            }
+        } else {
+            return null;
+        }
+    } catch (e) {
+        handleErrorResponse(e);
+        return null;
+    }
+}
+
+
+export async function postJsonForm(url, body) {
+    window.show_loader();
+    try {
+        const is_logged_in = await checkAndRefreshAuthStatus();
+        if (is_logged_in) {
+            const response = await fetch(url, {
+                method: "POST",
+                body: JSON.stringify(body),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            if (response.ok) {
+                return response;
+            } else {
+                throw response;
+            }
+        } else {
+            return null;
+        }
+    } catch (e) {
+        handleErrorResponse(e);
+        return null;
+    } finally {
+        window.hide_loader();
+    }
+}

@@ -277,6 +277,7 @@
               style="width: 100%"
               :options="profiles_options"
               @change="value_changed"
+              @popupScroll="hide_jquery_ui_popup()"
             />
           </a-col>
         </a-row>
@@ -579,6 +580,9 @@ export default {
           window.set_carrier_list(window.active_layer_id, res);
           this.getData();
         });
+    },
+    hide_jquery_ui_popup() {
+      window.jquery(".ui-tooltip-content").parents('div').remove();
     },
   }
 };

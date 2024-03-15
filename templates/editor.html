@@ -85,7 +85,7 @@
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.js"></script>
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.min.js"></script>
 
     <!--script type="text/javascript" src="./plugins/socketio.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
@@ -197,7 +197,7 @@
     <script type="text/javascript" src="./utils/user_messages.js"></script>
 
     <script type="text/javascript" src="./utils/profiles_mngmnt.js"></script>
-    <script type="text/javascript" src="./utils/etm_local.js"></script>
+    <script type="text/javascript" src="./utils/etm_interface.js"></script>
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
@@ -282,6 +282,7 @@
         colors['Conversion'] = 'purple';
         colors['Potential'] = 'grey';
 
+        window.jquery = $;
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -1575,6 +1576,7 @@
 
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
+                                    <li id="vue_test_edr_residential_area"></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>
@@ -1679,8 +1681,6 @@
         <span id="deleteLogItems" onclick="deleteLogItems()">Delete all</span>
         <div id="messages"></div>
     </div>
-</div>
-
 </body>
 </html>
 

@@ -61,6 +61,7 @@
 import {ref, onBeforeMount} from "vue";
 import {useObject} from "../composables/ObjectID";
 import {useWmsLayers} from "../composables/wmsLayers";
+import {camelCase} from "../utils/utils";
 
 const {addWmsLayer, updateLayer} = useWmsLayers();
 
@@ -99,12 +100,6 @@ onBeforeMount(() => {
     });
   }
 });
-
-// eslint-disable-next-line no-unused-vars
-const camelCase = (str) => {
-  // TODO: import this function from utils.js and let utils.js export functions
-  return window.camelCaseToWords(str);
-};
 
 // eslint-disable-next-line no-unused-vars
 const addUpdate = () => {

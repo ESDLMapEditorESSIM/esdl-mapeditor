@@ -131,9 +131,21 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowCallJsFunction
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowJsonForm
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowJsonForm2
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2
       "
       :workflow-step="currentWorkflow.workflowStep"
     />
@@ -158,6 +170,8 @@ import {default as WorkflowProgress} from "../components/workflow/WorkflowProgre
 import {default as WorkflowText} from "../components/workflow/WorkflowText";
 import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
+import {default as WorkflowJsonForm2} from "../components/workflow/WorkflowJsonForm2";
+import {default as WorkflowCallJsFunction} from "../components/workflow/WorkflowCallJsFunction";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {useEsdlLayers} from "../composables/esdlLayers.js";

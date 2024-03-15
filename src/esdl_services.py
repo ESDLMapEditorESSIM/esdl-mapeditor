@@ -260,6 +260,8 @@ class ESDLServices:
                 body = {}
                 for param in service["body_config"]['parameters']:
                     if param["type"] == "esdl":
+                        if "energysystem" in body:
+                            del body["energysystem"]  # added earlier
                         esdlstr = pm.active_energy_system_to_string()
                         if param["encoding"] == "none":
                             body[param["parameter"]] = esdlstr
@@ -392,7 +394,7 @@ class ESDLServices:
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}
                 elif service["result"][0]["action"] == "add_potentials":
-                    es_edit = esh.get_energy_system(es_id=active_es_id)
+                    es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
                     area = instance[0].area
                     potential_str_list = json.loads(r.text)
@@ -405,7 +407,7 @@ class ESDLServices:
                         potentials_to_be_added = list()
                         for potential_str in potential_str_list:
                             potential = ESDLAsset.load_asset_from_string(potential_str)
-                            esh.add_object_to_dict(active_es_id, potential, recursive=True)
+                            pm.add_object_to_dict(active_es_id, potential, recursive=True)
                             ESDLAsset.add_object_to_area(es_edit, potential, area.id)
                             # asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, potential)
 
@@ -446,7 +448,7 @@ class ESDLServices:
                         resource.load()
                         asset = resource.contents[0]
                         asset_id = asset.id
-                        asset_in_es = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
+                        asset_in_es = pm.get_by_id(es_id=active_es_id, object_id=asset_id)
 
                         first_outport = None
                         for p in asset_in_es.port:
@@ -459,7 +461,7 @@ class ESDLServices:
                             asset_in_es.port.append(first_outport)
 
                         first_outport.profile.append(profile)
-                        esh.add_object_to_dict(active_es_id, profile, recursive=True)
+                        pm.add_object_to_dict(active_es_id, profile, recursive=True)
                         return True, {"send_message_to_UI_but_do_nothing": {}}
                     else:
                         logger.error("Service was expected to give back a profile")

@@ -214,7 +214,8 @@ function add_area_map_handlers(socket, map) {
           	}
         }
         // Refresh ESDL (Ctrl+R)
-        if (event.keyCode == 82 && event.ctrlKey && !event.altKey && !event.metaKey) { // Ctrl+H (72), R(82)
+        // Still allow refreshing browser with Ctrl+Shift+R (hard refresh).
+        if (event.keyCode == 82 && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) { // Ctrl+H (72), R(82)
             window.refresh_esdl();
             event.preventDefault();
             return true;

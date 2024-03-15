@@ -15,6 +15,7 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from esdl import esdl
+from extensions.panel_service import get_panel_service_datasource
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_project_manager, get_session
 from extensions.profiles import create_panel
@@ -84,6 +85,19 @@ class PortProfileViewer:
                     if not profile_name:
                         profile_name = profile.field + " (Multiplier: " + str(multiplier) + " - Type: " + profile_type + ")"
 
+                    # Find out if credentials are required (these are not stored in the ESDL and must be stored as
+                    # an external profile server configuration)
+                    credentials = self.determine_database_credentials(profile.host, profile.port, profile.database)
+                    if credentials:
+                        datasource = get_panel_service_datasource(
+                            profile.database,
+                            profile.host+':'+str(profile.port),
+                            credentials["username"],
+                            credentials["password"]
+                        )
+                    else:
+                        datasource = None   # Let datasource be created (or found) by the create_panel function
+
                     embedUrl = create_panel(
                         graph_title=profile_name,
                         axis_title="",
@@ -95,7 +109,8 @@ class PortProfileViewer:
                         qau=qau,
                         prof_aggr_type=aggr_method,
                         start_datetime=profile.startDate,
-                        end_datetime=profile.endDate
+                        end_datetime=profile.endDate,
+                        datasource=datasource
                     )
                     if embedUrl:
                         return embedUrl
@@ -113,3 +128,30 @@ class PortProfileViewer:
             return "sum"
         else:
             return "mean"
+
+    def determine_database_credentials(self, host, port, database):
+        # Whenever the port profile viewer is called based on information (host / database) in the ESDL InfluxDB profile
+        # this functions tries to see if the credentials are stored in the profile server settings
+
+        # Example profile server configuration in MongoDB
+        #       {
+        #         "name": "Standard profiles server",
+        #         "host": "influxdb",
+        #         "port": "8086",
+        #         "username": "admin",
+        #         "password": "admin",
+        #         "database": "energy_profiles",
+        #         "ssl_enabled": false
+        #       }
+
+        with self.flask_app.app_context():
+            profiles_settings = Profiles.get_instance().get_profiles_settings()
+
+            for prof_server in profiles_settings['profiles_servers']:
+                if prof_server["host"] == host and prof_server["port"] == str(port) and prof_server["database"] == database:
+                    return {
+                        "username": prof_server["username"],
+                        "password": prof_server["password"]
+                    }
+
+        return None

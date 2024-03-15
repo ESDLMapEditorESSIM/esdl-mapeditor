@@ -39,9 +39,6 @@ const globalWmsLayerList = ref(null);
 })();
 
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
-    console.log('getting wms layer list');
-    console.log(wmsLayerList);
-
     if (globalWmsLayerList.value !== null) {
         for (const layerId in globalWmsLayerList.value['layers']) {
             if (layerId in wmsLayerList['layers']) {
@@ -155,13 +152,14 @@ export function useWmsLayers() {
             'parent_group_id': parentId,
         };
         socket.emit('add_wms_layer_group', layerGroup);
+        // Create node programmatically to enable entering into edit name mode
         getTree().create_node(parentId, {
             id: groupId,
             text: 'new folder',
             setting_type: setting_type,
             project_name: project_name,
             type: 'wms_layer_folder',
-            state: {opened: true},
+            state: {opened: false},
         });
     };
 
@@ -177,7 +175,7 @@ export function useWmsLayers() {
     const moveWmsItem = (itemId, oldParentId, newParentId, position) => {
         socket.emit('move_wms_item', {
             item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
-        });
+        }, updateGlobalWmsLayerList);
     };
 
     const copyWmsItem = (itemId, newParentId, position) => {

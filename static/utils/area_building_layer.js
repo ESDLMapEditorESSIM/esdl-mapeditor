@@ -35,9 +35,9 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
-var area_KPIs = {};
-var building_KPIs = {};
-pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
+let area_KPIs = {};
+let building_KPIs = {};
+const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
     '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
@@ -455,9 +455,11 @@ function highlightAreaOrBuilding(e) {
         fillOpacity: 0.5
     });
 
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
+    // Disable for RvE ESDL with DSO service areas and CBS areas
+    // Maybe this should be default behaviour
+    // if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+    //     layer.bringToFront();
+    // }
 
     layer.openPopup();
 }
@@ -570,7 +572,7 @@ function create_area_pie_chart(ar, size) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
         let keys = Object.keys(ar.properties.dist_KPIs);
 
-        // create pieChartMwrkers for all DistributionKPIs
+        // create pieChartMarkers for all DistributionKPIs
         for (let j=0; j<keys.length; j++) {
             let key = keys[j];
 
@@ -582,6 +584,10 @@ function create_area_pie_chart(ar, size) {
                 data: {},
                 chartOptions: {},
                 weight: 1,
+                // Use the popup method instead of LegendIcon method.
+                usePopup: true,
+                // Having a stroke causes an updateBounds error.
+                stroke: null,
             };
 
             for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
@@ -594,7 +600,7 @@ function create_area_pie_chart(ar, size) {
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return 1;
+                        return value.toFixed(2);
                     }
                 }
             }
@@ -654,6 +660,9 @@ function resize_area_pi_charts() {
 }
 
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
+
+    console.log(area_data);
+
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
         group_name: group_name,
@@ -661,6 +670,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
+                console.log(layer);
                 let area_size = calculate_area_size(layer);
                 create_area_pie_chart(feature, area_size);
 
@@ -703,24 +713,27 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
-                    var popup = e.target.getPopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    popup.setLatLng(e.latlng).openOn(this_map);
-
-                    highlightAreaOrBuilding(e);
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                        highlightAreaOrBuilding(e);
+                    }
                 });
 
                 layer.on('mouseout', function(e) {
                     e.target.closePopup();
-
                     resetHighlightArea(e);
                 });
 
                 layer.on('mousemove', function (e) {
                     e.target.closePopup();
-                    var this_map = e.sourceTarget._map;     // can be area map and building map
-                    var popup = e.target.getPopup();
-                    popup.setLatLng(e.latlng).openOn(this_map);
+
+                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
+                        let popup = e.target.getPopup();
+                        let this_map = e.sourceTarget._map;     // can be area map and building map
+                        popup.setLatLng(e.latlng).openOn(this_map);
+                    }
                 });
 
                 set_area_handlers(layer);
@@ -1176,11 +1189,15 @@ function style_area(feature) {
             fillOpacity: 0.7
         };
     } else {
+        let color = "blue";
+        if (feature.properties.hasOwnProperty("type") && feature.properties.type == "SERVICE_AREA") {
+            color = "#ffcb00";  // "#bc9500";
+        }
         return {
-            fillColor: "blue",
+            fillColor: color,
             weight: 1,
             opacity: 1,
-            color: "blue",
+            color: color,
             dashArray: '',
             fillOpacity: 0.3
         };
