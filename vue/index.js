@@ -46,9 +46,11 @@ import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
-import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar.vue";
-import ActivityContextSelector from "./apps/ActivityContextSelector.vue";
+import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
+import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
+import ResidentialArea from "@/apps/ResidentialArea.vue";
+import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
 
@@ -186,3 +188,5 @@ createVueLControl(AnnouceKPIsToolbar, {
 window.sectors_window = () => {
     mountSidebarComponent(Sectors);
 }
+
+mountApp(ResidentialArea, '#vue_test_edr_residential_area')

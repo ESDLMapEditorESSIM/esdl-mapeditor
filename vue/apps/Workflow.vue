@@ -115,9 +115,21 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowCallJsFunction
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowJsonForm
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowJsonForm2
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2
       "
       :workflow-step="currentWorkflow.workflowStep"
     />
@@ -131,16 +143,19 @@
 
 <script setup>
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
-import {default as WorkflowChoice} from "@/components/workflow/WorkflowChoice.vue";
-import {default as WorkflowSelectQuery} from "@/components/workflow/WorkflowSelectQuery.vue";
-import {default as WorkflowEsdlService} from "@/components/workflow/WorkflowEsdlService.vue";
-import {default as WorkflowDownloadFile} from "@/components/workflow/WorkflowDownloadFile.vue";
-import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploadFile.vue";
-import {default as WorkflowHttpPost} from "@/components/workflow/WorkflowHttpPost.vue";
-import {default as WorkflowProgress} from "@/components/workflow/WorkflowProgress.vue";
-import {default as WorkflowText} from "@/components/workflow/WorkflowText.vue";
-import {default as WorkflowCustomComponent} from "@/components/workflow/WorkflowCustomComponent.vue";
-import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm.vue";
+import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
+import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
+import {default as WorkflowTableQuery} from "../components/workflow/WorkflowTableQuery";
+import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
+import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
+import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
+import {default as WorkflowHttpPost} from "../components/workflow/WorkflowHttpPost";
+import {default as WorkflowProgress} from "../components/workflow/WorkflowProgress";
+import {default as WorkflowText} from "../components/workflow/WorkflowText";
+import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
+import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
+import {default as WorkflowJsonForm2} from "../components/workflow/WorkflowJsonForm2";
+import {default as WorkflowCallJsFunction} from "../components/workflow/WorkflowCallJsFunction";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {useEsdlLayers} from "../composables/esdlLayers.js";
