@@ -99,8 +99,8 @@ const deleteActivityContext = async (id) => {
 }
 
 const saveActivityContext = async () => {
-  console.log('Save activity context', newActivityContextName.value)
-  const wmsLayers = newWmsLayers.value.split(",")
+  // If newWmsLayers is not an empty string, convert it to list of strings.
+  const wmsLayers = newWmsLayers.value ? newWmsLayers.value.split(',') : [];
   const workflow = newWorkflow.value || null;
   const isGlobal = newIsGlobal.value;
   const response = await fetch('/admin/context/activities', {

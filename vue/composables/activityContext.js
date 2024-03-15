@@ -49,7 +49,16 @@ export function useActivityContext() {
         // Clear the WMS layers and add the layers from the activity context.
         clearWmsLayers()
         for (const layer of activityContext.wms_layers) {
-            showWmsLayer(layer)
+            try {
+                showWmsLayer(layer)
+            } catch (e) {
+                // Check if TypeError, then the layer does not exist.
+                if (e instanceof TypeError) {
+                    console.warn("WMS layer " + layer.name + " does not exist")
+                } else {
+                    console.error("Error showing WMS layer " + layer.name + ": " + e)
+                }
+            }
         }
 
         // Add the services to the context menus.
