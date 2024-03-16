@@ -32,6 +32,7 @@ from esdl.processing import ESDLAsset, ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
+from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
 
@@ -289,17 +290,23 @@ class ESDLServices:
                 ]:  # to filter empty lists for multi-selection parameters
                     for cfg_service_param in config_service_params:
                         if cfg_service_param["parameter_name"] == key:
+                            param = query_params[key]
+                            if "formatter" in cfg_service_param:
+                                if "type" in cfg_service_param["formatter"] and \
+                                        cfg_service_param["formatter"]["type"] == "datetime_formatter":
+                                    parsed_datetime = parse_date(param)
+                                    param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
                             if "location" in cfg_service_param:
                                 if cfg_service_param["location"] == "url":
                                     url = url.replace(
                                         "<" + cfg_service_param["parameter_name"] + ">",
-                                        str(query_params[key]),
+                                        str(param),
                                     )
                                 elif cfg_service_param["location"] == "body" and isinstance(body, dict):
                                     if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
-                                        param_value = (base64.b64encode(query_params[key].encode('utf-8'))).decode('utf-8')
+                                        param_value = (base64.b64encode(param.encode('utf-8'))).decode('utf-8')
                                     else:
-                                        param_value = query_params[key]
+                                        param_value = param
                                     body[
                                         cfg_service_param["parameter_name"]
                                     ] = param_value
@@ -309,7 +316,7 @@ class ESDLServices:
                                 else:
                                     url = url + "&"
                                 url = (
-                                    url + key + "=" + self.array2list(query_params[key])
+                                    url + key + "=" + self.array2list(param)
                                 )
                                 first_qp = False
 

@@ -92,8 +92,6 @@ const onChange = (event) => {
 const onSubmit = async () => {
   // Add data to state.
   const state = getState();
-  console.log("submit");
-  console.log(state);
   Object.assign(state, dataToSubmit);
   if (workflowStep.url) {
     // POST data to remote URL.
