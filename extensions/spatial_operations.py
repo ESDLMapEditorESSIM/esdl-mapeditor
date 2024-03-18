@@ -44,9 +44,8 @@ class SpatialOperations:
         @self.socketio.on('spatop_collect_info', namespace='/esdl')
         def spatop_collect_info():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                pm = get_project_manager()
+                es = pm.get_active_energy_system()
                 area = es.instance[0].area
 
                 self.collect_info(area, True)
@@ -54,9 +53,8 @@ class SpatialOperations:
         @self.socketio.on('spatop_preprocess_areas', namespace='/esdl')
         def spatop_preprocess_subarea():
             with self.flask_app.app_context():
-                esh = get_handler()
-                active_es_id = get_session('active_es_id')
-                es = esh.get_energy_system(active_es_id)
+                pm = get_project_manager()
+                es = pm.get_active_energy_system()
                 area = es.instance[0].area
                 return self.preprocess_area(area)
 
@@ -259,7 +257,7 @@ class SpatialOperations:
     def create_pipes(edges, top_area_shape, mapping_centroid_wkt_to_joint):
         pm = get_project_manager()
         active_es_id = get_session('active_es_id')
-        es = pm.get_energy_system(active_es_id)
+        es = pm.get_active_energy_system()
         area = es.instance[0].area
 
         asset_to_ui_list = list()

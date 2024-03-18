@@ -159,7 +159,7 @@ class ETMInterface:
                 return None
 
     def process_data_and_add_to_area(self, pm, active_es_id, area, etm_sankey_data):
-        es = pm.get_energy_system(es_id=active_es_id)
+        es = pm.get_active_energy_system()
 
         etm_sankey = ETMSankeyToESDL(etm_sankey_data)
         etm_sankey.add_carriers_and_sectors(es)

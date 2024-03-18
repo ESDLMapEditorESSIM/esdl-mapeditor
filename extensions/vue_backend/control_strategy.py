@@ -131,7 +131,7 @@ def set_control_strategy(asset, cs_info):
             control_strategy.name = cs_info['type'] + ' for ' + asset.name
             control_strategy.energyAsset = asset
 
-            es = pm.get_energy_system(active_es_id)
+            es = pm.get_active_energy_system()
             services = es.services
             if not services:
                 services = esdl.Services(id=str(uuid4()))
