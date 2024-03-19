@@ -147,7 +147,7 @@ class PortProfileViewer:
             profiles_settings = Profiles.get_instance().get_profiles_settings()
 
             for prof_server in profiles_settings['profiles_servers']:
-                if prof_server["host"] == host and prof_server["port"] == str(port) and prof_server["database"] == database:
+                if prof_server["host"] == host and prof_server["port"] == str(port):
                     return {
                         "username": prof_server["username"],
                         "password": prof_server["password"]
