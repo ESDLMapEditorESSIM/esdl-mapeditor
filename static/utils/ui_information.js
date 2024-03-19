@@ -32,6 +32,16 @@ function get_tooltip_format() {
     return {'marker': marker_tt, 'line': line_tt};
 }
 
+function format_value_as_string_with_multiplier(value) {
+    let value_s = value.toString();
+    if (value_s.substring(value_s.length - 15) === "000000000000000") return value_s.substring(0, value_s.length - 15) + "P";
+    if (value_s.substring(value_s.length - 12) === "000000000000") return value_s.substring(0, value_s.length - 12) + "T";
+    if (value_s.substring(value_s.length - 9) === "000000000") return value_s.substring(0, value_s.length - 9) + "G";
+    if (value_s.substring(value_s.length - 6) === "000000") return value_s.substring(0, value_s.length - 6) + "M";
+    if (value_s.substring(value_s.length - 3) === "000") return value_s.substring(0, value_s.length - 3) + "k";
+    return value_s;
+}
+
 // ------------------------------------------------------------------------------------------------------------
 //  Create tooltip text based on format and list of attributes (name is given as a separate parameter)
 // ------------------------------------------------------------------------------------------------------------
@@ -47,9 +57,11 @@ function get_tooltip_text(tt_format, name, attrs) {
         if (attr_name == 'name') {
             tt_text = tt_text.replace(attr_tmpl, name);
         } else {
+            console.log(attrs);
             if (attr_name in attrs) {
                 let attr_text = attr_tmpl;
-                attr_text = attr_text.replace(attr_name_par, attrs[attr_name]);
+                let attr_value = format_value_as_string_with_multiplier(attrs[attr_name]);
+                attr_text = attr_text.replace(attr_name_par, attr_value);
                 attr_text = /\((.*)\)/g.exec(attr_text)[1];
                 tt_text = tt_text.replace(attr_tmpl, attr_text);
             } else {      // remove whole item

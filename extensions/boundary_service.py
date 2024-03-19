@@ -386,6 +386,9 @@ class BoundaryService:
                                 station = stations_dict[sar["station"]]
 
                                 transformer = esdl.Transformer(id=str(uuid.uuid4()), name=station["station"])
+
+                                # For now, only use the "demand" capacity
+                                transformer.capacity = 1e6 * station["capaciteit_afname_mva"]
                                 shp = Shape.parse_geojson_geometry(station["geom"])
                                 transformer.geometry = shp.get_esdl()
                                 transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
