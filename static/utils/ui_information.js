@@ -57,7 +57,6 @@ function get_tooltip_text(tt_format, name, attrs) {
         if (attr_name == 'name') {
             tt_text = tt_text.replace(attr_tmpl, name);
         } else {
-            console.log(attrs);
             if (attr_name in attrs) {
                 let attr_text = attr_tmpl;
                 let attr_value = format_value_as_string_with_multiplier(attrs[attr_name]);
