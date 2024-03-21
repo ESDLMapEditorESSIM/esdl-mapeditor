@@ -297,25 +297,27 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
     area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
-            if not isinstance(kpi, esdl.DistributionKPI):
-                kpi_qau = kpi.quantityAndUnit
-                if kpi_qau:
-                    if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
-                        kpi_qau = kpi_qau.reference
+            kpi_qau = kpi.quantityAndUnit
+            if kpi_qau:
+                if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
+                    kpi_qau = kpi_qau.reference
 
-                    if not kpi_qau:     # Reference field in the ESDL could be "" (but should never be)
-                        unit = ''
-                    else:
-                        unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
-                else:
+                if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
                     unit = ''
+                else:
+                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+            else:
+                unit = ''
+
+            if not isinstance(kpi, esdl.DistributionKPI):
                 geojson_KPIs[kpi.name] = {
                     'value': kpi.value,
                     'unit': unit
                 }
             else:
                 geojson_dist_kpis[kpi.name] = {"type": "distributionKPI",
-                                               "value": []}
+                                               "value": [],
+                                               "unit": unit}
                 for str_val in kpi.distribution.stringItem:
                     geojson_dist_kpis[kpi.name]["value"].append({"name": str_val.label,
                                               "value": str_val.value})

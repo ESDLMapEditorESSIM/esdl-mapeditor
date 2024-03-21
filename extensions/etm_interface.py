@@ -23,7 +23,7 @@ from uuid import uuid4
 
 from esdl import esdl
 from esdl.processing import ESDLAsset
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.session_manager import get_handler, get_session
 from extensions.settings_storage import SettingsStorage
@@ -561,6 +561,7 @@ class ETMSankeyToESDL:
         kpi_name = "Final demand per sector [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for sect, sect_info in self.sectors.items():
             if abs(sect_info["final_demand"]) > 1e-6:
@@ -585,6 +586,7 @@ class ETMSankeyToESDL:
         kpi_name = "Final demand per carrier [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["final_demand"]) > 1e-6:
@@ -609,6 +611,7 @@ class ETMSankeyToESDL:
         kpi_name = "Import per carrier [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["import"]) > 1e-6:
@@ -637,6 +640,7 @@ class ETMSankeyToESDL:
         kpi_name = "Clustered final demand [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster, cluster_total in cluster_totals.items():
             if abs(cluster_totals[cluster]) > 1e-6:
@@ -661,6 +665,7 @@ class ETMSankeyToESDL:
 
         kpi_name = "Local production [" + unit_to_string(kpi_unit) + "]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -688,6 +693,7 @@ class ETMSankeyToESDL:
 
         kpi_name = "Local production (incl. Import) [" + unit_to_string(kpi_unit) + "]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -729,6 +735,7 @@ class ETMSankeyToESDL:
         kpi_name = "Electricity demand per sector [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for sector_name, sector_total in electricity_demand_per_sector.items():
             if abs(electricity_demand_per_sector[sector_name]) > 1e-6:
@@ -740,6 +747,7 @@ class ETMSankeyToESDL:
         kpi_name = "Electricity demand per cluster [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster_name, cluster_total in electricity_demand_per_cluster.items():
             if abs(electricity_demand_per_cluster[cluster_name]) > 1e-6:
@@ -773,6 +781,7 @@ class ETMSankeyToESDL:
         # Add KPI with peak power value
         kpi_name = "Peak power per cluster [MW]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = build_qau_from_unit_string("MW")
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster_name, peak_energy in peak_energy_per_hour.items():
             power = peak_energy / 3600 * 1e9
