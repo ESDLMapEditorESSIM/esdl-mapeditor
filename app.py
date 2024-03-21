@@ -1979,10 +1979,7 @@ def process_command(message):
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                esh.add_object_to_dict(es_edit.id, asset)
-                if hasattr(asset, 'port'):
-                    for added_port in asset.port:
-                        esh.add_object_to_dict(es_edit.id, added_port)
+                esh.add_object_to_dict(es_edit.id, asset, recursive=True)
                 set_handler(esh)
 
     if message['cmd'] == 'remove_object':

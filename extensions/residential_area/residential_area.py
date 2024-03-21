@@ -152,9 +152,15 @@ class ResidentialArea:
                 edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
                 bld["esdl"] = edr_asset
 
+        aggr_bld = esdl.AggregatedBuilding(id=str(uuid4()), name="Woonwijk", aggregationCount=0)
+
         totals = dict()
         for bld in bld_composition:
             if int(bld["num"]) > 0:
+                # Add number of this type of building to the total number of buildings in the AggregatedBuilding
+                aggr_bld.aggregationCount += int(bld["num"])
+
+                # Collect information about the assets and energy values in this type of building
                 bld_esdl = bld["esdl"]
                 for asset in bld_esdl.asset:
                     if isinstance(asset, esdl.Producer) or isinstance(asset, esdl.Consumer):
@@ -175,9 +181,9 @@ class ResidentialArea:
                                     totals[asset.eClass.name] = {asset.name: {"name": asset.name, "value": value,
                                                                  "qau": qau.deepcopy()}}
 
-        aggr_bld = esdl.AggregatedBuilding(id=str(uuid4()), name="Woonwijk")
         for asset_class, asset_info in totals.items():
             for asset_instance, asset_sub_info in asset_info.items():
+                # Create the aggregated version of this asset over all building types
                 asset = esdl.getEClassifier(asset_class)()
                 asset.id = str(uuid4())
                 asset.name = asset_instance
@@ -197,14 +203,38 @@ class ResidentialArea:
 
                 aggr_bld.asset.append(asset)
 
-        # TODO: add EConnection and Network
+        # Add EConnection and ElectricityNetwork to the AggregatedBuilding
+        aggr_bld_elec_netw = esdl.ElectricityNetwork(id=str(uuid4()), name="In-house electricity network")
+        aggr_bld_elec_netw_inp = esdl.InPort(id=str(uuid4()), name="In")
+        aggr_bld_elec_netw_outp = esdl.OutPort(id=str(uuid4()), name="Out")
+        aggr_bld_elec_netw.port.extend([aggr_bld_elec_netw_inp, aggr_bld_elec_netw_outp])
+        aggr_bld.asset.append(aggr_bld_elec_netw)
 
+        aggr_bld_econn = esdl.EConnection(id=str(uuid4()), name="Electricity network connection")
+        aggr_bld_econn_inp = esdl.InPort(id=str(uuid4()), name="In")
+        aggr_bld_econn_outp = esdl.OutPort(id=str(uuid4()), name="Out")
+        aggr_bld_econn.port.extend([aggr_bld_econn_inp, aggr_bld_econn_outp])
+        aggr_bld.asset.append(aggr_bld_econn)
+
+        # Connect EConnection to the in-house electricity network
+        aggr_bld_econn_outp.connectedTo.append(aggr_bld_elec_netw_inp)
+
+        # Connect all assets in the building to the in-house electricity network
+        # For now assume all assets relate to electricity
+        for bld_asset in aggr_bld.asset:
+            if isinstance(bld_asset, esdl.Producer):
+                bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_inp)
+            elif isinstance(bld_asset, esdl.Consumer):
+                bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_outp)
+
+        # Create string representation of the ESDL of the AggregatedBuilding
         rset = ResourceSet()
         resource = rset.create_resource(URI("aggr_bld.esdl"))
         resource.append(aggr_bld)
         uri = StringURI("aggr_bld_str.esdl")
         resource.save(uri)
 
+        # Put this string in the adding_edr_assets session variable so it can be used after asset placement on the map
         set_session("adding_edr_assets", uri.getvalue())
 
         return {}
