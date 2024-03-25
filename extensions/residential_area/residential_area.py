@@ -156,7 +156,8 @@ class ResidentialArea:
 
         totals = dict()
         for bld in bld_composition:
-            if int(bld["num"]) > 0:
+            # check for wrong input (empty string or something other than a number)
+            if str(bld["num"]).isnumeric() and int(bld["num"]) > 0:
                 # Add number of this type of building to the total number of buildings in the AggregatedBuilding
                 aggr_bld.aggregationCount += int(bld["num"])
 
@@ -173,13 +174,20 @@ class ResidentialArea:
 
                                 if asset.eClass.name in totals:
                                     if asset.name in totals[asset.eClass.name]:
-                                        totals[asset.eClass.name][asset.name]["value"] += value
+                                        totals[asset.eClass.name][asset.name]["value"] += int(bld["num"]) * value
                                     else:
-                                        totals[asset.eClass.name][asset.name] = {"name": asset.name, "value": value,
-                                                                 "qau": qau.deepcopy()}
+                                        totals[asset.eClass.name][asset.name] = {
+                                            "name": asset.name,
+                                            "value": int(bld["num"]) * value,
+                                            "qau": qau.deepcopy()
+                                        }
                                 else:
-                                    totals[asset.eClass.name] = {asset.name: {"name": asset.name, "value": value,
-                                                                 "qau": qau.deepcopy()}}
+                                    totals[asset.eClass.name] = {
+                                        asset.name: {
+                                            "name": asset.name,
+                                            "value": int(bld["num"]) * value,
+                                            "qau": qau.deepcopy()}
+                                    }
 
         for asset_class, asset_info in totals.items():
             for asset_instance, asset_sub_info in asset_info.items():
