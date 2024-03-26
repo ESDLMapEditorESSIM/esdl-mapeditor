@@ -584,7 +584,7 @@ esdl_config = {
                             "label_fields": ["name"],
                             "value_field": "id",
                         },
-                        "target_variable": "project_id",
+                        "target_variable": "project",
                         "next_step": 3,
                     },
                     {
