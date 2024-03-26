@@ -4,7 +4,7 @@ services:
   mapeditor:
     build:
       context: ..
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./docker/Dockerfile-dev
     image: esdl-mapeditor:dev
     networks:
       - mapeditor-net
@@ -23,11 +23,7 @@ services:
       - ../.env
 
   vue-watch:
-    build:
-      context: ..
-      dockerfile: ./docker/Dockerfile
-      target: frontend
-    image: esdl-mapeditor:dev-watch
+    image: node:20
     working_dir: /usr/src/app
     volumes:
       - ..:/usr/src/app

@@ -41,6 +41,7 @@
                 {{ workflow.name }}
               </a-menu-item>
             </a-sub-menu>
+            <a-menu-item key="logState" @click="logState">Log workflow state</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>
@@ -67,10 +68,11 @@
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowSelectQuery
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY
-      "
-      :key="currentWorkflow.workflowStep.name"
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowTableQuery
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"      
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowEsdlService
@@ -113,9 +115,21 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowCallJsFunction
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowJsonForm
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
+      "
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowJsonForm2
+      v-else-if="
+        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2
       "
       :workflow-step="currentWorkflow.workflowStep"
     />
@@ -127,10 +141,11 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
 import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
 import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
+import {default as WorkflowTableQuery} from "../components/workflow/WorkflowTableQuery";
 import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
 import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
 import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
@@ -139,6 +154,8 @@ import {default as WorkflowProgress} from "../components/workflow/WorkflowProgre
 import {default as WorkflowText} from "../components/workflow/WorkflowText";
 import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
+import {default as WorkflowJsonForm2} from "../components/workflow/WorkflowJsonForm2";
+import {default as WorkflowCallJsFunction} from "../components/workflow/WorkflowCallJsFunction";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {useEsdlLayers} from "../composables/esdlLayers.js";
@@ -146,57 +163,38 @@ import {ref} from "vue";
 
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
-export default {
-  setup() {
-    const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow } = useWorkflow();
+const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow, getState } = useWorkflow();
 
-    const activeEnergySystemTitle = ref("Please select an energy system");
-    try {
-      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-    } catch (e) {
-      // Skip.
-    }
+const activeEnergySystemTitle = ref("Please select an energy system");
+const activeEnergySystemId = ref("");
+try {
+  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+} catch (e) {
+  // Skip.
+}
 
-    PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
-      activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-    });
+PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+  activeEnergySystemId.value = window.esdl_list[getActiveEsdlLayerId().value].id;
+});
 
-    function confirmPersistWorkflow() {
-      let workflowName = currentWorkflow.value.name;
-      if (!workflowName) {
-        workflowName = prompt("Please enter a workflow name")
-      }
-      if (workflowName) {
-        currentWorkflow.value.setName(workflowName);
-        currentWorkflow.value.setPersistence(true);
-        persistWorkflow(true);
-      }
-    }
+function confirmPersistWorkflow() {
+  let workflowName = currentWorkflow.value.name;
+  if (!workflowName) {
+    workflowName = prompt("Please enter a workflow name")
+  }
+  if (workflowName) {
+    currentWorkflow.value.setName(workflowName);
+    currentWorkflow.value.setPersistence(true);
+    persistWorkflow(true);
+  }
+}
 
-    loadSavedWorkflows();
+function logState() {
+  console.log("State:", getState());
+  alert("See console for state.");
+}
 
-    return {
-      activeEnergySystemTitle,
-      MenuOutlined,
-      confirmPersistWorkflow,
-      currentWorkflow,
-      goToFirstStep,
-      goToPreviousStep,
-      WorkflowStepTypes,
-      WorkflowUploadFile,
-      WorkflowHttpPost,
-      WorkflowCustomComponent,
-      WorkflowChoice,
-      WorkflowSelectQuery,
-      WorkflowEsdlService,
-      WorkflowProgress,
-      WorkflowText,
-      WorkflowDownloadFile,
-      WorkflowJsonForm,
-      savedWorkflows,
-      activatePersistedWorkflow,
-      deletePersistedWorkflow,
-    };
-  },
-};
+loadSavedWorkflows();
+
 </script>

@@ -23,6 +23,7 @@ from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
+from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
 from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
@@ -49,7 +50,7 @@ def get_area_id_from_mapeditor_id(id):
     :param id: id from the frontend
     :return: clean id (without ' (1 of 4)')
     """
-    if re.match(r".* ([0-9]+ of [0-9]+)", id):
+    if re.match(r".* \([0-9]+ of [0-9]+\)", id):
         return id.split()[0]
     else:
         return id
@@ -215,7 +216,7 @@ def choose_location(possible_locations):
     return location
 
 
-def update_asset_geometries_shape(area, shape):
+def update_asset_geometries_shape(area, shape, show_assets_without_location=False):
 
     possible_locations = None
     if shape:
@@ -227,9 +228,11 @@ def update_asset_geometries_shape(area, shape):
     for asset in area.asset:
         geom = asset.geometry
         if not geom and possible_locations:
-            loc = choose_location(possible_locations).get_esdl()
-            asset.geometry = loc
-            # print("assigning location lng:{} lat:{} to asset".format(loc.lon, loc.lat))
+            # Add 'missing' location to asset based on user setting
+            if show_assets_without_location:
+                loc = choose_location(possible_locations).get_esdl()
+                asset.geometry = loc
+                # print("assigning location lng:{} lat:{} to asset".format(loc.lon, loc.lat))
 
         if isinstance(asset, esdl.AbstractBuilding):
             calc_building_assets_location(asset)
@@ -278,7 +281,7 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=False):
     area_id = this_area.id
     area_name = this_area.name
     if not area_name: area_name = ""
@@ -294,25 +297,27 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
-            if not isinstance(kpi, esdl.DistributionKPI):
-                kpi_qau = kpi.quantityAndUnit
-                if kpi_qau:
-                    if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
-                        kpi_qau = kpi_qau.reference
+            kpi_qau = kpi.quantityAndUnit
+            if kpi_qau:
+                if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
+                    kpi_qau = kpi_qau.reference
 
-                    if not kpi_qau:     # Reference field in the ESDL could be "" (but should never be)
-                        unit = ''
-                    else:
-                        unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
-                else:
+                if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
                     unit = ''
+                else:
+                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+            else:
+                unit = ''
+
+            if not isinstance(kpi, esdl.DistributionKPI):
                 geojson_KPIs[kpi.name] = {
                     'value': kpi.value,
                     'unit': unit
                 }
             else:
                 geojson_dist_kpis[kpi.name] = {"type": "distributionKPI",
-                                               "value": []}
+                                               "value": [],
+                                               "unit": unit}
                 for str_val in kpi.distribution.stringItem:
                     geojson_dist_kpis[kpi.name]["value"].append({"name": str_val.label,
                                               "value": str_val.value})
@@ -326,14 +331,19 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     area_shape = None
 
     if area_geometry:
+        area_geojson_properties = {
+            "id": area_id,
+            "name": area_name,
+            "KPIs": geojson_KPIs,
+            "dist_KPIs": geojson_dist_kpis
+        }
+
+        if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
+            area_geojson_properties["type"] = "SERVICE_AREA"
+
         if isinstance(area_geometry, esdl.Polygon):
             shape_polygon = Shape.create(area_geometry)
-            area_list.append(shape_polygon.get_geojson_feature({
-                "id": area_id,
-                "name": area_name,
-                "KPIs": geojson_KPIs,
-                "dist_KPIs": geojson_dist_kpis
-            }))
+            area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
             area_shape = shape_polygon
         if isinstance(area_geometry, esdl.MultiPolygon):
             boundary_wgs = ESDLGeometry.create_boundary_from_geometry(area_geometry)
@@ -344,21 +354,14 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
                     area_id_number = ""
+                area_geojson_properties["id"] = area_id + area_id_number;
+
                 shape_polygon = Shape.create(pol)
-                area_list.append(shape_polygon.get_geojson_feature({
-                    "id": area_id + area_id_number,
-                    "name": area_name,
-                    "KPIs": geojson_KPIs,
-                    "dist_KPIs": geojson_dist_kpis
-                }))
+                area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
             area_shape = shape_multipolygon
         if isinstance(area_geometry, esdl.WKT):
             shape_wkt = Shape.create(area_geometry)
-            area_list.append(shape_wkt.get_geojson_feature({
-                "id": area_id,
-                "name": area_name,
-                "KPIs": geojson_KPIs
-            }))
+            area_list.append(shape_wkt.get_geojson_feature(area_geojson_properties))
             area_shape = shape_wkt
     else:
         if area_id and area_scope.name != 'UNDEFINED':
@@ -396,7 +399,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
     if area_shape:
         shape_dictionary[area_id] = area_shape
     # call this function even with area_shape == None, to position building assets inside a building
-    update_asset_geometries_shape(this_area, area_shape)
+    update_asset_geometries_shape(this_area, area_shape, show_assets_without_location)
 
     potentials = this_area.potential
     for potential in potentials:
@@ -413,8 +416,24 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary):
                 }))
                 shape_dictionary[potential.id] = shape
 
+    # Check if all sub areas have attribute logicalGroup set to true (must be clustered in UI)
+    logical_group = True
     for area in this_area.area:
-        find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
+        if not area.logicalGroup:
+            logical_group = False
+
+    if not logical_group:
+        for area in this_area.area:
+            find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
+    else:
+        for area in this_area.area:
+            grouped_area_info = {
+                "name": area.name,
+                "type": "group",
+                "area_list": list()
+            }
+            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary, show_assets_without_location)
+            area_list.append(grouped_area_info)
 
 
 def create_area_info_geojson(area):
@@ -425,9 +444,16 @@ def create_area_info_geojson(area):
     if not shape_dictionary:
         shape_dictionary = {}
 
+    user = get_session('user-email')
+    user_settings = MapEditorSettings.get_instance().get_user_settings(user)
+    try:
+        show_assets_without_location = user_settings["ui_settings"]["assets_on_map"]["show_assets_without_location"]
+    except:
+        show_assets_without_location = False
+
     print("- Finding ESDL boundaries...")
     BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)
-    find_area_info_geojson(area_list, pot_list, area, shape_dictionary)
+    find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
     print("- Done")
 
     set_session('shape_dictionary', shape_dictionary)
@@ -502,6 +528,8 @@ def add_asset_to_asset_list(asset_list, asset):
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry
+
+    # Only add assets if they have a location on the map
     if geom:
         if isinstance(geom, esdl.Point):
             lat = geom.lat
@@ -699,6 +727,10 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
         if isinstance(asset, esdl.EnergyAsset):
             add_asset_to_asset_list(asset_list, asset)
 
+            # Also don't add connection information when asset doesn't have a geometry
+            if not asset.geometry:
+                break
+
             for p in asset.port:
                 p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
@@ -762,6 +794,39 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
 
     for subarea in area.area:
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
+
+
+def find_area_location_based(esh, active_es_id, geometry):
+    shape_dictionary = get_session('shape_dictionary')
+
+    obj_geometry_shape = Shape.create(geometry)
+    areas_that_contain_obj = list()
+
+    for key in shape_dictionary.keys():
+        area_shp = shape_dictionary[key]
+        if area_shp.shape.contains(obj_geometry_shape.shape):
+            areas_that_contain_obj.append(key)
+
+    if len(areas_that_contain_obj) == 0:
+        es = esh.get_energy_system(es_id=active_es_id)
+        return es.instance[0].area.id   # If no area is found, return the id of the top level area
+    elif len(areas_that_contain_obj) == 1:
+        return areas_that_contain_obj[0]
+    else:
+        # Find area that is 'lowest' in the area hierarchy
+        lowest_level = 0
+        lowest_area_id = None
+        for ar_id in areas_that_contain_obj:
+            area = esh.get_by_id(active_es_id, ar_id)
+            area_level = 1
+            while isinstance(area.eContainer(), esdl.Area):
+                area_level += 1
+                area = area.eContainer()
+            if area_level > lowest_level:
+                lowest_level = area_level
+                lowest_area_id = ar_id
+
+        return lowest_area_id
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -874,8 +939,9 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
             area_name = area.name
             if not area_name:
                 area_name = title
-            if area_kpis:
-                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_list': area_kpis})
+            if area_kpis['kpi_list']:   # Only emit KPI info when there are KPIs available
+                emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_info': area_kpis})
+                emit('kpis_present', True)
 
             # measures can contain assets that still need to be added to the energysystem
             assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
@@ -883,9 +949,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 emit('ATBA_assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
 
             # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
-            add_missing_coordinates(area)
+            # add_missing_coordinates(area)
             print('- Processing area')
             process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+            print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
             notes_list = get_notes_list(es)
 
             emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})

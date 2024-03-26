@@ -48,7 +48,8 @@ boundaries_config = {
     "host": os.environ.get('BOUNDARY_SERVICE_HOST', None),  # "boundary-service",
     "port": os.environ.get('BOUNDARY_SERVICE_PORT', None),  # "4002",
     "path_names": "/names",
-    "path_boundaries": "/boundaries"
+    "path_boundaries": "/boundaries",
+    "path_service_areas": "/service_areas"
 }
 
 profile_database_config = {
@@ -121,4 +122,13 @@ statistics_settings_config = {
 
 ielgas_config = {
     "host": os.environ.get('IELGAS_DATABASE_HOST', None)
+}
+
+heatnetwork_dispatcher_config = {
+    "host": os.environ.get('DISPATCHER_HOST', 'http://localhost'),
+    "port": os.environ.get('DISPATCHER_PORT', 9200)
+}
+
+user_feedback_url_config = {
+    "url": os.environ.get('USER_FEEDBACK_URL', None)
 }

@@ -19,6 +19,7 @@ import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerate
 import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles';
 import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1';
 import {default as WorkflowFlexScanImportEPS} from './custom/flexscan/WorkflowFlexScanImportEPS';
+import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -31,6 +32,7 @@ const components = {
   "dice-upload-profiles": DiceUploadProfiles,
   "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,
   "flexscan-import-eps": WorkflowFlexScanImportEPS,
+  "demo-custom": DemoCustomComponent,
 };
 const props = defineProps({
   workflowStep: {

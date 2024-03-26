@@ -67,7 +67,27 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 ## Starting a local instance of the application (with the docker-toolsuite)
 
-Perform the following steps to run the mapeditor directly on your own machine. Prerequisites are Python3 and pip. You also need to be running the Docker Toolsuite.
+### Prerequisites
+
+Python 3: Please make sure you have installed the appropriate version of Python 3. For the most actual up to date
+version, please refer to the `Dockerfile` in the `docker` directory.
+
+Make sure that pip is installed. We use pip-tools to manage our dependencies. For just running the mapeditor it is not
+required to install it, but if you want to update dependencies, you do need it. You can install it through pip, using
+`pip install pip-tools`. If in a terminal, you might need to close it and start it again for the commands to work.
+
+The frontend code is written in JavaScript, using the Vue framework. Please make sure you have an up to date version of
+NodeJS installed (please refer to the `Dockerfile`).
+
+We use Yarn Modern to manage our JavaScript dependencies. Yarn Modern is **not** installable through npm but is
+distributed through `Corepack`. It is not required for you to install as the binary is included in the project in the
+.yarn folder. But you do need to enable Corepack by running `corepack enable` in your terminal.
+
+You also need to be running the Docker Toolsuite.
+
+### Installation
+
+Perform the following steps to run the mapeditor directly on your own machine.
 
 1. Clone this repository.
 
@@ -77,7 +97,7 @@ Perform the following steps to run the mapeditor directly on your own machine. P
 
 4. Install all vue dependencies: `yarn`
 
-5. Run the Vue code compiler in watch mode: `yarn run watch`
+5. Run the Vue code compiler in watch mode: `yarn run watch`. If you get an 'ERR_OSSL_EVP_UNSUPPORTED' error, set the NODE_OPTIONS environment variable to '--openssl-legacy-provider' (without the quotes).
 
 6. Run the application: `python app.py`
 

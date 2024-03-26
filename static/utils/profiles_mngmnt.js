@@ -558,8 +558,8 @@ class Profiles {
         $div.append($('<p>').text('CSV files with profile data must adhere to a certain format:'))
         $div.append($('<ul>')
             .append($('<li>').text('there is one row with the column headers'))
-            .append($('<li>').text('the first column must contain the datetime field (format \'DD-MM-YYYY HH:MM\')'))
-            .append($('<li>').text('dates/times must be in UTC (without daylight saving)'))
+            .append($('<li>').text('the first column must contain the datetime field (different formats are supported)'))
+            .append($('<li>').text('if no timezone is used, UTC is used by default'))
             .append($('<li>').text('different profiles can be added using more than one column'))
             .append($('<li>').text('profiles are uploaded to the standard database, using the csv filename and the'+
                 ' column name as identifiers (they must be unique, else data will be overwritten)'))

@@ -61,6 +61,8 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
+<!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
+
 
     <link rel="stylesheet" href="./vendor/code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="./vendor/code.jquery.com/jquery-1.12.4.js"></script>
@@ -173,8 +175,10 @@
     <link rel="stylesheet" href="./utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.KPICharts.js"></script>
     <script type="text/javascript" src="./utils/kpis.js"></script>
+    <script type="text/javascript" src="./utils/kpi_data.js"></script>
 
-    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+<!--    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>-->
+    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="./utils/L.Control.LoadDurationCurve.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.LoadDurationCurve.js"></script>
     <script type="text/javascript" src="./utils/ldc.js"></script>
@@ -189,12 +193,13 @@
     <script type="text/javascript" src="./utils/es_statistics.js"></script>
     <script type="text/javascript" src="./utils/shapefile_converter.js"></script>
     <script type="text/javascript" src="./utils/port_handlers.js"></script>
+    <script type="text/javascript" src="./utils/interactive_tooltip.js"></script>
 
     <link rel="stylesheet" href="./css/user_messages.css" type="text/css"/>
     <script type="text/javascript" src="./utils/user_messages.js"></script>
 
     <script type="text/javascript" src="./utils/profiles_mngmnt.js"></script>
-    <script type="text/javascript" src="./utils/etm_local.js"></script>
+    <script type="text/javascript" src="./utils/etm_interface.js"></script>
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
@@ -211,6 +216,7 @@
     <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
+    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -278,6 +284,7 @@
         colors['Conversion'] = 'purple';
         colors['Potential'] = 'grey';
 
+        window.jquery = $;
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -489,14 +496,20 @@
         //  Update the select element to indicate to what area or building to add assets
         // ------------------------------------------------------------------------------------------------------------
         function update_area_bld_list_select() {
-            var select = document.getElementById('area_bld_select');
+            let select = document.getElementById('area_bld_select');
             select.innerHTML = '';
+
+            let option = document.createElement("option");
+            option.classList.add("ui-state-active");
+            option.text = 'Add assets to Area based on location';
+            option.value = 'find_area_location_based';
+            select.add(option, null);
+
             area_bld_list = get_area_bld_list(active_layer_id);
             if (area_bld_list) {
                 for (i=0; i<area_bld_list.length; i++) {
-                    var option = document.createElement("option");
-                    if (i==0) { option.classList.add("ui-state-active"); }
-                    var level = area_bld_list[i][3];
+                    let option = document.createElement("option");
+                    let level = area_bld_list[i][3];
                     option.text = '';
                     if (level > 0) {
                          for (j=0; j<level; j++) option.text = option.text + '-';
@@ -548,6 +561,8 @@
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
+                window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
+                auth_status(true); // Check immediately if we have an autorized session
             });
 
             socket.on('user_info', function(ui) {
@@ -685,7 +700,7 @@
                 // 'polygon' potential  name  id  class_name  [...]
 
                 // hide_loader();
-                // console.log(options);
+                //console.log('add_esdl_objects', options);
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
                 es_id = options['es_id'];
@@ -1271,8 +1286,8 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                if (results.esdl_service_result) {
-                    process_service_results(results.esdl_service_result)
+                if (results) {
+                    process_service_results(results)
                 }
             });
 
@@ -1318,7 +1333,7 @@
         $(function() {
             $("#asset_menu").selectmenu({ 'width': '200px', 'max-height': '500px' }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
-            $("#area_bld_select").selectmenu({ width:500 });
+            $("#area_bld_select").selectmenu({ width:350 });
             //$("#area_bld_select-menu").css({ 'max-height': '600px' });
             $("#carrier_select").selectmenu({ width:150 });
             $("#profile_menu").selectmenu({ width:150 });
@@ -1434,7 +1449,7 @@
 
 </head>
 <body class="flexbox-parent">
-    <div class="flexbox-item topmenu">
+    <div class="topmenu">
         <div class="header">
             <div class="header-logo" ><img src="favicon.ico" height="20"></div>
             <div class="header-title" ><b>ESDL Map Editor - </b></div>
@@ -1499,7 +1514,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="sector_info();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
@@ -1558,6 +1573,7 @@
 
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
+                                    <li id="vue_test_edr_residential_area"></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>
@@ -1593,12 +1609,16 @@
                                     </li>
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
+                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+{% if user_feedback_url %}
+                                    <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
+{% endif %}
                                     <li id="vue_show_release_notes"></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
@@ -1612,7 +1632,7 @@
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
-            <input class="inputFile" type="file" style="display: none;" onchange="loas_esdl_files(event);" onclick="this.value=null;" multiple>
+            <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
 
 {% if edr_enabled %}
@@ -1628,7 +1648,11 @@
             <select id="area_bld_select"></select>
         </div>
     </div>
-    <div id="mapid" class="flexbox-item flexbox-item-grow" style="z-index:10"></div>
+
+    <div class="flexbox-content">
+        <div id="vue_side_pane_root"></div>
+        <div id="mapid" class="flexbox-item-grow" style="z-index:10"></div>
+    </div>
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
@@ -1646,8 +1670,6 @@
         <span id="deleteLogItems" onclick="deleteLogItems()">Delete all</span>
         <div id="messages"></div>
     </div>
-</div>
-
 </body>
 </html>
 
@@ -1685,6 +1707,7 @@
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
+        resize_area_pi_charts();
     });
 
     // use a pane to control line selection overlay with a different zIndex
@@ -1700,8 +1723,15 @@
                 layer: osm.addTo(map)
             },
             {
+                label: 'OpenTopoMap',
+                layer: L.tileLayer(location.protocol + '//{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 17,
+                    attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
+                })
+            },
+            {
                 label: 'Google Streets',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                     maxZoom: 20,
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
                     attribution: 'Google'
@@ -1709,7 +1739,7 @@
             },
             {
                 label: 'Google Satellite',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
                     maxZoom: 20,
                     subdomains:['mt0','mt1','mt2','mt3'],
                     attribution: 'Google'
@@ -1750,8 +1780,8 @@
     // rest of the markers are generated when the capabilities are send to the browser
     for (var i=0; i < assets_for_icons.length; i++) {
         var ass_name = assets_for_icons[i];
-        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png'}});
+        window[ass_name+'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(15, 15),
+            iconSize: new L.Point(30, 30), iconUrl: 'images/' + ass_name +'.png', className: 'leaflet-no-mouse-cursor'}});
     }
 
     sidebar = L.control.sidebar('sidebar', {
@@ -1787,6 +1817,18 @@
     var table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
 
+    let kpi_dashboard_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    };
+    var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
+
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
 {% endif %}
@@ -1797,6 +1839,9 @@
 
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
+<script>
+window.DEBUG = true;
+</script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>

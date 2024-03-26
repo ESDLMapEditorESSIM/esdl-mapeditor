@@ -6,7 +6,7 @@ stages:
 
 variables:
   TAG: $CI_COMMIT_SHA
-  BRANCH: $CI_COMMIT_REF_SLUG
+  BRANCH: $CI_COMMIT_REF_NAME
   REGISTRY: ci.tno.nl
   IMAGE_BASE: ci.tno.nl/geis/esdl-mapeditor
 
@@ -31,17 +31,16 @@ build-mapeditor:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
   script:
     - docker pull $IMAGE:$BRANCH || true
-    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-    #- docker build --no-cache --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-    - docker push $IMAGE:$TAG
-    - docker push $IMAGE:$BRANCH
-
-build-mapeditor-uwsgi:
-  stage: build
-  variables:
-    IMAGE: $IMAGE_BASE/esdl-mapeditor-uwsgi
-  script:
-    - docker pull $IMAGE:$BRANCH || true
     - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
     - docker push $IMAGE:$TAG
     - docker push $IMAGE:$BRANCH
+
+#build-mapeditor-uwsgi:
+#  stage: build
+#  variables:
+#    IMAGE: $IMAGE_BASE/esdl-mapeditor-uwsgi
+#  script:
+#    - docker pull $IMAGE:$BRANCH || true
+#    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
+#    - docker push $IMAGE:$TAG
+#    - docker push $IMAGE:$BRANCH

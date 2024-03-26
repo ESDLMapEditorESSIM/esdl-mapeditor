@@ -13,8 +13,8 @@
       >
         <a-date-picker
           format="YYYY-MM-DD HH:mm:ss"
-          :default-value="moment(record.datetime, 'YYYY-MM-DD HH:mm:ss')"
-          :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }"
+          :default-value="dayjs(record.datetime, 'YYYY-MM-DD HH:mm:ss')"
+          :show-time="{ defaultValue: dayjs('00:00:00', 'HH:mm:ss') }"
           @change="(date, dateString) => dateChange(date, dateString, record.key)"
         />
       </template>
@@ -52,7 +52,7 @@
 </template>
 
 <script>
-const moment = () => import("moment");
+import dayjs from 'dayjs';
 import { v4 as uuidv4 } from 'uuid';
 
 const columns = [
@@ -99,7 +99,7 @@ export default {
     };
   },
   methods: {
-    moment,
+    dayjs,
     handleChange(value, key, column) {
       // console.log(value);
       const newData = [...this.data];

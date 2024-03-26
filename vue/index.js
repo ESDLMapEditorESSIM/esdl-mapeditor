@@ -9,15 +9,24 @@ import MarginalCostsEdit from "./apps/MarginalCostsEdit";
 import ObjectProperties from './apps/ObjectProperties';
 import EDRAssets from './apps/EDRAssets';
 import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
+import AddEditWmsLayer from './apps/AddEditWmsLayer';
 import Carriers from './apps/Carriers.vue';
+import Sectors from './apps/Sectors.vue';
 import AboutBox from './apps/AboutBox';
 import ReleaseNotes from './apps/ReleaseNotes';
 import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
+import KPIDashboard from './apps/KPIDashboard';
 import AssetTableEditor from './apps/AssetTableEditor';
 import CustomIconsSettings from "./apps/CustomIconsSettings";
-import {createVueLControl, mountApp, mountSettingsComponent, mountSidebarComponent} from "./mounts";
+import {
+    createVueLControl,
+    mountApp,
+    mountSettingsComponent,
+    mountSidebarComponent,
+    mountTooltipComponent,
+} from "./mounts";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
 import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
@@ -29,32 +38,36 @@ import ServicesToolbar from './components/toolbars/ServicesToolbar'
 import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
+import {useTooltipInfo} from './composables/TooltipInfo';
+import AssetTooltip from './apps/AssetTooltip';
 import ActiveLongProcess from './components/progress/ActiveProcess'
+import SidePane from "./apps/SidePane"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
-
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
+import ResidentialArea from "./apps/ResidentialArea";
+import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
 
-window.activate_service_workflow = async (serviceIndex, service) => {
+window.activate_service_workflow = async (serviceIndex, service, state) => {
     const { startNewWorkflow, currentWorkflow } = useWorkflow();
-    if (currentWorkflow.value && currentWorkflow.value.restartable) {
+    if (currentWorkflow.value && currentWorkflow.value.resumable) {
         const result = await Swal.fire({
-          title: "Would you like to continue the currently active workflow?",
+          title: "Would you like to resume the currently active workflow?",
           icon: 'question',
           showDenyButton: true,
           confirmButtonText: "Yes",
           denyButtonText: "No, start from the beginning",
         })
         if (result.isDenied) {
-            startNewWorkflow(serviceIndex, service);
+            startNewWorkflow(serviceIndex, service, state);
         }
     } else {
-        startNewWorkflow(serviceIndex, service);
+        startNewWorkflow(serviceIndex, service, state);
     }
     mountSidebarComponent(Workflow);
-    // window.sidebar.on("hide", closeWorkflow);
 }
 
 window.control_strategy_window = (object_id) => {
@@ -82,6 +95,13 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.show_tooltip = (object_title, object_id) => {
+    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+    newTooltipObjectID(object_id);
+    newTitle(object_title);
+    mountTooltipComponent(AssetTooltip);
 }
 
 window.search_assets_window = () => {
@@ -116,6 +136,13 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
+window.add_edit_wms_layer = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AddEditWmsLayer)
+}
+
+
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
@@ -131,6 +158,7 @@ createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+mountApp(SidePane, '#vue_side_pane_root')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
@@ -139,3 +167,17 @@ createVueLControl(AssetsToBeAddedToolbar, {
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
 }
+
+window.activate_kpi_dashboard_window = () => {
+    mountApp(KPIDashboard, '#kpi_dashboard_window');
+}
+
+createVueLControl(AnnouceKPIsToolbar, {
+        position: 'bottomright',
+    });
+
+window.sectors_window = () => {
+    mountSidebarComponent(Sectors);
+}
+
+mountApp(ResidentialArea, '#vue_test_edr_residential_area')

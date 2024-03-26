@@ -123,20 +123,21 @@ def set_control_strategy(asset, cs_info):
             services.service.remove(control_strategy)
             esh.remove_object_from_dict(active_es_id, control_strategy, True)
         # create new control strategy
-        control_strategy = instantiate_type(cs_info['type'])
-        control_strategy.id = str(uuid4())
-        control_strategy.name = cs_info['type'] + ' for ' + asset.name
-        control_strategy.energyAsset = asset
+        if cs_info['type'] != 'None':  # strategy is removed, and a new one is configured
+            control_strategy = instantiate_type(cs_info['type'])
+            control_strategy.id = str(uuid4())
+            control_strategy.name = cs_info['type'] + ' for ' + asset.name
+            control_strategy.energyAsset = asset
 
-        es = esh.get_energy_system(active_es_id)
-        services = es.services
-        if not services:
-            services = esdl.Services(id=str(uuid4()))
-            es.services = services
-            esh.add_object_to_dict(active_es_id, services)
-        
-        services.service.append(control_strategy)
-        esh.add_object_to_dict(active_es_id, control_strategy)
+            es = esh.get_energy_system(active_es_id)
+            services = es.services
+            if not services:
+                services = esdl.Services(id=str(uuid4()))
+                es.services = services
+                esh.add_object_to_dict(active_es_id, services)
+
+            services.service.append(control_strategy)
+            esh.add_object_to_dict(active_es_id, control_strategy)
 
     if isinstance(control_strategy, esdl.DrivenByDemand):
         control_strategy.outPort = esh.get_by_id(active_es_id, cs_info['port_id']) 

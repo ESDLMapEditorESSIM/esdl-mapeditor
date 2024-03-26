@@ -26,6 +26,129 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.2.0",
+        "date": "2024-02-13T13:08:00Z",
+        "general_message": "On February 13th 2024, we've released the new ESDL MapEditor version 24.2.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for external services that result in a profile",
+                    "Make handling assets without a location user configurable",
+                    "Support for boundary service with DSO service areas",
+                    "Implement option to query ETM to build ESDL"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix non-disappearing tooltips",
+                    "Fix for moving zoomed in area when area popup is displayed",
+                    "Fix parameter handling for external service calls"
+                ]
+            },
+        ]
+    },
+    {
+        "version": "24.1.2",
+        "date": "2024-01-18T16:08:00Z",
+        "general_message": "On January 18th 2024, we've released the new ESDL MapEditor version 24.1.2. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for logical area groups and being able to show/hide whole group in UI",
+                    "Automatic determination of profile aggregation method for the port profile viewer",
+                    "Added user feedback menu option"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error when sending ESDL on asset context menu service call",
+                    "Fix calling panel service when using filters"
+                ]
+            },
+        ]
+    },
+    {
+        "version": "24.1.1",
+        "date": "2024-01-10T14:58:00Z",
+        "general_message": "On January 10th 2024, we've released the new ESDL MapEditor version 24.1.1. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for ESDL update v2401",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error with 'empty' area DistributionKPIs",
+                    "Fix building proper legend for KPIs when not all areas have same labels"
+                ]
+            },
+        ]
+    },
+    {
+        "version": "23.12.0",
+        "date": "2023-12-13T07:00:00Z",
+        "general_message": "On December 13th 2023, we've released the new ESDL MapEditor version 23.12.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "First version of interactive tooltips when hovering over an EnergyAsset on the map",
+                    "Support for ESDL update v2311",
+                    "Support for profiles, sectors and carriers from the EDR",
+                    "Add more assets to the AssetDrawToolbar default list",
+                    "Add kWh, MWh and GWh to the list of predefined quantity and units",
+                    "Areas now have a context menu for actions"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix double scroll bars in the TableEditor",
+                    "Fix updating asset state when changing multiple items in the TableEditor (issue NWN#14)",
+                    "Fix for specifying cost information without a unit",
+                    "Fix and enable delete area option",
+                    "Fix issue with pipe duplicate and reverse not working",
+                    "Work around EMF behavior with split_conductor() having ports that are not removed correctly",
+                    "Fix bugs in port profile viewer",
+                    "Fix loading of esdl.Potential",
+                    "Fix error with 'empty' area KPIs"
+                ]
+            },
+        ]
+    },
+    {
+        "version": "23.9.0",
+        "date": "2023-9-25T22:52:00Z",
+        "general_message": "On September 25th 2023, we've released the new ESDL MapEditor version 23.9.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Improved the processing of CSV based profile information.",
+                    "Implement automatic placement of assets in right area based on location.",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix error with splitting pipe in sub area"
+                ]
+            },
+        ]
+    },
+    {
         "version": "23.5.0",
         "date": "2023-5-25T13:32:00Z",
         "general_message": "On May 25th 2023, we've released the new ESDL MapEditor version 23.5.0. " +

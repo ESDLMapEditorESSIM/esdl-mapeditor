@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import base64
 #  This work is based on original code developed and copyrighted by TNO 2020.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -13,9 +13,9 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
 import importlib
 import json
+import os
 import urllib
 import uuid
 import traceback
@@ -25,11 +25,13 @@ from warnings import warn
 
 import jwt
 import requests
+import structlog.contextvars
 from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
 from flask_executor import Executor
 from flask_oidc import OpenIDConnect
 from flask_session import Session
 from flask_socketio import SocketIO, emit
+from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 import src.esdl_config as esdl_config
@@ -38,6 +40,7 @@ from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
@@ -49,13 +52,14 @@ from extensions.esdl_drive.esdl_drive import ESDLDrive
 from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.etm_local import ETMLocal
+from extensions.etm_interface import ETMInterface
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.ielgas import IELGAS
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
+from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
@@ -63,13 +67,12 @@ from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
 from extensions.time_dimension import TimeDimension
+from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
-from src.edr_assets import EDRAssets
 from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
@@ -78,19 +81,30 @@ from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.log import get_logger
-from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections
+from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
+    find_area_location_based, calc_building_assets_location
+from src.shape import Shape
 from src.user_logging import UserLogging
-from src.version import __long_version__ as mapeditor_version
+from src.version import __long_version__ as mapeditor_long_version
+from src.version import __version__ as mapeditor_version
+from src.version import __git_branch__ as mapeditor_branch
+from src.version import __git_commit__ as mapeditor_commit
 from src.view_modes import ViewModes
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
 from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
+from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
+from extensions.residential_area.residential_area import ResidentialArea
 
 print('MapEditor version {}'.format(mapeditor_version))
+print('MapEditor git describe {}'.format(mapeditor_long_version))
+print('MapEditor branch {}'.format(mapeditor_branch))
+print('MapEditor commit {}'.format(mapeditor_commit))
 logger = get_logger(__name__)
+
 
 if settings.USE_GEVENT:
     import gevent.monkey
@@ -168,22 +182,21 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
-DiceWorkflow(app, socketio, executor, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
+edr_client = EDRClient(app, socketio, settings_storage)
 profiles = Profiles(app, socketio, executor, settings_storage)
 ESDLDrive(app, socketio, executor)
 ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage)
 IELGAS(app, socketio, settings_storage)
-ETMLocal(app, socketio, settings_storage)
+ETMInterface(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
 esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
 ViewModes(app, socketio, settings_storage)
-edr_assets = EDRAssets(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
@@ -191,6 +204,9 @@ ESDLFileIO(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
+KPIDashboard(app, socketio, settings_storage)
+TooltipInfo(app, socketio)
+ResidentialArea(app, socketio, settings_storage)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -235,6 +251,13 @@ def add_header(r: Response):
 def before_request():
     # store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
+
+    user_email = get_session("user-email")
+
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        user=user_email
+    )
 
 
 @app.route('/')
@@ -322,9 +345,11 @@ def editor():
         statistics_service_enabled = not(settings.statistics_settings_config["host"] is None or settings.statistics_settings_config["host"] == "")
         bag_service_enabled = not(settings.bag_config["host"] is None or settings.bag_config["host"] == "")
         ibis_service_enabled = not(settings.ibis_config["host"] is None or settings.ibis_config["host"] == "")
+        user_feedback_url = settings.user_feedback_url_config["url"] if hasattr(settings, "user_feedback_url_config") else None
 
         logger.info("store:{} drive:{} edr:{} bound:{} stat:{} bag:{} ibis:{}".format(store_enabled, esdl_drive_enabled,
             edr_enabled, boundary_service_enabled, statistics_service_enabled,bag_service_enabled, ibis_service_enabled))
+        logger.info("Feedback URL: {}".format(user_feedback_url))
 
         return render_template('editor.html',async_mode=socketio.async_mode,
                                role=role,
@@ -336,6 +361,7 @@ def editor():
                                statistics_service_enabled=statistics_service_enabled,
                                bag_service_enabled=bag_service_enabled,
                                ibis_service_enabled=ibis_service_enabled,
+                               user_feedback_url=user_feedback_url,
                                debug=settings.FLASK_DEBUG,
                                version=mapeditor_version
                                )
@@ -394,13 +420,29 @@ def auth_status():
 
 @app.route('/logout')
 def logout():
+    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
-    """Performs local logout by removing the session cookie. and does a logout at the IDM"""
+    # retrieve the ID token to inform keycloak with the correct information to logout
+    # otherwise you will get a popup that requests if you want to log out
+    from flask import g
+    creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
+    creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
+    id_token_hint = creds.id_token_jwt
     oidc.logout()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
-    return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    # keycloak <17 logout:
+
+    new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
+    if not new_keycloak:
+        return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+    else:
+        # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
+        return redirect(oidc.client_secrets.get('issuer') +
+                        '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
+                        '&client_id=' + oidc.client_secrets.get('client_id') +
+                        '&id_token_hint=' + id_token_hint)
 
 
 # Cant find out why send_file does not work in uWSGI with threading.
@@ -966,9 +1008,14 @@ def split_conductor(conductor, location, mode, conductor_container):
             new_cond2.name = new_cond1.name + '_b'
             new_cond1.name = new_cond1.name + '_a'
         new_cond1.id = new_cond1_id
-        new_cond1.port.clear()  # remove existing port, as we add previous used ports later
+        # remove existing ports, as we add previous used ports later
+        for p in list(new_cond1.port):
+            p.delete()
+        #new_cond1.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         new_cond2.id = new_cond2_id
-        new_cond2.port.clear()
+        for p in list(new_cond2.port):
+            p.delete()
+        #new_cond2.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
         esh.add_object_to_dict(active_es_id, new_cond1)
         esh.add_object_to_dict(active_es_id, new_cond2)
 
@@ -1291,12 +1338,10 @@ def add_control_strategy_for_asset(asset_id, cs):
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
+    cs = instantiate_type(control_strategy)
 
-    module = importlib.import_module('esdl.esdl')
-    class_ = getattr(module, control_strategy)
-    cs = class_()
-
-    asset = esh.get_by_id(active_es_id, asset_id)
+    asset: esdl.EnergyAsset = esh.get_by_id(active_es_id, asset_id)
+    port: esdl.Port = esh.get_by_id(active_es_id, port_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
@@ -1306,9 +1351,9 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
     cs.energyAsset = asset
 
     if control_strategy == 'DrivenByDemand':
-        cs.outPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.outPort = port  # next((p for p in asset.port if p.id == port_id), None)
     if control_strategy == 'DrivenBySupply':
-        cs.inPort = next((p for p in esdl.Port.allInstances() if p.id == port_id), None)
+        cs.inPort = port  # next((p for p in asset.port if p.id == port_id), None)
 
     add_control_strategy_for_asset(asset_id, cs)
 
@@ -1530,6 +1575,9 @@ def process_command(message):
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
+        if area_bld_id == 'find_area_location_based':
+            area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
@@ -1537,6 +1585,11 @@ def process_command(message):
                 if isinstance(geometry, esdl.Polygon):
                     new_area = esdl.Area(id=asset_id, name=asset_name)
                     new_area.geometry = geometry
+
+                    # Update shape dictionary
+                    shape_dictionary = get_session('shape_dictionary')
+                    shape_dictionary[new_area.id] = Shape.create(geometry)
+                    set_session('shape_dictionary', shape_dictionary)
 
                     # Update drop down list with areas and buildings
                     add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
@@ -1848,6 +1901,8 @@ def process_command(message):
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else:
+                    # Calculate location of building assets if building comes from EDR
+                    calc_building_assets_location(asset)
                     # Update drop down list with areas and buildings
                     add_bld_to_area_bld_list(asset, area_bld_id, area_bld_list)
                     emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
@@ -1924,10 +1979,7 @@ def process_command(message):
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                esh.add_object_to_dict(es_edit.id, asset)
-                if hasattr(asset, 'port'):
-                    for added_port in asset.port:
-                        esh.add_object_to_dict(es_edit.id, added_port)
+                esh.add_object_to_dict(es_edit.id, asset, recursive=True)
                 set_handler(esh)
 
     if message['cmd'] == 'remove_object':
@@ -1996,8 +2048,12 @@ def process_command(message):
             if top_area:
                 if top_area.id == area_id:
                     send_alert('Can not remove top level area')
-                elif not ESDLEnergySystem.remove_area(top_area, area_id):
-                    send_alert('Area could not be removed')
+                else:
+                    if not ESDLEnergySystem.remove_area(top_area, area_id):
+                        send_alert('Area could not be removed')
+                    else:
+                        # If the user removes an area with assets and connection, redraw everything
+                        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
     if message['cmd'] == 'get_asset_ports':
         asset_id = message['id']
@@ -2524,7 +2580,6 @@ def process_command(message):
                     {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
             emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
 
-
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
         asset = get_asset_from_port_id(esh, active_es_id, pid)
@@ -2878,7 +2933,7 @@ def process_command(message):
 
     if message['cmd'] == 'get_edr_asset':
         edr_asset_id = message['edr_asset_id']
-        edr_asset_str = edr_assets.get_asset_from_EDR(edr_asset_id)
+        edr_asset_str = edr_client.get_object_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
             edr_asset_name = edr_asset.name
@@ -2932,7 +2987,7 @@ def process_command(message):
             # AssetDrawToolbar EDR assets that are stored in mongo, do not have the ESDL string stored.
             if 'edr_asset_str' not in edr_asset_info:
                 edr_asset_id = edr_asset_info['edr_asset_id']
-                edr_asset_info['edr_asset_str'] = edr_assets.get_asset_from_EDR(edr_asset_id)
+                edr_asset_info['edr_asset_str'] = edr_client.get_object_from_EDR(edr_asset_id)
             set_session('adding_edr_assets', edr_asset_info['edr_asset_str'])
         if mode == 'asset_from_measures':
             asset_from_measure_id = message['asset_from_measure_id']
@@ -3001,12 +3056,14 @@ def process_command(message):
 
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
+        es_info_list = get_session("es_info_list")
+        del es_info_list[remove_es_id]  # update es info list too
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
         esh = get_handler()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in seperate thread
+        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in separate thread
 
     set_handler(esh)
     session.modified = True
@@ -3017,31 +3074,20 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result, es = esdl_services.call_esdl_service(params)
+        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
-        es = None
 
     logger.debug('emitting result to browser')
     if esdl_service_ok:
-        result = dict(
-            esdl_service_result=esdl_service_result,
-            es_id=es.id if es is not None else None,
-            es_name=es.name if es is not None else None,
-        )
-        emit('esdl_service_result', result)
+        if esdl_service_result is not None:
+            emit('esdl_service_result', esdl_service_result)
     else:
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):
             message += ': ' + esdl_service_result
-        elif isinstance(esdl_service_result, requests.Response):
-            status_code = esdl_service_result.status_code
-            reason = esdl_service_result.reason
-            message += f': {status_code} - {reason}.'
-            if status_code == 401:
-                message += " Please refresh the page."
         send_alert(message)
     # logger.debug('processing energy system')
     call_process_energy_system.submit(esh)
@@ -3309,6 +3355,10 @@ def get_carrier_color_dict():
 @socketio.on('initialize', namespace='/esdl')
 def browser_initialize():
     user_email = get_session('user-email')
+    if user_email is None:
+        # no valid login credentials
+        emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
+        return
     role = get_session('user-role')
 
     view_modes = ViewModes.get_instance()
@@ -3358,4 +3408,4 @@ if __name__ == '__main__':
     logger.info("Starting ESDL MapEditor application")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)

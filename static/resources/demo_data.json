@@ -1,0 +1,32 @@
+[
+    {
+        "id": 101,
+        "name": "Mystic Moon",
+        "description": "A choice that unlocks secrets of the lunar landscape.",
+        "category": "Celestial"
+    },
+    {
+        "id": 102,
+        "name": "Sunken Atlantis",
+        "description": "Dive into the depths to explore the lost city.",
+        "category": "Aquatic Adventures"
+    },
+    {
+        "id": 103,
+        "name": "Enchanted Forest",
+        "description": "An enchanted journey through a magical woodland.",
+        "category": "Fantasy"
+    },
+    {
+        "id": 104,
+        "name": "Cybernetic Future",
+        "description": "Step into a world where technology and humanity merge.",
+        "category": "Sci-Fi"
+    },
+    {
+        "id": 105,
+        "name": "Pirate's Cove",
+        "description": "Embark on a swashbuckling pirate adventure.",
+        "category": "Adventure"
+    }
+]

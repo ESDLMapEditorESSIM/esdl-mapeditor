@@ -49,7 +49,7 @@ logging.config.dictConfig(
         },
         "handlers": {
             "default": {
-                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+                "level": "INFO" if not FLASK_DEBUG else "DEBUG",
                 "class": "logging.StreamHandler",
                 "formatter": "colored" if FLASK_DEBUG else "json",
             }
@@ -70,7 +70,7 @@ logging.config.dictConfig(
 
 
 structlog.configure(
-    processors=[merge_threadlocal]
+    processors=[structlog.contextvars.merge_contextvars, merge_threadlocal]
     + shared_processors
     + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
     logger_factory=structlog.stdlib.LoggerFactory(),

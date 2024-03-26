@@ -34,7 +34,25 @@ def parse_date(str_date):
                    '%Y-%m-%d %H:%M:%S%Z',
                    '%Y-%m-%d %H:%M:%S',
                    '%Y-%m-%d %H:%M',
-                   '%Y-%m-%d',)
+                   '%Y-%m-%d',
+
+                   # As a last resort, also try Dutch formatting of dates DD-MM-YYYY
+                   '%d-%m-%YT%H:%M:%S.%f%z',
+                   '%d-%m-%YT%H:%M:%S.%f%Z',
+                   '%d-%m-%YT%H:%M:%S.%f',
+                   '%d-%m-%YT%H:%M:%S%z',
+                   '%d-%m-%YT%H:%M:%S%Z',
+                   '%d-%m-%YT%H:%M:%S',
+                   '%d-%m-%YT%H:%M',
+                   '%d-%m-%Y %H:%M:%S.%f%z',
+                   '%d-%m-%Y %H:%M:%S.%f%Z',
+                   '%d-%m-%Y %H:%M:%S.%f',
+                   '%d-%m-%Y %H:%M:%S%z',
+                   '%d-%m-%Y %H:%M:%S%Z',
+                   '%d-%m-%Y %H:%M:%S',
+                   '%d-%m-%Y %H:%M',
+                   '%d-%m-%Y',
+                   )
         for fmt in formats:
             with suppress(ValueError):
                 return datetime.strptime(str_date, fmt)

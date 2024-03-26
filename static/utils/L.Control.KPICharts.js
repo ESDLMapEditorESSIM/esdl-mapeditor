@@ -51,8 +51,8 @@ function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels,
     $(table_div).empty().show();
     $(canvas).hide();
 
-    console.log(labels);
-    console.log(datasets);
+    // console.log(labels);
+    // console.log(datasets);
 
     $(table_div).append($('<p>').text(kpi_name).addClass('kpi_table_title'));
     let $table = $('<table>').addClass('pure-table pure-table-striped');
@@ -140,7 +140,7 @@ L.Control.KPICharts = L.Control.extend({
     },
 
     onRemove: function(map) {
-        console.log('KPICharts.onRemove()')
+        // console.log('KPICharts.onRemove()')
         var container = this._container;
 
         // If the control is visible, hide it before removing it.
@@ -201,14 +201,14 @@ L.Control.KPICharts = L.Control.extend({
             'rgba(153, 102, 255, 0.2)',
             'rgba(255, 159, 64, 0.2)'
         ];
-        return colors[idx];
+        return colors[idx % colors.length];
     },
     createKPIvis: function(kpi_info, chart_box) {
         // This function is being called with a parameter kpi_info that is an array with objects for each loaded
         // energy system. It allows side-by-side comparison of different energy system scenarios. The format of the
         // data is shown below
 
-        console.log(kpi_info);
+        // console.log(kpi_info);
         // Example KPI object (with just one energy system)
         //    0:
         //        distribution: Array(3)
@@ -294,7 +294,7 @@ L.Control.KPICharts = L.Control.extend({
                     }
                 }
             }
-            console.log(distr_labels_dict);
+            // console.log(distr_labels_dict);
 
             // Fill in energy system data
             for (let i=0; i<kpi_info.length; i++) {
@@ -321,7 +321,18 @@ L.Control.KPICharts = L.Control.extend({
                 kpi_item = kpi_info[i];
 
                 let dataset = {}
-                dataset['label'] = i.toString();  // kpi_item['es_id'];
+                // dataset['label'] = i.toString();  // kpi_item['es_id'];
+                let label = kpi_item['kpis_description'];
+                if (!label) {
+                    label = i.toString();   // if no kpis_description was given, use an index
+                } else {
+                    // make sure labels are not longer than 10 characters
+                    if (label.length > 10) {
+                        label = label.substring(0, 7) + '...';
+                    }
+                }
+                dataset['label'] = label;
+
                 let data = new Array(labels.length);
                 data = data.fill(0);
                 for (let lbl_info in label_info_array) {
@@ -350,7 +361,7 @@ L.Control.KPICharts = L.Control.extend({
  //                   xAxes: [{
  //                       stacked: false,
  //                   }],
-                    yAxes: [{
+                    y: {
  //                       stacked: true,
                         ticks: {
                             beginAtZero: true,
@@ -359,7 +370,7 @@ L.Control.KPICharts = L.Control.extend({
                                 return formatN(value).toString();
                             }
                         }
-                    }]
+                    }
                 },
                 title: {
                     display: true,
@@ -406,7 +417,7 @@ L.Control.KPICharts = L.Control.extend({
                     text: kpi_item.name
                 },
                 scales: {
-                    yAxes: [{
+                    y: {
                         ticks: {
                             beginAtZero: true,
 //                            maxTicksLimit: 6,
@@ -414,8 +425,7 @@ L.Control.KPICharts = L.Control.extend({
                                 return formatN(value).toString();
                             }
                         }
-                    }]
-                }
+                    }                }
             }
         }
 

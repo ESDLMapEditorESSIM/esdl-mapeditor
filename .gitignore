@@ -60,7 +60,7 @@ instance/
 .env
 
 # virtualenv
-venv/
+venv_old/
 ENV/
 
 # Directory for cvustom env files.
@@ -78,12 +78,14 @@ html/
 flask_session/
 node_modules
 yarn-error.log
-.yarn/cache
-.yarn/install-state.gz
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+.pnp.*
 
 credentials/
 environments/
-venv*/
+venv_old/
 node_modules/
 
 credentials/client_secrets_remote*.json
