@@ -47,6 +47,7 @@ const onSubmit = async () => {
           data["filename"],
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
+      window.hide_loader()
       goToNextStep();
     }
   } catch (e) {

@@ -801,7 +801,7 @@ esdl_config = {
                             "label_fields": ["name"],
                             "value_field": "id",
                         },
-                        "target_variable": "file_name",
+                        "target_variable": "file",
                         "next_step": 16,
                     },
                     {
@@ -814,7 +814,7 @@ esdl_config = {
                             + "/api/projects/{project_id}/files/{file_name}",
                             "request_params": {
                                 "project_id": "project.id",
-                                "file_name": "file_name.id",
+                                "file_name": "file.id",
                             },
                         },
                         "next_step": 0,
