@@ -25,6 +25,7 @@ class ESSIM_sensitivity{
         this.asset_list = [];
         this.sim_start_datetime = "";
         this.sim_end_datetime = "";
+        this.sim_timestep = "1h";
     }
 
     initSocketIO() {
@@ -64,6 +65,7 @@ class ESSIM_sensitivity{
                 start: this.sim_start_datetime,
                 end: this.sim_end_datetime
             },
+            sim_timestep: this.sim_timestep,
             selected_kpis: selected_kpis,
             sens_anal_info: sens_anal_info
         }, function(res) {
@@ -249,6 +251,10 @@ class ESSIM_sensitivity{
             this.sim_end_datetime = $('#sa_sim_end_datetime').val();
         }
 
+        if (check_role('essim_expert')) {
+            this.sim_timestep = $('sa_sim_timestep').val();
+        }
+
         essim_sensitivity_plugin.kpis = false;
         $('#essim_sensitivity_title').text('ESSIM Sensitivity Analysis - Select KPIs');
         let $div = $('#essim_sens_content_div')
@@ -303,6 +309,17 @@ class ESSIM_sensitivity{
                     .append($('<td>').append($('<input>').attr('type', 'text').attr('width','60')
                         .attr('id', 'sa_sim_end_datetime').attr('value','2019-02-01T00:00:00+0100').prop('disabled', true))))
             ));
+
+        if (check_role('essim_expert')) {
+            $div.append($('<table>')
+                .append($('<tbody>')
+                    .append($('<tr>')
+                        .append($('<td>').text('Timestep: '))
+                        .append($('<td>').append($('<input>').attr('type', 'text').attr('width','60')
+                           .attr('id', 'sa_sim_timestep').attr('value','1h')))
+                    )
+                ));
+        }
 
         let $button_div = $('#essim_sens_button_div');
         $button_div.empty()
