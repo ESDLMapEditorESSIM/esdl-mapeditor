@@ -1532,7 +1532,7 @@ def get_first_last_of_line(line):
 
 @executor.job
 def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename, es_title, app_context, force_update_es_id, zoom)
+    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -2850,10 +2850,12 @@ def process_command(message):
         sim_descr = message['sim_description']
         sim_start_datetime = message['sim_start_datetime']
         sim_end_datetime = message['sim_end_datetime']
+        sim_timestep = message['sim_timestep']
         essim_kpis = message['essim_kpis']
         essim_loadflow = message['essim_loadflow']
         # Create the HTTP POST to start the simulation
-        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
+        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, sim_timestep,
+                                    essim_kpis, essim_loadflow):
             emit('simulation_not_started')
 
     if message['cmd'] == 'validate_for_ESSIM':

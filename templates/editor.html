@@ -411,9 +411,23 @@
         }
 
         function set_storage_strategy(asset_id) {
-            mcc = document.getElementById('marg_ch_costs').value;
-            mdc = document.getElementById('marg_disch_costs').value;
+            let mcc = document.getElementById('marg_ch_costs').value;
+            let mdc = document.getElementById('marg_disch_costs').value;
             socket.emit('command', {cmd: 'set_control_strategy', asset_id: asset_id, strategy: 'StorageStrategy', marg_ch_costs: mcc, marg_disch_costs: mdc});
+        }
+
+        function check_storage_costs() {
+            let mcc = document.getElementById('marg_ch_costs').value;
+            let mdc = document.getElementById('marg_disch_costs').value;
+
+            let mcc_float = parseFloat(mcc);
+            let mdc_float = parseFloat(mdc);
+
+            if (mcc_float < mdc_float) {
+                document.getElementById('set_storage_costs_button').disabled = false;
+            } else {
+                document.getElementById('set_storage_costs_button').disabled = true;
+            }
         }
 
         function storage_strategy_window(asset_id, mcc, mdc) {
@@ -422,14 +436,20 @@
             sidebar_ctr.innerHTML = '<h1>Storage Strategy:</h1>';
 
             table = '<table>';
-            table = table + '<tr><td width=180>Marginal charge costs</td>';
-            table = table + '<td><input type="text" width="60" id="marg_ch_costs" value="' + mcc + '"></td></tr>';
-            table = table + '<tr><td width=180>Marginal discharge costs</td>';
-            table = table + '<td><input type="text" width="60" id="marg_disch_costs" value="' + mdc + '"></td></tr>';
+            table = table + '<tr><td width=180>Marginal charge costs (lower value)</td>';
+            table = table + '<td><input type="text" width="60" id="marg_ch_costs" value="' + mcc + '" onchange="check_storage_costs()"></td></tr>';
+            table = table + '<tr><td width=180>Marginal discharge costs (higher value)</td>';
+            table = table + '<td><input type="text" width="60" id="marg_disch_costs" value="' + mdc + '" onchange="check_storage_costs()"></td></tr>';
             table += '</table>';
             sidebar_ctr.innerHTML += table;
 
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
+            let button_html_str = '<p><button id="set_storage_costs_button" ';
+            if (mcc >= mdc) {
+                button_html_str += 'disabled ';
+            }
+            button_html_str += 'onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
+            sidebar_ctr.innerHTML += button_html_str;
+
             sidebar.show();
         }
 

@@ -75,6 +75,7 @@ class ESSIMSensitivity:
         def essim_sensitivity_run_simulations(sim_info):
             sim_period_start = sim_info['period']['start']
             sim_period_end = sim_info['period']['end']
+            sim_timestep = sim_info['sim_timestep']
             selected_kpis = sim_info['selected_kpis']
 
             del_session('kpi_result_list')        # Clear list of KPI
@@ -98,7 +99,7 @@ class ESSIMSensitivity:
                     sim_title += ' & '
                 sim_title += attr_name + '=' + si_format(value, precision=2)
 
-            result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, selected_kpis, False)
+            result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, sim_timestep, selected_kpis, False)
             if result:
                 set_session('sensitivity_analysis', {
                     'index': sa_index,
@@ -106,6 +107,7 @@ class ESSIMSensitivity:
                     'mutations': sa_mutations,
                     'sim_period_start': sim_period_start,
                     'sim_period_end': sim_period_end,
+                    'sim_timestep': sim_timestep,
                     'selected_kpis': selected_kpis
                 })
             else:
@@ -123,6 +125,7 @@ class ESSIMSensitivity:
                 sa_index = sensitivity_analysis['index']
                 sim_period_start = sensitivity_analysis['sim_period_start']
                 sim_period_end = sensitivity_analysis['sim_period_end']
+                sim_timestep = sensitivity_analysis['sim_timestep']
 
                 sa_index = sa_index + 1
                 if sa_index == len(sa_mutations):
@@ -143,7 +146,7 @@ class ESSIMSensitivity:
 
                 selected_kpis = sensitivity_analysis['selected_kpis']
 
-                result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, selected_kpis, False)
+                result = self.essim.run_simulation(sim_title, sim_period_start, sim_period_end, sim_timestep, selected_kpis, False)
                 if result:
                     set_session('sensitivity_analysis', {
                         'index': sa_index,

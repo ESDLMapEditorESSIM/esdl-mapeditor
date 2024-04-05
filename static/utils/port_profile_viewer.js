@@ -98,6 +98,26 @@ class Port_profile_viewer{
         $select_div.append($port_select);
         $select_div.append($profile_select);
 
+        let $show_similar_profiles_button = $('<button>')
+            .attr('id', 'show_similar_profiles_button')
+            .text('Show similar profiles')
+            .click(function() {
+                console.log("here");
+                let port_idx = $('#port_select').val();
+                let profile_idx = $('#profile_select').val();
+                let profile_info = port_profile_viewer_plugin.asset_port_profile_list[port_idx].profiles[profile_idx];
+                if (profile_info) {
+                    socket.emit('show_similar_profiles', profile_info['id'], function(embed_url) {
+                        if (embed_url) {
+                            $('#profile_div').html('<iframe width="100%" height="100%" src="'+embed_url+'"></iframme>');
+                        } else {
+                            $('#profile_div').html('<p>Error - no profile URL returned</p>');
+                        }
+                    });
+                }
+            });
+        $select_div.append($show_similar_profiles_button);
+
         let $profile_div = $('<div>').attr('id', 'profile_div');
         $content_div.append($profile_div);
 
