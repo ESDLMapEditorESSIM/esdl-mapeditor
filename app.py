@@ -84,6 +84,7 @@ from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
 from src.shape import Shape
+from src.tno.locking import NamedLocker
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
@@ -115,11 +116,13 @@ if settings.USE_GEVENT:
 # debugging with pycharm:
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
+named_lock_locker = NamedLocker()
+
 user_actions_logging = UserLogging()
 if settings.settings_storage_config["host"] is None or settings.settings_storage_config["host"] == "":
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
-settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
+settings_storage = SettingsStorage(named_lock_locker, database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
 
 
 # handler to retrieve ESDL documentation
@@ -3410,4 +3413,4 @@ if __name__ == '__main__':
     logger.info("Starting ESDL MapEditor application")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, allow_unsafe_werkzeug=True)
