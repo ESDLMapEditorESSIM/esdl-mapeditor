@@ -590,6 +590,7 @@ function create_area_pie_chart(ar, size) {
                 stroke: null,
             };
 
+            let unit = ar.properties.dist_KPIs[key].unit;
             for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
                 let dist_kpi = ar.properties.dist_KPIs[key].value[k];
 
@@ -600,7 +601,7 @@ function create_area_pie_chart(ar, size) {
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return value.toFixed(2);
+                        return value.toFixed(2) + " " + unit;
                     }
                 }
             }
