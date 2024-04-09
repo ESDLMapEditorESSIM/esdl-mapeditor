@@ -7,10 +7,12 @@ import workflow from "../apps/Workflow.vue";
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
     SELECT_QUERY: 'select-query',
+    TABLE_QUERY: 'table-query',
     MULTI_SELECT_QUERY: 'multi-select-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
     JSON_FORM: 'json-form',
+    JSON_FORM2: 'json-form2',
     DOWNLOAD_FILE: 'download_file',
     UPLOAD_FILE: 'upload_file',
     GET_DATA: 'get_data',

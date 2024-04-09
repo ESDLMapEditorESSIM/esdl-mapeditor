@@ -7,7 +7,7 @@ geomet==0.2.1.post1
 geojson
 influxdb==5.3.0
 openpyxl==3.1.2
-pyecore==0.12.1
+pyecore==0.15.1
 # PyJWT cannot be upgraded to >= 2 because of flask-oidc.
 PyJWT==1.7.1
 pymongo==3.11.0

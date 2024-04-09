@@ -17,13 +17,15 @@ import ReleaseNotes from './apps/ReleaseNotes';
 import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from './apps/SearchAssets';
 import AssetFeedback from './apps/AssetFeedback';
+import KPIDashboard from './apps/KPIDashboard';
 import AssetTableEditor from './apps/AssetTableEditor';
 import {
     createVueLControl,
     createVueMapEditorDialog,
     mountApp,
     mountSettingsComponent,
-    mountSidebarComponent
+    mountSidebarComponent,
+    mountTooltipComponent,
 } from "./mounts";
 import CustomIconsSettings from "./apps/CustomIconsSettings";
 import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
@@ -42,14 +44,17 @@ import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesT
 import {useObject} from './composables/ObjectID';
 import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
-import SidePane from './apps/SidePane';
-// import ActiveLongProcess from './components/progress/ActiveProcess'
 import ActiveLongProcess from './components/progress/ActiveProcess'
+import SidePane from "./apps/SidePane"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
+import {useTooltipInfo} from './composables/TooltipInfo';
+import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
+import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
 import {useUndoRedo} from "./composables/undoRedo";
-
+import ResidentialArea from "./apps/ResidentialArea";
+import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
 
@@ -97,6 +102,13 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.show_tooltip = (object_title, object_id) => {
+    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+    newTooltipObjectID(object_id);
+    newTitle(object_title);
+    mountTooltipComponent(AssetTooltip);
 }
 
 window.search_assets_window = () => {
@@ -148,7 +160,7 @@ window.show_new_release_notes = () => {
 }
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
-createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar');
+mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
@@ -159,27 +171,37 @@ const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
 });
 mapEditorDialog._handleMinimize();
 undoRedoMapEditorDialog.value = mapEditorDialog;
-createApp(ToggleShowUndoRedoControl).mount('#vue_toggle_show_undo_redo_control');
+mountApp(ToggleShowUndoRedoControl, '#vue_toggle_show_undo_redo_control');
 var mountEl = document.querySelector("#vue_undo_menu");
 createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_undo_menu');
 mountEl = document.querySelector("#vue_redo_menu");
 createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_redo_menu');
 
 createVueLControl(AssetDrawToolbar, {});
-createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar');
+mountApp(ToggleShowAssetDrawToolbar, '#vue_toggle_show_asset_draw_toolbar')
+mountApp(SidePane, '#vue_side_pane_root')
 
-createApp(ToggleProjectView).mount('#vue_toggle_show_project_view');
-createApp(LoadProjectFileButton).mount('#vue_load_project_file');
-createApp(SidePane).mount('#vue_side_pane_root');
+mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
+mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
 createVueLControl(AssetsToBeAddedToolbar, {
-        position: 'bottomright',
-    });
+    position: 'bottomright',
+});
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
 }
 
+window.activate_kpi_dashboard_window = () => {
+    mountApp(KPIDashboard, '#kpi_dashboard_window');
+}
+
+createVueLControl(AnnouceKPIsToolbar, {
+        position: 'bottomright',
+    });
+
 window.sectors_window = () => {
     mountSidebarComponent(Sectors);
 }
+
+mountApp(ResidentialArea, '#vue_test_edr_residential_area')

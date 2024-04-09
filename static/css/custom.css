@@ -79,6 +79,11 @@ h6 {
 
     display: flex;
     flex-direction: row;
+    overflow: hidden;
+}
+
+#vue_side_pane_root {
+    display: flex;
 }
 
 
@@ -285,6 +290,20 @@ h6 {
 .leaflet-tooltip-right::before {
     border-right-color: transparent;
     margin-left: 32px;
+}
+
+.InteractiveTooltip {
+    background: #eeeeee;
+    border: 1px solid #505050;
+    padding: 4px 4px;
+    font-size: 10px;
+}
+.icon-info-present {
+    color: green;
+}
+
+.icon-info-not-present {
+    color: red;
 }
 
 /*

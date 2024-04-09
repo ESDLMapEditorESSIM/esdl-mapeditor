@@ -96,7 +96,7 @@
                     size="small"
                     style="width: 100%"
                     :default-value="get_default_date(attr.value)"
-                    :show-time="{ defaultValue: moment('00:00:00', 'HH:mm:ss') }"
+                    :show-time="{ defaultValue: dayjs('00:00:00', 'HH:mm:ss') }"
                     @change="(date, dateString) => { updateDateAttribute(date, dateString, attr.name); }"
                   />
                 </a-col>
@@ -158,7 +158,7 @@
 </template>
 
 <script>
-const moment = () => import("moment");
+import dayjs from "dayjs";
 import FancyNumberEdit from "../components/forms/FancyNumberEdit";
 // import ProfileTableEdit from "../components/forms/ProfileTableEdit";
 import PortsEdit from "../components/forms/PortsEdit";
@@ -208,7 +208,7 @@ export default {
     this.getDataSocketIO();
   },
   methods: {
-    moment,
+    dayjs,
     camelCase: function(str) {
       // TODO: import this function from utils.js and let utils.js export functions
       return window.camelCaseToWords(str);
@@ -231,7 +231,7 @@ export default {
           // TODO: Find out why currentObjectID is changed (only when multiple assets are selected from left to right)
           // console.log(tmp_coid);
           // console.log(currentObjectID.value);
-          console.log(res);
+          console.log("Object properties:", res);
           this.isLoading = false;
           if (res) {
             this.obj_properties = res;
@@ -280,9 +280,9 @@ export default {
       });
     },
     get_default_date(value) {
-      //console.log(value);
+      console.log("Getting default date", value)
       if (value)
-        return moment(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
+        return dayjs(value, 'YYYY-MM-DDTHH:mm:ss.SSSSSSZZ')
       else
         return null;
     },

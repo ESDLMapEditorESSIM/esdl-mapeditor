@@ -15,7 +15,7 @@
   -->
 
 <template>
-  <div id="side_pane" :class="{side_pane_hidden: !showSidePane}">
+  <div id="side_pane">
     <ul class="tabs">
       <li
         v-for="tab in sidePaneTabs"
@@ -24,7 +24,7 @@
         <a @click="clickTab(tab.key);">
           <span :class="tab.icon" />
           <span
-            v-if="isActiveTab(tab.key)"
+            v-if="isActiveTab(tab.key) && showSidePane"
             style="font-weight:bold"
           > 
             {{ tab.title }}
@@ -35,8 +35,8 @@
         </a>
       </li>
     </ul>
-    <div id="tab_area">
-      <LayersView v-if="isActiveTab('Maps')" />
+    <div id="tab-content" :class="{side_pane_hidden: !showSidePane}">
+      <LayersView v-if="isActiveTab('WMS_Layers')" />
       <ProjectView v-if="isActiveTab('Project')" />
     </div>
   </div>
@@ -45,9 +45,7 @@
 <script setup>
 import {ref} from "vue"
 import {useSidePane} from "../composables/sidePane";
-// eslint-disable-next-line no-unused-vars
 import ProjectView from "./ProjectView.vue";
-// eslint-disable-next-line no-unused-vars
 import LayersView from "./LayersView.vue";
 
 // eslint-disable-next-line no-unused-vars
@@ -59,13 +57,8 @@ const sidePaneTabs = ref([{
   icon: 'fas fa-project-diagram',
   active: false
 }, {
-  key: 'Workflow',
-  title: 'Workflow',
-  icon: 'fas fa-tasks',
-  active: false
-}, {
-  key: 'Maps',
-  title: 'Maps',
+  key: 'WMS_Layers',
+  title: 'WMS Layers',
   icon: 'far fa-map',
   active: false
 }]);
@@ -80,21 +73,24 @@ initTabs(sidePaneTabs);
   margin-right: 1px;
   border-right: 1px solid #efeff1;
   box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);
-  transition: max-width .2s ease-in;
-  min-width: 200px;
-  max-width: 500px;
-  resize: horizontal;
 
-  &.side_pane_hidden {
-    min-width: 20px;
-    max-width: 20px;
+  #tab-content {
+    &.side_pane_hidden {
+      min-width: 0;
+      max-width: 0;
+    }
+    min-width: 200px;
+    max-width: 500px;
+    transition: max-width .2s ease-in;
+    overflow: auto;
+    resize: horizontal;
   }
 
   ul.tabs {
+    min-width: 20px;
+    max-width: 20px;
     padding: 8px 0 0 0;
     margin: 0;
-    // This only works in Firefox, not Chrome.
-    //writing-mode: sideways-lr;
     text-align: right;
     border-right: 1px solid #efeff1;
     box-shadow: 0 .8px 4px rgba(0, 0, 0, .2);

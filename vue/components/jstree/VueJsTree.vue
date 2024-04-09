@@ -26,7 +26,8 @@ const props = defineProps({
   data: Object,
   plugins: Array,
   treeTypeSpecs: Array,
-  eventHandlersByName: Object,
+  // Tree-level events.
+  events: Object,
   checkCallBack: {
     type: Function,
     required: false,
@@ -41,31 +42,109 @@ const props = defineProps({
 
 const $ = window.$;
 
+/// Get the tree element from the treeId.
 const getTreeElement = () => $('#' + props.treeId);
+/// Get the jstree object from the tree element.
 const getTree = () => getTreeElement().jstree(true);
 
 const types = {};
 const contextMenusByType = {};
+const eventsByEventName = {};
 
-for (const treeTypeSpec of props.treeTypeSpecs) {
-  types[treeTypeSpec.type] = {
-    icon: treeTypeSpec.icon,
-    max_depth: treeTypeSpec.max_depth,
-  }
+/**
+ * Process the treeTypeSpecs to create the types object and the contextMenusByType object.
+ *
+ * The treeTypeSpecs object is a list of tree type specifications. Each tree type specification
+ * is a dictionary with the following keys
+ *
+ * - type: the type of the tree node.
+ * - icon: the icon to use for the tree node.
+ * - max_depth: the maximum depth of the tree node.
+ * - contextMenus: a dictionary of context menu items for the tree node type.
+ * - events: a dictionary of event handlers for the tree node type.
+ *
+ * The contextMenus object is a dictionary of context menu items for the tree node type. Each
+ * context menu item is a dictionary with the following keys:
+ *
+ * - label: the label of the context menu item.
+ * - action: the action to perform when the context menu item is clicked.
+ *
+ * The events object is a dictionary of event handlers for the tree node type. Each event handler
+ * is a function that is called with the following parameters:
+ *
+ * - e: the event object.
+ * - data: the data object.
+ * - tree: the tree object.
+ *
+ * The tree object is the jstree object.
+ */
+function initTreeTypeSpecs() {
+  for (const treeTypeSpec of props.treeTypeSpecs) {
+    types[treeTypeSpec.type] = {
+      icon: treeTypeSpec.icon,
+      max_depth: treeTypeSpec.max_depth,
+    }
 
-  if (treeTypeSpec.contextMenus) {
-    contextMenusByType[treeTypeSpec.type] = treeTypeSpec.contextMenus;
+    if (treeTypeSpec.contextMenus) {
+      contextMenusByType[treeTypeSpec.type] = treeTypeSpec.contextMenus
+    }
+
+    if (treeTypeSpec.events) {
+      for (const [event, handler] of Object.entries(treeTypeSpec.events)) {
+        const typeHandler = (e, data, tree) => {
+          const type = data.node.type
+          if (type === treeTypeSpec.type) {
+            handler(e, data, tree)
+          }
+        }
+        if (!eventsByEventName[event]) {
+          eventsByEventName[event] = typeHandler
+        } else {
+          const existingHandler = eventsByEventName[event];
+          eventsByEventName[event] = (e, data, tree) => {
+            existingHandler(e, data, tree)
+            typeHandler(e, data, tree)
+          }
+        }
+      }
+    }
   }
 }
+initTreeTypeSpecs()
+
+/**
+ * Process the eventHandlersByName to create the eventsByType object.
+ *
+ * The eventHandlersByName object is a dictionary of event names to event handlers. The event
+ * handlers are called with the following parameters:
+ *
+ * - e: the event object.
+ * - data: the data object.
+ * - tree: the tree object.
+ */
+function initTreeEvents() {
+  for (const [eventName, handler] of Object.entries(props.events)) {
+    if (!eventsByEventName[eventName]) {
+      eventsByEventName[eventName] = handler;
+    } else {
+      const existingHandler = eventsByEventName[eventName];
+      eventsByEventName[eventName] = (e, data, tree) => {
+        existingHandler(e, data, tree);
+        handler(e, data, tree);
+      }
+    }
+  }
+}
+initTreeEvents()
 
 onMounted(() => {
   const treeElement = getTreeElement();
-  for (const eventHandlerByName of props.eventHandlersByName) {
-    const eventName = eventHandlerByName.eventName;
-    const handler = eventHandlerByName.handler;
+  // Add event handlers to the tree element.
+  for (const [event, handler] of Object.entries(eventsByEventName)) {
     // Add tree element as extra parameter.
-    treeElement.on(eventName, (e, data) => handler(e, data, getTreeElement()));
+    treeElement.on(event, (e, data) => handler(e, data, getTreeElement()));
   }
+  // Create the tree.
   treeElement.jstree({
     core: {
       data: props.data,
@@ -83,6 +162,7 @@ onMounted(() => {
     },
     contextmenu: {
       items: (node) => {
+        // Get the context menu for the node type.
         const nodeContextMenu = contextMenusByType[node.type];
         if (nodeContextMenu) {
           return nodeContextMenu(node, getTree());

@@ -271,8 +271,8 @@ def _shift_point(point: Point):
         point.lon = point.lon - DEFAULT_SHIFT_LON
 
 
-def duplicate_energy_asset(pm: ProjectManager, es_id, energy_asset_id: str):
-    original_asset = pm.get_by_id(es_id, energy_asset_id)
+def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str):
+    original_asset = esh.get_by_id(es_id, energy_asset_id)
 
     duplicate_asset = original_asset.deepcopy()
     # reset all id's
@@ -304,7 +304,12 @@ def duplicate_energy_asset(pm: ProjectManager, es_id, energy_asset_id: str):
 
     # disconnect the ports as also the connectedTo has been duplicated, we need to remove this reference
     for port in duplicate_asset.port:
-        port.connectedTo.clear()
+        # port.connectedTo.clear()  # pyEcore bug: clear() does not work as expected.
+        connected_to_copy = list(port.connectedTo)
+        for p in connected_to_copy:
+            port.connectedTo.remove(p)
 
+    container = original_asset.eContainer()  # find the area or building the original asset is contained by
+    container.asset.append(duplicate_asset)
     pm.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

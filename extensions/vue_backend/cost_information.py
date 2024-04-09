@@ -203,7 +203,7 @@ def set_cost_information(obj, cost_information_data):
                     if ci_component['value'] is not None and ci_component['value'] != '':
                         new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
                         new_cost_component_profile.value = str2float(ci_component['value'])
-                        if ci_component['unit'] is not None and ci_component['unit'] != '':
+                        if 'unit' in ci_component and ci_component['unit'] is not None and ci_component['unit'] != '':
                             new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
                         obj_ci.eSet(ci_component_name, new_cost_component_profile)

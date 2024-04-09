@@ -100,7 +100,7 @@ pyasn1==0.5.0
     #   rsa
 pyasn1-modules==0.3.0
     # via oauth2client
-pyecore==0.12.1
+pyecore==0.15.1
     # via -r requirements.in
 pyjwt==1.7.1
     # via -r requirements.in

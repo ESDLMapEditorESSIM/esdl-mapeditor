@@ -758,8 +758,8 @@ class ESDLDataLayer:
 
     def add_EDR_carriers(self, edr_path):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
 
         print(edr_path)
 
@@ -771,19 +771,18 @@ class ESDLDataLayer:
         if not esi:
             esi = esdl.EnergySystemInformation(id=str(uuid4()))
             es.energySystemInformation = esi
-            esh.add_object_to_dict(active_es_id, esi)
+            pm.add_object_to_dict(active_es_id, esi)
 
         ecs = esi.carriers
         if not ecs:
             ecs = esdl.Carriers(id=str(uuid4()))
             esi.carriers = ecs
-            esh.add_object_to_dict(active_es_id, ecs)
+            pm.add_object_to_dict(active_es_id, ecs)
 
         for carr in carriers.carrier:
             carr_copy = carr.deepcopy()
             ecs.carrier.append(carr_copy)
-            esh.add_object_to_dict(active_es_id, carr_copy)
-
+            pm.add_object_to_dict(active_es_id, carr_copy)
 
         # send updated list as a result
         carrier_list = ESDLEnergySystem.get_carrier_list(es)
@@ -792,10 +791,10 @@ class ESDLDataLayer:
     @staticmethod
     def get_sector(sector_id):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
+        pm = get_project_manager()
 
         response = SectorMessage()
-        sector = esh.get_by_id(active_es_id, sector_id)
+        sector = pm.get_by_id(active_es_id, sector_id)
 
         if sector:
             response.id = sector_id
@@ -808,14 +807,14 @@ class ESDLDataLayer:
     @staticmethod
     def update_sector(sector_id, sect_info):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
 
         sector_info = SectorMessage(**sect_info)
 
         add_sector = False
         try:
-            sector = esh.get_by_id(active_es_id, sector_id)
+            sector = pm.get_by_id(active_es_id, sector_id)
         except KeyError:
             sector = esdl.Sector(id=sector_info.id)
             add_sector = True
@@ -829,15 +828,15 @@ class ESDLDataLayer:
             if not esi:
                 esi = esdl.EnergySystemInformation(id=str(uuid4()))
                 es.energySystemInformation = esi
-                esh.add_object_to_dict(active_es_id, esi)
+                pm.add_object_to_dict(active_es_id, esi)
 
             sects = esi.sectors
             if not sects:
                 sects = esdl.Sectors(id=str(uuid4()))
                 esi.sectors = sects
-                esh.add_object_to_dict(active_es_id, sects)
+                pm.add_object_to_dict(active_es_id, sects)
             sects.sector.append(sector)
-            esh.add_object_to_dict(active_es_id, sector)
+            pm.add_object_to_dict(active_es_id, sector)
 
         # send updated list as a result
         sectors_list = ESDLEnergySystem.get_sector_list(es)
@@ -845,31 +844,31 @@ class ESDLDataLayer:
 
     def add_EDR_sectors(self, edr_path):
         active_es_id = get_session('active_es_id')
-        esh = get_handler()
-        es = esh.get_energy_system(active_es_id)
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
 
         print(edr_path)
 
         edr_client = EDRClient.get_instance()
         sectors_str = edr_client.get_object_from_EDR(edr_path)
-        sectors, parse_info = esh.add_from_string('sectors_str', sectors_str)
+        sectors, parse_info = pm.add_from_string('sectors_str', sectors_str)
 
         esi = es.energySystemInformation
         if not esi:
             esi = esdl.EnergySystemInformation(id=str(uuid4()))
             es.energySystemInformation = esi
-            esh.add_object_to_dict(active_es_id, esi)
+            pm.add_object_to_dict(active_es_id, esi)
 
         sects = esi.sectors
         if not sects:
             sects = esdl.Sectors(id=str(uuid4()))
             esi.sectors = sects
-            esh.add_object_to_dict(active_es_id, sects)
+            pm.add_object_to_dict(active_es_id, sects)
 
         for sect in sectors.sector:
             sect_copy = sect.deepcopy()
             sects.sector.append(sect_copy)
-            esh.add_object_to_dict(active_es_id, sect_copy)
+            pm.add_object_to_dict(active_es_id, sect_copy)
 
         # send updated list as a result
         sectors_list = ESDLEnergySystem.get_sector_list(es)

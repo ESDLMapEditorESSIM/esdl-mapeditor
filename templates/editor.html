@@ -61,6 +61,7 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
     <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
+<!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
 
     <link rel="stylesheet" href="./vendor/code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="./vendor/code.jquery.com/jquery-1.12.4.js"></script>
@@ -84,7 +85,7 @@
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.js"></script>
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.min.js"></script>
 
     <!--script type="text/javascript" src="./plugins/socketio.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
@@ -172,8 +173,10 @@
     <link rel="stylesheet" href="./utils/L.Control.KPICharts.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.KPICharts.js"></script>
     <script type="text/javascript" src="./utils/kpis.js"></script>
+    <script type="text/javascript" src="./utils/kpi_data.js"></script>
 
-    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+<!--    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>-->
+    <script src="./vendor/cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="./utils/L.Control.LoadDurationCurve.css" type="text/css"/>
     <script type="text/javascript" src="./utils/L.Control.LoadDurationCurve.js"></script>
     <script type="text/javascript" src="./utils/ldc.js"></script>
@@ -188,12 +191,13 @@
     <script type="text/javascript" src="./utils/es_statistics.js"></script>
     <script type="text/javascript" src="./utils/shapefile_converter.js"></script>
     <script type="text/javascript" src="./utils/port_handlers.js"></script>
+    <script type="text/javascript" src="./utils/interactive_tooltip.js"></script>
 
     <link rel="stylesheet" href="./css/user_messages.css" type="text/css"/>
     <script type="text/javascript" src="./utils/user_messages.js"></script>
 
     <script type="text/javascript" src="./utils/profiles_mngmnt.js"></script>
-    <script type="text/javascript" src="./utils/etm_local.js"></script>
+    <script type="text/javascript" src="./utils/etm_interface.js"></script>
     <script type="text/javascript" src="./utils/port_profile_viewer.js"></script>
     <script type="text/javascript" src="./utils/esdl_services_mngmnt.js"></script>
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
@@ -275,6 +279,7 @@
         colors['Conversion'] = 'purple';
         colors['Potential'] = 'grey';
 
+        window.jquery = $;
 
         // ------------------------------------------------------------------------------------------------------------
         //
@@ -700,7 +705,7 @@
                 // 'polygon' potential  name  id  class_name  [...]
 
                 // hide_loader();
-                // console.log(options);
+                //console.log('add_esdl_objects', options);
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
                 es_id = options['es_id'];
@@ -1286,8 +1291,8 @@
             // ------------------------------------------------------------------------------------------------------------
             socket.on('esdl_service_result', function(results) {
                 hide_loader();
-                if (results.esdl_service_result) {
-                    process_service_results(results.esdl_service_result)
+                if (results) {
+                    process_service_results(results)
                 }
             });
 
@@ -1333,7 +1338,7 @@
         $(function() {
             $("#asset_menu").selectmenu({ 'width': '200px', 'max-height': '500px' }); //.selectmenu( "menuWidget" ).addClass( "overflow" );
             $("#line_select").selectmenu({ width:200 });
-            $("#area_bld_select").selectmenu({ width:500 });
+            $("#area_bld_select").selectmenu({ width:350 });
             //$("#area_bld_select-menu").css({ 'max-height': '600px' });
             $("#carrier_select").selectmenu({ width:150 });
             $("#profile_menu").selectmenu({ width:150 });
@@ -1568,6 +1573,7 @@
                                     <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
+                                    <li id="vue_test_edr_residential_area"></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">View</a>
@@ -1589,20 +1595,8 @@
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
                                     <li id="vue_toggle_show_services_toolbar"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
-                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
-                                            Show/hide KPIs
-                                        </a>
-                                    </li>
                                     <li id="vue_toggle_show_project_view"></li>
                                     <li id="vue_toggle_show_undo_redo_control"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
-                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
-                                            Show/hide KPIs
-                                        </a>
-                                    </li>
                                     <li id="vue_toggle_long_process_view"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="clear_layers(active_layer_id, 'sim_layer');">
@@ -1613,12 +1607,23 @@
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                     <li class="separator"><span class="dropdown-item menu-separator"></span></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
+                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
+                                            Show/hide KPIs
+                                        </a>
+                                    </li>
+                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard"><i class="fa fa-chart-simple" aria-hidden="true"></i></div>KPI Dashboard</a></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings...</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+{% if user_feedback_url %}
+                                    <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
+{% endif %}
                                     <li id="vue_show_release_notes"></li>
                                     <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li id="vue_show_about_box"></li>
@@ -1671,8 +1676,6 @@
         <span id="deleteLogItems" onclick="deleteLogItems()">Delete all</span>
         <div id="messages"></div>
     </div>
-</div>
-
 </body>
 </html>
 
@@ -1709,6 +1712,7 @@
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
+        resize_area_pi_charts();
     });
 
     // use a pane to control line selection overlay with a different zIndex
@@ -1724,8 +1728,15 @@
                 layer: osm.addTo(map)
             },
             {
+                label: 'OpenTopoMap',
+                layer: L.tileLayer(location.protocol + '//{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 17,
+                    attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
+                })
+            },
+            {
                 label: 'Google Streets',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                     maxZoom: 20,
                     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
                     attribution: 'Google'
@@ -1733,7 +1744,7 @@
             },
             {
                 label: 'Google Satellite',
-                layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                layer: L.tileLayer(location.protocol + '//{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
                     maxZoom: 20,
                     subdomains:['mt0','mt1','mt2','mt3'],
                     attribution: 'Google'
@@ -1809,6 +1820,16 @@
         initOpen: false
     };
 
+    let kpi_dashboard_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    };
+
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
 {% endif %}
@@ -1818,9 +1839,15 @@
 
 <script type="module">
     import TableEditorDialog from "./utils/table_editor.js";
+    import KPIDashboard from "./utils/KPIDashboard.js";
 
     const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
+    window.table_editor = table_editor;
+
+    const kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
+    window.kpi_dashboard = kpi_dashboard;
 </script>
 
 {% if debug %}

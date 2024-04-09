@@ -15,8 +15,8 @@ getEClassifier = partial(Ecore.getEClassifier, searchspace=eClassifiers)
 CommodityEnum = EEnum('CommodityEnum', literals=[
                       'UNDEFINED', 'ELECTRICITY', 'GAS', 'HEAT', 'H2', 'BIOGAS', 'CO2', 'ENERGY'])
 
-AreaScopeEnum = EEnum('AreaScopeEnum', literals=['UNDEFINED', 'BUILDING', 'STREET', 'ZIPCODE', 'NEIGHBOURHOOD',
-                      'DISTRICT', 'VILLAGE', 'CITY', 'MUNICIPALITY', 'REGION', 'PROVINCE', 'STATE', 'COUNTRY', 'CONTINENT'])
+AreaScopeEnum = EEnum('AreaScopeEnum', literals=['UNDEFINED', 'BUILDING', 'STREET', 'ZIPCODE', 'NEIGHBOURHOOD', 'DISTRICT',
+                      'VILLAGE', 'CITY', 'MUNICIPALITY', 'REGION', 'PROVINCE', 'STATE', 'COUNTRY', 'CONTINENT', 'SERVICE_AREA'])
 
 ProfileTypeEnum = EEnum('ProfileTypeEnum', literals=['UNDEFINED', 'SOLARIRRADIANCE_IN_W_PER_M2', 'WINDSPEED_IN_M_PER_S', 'STATEOFCHARGE_IN_WS', 'ENERGY_IN_WH', 'ENERGY_IN_KWH', 'ENERGY_IN_MWH', 'ENERGY_IN_GWH', 'ENERGY_IN_J', 'ENERGY_IN_KJ', 'ENERGY_IN_MJ', 'ENERGY_IN_GJ', 'ENERGY_IN_TJ',
                         'ENERGY_IN_PJ', 'TEMPERATURE_IN_C', 'TEMPERATURE_IN_K', 'POWER_IN_W', 'POWER_IN_KW', 'POWER_IN_MW', 'POWER_IN_GW', 'POWER_IN_TW', 'MONEY_IN_EUR', 'MONEY_IN_KEUR', 'MONEY_IN_MEUR', 'PERCENTAGE', 'MONEY_IN_EUR_PER_KW', 'MONEY_IN_EUR_PER_KWH', 'VOLUME_IN_M3', 'VOLUME_IN_LITERS'])
@@ -244,6 +244,8 @@ class Area(EObject, metaclass=MetaEClass):
     type = EAttribute(eType=AreaTypeEnum, unique=True, derived=False, changeable=True)
     geometryReference = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     buildingDensity = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    logicalGroup = EAttribute(eType=EBoolean, unique=True, derived=False,
+                              changeable=True, default_value=False)
     socialProperties = EReference(ordered=True, unique=True, containment=True, derived=False)
     economicProperties = EReference(ordered=True, unique=True, containment=True, derived=False)
     asset = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
@@ -257,7 +259,7 @@ class Area(EObject, metaclass=MetaEClass):
     measures = EReference(ordered=True, unique=True, containment=True, derived=False)
     sector = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, id=None, name=None, scope=None, type=None, socialProperties=None, economicProperties=None, asset=None, area=None, containingArea=None, isOwnedBy=None, geometryReference=None, mobilityProperties=None, buildingDensity=None, KPIs=None, potential=None, geometry=None, measures=None, sector=None):
+    def __init__(self, *, id=None, name=None, scope=None, type=None, socialProperties=None, economicProperties=None, asset=None, area=None, containingArea=None, isOwnedBy=None, geometryReference=None, mobilityProperties=None, buildingDensity=None, KPIs=None, potential=None, geometry=None, measures=None, sector=None, logicalGroup=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -280,6 +282,9 @@ class Area(EObject, metaclass=MetaEClass):
 
         if buildingDensity is not None:
             self.buildingDensity = buildingDensity
+
+        if logicalGroup is not None:
+            self.logicalGroup = logicalGroup
 
         if socialProperties is not None:
             self.socialProperties = socialProperties
@@ -4674,8 +4679,9 @@ class WindTurbine(ElectricityProducer):
     rotorDiameter = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     type = EAttribute(eType=WindTurbineTypeEnum, unique=True, derived=False, changeable=True)
+    powerCurveTable = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, rotorDiameter=None, height=None, type=None, **kwargs):
+    def __init__(self, *, rotorDiameter=None, height=None, type=None, powerCurveTable=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4687,6 +4693,9 @@ class WindTurbine(ElectricityProducer):
 
         if type is not None:
             self.type = type
+
+        if powerCurveTable is not None:
+            self.powerCurveTable = powerCurveTable
 
 
 class PVPanel(ElectricityProducer):
@@ -5527,13 +5536,17 @@ class PVPark(PVPanel):
 class WindPark(WindTurbine):
     """Defines a wind park of multiple turbines"""
     numberOfTurbines = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    turbinePower = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, numberOfTurbines=None, **kwargs):
+    def __init__(self, *, numberOfTurbines=None, turbinePower=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if numberOfTurbines is not None:
             self.numberOfTurbines = numberOfTurbines
+
+        if turbinePower is not None:
+            self.turbinePower = turbinePower
 
 
 class CheckValve(AbstractPassiveSwitch):

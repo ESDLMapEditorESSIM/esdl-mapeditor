@@ -215,6 +215,7 @@ def serialized_deepcopy(self, memo=None, resource=None):
                                     copy_value = EProxy(path=fragment, resource=resource)
                             v.eSet(ref.name, copy_value)
 
+    # copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
     return copy
 
     # show deleted object from memory

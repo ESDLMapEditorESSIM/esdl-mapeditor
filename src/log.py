@@ -67,7 +67,7 @@ logging.config.dictConfig(
 
 
 structlog.configure(
-    processors=[merge_threadlocal]
+    processors=[structlog.contextvars.merge_contextvars, merge_threadlocal]
     + shared_processors
     + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
     logger_factory=structlog.stdlib.LoggerFactory(),
