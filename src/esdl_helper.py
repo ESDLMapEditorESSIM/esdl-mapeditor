@@ -262,8 +262,8 @@ def energy_asset_to_ui(esh: ProjectManager, es_id, asset):  # , port_asset_mappi
                 add_spatial_attributes(asset, tooltip_asset_attrs)
                 return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs,
                         state, port_list, capability_type], extra_attributes, conn_list
-        else:
-            return [], []
+
+    return [], []
 
 
 def update_carrier_conn_list():
