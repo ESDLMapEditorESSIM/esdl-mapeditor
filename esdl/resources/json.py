@@ -1,6 +1,6 @@
 """
-# Temporarily added json.py to pyESDL to fix issue with serialization of EDate, until upstream is fixed
-# pyecore > 0.14
+# Based on pyEcore json.py 0.15.0 with some adaptations for indenting when saving
+# and the resource type
 
 The json module introduces JSON resource and JSON parsing.
 """
@@ -16,7 +16,9 @@ from esdl.resources.resource_type import ProjectManagerResourceType
 @unique
 class JsonOptions(Enum):
     SERIALIZE_DEFAULT_VALUES = 0
-
+    ENCODER = 1
+    DECODER = 2
+    INDENT = 3
 
 NO_OBJECT = object()
 
@@ -35,9 +37,13 @@ class JsonResource(Resource):
         self.type = type
 
     def load(self, options=None):
+        self.options = options or {}
         self.cache_enabled = True
         json_value = self.uri.create_instream()
-        d = json.loads(json_value.read().decode('utf-8'))
+
+        decoder = self.options.get(JsonOptions.DECODER)
+        d = json.loads(json_value.read().decode('utf-8'), cls=decoder)
+
         if isinstance(d, list):
             for x in d:
                 self.to_obj(x, first=True)
@@ -52,9 +58,8 @@ class JsonResource(Resource):
 
     def save(self, output=None, options=None):
         self.options = options or {}
-        indent = self.indent
-        if 'indent' in options:
-            indent = options['indent']
+        indent = self.options.get(JsonOptions.INDENT, self.indent)
+
         stream = self.open_out_stream(output)
         dict_list = []
         for root in self.contents:
@@ -62,12 +67,10 @@ class JsonResource(Resource):
         if len(dict_list) <= 1:
             dict_list = dict_list[0]
 
-        if 'encoder' in self.options:
-            stream.write(json.dumps(dict_list, indent=indent, cls=self.options['encoder'])
-                         .encode('utf-8'))
-        else:
-            stream.write(json.dumps(dict_list, indent=indent)
-                         .encode('utf-8'))
+        encoder = self.options.get(JsonOptions.ENCODER)
+        stream.write(json.dumps(dict_list, indent=indent, cls=encoder)
+                     .encode('utf-8'))
+
         stream.flush()
         self.uri.close_stream()
         self.options = None
@@ -143,7 +146,7 @@ class JsonResource(Resource):
     #         result.append(write_object)
     #     return result
 
-    def to_dict(self, obj, is_noncont_ref=False, is_attr=False):
+    def to_dict(self, obj, is_noncont_ref=False, is_attr=False, feature=None):
         if isinstance(obj, type) and issubclass(obj, EObject):
             if is_noncont_ref:
                 fun = self._to_ref_from_obj
@@ -169,13 +172,15 @@ class JsonResource(Resource):
             fun = self._to_ref_from_obj if is_noncont_ref else self.to_dict
             result = []
             for x in obj:
-                write_object = fun(x, is_noncont_ref, is_attr)
+                write_object = fun(x, is_noncont_ref, is_attr, feature=feature)
                 if write_object is NO_OBJECT:
                     continue
                 result.append(write_object)
             return result
-        else:
+        elif feature._eType.eType in (int, float):
             return obj
+        else:
+            return feature._eType.to_string(obj)
 
     @lru_cache()
     def resolve_eclass(self, uri_eclass):
@@ -273,7 +278,10 @@ class DefaultObjectMapper(object):
             if (not options.get(serialize_default_option, False)
                 and value == attr.get_default_value()):
                 continue
-            write_object = resource.to_dict(value, is_noncont_ref=is_ref, is_attr=attr.is_attribute)
+            write_object = resource.to_dict(value,
+                                            is_noncont_ref=is_ref,
+                                            is_attr=attr.is_attribute,
+                                            feature=attr)
             if write_object is not NO_OBJECT:
                 d[attr._name] = write_object
             if use_uuid:

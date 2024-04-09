@@ -20,7 +20,7 @@ import src.log as log
 import os, glob
 
 from esdl.processing.string_uri import StringURI
-from esdl.resources.json import JsonResource
+from esdl.resources.json import JsonResource, JsonOptions
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from esdlproject.actions import actionToHighlevelChange
 from esdlproject.encoders import DateTimeEncoder
@@ -84,7 +84,8 @@ def on_change_recorded(action):
     hlc = actionToHighlevelChange(action)
     print(hlc)
 
-    options = {'encoder': DateTimeEncoder, 'indent': 2}
+    #options = {'encoder': DateTimeEncoder, 'indent': 2}
+    options = {JsonOptions.INDENT: 2}
     hlc_string = eobject_to_string(hlc, ESDLFormat.JSON, options=options)
 
     # uri = StringURI("high_level_change.json")
