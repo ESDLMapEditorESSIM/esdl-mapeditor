@@ -195,7 +195,7 @@ def add_spatial_attributes(asset, attrs):
         attrs['surfaceArea'] = asset.surfaceArea
 
 
-def energy_asset_to_ui(esh, es_id, asset): # , port_asset_mapping):
+def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
     port_list = []
     conn_list = []
 

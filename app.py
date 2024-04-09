@@ -116,13 +116,13 @@ if settings.USE_GEVENT:
 # debugging with pycharm:
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
-named_lock_locker = NamedLocker()
+named_locker = NamedLocker()
 
 user_actions_logging = UserLogging()
 if settings.settings_storage_config["host"] is None or settings.settings_storage_config["host"] == "":
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
-settings_storage = SettingsStorage(named_lock_locker, database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
+settings_storage = SettingsStorage(named_locker, database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
 
 
 # handler to retrieve ESDL documentation

@@ -73,9 +73,9 @@ class SettingsStorage:
 
     SYSTEM_NAME_IDENTIFIER = 'mapeditor'  # only one identifier of system settings for mapeditor
 
-    def __init__(self, named_lock_locker: NamedLocker, database_uri: str = 'mongodb://localhost:27017/', database: str = 'esdl_mapeditor_settings'):
+    def __init__(self, named_locker: NamedLocker, database_uri: str = 'mongodb://localhost:27017/', database: str = 'esdl_mapeditor_settings'):
         logger.info("Setting up UserSettings with mongoDB at " + database_uri)
-        self.named_lock_locker = named_lock_locker
+        self.named_locker = named_locker
         self.database = database
         try:
             self.client = MongoClient(database_uri)
@@ -83,7 +83,7 @@ class SettingsStorage:
             self.settings: Collection = self.db.settings
         except Exception as e:
             raise RuntimeError("Can't connect to MongoDB for UserSettings" + str(e)) from e
-        self._fix_duplicates()
+        self._merge_duplicates()
 
     def set(self, setting_type: SettingType, identifier: str, setting_name: str, value):
         """
@@ -102,7 +102,7 @@ class SettingsStorage:
         if identifier is None:
             raise Exception("No identifier provided for setting.")
 
-        with self.named_lock_locker.lock(identifier):
+        with self.named_locker.lock(identifier):
             mapeditor_settings_obj = self.settings.find_one_and_update(
                 {'type': setting_type.value, 'name': identifier},
                 {'$set': {setting_name: value}}, upsert=False,
@@ -126,7 +126,7 @@ class SettingsStorage:
         :param setting_name: The name of the setting.
         :return:
         """
-        with self.named_lock_locker.lock(identifier):
+        with self.named_locker.lock(identifier):
             mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier})
             if mapeditor_settings_obj is None:
                 return None
@@ -264,12 +264,14 @@ class SettingsStorage:
         """
         self.client.drop_database(self.database)
 
-    def _fix_duplicates(self):
+    def _merge_duplicates(self):
         """
         Find all settings of type 'user' with duplicate names and attempt to merge them together.
 
         This issue used to happen before adding the NamedLocker, where multiple threads could write to the same
-        setting at the same time.
+        setting at the same time. This would result in multiple settings for the same user, with different values.
+
+        This should not happen anymore, so after a while this function can be removed.
         """
         duplicates = self.settings.aggregate([
             {"$match": {"type": "user"}},
@@ -277,7 +279,7 @@ class SettingsStorage:
             {"$match": {"count": {"$gt": 1}}}
         ])
         for duplicate in duplicates:
-            logger.info(f"Found duplicate user settings for {duplicate['_id']['name']}")
+            logger.info(f"Found duplicate user settings", user=duplicate['_id']['name'])
             unique_ids = duplicate['uniqueIds']
             first_id = unique_ids.pop(0)
             for id in unique_ids:
@@ -288,4 +290,4 @@ class SettingsStorage:
                         first[key] = second[key]
                 self.settings.update_one({"_id": first_id}, {"$set": first})
                 self.settings.delete_one({"_id": id})
-                logger.info(f"Merged settings for {duplicate['_id']['name']}")
+                logger.info(f"Merged settings", user=duplicate['_id']['name'])
