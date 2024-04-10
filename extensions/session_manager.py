@@ -143,12 +143,14 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
             logger.debug('Retrieve pm client_id={}'.format(client_id))
         else:
             logger.warning('No Project Manager in session. Returning empty project manager')
-            pm = ProjectManager(on_change_recorded=on_change_recorded)
+            pm = ProjectManager()
+            pm.add_change_listener("session_manager", on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
         logger.warning('Session has timed-out. Returning empty project manager')
-        pm = ProjectManager(on_change_recorded=on_change_recorded)
+        pm = ProjectManager()
+        pm.add_change_listener("session_manager", on_change_recorded)
         set_project_manager(pm)
         return pm
 
