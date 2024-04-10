@@ -574,7 +574,7 @@ class ETMSankeyToESDL:
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
                     asset_class_name = asset.eClass.name
-                    if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export):
+                    if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                         local_consumption += value
                     elif asset_class_name in self.local_production_assets:
                         local_production += value
@@ -602,7 +602,7 @@ class ETMSankeyToESDL:
             sect_info["final_demand"] = 0.0
 
         for asset in area.eAllContents():
-            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export):
+            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
                     this_sector = asset.sector
@@ -635,7 +635,7 @@ class ETMSankeyToESDL:
             carr_info["final_demand"] = 0.0
 
         for asset in area.eAllContents():
-            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export):
+            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
                     try:
@@ -705,7 +705,7 @@ class ETMSankeyToESDL:
                     this_sector = asset.sector
                     cluster = self.sectors[this_sector.name]["cluster"]
                     cluster_totals[cluster] += value
-            elif isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export):
+            elif isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
                     sector = self.guess_sector_name(asset)
