@@ -791,7 +791,7 @@ class ETMSankeyToESDL:
         electricity_demand_per_sector = dict()
         electricity_demand_per_cluster = dict()
 
-        for asset in area.asset:
+        for asset in area.eAllContents():
             electricity_demand_asset = False
             if isinstance(asset, esdl.EnergyDemand):
                 sector = asset.sector.name
