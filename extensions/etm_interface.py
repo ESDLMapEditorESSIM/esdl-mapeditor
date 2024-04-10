@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+import numpy as np
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
@@ -24,9 +24,14 @@ from uuid import uuid4
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from extensions.session_manager import get_session, get_project_manager
+from esdl.processing import ESDLAsset
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
+from extensions.session_manager import get_session
 from extensions.settings_storage import SettingsStorage
 import src.settings as settings
 import src.log as log
+from src.edr_client import EDRClient
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 
 
@@ -36,6 +41,15 @@ ETM_INTERFACE_SYSTEM_CONFIG = 'ETM_INTERFACE_SYSTEM_CONFIG'
 ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
     'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
     'etm_municipalities_file': 'data/ETM_municipalities.csv'
+}
+
+# Global profile information about clusters, so information can be retrieved once and reused between calls
+global_clusters = {
+    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw [POWER in %].edd", "profile_data": None},
+    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten [POWER in %].edd", "profile_data": None},
+    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie [POWER in %].edd", "profile_data": None},
+    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens [POWER in %].edd", "profile_data": None},
+    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit [POWER in %].edd", "profile_data": None},
 }
 
 
@@ -61,6 +75,10 @@ class ETMInterface:
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
             area = pm.get_by_id(active_es_id, area_id)
+
+            # Get profiles for all clusters from the EDR if not done already
+            emit("update-etm-query-log", f"Loading EDR cluster profiles...")
+            self.get_edr_profiles()
 
             emit("update-etm-query-log", f"Requested ETM Sankey data for {area.name} ({area.id})")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
@@ -104,6 +122,31 @@ class ETMInterface:
                 else:
                     emit("update-etm-query-log", f"- ETM scenario for {area.name} could not be created")
                     return False
+
+        @self.socketio.on('etm_update_sankey_data', namespace='/esdl')
+        def etm_update_sankey_data(area_id):
+            # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
+            area_id = get_area_id_from_mapeditor_id(area_id)
+            active_es_id = get_session('active_es_id')
+            esh = get_project_manager()
+            area = esh.get_by_id(active_es_id, area_id)
+
+            emit("update-etm-query-log", f"Updating ETM Sankey data for {area.name} ({area.id})")
+            if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
+                area_with_scope_municipality_found = False
+                for logical_group in area.area:
+                    if logical_group.logicalGroup:
+                        for sub_area in logical_group.area:
+                            if sub_area.scope is esdl.AreaScopeEnum.MUNICIPALITY:
+                                emit("update-etm-query-log", f"Recalculating KPIs for area {sub_area.name} ({sub_area.id})")
+                                self.update_kpis_for_area(sub_area)
+                            else:
+                                continue
+            else:
+                emit("update-etm-query-log", f"Recalculating KPIs for area {area.name} ({area.id})")
+                self.update_kpis_for_area(area)
+
+            return True
 
     def get_settings(self):
         if self.settings_storage.has_system(ETM_INTERFACE_SYSTEM_CONFIG):
@@ -166,6 +209,10 @@ class ETMInterface:
         etm_sankey.add_info_to_area(area)
         etm_sankey.clear_area_logbook()
 
+    def update_kpis_for_area(self, area):
+        etm_sankey = ETMSankeyToESDL(None)
+        etm_sankey.recalculate_kpis(area)
+
     def call_etm_interface_api(self, id):
         id = get_area_id_from_mapeditor_id(id)
         url = self.plugin_settings['etm_interface_api'].replace('<ID>', id)
@@ -182,6 +229,16 @@ class ETMInterface:
             logger.debug("Error accessing ETM API: " + str(e))
 
         return result
+
+    def get_edr_profiles(self):
+        edr_client = EDRClient.get_instance()
+
+        for cluster_name, cluster_info in global_clusters.items():
+            if not cluster_info["profile_data"]:
+                profile_esdl_str = edr_client.get_object_from_EDR(cluster_info["profile_ref"])
+                profile_esdl = ESDLAsset.load_asset_from_string(profile_esdl_str)
+                profile_mngr = InfluxDBProfileManager.create_esdl_influxdb_profile_manager(profile_esdl, use_ssl=True, verify_ssl=True)
+                cluster_info["profile_data"] = [x[1] for x in profile_mngr.profile_data_list]
 
 
 class ETMSankeyToESDL:
@@ -252,6 +309,8 @@ class ETMSankeyToESDL:
             "National transport": {"id": "etm_sector_nat_transp", "name": "National transport", "cluster": "Mobiliteit", "sector": None},
             "Other": {"id": "etm_sector_other", "name": "Other", "cluster": "Overig", "sector": None},
         }
+
+        self.profiles_last_updated = None
 
     def set_etm_data(self, etm_data):
         self.etm_data = etm_data
@@ -504,6 +563,7 @@ class ETMSankeyToESDL:
         kpi_name = "Final demand per sector [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for sect, sect_info in self.sectors.items():
             if abs(sect_info["final_demand"]) > 1e-6:
@@ -528,6 +588,7 @@ class ETMSankeyToESDL:
         kpi_name = "Final demand per carrier [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["final_demand"]) > 1e-6:
@@ -552,6 +613,7 @@ class ETMSankeyToESDL:
         kpi_name = "Import per carrier [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["import"]) > 1e-6:
@@ -580,6 +642,7 @@ class ETMSankeyToESDL:
         kpi_name = "Clustered final demand [" + unit_to_string(kpi_unit) + "]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster, cluster_total in cluster_totals.items():
             if abs(cluster_totals[cluster]) > 1e-6:
@@ -604,6 +667,7 @@ class ETMSankeyToESDL:
 
         kpi_name = "Local production [" + unit_to_string(kpi_unit) + "]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -631,6 +695,7 @@ class ETMSankeyToESDL:
 
         kpi_name = "Local production (incl. Import) [" + unit_to_string(kpi_unit) + "]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -643,6 +708,94 @@ class ETMSankeyToESDL:
 
         area.KPIs.kpi.append(kpi)
 
+    def add_electricity_demand_per_sector_and_cluster_kpi(self, area):
+        electricity_demand_per_sector = dict()
+        electricity_demand_per_cluster = dict()
+
+        kpi_unit = None
+        for asset in area.asset:
+            if isinstance(asset, esdl.EnergyDemand):
+                this_carrier = asset.port[0].carrier
+                # TODO: Discuss how to make this generic
+                if this_carrier.name == "Electricity":
+                    sector_name = asset.sector.name
+                    cluster_name = self.sectors[sector_name]["cluster"]
+
+                    if sector_name in electricity_demand_per_sector:
+                        electricity_demand_per_sector[sector_name] += asset.port[0].profile[0].value
+                    else:
+                        electricity_demand_per_sector[sector_name] = asset.port[0].profile[0].value
+
+                    if cluster_name in electricity_demand_per_cluster:
+                        electricity_demand_per_cluster[cluster_name] += asset.port[0].profile[0].value
+                    else:
+                        electricity_demand_per_cluster[cluster_name] = asset.port[0].profile[0].value
+
+                    if not kpi_unit:
+                        kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+
+        kpi_name = "Electricity demand per sector [" + unit_to_string(kpi_unit) + "]"
+
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for sector_name, sector_total in electricity_demand_per_sector.items():
+            if abs(electricity_demand_per_sector[sector_name]) > 1e-6:
+                distr_item = esdl.StringItem(label=sector_name, value=sector_total)
+                kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+        kpi_name = "Electricity demand per cluster [" + unit_to_string(kpi_unit) + "]"
+
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for cluster_name, cluster_total in electricity_demand_per_cluster.items():
+            if abs(electricity_demand_per_cluster[cluster_name]) > 1e-6:
+                distr_item = esdl.StringItem(label=cluster_name, value=cluster_total)
+                kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+        self.calculate_power_based_on_energy(area, electricity_demand_per_cluster)
+
+    def calculate_power_based_on_energy(self, area, electricity_demand_per_cluster):
+        # Create hourly energy profiles for all clusters
+        energy_profiles = dict()
+        for cluster_name, cluster_total in electricity_demand_per_cluster.items():
+            if abs(electricity_demand_per_cluster[cluster_name]) > 1e-6:
+                if cluster_name in global_clusters:
+                    energy_profiles[cluster_name] = \
+                        [electricity_demand_per_cluster[cluster_name] * x
+                         for x in global_clusters[cluster_name]["profile_data"]]
+
+        # Calculate the max energy values over the year
+        peak_energy_per_hour = dict()
+        sum_vector = np.zeros(len(energy_profiles[list(energy_profiles.keys())[0]]))
+        for cluster_name, energy_values in energy_profiles.items():
+            this_cluster_values = np.array(energy_values)
+            sum_vector += this_cluster_values
+            peak_energy_per_hour[cluster_name] = this_cluster_values.max()
+
+        peak_energy_per_hour["Total"] = sum_vector.max()
+
+        # Add KPI with peak power value
+        kpi_name = "Peak power per cluster [MW]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = build_qau_from_unit_string("MW")
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for cluster_name, peak_energy in peak_energy_per_hour.items():
+            power = peak_energy / 3600 * 1e9
+            distr_item = esdl.StringItem(label=cluster_name, value=float(power))
+            kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+    def recalculate_kpis(self, area):
+        # Add will override the existing KPIs
+        self.add_kpis(area)
+
     def add_kpis(self, area):
         area.KPIs = esdl.KPIs(id=str(uuid4()), description="ETM KPIs present_year")
         self.add_energy_balance_kpi(area)
@@ -652,6 +805,7 @@ class ETMSankeyToESDL:
         self.add_final_demand_per_sector_kpi(area)
         self.add_final_demand_per_carrier_kpi(area)
         self.add_import_per_carrier_kpi(area)
+        self.add_electricity_demand_per_sector_and_cluster_kpi(area)
 
     def add_info_to_area(self, area):
         self.add_final_demands(area)

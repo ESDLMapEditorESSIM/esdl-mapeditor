@@ -1971,11 +1971,12 @@ def process_command(message):
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                # esh.add_object_to_dict(active_es_id, asset)
+                pm.add_object_to_dict(active_es_id.id, asset, recursive=True)
                 # if hasattr(asset, 'port'):
                 #     for added_port in asset.port:
-                #         esh.add_object_to_dict(active_es_id, added_port)
+                #         pm.add_object_to_dict(active_es_id, added_port)
                 set_project_manager(pm)
+
         # update label to human readable
         undo_redo.update_label("Create new {}".format(object_type))
 
@@ -2844,10 +2845,12 @@ def process_command(message):
         sim_descr = message['sim_description']
         sim_start_datetime = message['sim_start_datetime']
         sim_end_datetime = message['sim_end_datetime']
+        sim_timestep = message['sim_timestep']
         essim_kpis = message['essim_kpis']
         essim_loadflow = message['essim_loadflow']
         # Create the HTTP POST to start the simulation
-        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
+        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, sim_timestep,
+                                    essim_kpis, essim_loadflow):
             emit('simulation_not_started')
 
     if message['cmd'] == 'validate_for_ESSIM':

@@ -481,7 +481,8 @@ class ESSIM:
                 # print(sim_list)
                 self.settings_storage.set_user(user_email, essim_list, sim_list)
 
-    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
+    def run_simulation(self, sim_description, sim_start_datetime, sim_end_datetime, sim_timestep,
+                       essim_kpis, essim_loadflow):
         with self.flask_app.app_context():
             # Clear current active session information
             del_session('active_simulation')
@@ -518,6 +519,7 @@ class ESSIM:
                 'simulationDescription': sim_description,
                 'startDate': sim_start_datetime,
                 'endDate': sim_end_datetime,
+                'timeStep': sim_timestep,
                 'influxURL': ESSIM_config['influxURL'],
                 # 'grafanaURL': ESSIM_config['grafanaURL'],
                 # 'esdlContents': urllib.parse.quote(esdlstr)

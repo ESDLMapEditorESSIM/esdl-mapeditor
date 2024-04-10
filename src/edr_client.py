@@ -178,6 +178,9 @@ class EDRClient:
             edr_cat_list = []       # list of EDR Asset categories
             for a in result:
                 item_type = a['esdlType']
+                if item_type is None:
+                    continue
+                    
                 if not item_type in item_type_list:
                     item_type_list.append(item_type)
 

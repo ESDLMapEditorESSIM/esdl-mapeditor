@@ -340,6 +340,14 @@ function run_ESSIM_simulation_window() {
     table += '<tr><td width=180>End datetime</td><td><input type="text" width="60" id="sim_end_datetime" disabled value="2015-02-01T00:00:00+0100"></td></tr>';
     table += '</table>';
     essim_settings += table;
+
+    if (check_role('essim_expert')) {
+        table = '<table>';
+        table += '<tr><td width=180>Timestep <i class="fa fa-info-circle" title="example notation: 1h, 900s, 15m" /></td><td><input type="text" width="60" id="sim_timestep" value="1h"></td></tr>';
+        table += '</table>';
+        essim_settings += table;
+    }
+
     essim_settings += '</p>';
     essim_settings += '</div>';
     sidebar_ctr.innerHTML += essim_settings;
@@ -366,7 +374,6 @@ function run_ESSIM_simulation_window() {
     show_favorites_list('favorites_list_div');
     sidebar_ctr.innerHTML += '<div id="simulations_list_div"></div>';
     show_simulations_list('simulations_list_div');
-
 }
 
 function run_ESSIM_simulation() {
@@ -405,13 +412,19 @@ function run_ESSIM_simulation() {
         sim_end_datetime = document.getElementById('sim_end_datetime').value;
     }
 
+    if (check_role("essim_expert")) {
+        sim_timestep = document.getElementById('sim_timestep').value;
+    } else {
+        sim_timestep = "1h";
+    }
+
     let essim_loadflow = $('#essim_loadflow_cb').prop('checked');
     let selected_kpis = $('#essim_kpi_select').val();
     console.log(essim_loadflow);
 
     socket.emit('command', {cmd: 'run_ESSIM_simulation', sim_description: sim_description,
-        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, essim_kpis: selected_kpis,
-        essim_loadflow: essim_loadflow});
+        sim_start_datetime: sim_start_datetime, sim_end_datetime: sim_end_datetime, sim_timestep: sim_timestep,
+        essim_kpis: selected_kpis, essim_loadflow: essim_loadflow});
     essim_attempt = 0;
     wait_essim_preprocess = 0;
     setTimeout(poll_simulation_progress, 1000);

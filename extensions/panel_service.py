@@ -98,17 +98,8 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
     return ps_influxdb_name
 
 
-def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof_aggr_type, start_datetime, end_datetime, host=None, database=None, datasource=None):
-    if host is None and database is None and datasource is None:
-        logger.error("Specify either host and database or datasource")
-    if not datasource:
-        ps_influxdb_name = get_panel_service_datasource(database, host, "", "")
-        if not ps_influxdb_name:
-            logger.error("Could not find or create a datasource")
-            return None
-    else:
-        ps_influxdb_name = datasource
-    logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
+def convert_filters(filters):
+    """ Converts filters to the right format for the panel service"""
     if filters is None or filters == "":
         filters = []
     elif isinstance(filters, str):
@@ -116,6 +107,11 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     elif not isinstance(filters, list):
         filters = [filters]
 
+    return filters
+
+
+def convert_datetimes(start_datetime, end_datetime):
+    """ Converts datetimes to the right format for the panel service"""
     if isinstance(start_datetime, datetime.datetime):
         sdt = start_datetime
     else:
@@ -125,6 +121,10 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
     else:
         edt = parse_date(end_datetime)
 
+    return sdt, edt
+
+
+def determine_axis_format(qau):
     if qau:
         if qau.unit == esdl.UnitEnum.from_string("WATT") and qau.multiplier is None and qau.perUnit is None:
             axis_format = "watt"
@@ -142,6 +142,34 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
             axis_format = "none"
     else:
         axis_format = "percent"
+
+    return axis_format
+
+
+def determine_datasource_name(host, database, datasource):
+    if host is None and database is None and datasource is None:
+        ps_influxdb_name = None
+        logger.error("Specify either host and database or datasource")
+    elif not datasource:
+        ps_influxdb_name = get_panel_service_datasource(database, host, "", "")
+        if not ps_influxdb_name:
+            logger.error("Could not find or create a datasource")
+    else:
+        ps_influxdb_name = datasource
+
+    if ps_influxdb_name:
+        logger.debug("Creating panel using datasource: {}".format(ps_influxdb_name))
+
+    return ps_influxdb_name
+
+
+def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof_aggr_type, start_datetime, end_datetime, host=None, database=None, datasource=None):
+    if isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+    ps_influxdb_name = determine_datasource_name(host, database, datasource)
+    filters = convert_filters(filters)
+    sdt, edt = convert_datetimes(start_datetime, end_datetime)
+    axis_format = determine_axis_format(qau)
 
     payload = {
         "title": graph_title,
@@ -167,6 +195,68 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
             "lineWidth": 1
         }
     }
+
+    url = settings.panel_service_config["internal_url"] + "/graphs/"
+    try:
+        r = requests.post(url, json=payload)
+        if r.status_code == 201:
+            result = json.loads(r.text)
+            logger.debug("Panel created:")
+            logger.debug(result)
+            embedUrl = result['embed_url']
+        else:
+            logger.debug("Error creating panel, status_code={}".format(r.status_code))
+            embedUrl = None
+
+    except Exception as e:
+        embedUrl = None
+        print('Exception: ' + str(e))
+        send_alert('Error accessing Panelservice API: ' + str(e))
+
+    logger.debug('Panel created with embedUrl: '+str(embedUrl))
+    return embedUrl
+
+
+def create_panel_multiple(graph_title, axis_title, dataset_info, qau, start_datetime, end_datetime, host=None, database=None, datasource=None):
+    # dataset_info: measurement, field, prof_aggr_type, filters
+    if isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+
+    ps_influxdb_name = determine_datasource_name(host, database, datasource)
+    sdt, edt = convert_datetimes(start_datetime, end_datetime)
+    axis_format = determine_axis_format(qau)
+
+    payload = {
+        "title": graph_title,
+        "start": sdt.strftime("%Y-%m-%dT%H:%M:%S.000%z"),    # "2015-01-01T00:00:00.000+0100",
+        "end": edt.strftime("%Y-%m-%dT%H:%M:%S.000%z"),      # "2016-01-01T01:00:00.000+0100",
+        "influxdb_name": ps_influxdb_name,
+        "influx_queries": [
+        ],
+        "yaxes": [
+            {"format": axis_format}
+        ],
+        "thresholds": [
+        ],
+        "theme": "light",
+        "grafana_graph_params": {
+            "lineWidth": 1
+        }
+    }
+
+    for dsi in dataset_info:
+        f = dsi["filters"]
+        f = convert_filters(f)
+
+        influxdb_query = {
+            "measurement": dsi["measurement"],
+            "field": dsi["field"],
+            "function": dsi["prof_aggr_type"],
+            "alias": dsi["alias"],
+            "filters": f,
+            "yaxis": "left"
+        }
+        payload["influx_queries"].append(influxdb_query)
 
     url = settings.panel_service_config["internal_url"] + "/graphs/"
     try:
