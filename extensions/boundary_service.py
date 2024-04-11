@@ -338,6 +338,7 @@ class BoundaryService:
                 stations = self.get_station_from_service(
                     esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
                 if stations:
+                    print(f"BoundaryService: stations: {stations}")
                     stations_dict = {}
 
                     for st in stations:

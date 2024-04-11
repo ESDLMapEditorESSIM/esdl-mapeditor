@@ -193,13 +193,13 @@ class UndoRedoCommandStack(CommandStack):
             self.compound.label = new_label
 
 def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
-    print(f"=== handleNotification ====== len(stack): {len(stack.stack)} ==================================================")
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
-        print('!!! No eResource for', notification)
+        print('=== handleNotification ====== !!! No eResource for', notification)
         return
     if not stack.is_recording():  # ignore all notifications when not recording
         #print('Ignoring ', notification)
         return
+    print(f"=== handleNotification ====== len(stack): {len(stack.stack)}, {notification} =============================")
     if notification.old is None and notification.new is None:
         print('\ -- Ignoring (change=None)', notification)
         return

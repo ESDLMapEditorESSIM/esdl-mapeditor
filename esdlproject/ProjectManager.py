@@ -907,7 +907,10 @@ class ProjectManager:
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
-            print(f"- {vc.name}: RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
+            if vc.energysystemRef:
+                print(f"- {vc.name}: ref RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
+            elif vc.energysystem:
+                print(f"- {vc.name}: RS={vc.energysystem.eResource.uri} ({vc.energysystem.eResource.type.name}), ES={vc.energysystem}")
             rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
             rs_type = vc.variant.snapshotRef.eResource.type.name if vc.variant.snapshotRef else None
             print(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")

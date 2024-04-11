@@ -22,13 +22,13 @@ import re
 from uuid import uuid4
 
 from esdl import esdl
-from extensions.session_manager import get_session, get_project_manager
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
-from extensions.session_manager import get_session
+from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
+from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
-import src.settings as settings
+
 import src.log as log
 from src.edr_client import EDRClient
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
@@ -127,8 +127,8 @@ class ETMInterface:
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
             active_es_id = get_session('active_es_id')
-            esh = get_project_manager()
-            area = esh.get_by_id(active_es_id, area_id)
+            pm = get_project_manager()
+            area = pm.get_by_id(active_es_id, area_id)
 
             emit("update-etm-query-log", f"Updating ETM Sankey data for {area.name} ({area.id})")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
@@ -289,6 +289,25 @@ class ETMSankeyToESDL:
             "Solar thermal": {"id": "etm_carrier_solar_thermal", "name": "Solar thermal", "carrier": None},
             "Steam hot water": {"id": "etm_carrier_shw", "name": "Steam hot water", "carrier": None},
             "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None}
+        }
+
+        self.asset_to_carrier_mapping = {
+            "ElectricityDemand": "Electricity",
+            "PVInstallation": "Electricity"
+        }
+        self.asset_to_sector_mapping = {
+            "ElectricityDemand": {
+                "Elektriciteitsvraag (gebouwgebonden)": {
+                    "sector": "Households space heating and hot water",
+                    "parent": esdl.AbstractBuilding,
+                    "parent_type": esdl.BuildingTypeEnum.RESIDENTIAL
+                },
+                "Elektriciteitsvraag (apparaten)": {
+                    "sector": "Households excl. space heating and hot water",
+                    "parent": esdl.AbstractBuilding,
+                    "parent_type": esdl.BuildingTypeEnum.RESIDENTIAL
+                }
+            }
         }
 
         self.sectors = {
@@ -501,7 +520,6 @@ class ETMSankeyToESDL:
     def add_carrier_losses(self, area):
         for etm_item in self.etm_data:
             if etm_item["Carrier"] == "Loss":
-
                 conv_loss_carriers = re.findall(r"([a-zA-Z ]+) to ([a-zA-Z ]+) conversion losses", etm_item["Category"])
                 # # Only take into account carrier losses other than conversion losses
                 # if conv_loss_carriers[0][0].lower() != conv_loss_carriers[0][1].lower():
@@ -523,19 +541,53 @@ class ETMSankeyToESDL:
                     area.asset.append(demand)
                     self.find_carrier_network_and_connect(area, inport, conv_loss_carriers[0][0])
 
+    def get_profile_value_in_PJ(self, asset):
+        try:
+            value = convert_to_unit(
+                asset.port[0].profile[0].value,
+                asset.port[0].profile[0].profileQuantityAndUnit,
+                ENERGY_IN_PJ
+            )
+        except Exception as e:
+            #print("Exception in etm_interface:", e)
+            value = None
+
+        return value
+
+    def guess_sector_name(self, asset):
+        if asset.eClass.name in self.asset_to_sector_mapping:
+            asset_mapping = self.asset_to_sector_mapping[asset.eClass.name]
+            if asset.name in asset_mapping:
+                asset_info = asset_mapping[asset.name]
+                return asset_info["sector"]
+
+        return None
+
+    # #################################################################################################################
+    #  KPIs
+    # #################################################################################################################
+
     def add_energy_balance_kpi(self, area):
         local_production = 0
         local_consumption = 0
 
-        for asset in area.asset:
-            asset_class_name = asset.eClass.name
-            if isinstance(asset, esdl.EnergyDemand):
-                local_consumption += asset.port[0].profile[0].value
-            elif asset_class_name in self.local_production_assets:
-                local_production += asset.port[0].profile[0].value
+        for asset in area.eAllContents():
+            if isinstance(asset, esdl.EnergyAsset):
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    asset_class_name = asset.eClass.name
+                    if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
+                        local_consumption += value
+                    elif asset_class_name in self.local_production_assets:
+                        local_production += value
 
         kpi_name = "Local production vs. consumption [%]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         if local_consumption > 0:
             distr_item = esdl.StringItem(label="Local consumption", value=local_consumption)
@@ -544,25 +596,34 @@ class ETMSankeyToESDL:
             distr_item = esdl.StringItem(label="Local production", value=local_production)
             kpi.distribution.stringItem.append(distr_item)
 
+        print(f"Added KPI {kpi_name}: {kpi}")
         area.KPIs.kpi.append(kpi)
 
     def add_final_demand_per_sector_kpi(self, area):
         for sect, sect_info in self.sectors.items():
             sect_info["final_demand"] = 0.0
 
-        kpi_unit = None
+        for asset in area.eAllContents():
+            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    this_sector = asset.sector
 
-        for asset in area.asset:
-            if isinstance(asset, esdl.EnergyDemand):
-                this_sector = asset.sector
-                self.sectors[this_sector.name]["final_demand"] += asset.port[0].profile[0].value
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+                    if this_sector:
+                        self.sectors[this_sector.name]["final_demand"] += value
+                    else:
+                        sector = self.guess_sector_name(asset)
+                        if sector:
+                            self.sectors[sector]["final_demand"] += value
 
-        kpi_name = "Final demand per sector [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Final demand per sector [PJ]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for sect, sect_info in self.sectors.items():
             if abs(sect_info["final_demand"]) > 1e-6:
@@ -575,19 +636,29 @@ class ETMSankeyToESDL:
         for carr, carr_info in self.carriers.items():
             carr_info["final_demand"] = 0.0
 
-        kpi_unit = None
+        for asset in area.eAllContents():
+            if isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    try:
+                        this_carrier_name = asset.port[0].carrier.name
+                    except:
+                        if asset.eClass.name in self.asset_to_carrier_mapping:
+                            this_carrier_name = self.asset_to_carrier_mapping[asset.eClass.name]
+                        else:
+                            this_carrier_name = None
 
-        for asset in area.asset:
-            if isinstance(asset, esdl.EnergyDemand):
-                this_carrier = asset.port[0].carrier
-                self.carriers[this_carrier.name]["final_demand"] += asset.port[0].profile[0].value
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+                    if this_carrier_name:
+                        self.carriers[this_carrier_name]["final_demand"] += value
 
-        kpi_name = "Final demand per carrier [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Final demand per carrier [PJ]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["final_demand"]) > 1e-6:
@@ -600,19 +671,21 @@ class ETMSankeyToESDL:
         for carr, carr_info in self.carriers.items():
             carr_info["import"] = 0.0
 
-        kpi_unit = None
-
         for asset in area.asset:
             if isinstance(asset, esdl.Import):
-                this_carrier = asset.port[0].carrier
-                self.carriers[this_carrier.name]["import"] += asset.port[0].profile[0].value
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    this_carrier = asset.port[0].carrier
+                    self.carriers[this_carrier.name]["import"] += value
 
-        kpi_name = "Import per carrier [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Import per carrier [PJ]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for carr, carr_info in self.carriers.items():
             if abs(carr_info["import"]) > 1e-6:
@@ -627,21 +700,29 @@ class ETMSankeyToESDL:
             if not sect_info["cluster"] in cluster_totals:
                 cluster_totals[sect_info["cluster"]] = 0.0
 
-        kpi_unit = None
-
-        for asset in area.asset:
+        for asset in area.eAllContents():
             if isinstance(asset, esdl.EnergyDemand):
-                this_sector = asset.sector
-                cluster = self.sectors[this_sector.name]["cluster"]
-                cluster_totals[cluster] += asset.port[0].profile[0].value
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    this_sector = asset.sector
+                    cluster = self.sectors[this_sector.name]["cluster"]
+                    cluster_totals[cluster] += value
+            elif isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    sector = self.guess_sector_name(asset)
+                    if sector:
+                        cluster = self.sectors[sector]["cluster"]
+                        cluster_totals[cluster] += value
 
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
-
-        kpi_name = "Clustered final demand [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Clustered final demand [PJ]"
 
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster, cluster_total in cluster_totals.items():
             if abs(cluster_totals[cluster]) > 1e-6:
@@ -654,19 +735,19 @@ class ETMSankeyToESDL:
         for local_prod, local_prod_info in self.local_production_assets.items():
             local_prod_info["total"] = 0.0
 
-        kpi_unit = None
+        for asset in area.eAllContents():
+            if asset.eClass.name in self.local_production_assets:
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    self.local_production_assets[asset.eClass.name]["total"] += value
 
-        for asset in area.asset:
-            asset_class_name = asset.eClass.name
-            if asset_class_name in self.local_production_assets:
-                self.local_production_assets[asset_class_name]["total"] += asset.port[0].profile[0].value
-
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
-
-        kpi_name = "Local production [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Local production [PJ]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -680,21 +761,22 @@ class ETMSankeyToESDL:
             local_prod_info["total"] = 0.0
         import_total = 0.0
 
-        kpi_unit = None
+        for asset in area.eAllContents():
+            if isinstance(asset, esdl.Producer):
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    if asset.eClass.name in self.local_production_assets:
+                        self.local_production_assets[asset.eClass.name]["total"] += value
+                    elif asset.eClass.name == "Import":
+                        import_total += value
 
-        for asset in area.asset:
-            asset_class_name = asset.eClass.name
-            if asset_class_name in self.local_production_assets:
-                self.local_production_assets[asset_class_name]["total"] += asset.port[0].profile[0].value
-            elif asset_class_name == "Import":
-                import_total += asset.port[0].profile[0].value
-
-                if not kpi_unit:
-                    kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
-
-        kpi_name = "Local production (incl. Import) [" + unit_to_string(kpi_unit) + "]"
+        kpi_name = "Local production (incl. Import) [PJ]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for local_prod, local_prod_info in self.local_production_assets.items():
             if local_prod_info["total"] > 0:
@@ -711,32 +793,40 @@ class ETMSankeyToESDL:
         electricity_demand_per_sector = dict()
         electricity_demand_per_cluster = dict()
 
-        kpi_unit = None
-        for asset in area.asset:
+        for asset in area.eAllContents():
+            electricity_demand_asset = False
             if isinstance(asset, esdl.EnergyDemand):
-                this_carrier = asset.port[0].carrier
-                # TODO: Discuss how to make this generic
-                if this_carrier.name == "Electricity":
-                    sector_name = asset.sector.name
-                    cluster_name = self.sectors[sector_name]["cluster"]
+                sector = asset.sector.name
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    if asset.port[0].carrier and asset.port[0].carrier.name == "Electricity":
+                        electricity_demand_asset = True
+            elif isinstance(asset, esdl.ElectricityDemand):
+                value = self.get_profile_value_in_PJ(asset)
+                sector = self.guess_sector_name(asset)
+                if value and sector:
+                    electricity_demand_asset = True
 
-                    if sector_name in electricity_demand_per_sector:
-                        electricity_demand_per_sector[sector_name] += asset.port[0].profile[0].value
-                    else:
-                        electricity_demand_per_sector[sector_name] = asset.port[0].profile[0].value
+            if electricity_demand_asset:
+                cluster_name = self.sectors[sector]["cluster"]
 
-                    if cluster_name in electricity_demand_per_cluster:
-                        electricity_demand_per_cluster[cluster_name] += asset.port[0].profile[0].value
-                    else:
-                        electricity_demand_per_cluster[cluster_name] = asset.port[0].profile[0].value
+                if sector in electricity_demand_per_sector:
+                    electricity_demand_per_sector[sector] += value
+                else:
+                    electricity_demand_per_sector[sector] = value
 
-                    if not kpi_unit:
-                        kpi_unit = asset.port[0].profile[0].profileQuantityAndUnit
+                if cluster_name in electricity_demand_per_cluster:
+                    electricity_demand_per_cluster[cluster_name] += value
+                else:
+                    electricity_demand_per_cluster[cluster_name] = value
 
-        kpi_name = "Electricity demand per sector [" + unit_to_string(kpi_unit) + "]"
-
+        kpi_name = "Electricity demand per sector [PJ]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for sector_name, sector_total in electricity_demand_per_sector.items():
             if abs(electricity_demand_per_sector[sector_name]) > 1e-6:
@@ -745,10 +835,13 @@ class ETMSankeyToESDL:
 
         area.KPIs.kpi.append(kpi)
 
-        kpi_name = "Electricity demand per cluster [" + unit_to_string(kpi_unit) + "]"
-
+        kpi_name = "Electricity demand per cluster [PJ]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = kpi_unit.deepcopy()
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster_name, cluster_total in electricity_demand_per_cluster.items():
             if abs(electricity_demand_per_cluster[cluster_name]) > 1e-6:
@@ -806,6 +899,17 @@ class ETMSankeyToESDL:
         self.add_import_per_carrier_kpi(area)
         self.add_electricity_demand_per_sector_and_cluster_kpi(area)
 
+    def replace_all_subarea_kpis(self, area):
+        print(f"Handling {area.name}")
+        if area.KPIs:
+            self.add_kpis(area)
+
+        for subarea in area.area:
+            if subarea.KPIs:
+                self.add_kpis(subarea)
+            if subarea.area:
+                self.replace_all_subarea_kpis(subarea)
+
     def add_info_to_area(self, area):
         self.add_final_demands(area)
         self.add_production(area)
@@ -816,3 +920,4 @@ class ETMSankeyToESDL:
     def add_carriers_and_sectors(self, es):
         self.create_carriers(es)
         self.create_sectors(es)
+
