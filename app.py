@@ -1971,7 +1971,7 @@ def process_command(message):
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                pm.add_object_to_dict(active_es_id.id, asset, recursive=True)
+                pm.add_object_to_dict(active_es_id, asset, recursive=True)
                 # if hasattr(asset, 'port'):
                 #     for added_port in asset.port:
                 #         pm.add_object_to_dict(active_es_id, added_port)
