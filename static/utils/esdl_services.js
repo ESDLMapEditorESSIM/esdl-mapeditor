@@ -329,7 +329,7 @@ function show_area_list(select_element_id, scope, filter_type, selected_filter) 
 
 /**
  * The entry point for using ESDL services.
- * 
+ *
  * @param {*} index The index of the active service in the esdl_config.py service list.
  * @param {*} state Optional initial state to pass to the workflow.
  */
@@ -356,8 +356,8 @@ function show_service_settings(index, state=null) {
 
 /**
  * Render an actual service. Called from the workflow module, as well as for direct services.
- * @param {*} service 
- * @param {*} service_settings_div 
+ * @param {*} service
+ * @param {*} service_settings_div
  */
 function render_service(service, service_settings_div, workflow_state_params) {
     if (service['type'] == 'geo_query') {
@@ -518,8 +518,8 @@ function show_esdl_service_sidebar(id) {
 
 /**
  * Render when an error has occurred in one of the services.
- * 
- * @param {*} service_index 
+ *
+ * @param {*} service_index
  */
 function service_render_error(service_index, text = null) {
     if (text === null) {
@@ -565,6 +565,14 @@ function update_esdl_services(event) {
         let layer = event.layer;
         let id = layer.id;
 
+        let scope_map = {
+            "PV": "PROVINCE",
+            "ES": "REGION",
+            "GM": "MUNICIPALITY",
+            "WK": "DISTRICT",
+            "BU": "NEIGHBOURHOOD"
+        }
+
         if (event.layer_type === 'area') {
             for (let i = 0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i]['type'] == "area_context_menu" || esdl_services_information[i]['location'] == "area_context_menu") {
@@ -576,6 +584,7 @@ function update_esdl_services(event) {
                                 const service = esdl_services_information[i];
                                 const state = {
                                     area_id: id,
+                                    scope: scope_map[id.substring(0, 2)]
                                 }
                                 if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
                                     window.show_service_settings(i, state);
