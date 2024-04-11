@@ -173,6 +173,7 @@ class ESDLServices:
 
         pm = get_project_manager()
         active_es_id = get_session("active_es_id")
+        es = pm.get_active_energy_system()
 
         # {'service_id': '18d106cf-2af1-407d-8697-0dae23a0ac3e', 'area_scope': 'provincies', 'area_id': '12',
         #  'query_parameters': {'bebouwingsafstand': '32432', 'restrictie': 'vliegveld', 'preferentie': 'infrastructuur', 'geometrie': 'true'}}
@@ -198,7 +199,7 @@ class ESDLServices:
                             break
 
         if service is None:
-            return False, None
+            return False, None, None
 
         url = service["url"]
         headers = service["headers"]
@@ -349,7 +350,7 @@ class ESDLServices:
                 r = requests.post(url, headers=headers, **kwargs)
             else:
                 # Should not happen, there should always be a method.
-                return False, None
+                return False, None, None
 
             if r.status_code == 200 or r.status_code == 201:
                 # print(r.text)
@@ -372,9 +373,11 @@ class ESDLServices:
 
                     variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
                     # TODO deal with parse_info?
-                    return True, pm.get_energy_system(variant)
+
+                    # TODO: Check if this is correct?!
+                    return True, {}, pm.get_energy_system(variant)
                 elif service["result"][0]["action"] == "print":
-                    return True, json.loads(r.text)
+                    return True, json.loads(r.text), es
                 elif service["result"][0]["action"] == "add_assets":
                     es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
@@ -394,7 +397,7 @@ class ESDLServices:
                                 add_assets_to_area[area.id] = [add_assets]
                             else:
                                 logger.error("add_assets service config not handled properly yet!")
-                                return False, "add_assets service config not handled properly yet!"
+                                return False, "add_assets service config not handled properly yet!", None
 
                     # If service returns an ESDL string that represents one asset, add it to the main area
                     if isinstance(add_assets_service_result, str):
@@ -448,9 +451,9 @@ class ESDLServices:
                                     )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
-                        return False, None
+                        return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
                 elif service["result"][0]["action"] == "add_potentials":
                     es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
@@ -485,9 +488,9 @@ class ESDLServices:
                         )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
-                        return False, None
+                        return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
                 elif service["result"][0]["action"] == "add_profile":
                     rset = ResourceSet()
 
@@ -520,10 +523,10 @@ class ESDLServices:
 
                         first_outport.profile.append(profile)
                         pm.add_object_to_dict(active_es_id, profile, recursive=True)
-                        return True, {"send_message_to_UI_but_do_nothing": {}}
+                        return True, {"send_message_to_UI_but_do_nothing": {}}, es
                     else:
                         logger.error("Service was expected to give back a profile")
-                        return False, None
+                        return False, None, None
                 elif service["result"][0]["action"] == "add_notes":
                     es_edit = pm.get_active_energy_system()
                     esi = es_edit.energySystemInformation
@@ -549,9 +552,9 @@ class ESDLServices:
                         emit('add_notes', {'es_id': active_es_id, 'notes_list': notes_list})
                     else:
                         logger.error("Service with id "+service_params["service_id"]+" did not return a esdl.Notes object")
-                        return False, None
+                        return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
                 elif service["result"][0]["action"] == "asset_feedback":
                     service_results = json.loads(r.text)
 
@@ -560,7 +563,7 @@ class ESDLServices:
                         asset_results_dict[sr['assetID']] = sr['messages']
                     return True, {
                         "asset_feedback": asset_results_dict
-                    }
+                    }, es
                 elif service["result"][0]["action"] == "show_message":
                     message = service["result"][0]["message"]
                     if 'json_field' in service["result"][0]:
@@ -568,7 +571,7 @@ class ESDLServices:
                         import html  # escape html entities in log file of NWN
                         message = html.escape(message)
                         message = message.replace("\n", "<br/>")
-                    return True, {"message": message}
+                    return True, {"message": message}, es
             else:
                 logger.warning(
                     "Error running ESDL service - response "
@@ -578,9 +581,9 @@ class ESDLServices:
                 )
                 logger.warning(r)
                 logger.warning(r.content)
-                return False, str(r.content)
+                return False, str(r.content), None
         except Exception as e:
             logger.exception("Error accessing external ESDL service: " + str(e))
-            return False, None
+            return False, None, None
 
-        return False, None
+        return False, None, None
