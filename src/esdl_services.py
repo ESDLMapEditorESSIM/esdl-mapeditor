@@ -165,7 +165,7 @@ class ESDLServices:
         if isinstance(ar, list):
             return ",".join(ar)
         else:
-            return ar
+            return str(ar)
 
     def call_esdl_service(self, service_params):
         """Actually call an ESDL service."""
@@ -210,41 +210,42 @@ class ESDLServices:
         if "send_email_in_post_body_parameter" in service:
             body[service["send_email_in_post_body_parameter"]] = get_session("user-email")
 
-        if service["type"] == "geo_query":
-            area_scope_tag = service["geographical_scope"]["url_area_scope"]
-            area_id_tag = service["geographical_scope"]["url_area_id"]
+        if "type" in service:
+            if service["type"] == "geo_query":
+                area_scope_tag = service["geographical_scope"]["url_area_scope"]
+                area_id_tag = service["geographical_scope"]["url_area_id"]
 
-            area_scope = service_params["area_scope"]
-            url = url.replace(area_scope_tag, area_scope)
-            ares_id = service_params["area_id"]
-            url = url.replace(area_id_tag, ares_id)
-            if "url_area_subscope" in service["geographical_scope"]:
-                area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
-                area_subscope = service_params["area_subscope"]
-                url = url.replace(area_subscope_tag, area_subscope)
-        elif service["type"].startswith("send_esdl"):
-            esdlstr = pm.active_energy_system_to_string()
+                area_scope = service_params["area_scope"]
+                url = url.replace(area_scope_tag, area_scope)
+                ares_id = service_params["area_id"]
+                url = url.replace(area_id_tag, ares_id)
+                if "url_area_subscope" in service["geographical_scope"]:
+                    area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
+                    area_subscope = service_params["area_subscope"]
+                    url = url.replace(area_subscope_tag, area_subscope)
+            elif service["type"].startswith("send_esdl"):
+                esdlstr = pm.active_energy_system_to_string()
 
-            if service["body"] == "url_encoded":
-                body["energysystem"] = urllib.parse.quote(esdlstr)
-                # print(body)
-            elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('utf-8')
-                esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
-            else:
-                body = esdlstr
-        elif service["type"] == "simulation":
-            esdlstr = pm.active_energy_system_to_string()
+                if service["body"] == "url_encoded":
+                    body["energysystem"] = urllib.parse.quote(esdlstr)
+                    # print(body)
+                elif service["body"] == "base64_encoded":
+                    esdlstr_bytes = esdlstr.encode('utf-8')
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
+                else:
+                    body = esdlstr
+            elif service["type"] == "simulation":
+                esdlstr = pm.active_energy_system_to_string()
 
-            if service["body"] == "url_encoded":
-                body["energysystem"] = urllib.parse.quote(esdlstr)
-            elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode('utf-8')
-                esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
-            else:
-                body = esdlstr
+                if service["body"] == "url_encoded":
+                    body["energysystem"] = urllib.parse.quote(esdlstr)
+                elif service["body"] == "base64_encoded":
+                    esdlstr_bytes = esdlstr.encode('utf-8')
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
+                else:
+                    body = esdlstr
 
         if "body_config" in service:
             if service["body_config"]["type"] == "text":
@@ -284,41 +285,47 @@ class ESDLServices:
         config_service_params = service.get("query_parameters", {})
         if query_params:
             first_qp = True
-            for key in query_params:
-                if query_params[
-                    key
-                ]:  # to filter empty lists for multi-selection parameters
-                    for cfg_service_param in config_service_params:
-                        if cfg_service_param["parameter_name"] == key:
+            for cfg_service_param in config_service_params:
+                param = None
+
+                if "type" in cfg_service_param and cfg_service_param["type"] == "constant":
+                    param = cfg_service_param["value"]
+                    key = cfg_service_param["parameter_name"]
+                elif "parameter" in cfg_service_param:
+                    for key in query_params:
+                        if query_params[key] and cfg_service_param["parameter"] == key:
                             param = query_params[key]
-                            if "formatter" in cfg_service_param:
-                                if "type" in cfg_service_param["formatter"] and \
-                                        cfg_service_param["formatter"]["type"] == "datetime_formatter":
-                                    parsed_datetime = parse_date(param)
-                                    param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
-                            if "location" in cfg_service_param:
-                                if cfg_service_param["location"] == "url":
-                                    url = url.replace(
-                                        "<" + cfg_service_param["parameter_name"] + ">",
-                                        str(param),
-                                    )
-                                elif cfg_service_param["location"] == "body" and isinstance(body, dict):
-                                    if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
-                                        param_value = (base64.b64encode(param.encode('utf-8'))).decode('utf-8')
-                                    else:
-                                        param_value = param
-                                    body[
-                                        cfg_service_param["parameter_name"]
-                                    ] = param_value
+                            break
+
+                if param:
+                    if "formatter" in cfg_service_param:
+                        if "type" in cfg_service_param["formatter"] and \
+                                cfg_service_param["formatter"]["type"] == "datetime_formatter":
+                            parsed_datetime = parse_date(param)
+                            param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
+                    if "location" in cfg_service_param:
+                        if cfg_service_param["location"] == "url":
+                            url = url.replace(
+                                "<" + cfg_service_param["parameter_name"] + ">",
+                                str(param),
+                            )
+                        elif cfg_service_param["location"] == "body" and isinstance(body, dict):
+                            if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
+                                param_value = (base64.b64encode(param.encode('utf-8'))).decode('utf-8')
                             else:
-                                if first_qp:
-                                    url = url + "?"
-                                else:
-                                    url = url + "&"
-                                url = (
-                                    url + key + "=" + self.array2list(param)
-                                )
-                                first_qp = False
+                                param_value = param
+                            body[
+                                cfg_service_param["parameter_name"]
+                            ] = param_value
+                    else:
+                        if first_qp:
+                            url = url + "?"
+                        else:
+                            url = url + "&"
+                        url = (
+                            url + key + "=" + self.array2list(param)
+                        )
+                        first_qp = False
 
         try:
             if service["http_method"] == "get":
