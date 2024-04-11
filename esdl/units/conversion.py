@@ -230,7 +230,7 @@ def convert_multiplier(source: esdl.QuantityAndUnitType, target: esdl.QuantityAn
     #  'MILLI', 'CENTI', 'DECI', 'DEKA', 'HECTO', 'KILO', 'MEGA',
     #  'GIGA', 'TERA', 'TERRA', 'PETA', 'EXA']
 factors = [1, 1E-18, 1E-15, 1E-12, 1E-9, 1E-6, 1E-3, 1E-2, 1E-1, 1E1,
-               1E2, 1E3, 1E6, 1E9, 1E12, 1E15, 1E15, 1E18, 1E21]
+               1E2, 1E3, 1E6, 1E9, 1E12, 1E12, 1E15, 1E18]
 
 
 def multipier_value(multiplier: esdl.MultiplierEnum):
