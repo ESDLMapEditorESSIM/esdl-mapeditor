@@ -307,6 +307,17 @@ class ETMSankeyToESDL:
                     "parent": esdl.AbstractBuilding,
                     "parent_type": esdl.BuildingTypeEnum.RESIDENTIAL
                 }
+            },
+            "EVChargingStation": {
+                "Thuislaadpunten": {
+                    "sector": "Households excl. space heating and hot water"
+                },
+                "Semi publiekelaadpunten": {
+                    "sector": "National transport"
+                },
+                "Laadpunten parkeergarages": {
+                    "sector": "National transport"
+                },
             }
         }
 
