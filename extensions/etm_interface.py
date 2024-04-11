@@ -22,7 +22,6 @@ import re
 from uuid import uuid4
 
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from extensions.session_manager import get_session, get_project_manager
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string

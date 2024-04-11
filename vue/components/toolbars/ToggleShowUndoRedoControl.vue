@@ -6,7 +6,7 @@
     >
       &nbsp;
     </div>
-    Show/hide undo/redo view
+    Show history sidebar
   </a>
 </template>
 

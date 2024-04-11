@@ -65,7 +65,15 @@ class UndoRedoCommandStack(CommandStack):
     def continue_recording(self):
         self._recording = True
 
-    def stop_recording(self, call_change_handler=True):
+    def stop_recording(self, call_change_handler: bool = True):
+        """
+        Stops recording of changes in a resource and stops putting them on the stack.
+        Parameters
+        ----------
+        call_change_handler if True the change_handler configured when creating this Stack
+                            will be called. This is set to False if you dont want to react
+                            on changes, e.g. when replaying changes to a resource.
+        """
         print("=== stop recording =====================================")
         self._combineCommands = False
         if self.compound is not None and len(self.compound) > 0:
@@ -75,6 +83,7 @@ class UndoRedoCommandStack(CommandStack):
             print('undo.py stop recording: self.compound:', self.compound)
             print('undo.py stop recording: self.top:', self.top)
             if self.change_handler and call_change_handler:
+                print("Propagating changes to change handler")
                 self.change_handler(self.top)
 
             self.compound = None
