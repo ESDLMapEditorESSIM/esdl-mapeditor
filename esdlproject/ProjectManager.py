@@ -885,7 +885,8 @@ class ProjectManager:
         raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {}".format(object_id, es.id))
 
     def active_energy_system_to_string(self):
-        active_resource = self.active_variant.eResource
+        es = self.get_active_energy_system()
+        active_resource = es.eResource
         if isinstance(active_resource.uri, StringURI):
             uri: StringURI = active_resource.uri
             active_resource.save()
