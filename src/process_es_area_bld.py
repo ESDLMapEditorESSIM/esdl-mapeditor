@@ -442,7 +442,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             area_list.append(grouped_area_info)
 
 
-def calculate_area_shape(this_area: esdl.Area) -> Shape:
+def calculate_area_shape(this_area: esdl.Area) -> Shape | None:
     """
     Calculate the shape of an area based on the assets in the area.
 
@@ -457,10 +457,11 @@ def calculate_area_shape(this_area: esdl.Area) -> Shape:
         elif isinstance(child, esdl.Point) and child.CRS != "Simple":
             child_shape = Shape.create(child)
             points.append(child_shape.shape)
-    if points:
-        multipoint = MultiPoint(points)
-        area_shape_polygon = multipoint.convex_hull
-        return Shape.create(area_shape_polygon)
+    if len(points) <= 2:
+        return None
+    multipoint = MultiPoint(points)
+    area_shape_polygon = multipoint.convex_hull
+    return Shape.create(area_shape_polygon)
 
 
 def create_area_info_geojson(area):
