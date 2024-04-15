@@ -130,7 +130,7 @@ const formatDate = (row) => {
 // eslint-disable-next-line no-unused-vars
 const getTagColor = (text) => {
   let up = text.toUpperCase();
-  if (up === "FINISHED" || up === "SUCCESS" || up === "OK" || up === "READY") {
+  if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
   } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
     return "blue";
