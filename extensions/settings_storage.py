@@ -11,7 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from pymongo import MongoClient, ReturnDocument
+import pymongo
+from pymongo import ReturnDocument
 from pymongo.database import Database, Collection
 
 from extensions.session_manager import get_session
@@ -82,7 +83,7 @@ class SettingsStorage:
                 self.client = mongo_client
             else:
                 logger.info("Connecting with specified Mongo database", database_uri=database_uri)
-                self.client = MongoClient(database_uri)
+                self.client = pymongo.MongoClient(database_uri)
             self.db: Database = self.client[database]  # esdl_mapeditor_settings
             self.settings: Collection = self.db.settings
         except Exception as e:
