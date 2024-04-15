@@ -28,7 +28,6 @@
 </template>
 
 <script setup="props">
-import {defineProps} from "vue";
 import {doPost} from "../../../../utils/api";
 import {useLongProcessState} from "../../../../composables/longProcess";
 import {genericErrorHandler} from "../../../../utils/errors";

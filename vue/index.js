@@ -4,21 +4,23 @@
  * DOM.
  */
 import {createApp} from "vue";
-import ControlStrategy from './apps/ControlStrategy';
-import MarginalCostsEdit from "./apps/MarginalCostsEdit";
-import ObjectProperties from './apps/ObjectProperties';
-import EDRAssets from './apps/EDRAssets';
-import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
-import AddEditWmsLayer from './apps/AddEditWmsLayer';
-import Carriers from './apps/Carriers.vue';
-import Sectors from './apps/Sectors.vue';
-import AboutBox from './apps/AboutBox';
-import ReleaseNotes from './apps/ReleaseNotes';
+import ControlStrategy from '@/apps/ControlStrategy.vue';
+import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
+import ObjectProperties from '@/apps/ObjectProperties.vue';
+import EDRAssets from '@/apps/EDRAssets.vue';
+import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
+import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import Carriers from '@/apps/Carriers.vue';
+import Sectors from '@/apps/Sectors.vue';
+import AboutBox from '@/apps/AboutBox.vue';
+import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
-import SearchAssets from './apps/SearchAssets';
-import AssetFeedback from './apps/AssetFeedback';
-import KPIDashboard from './apps/KPIDashboard';
-import AssetTableEditor from './apps/AssetTableEditor';
+import ModelContext from "@/apps/ModelContext.vue";
+import SearchAssets from '@/apps/SearchAssets.vue';
+import AssetFeedback from '@/apps/AssetFeedback.vue';
+import AssetTableEditor from '@/apps/AssetTableEditor.vue';
+import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
+import KPIDashboard from './apps/KPIDashboard.vue';
 import {
     createVueLControl,
     createVueMapEditorDialog,
@@ -27,33 +29,34 @@ import {
     mountSidebarComponent,
     mountTooltipComponent,
 } from "./mounts";
-import CustomIconsSettings from "./apps/CustomIconsSettings";
-import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
-import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
 import UndoRedoControl from "./apps/UndoRedoControl";
 import UndoRedoMenu from "./components/toolbars/UndoRedoMenu";
-import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
-import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
-import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
 import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
 import ToggleProjectView from './components/projects/ToggleProjectView'
-import {useWorkflow} from "./composables/workflow";
-import Workflow from "./apps/Workflow";
-import ServicesToolbar from './components/toolbars/ServicesToolbar'
-import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
-import {useObject} from './composables/ObjectID';
-import {useAssetFeedbackList} from './composables/assetFeedback';
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
-import ActiveLongProcess from './components/progress/ActiveProcess'
-import SidePane from "./apps/SidePane"
+import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
+import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
+import AssetDrawToolbarEDRAssetsSettings from '@/components/toolbars/AssetDrawToolbarEDRAssetsSettings.vue'
+import AssetDrawToolbarStandardAssetsSettings from '@/components/toolbars/AssetDrawToolbarStandardAssetsSettings.vue'
+import ToggleShowAssetDrawToolbar from '@/components/toolbars/ToggleShowAssetDrawToolbar.vue'
+import {useWorkflow} from "@/composables/workflow";
+import Workflow from "@/apps/Workflow.vue";
+import ServicesToolbar from '@/components/toolbars/ServicesToolbar.vue'
+import ToggleShowServicesToolbar from '@/components/toolbars/ToggleShowServicesToolbar.vue'
+import {useObject} from '@/composables/ObjectID';
+import {useAssetFeedbackList} from '@/composables/assetFeedback';
+import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
+import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
 import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
-import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
 import {useUndoRedo} from "./composables/undoRedo";
-import ResidentialArea from "./apps/ResidentialArea";
+import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
+import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
+import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
+import ResidentialArea from "@/apps/ResidentialArea.vue";
 import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
@@ -143,6 +146,10 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
+window.activate_admin_settings = () => {
+    mountApp(ActivityContextManagement, '#admin_dialog_window');
+}
+
 window.add_edit_wms_layer = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
@@ -158,6 +165,8 @@ window.show_new_release_notes = () => {
    // show new release notes if any...
    showNewReleaseNotes();
 }
+
+mountApp(ModelContext, '#vue_model_context')
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
 mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
@@ -180,6 +189,7 @@ createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_redo_menu');
 createVueLControl(AssetDrawToolbar, {});
 mountApp(ToggleShowAssetDrawToolbar, '#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
+createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
 mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
 mountApp(LoadProjectFileButton, '#vue_load_project_file')

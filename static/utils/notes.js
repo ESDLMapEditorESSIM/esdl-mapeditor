@@ -249,9 +249,6 @@ class Notes {
         if (event.type === 'client_connected') {
             notes = new Notes();
         }
-        if (event.type === 'add_contextmenu') {
-
-        }
     }
 }
 

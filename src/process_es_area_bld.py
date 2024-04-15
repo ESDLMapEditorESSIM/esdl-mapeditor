@@ -286,7 +286,7 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=False):
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True):
     area_id = this_area.id
     area_name = this_area.name
     if not area_name: area_name = ""
@@ -476,7 +476,7 @@ def create_area_info_geojson(area):
     try:
         show_assets_without_location = user_settings["ui_settings"]["assets_on_map"]["show_assets_without_location"]
     except:
-        show_assets_without_location = False
+        show_assets_without_location = True
 
     print("- Finding ESDL boundaries...")
     BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)

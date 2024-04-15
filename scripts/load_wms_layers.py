@@ -16,7 +16,7 @@ import os
 import subprocess
 from uuid import uuid4
 
-from geo.Geoserver import Geoserver
+from geo.Geoserver import Geoserver, GeoserverException
 
 from extensions.settings_storage import SettingsStorage, SettingType
 from src.wms_layers import LAYERS_SETTING, LAYERS_GROUP_SETTING
@@ -118,17 +118,21 @@ def load_layers():
     geo = connect_to_geoserver(os.environ.get('GEOSERVER_URL'), os.environ.get('GEOSERVER_ADMIN_USER'),
                                os.environ.get('GEOSERVER_ADMIN_PASSWORD'))
 
-    geo.create_workspace(workspace=os.environ.get('GEOSERVER_WORKSPACE'))
+    workspace_names = [workspace_values[0]['name'] for workspace_values in geo.get_workspaces()['workspaces'].values()]
+    if os.environ.get('GEOSERVER_WORKSPACE') not in workspace_names:
+        geo.create_workspace(workspace=os.environ.get('GEOSERVER_WORKSPACE'))
 
-    geo.create_featurestore(
-        store_name=os.environ.get('GEOSERVER_STORENAME'),
-        workspace=os.environ.get('GEOSERVER_WORKSPACE'),
-        db=os.environ.get('POSTGRES_DB'),
-        host=os.environ.get('POSTGRES_HOST_INTERNAL'),
-        port=int(os.environ.get('POSTGRES_PORT_INTERNAL')),
-        pg_user=os.environ.get('POSTGRES_USER'),
-        pg_password=os.environ.get('POSTGRES_PASSWORD'),
-    )
+    datastore_names = [datastore_values[0]['name'] for datastore_values in geo.get_datastores()['dataStores'].values()]
+    if os.environ.get('GEOSERVER_STORENAME') not in datastore_names:
+        geo.create_featurestore(
+            store_name=os.environ.get('GEOSERVER_STORENAME'),
+            workspace=os.environ.get('GEOSERVER_WORKSPACE'),
+            db=os.environ.get('POSTGRES_DB'),
+            host=os.environ.get('POSTGRES_HOST_INTERNAL'),
+            port=int(os.environ.get('POSTGRES_PORT_INTERNAL')),
+            pg_user=os.environ.get('POSTGRES_USER'),
+            pg_password=os.environ.get('POSTGRES_PASSWORD'),
+        )
 
     # get project wms layers and groups
     settings_storage = SettingsStorage(database_uri=f"mongodb://{os.environ.get('MONGO_URL')}")
@@ -184,7 +188,10 @@ def load_layers():
                 style_name = layer_name + '_style'
 
             # check if already loaded in geoserver
-            layer = geo.get_layer(layer_name, os.environ.get('GEOSERVER_WORKSPACE'))
+            try:
+                layer = geo.get_layer(layer_name, os.environ.get('GEOSERVER_WORKSPACE'))
+            except GeoserverException:
+                layer = None
             if layer:
                 if isinstance(layer, str):
                     print(f"Error loading '{layer_name}': {layer}")
@@ -213,12 +220,12 @@ def load_layers():
                         geo.create_coveragestore(layer_name=layer_name,
                                                  path=file_path,
                                                  workspace=os.environ.get('GEOSERVER_WORKSPACE'))
-                        if not style_file_path:
+                        if not style_file_path:  # create default style
                             geo.create_coveragestyle(raster_path=file_path,
                                                      style_name=style_name,
                                                      workspace=os.environ.get('GEOSERVER_WORKSPACE'),
                                                      color_ramp='nipy_spectral',
-                                                     opacity=0.5)
+                                                     opacity=1 - float(os.environ.get('RASTER_DEFAULT_TRANSPARENCY')))
                         geo.publish_style(layer_name=layer_name,
                                           style_name=style_name,
                                           workspace=os.environ.get('GEOSERVER_WORKSPACE'))

@@ -34,7 +34,7 @@ from extensions.vue_backend.messages.DLA_carrier_message import CarrierMessage
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.edr_client import EDRClient
 from src.esdl_helper import get_port_profile_info, get_connected_to_info
-from src.view_modes import ViewModes
+from src.model_contexts import ModelContexts
 import esdl.esdl
 import src.log as log
 from utils.utils import camelCaseToWords, str2float
@@ -80,8 +80,8 @@ class ESDLDataLayer:
             refs = obj_info['references']
             self._convert_attributes_to_primitive_types(attrs)
 
-            view_mode = ViewModes.get_instance()
-            cat_attrs = view_mode.categorize_object_attributes_and_references(esdl_object, attrs, refs)
+            model_context = ModelContexts.get_instance()
+            cat_attrs = model_context.categorize_object_attributes_and_references(esdl_object, attrs, refs)
 
             # Is this the right way?
             obj_info['attributes'] = cat_attrs
@@ -125,8 +125,8 @@ class ESDLDataLayer:
             refs = []  # Leave out references for now as these can't be edited (yet): obj_info['references']
             self._convert_attributes_to_primitive_types(attrs)
 
-            view_mode = ViewModes.get_instance()
-            cat_attrs = view_mode.categorize_object_attributes_and_references(asset, attrs, refs)
+            model_context = ModelContexts.get_instance()
+            cat_attrs = model_context.categorize_object_attributes_and_references(asset, attrs, refs)
 
             cost_information = get_cost_information(asset)
 
@@ -391,8 +391,8 @@ class ESDLDataLayer:
         return item.eClass.name
 
     def get_asset_list(self):
-        # view_modes = ViewModes.get_instance()
-        # return view_modes.get_asset_list()
+        # model_contexts = ModelContexts.get_instance()
+        # return model_contexts.get_asset_list()
         adt = AssetDrawToolbar.get_instance()
         standard_assets_info = adt.load_asset_draw_toolbar_standard_assets_info()
         return standard_assets_info['standard_assets'][standard_assets_info['current_mode']]
