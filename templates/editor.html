@@ -212,10 +212,9 @@
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
-    <script type="text/javascript" src="./utils/table_editor.js"></script>
-    <script type="text/javascript" src="./utils/admin_dialog.js"></script>
+    <script type="module" src="./utils/admin_dialog.js"></script>
 
-    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
+    <script type="module" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1850,8 +1849,6 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    const table_editor = new TableEditorDialog(table_editor_dialog_options);
-    map.addControl(table_editor);
 
     let admin_dialog_options = {
         size: [ 1100, 700 ],
@@ -1860,8 +1857,6 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    const admin_dialog = new AdminDialog(admin_dialog_options);
-    map.addControl(admin_dialog);
 
     let kpi_dashboard_dialog_options = {
         size: [ 1100, 700 ],
@@ -1883,6 +1878,7 @@
 <script type="module">
     import TableEditorDialog from "./utils/table_editor.js";
     import KPIDashboard from "./utils/KPIDashboard.js";
+    import AdminDialog from "./utils/admin_dialog.js";
 
     const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
@@ -1891,6 +1887,10 @@
     const kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
     map.addControl(kpi_dashboard);
     window.kpi_dashboard = kpi_dashboard;
+
+    const admin_dialog = new AdminDialog(admin_dialog_options);
+    map.addControl(admin_dialog);
+    window.admin_dialog = admin_dialog
 </script>
 
 {% if debug %}
