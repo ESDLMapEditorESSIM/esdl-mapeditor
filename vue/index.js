@@ -166,7 +166,7 @@ window.show_new_release_notes = () => {
    showNewReleaseNotes();
 }
 
-mountApp(ModelContext, '#vue_model_context')
+// mountApp(ModelContext, '#vue_model_context')
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
 mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')

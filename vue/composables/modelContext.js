@@ -28,8 +28,6 @@ export function useModelContext() {
 
     const fetchModelContexts = () => {
         window.socket.emit('model_contexts_get_mode_info', function (res) {
-            console.log("MODEL CONTEXT HI")
-            console.log(res)
             activeModelContext.value = res['current_mode']
             modelContexts.value = res['possible_modes']
         });
