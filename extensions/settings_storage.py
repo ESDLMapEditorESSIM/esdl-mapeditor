@@ -11,9 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from collections import defaultdict
-from multiprocessing import Lock, Manager
-
 from pymongo import MongoClient, ReturnDocument
 from pymongo.database import Database, Collection
 
@@ -21,6 +18,7 @@ from extensions.session_manager import get_session
 import src.log as log
 from enum import Enum
 
+from src.tno.mongo.core import mongo_client
 from src.tno.locking import NamedLocker
 
 """
@@ -73,12 +71,18 @@ class SettingsStorage:
 
     SYSTEM_NAME_IDENTIFIER = 'mapeditor'  # only one identifier of system settings for mapeditor
 
-    def __init__(self, named_locker: NamedLocker, database_uri: str = 'mongodb://localhost:27017/', database: str = 'esdl_mapeditor_settings'):
-        logger.info("Setting up UserSettings with mongoDB at " + database_uri)
+    def __init__(self, named_locker: NamedLocker, database_uri: str = None, database: str = 'esdl_mapeditor_settings'):
+        logger.info("Setting up UserSettings with mongoDB")
         self.named_locker = named_locker
         self.database = database
         try:
-            self.client = MongoClient(database_uri)
+            # Either use the shared client, or create a specific client.
+            if database_uri is None:
+                logger.info("Using default Mongo client")
+                self.client = mongo_client
+            else:
+                logger.info("Connecting with specified Mongo database", database_uri=database_uri)
+                self.client = MongoClient(database_uri)
             self.db: Database = self.client[database]  # esdl_mapeditor_settings
             self.settings: Collection = self.db.settings
         except Exception as e:
@@ -135,7 +139,7 @@ class SettingsStorage:
                     {'_id': mapeditor_settings_obj['_id']},
                     {'$unset': {setting_name: ""}}, upsert=False)
 
-    def get(self, setting_type: SettingType, identifier: str, setting_name: str):
+    def get(self, setting_type: SettingType, identifier: str, setting_name: str, default=None):
         """
         Get a setting for the given identifier.
 
@@ -150,13 +154,16 @@ class SettingsStorage:
         mapeditor_settings_obj = self.settings.find_one({'type': setting_type.value, 'name': identifier},
                                                         {'type': 1, 'name': 1, setting_name: 1})
         if mapeditor_settings_obj is None:
+            if default is not None:
+                return default
             raise KeyError('No setting object found while searching for setting \'{}\' for {} {}'.format(setting_name,
                                                                                                          setting_type.value,
                                                                                                          identifier))
-
         if setting_name in mapeditor_settings_obj:
             return mapeditor_settings_obj[setting_name]
         else:
+            if default is not None:
+                return default
             raise KeyError('No such setting \'{}\' for {} {}'.format(setting_name, setting_type.value, identifier))
 
     def has(self, setting_type: SettingType, identifier: str, setting_name: str) -> bool:
@@ -181,17 +188,26 @@ class SettingsStorage:
         """
         return self.set(SettingType.USER, user, setting_name, value)
 
-    def get_user(self, user: str, setting_name: str):
+    def get_user(self, user: str, setting_name: str, default=None):
         """
         Get a setting for the given user.
         """
-        return self.get(SettingType.USER, user, setting_name)
+        return self.get(SettingType.USER, user, setting_name, default=default)
 
     def has_user(self, user: str, setting_name: str):
+        """Check if setting exists for the given user."""
         return self.has(SettingType.USER, user, setting_name)
 
     def del_user(self, user: str, setting_name: str):
+        """Delete setting for the given user."""
         return self.delete(SettingType.USER, user, setting_name)
+
+    def has_for_current_user(self, setting_name: str):
+        """
+        Check if setting exists for the currently logged in user.
+        """
+        user = get_session('user-email')
+        return self.has_user(user, setting_name)
 
     def set_for_current_user(self, setting_name: str, value):
         """
@@ -200,12 +216,12 @@ class SettingsStorage:
         user = get_session('user-email')
         return self.set_user(user, setting_name, value)
 
-    def get_for_current_user(self, setting_name: str):
+    def get_for_current_user(self, setting_name: str, default=None):
         """
         Get setting for currently logged in user.
         """
         user = get_session('user-email')
-        return self.get_user(user, setting_name)
+        return self.get_user(user, setting_name, default)
 
     def del_for_current_user(self, setting_name: str):
         """

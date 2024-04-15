@@ -4,7 +4,7 @@
 </template>
 
 <script>
-import CostInformationEdit from './CostInformationEdit'
+import CostInformationEdit from './CostInformationEdit.vue'
 
 const costInformationColumns = [
   { title: 'Type', dataIndex: 'uiname', key: 'citype' },

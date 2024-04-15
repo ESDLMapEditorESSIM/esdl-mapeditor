@@ -4,7 +4,8 @@
 
 
 export const MessageNames = Object.freeze({
-    ADD_FEATURE_TO_LAYER: 'ADD_FEATURE_TO_LAYER',
+    ADD_BUILDING_TO_LAYER: 'ADD_BUILDING_TO_LAYER',
+    ADD_AREA_TO_LAYER: 'ADD_AREA_TO_LAYER',
     USER_SETTINGS: 'USER_SETTINGS',
     ASSET_PROPERTIES: 'ASSET_PROPERTIES',
     CARRIER_COLORS: 'CARRIER_COLORS',
@@ -13,26 +14,31 @@ export const MessageNames = Object.freeze({
 });
 
 export const PubSubManager = {
-  subscriptions: {
-    'ADD_FEATURE_TO_LAYER': [],
-    'USER_SETTINGS': [],
-    'ASSET_PROPERTIES': [],
-    'CARRIER_COLORS': [],
-    'SOCKET_CONNECTED': [],
-    'SELECT_ACTIVE_LAYER': [],
-  },
+    subscriptions: {
+        'ADD_BUILDING_TO_LAYER': [],
+        'ADD_AREA_TO_LAYER': [],
+        'USER_SETTINGS': [],
+        'ASSET_PROPERTIES': [],
+        'CARRIER_COLORS': [],
+        'SOCKET_CONNECTED': [],
+        'SELECT_ACTIVE_LAYER': [],
+    },
 
-  subscribe: function(name, callback) {
-    this.subscriptions[name].push({ callback: callback });
-  },
+    subscribe: function (name, callback) {
+        if (!this.subscriptions[name]) {
+            console.warn("No subscriptions found for " + name)
+        } else {
+            this.subscriptions[name].push({callback: callback});
+        }
+    },
 
-  broadcast: function (name, message) {
-    const subscribers = this.subscriptions[name];
-    subscribers.forEach(function(subscriber) {
-      subscriber.callback(name, message);
-    });
+    broadcast: function (name, message) {
+        const subscribers = this.subscriptions[name];
+        subscribers.forEach(function (subscriber) {
+            subscriber.callback(name, message);
+        });
 
-  },
+    },
 
 };
 

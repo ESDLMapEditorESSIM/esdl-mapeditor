@@ -10,10 +10,10 @@
 
 
 <script setup="props">
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { useWorkflow } from "../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "./NextOrClose";
+import { default as NextOrClose } from "./NextOrClose.vue";
 import { workflowPostData } from "./utils/api.js";
 
 const props = defineProps({

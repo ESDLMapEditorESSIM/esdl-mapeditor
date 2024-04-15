@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmit } from 'vue'
+import { ref } from 'vue'
 // eslint-disable-next-line no-unused-vars
 import DropZone from './Dropzone.vue'
 

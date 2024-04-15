@@ -1,6 +1,6 @@
 <template>
   <a class="dropdown-item" href="#" @click="showReleaseNotes">
-    <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fa fa-info-circle" aria-hidden="true" /></div>
+    <div id="menu_doc" class="menu-icon" style="margin-top: 0px"><i class="fa fa-info-circle" aria-hidden="true" /></div>
     Release notes...
   </a>
   <a-modal v-model:open="visibleReleaseNotes" :title="'Release notes - version ' + current_release_notes.version" width="750px">

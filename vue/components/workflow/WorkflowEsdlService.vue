@@ -35,7 +35,6 @@
 
 import { useWorkflow } from "../../composables/workflow.js";
 import { useEsdlLayers } from "../../composables/esdlLayers.js";
-import { defineProps } from 'vue'
 // eslint-disable-next-line no-unused-vars
 
 const props = defineProps({
