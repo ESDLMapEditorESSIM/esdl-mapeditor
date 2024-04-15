@@ -72,14 +72,16 @@ class SettingsStorage:
     SYSTEM_NAME_IDENTIFIER = 'mapeditor'  # only one identifier of system settings for mapeditor
 
     def __init__(self, named_locker: NamedLocker, database_uri: str = None, database: str = 'esdl_mapeditor_settings'):
-        logger.info("Setting up UserSettings with mongoDB at " + database_uri)
+        logger.info("Setting up UserSettings with mongoDB")
         self.named_locker = named_locker
         self.database = database
         try:
             # Either use the shared client, or create a specific client.
             if database_uri is None:
+                logger.info("Using default Mongo client")
                 self.client = mongo_client
             else:
+                logger.info("Connecting with specified Mongo database", database_uri=database_uri)
                 self.client = MongoClient(database_uri)
             self.db: Database = self.client[database]  # esdl_mapeditor_settings
             self.settings: Collection = self.db.settings
