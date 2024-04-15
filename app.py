@@ -3071,6 +3071,18 @@ def process_command(message):
         pm = get_project_manager()
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
+    if message['cmd'] == 'undo':
+        print('Undo stack')
+        pprint(undo_redo.stack)
+        pm = get_project_manager()
+        undo_redo.stop_recording()
+        if undo_redo.can_undo():
+            undo_redo.undo()
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
+        else:
+            send_alert("Nothing to undo at this time")
+
     if message['cmd'] == 'redo':
         print('Redo stack')
         pprint(undo_redo.stack)
