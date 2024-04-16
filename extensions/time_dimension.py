@@ -148,17 +148,16 @@ class TimeDimension:
         @self.socketio.on('td_monitor_asset', namespace='/esdl')
         def td_monitor_asset(info):
             asset_id = info['id']
-            ielgas_monitor_ids = get_session('td_monitor_ids')
-            if asset_id in ielgas_monitor_ids:
-                ielgas_monitor_ids.remove(asset_id)
+            td_monitor_ids = get_session('td_monitor_ids')
+            if asset_id in td_monitor_ids:
+                td_monitor_ids.remove(asset_id)
             else:
-                ielgas_monitor_ids.append(asset_id)
-            set_session('td_monitor_ids', ielgas_monitor_ids)
+                td_monitor_ids.append(asset_id)
+            set_session('td_monitor_ids', td_monitor_ids)
 
         @self.socketio.on('request_load_duration_curve', namespace='/esdl')
         def request_load_duration_curve(info):
             asset_id = info['id']
-            # set_session('ielgas_monitor_id', asset_id)
             active_es_id = get_session('active_es_id')
             esh = get_handler()
             asset = esh.get_by_id(active_es_id, asset_id)

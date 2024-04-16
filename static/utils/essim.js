@@ -88,15 +88,16 @@ function show_kpis(sim_id, sim_fav) {
     socket.emit('show_previous_sim_kpis', { sim_id: sim_id, sim_fav: sim_fav });
 }
 
-function favorite_simulation(sim_id) {
+function toggle_favorite_simulation(sim_id, data, is_favorite) {
     $.ajax({
-        url: ESSIM_simulation_URL_prefix + 'simulation/' + sim_id + '/make_favorite',
-        success: function(data){
-            // Move simulation to favoritess
-            let $tr = $('#'+sim_id).remove().clone();
-            $tr.find('.favorite_button').remove();
-            $tr.find('.remove_button').off('click').click( function(e) { remove_sim_fav('favorite', sim_id); });
-            $('#fav_list tbody').append($tr);
+        url: ESSIM_simulation_URL_prefix + 'simulation/' + sim_id + '/toggle_favorite',
+        success: function(response){
+            $('#'+sim_id).remove();
+            if (is_favorite) {
+                add_simulation_row($('#sim_list tbody'), data, false);
+            } else {
+                add_simulation_row($('#fav_list tbody'), data, true);
+            }
         }
     });
 }
@@ -154,6 +155,76 @@ function download_results(sim_id) {
     });
 }
 
+function add_simulation_row(tbody, data, is_favorite) {
+    let simulation_id = data['simulation_id']
+    let $tr = $("<tr>").attr("id", simulation_id);
+
+    let es_name = data['simulation_es_name'];
+    if (es_name == null) es_name = "Untitled energysystem";
+    let more_info = 'Energysystem name: '+ es_name + ', Simulation ID: ' + simulation_id;
+
+    let $td_datetime = $("<td>").append(data['simulation_datetime']).attr('title', more_info);
+    $tr.append($td_datetime);
+    let $td_descr = $("<td>").append(data['simulation_descr']).attr('title', more_info);
+    $tr.append($td_descr);
+
+    let $actions = $('<div>');
+    let $select_scenario_button = $('<button>').addClass('btn')
+        .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
+        .attr('title', 'View ESDL on map')
+        .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
+    $actions.append($select_scenario_button);
+    let $animate_scenario_button = $('<button>').addClass('btn')
+        .append($('<i>').addClass('far fa-play-circle').css('color', 'black'))
+        .attr('title', 'Animate ESDL on map')
+        .click( function(e) { sidebar.hide(); animate_simulation(simulation_id); });
+    $actions.append($animate_scenario_button);
+
+    let star_class;
+    if (is_favorite) {
+        star_class = 'fas fa-star';
+    } else {
+        star_class = 'far fa-star';
+    }
+    let $favorite_scenario_button = $('<button>').addClass('btn favorite_button')
+        .append($('<i>').addClass(star_class).css('color', 'black'))
+        .attr('title', 'Remove from favorites')
+        .click( function(e) { toggle_favorite_simulation(simulation_id, data, is_favorite); });
+    $actions.append($favorite_scenario_button);
+
+    if (data['dashboard_url'] !== '') {
+        let $view_dashboard_button = $('<a>').attr('href', data['dashboard_url']).attr('target', '#')
+            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
+        $actions.append($view_dashboard_button);
+        let $view_download_button = $('<button>').addClass('btn')
+            .append($('<i>').addClass('fas fa-download').css('color', 'black'))
+            .attr('title', 'Download ESSIM results')
+            .click( function(e) { download_results(simulation_id); });
+        $actions.append($view_download_button);
+    }
+    if (data['kpi_result_list']) {
+        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
+            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
+            .click( function(e) { show_kpis(simulation_id, 'favorite'); });
+        $actions.append($view_kpis_button);
+    }
+
+    let sim_fav;
+    if (is_favorite) {
+        sim_fav = 'favorite';
+    } else {
+        sim_fav = 'simulation';
+    }
+    let $remove_scenario_button = $('<button>').addClass('btn')
+        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
+        .attr('title', 'Remove from list')
+        .click( function(e) { remove_sim_fav(sim_fav, simulation_id); });
+    $actions.append($remove_scenario_button);
+
+    $tr.append($("<td>").append($actions));
+    tbody.append($tr);
+}
+
 function show_favorites_list(div_id) {
     // console.log('retreiving ESSIM simulations list');
     $.ajax({
@@ -173,53 +244,7 @@ function show_favorites_list(div_id) {
                 $table.append($tbody);
 
                 for (let i=0; i<data.length; i++) {
-                    let simulation_id = data[i]['simulation_id']
-                    let $tr = $("<tr>").attr("id", simulation_id);
-
-                    let es_name = data[i]['simulation_es_name'];
-                    if (es_name == null) es_name = "Untitled energysystem";
-                    let more_info = 'Energysystem name: '+ es_name + ', Simulation ID: ' + simulation_id;
-
-                    let $td_datetime = $("<td>").append(data[i]['simulation_datetime']).attr('title', more_info);
-                    $tr.append($td_datetime);
-                    let $td_descr = $("<td>").append(data[i]['simulation_descr']).attr('title', more_info);
-                    $tr.append($td_descr);
-
-                    let $actions = $('<div>');
-                    let $select_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
-                        .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
-                    $actions.append($select_scenario_button);
-                    let $animate_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-play-circle').css('color', 'black'))
-                        .click( function(e) { sidebar.hide(); animate_simulation(simulation_id); });
-                    $actions.append($animate_scenario_button);
-
-                    if (data[i]['dashboard_url'] !== '') {
-                        let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
-                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
-                        $actions.append($view_dashboard_button);
-                        let $view_download_button = $('<button>').addClass('btn')
-                            .append($('<i>').addClass('fas fa-download').css('color', 'black'))
-                            .attr('title', 'Download ESSIM results')
-                            .click( function(e) { download_results(simulation_id); });
-                        $actions.append($view_download_button);
-                    }
-                    if (data[i]['kpi_result_list']) {
-                        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
-                            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
-                            .click( function(e) { show_kpis(simulation_id, 'favorite'); });
-                        $actions.append($view_kpis_button);
-                    }
-
-                    let $remove_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
-                        .attr('title', 'Remove from list')
-                        .click( function(e) { remove_sim_fav('favorite', simulation_id); });
-                    $actions.append($remove_scenario_button);
-
-                    $tr.append($("<td>").append($actions));
-                    $tbody.append($tr);
+                    add_simulation_row($tbody, data[i], true);
                 }
             } else {
                 $fav_list_div.append($('<p>').text('No previous ESSIM favorites stored'));
@@ -252,58 +277,7 @@ function show_simulations_list(div_id) {
                 $table.append($tbody);
 
                 for (let i=0; i<data.length; i++) {
-                    console.log("DATA", data)
-                    let simulation_id = data[i]['simulation_id']
-                    let $tr = $("<tr>").attr("id", simulation_id);
-
-                    let es_name = data[i]['simulation_es_name'];
-                    if (es_name == null) es_name = "Untitled energysystem";
-                    let more_info = 'Energysystem name: '+ es_name + ', Simulation ID: ' + simulation_id;
-
-                    let $td_datetime = $("<td>").append(data[i]['simulation_datetime']).attr('title', more_info);
-                    $tr.append($td_datetime);
-                    let $td_descr = $("<td>").append(data[i]['simulation_descr']).attr('title', more_info);
-                    $tr.append($td_descr);
-
-                    $actions = $('<div>');
-                    let $select_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
-                        .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
-                    $actions.append($select_scenario_button);
-                    let $animate_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-play-circle').css('color', 'black'))
-                        .click( function(e) { sidebar.hide(); animate_simulation(simulation_id); });
-                    $actions.append($animate_scenario_button);
-
-                    let $favorite_scenario_button = $('<button>').addClass('btn favorite_button')
-                        .append($('<i>').addClass('far fa-star').css('color', 'black'))
-                        .attr('title', 'Add to favorites')
-                        .click( function(e) { favorite_simulation(simulation_id); });
-                    $actions.append($favorite_scenario_button);
-
-                    if (data[i]['dashboard_url'] !== '') {
-                        let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
-                            .append($('<button>').addClass('btn').append($('<i>').addClass('fas fa-chart-line').css('color', 'green'))).attr('title', 'Show Dashboard');
-                        $actions.append($view_dashboard_button);
-                        let $view_download_button = $('<button>').addClass('btn')
-                            .append($('<i>').addClass('fas fa-download').css('color', 'black'))
-                            .attr('title', 'Download ESSIM results')
-                            .click( function(e) { download_results(simulation_id); });
-                        $actions.append($view_download_button);
-                    }
-                    if (data[i]['kpi_result_list']) {
-                        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
-                            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
-                            .click( function(e) { show_kpis(simulation_id, 'simulation'); });
-                        $actions.append($view_kpis_button);
-                    }
-                    let $remove_scenario_button = $('<button>').addClass('btn remove_button')
-                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
-                        .attr('title', 'Remove from list')
-                        .click( function(e) { remove_sim_fav('simulation', simulation_id); });
-                    $actions.append($remove_scenario_button);
-                    $tr.append($("<td>").append($actions));
-                    $tbody.append($tr);
+                    add_simulation_row($tbody, data[i], false);
                 }
             } else {
                 $sim_list_div.append($('<p>').text('No previous ESSIM simulations stored'));

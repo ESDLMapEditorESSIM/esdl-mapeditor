@@ -212,7 +212,7 @@ class ESSIM:
             else:
                 return "Unknown operation", 404
 
-        @self.flask_app.route('/simulation/<sim_id>/make_favorite')
+        @self.flask_app.route('/simulation/<sim_id>/toggle_favorite')
         def make_simulation_favorite(sim_id):
             with self.flask_app.app_context():
                 user_email = get_session('user-email')
@@ -225,12 +225,17 @@ class ESSIM:
                     if self.settings_storage.has_user(user_email, ESSIM_FAVORITES_LIST):
                         fav_list = self.settings_storage.get_user(user_email, ESSIM_FAVORITES_LIST)
 
+                    made_favorite = False
                     for sim in list(last_list):
                         if sim['simulation_id'] == sim_id:
                             fav_list.insert(0, sim)
                             last_list.remove(sim)
-
-                    print(fav_list)
+                            made_favorite = True
+                    if not made_favorite:
+                        for sim in list(fav_list):
+                            if sim['simulation_id'] == sim_id:
+                                last_list.insert(0, sim)
+                                fav_list.remove(sim)
 
                     self.settings_storage.set_user(user_email, ESSIM_SIMULATION_LIST, last_list)
                     self.settings_storage.set_user(user_email, ESSIM_FAVORITES_LIST, fav_list)
