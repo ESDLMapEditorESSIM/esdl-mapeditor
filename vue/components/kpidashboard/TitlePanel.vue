@@ -17,7 +17,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmit } from 'vue'
+import { ref } from 'vue'
 
 const title_settings_visible = ref(false);
 

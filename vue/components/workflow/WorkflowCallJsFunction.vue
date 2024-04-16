@@ -16,8 +16,6 @@
 </template>
 
 <script setup="props">
-import { defineProps } from 'vue'
-
 const props = defineProps({
   workflowStep: {
     type: Object,

@@ -143,14 +143,14 @@
 
 <script>
 import dayjs from "dayjs";
-import FancyNumberEdit from "../components/forms/FancyNumberEdit";
-// import ProfileTableEdit from "../components/forms/ProfileTableEdit";
-import PortsEdit from "../components/forms/PortsEdit";
-import CostInformationView from "../components/forms/CostInformationView";
-import ReferenceViewer from "../components/forms/ReferenceViewer";
-import { useObject } from "../composables/ObjectID";
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue";
+// import ProfileTableEdit from "@/components/forms/ProfileTableEdit";
+import PortsEdit from "@/components/forms/PortsEdit.vue";
+import CostInformationView from "@/components/forms/CostInformationView.vue";
+import ReferenceViewer from "@/components/forms/ReferenceViewer.vue";
+import { useObject } from "@/composables/ObjectID";
 // import { camelCaseToWords } from "../../static/utils/utils"
-import spinner from "../components/Spinner.vue";
+import spinner from "@/components/Spinner.vue";
 
 const { currentObjectID } = useObject();
 const ignoredRefs = ['port', 'costInformation', 'geometry'];

@@ -32,6 +32,7 @@ from esdl.processing import ESDLAsset, ESDLGeometry
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
+from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -53,11 +54,29 @@ class ESDLServices:
 
         @self.socketio.on('get_esdl_services_list', namespace='/esdl')
         def get_esdl_services_list():
+            """
+            Get the list of ESDL services for the current user.
+            :return:
+            """
             user = get_session('user-email')
             return self.get_user_settings(user)
 
+        @self.socketio.on('refresh_esdl_services_list', namespace='/esdl')
+        def refresh_esdl_services_list():
+            """
+            Refresh the list of ESDL services for the current user by sending the list to the browser.
+            """
+            user = get_session('user-email')
+            role = get_session('user-role')
+            emit('esdl_services', self.get_user_services_list(user, role))
+
         @self.socketio.on('store_esdl_services_list', namespace='/esdl')
         def store_esdl_services_list(settings):
+            """
+            Store the ESDL services list for the current user.
+            :param settings: The new settings to store.
+            :return:
+            """
             user = get_session('user-email')
             # TODO: check settings format before storing
             self.set_user_settings(user, settings)
@@ -67,6 +86,10 @@ class ESDLServices:
 
         @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
         def restore_esdl_services_settings():
+            """
+            Restore ESDL services to how they were before user modifications.
+            :return:
+            """
             user = get_session('user-email')
             settings = self.restore_settings(user)
 
@@ -280,29 +303,38 @@ class ESDLServices:
                             if param["parameter"] == bp:
                                 body[param["parameter"]] = body_params[bp]
 
+        # The parameter values that were communicated by the frontend
         query_params = service_params["query_parameters"]
+        # The parameter definition from the service config
         config_service_params = service.get("query_parameters", {})
         if query_params:
             first_qp = True
+            # Iterate over all given parameters (by the UI)
             for key in query_params:
                 if query_params[
                     key
                 ]:  # to filter empty lists for multi-selection parameters
+                    # Find the relevant service config for this parameter
                     for cfg_service_param in config_service_params:
                         if cfg_service_param["parameter_name"] == key:
-                            param = query_params[key]
+                            param = query_params[key]   # param now contains the communicated value (by the UI)
+                            # Is there any parameter formatting required...
                             if "formatter" in cfg_service_param:
                                 if "type" in cfg_service_param["formatter"] and \
                                         cfg_service_param["formatter"]["type"] == "datetime_formatter":
                                     parsed_datetime = parse_date(param)
                                     param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
+
+                            # Find out what to do with this parameter
                             if "location" in cfg_service_param:
                                 if cfg_service_param["location"] == "url":
+                                    # Parameter is part of the URL path: e.g. /query/area/<area_id>/sub_area/...
                                     url = url.replace(
                                         "<" + cfg_service_param["parameter_name"] + ">",
                                         str(param),
                                     )
                                 elif cfg_service_param["location"] == "body" and isinstance(body, dict):
+                                    # Parameter is part of the body json
                                     if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
                                         param_value = (base64.b64encode(param.encode('utf-8'))).decode('utf-8')
                                     else:
@@ -311,12 +343,13 @@ class ESDLServices:
                                         cfg_service_param["parameter_name"]
                                     ] = param_value
                             else:
+                                # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
                                 if first_qp:
                                     url = url + "?"
                                 else:
                                     url = url + "&"
                                 url = (
-                                    url + key + "=" + self.array2list(param)
+                                    url + key + "=" + str(self.array2list(param))
                                 )
                                 first_qp = False
 
@@ -363,38 +396,73 @@ class ESDLServices:
                     es_edit = esh.get_energy_system(es_id=active_es_id)
                     instance = es_edit.instance
                     area = instance[0].area
-                    asset_str_list = json.loads(r.text)
+                    add_assets_service_result = json.loads(r.text)
+                    add_assets_to_area = dict()
 
-                    # TODO: Find out if any service returns a dict?
-                    # Fix for services that return an ESDL string that represents one asset
-                    if isinstance(asset_str_list, str):
-                        asset_str_list = {
-                            "add_assets": [asset_str_list]
+                    if isinstance(add_assets_service_result, dict):
+                        if not "add_assets" in add_assets_service_result:
+                            # Service returns a dictionary with area id as key, and ESDL object string list as value
+                            add_assets_to_area = add_assets_service_result
+                        else:
+                            add_assets = add_assets_service_result["add_assets"]
+                            if isinstance(add_assets, list):
+                                add_assets_to_area[area.id] = add_assets
+                            elif isinstance(add_assets, str):
+                                add_assets_to_area[area.id] = [add_assets]
+                            else:
+                                logger.error("add_assets service config not handled properly yet!")
+                                return False, "add_assets service config not handled properly yet!"
+
+                    # If service returns an ESDL string that represents one asset, add it to the main area
+                    if isinstance(add_assets_service_result, str):
+                        add_assets_to_area = {
+                            area.id: [add_assets_service_result]
                         }
-                    # Fix for services that return a list of ESDLs
-                    if isinstance(asset_str_list, list):
-                        asset_str_list = {
-                            "add_assets": asset_str_list
+                    # If service returns a list of ESDL strings, add them to main area
+                    if isinstance(add_assets_service_result, list):
+                        add_assets_to_area = {
+                            area.id: add_assets_service_result
                         }
 
                     try:
-                        for asset_str in asset_str_list["add_assets"]:
-                            asset = ESDLAsset.load_asset_from_string(asset_str)
-                            esh.add_object_to_dict(active_es_id, asset, recursive=True)
-                            ESDLAsset.add_object_to_area(es_edit, asset, area.id)
-                            asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
-                            emit(
-                                "add_esdl_objects",
-                                {
-                                    "es_id": active_es_id,
-                                    "asset_pot_list": [asset_ui],
-                                    "zoom": True,
-                                },
-                            )
-                            emit(
-                                "add_connections",
-                                {"es_id": active_es_id, "conn_list": conn_list},
-                            )
+                        for area_id, asset_str_list in add_assets_to_area.items():
+                            area_to_be_added_to = esh.get_by_id(active_es_id, area_id)
+                            if not area_to_be_added_to:
+                                # If service returns an Area ID that cannot be found, add asset to main Area
+                                area_to_be_added_to = area
+
+                            area_shape = None
+                            if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
+                                # The assets that will be added must be placed on a grid within the area boundary
+                                shape_dictionary = get_session('shape_dictionary')
+                                if area_to_be_added_to.id in shape_dictionary:
+                                    area_shape = shape_dictionary[area_to_be_added_to.id]
+                                    # Calculate "enough" possible locations for assets inside the area
+                                    possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
+
+                            for asset_str in asset_str_list:
+                                asset = ESDLAsset.load_asset_from_string(asset_str)
+                                if area_shape:
+                                    # The asset gets a random location from the list of possible locations
+                                    asset.geometry = choose_location(possible_locations).get_esdl()
+
+                                esh.add_object_to_dict(active_es_id, asset, recursive=True)
+                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
+                                asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, asset)
+                                if asset_ui:
+                                    emit(
+                                        "add_esdl_objects",
+                                        {
+                                            "es_id": active_es_id,
+                                            "asset_pot_list": [asset_ui],
+                                            "zoom": True,
+                                        },
+                                    )
+                                if conn_list:
+                                    emit(
+                                        "add_connections",
+                                        {"es_id": active_es_id, "conn_list": conn_list},
+                                    )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None
