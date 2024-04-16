@@ -94,6 +94,8 @@ class ESSIM:
                     self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
                     self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
 
+                    return res_es.id
+
                 except Exception as e:
                     # print('Exception: ')
                     # print(e)

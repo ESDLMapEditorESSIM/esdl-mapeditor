@@ -104,17 +104,15 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
                 icon: '/icons/Graph.png',
                 text: 'Show load duraction curve',
                 callback: function(e) {
-                    let target = e.relatedTarget;
-                    let id = target.feature.properties.id;
-                    socket.emit('request_ielgas_ldc', {'id':id});
+                    let id = feature.properties.id;
+                    socket.emit('request_load_duration_curve', {'id':id});
                 }
             },{
                 icon: '/icons/Graph.png',
                 text: 'Monitor asset',
                 callback: function(e) {
-                    let target = e.relatedTarget;
-                    let id = target.feature.properties.id;
-                    socket.emit('ielgas_monitor_asset', {'id':id});
+                    let id = feature.properties.id;
+                    socket.emit('td_monitor_asset', {'id':id});
                 }
             }],
             contextmenuInheritItems: false

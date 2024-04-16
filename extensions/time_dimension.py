@@ -17,12 +17,12 @@ from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 from datetime import datetime
 from datetime import timedelta
-from dateutil import rrule
 from influxdb import InfluxDBClient
 from geojson import Feature, MultiLineString, FeatureCollection, dumps
 from math import fabs
 import pytz
 
+import esdl.esdl
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
@@ -32,11 +32,14 @@ import src.log as log
 
 logger = log.get_logger(__name__)
 
-TIME_DIMENSION_SYSTEM_CONFIG = 'TIME_DIMENSION_SYSTEM_CONFIG'
+# TIME_DIMENSION_SYSTEM_CONFIG = 'TIME_DIMENSION_SYSTEM_CONFIG'
 TIME_DIMENSION_USER_CONFIG = 'TIME_DIMENSION_SERVICE_USER_CONFIG'
+
+LOAD_DURATION_FIELD_NAME = 'allocationEnergy'
 
 default_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '#e31a1c',
                   '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Generic functions
@@ -56,7 +59,6 @@ class TimeDimension:
         self.executor = executor
         self.settings_storage = settings_storage
         self.register()
-        self.config = self.init_config()
         me_settings = MapEditorSettings.get_instance()
         self.mapeditor_colors = self.get_colors_from_settings(me_settings)
         # self.allocation_boundaries = {}       # stored in user session now
@@ -75,9 +77,6 @@ class TimeDimension:
         # Store all the time stamps in this list.
         # self.time_list = []                               # stored in user session now
 
-    def init_config(self):
-        return settings.essim_config
-
     def get_colors_from_settings(self, me_settings):
         me_ui_setting = me_settings.get_system_setting(MAPEDITOR_UI_SETTINGS)
         if me_ui_setting:
@@ -86,14 +85,14 @@ class TimeDimension:
         return None
 
     # Do we want system_settings here, e.g. for the service endpoint configuration?
-    def get_settings(self):
-        if self.settings_storage.has_system(TIME_DIMENSION_SYSTEM_CONFIG):
-            return self.settings_storage.get_system(TIME_DIMENSION_SYSTEM_CONFIG)
-        else:
-            time_dimension_plugin_settings = {
-            }
-            self.settings_storage.set_system(TIME_DIMENSION_SYSTEM_CONFIG, time_dimension_plugin_settings)
-            return time_dimension_plugin_settings
+    # def get_settings(self):
+    #     if self.settings_storage.has_system(TIME_DIMENSION_SYSTEM_CONFIG):
+    #         return self.settings_storage.get_system(TIME_DIMENSION_SYSTEM_CONFIG)
+    #     else:
+    #         time_dimension_plugin_settings = {
+    #         }
+    #         self.settings_storage.set_system(TIME_DIMENSION_SYSTEM_CONFIG, time_dimension_plugin_settings)
+    #         return time_dimension_plugin_settings
 
     def register(self):
         logger.info('Registering Time Dimension extension')
@@ -102,10 +101,6 @@ class TimeDimension:
         def get_windowed_simulation_data(start, end):
             with self.flask_app.app_context():
                 return self.get_windowed_simulation_data(start, end)
-
-        # @self.socketio.on('get_simulation_data', namespace='/esdl')
-        # def get_simulation_data(dt_str):
-        #     return self.get_simulation_data(dt_str)
 
         @self.socketio.on('timedimension_initialize', namespace='/esdl')
         def timedimension_initialize(info):
@@ -121,7 +116,7 @@ class TimeDimension:
                 set_session('timedimension-simulation-id', simulation_id)
                 set_session('timedimension-parameter', 'allocationEnergy')  # To be decided if configurable
 
-                set_session('ielgas_monitor_ids', [])
+                set_session('td_monitor_ids', [])
 
                 self.preprocess_data(networks)
                 time_list = self.get_all_times_from_simulation()
@@ -131,7 +126,7 @@ class TimeDimension:
 
                 # self.preload_simulation_data()
                 # Return list of times.
-                #return True
+                # return True
                 return time_list
 
         @self.socketio.on('timedimension_get_asset_ids', namespace='/esdl')
@@ -150,12 +145,78 @@ class TimeDimension:
             user = get_session('user-email')
             self.set_user_settings(user, user_settings)
 
+        @self.socketio.on('td_monitor_asset', namespace='/esdl')
+        def td_monitor_asset(info):
+            asset_id = info['id']
+            ielgas_monitor_ids = get_session('td_monitor_ids')
+            if asset_id in ielgas_monitor_ids:
+                ielgas_monitor_ids.remove(asset_id)
+            else:
+                ielgas_monitor_ids.append(asset_id)
+            set_session('td_monitor_ids', ielgas_monitor_ids)
+
+        @self.socketio.on('request_load_duration_curve', namespace='/esdl')
+        def request_load_duration_curve(info):
+            asset_id = info['id']
+            # set_session('ielgas_monitor_id', asset_id)
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            asset = esh.get_by_id(active_es_id, asset_id)
+            asset_name = asset.name
+            power = None
+            if hasattr(asset, 'power'):
+                power = asset.power
+            elif hasattr(asset, 'capacity'):
+                power = asset.capacity
+            power_pos = None
+            power_neg = None
+
+            influxdb_client = self.connect_to_database()
+
+            measurements_query = 'SHOW MEASUREMENTS'
+            measurements_result = influxdb_client.query(measurements_query)
+            first_key = list(measurements_result.keys())[0]
+            measurements = [item['name'] for item in measurements_result[first_key]]
+            logger.debug(f"MEASUREMENTS: {measurements}")
+
+            results = dict()
+            for m in measurements:
+                try:
+                    query = 'SELECT "' + LOAD_DURATION_FIELD_NAME + '" FROM "' + m + '" WHERE assetId=\'' + asset_id + '\''
+                    logger.debug(query)
+                    res = influxdb_client.query(query)
+                    if res:
+                        results = res
+                        break
+                except Exception as e:
+                    logger.error('error with query: ', str(e))
+
+            first_key = list(results.keys())[0]
+            series = results[first_key]
+
+            ldc_series = []
+            for item in series:
+                ldc_series.append(item['allocationEnergy'])
+            ldc_series.sort(reverse=True)
+
+            ldc_series_decimate = []
+            for idx, item in enumerate(ldc_series):
+                if idx % 40 == 0:
+                    ldc_series_decimate.append(item * 1e6)
+                    if item > 0:
+                        power_pos = power
+                    if item < 0:
+                        power_neg = -power
+
+            emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos,
+                              'power_neg': power_neg})
+
     def get_user_settings(self, user):
         if self.settings_storage.has_user(user, TIME_DIMENSION_USER_CONFIG):
             return self.settings_storage.get_user(user, TIME_DIMENSION_USER_CONFIG)
         else:
             user_settings = {
-                'ab_visible': False         # Animation bar visible on startup
+                'ab_visible': False  # Animation bar visible on startup
             }
             self.set_user_settings(user, user_settings)
             return user_settings
@@ -165,8 +226,12 @@ class TimeDimension:
 
     def connect_to_database(self):
         database = get_session('timedimension-database')
-        return InfluxDBClient(host=self.config['ESSIM_database_server'],
-                                              port=self.config['ESSIM_database_port'], database=database)
+        # TODO check if <profile/> present in ESDL, if so use those influx settings (including user/password from mongo)
+        return InfluxDBClient(
+            host=settings.essim_config['ESSIM_database_server'],
+            port=settings.essim_config['ESSIM_database_port'],
+            database=database
+        )
 
     def preprocess_data(self, networks):
         influxdb_client = self.connect_to_database()
@@ -175,7 +240,7 @@ class TimeDimension:
         determine_networks_automatically = True
         networks_list = list()
         if len(networks):
-            networks_list = networks
+            networks_list = [f"\"{network}\"" for network in networks]
             determine_networks_automatically = False
         asset_ids = dict()
 
@@ -186,7 +251,7 @@ class TimeDimension:
             for key in list(result.keys()):
                 # Create list of networks
                 if determine_networks_automatically:
-                    networks_list.append(key[0])
+                    networks_list.append(f"\"{key[0]}\"")
 
                 # Create list of assetIds per network
                 asset_list = list()
@@ -200,7 +265,9 @@ class TimeDimension:
         logger.debug("calculating min/max per carrier")
         allocation_boundaries = dict()
         simulation_parameter = get_session('timedimension-parameter')
-        query = "SELECT MIN({}), MAX({}) FROM {}".format(simulation_parameter, simulation_parameter, ",".join(networks_list))
+        query = "SELECT MIN({}), MAX({}) FROM {}".format(simulation_parameter, simulation_parameter,
+                                                         ",".join(networks_list))
+        print(f"query: {query}")
         result = allocation_energy = influxdb_client.query(query)
         if result:
             for key in list(allocation_energy.keys()):
@@ -224,10 +291,10 @@ class TimeDimension:
             carriers = esi.carriers
             if carriers:
                 for c in carriers.carrier:
-                    if active_es_id+c.id in self.mapeditor_colors:
-                        colors[active_es_id+c.id] = self.mapeditor_colors[active_es_id+c.id]
+                    if active_es_id + c.id in self.mapeditor_colors:
+                        colors[active_es_id + c.id] = self.mapeditor_colors[active_es_id + c.id]
                     else:
-                        colors[active_es_id+c.id] = {
+                        colors[active_es_id + c.id] = {
                             "es_id": active_es_id,
                             "carrier_id": c.id,
                             "color": default_colors[num_default_colors]
@@ -243,10 +310,10 @@ class TimeDimension:
         my_feature['properties']['load'] = allocationEnergy
         my_feature['properties']['stroke'] = color
         if allocationEnergy < 0:
-            val = 10*fabs(allocationEnergy/min_en) + 3
+            val = 10 * fabs(allocationEnergy / min_en) + 3
             my_feature['properties']['pos'] = False
         else:
-            val = 10*allocationEnergy/max_en + 3
+            val = 10 * allocationEnergy / max_en + 3
             my_feature['properties']['pos'] = True
 
         # val = 10*((fabs(allocationEnergy)  - min_en)/(max_en - min_en)) + 3
@@ -297,7 +364,7 @@ class TimeDimension:
         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         esh = get_handler()
-        monitor_asset_ids = get_session('ielgas_monitor_ids')
+        monitor_asset_ids = get_session('td_monitor_ids')
         networks_list = get_session('timedimension-networks-list')
 
         monitor_data = dict()
@@ -307,7 +374,11 @@ class TimeDimension:
             date_cet = start_cet.strftime('%Y-%m-%d')
             monitor_asset_data = dict()
             for aid in monitor_asset_ids:
-                asset = esh.get_by_id(active_es_id, aid)
+                try:
+                    asset = esh.get_by_id(active_es_id, aid)
+                except:
+                    print("(Monitor) Asset id not found.")
+                    continue
                 asset_name = asset.name + ' - ' + date_cet
 
                 monitor_asset_data[aid] = {
@@ -328,8 +399,8 @@ class TimeDimension:
                 influxdb_enddate = datetime.strptime(influxdb_enddate, '%Y-%m-%dT%H:%M:%SZ')
                 influxdb_enddate = influxdb_enddate + timedelta(days=1)
                 influxdb_enddate = influxdb_enddate.strftime('%Y-%m-%dT%H:%M:%SZ')
-            query = 'SELECT * FROM '+ ",".join(networks_list) +\
-                    ' WHERE (time >= \'' + influxdb_startdate + '\' AND time <= \'' + influxdb_enddate + '\'' +\
+            query = 'SELECT * FROM ' + ",".join(networks_list) + \
+                    ' WHERE (time >= \'' + influxdb_startdate + '\' AND time <= \'' + influxdb_enddate + '\'' + \
                     ' AND "simulationRun" = \'' + simulation_id + '\')'
             sim_results = influxdb_client.query(query)
         except Exception as e:
@@ -347,25 +418,40 @@ class TimeDimension:
                 fid = 1
                 for item in series:
                     try:
+                        if not item['assetId']:
+                            continue
                         current_asset = esh.get_by_id(active_es_id, item['assetId'])
                     except:
                         print("Asset id not found.")
                         continue
-                    coordinates = [[(current_asset.geometry.point.items[0].lon, current_asset.geometry.point.items[0].lat),
-                                    (current_asset.geometry.point.items[1].lon, current_asset.geometry.point.items[1].lat)]]
 
-                    color = colors[active_es_id+item['carrierId']]['color']  # 32a852"
+                    if not isinstance(current_asset, esdl.esdl.Pipe) and not isinstance(current_asset,
+                                                                                        esdl.esdl.ElectricityCable):
+                        logger.debug(f"Asset type for: '{current_asset}' not animated.")
+                        continue
+
+                    coordinates_segments = []
+                    point_items = current_asset.geometry.point.items
+                    for i_segment in range(len(point_items) - 1):
+                        coordinates_segments.append([[
+                            (point_items[i_segment].lon, point_items[i_segment].lat),
+                            (point_items[i_segment + 1].lon, point_items[i_segment + 1].lat)
+                        ]])
+
+                    color = colors[active_es_id + item['carrierId']]['color']  # 32a852"
                     if abs(item[simulation_parameter]) > 1e-2:
-                        feature_list.append(
-                            self.generate_timed_geojson_for_line(coordinates, item['time'], 0.5,
-                                                                 item[simulation_parameter], item['assetId'], color,
-                                                                 allocation_boundaries[key][0], allocation_boundaries[key][1]))
-                        fid += 1
+                        for coordinates in coordinates_segments:
+                            feature_list.append(
+                                self.generate_timed_geojson_for_line(coordinates, item['time'], 0.5,
+                                                                     item[simulation_parameter], item['assetId'], color,
+                                                                     allocation_boundaries[key][0],
+                                                                     allocation_boundaries[key][1]))
+                            fid += 1
                     if 'data' in monitor_data and item['assetId'] in monitor_data['data']:
                         monitor_data['data'][item['assetId']]['data_x'].append(item['time'].split('T')[1].strip('Z'))
                         monitor_data['data'][item['assetId']]['data_y'].append(item[simulation_parameter])
 
-            logger.debug('Number of features result from get_windowed_simulation_data: ' + str(len(feature_list)))
+            logger.info('Number of features result from get_windowed_simulation_data: ' + str(len(feature_list)))
 
             feature_collection = FeatureCollection(feature_list)
             feature_collection_json_string = dumps(feature_collection)
@@ -374,7 +460,6 @@ class TimeDimension:
 
         if monitor_asset_ids:
             # logger.debug(monitor_data)
-            emit('ielgas_monitor_asset_data', monitor_data)
+            emit('td_monitor_asset_data', monitor_data)
 
         return feature_collection_json_string
-

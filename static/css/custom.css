@@ -851,9 +851,9 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 /*
-    TimeDimension / IELGAS
+    TimeDimension / LControlTDAssetsMonitorChart
 */
-.leaflet-ielgas {
+.leaflet-td-assets-monitor {
     padding: 0px;
     z-index: 2000;
     width: 800px;
@@ -864,7 +864,7 @@ z-index for jstree context menu, sidebar has 2000
     border-radius: 5px;
 }
 
-.leaflet-ielgas .close {
+.leaflet-td-assets-monitor .close {
     position: absolute;
     right: 0px;
     top: 0px;
@@ -882,7 +882,7 @@ z-index for jstree context menu, sidebar has 2000
     z-index: 2800;
 }
 
-.leaflet-ielgas .title {
+.leaflet-td-assets-monitor .title {
     width: 100%;
     background-color: green;
     color: white;
@@ -891,7 +891,7 @@ z-index for jstree context menu, sidebar has 2000
     padding-bottom: 1px;
 }
 
-.leaflet-ielgas .content {
+.leaflet-td-assets-monitor .content {
     padding: 10px;
 }
 

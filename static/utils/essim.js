@@ -61,8 +61,15 @@ function enable_disable_custom_year(id) {
 }
 
 function set_simulation_id(sim_id) {
-    console.log('set_simulation_id: '+sim_id);
+    console.log('set_simulation_id: '+ sim_id);
     socket.emit('essim_set_simulation_id', sim_id);
+}
+
+function animate_simulation(sim_id) {
+    console.log('animate_simulation: '+ sim_id);
+    socket.emit('essim_set_simulation_id', sim_id, function(es_id){
+        time_dimension.initialize(es_id, sim_id, []);
+    });
 }
 
 function remove_sim_fav(sim_fav, sim_id) {
@@ -183,11 +190,10 @@ function show_favorites_list(div_id) {
                         .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
                         .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
                     $actions.append($select_scenario_button);
-                    let $remove_scenario_button = $('<button>').addClass('btn')
-                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
-                        .attr('title', 'Remove from list')
-                        .click( function(e) { remove_sim_fav('favorite', simulation_id); });
-                    $actions.append($remove_scenario_button);
+                    let $animate_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-play-circle').css('color', 'black'))
+                        .click( function(e) { sidebar.hide(); animate_simulation(simulation_id); });
+                    $actions.append($animate_scenario_button);
 
                     if (data[i]['dashboard_url'] !== '') {
                         let $view_dashboard_button = $('<a>').attr('href', data[i]['dashboard_url']).attr('target', '#')
@@ -205,6 +211,12 @@ function show_favorites_list(div_id) {
                             .click( function(e) { show_kpis(simulation_id, 'favorite'); });
                         $actions.append($view_kpis_button);
                     }
+
+                    let $remove_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
+                        .attr('title', 'Remove from list')
+                        .click( function(e) { remove_sim_fav('favorite', simulation_id); });
+                    $actions.append($remove_scenario_button);
 
                     $tr.append($("<td>").append($actions));
                     $tbody.append($tr);
@@ -240,6 +252,7 @@ function show_simulations_list(div_id) {
                 $table.append($tbody);
 
                 for (let i=0; i<data.length; i++) {
+                    console.log("DATA", data)
                     let simulation_id = data[i]['simulation_id']
                     let $tr = $("<tr>").attr("id", simulation_id);
 
@@ -257,11 +270,11 @@ function show_simulations_list(div_id) {
                         .append($('<i>').addClass('fas fa-eye').css('color', 'black'))
                         .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
                     $actions.append($select_scenario_button);
-                    let $remove_scenario_button = $('<button>').addClass('btn remove_button')
-                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
-                        .attr('title', 'Remove from list')
-                        .click( function(e) { remove_sim_fav('simulation', simulation_id); });
-                    $actions.append($remove_scenario_button);
+                    let $animate_scenario_button = $('<button>').addClass('btn')
+                        .append($('<i>').addClass('fas fa-play-circle').css('color', 'black'))
+                        .click( function(e) { sidebar.hide(); animate_simulation(simulation_id); });
+                    $actions.append($animate_scenario_button);
+
                     let $favorite_scenario_button = $('<button>').addClass('btn favorite_button')
                         .append($('<i>').addClass('far fa-star').css('color', 'black'))
                         .attr('title', 'Add to favorites')
@@ -284,6 +297,11 @@ function show_simulations_list(div_id) {
                             .click( function(e) { show_kpis(simulation_id, 'simulation'); });
                         $actions.append($view_kpis_button);
                     }
+                    let $remove_scenario_button = $('<button>').addClass('btn remove_button')
+                        .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
+                        .attr('title', 'Remove from list')
+                        .click( function(e) { remove_sim_fav('simulation', simulation_id); });
+                    $actions.append($remove_scenario_button);
                     $tr.append($("<td>").append($actions));
                     $tbody.append($tr);
                 }
@@ -697,37 +715,37 @@ function show_ESSIM_KPIs(results) {
 // ------------------------------------------------------------------------------------------------------------
 //   ESSIM animate load
 // ------------------------------------------------------------------------------------------------------------
-function animate_ESSIM_load() {
-    show_loader();
-    $.ajax({
-        url: ESSIM_simulation_URL_prefix + 'load_animation',
-        success: function(data){
-            // console.log('succes');
-            // console.log(data);
-
-            var geoJsonLayer = L.geoJson(data, {
-                style: function(feature) {
-                    return {
-                        "color": feature.properties.stroke,
-                        "weight": feature.properties.strokewidth,
-                        "opacity": 1
-                    };
-                }
-            });
-
-            var geoJsonTimeLayer = L.timeDimension.layer.geoJson.geometryCollection(geoJsonLayer, {
-                updateTimeDimension: true,
-                updateTimeDimensionMode: 'replace',
-                duration: 'PT1H',
-            });
-
-            geoJsonTimeLayer.addTo(sim_layer);
-            hide_loader();
-        },
-        error: function() {
-            hide_loader();
-            alert("Error in getting load animation from backend");
-        },
-        dataType: "json"
-    });
-}
+// function animate_ESSIM_load() {
+//     show_loader();
+//     $.ajax({
+//         url: ESSIM_simulation_URL_prefix + 'load_animation',
+//         success: function(data){
+//             // console.log('succes');
+//             // console.log(data);
+//
+//             var geoJsonLayer = L.geoJson(data, {
+//                 style: function(feature) {
+//                     return {
+//                         "color": feature.properties.stroke,
+//                         "weight": feature.properties.strokewidth,
+//                         "opacity": 1
+//                     };
+//                 }
+//             });
+//
+//             var geoJsonTimeLayer = L.timeDimension.layer.geoJson.geometryCollection(geoJsonLayer, {
+//                 updateTimeDimension: true,
+//                 updateTimeDimensionMode: 'replace',
+//                 duration: 'PT1H',
+//             });
+//
+//             geoJsonTimeLayer.addTo(sim_layer);
+//             hide_loader();
+//         },
+//         error: function() {
+//             hide_loader();
+//             alert("Error in getting load animation from backend");
+//         },
+//         dataType: "json"
+//     });
+// }

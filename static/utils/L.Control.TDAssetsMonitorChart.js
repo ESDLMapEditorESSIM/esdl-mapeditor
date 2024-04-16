@@ -23,7 +23,7 @@ function formatN(n) {
     return Math.round(((nn[0] * Math.pow(10, +nn[1] - u * 3)) + Number.EPSILON) * 100) / 100 + ['p', 'n', 'u', 'm', '', 'k', 'M', 'G', 'T', 'P'][u+4];
 }
 
-L.Control.IELGASChart = L.Control.extend({
+L.Control.TDAssetsMonitorChart = L.Control.extend({
     options: {
         closeButton: true,
         position: 'bottomright',
@@ -32,14 +32,14 @@ L.Control.IELGASChart = L.Control.extend({
 
     initialize: function(placeholder, options) {
         L.setOptions(this, options);
-        this.ielgas_chart = null;
+        this.td_monitor_assets_chart = null;
         console.log(options);
         return this;
     },
 
     onAdd: function(map) {
-        console.log('IELGASChart.onAdd()')
-        var container = this._container = L.DomUtil.create('div', 'leaflet-ielgas my-control');
+        console.log('TDAssetsMonitorChart.onAdd()')
+        var container = this._container = L.DomUtil.create('div', 'leaflet-td-assets-monitor my-control');
         this._map = map;
 
         // Create close button and attach it if configured
@@ -52,15 +52,15 @@ L.Control.IELGASChart = L.Control.extend({
         }
 
         var title = L.DomUtil.create('div', 'title', container);
-        title.innerHTML = 'IELGAS Data';
+        title.innerHTML = 'Assets monitor';
 
-        var ctrl_div =  L.DomUtil.create('div', 'ielgas-control', container);
+        var ctrl_div =  L.DomUtil.create('div', 'td-assets-monitor-control', container);
         this.create_control(ctrl_div);
 
         var chart_div = L.DomUtil.create('div', 'content', container);
         var chart_canvas = L.DomUtil.create('canvas', '', chart_div);
-        chart_canvas.setAttribute('id', 'chart-ielgas-canvas');
-        this.create_ielgas_chart(this.options.data, chart_canvas);
+        chart_canvas.setAttribute('id', 'chart-td-assets-monitor-canvas');
+        this.create_td_monitor_assets_chart(this.options.data, chart_canvas);
 
         // Make sure we don't drag the map when we interact with the content
         var stop = L.DomEvent.stopPropagation;
@@ -78,7 +78,7 @@ L.Control.IELGASChart = L.Control.extend({
     },
 
     onRemove: function(map) {
-        console.log('IELGASChart.onRemove()')
+        console.log('TDAssetsMonitorChart.onRemove()')
         var container = this._container;
 
         // If the control is visible, hide it before removing it.
@@ -105,8 +105,8 @@ L.Control.IELGASChart = L.Control.extend({
 
     close: function() {
         this._map.removeControl(this);
-        ielgas.chart = null;
-        socket.emit('ielgas_monitor_asset', {'id':null});
+        tdAssetsMonitorChart.chart = null;
+        socket.emit('td_monitor_asset', {'id':null});
     },
     show: function() {
         this._container.style.visibility = 'visible';
@@ -115,19 +115,19 @@ L.Control.IELGASChart = L.Control.extend({
         this._container.style.visibility = 'hidden';
     },
     update_data: function(data) {
-        this.ielgas_chart.data.datasets = [];
+        this.td_monitor_assets_chart.data.datasets = [];
         for (let key in data["data"]) {
-            this.ielgas_chart.data.labels = data["data"][key]["data_x"];
-            this.ielgas_chart.data.datasets.push({
+            this.td_monitor_assets_chart.data.labels = data["data"][key]["data_x"];
+            this.td_monitor_assets_chart.data.datasets.push({
                 data: data["data"][key]["data_y"],
                 label: data["data"][key]["name"],
                 borderColor: "#3e95cd"
             });
-            this.ielgas_chart.options.title.text = 'IELGAS chart - ' + data["time"]
+            this.td_monitor_assets_chart.options.title.text = 'LControlTDAssetsMonitorChart chart - ' + data["time"]
         }
-        this.ielgas_chart.update();
+        this.td_monitor_assets_chart.update();
     },
-    create_ielgas_chart: function(data, canvas) {
+    create_td_monitor_assets_chart: function(data, canvas) {
         let datasets = [];
         let labels;
         for (let key in data["data"]) {
@@ -139,7 +139,7 @@ L.Control.IELGASChart = L.Control.extend({
             });
         }
 
-        this.ielgas_chart = new Chart(canvas, {
+        this.td_monitor_assets_chart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
@@ -148,7 +148,7 @@ L.Control.IELGASChart = L.Control.extend({
             options: {
                 title: {
                     display: true,
-                    text: 'IELGAS chart - ' + data["time"]
+                    text: 'LControlTDAssetsMonitorChart chart - ' + data["time"]
                 },
                 scales: {
                     y: {
@@ -178,32 +178,33 @@ L.Control.IELGASChart = L.Control.extend({
 
         $select_asset.change(function() {
             let selected_value = $select_asset.val();
-            socket.emit('ielgas_monitor_asset', {'id':selected_value});
+            socket.emit('td_monitor_asset', {'id':selected_value});
         })
         $(content_div).append($select_asset)
     }
 });
 
-L.control.ielgas_chart = function (placeholder, options) {
-    return new L.Control.IELGASChart(placeholder, options);
+L.control.td_monitor_assets_chart = function (placeholder, options) {
+    return new L.Control.TDAssetsMonitorChart(placeholder, options);
 };
 
-class IELGAS {
+class LControlTDAssetsMonitorChart {
     constructor() {
         this.initSocketIO();
         this.chart = null;
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for IELGAS");
-        // socket.emit('initialize_ielgas_extension');
-
-        socket.on('ielgas_monitor_asset_data', function(ielgas_data) {
-            if (ielgas.chart) {
-                ielgas.chart.update_data(ielgas_data);
+        console.log("Registering socket io bindings for LControlTDAssetsMonitorChart");
+        socket.on('td_monitor_asset_data', function(td_monitor_asset_data) {
+            if (tdAssetsMonitorChart.chart) {
+                tdAssetsMonitorChart.chart.update_data(td_monitor_asset_data);
             } else {
-                ielgas.chart =  L.control.ielgas_chart('ielgascontrol', {position: 'bottomright', data: ielgas_data});
-                ielgas.chart.addTo(map);
+                tdAssetsMonitorChart.chart =  L.control.td_monitor_assets_chart(
+                    'tdmonitorcontrol',
+                    {position: 'bottomright', data: td_monitor_asset_data}
+                );
+                tdAssetsMonitorChart.chart.addTo(map);
             }
         });
     }
@@ -214,14 +215,14 @@ class IELGAS {
 
     static create(event) {
         if (event.type === 'client_connected') {
-            ielgas = new IELGAS();
-            return ielgas;
+            tdAssetsMonitorChart = new LControlTDAssetsMonitorChart();
+            return tdAssetsMonitorChart;
         }
     }
 }
 
-var ielgas; // global ielgas variable
+var tdAssetsMonitorChart; // global tdAssetsMonitorChart variable
 $(document).ready(function() {
-    extensions.push(function(event) { IELGAS.create(event) });
+    extensions.push(function(event) { LControlTDAssetsMonitorChart.create(event) });
 });
 
