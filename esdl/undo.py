@@ -13,19 +13,24 @@
 #      TNO
 from collections import UserList
 from datetime import datetime
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Any
 
 from pyecore.notification import EObserver, Notification, Kind
-from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
+from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute, EClass
 from pyecore.resources import Resource
 from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, AbstractCommand
 
 from dataclasses import dataclass
+
+from esdl.resources.xmlresource import XMLResource
 from esdl.undo_pyecore_patch import patch_notification_system
 from esdlproject.actions import LabelledAction
 
 patch_notification_system() # patch pyecores notification system, so notification are always send
 
+import src.log as log
+
+logger = log.get_logger(__name__)
 
 class UndoRedoCommandStack(CommandStack):
     """
@@ -293,6 +298,61 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     print("**** exit handleNotification ****")
 
 
+def updateResourceUUIDdict(notification: Notification):
+    """
+    Updates the UUID dict of the resource beloning to this notification
+    Parameters
+    ----------
+    notification
+    """
+    f: EStructuralFeature = notification.feature
+    value = notification.new
+    if notification.kind == Kind.SET:
+        if isinstance(f, EAttribute) and f.iD is True and f.name == 'id':
+            owner = notification.notifier
+            resource:XMLResource = owner.eResource
+            resource.uuid_dict[value] = owner
+            print(f"Updating UUID dict for {owner}.id={value}")
+    elif notification.kind == Kind.ADD:
+        if isinstance(f, EReference) and f.containment and isinstance(value, EObject):
+            # whole object is added: iterate though contents and add all ids
+            if hasattr(value, 'id'):
+                value.eResource.uuid_dict[value.id] = value
+                print(f"|Updating UUID dict for {value}.id={value.id}")
+            for obj in value.eAllContents():
+                if hasattr(obj, 'id'):
+                    obj.eResource.uuid_dict[obj.id] = obj
+                    print(f"|-Updating UUID dict for {obj}.id={obj.id}")
+
+    elif notification.kind == Kind.UNSET:
+        if notification.old is not None and isinstance(f, EAttribute) and f.iD is True and f.name == 'id':
+            owner = notification.notifier
+            resource:XMLResource = owner.eResource
+            save_delete_dict_key_with_warning(resource.uuid_dict, notification.old.id)
+            print(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
+
+    elif notification.kind == Kind.REMOVE:
+        prev_value = notification.old
+        if isinstance(f, EReference) and f.containment and isinstance(prev_value, EObject):
+            # whole object is removed: iterate though contents and remove all ids
+            if hasattr(prev_value, 'id'):
+                save_delete_dict_key_with_warning(prev_value.eResource.uuid_dict, prev_value.id)
+                print(f"|Updating UUID dict, remove {prev_value}.id={prev_value.id}")
+            for obj in prev_value.eAllContents():
+                if hasattr(obj, 'id'):
+                    save_delete_dict_key_with_warning(obj.eResource.uuid_dict, obj.id)
+                    print(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
+    else:
+        print(f"Warning: updateResourceUUIDdict() unsupported notification {notification.kind}")
+
+
+def save_delete_dict_key_with_warning(d: dict, key: Any):
+    try:
+        del d[key]
+    except NameError:
+        logger.warn(f"IGNORE: AutoUpdateUUID work in progress: updateResourceUUIDdict(): can't delete {key} from {d}")
+
+
 # observe every change in the model, but this works for *all* EObjects in memory... so this is not very handy.
 # so this is currently not used, as pyEcore has been changed to emit notifications at the resource level
 def monitor_esdl_changes(command_stack: UndoRedoCommandStack):
@@ -312,6 +372,7 @@ class ResourceObserver(EObserver):
 
     def notifyChanged(self, notification):
         handleNotification(self.stack, notification)
+        updateResourceUUIDdict(notification)
 
 
 @dataclass

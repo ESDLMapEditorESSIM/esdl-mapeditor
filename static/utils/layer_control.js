@@ -398,7 +398,7 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
         ];
 
-        console.log('adding layer with id: '+ key);
+        console.log('updating esdl_layer_control_tree_data() for es_id: '+ key);
 
         let esdl_layer = {
             id: key,

@@ -212,7 +212,7 @@ class ESDLDataLayer:
                 fragment = ref_object.eURIFragment()
                 del resource._resolve_mem[fragment] # update fragment cache for pyecore<0.12.0
             except KeyError as e:
-                print('ESDL Browser: can\'t delete id from uuid_dict', e)
+                print('ESDLDataLayer: can\'t delete id from uuid_dict', e)
             ref_object.delete(recursive=True)  # will automatically remove the reference from the list
         else:
             if reference.many:
@@ -765,7 +765,7 @@ class ESDLDataLayer:
 
         edr_client = EDRClient.get_instance()
         carriers_str = edr_client.get_object_from_EDR(edr_path)
-        carriers, parse_info = esh.add_from_string('carriers_str', carriers_str)
+        carriers, parse_info = pm.add_from_string('carriers_str', carriers_str)
 
         esi = es.energySystemInformation
         if not esi:

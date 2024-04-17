@@ -3,7 +3,7 @@ import threading
 import traceback
 from datetime import datetime
 from enum import Enum
-from typing import Final, Optional, Union, Tuple, List
+from typing import Final, Optional, Union, Tuple, List, Any
 from uuid import uuid4
 
 from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
@@ -34,12 +34,37 @@ def create_empty_energysystem(name, es_description, inst_title, area_title) -> e
     instance.area = area
     return energy_system
 
+def update_uuid_dict(eobject: EObject, recursive: bool = True):
+    """
+    Completely updates the uuid_dict with all the IDs defined in the contents of the eobject
+    (could be a whole ESDL, or just a piece of an energy system). The uuid_dict of a resource is
+    used to get object by id in an energy system, by using the energy systems' resource uuid_dict provided by pyEcore.
+    Parameters
+    ----------
+    eobject the object to add including all subcontents
+    recursive default True: iterate through all subcontents of this object and add these IDs too.
+
+    """
+    resource = eobject.eResource
+    if resource == None:
+        logger.error("Can't update uuid_dict for {eobject}, object not contained in a Resource")
+        return
+    print(f"Rebuilding uuid_dict for {eobject.eResource}")
+    if hasattr(eobject, 'id'):
+        resource.uuid_dict[eobject.id] = eobject
+    if recursive:
+        for obj in eobject.eAllContents():
+            if hasattr(obj, 'id'):
+                resource.uuid_dict[obj.id] = obj
+
+
 def load_external_string(esdl_string, name='external_string') -> Tuple[esdl.EnergySystem, list]:
     """Loads an energy system from a string but does NOT add it to the resourceSet (e.g. as a separate resource)
-    It returns an Energy System and parse info as a tuple, but the ES is not part of a resource in the ResourceSet
+    It returns an Energy System (or ESDL object tree) and parse info as a tuple,
+    but the ES is not part of a resource in the ResourceSet
     """
-    if not name.endswith('.esdl'):
-        name = name + ".esdl"
+    if not name.endswith('.esdl') and not name.endswith(".json"):
+        name = name + ".esdl" # default to XML ESDL files
     uri = StringURI(name, esdl_string)
     external_rset = ResourceSet()
     external_resource = external_rset.create_resource(uri)
@@ -207,18 +232,12 @@ class ProjectManager:
         variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now())
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
-        # self.active_resource.append(es)
-        # self.base_variant_resources.append(
-        #     self.rset.create_resource(StringURI("base.esdl"))  # type: ignore
-        # )
-        # base_variant_idx = self.get_base_variant_index(base_variant)
-        # self.base_variant_resources[base_variant_idx].append(es.deepcopy())
-
         variantCollection_resource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
         variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-        new_es: EnergySystem = es.deepcopy()
-        variantCollection_resource.append(new_es)
-        new_collection.energysystemRef = new_es
+        #new_es: EnergySystem = es.deepcopy()
+        variantCollection_resource.append(es)
+        update_uuid_dict(es)  # Energy system is now attached to a resource, update UUID dict
+        new_collection.energysystemRef = es
         return new_collection
 
     def get_active_energy_system(self) -> esdl.EnergySystem:
@@ -226,7 +245,7 @@ class ProjectManager:
         Retrieve the energy system from the currently active variant. If no variant is active, the first one is made active.
         """
         if self.active_variant is None:
-            print("Warning: no active variant, selecting first in the first variant collection")
+            print("get_active_energy_system: Warning: no active variant, selecting first in the first variant collection")
             self.set_active_variant(self.project.variantCollection[0].variant)
         if self.active_variant.snapshotRef is None:
             self.get_variant_snapshot(self.active_variant)
@@ -271,7 +290,7 @@ class ProjectManager:
         es_variant = Variant(name=f"{es.name}", id=str(uuid4()), lastChanged=datetime.now())
         variantCollection.variant = es_variant
         snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
-        self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
+        #self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
         return es_variant, parse_info
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:
@@ -549,9 +568,15 @@ class ProjectManager:
             es.name = variant.name # overwrite name of ES to match the variant name
 
             snapshot_resource.append(es.deepcopy())
-            snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
             variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
             variant.snapshotRef.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
+
+            snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
+            snapshot_resource.uuid_dict[variant.snapshotRef.id] = variant.snapshotRef
+            try:
+                del snapshot_resource.uuid_dict[es.id]  # remove energy system id, as that gets updated
+            except KeyError:
+                pass
             return variant.snapshotRef
 
     def _delete_variant_recursive(self, variant: Variant):
@@ -795,7 +820,7 @@ class ProjectManager:
         #         return resource
         # return None
 
-    def get_energy_system_by_id(self, es_id: str, start_variant: Optional[Variant] = None) -> Optional[esdl.EnergySystem]:
+    def get_energy_system_by_id_with_variant(self, es_id: str, start_variant: Optional[Variant] = None) -> Optional[esdl.EnergySystem]:
         """
         Attempts to find the energy system with the given ID, by inspecting the snapshots of the variants.
 
@@ -813,7 +838,7 @@ class ProjectManager:
                 elif len(variantCollection.variant.variant) > 0:
                     variants = variantCollection.variant.variant
                     for v in variants:
-                        found = self.get_energy_system_by_id(es_id, v)
+                        found = self.get_energy_system_by_id_with_variant(es_id, v)
                         if found: return found
         else:
             if start_variant.snapshotRef and start_variant.snapshotRef.id == es_id:
@@ -821,15 +846,26 @@ class ProjectManager:
 
             elif len(start_variant.variant) > 0:
                 for v in start_variant.variant:
-                    found = self.get_energy_system_by_id(es_id, v)
+                    found = self.get_energy_system_by_id_with_variant(es_id, v)
                     if found: return found # make sure to continue if not found in this branch
 
         return None
 
-    def get_energy_system_by_id2(self, es_id: str):
+    def get_energy_system_by_id(self, es_id: str) -> EnergySystem:
+        """
+        Fastest method to find energy system by id when multiple are loaded in the resource set.
+        Parameters
+        ----------
+        es_id id of the energy system.
+
+        Returns
+        -------
+
+        """
         for uri, resource in self.rset.resources.items():
             if hasattr(resource.contents[0], 'id') and resource.contents[0].id == es_id:
                 return resource.contents[0]
+        self.debug()
         raise Exception(f"EnergySystem ID es_id {es_id} not found in ResourceSet")
 
     def add_object_to_dict(self, es_id:str, eobject:EObject, recursive=False):
@@ -845,15 +881,19 @@ class ProjectManager:
                 for line in traceback.format_stack():
                     print(line.strip())
                 self.debug()
+
     def remove_object_from_dict(self, es_id: str, eobject: EObject, recursive=False):
         if recursive:
             for obj in eobject.eAllContents():
                 self.remove_object_from_dict(es_id, obj)
         es = self.get_energy_system_by_id(es_id)
         if hasattr(eobject, 'id') and eobject.id is not None:
-            del es.eResource.uuid_dict[eobject.id]
+            try:
+                del es.eResource.uuid_dict[eobject.id]
+            except:
+                logger.warn(f"IGNORE: AutoUpdateUUID work in progress: remove_object_from_dict(): can't find {eobject.id} in {es.eResource}")
 
-    def get_by_id(self, es_id: str, object_id: str):
+    def get_by_id(self, es_id: str, object_id: str) -> Any:
         """
         Get entity from ESDL by ID from the requested energy system.
 
@@ -862,7 +902,7 @@ class ProjectManager:
 
         :return: the entity with the given id
         """
-        es = self.get_energy_system_by_id2(es_id)
+        es = self.get_energy_system_by_id(es_id)
         if es is None:
             print(f'get_by_id() error es_id={es_id}, object_id={object_id}')
             self.debug()
@@ -875,17 +915,21 @@ class ProjectManager:
         resource: Resource = es.eResource
         if object_id in resource.uuid_dict:
             return resource.uuid_dict[object_id]
-
-        # TODO: This is relatively slow. We need to migrate to a better solution (use uuid_dict again?).
-        for entity in es.eAllContents():
-            if hasattr(entity, "id") and entity.id == object_id:
-                return entity
-
-        self.debug()
-        raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {}".format(object_id, es.id))
+        else:
+            logger.warn(f"Can't find object id {object_id} in uuid_dict, rebuilding uuid_dict for {es}")
+            update_uuid_dict(es)
+            try:
+                found = resource.uuid_dict[object_id]
+                logger.warn(f"Found: {found} for {object_id} after rebuild in {es.eResource}")
+                return found
+            except KeyError:
+                self.debug()
+                raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
+                               "after rebuilding uuid_dict.".format(object_id, es.id))
 
     def active_energy_system_to_string(self):
-        active_resource = self.active_variant.eResource
+        es = self.get_active_energy_system()
+        active_resource = es.eResource
         if isinstance(active_resource.uri, StringURI):
             uri: StringURI = active_resource.uri
             active_resource.save()
@@ -894,6 +938,19 @@ class ProjectManager:
             uri = StringURI("print.esdl")
             active_resource.save(output=uri)
             return uri.getvalue()
+
+    def add_from_string(self, name: str, esdl_string: str) -> Tuple[EnergySystem, List[str]]:
+        """
+        For backwards compatibility with the EnergySystemHandler.
+        Use load_external_string() from this module instead.
+
+        This function converts and ESDL string to object model, but does NOT add it to the resource set
+        of the ProjectManager. It keeps it external.
+        Returns
+        -------
+        Tuple from ESDL object tree and the parse information
+        """
+        return load_external_string(name, esdl_string)
 
     def debug(self):
         print('ProjectManager debug:')
@@ -928,6 +985,7 @@ class ProjectManager:
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
         print(self.to_debug_string())
+        #print(self.active_energy_system_to_string())
             #for v in vc.variant.variant:
             #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 

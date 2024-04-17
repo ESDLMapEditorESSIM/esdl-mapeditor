@@ -16,10 +16,11 @@ import base64
 from flask import session
 from flask_socketio import emit
 
-from extensions.session_manager import get_project_manager, get_session
+from extensions.session_manager import get_project_manager, get_session, del_session, set_session
 from src.log import get_logger
 from src.tno.events.messages import NewESDLMessage
 from src.tno.events.publisher import send_rabbitmq_message
+from src.tno.events_api import EventsAPI
 from src.tno.projects.types import serialize_esdl_project
 
 logger = get_logger(__name__)
@@ -53,8 +54,21 @@ def emit_active_esdl_project():
     send_rabbitmq_message(message, "events.esdl.new")
 
 
+def emit_clear_ui():
+    set_session("es_info_list", {})
+    emit('clear_ui')
+
 def emit_clear_frontend_esdls():
     """
     Clears all known ESDLs in the frontend.
     """
     emit('clear_esdl_layer_list')
+
+
+# def emit_send_active_variant():
+#     #call_process_energy_system.submit(filename)
+#
+#     del_session('store_item_metadata')
+#     emit('store_item_metadata', {})
+#     set_session('active_es_id', es.id)
+#     set_session('es_filename', filename)

@@ -985,8 +985,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         if len(ports) != 2:
             send_alert('UNSUPPORTED: Conductor doesn\'t have two ports!')
             return
-        port1 = ports[0]        # reuse old conductor's ports; TODO: check what happens after deleting conductor
-        port2 = ports[1]
+        port1 = ports[0].clone()        # reuse old conductor's ports; TODO: check what happens after deleting conductor
+        port2 = ports[1].clone()
 
         new_cond1_id = str(uuid.uuid4())
         new_cond2_id = str(uuid.uuid4())

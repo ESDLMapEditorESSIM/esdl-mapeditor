@@ -112,15 +112,24 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                 else:
                     # this is a x-reference, zo add it to the changeList, to add it as last, otherwise
                     # some x-ref targets might not be available when deserializing
-                    print(f"convertActionToVariantChanges(): using ref for {command.value} to "
-                          f"{command.value.eURIFragment()} ")
-                    change = Add(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        stringValue=command.value.eURIFragment(),
-                    )
-                    change_list.append(change)
-                    change = None
+                    try:
+                        print(f"convertActionToVariantChanges(): using ref for {command.value} to "
+                              f"{command.value.eURIFragment()} ")
+                        change = Add(
+                            ownerFragment=command.owner.eURIFragment(),
+                            feature=command.feature.name,
+                            stringValue=command.value.eURIFragment(),
+                        )
+                        change_list.append(change)
+                        change = None
+                    except KeyError as e:
+                        # TODO: when doing split_conductor, here things go wrong:
+                        # this inport can not be found in the port list of its container, which is very strange
+                        # but some magic is happening in app.py split_conductor with port reuse, which might
+                        # be problematic here.
+                        # throwing an error here will at least continue the process (split conductor works,
+                        # but changing it into a highlevel change not...
+                        print(f"Ewoud fix: KeyError converting ActionToVariantChanges {command}")
             else:
                 # TODO add numbers/enums to list
                 print(f"TODO Add: convert {command.value} to something")

@@ -103,7 +103,7 @@ async function onNewProject() {
     try {
       socket.value.emit("new_esdl_project", {}, (responseProject) => {
         if (responseProject) {
-          window.clear_esdl_layer_list();
+          //window.clear_esdl_layer_list(); // this is done in the backend
           esdlProject.value = responseProject;
         }
       })

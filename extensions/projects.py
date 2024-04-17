@@ -24,7 +24,7 @@ from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
-from src.tno.projects.emits import emit_active_esdl_project
+from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
 
@@ -79,6 +79,10 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
+    emit_clear_frontend_esdls()
+    emit_clear_ui()
+    call_process_energy_system.submit()
+    emit_active_esdl_project()
     emit_update_undo_redo_stack(pm.active_tracker.stack)
     return serialize_esdl_project(pm, pm.project)
 
