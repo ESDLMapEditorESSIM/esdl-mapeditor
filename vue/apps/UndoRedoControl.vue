@@ -52,7 +52,7 @@ import Spinner from "../components/Spinner";
 import { useUndoRedo } from "../composables/undoRedo.js";
 
 // eslint-disable-next-line no-unused-vars
-const { stack, stack_index, showUndoRedoControl, toggleShowUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
+const { stack, stack_index, showUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
 
 //const stack = ref([]);
 //const stack_index = ref(null);

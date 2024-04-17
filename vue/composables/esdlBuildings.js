@@ -3,7 +3,7 @@ import { PubSubManager, MessageNames } from "../bridge.js";
 
 const esdlBuildings = ref({});
 
-PubSubManager.subscribe(MessageNames.ADD_FEATURE_TO_LAYER, (name, message) => {
+PubSubManager.subscribe(MessageNames.ADD_BUILDING_TO_LAYER, (name, message) => {
     esdlBuildings.value[message.id] = {feature: message.feature, layer: message.layer}
 })
 

@@ -54,11 +54,29 @@ class ESDLServices:
 
         @self.socketio.on('get_esdl_services_list', namespace='/esdl')
         def get_esdl_services_list():
+            """
+            Get the list of ESDL services for the current user.
+            :return:
+            """
             user = get_session('user-email')
             return self.get_user_settings(user)
 
+        @self.socketio.on('refresh_esdl_services_list', namespace='/esdl')
+        def refresh_esdl_services_list():
+            """
+            Refresh the list of ESDL services for the current user by sending the list to the browser.
+            """
+            user = get_session('user-email')
+            role = get_session('user-role')
+            emit('esdl_services', self.get_user_services_list(user, role))
+
         @self.socketio.on('store_esdl_services_list', namespace='/esdl')
         def store_esdl_services_list(settings):
+            """
+            Store the ESDL services list for the current user.
+            :param settings: The new settings to store.
+            :return:
+            """
             user = get_session('user-email')
             # TODO: check settings format before storing
             self.set_user_settings(user, settings)
@@ -68,6 +86,10 @@ class ESDLServices:
 
         @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
         def restore_esdl_services_settings():
+            """
+            Restore ESDL services to how they were before user modifications.
+            :return:
+            """
             user = get_session('user-email')
             settings = self.restore_settings(user)
 

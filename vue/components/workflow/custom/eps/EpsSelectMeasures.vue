@@ -21,7 +21,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, ref, watch} from "vue";
+import {ref, watch} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
 import "@jsonforms/vue-vanilla/vanilla.css";

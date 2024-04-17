@@ -7,9 +7,9 @@
     direction="vertical"
   >
     <a-select
-      v-model:value="currentViewMode"
-      :options="possibleViewModes"
-      @change="selectViewMode"
+      v-model:value="currentModelContext"
+      :options="possibleModelContexts"
+      @change="selectModelContext"
     />
     <a-transfer
       v-if="!isLoading"
@@ -24,7 +24,7 @@
       :render="item => `${item.asset_cap}: ${item.asset_type}`"
       :row-key="item => item.id"
       @change="handleChange"
-      @selectChange="handleSelectChange"
+      @select-change="handleSelectChange"
     />
     <spinner v-else />
     <a-button
@@ -43,8 +43,8 @@ import spinner from "../Spinner.vue";
 const standardAssetsInfo = ref({});
 const standardAssets = ref([]);
 const targetKeys = ref([]);
-const currentViewMode = ref();
-const possibleViewModes = ref([]);
+const currentModelContext = ref();
+const possibleModelContexts = ref([]);
 
 export default {
   name: "AssetDrawToolbarStandardAssetsSettings",
@@ -66,14 +66,14 @@ export default {
     const saveStandardAssets = () => {
       // console.log(targetKeys.value);
       let standard_asset_list = standardAssetsInfo.value['standard_assets'];
-      standard_asset_list[currentViewMode.value] = {};
+      standard_asset_list[currentModelContext.value] = {};
       for (let i=0; i<targetKeys.value.length; i++) {
         for (let j=0; j<standardAssets.value.length; j++) {
           if (targetKeys.value[i] == standardAssets.value[j].id) {
-            if (!(standardAssets.value[j].asset_cap in standard_asset_list[currentViewMode.value])) {
-              standard_asset_list[currentViewMode.value][standardAssets.value[j].asset_cap] = [];
+            if (!(standardAssets.value[j].asset_cap in standard_asset_list[currentModelContext.value])) {
+              standard_asset_list[currentModelContext.value][standardAssets.value[j].asset_cap] = [];
             }
-            standard_asset_list[currentViewMode.value][standardAssets.value[j].asset_cap].push(standardAssets.value[j].id);
+            standard_asset_list[currentModelContext.value][standardAssets.value[j].asset_cap].push(standardAssets.value[j].id);
             break;
           }
         }
@@ -90,8 +90,8 @@ export default {
       handleChange,
       handleSelectChange,
       saveStandardAssets,
-      currentViewMode,
-      possibleViewModes,
+      currentModelContext,
+      possibleModelContexts,
     };
   },
   mounted() {
@@ -103,15 +103,15 @@ export default {
 
       window.socket.emit('load_asset_draw_toolbar_standard_assets_info', (standard_assets_info) => {
         standardAssetsInfo.value = standard_assets_info;
-        currentViewMode.value = standard_assets_info['current_mode'];
-        possibleViewModes.value = standard_assets_info['possible_modes'].map((item) => {
+        currentModelContext.value = standard_assets_info['current_mode'];
+        possibleModelContexts.value = standard_assets_info['possible_modes'].map((item) => {
           return {
             value: item,
             label: item,
           }
         });
 
-        let standard_assets = standard_assets_info['standard_assets'][currentViewMode.value];
+        let standard_assets = standard_assets_info['standard_assets'][currentModelContext.value];
         for (const [cap_type, asset_list] of Object.entries(standard_assets)) {
           for (let i=0; i<asset_list.length; i++) {
             targetKeys.value.push(asset_list[i]);
@@ -138,8 +138,8 @@ export default {
       // console.log(transfer_ds);
       return transfer_ds
     },
-    selectViewMode: function(view_mode) {
-      let standard_assets = standardAssetsInfo.value['standard_assets'][view_mode];
+    selectModelContext: function(model_context) {
+      let standard_assets = standardAssetsInfo.value['standard_assets'][model_context];
       targetKeys.value = [];
       for (const [cap_type, asset_list] of Object.entries(standard_assets)) {
         for (let i=0; i<asset_list.length; i++) {

@@ -55,7 +55,7 @@ DEFAULT_USER_SETTING = {
             }
         },
         'assets_on_map': {
-            'show_assets_without_location': False
+            'show_assets_without_location': True
         }
     },
 }

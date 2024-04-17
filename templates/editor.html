@@ -203,7 +203,7 @@
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
     <script type="text/javascript" src="./utils/spatial_operations.js"></script>
     <script type="text/javascript" src="./utils/notes.js"></script>
-    <script type="text/javascript" src="./utils/view_modes.js"></script>
+    <script type="text/javascript" src="./utils/model_contexts.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
     <script type="text/javascript" src="./utils/select_asset.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
@@ -212,6 +212,9 @@
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
+    <script type="module" src="./utils/admin_dialog.js"></script>
+
+    <script type="module" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -253,7 +256,7 @@
         var deleting_objects = false;   // to indicate if objects are being deleted (to prevent on click)
         var editing_objects = false;    // to indicate if objects are being edited (to prevent on click)
 
-        var extensions = [];            // list of extensions
+        const extensions = [];            // list of extensions
         var resource_uri = '';          // make the resource_prefix accessible by extensions
 
         var services_enabled = {
@@ -698,6 +701,8 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
+                console.log("ESDL list")
+                console.log(esdl_list)
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -1651,6 +1656,9 @@
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
                             </li>
+                            {% if is_mapeditor_admin %}
+                            <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.toggle()" href="#">Admin</a></li>
+                            {% endif %}
                         </ul>
                     </div>
                 </div>
@@ -1673,6 +1681,7 @@
             </select>
 
             <select id="area_bld_select"></select>
+            <div id="vue_activity_context_selector" style="display: inline"></div>
         </div>
     </div>
 
@@ -1841,6 +1850,14 @@
         initOpen: false
     };
 
+    let admin_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false
+    };
+
     let kpi_dashboard_dialog_options = {
         size: [ 1100, 700 ],
         minSize: [ 100, 100 ],
@@ -1861,6 +1878,7 @@
 <script type="module">
     import TableEditorDialog from "./utils/table_editor.js";
     import KPIDashboard from "./utils/KPIDashboard.js";
+    import AdminDialog from "./utils/admin_dialog.js";
 
     const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
@@ -1869,13 +1887,14 @@
     const kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
     map.addControl(kpi_dashboard);
     window.kpi_dashboard = kpi_dashboard;
+
+    const admin_dialog = new AdminDialog(admin_dialog_options);
+    map.addControl(admin_dialog);
+    window.admin_dialog = admin_dialog
 </script>
 
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
-<script>
-window.DEBUG = true;
-</script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>

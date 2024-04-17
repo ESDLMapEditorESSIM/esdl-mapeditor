@@ -198,9 +198,9 @@
 </template>
 
 <script>
-import FancyNumberEdit from "../components/forms/FancyNumberEdit" 
-import ProfileTableEdit from "../components/forms/ProfileTableEdit"
-import { useObject } from '../composables/ObjectID'
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue"
+import ProfileTableEdit from "@/components/forms/ProfileTableEdit.vue"
+import { useObject } from '@/composables/ObjectID'
 import { v4 as uuidv4 } from 'uuid';
 
 const defaultDbPoptions = [

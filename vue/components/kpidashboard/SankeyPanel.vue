@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmit, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Chart } from 'chart.js';
 import { SankeyController, Flow } from 'chartjs-chart-sankey';
 

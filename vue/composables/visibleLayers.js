@@ -24,6 +24,10 @@ import {useWmsLayers} from "./wmsLayers";
 const {getWmsLayerList} = useWmsLayers()
 const globalVisibleLayerList = ref([]);
 
+const layerTreeId = "layer_tree";
+const $ = window.$;
+const getLayerTree = () => $('#' + layerTreeId).jstree(true);
+
 export function useVisibleLayers() {
     /**
      * Get list of visible layers. This is a list of dictionaries with 'text' and 'type' entries.
@@ -35,7 +39,7 @@ export function useVisibleLayers() {
      */
     const removeFromVisibleLayerList = (id) => {
         const layerToRemove = globalVisibleLayerList.value.find(
-            element => element.id === id
+            layer => layer.id === id
         );
         if (layerToRemove !== undefined) {
             globalVisibleLayerList.value.splice(globalVisibleLayerList.value.indexOf(layerToRemove), 1);
@@ -69,13 +73,26 @@ export function useVisibleLayers() {
             }
         }
         return false;
-    }
+    };
+
+    const hideVisibleLayer = (layerId) => {
+        // hide via tree action to also update parent folders three-state
+        getLayerTree().uncheck_node(layerId);
+    };
+
+    const hideAllVisibleLayers = () => {
+         globalVisibleLayerList.value.slice().reverse().forEach(
+            layer => hideVisibleLayer(layer.id)
+        )
+    };
 
     return {
         getVisibleLayerList,
         removeFromVisibleLayerList,
         addToVisibleLayerList,
         updateDisplayOrderVisibleLayers,
-        layerIsVisible
-    }
+        layerIsVisible,
+        hideVisibleLayer,
+        hideAllVisibleLayers
+    };
 }

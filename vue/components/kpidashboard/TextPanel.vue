@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmit } from 'vue'
+import {ref} from 'vue'
 
 const text_settings_visible = ref(false);
 

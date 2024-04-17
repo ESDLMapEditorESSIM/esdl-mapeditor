@@ -20,6 +20,7 @@ from flask_socketio import SocketIO
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 import src.log as log
+from src.roles import is_mapeditor_admin
 
 logger = log.get_logger(__name__)
 
@@ -403,14 +404,13 @@ class WMSLayers:
                 all_layer_groups.update(self.settings_storage.get_project(identifier, LAYERS_GROUP_SETTING))
 
         # set rights
-        mapeditor_role = get_session('user-mapeditor-role')
         for layer in all_layers.values():
-            if 'mapeditor-admin' in mapeditor_role:
+            if is_mapeditor_admin():
                 layer['readonly'] = False
             else:
                 layer['readonly'] = layer['setting_type'] == SettingType.SYSTEM.value
         for layer_group in all_layer_groups.values():
-            if 'mapeditor-admin' in mapeditor_role:
+            if is_mapeditor_admin():
                 layer_group['readonly'] = False
             else:
                 layer_group['readonly'] = layer_group['setting_type'] == SettingType.SYSTEM.value
