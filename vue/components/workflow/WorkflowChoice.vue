@@ -29,7 +29,6 @@
 <script setup="props">
 import {setattrd} from "../../utils/utils.js";
 import {useWorkflow} from '../../composables/workflow';
-import {defineProps} from 'vue'
 
 const props = defineProps({
   workflowStep: {

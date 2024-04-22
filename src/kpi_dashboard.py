@@ -18,6 +18,7 @@ from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 import copy
 import src.log as log
+from src.roles import is_mapeditor_admin
 
 logger = log.get_logger(__name__)
 
@@ -136,8 +137,6 @@ class KPIDashboard:
 
         user = get_session('user-email')
         user_group = get_session('user-group')
-        role = get_session('user-role')
-        mapeditor_role = get_session('user-mapeditor-role')
         # logger.debug('User: {}'.format(user))
         # logger.debug('Groups: {}'.format(user_group))
         # logger.debug('Roles: {}'.format(role))
@@ -157,7 +156,7 @@ class KPIDashboard:
         message = copy.deepcopy(default_dashboard_groups)
         possible_groups = message["groups"]
         # if enough rights, mark Standard layers editable
-        if 'mapeditor-admin' in mapeditor_role:
+        if is_mapeditor_admin():
             for g in possible_groups:
                 if g['setting_type'] == SettingType.SYSTEM.value:
                     g['readonly'] = False
@@ -183,8 +182,7 @@ class KPIDashboard:
             }
             self.settings_storage.set_user(user, KPI_DASHBOARD_SETTING, user_dashboards)
         elif group == 'Standard dashboards':
-            mapeditor_role = get_session('user-mapeditor-role')
-            if 'mapeditor-admin' in mapeditor_role:
+            if is_mapeditor_admin():
                 system_dashboards = self.settings_storage.get_system(KPI_DASHBOARD_SETTING)
                 system_dashboards[dashboard_id] = {
                     "setting_type": SettingType.SYSTEM.value,

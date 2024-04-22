@@ -338,7 +338,7 @@
 </template>
 
 <script>
-import FancyNumberEdit from "../components/forms/FancyNumberEdit"
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue"
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 

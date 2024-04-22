@@ -14,7 +14,7 @@
 import importlib
 
 import src.log as log
-from src.view_modes import ViewModes
+from src.model_contexts import ModelContexts
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from extensions.session_manager import get_session
 from extensions.settings_storage import SettingsStorage
@@ -34,7 +34,7 @@ class AssetDrawToolbar:
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
-        self.view_modes = ViewModes.get_instance()
+        self.model_contexts = ModelContexts.get_instance()
 
         self.register()
 
@@ -63,8 +63,8 @@ class AssetDrawToolbar:
         @self.socketio.on('save_asset_draw_toolbar_standard_assets', namespace='/esdl')
         def save_asset_draw_toolbar_standard_assets(standard_asset_list):
             self.save_asset_draw_toolbar_standard_assets(standard_asset_list)
-            view_mode_info = self.view_modes.view_modes_get_mode_info()
-            emit('standard_assets_on_toolbar', standard_asset_list[view_mode_info['current_mode']])
+            model_context_info = self.model_contexts.model_contexts_get_mode_info()
+            emit('standard_assets_on_toolbar', standard_asset_list[model_context_info['current_mode']])
 
     @staticmethod
     def get_instance():
@@ -74,12 +74,12 @@ class AssetDrawToolbar:
     def load_asset_draw_toolbar_standard_assets_info(self):
         user = get_session('user-email')
         adt_settings = self.get_user_settings(user)
-        view_mode_info = self.view_modes.view_modes_get_mode_info()
+        model_context_info = self.model_contexts.model_contexts_get_mode_info()
 
         standard_assets_info = {
             'standard_assets': adt_settings[STANDARD_ASSETS],
-            'current_mode': view_mode_info['current_mode'],
-            'possible_modes': view_mode_info['possible_modes']
+            'current_mode': model_context_info['current_mode'],
+            'possible_modes': model_context_info['possible_modes']
         }
 
         return standard_assets_info
@@ -128,15 +128,15 @@ class AssetDrawToolbar:
             EDR_ASSETS: [],
         }
 
-        view_mode_info = self.view_modes.view_modes_get_mode_info()
-        for view_mode in view_mode_info['possible_modes']:
-            asset_draw_toolbar_settings[STANDARD_ASSETS][view_mode] = self.get_view_mode_asset_list(view_mode)
+        model_context_info = self.model_contexts.model_contexts_get_mode_info()
+        for model_context in model_context_info['possible_modes']:
+            asset_draw_toolbar_settings[STANDARD_ASSETS][model_context] = self.get_model_context_asset_list(model_context)
 
         return asset_draw_toolbar_settings
 
     def set_user_settings(self, user, settings):
         self.settings_storage.set_user(user, ASSET_DRAW_TOOLBAR_CONFIG, settings)
 
-    def get_view_mode_asset_list(self, view_mode):
-        return self.view_modes.get_asset_list_for_view_mode(view_mode)
+    def get_model_context_asset_list(self, model_context):
+        return self.model_contexts.get_asset_list_for_model_context(model_context)
 
