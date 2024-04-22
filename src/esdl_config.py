@@ -629,7 +629,7 @@ esdl_config = {
                             "user_response_spec": {
                                 "0": {"message": "Failed starting the EPS."},
                                 "200": {
-                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Inspect results'."
+                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Resultaten' in the EPS Web environment."
                                 },
                                 "429": {
                                     "message": "It is currently busy on the server. We cannot start an EPS execution "
