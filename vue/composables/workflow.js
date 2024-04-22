@@ -267,7 +267,13 @@ export class Workflow {
     doNext(targetStepIdx = null) {
         if (targetStepIdx === null || targetStepIdx === undefined) {
             const nextStepData = this.workflowStep.next_step;
-            if (typeof nextStepData === 'object') {
+            if (nextStepData === undefined) {
+                // No next step. Go to the beginning.
+                while (this.hasPreviousStep()) {
+                    this.doPrevious();
+                }
+                return;
+            } else if (typeof nextStepData === 'object') {
                 // Step with multiple next steps.
                 const ifRules = nextStepData.if;
                 for (const ifRule of ifRules) {
