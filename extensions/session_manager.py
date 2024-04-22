@@ -148,11 +148,12 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
             set_project_manager(pm)
         return pm
     else:
-        logger.warning('Session has timed-out. Returning empty project manager')
-        pm = ProjectManager()
-        pm.add_change_listener("session_manager", on_change_recorded)
-        set_project_manager(pm)
-        return pm
+        logger.warning('Session has timed-out, no client_id available. ')
+        raise KeyError("Session has timed-out, no client_id available. ")
+        #pm = ProjectManager()
+        #pm.add_change_listener("session_manager", on_change_recorded)
+        #set_project_manager(pm)
+        #return pm
 
 
 def set_project_manager(pm: ProjectManager):

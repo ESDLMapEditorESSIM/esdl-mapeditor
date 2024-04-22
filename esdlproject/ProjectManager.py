@@ -206,7 +206,7 @@ class ProjectManager:
         for key, value in dict(self.rset.resources).items():
             del self.rset.resources[key]
         self.change_tracker.reset()  # reset changetracker
-        self.change_listeners.clear() # reset listeners
+        #self.change_listeners.clear() # reset listeners
         self.project_resource = self.rset.create_resource(StringURI("Untitled ESDL project.project"))  # type: ignore
         self.project_resource.type = ProjectManagerResourceType.PROJECT
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
@@ -216,6 +216,7 @@ class ProjectManager:
         # tracker = self.changeTracker.newTracker(resource=self.active_resource)
         # self.undoredo_stack = tracker.stack
         self.set_active_variant(variantCollection.variant)
+        #self.change_tracker.newTracker(self.get)
 
     def add_new_variant_collection(self,
                                    es_name="New Energy System",
@@ -481,7 +482,7 @@ class ProjectManager:
                 abstractList = owner.eGet(change.feature)
                 abstractList.append(change.objectValue.deepcopy())
             elif change.objectReference:
-                pass  # TODO
+                print("\- processChange() - Not implemented change.objectReference")
             elif change.stringValue:
                 owner: EObject = resource.resolve(change.ownerFragment)
                 abstractList = owner.eGet(change.feature)
@@ -500,7 +501,11 @@ class ProjectManager:
                     abstractList.append(change.stringValue)
         elif isinstance(change, Remove):
             # remove a value or reference from a list
-            owner: EObject = resource.resolve(change.ownerFragment)
+            try:
+                owner: EObject = resource.resolve(change.ownerFragment)
+            except ValueError:
+                print(f"\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
+                return
             feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             abstractList = owner.eGet(change.feature)
             if isinstance(feature, EReference):

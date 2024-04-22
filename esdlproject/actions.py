@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Optional
 
 from pyecore.commands import Command
-from pyecore.ecore import EObject
+from pyecore.ecore import EObject, EReference
 from pyecore import commands as pyecore_commands
 
 from esdlproject import Variant, HighLevelChange, Add, Set, Delete, Remove
@@ -138,25 +138,40 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
         if isinstance(command, pyecore_commands.Set):
             if isinstance(command.value, EObject) or \
                     isinstance(command.previous_value, EObject):  # could also be a numeric change or string change
-                if command.feature.containment:
-                    value, x_ref_changes = deepcopy_eobject_change(command.value)
-                    change = Set(
-                        ownerFragment=command.owner.eURIFragment(),
-                        feature=command.feature.name,
-                        objectValue=value,
-                    )
-                    change_list.extend(x_ref_changes)
-                else:
-                    if command.value:
-                        print(
-                            f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ")
-                        refValue = command.valueURIFragment  # command.value.eURIFragment() -> See undo.py:243
+                if isinstance(command.feature, EReference):
+                    if command.feature.containment:
+                        value, x_ref_changes = deepcopy_eobject_change(command.value)
+                        change = Set(
+                            ownerFragment=command.owner.eURIFragment(),
+                            feature=command.feature.name,
+                            objectValue=value,
+                        )
+                        change_list.extend(x_ref_changes)
                     else:
-                        refValue = ""
+                        if command.value:
+                            print(
+                                f"convertActionToVariantChanges(): using ref for {command.value} to {command.value.eURIFragment()} ")
+                            refValue = command.valueURIFragment  # command.value.eURIFragment() -> See undo.py:243
+                        else:
+                            refValue = ""
+                        change = Set(
+                            ownerFragment=command.owner.eURIFragment(),
+                            feature=command.feature.name,
+                            stringValue=refValue,
+                        )
+                else: # EAttribute and possibly EEnum, see if we can merge this with else: below
+                    previousValue = None
+                    if command.value is None:
+                        stringValue = ""
+                    else:
+                        stringValue = command.feature.eType.to_string(command.value)
+                    if command.previous_value:
+                        previousValue = command.feature.eType.to_string(command.previous_value)
                     change = Set(
                         ownerFragment=command.owner.eURIFragment(),
                         feature=command.feature.name,
-                        stringValue=refValue,
+                        stringValue=stringValue,
+                        previousValue=previousValue,
                     )
             else:  # enums / strings / numbers
                 previousValue = None

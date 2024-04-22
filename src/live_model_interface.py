@@ -48,13 +48,17 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     client_id = message['client_id']
 
     uri = StringURI('hlc.json', message['high_level_change'])
+    print(f"Received HighLevelChange from Live model: {message['high_level_change']}")
     # user_email = msg['user_email']
     external_rset = ResourceSet()
     external_resource = external_rset.create_resource(uri)
     external_resource.load()
     hlc = external_resource.contents[0]
-
-    pm = get_project_manager_with_client_id(client_id)
+    try:
+        pm = get_project_manager_with_client_id(client_id)
+    except KeyError as e:
+        logger.warn(f"Ignoring received message due to: ", e)
+        return
     es = pm.get_active_energy_system()
     tracker = pm.active_tracker
     tracker.stack.start_recording(label=hlc.label)
