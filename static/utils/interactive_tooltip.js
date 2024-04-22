@@ -35,18 +35,19 @@ function set_marker_tooltip_handlers(marker) {
 
             let layer = e.target;
             let coords = layer._latlng;
-            let leaflet_pos = layer._icon._leaflet_pos;
 
             if (!marker.tooltip) {
+                const uuid = uuidv4();
+                const el_id = `tooltip_contents_div_${uuid}`;
                 let divicon = L.divIcon({
                     className: 'InteractiveTooltip',
                     iconSize: null,
-                    html: '<div id="tooltip_contents_div">',
+                    html: `<div id="${el_id}">`,
                 });
 
                 let tooltip_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: '', zIndexOffset: 1000});
                 tooltip_marker.addTo(get_layers(active_layer_id, 'esdl_layer'));
-                show_tooltip(marker.title, marker.id);
+                show_tooltip(marker.title, marker.id, el_id);
 
                 tooltip_marker.parent = marker;
                 tooltip_marker.parent_type = 'marker';

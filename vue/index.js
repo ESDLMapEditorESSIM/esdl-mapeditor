@@ -100,11 +100,11 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.show_tooltip = (object_title, object_id) => {
+window.show_tooltip = (object_title, object_id, el_id) => {
     const { newTooltipObjectID, newTitle } = useTooltipInfo();
     newTooltipObjectID(object_id);
     newTitle(object_title);
-    mountTooltipComponent(AssetTooltip);
+    mountTooltipComponent(AssetTooltip, el_id);
 }
 
 window.search_assets_window = () => {
