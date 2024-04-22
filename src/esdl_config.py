@@ -599,7 +599,6 @@ esdl_config = {
                             "response_params": {"name": "file_name"},
                         },
                         "success_text": "The newly uploaded file can be used to start a new EPS run.",
-                        "next_step": 0,
                     },
                     {
                         # 4
@@ -817,7 +816,6 @@ esdl_config = {
                                 "file_name": "file.id",
                             },
                         },
-                        "next_step": 0,
                     },
                     {
                         # 17
