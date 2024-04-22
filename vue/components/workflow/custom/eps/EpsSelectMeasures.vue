@@ -20,7 +20,7 @@
   <a-button type="primary" @click="loadEsdl"> Retrieve ESDL for selected measures </a-button>
 </template>
 
-<script setup="props">
+<script setup>
 import {ref, watch} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars

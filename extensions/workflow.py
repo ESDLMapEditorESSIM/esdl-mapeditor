@@ -237,7 +237,7 @@ class Workflow:
         @self.socketio.on("/workflow/load", namespace="/esdl")
         def load(message):
             """
-            Persist this workflow.
+            Load this workflow.
             """
             workflow_id = message["workflow_id"]
             user_email = get_session("user-email")
@@ -255,7 +255,8 @@ class Workflow:
                 drive_items = esdl_drive_get_node(
                     f"/Users/{user_email}/workflows/{workflow_id}"
                 )
-            except EsdlDriveException:
+            except EsdlDriveException as e:
+                logger.exception("Error while loading workflow")
                 return dict(message="Failed loading ESDLs from drive")
             esh = get_handler()
             for drive_item in drive_items:
