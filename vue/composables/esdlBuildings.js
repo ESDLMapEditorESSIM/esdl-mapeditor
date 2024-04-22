@@ -18,9 +18,6 @@ export function useEsdlBuildings() {
         if (!hasBuildingContextMenuItem(text)) {
             for (const [id, esdlBuilding] of Object.entries(esdlBuildings.value)) {
                 const layer = esdlBuilding.layer;
-                console.log("Adding context menu item to building")
-                console.log(esdlBuilding)
-                console.log(layer)
                 layer.options.contextmenuItems.push({
                     text: text,
                     icon: icon,
