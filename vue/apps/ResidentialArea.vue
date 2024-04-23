@@ -51,6 +51,7 @@ const createAggregatedBuilding = async () => {
 const showWindowResidentialArea = () => {
   open.value = true;
 }
+window.showWindowResidentialArea = showWindowResidentialArea;
 
 const get_building_list = async () => {
   const response = await doGet("residential_area/get_building_list");

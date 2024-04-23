@@ -46,17 +46,24 @@ export function useActivityContext() {
             }
         }
 
+        if (activityContext.js_function) {
+            // Call the js function that is part of the activity context.
+            window[activityContext.js_function]()
+        }
+
         // Clear the WMS layers and add the layers from the activity context.
-        clearWmsLayers()
-        for (const layer of activityContext.wms_layers) {
-            try {
-                showWmsLayer(layer)
-            } catch (e) {
-                // Check if TypeError, then the layer does not exist.
-                if (e instanceof TypeError) {
-                    console.warn("WMS layer " + layer.name + " does not exist")
-                } else {
-                    console.error("Error showing WMS layer " + layer.name + ": " + e)
+        if (activityContext.wms_layers !== undefined) {
+            clearWmsLayers()
+            for (const layer of activityContext.wms_layers) {
+                try {
+                    showWmsLayer(layer)
+                } catch (e) {
+                    // Check if TypeError, then the layer does not exist.
+                    if (e instanceof TypeError) {
+                        console.warn("WMS layer " + layer.name + " does not exist")
+                    } else {
+                        console.error("Error showing WMS layer " + layer.name + ": " + e)
+                    }
                 }
             }
         }
