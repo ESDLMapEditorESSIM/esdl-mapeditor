@@ -50,6 +50,7 @@ import {ref, onUpdated} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import Spinner from "../components/Spinner";
 import { useUndoRedo } from "../composables/undoRedo.js";
+import {MessageNames, PubSubManager} from "../bridge";
 
 // eslint-disable-next-line no-unused-vars
 const { stack, stack_index, showUndoRedoControl, undo, redo, undoRedoUntil } = useUndoRedo();
@@ -91,6 +92,10 @@ function subscribeUndoRedoStack() {
 // Load stack and subscribe.
 loadUndoRedoStack();
 subscribeUndoRedoStack();
+
+PubSubManager.subscribe(MessageNames.NEW_ESDL, (name, message) => {
+  loadUndoRedoStack();
+})
 
 // eslint-disable-next-line no-unused-vars
 function typeToColor(type) {

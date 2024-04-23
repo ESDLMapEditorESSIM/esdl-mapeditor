@@ -43,6 +43,8 @@ function click_new_ESDL_button(obj) {
 
     socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
         instance_name: new_instance_name, top_area_name: new_top_area_name});
+
+    window.PubSubManager.broadcast('NEW_ESDL', {});
 }
 
 function open_ESDL(event) {

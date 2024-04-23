@@ -65,7 +65,7 @@ class EventsAPI:
 
         user_email = get_session('user-email')
         client_id = session['client_id']
-        message: NewESDLMessage(
+        message = NewESDLMessage(
             user_email=user_email,
             client_id=client_id,
             b64_esdl=esdlstr_base64_str

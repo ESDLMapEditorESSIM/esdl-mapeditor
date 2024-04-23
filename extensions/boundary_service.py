@@ -24,6 +24,7 @@ import os
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
+from esdl.undo_wrapper import undo_record_changes
 from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 
@@ -166,6 +167,7 @@ class BoundaryService:
             self.set_user_setting(user, setting['name'], setting['value'])
 
         @self.socketio.on('get_boundary_info', namespace='/esdl')
+        @undo_record_changes(label="Add boundary information")
         def get_boundary_info(info):
             print('get_boundary_info:')
             print(info)
