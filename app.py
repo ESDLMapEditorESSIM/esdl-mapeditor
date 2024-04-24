@@ -3188,6 +3188,7 @@ def process_file_command(message):
         emit('clear_ui')
         emit('clear_esdl_layer_list')
         call_process_energy_system.submit(filename)
+        del_session("shape_dictionary")
 
         del_session('store_item_metadata')
         emit('store_item_metadata', {})
