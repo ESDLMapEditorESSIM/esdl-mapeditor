@@ -17,15 +17,18 @@
 import {ref} from "vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
+import {useEsdlBuildings} from "./esdlBuildings";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
 const { esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
+const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 // The active activity context is the context that is currently active in the map.
 const activeActivityContext = ref({});
 
-// Track the services that are enabled in the area context menu so we can remove them when the context is cleared.
+// Track the services that are enabled in the context menu's so we can remove them when the context is cleared.
 const enabledAreaEsdlServices = ref([]);
+const enabledBuildingEsdlServices = ref([]);
 
 export function useActivityContext() {
     /**
@@ -94,6 +97,11 @@ export function useActivityContext() {
                         enabledAreaEsdlServices.value.push(foundService);
                     } else if (contextService.location === "map_context_menu") {
                         foundService.location = contextService.location;
+                    } else if (contextService.location === "building_context_menu") {
+                        addBuildingContextMenuItem(foundService['name'], resource_uri + 'icons/service.png', function (id) {
+                            window.show_service_settings(foundServiceIdx)
+                        });
+                        enabledBuildingEsdlServices.value.push(foundService);
                     }
 
                 }
@@ -108,6 +116,9 @@ export function useActivityContext() {
         clearWmsLayers()
         for (const service of enabledAreaEsdlServices.value) {
             removeAreaContextMenuItem(service.name)
+        }
+        for (const service of enabledBuildingEsdlServices.value) {
+            removeBuildingContextMenuItem(service.name)
         }
         enabledAreaEsdlServices.value = [];
     }

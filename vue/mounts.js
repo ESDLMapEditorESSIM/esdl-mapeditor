@@ -56,8 +56,8 @@ export function createVueLControl(component, options) {
     lcontrol.addTo(window.map).mount(component);
 }
 
-export function mountTooltipComponent(component) {
-    mountApp(component, '#tooltip_contents_div');
+export function mountTooltipComponent(component, el_id) {
+    mountApp(component, `#${el_id}`);
 }
 
 export function createVueMapEditorDialog(component, options) {
