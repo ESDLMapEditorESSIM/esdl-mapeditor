@@ -399,8 +399,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
 
     if area_shape is None:
         area_shape = calculate_area_shape(this_area)
-
-    if area_shape:
+    else:
         shape_dictionary[area_id] = area_shape
     # assign random coordinates if boundary is given and area contains assets without coordinates
     # and gives assets within buildings a proper coordinate

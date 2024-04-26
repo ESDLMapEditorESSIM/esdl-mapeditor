@@ -26,6 +26,35 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.4.0",
+        "date": "2024-04-24T12:00:00Z",
+        "general_message": "On April 25th 2024, we've released the new ESDL MapEditor version 24.4.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Support for external services that return a list of assets",
+                    "Query ETM for provinces / RES regions aggregated on a municipality level",
+                    "Support for looking up database credentials for ESDL InfluxDBProfiles",
+                    "Completely new WMS layer component, with support for hierarchical lists of WMS layers",
+                    "Implement residential area plugin, for building new houses",
+                    "Improve entering marginal costs for ESSIM",
+                    "Port profile viewer can show similar profiles for multiple assets",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix non-disappearing tooltips",
+                    "Fix handling areas that have a multi polygon as a geometry",
+                    "Fix many smaller bugs",
+                    "Fixed errors with multiple settings records per user in database"
+                ]
+            },
+        ]
+    },
+    {
         "version": "24.2.0",
         "date": "2024-02-13T13:08:00Z",
         "general_message": "On February 13th 2024, we've released the new ESDL MapEditor version 24.2.0. " +

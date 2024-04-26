@@ -927,10 +927,10 @@ class ProjectManager:
                 found = resource.uuid_dict[object_id]
                 logger.warn(f"Found: {found} for {object_id} after rebuild in {es.eResource}")
                 return found
-            except KeyError:
+            except KeyError as e:
                 self.debug()
                 raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
-                               "after rebuilding uuid_dict.".format(object_id, es.id))
+                               "after rebuilding uuid_dict.".format(object_id, es.id)) from e
 
     def active_energy_system_to_string(self):
         es = self.get_active_energy_system()

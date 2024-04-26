@@ -13,6 +13,7 @@ class ActivityContext:
     name: str
     workflow: str | None
     is_global: bool | None
+    js_function: str | None
     wms_layers: list[str]
     context_services: list[str]
     # _id: ObjectId | None = None

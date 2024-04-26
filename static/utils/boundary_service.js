@@ -246,8 +246,14 @@ function get_boundary_info(obj) {
     selected_subareas = $('#select_subareas').val();
     initialize_ES = document.getElementById('initialize_ES').checked;
     add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
-    add_service_area_info = document.getElementById('service_area_dso').checked;
-    add_station_info = document.getElementById('station_dso').checked;
+
+    if (check_role('service_area_service')) {
+        add_service_area_info = document.getElementById('service_area_dso').checked;
+        add_station_info = document.getElementById('station_dso').checked;
+    } else {
+        add_service_area_info = false;
+        add_station_info = false;
+    }
 
     show_loader();
     socket.emit('get_boundary_info', {identifier: identifier, toparea_name: toparea_name, scope: scope,

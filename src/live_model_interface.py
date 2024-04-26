@@ -24,6 +24,7 @@ from threading import Thread
 from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
+from esdl.resources.json import JsonResource
 from extensions.session_manager import get_project_manager, get_project_manager_with_client_id, managed_sessions
 from src.app import socketio
 from src.log import get_logger
@@ -40,42 +41,50 @@ local_app = None
 
 def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, properties: BasicProperties, body):
     """
-    The handler for all results message.
+    The handler for all results message. This function will be called when a message is received from the RabbitMQ
+    queue. The message will be parsed and the result will be sent to the client.
+
+    We should avoid unhandled exceptions, because RabbitMQ will keep retrying to deliver the message, causing an
+    infinite loop of exceptions.
     """
-    message = json.loads(body.decode("utf-8"))
-    logger.debug("Result message received", message=message)
-    del message["user_email"]
-    client_id = message['client_id']
-
-    uri = StringURI('hlc.json', message['high_level_change'])
-    print(f"Received HighLevelChange from Live model: {message['high_level_change']}")
-    # user_email = msg['user_email']
-    external_rset = ResourceSet()
-    external_resource = external_rset.create_resource(uri)
-    external_resource.load()
-    hlc = external_resource.contents[0]
     try:
-        pm = get_project_manager_with_client_id(client_id)
-    except KeyError as e:
-        logger.warn(f"Ignoring received message due to: ", e)
-        return
-    es = pm.get_active_energy_system()
-    tracker = pm.active_tracker
-    tracker.stack.start_recording(label=hlc.label)
-    for change in hlc.change:
-        pm.processChange(change, es.eResource)
-    tracker.stack.stop_recording(call_change_handler=False)
+        message = json.loads(body.decode("utf-8"))
+        logger.debug("Result message received", message=message)
+        del message["user_email"]
+        client_id = message['client_id']
 
-    global local_app
+        uri = StringURI('hlc.json', message['high_level_change'])
+        logger.info(f"Received HighLevelChange from Live model: {message['high_level_change']}")
+        # user_email = msg['user_email']
+        external_rset = ResourceSet()
+        external_rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
+        external_resource = external_rset.create_resource(uri)
+        external_resource.load()
+        hlc = external_resource.contents[0]
+        try:
+            pm = get_project_manager_with_client_id(client_id)
+        except KeyError as e:
+            logger.warn(f"Ignoring received message due to: {str(e)}")
+            return
+        es = pm.get_active_energy_system()
+        tracker = pm.active_tracker
+        tracker.stack.start_recording(label=hlc.label)
+        for change in hlc.change:
+            pm.processChange(change, es.eResource)
+        tracker.stack.stop_recording(call_change_handler=False)
 
-    # create request context (and session?)...
-    with local_app.test_request_context():
-        session['client_id'] = client_id
-        request.sid = managed_sessions[client_id]['socketio_sid']
-        request.namespace = '/esdl'
+        global local_app
 
-        # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-        call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+        # create request context (and session?)...
+        with local_app.test_request_context():
+            session['client_id'] = client_id
+            request.sid = managed_sessions[client_id]['socketio_sid']
+            request.namespace = '/esdl'
+
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+    except Exception:
+        logger.exception("Failed to process message")
 
 
 def start_live_model_interface_thread(app):

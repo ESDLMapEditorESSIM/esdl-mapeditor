@@ -115,9 +115,16 @@ export function useWorkflow() {
 
     const activatePersistedWorkflow = (uuid) => {
         window.show_loader();
-        window.socket.emit('/workflow/load', {workflow_id: uuid}, function (parsedWorkflow) {
-            console.log(parsedWorkflow);
-            if (parsedWorkflow) {
+        window.socket.emit('/workflow/load', {workflow_id: uuid}, function (response) {
+            console.log(response);
+            if (response.message) {
+                window.hide_loader();
+                alert(response.message);
+                return;
+            }
+            if (response.uuid) {
+                // A workflow was returned. Load the workflow.
+                const parsedWorkflow = response;
                 const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
                 workflowObj.uuid = parsedWorkflow.uuid;
                 workflowObj.workflowStep = parsedWorkflow.workflowStep;
@@ -142,6 +149,7 @@ export function useWorkflow() {
                 window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid, workflow_json: jsonWorkflow}, function (msg) {
                     window.hide_loader();
                     currentWorkflow.value.setDrivePaths(msg.drive_paths);
+                    loadSavedWorkflows();
                 });
             }
         }
@@ -149,9 +157,9 @@ export function useWorkflow() {
 
     const deletePersistedWorkflow = (uuid) => {
         window.show_loader();
-        window.socket.emit('/workflow/delete', {workflow_id: currentWorkflow.value.uuid}, function(msg) {
+        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function(msg) {
             window.hide_loader();
-            currentWorkflow.value.setDrivePaths([]);
+            loadSavedWorkflows();
         });
     }
 
@@ -267,7 +275,13 @@ export class Workflow {
     doNext(targetStepIdx = null) {
         if (targetStepIdx === null || targetStepIdx === undefined) {
             const nextStepData = this.workflowStep.next_step;
-            if (typeof nextStepData === 'object') {
+            if (nextStepData === undefined) {
+                // No next step. Go to the beginning.
+                while (this.hasPreviousStep()) {
+                    this.doPrevious();
+                }
+                return;
+            } else if (typeof nextStepData === 'object') {
                 // Step with multiple next steps.
                 const ifRules = nextStepData.if;
                 for (const ifRule of ifRules) {
