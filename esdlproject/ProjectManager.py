@@ -135,7 +135,6 @@ class ProjectManager:
         If using uri to load a project, use StringURI(uri, text) to load a text string
         """
         patch_esdl()
-
         self.rset = ResourceSet()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
@@ -990,7 +989,8 @@ class ProjectManager:
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
         print(self.to_debug_string())
-        #print(self.active_energy_system_to_string())
+        print("Current ESDL:")
+        print(self.active_energy_system_to_string())
             #for v in vc.variant.variant:
             #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
@@ -1070,3 +1070,4 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     # index = self.get_base_variant_index(base_variant)
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
+
