@@ -24,7 +24,7 @@
   </p>
 </template>
 
-<script setup="props">
+<script setup>
 import {onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
@@ -32,9 +32,17 @@ import {useWorkflow} from "../../../../composables/workflow.js";
 import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
 import {workflowGetData} from "../../utils/api.js";
 
-const workflowStep = props.workflowStep;
 const { getFromState } = useWorkflow();
-const { addContextMenuItem, removeContextMenuItem } = useEsdlBuildings();
+const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
+
+const props = defineProps({
+  workflowStep: {
+    type: Object,
+    default: null,
+    required: true,
+  },
+});
+const workflowStep = props.workflowStep;
 
 let treeData = ref([]);
 const isLoading = ref(false);
@@ -48,16 +56,9 @@ const components = {
   NumberOutlined,
   TeamOutlined,
 };
-const props = defineProps({
-  workflowStep: {
-    type: Object,
-    default: null,
-    required: true,
-  },
-});
 
 onUnmounted(() => {
-  removeContextMenuItem(contextMenuItemText);
+  removeBuildingContextMenuItem(contextMenuItemText);
 });
 
 const getEpsDetails = (asset_id) => {
@@ -84,8 +85,8 @@ const getEpsDetails = (asset_id) => {
   });
 };
 
-removeContextMenuItem(contextMenuItemText);
-addContextMenuItem(contextMenuItemText, "icons/BuildingContents.png", getEpsDetails);
+removeBuildingContextMenuItem(contextMenuItemText);
+addBuildingContextMenuItem(contextMenuItemText, "icons/BuildingContents.png", getEpsDetails);
 
 /**
  * An entry in the tree.
