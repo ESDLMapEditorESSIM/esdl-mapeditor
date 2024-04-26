@@ -322,6 +322,12 @@ class ESDLServices:
                         if query_params[key] and cfg_service_param["parameter"] == key:
                             param = query_params[key]
                             break
+                elif "parameter_name" in cfg_service_param:
+                    # If "parameter" is not specified in service config, use "parameter_name" if available
+                    for key in query_params:
+                        if query_params[key] and cfg_service_param["parameter_name"] == key:
+                            param = query_params[key]
+                            break
 
                 if param:
                     # Is there any parameter formatting required...
