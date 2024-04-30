@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { PubSubManager, MessageNames } from "../bridge.js";
+import {layerHasContextMenuItem} from "../utils/utils";
 
 const esdlBuildings = ref({});
 
@@ -9,20 +10,20 @@ PubSubManager.subscribe(MessageNames.ADD_BUILDING_TO_LAYER, (name, message) => {
 
 export function useEsdlBuildings() {
     /**
-     * Add context menu items to all known items.
+     * Add context menu items to all known buildings.
      * @param {*} text 
      * @param {*} icon 
      * @param {*} onclick 
      */
     const addBuildingContextMenuItem = (text, icon, onclick) => {
-        if (!hasBuildingContextMenuItem(text)) {
-            for (const [id, esdlBuilding] of Object.entries(esdlBuildings.value)) {
-                const layer = esdlBuilding.layer;
+        for (const [id, esdlBuilding] of Object.entries(esdlBuildings.value)) {
+            const layer = esdlBuilding.layer;
+            if (!layerHasContextMenuItem(layer, text)) {
                 layer.options.contextmenuItems.push({
                     text: text,
                     icon: icon,
-                    callback: function () {
-                        onclick(id);
+                    callback: function (e) {
+                        onclick(e, id);
                     },
                 });
             }
@@ -30,25 +31,10 @@ export function useEsdlBuildings() {
     }
 
     /**
-     * 
-     * @param {*} text 
-     */
-    const hasBuildingContextMenuItem = (text) => {
-        for (const [, esdlBuilding] of Object.entries(esdlBuildings.value)) {
-            const layer = esdlBuilding.layer;
-            const result = layer.options.contextmenuItems.filter(function(contextmenuItem) { 
-                return contextmenuItem.text == text;
-            });
-            return result.length > 0;
-        }
-    }
-
-    /**
-     * Remove context menu items by text.
+     * Remove context menu items in all buildings by text.
      * @param {*} text 
      */
     const removeBuildingContextMenuItem = (text) => {
-        console.log("Removing context menu items")
         for (const [, esdlBuilding] of Object.entries(esdlBuildings.value)) {
             const layer = esdlBuilding.layer;
             layer.options.contextmenuItems = layer.options.contextmenuItems.filter(function(contextmenuItem) { 

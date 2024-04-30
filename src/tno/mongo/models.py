@@ -1,7 +1,32 @@
 import json
 from dataclasses import dataclass
+from typing import TypedDict
 
 from bson import ObjectId, json_util
+
+
+class ActivityContextMenuService(TypedDict):
+    """
+    A service to add to a context menu.
+    """
+    # The service ID.
+    id: str
+    # The location where to add the service. Can be map, area, or building.
+    location: str
+    icon: str
+
+
+class ActivityContextMenuJsFunction(TypedDict):
+    """
+    A JS function to add to the context menu.
+    """
+    # The label of the context menu.
+    title: str
+    # The location where to add the service.
+    location: str
+    icon: str
+    # The JS function to activate. Must be available on window!
+    js_function: str
 
 
 @dataclass
@@ -11,11 +36,21 @@ class ActivityContext:
     """
     activity_id: str
     name: str
+    # The workflow to activate.
     workflow: str | None
+    # If a context is global, it is shown to all users.
     is_global: bool | None
+    # Js function to execute when the context is activated.
     js_function: str | None
-    wms_layers: list[str]
-    context_services: list[str]
+    # WMS layers to activate.
+    wms_layers: list[str] | None
+    # The ESDL layers to disable when activating this context.
+    disable_esdl_layers: list[str] | None
+    # The services to add to context menus.
+    context_menu_services: list[ActivityContextMenuService] | None
+    context_menu_js_functions: list[ActivityContextMenuJsFunction] | None
+    # Text to show in an alert when activating this context.
+    alert_text: str | None
     # _id: ObjectId | None = None
 
     def to_json(self):

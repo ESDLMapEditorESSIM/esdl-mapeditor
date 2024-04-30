@@ -109,6 +109,13 @@
 
 var etm_interface_plugin;   // global variable for the etm_interface plugin
 
+window.etm_interface_area_info = function(event, id) {
+    etm_interface_plugin.area_info(event, id);
+}
+window.etm_interface_area_info_update = function(event, id) {
+    etm_interface_plugin.area_info_update(event, id);
+}
+
 $(document).ready(function() {
     extensions.push(function(event) { return ETMInterface.create(event) });
 });

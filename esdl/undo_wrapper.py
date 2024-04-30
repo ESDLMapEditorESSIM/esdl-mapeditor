@@ -24,9 +24,9 @@
 
 from functools import wraps
 
+from contextlib import contextmanager
 from flask_socketio import emit
-
-from extensions.session_manager import get_project_manager, get_session
+from extensions.session_manager import get_project_manager
 from src.tno.undoredo.types import serialize_command_stack
 
 
@@ -50,3 +50,24 @@ def undo_record_changes(label: str):
             return result
         return wrapped_record_changes
     return internal_recording
+
+
+@contextmanager
+def undo_record_changes_context(label: str, combine_commands=True):
+    """
+    Context manager for recording changes. Example usage:
+
+    with undo_record_changes_context("My label"):
+        # do stuff
+
+    :param label:
+    :param combine_commands:
+    :return:
+    """
+    pm = get_project_manager()
+    stack = pm.get_undo_redo_stack()
+    stack.start_recording(label=label, combineCommands=combine_commands)
+    try:
+        yield
+    finally:
+        stack.stop_recording()

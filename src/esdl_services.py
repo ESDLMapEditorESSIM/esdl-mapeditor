@@ -28,11 +28,13 @@ import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
 from esdl.processing.string_uri import StringURI
+from esdl.undo_wrapper import undo_record_changes_context
 from extensions.session_manager import get_project_manager, get_session, set_session
 from esdl.processing import ESDLAsset, ESDLGeometry
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
+from src.tno.undoredo.types import serialize_command_stack
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -437,46 +439,46 @@ class ESDLServices:
                         add_assets_to_area = {
                             area.id: add_assets_service_result
                         }
-
                     try:
-                        for area_id, asset_str_list in add_assets_to_area.items():
-                            area_to_be_added_to = pm.get_by_id(active_es_id, area_id)
-                            if not area_to_be_added_to:
-                                # If service returns an Area ID that cannot be found, add asset to main Area
-                                area_to_be_added_to = area
+                        with undo_record_changes_context(service.get("name")):
+                            for area_id, asset_str_list in add_assets_to_area.items():
+                                area_to_be_added_to = pm.get_by_id(active_es_id, area_id)
+                                if not area_to_be_added_to:
+                                    # If service returns an Area ID that cannot be found, add asset to main Area
+                                    area_to_be_added_to = area
 
-                            area_shape = None
-                            if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
-                                # The assets that will be added must be placed on a grid within the area boundary
-                                shape_dictionary = get_session('shape_dictionary')
-                                if area_to_be_added_to.id in shape_dictionary:
-                                    area_shape = shape_dictionary[area_to_be_added_to.id]
-                                    # Calculate "enough" possible locations for assets inside the area
-                                    possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
+                                area_shape = None
+                                if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
+                                    # The assets that will be added must be placed on a grid within the area boundary
+                                    shape_dictionary = get_session('shape_dictionary')
+                                    if area_to_be_added_to.id in shape_dictionary:
+                                        area_shape = shape_dictionary[area_to_be_added_to.id]
+                                        # Calculate "enough" possible locations for assets inside the area
+                                        possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
 
-                            for asset_str in asset_str_list:
-                                asset = ESDLAsset.load_asset_from_string(asset_str)
-                                if area_shape:
-                                    # The asset gets a random location from the list of possible locations
-                                    asset.geometry = choose_location(possible_locations).get_esdl()
+                                for asset_str in asset_str_list:
+                                    asset = ESDLAsset.load_asset_from_string(asset_str)
+                                    if area_shape:
+                                        # The asset gets a random location from the list of possible locations
+                                        asset.geometry = choose_location(possible_locations).get_esdl()
 
-                                pm.add_object_to_dict(active_es_id, asset, recursive=True)
-                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
-                                asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
-                                if asset_ui:
-                                    emit(
-                                        "add_esdl_objects",
-                                        {
-                                            "es_id": active_es_id,
-                                            "asset_pot_list": [asset_ui],
-                                            "zoom": True,
-                                        },
-                                    )
-                                if conn_list:
-                                    emit(
-                                        "add_connections",
-                                        {"es_id": active_es_id, "conn_list": conn_list},
-                                    )
+                                    pm.add_object_to_dict(active_es_id, asset, recursive=True)
+                                    ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
+                                    asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
+                                    if asset_ui:
+                                        emit(
+                                            "add_esdl_objects",
+                                            {
+                                                "es_id": active_es_id,
+                                                "asset_pot_list": [asset_ui],
+                                                "zoom": True,
+                                            },
+                                        )
+                                    if conn_list:
+                                        emit(
+                                            "add_connections",
+                                            {"es_id": active_es_id, "conn_list": conn_list},
+                                        )
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None, None

@@ -571,10 +571,10 @@ function update_map_service_contextmenus(services_list) {
  * @param service
  * @param callback
  */
-function add_service_to_contextmenu(layer, service, callback) {
+function add_service_to_contextmenu(layer, service, callback, icon) {
     layer.options.contextmenuItems.push({
         text: service['name'],
-        icon: resource_uri + 'icons/service.png',
+        icon: resource_uri + (icon ? icon : 'icons/service.png'),
         callback: callback,
     });
 }
@@ -585,8 +585,8 @@ function add_service_to_contextmenu(layer, service, callback) {
  * @param service
  * @param idx
  */
-function add_service_to_area_contextmenu(layer, service, idx) {
-    let scope_map = {
+function add_service_to_area_contextmenu(layer, service, idx, icon) {
+    const scope_map = {
         "PV": "PROVINCE",
         "ES": "REGION",
         "GM": "MUNICIPALITY",
@@ -603,7 +603,7 @@ function add_service_to_area_contextmenu(layer, service, idx) {
         } else {
             query_esdl_service(service, state);
         }
-    });
+    }, icon);
 }
 
 function update_esdl_services(event) {
@@ -622,7 +622,7 @@ function update_esdl_services(event) {
         if (event.layer_type === 'area') {
             for (let i = 0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i]['type'] == "area_context_menu" || esdl_services_information[i]['location'] == "area_context_menu") {
-                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i);
+                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i, null);
                 }
             }
         }

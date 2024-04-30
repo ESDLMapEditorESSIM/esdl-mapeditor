@@ -5,7 +5,9 @@
       <a-input v-model:value="newActivityContextID" type="text" placeholder="ID" />
       <a-input v-model:value="newActivityContextName" type="text" placeholder="Name" />
       <a-textarea v-model:value="newWmsLayers" :rows="4" placeholder="WMS layers (comma-separated)" />
+      <a-textarea v-model:value="newDisableEsdlLayers" :rows="4" placeholder="Disable ESDL layers (comma-separated)" />
       <a-input v-model:value="newWorkflow" type="text" placeholder="Workflow" />
+      <a-input v-model:value="newJsFunction" type="text" placeholder="JS function" />
       <a-checkbox v-model:checked="newIsGlobal">Global</a-checkbox>
       <a-space direction="horizontal">
         <a-button type="primary" @click="saveActivityContext">
@@ -43,7 +45,9 @@ const activityContexts = ref([]);
 const newActivityContextID = ref('');
 const newActivityContextName = ref('');
 const newWmsLayers = ref('');
+const newDisableEsdlLayers = ref('');
 const newWorkflow = ref('');
+const newJsFunction = ref('');
 const newIsGlobal = ref(false);
 
 const get_activity_contexts = async () => {
@@ -70,9 +74,19 @@ const columns = [
     key: 'wms_layers',
   },
   {
+    title: 'Disable ESDL layers',
+    dataIndex: 'disable_esdl_layers',
+    key: 'disable_esdl_layers',
+  },
+  {
     title: 'Workflow',
     dataIndex: 'workflow',
     key: 'workflow',
+  },
+  {
+    title: 'JS function',
+    dataIndex: 'js_function',
+    key: 'js_function',
   },
   {
     title: 'Global',
@@ -101,14 +115,27 @@ const deleteActivityContext = async (id) => {
 const saveActivityContext = async () => {
   // If newWmsLayers is not an empty string, convert it to list of strings.
   const wmsLayers = newWmsLayers.value ? newWmsLayers.value.split(',') : [];
+  const disableEsdlLayers = newDisableEsdlLayers.value ? newDisableEsdlLayers.value.split(',') : [];
   const workflow = newWorkflow.value || null;
+  const jsFunction = newJsFunction.value || null;
   const isGlobal = newIsGlobal.value;
   const response = await fetch('/admin/context/activities', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({activity_id: newActivityContextID.value, name: newActivityContextName.value, wms_layers: wmsLayers, context_services: [], workflow: workflow, is_global: isGlobal})
+    body: JSON.stringify({
+      activity_id: newActivityContextID.value,
+      name: newActivityContextName.value,
+      wms_layers: wmsLayers,
+      disable_esdl_layers: disableEsdlLayers,
+      alert_text: null,
+      context_menu_services: [],
+      context_menu_js_functions: [],
+      workflow: workflow,
+      js_function: jsFunction,
+      is_global: isGlobal,
+    })
   })
   if (!response.ok) {
     console.error('Error saving activity context', response)

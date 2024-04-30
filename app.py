@@ -13,7 +13,6 @@
 #  Manager:
 #      TNO
 
-import base64
 import importlib
 import json
 import os
@@ -1563,7 +1562,6 @@ def process_command(message):
     active_es_id = active_es.id
     area_bld_list = get_session_for_esid(active_es.id, 'area_bld_list')
 
-    # undo_redo = pm.get_undo_redo_stack(es_edit)
     undo_redo = pm.get_undo_redo_stack()
     undo_redo.start_recording(combineCommands=True, label=message['cmd'])
 
