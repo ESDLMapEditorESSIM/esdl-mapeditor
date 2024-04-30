@@ -129,7 +129,7 @@ const saveActivityContext = async () => {
       name: newActivityContextName.value,
       wms_layers: wmsLayers,
       disable_esdl_layers: disableEsdlLayers,
-      alert_text: null,
+      toast_text: null,
       context_menu_services: [],
       context_menu_js_functions: [],
       workflow: workflow,

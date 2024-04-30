@@ -27,7 +27,8 @@
     "sweetalert2": "^11.4.8",
     "uuid": "^8.3.2",
     "vue": "3.4.14",
-    "vue-grid-layout": "3.0.0-beta1"
+    "vue-grid-layout": "3.0.0-beta1",
+    "vue-toastification": "2.0.0-rc.5"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.23.10",

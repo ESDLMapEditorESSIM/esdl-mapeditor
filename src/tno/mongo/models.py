@@ -50,7 +50,7 @@ class ActivityContext:
     context_menu_services: list[ActivityContextMenuService] | None
     context_menu_js_functions: list[ActivityContextMenuJsFunction] | None
     # Text to show in an alert when activating this context.
-    alert_text: str | None
+    toast_text: str | None
     # _id: ObjectId | None = None
 
     def to_json(self):

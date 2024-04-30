@@ -37,6 +37,8 @@ import {
     Upload
 } from 'ant-design-vue';
 import MapEditorDialog from "../static/utils/MapEditorDialog";
+import Toast, {POSITION} from "vue-toastification";
+import "vue-toastification/dist/index.css"
 
 export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
@@ -98,6 +100,11 @@ export function mountApp(component, elementSelector) {
     app.use(Tree);
     app.use(Upload);
     app.use(VueGridLayout);
+
+    const toastOptions = {
+        position: POSITION.BOTTOM_RIGHT
+    };
+    app.use(Toast, toastOptions);
 
     app.mount(elementSelector);
 }

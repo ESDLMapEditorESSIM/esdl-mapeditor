@@ -136,6 +136,7 @@ export function useWmsLayers() {
     };
 
     const showWmsLayer = (layerId) => {
+        console.log(globalWmsLayerList.value['layers'])
         if (!layerIsVisible(layerId)) {
             globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
             globalWmsLayerList.value['layers'][layerId].layer_ref.bringToFront();

@@ -18,6 +18,7 @@ import {ref, watch} from "vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
+import { useToast } from "vue-toastification";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
 const { addAreaContextMenuItem, esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
@@ -29,6 +30,8 @@ const activeActivityContext = ref({});
 // Track the services that are enabled in the context menu's so we can remove them when the context is cleared.
 const enabledAreaContextMenus = ref([]);
 const enabledBuildingContextMenus = ref([]);
+
+const toast = useToast();
 
 watch(esdlAreas,
     (newAreas, oldAreas) => {
@@ -86,7 +89,8 @@ function addContextMenuServices(activityContext) {
                     }
                     enabledAreaContextMenus.value.push(foundService.name);
                 } else if (contextMenuService.location === "map") {
-                    foundService.location = contextMenuService.location;
+                    console.debug("Service " + foundService.name + " is added to the map context menu");
+                    foundService.location = "map_context_menu"
                 } else if (contextMenuService.location === "building") {
                     addBuildingContextMenuItem(foundService['name'], window.resource_uri + 'icons/service.png', function (e, id) {
                         window.show_service_settings(foundServiceIdx)
@@ -131,6 +135,7 @@ export function useActivityContext() {
         // Clear the WMS layers and add the layers from the activity context.
         if (activityContext.wms_layers) {
             clearWmsLayers()
+            console.log("Enabling WMS layers " + activityContext.wms_layers)
             for (const layer of activityContext.wms_layers) {
                 try {
                     showWmsLayer(layer)
@@ -158,8 +163,8 @@ export function useActivityContext() {
         addContextMenuJsFunctions(activityContext)
         addContextMenuServices(activityContext)
 
-        if (activityContext.alert_text) {
-            window.alert(activityContext.alert_text)
+        if (activityContext.toast_text) {
+            toast.info(activityContext.toast_text);
         }
     }
 
