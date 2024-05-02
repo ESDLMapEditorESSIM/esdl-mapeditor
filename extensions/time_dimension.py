@@ -37,7 +37,7 @@ TIME_DIMENSION_USER_CONFIG = 'TIME_DIMENSION_SERVICE_USER_CONFIG'
 
 LOAD_DURATION_FIELD_NAME = 'allocationEnergy'
 
-default_colors = ['#0000ff', '#ff0000', '#00ff00', '#800080', '#ffa500', '#e31a1c',
+default_colors = ['#ff0000', '#0000ff', '#00ff00', '#800080', '#ffa500', '#e31a1c',
                   '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
 
 
@@ -298,7 +298,7 @@ class TimeDimension:
                             "carrier_id": c.id,
                             "color": default_colors[num_default_colors]
                         }
-                        num_default_colors += 1
+                    num_default_colors += 1
 
         return colors
 

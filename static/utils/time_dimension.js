@@ -154,7 +154,6 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
                 console.log("No data was available for the current time window.");
                 return;
             }
-            // console.log(geojson_result);
             var data = JSON.parse(geojson_result);
 
             var geoJSONLayer = L.geoJSON(data, {
@@ -226,10 +225,13 @@ class TimeDimension {
         });
 
         geoJSONTDLayer.addTo(get_layers(active_layer_id, 'sim_layer'));
+
+        time_dimension.show_hide_animation_toolbar(true);
     }
 
     removeGeoJSONLayers() {
         clear_layers(active_layer_id, 'sim_layer');
+        time_dimension.show_hide_animation_toolbar(false);
     }
 
     toggle_animation_toolbar_visibility() {
