@@ -195,6 +195,7 @@ class PortProfileViewer:
     def determine_profile_name(profile, profile_type):
         # Gives back a logical name for the profile panel
         profiles = Profiles.get_instance().get_profiles()['profiles']
+        profile_name = None
         for pkey in profiles:
             p = profiles[pkey]
             if p['database'] == profile.database and p['measurement'] == profile.measurement and p['field'] == profile.field:
