@@ -44,11 +44,11 @@ ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
 
 # Global profile information about clusters, so information can be retrieved once and reused between calls
 global_clusters = {
-    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw [POWER in %].edd", "profile_data": None},
-    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten [POWER in %].edd", "profile_data": None},
-    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie [POWER in %].edd", "profile_data": None},
-    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens [POWER in %].edd", "profile_data": None},
-    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit [POWER in %].edd", "profile_data": None},
+    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw.edd", "profile_data": None},
+    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten.edd", "profile_data": None},
+    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie.edd", "profile_data": None},
+    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens.edd", "profile_data": None},
+    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit.edd", "profile_data": None},
 }
 
 
