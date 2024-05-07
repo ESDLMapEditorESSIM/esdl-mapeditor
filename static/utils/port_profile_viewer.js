@@ -27,35 +27,17 @@ class Port_profile_viewer{
     show_window() {
         sidebar_b.setContent(port_profile_viewer_plugin.create_sidebar_content().get(0));
         sidebar_b.show();
+
+        // Trigger a "change" so the first profile is shown
         port_profile_viewer_plugin.change_selected_profile();
     }
 
-    update_port_profile_list() {
-        let port_idx = $('#port_select').val();
-        let profile_list = port_profile_viewer_plugin.asset_port_profile_list[port_idx].profiles;
-
-        let $profile_select = $('#profile_select');
-        $profile_select.empty();
-
-        if (profile_list) {
-            for (let i=0; i<profile_list.length; i++) {
-                let $option = $('<option>').attr('value', i).text(profile_list[i].uiname);
-                $profile_select.append($option);
-            }
-            port_profile_viewer_plugin.change_selected_profile();
-        } else {
-            $('#profile_div').html('<p>Error - no profiles attached to this port</p>');
-        }
-    }
-
     change_selected_profile() {
-        let port_idx = $('#port_select').val();
         let profile_idx = $('#profile_select').val();
-        let profile_info = port_profile_viewer_plugin.asset_port_profile_list[port_idx].profiles[profile_idx];
+        let profile_info = port_profile_viewer_plugin.asset_port_profile_list[profile_idx];
 
         if (profile_info) {
-            socket.emit('get_profile_panel', profile_info['id'], function(embed_url) {
-                console.log(embed_url);
+            socket.emit('show_multiple_profiles', profile_info['id_list'], function(embed_url) {
                 if (embed_url) {
                     $('#profile_div').html('<iframe width="100%" height="100%" src="'+embed_url+'"></iframme>');
                 } else {
@@ -77,46 +59,44 @@ class Port_profile_viewer{
 
         let $select_div = $('<div>').attr('id', 'select_div');
         $content_div.append($select_div);
-        let $port_select = $('<select>').attr('id', 'port_select');
-        for (let i=0; i<port_profile_viewer_plugin.asset_port_profile_list.length; i++) {
-            let $option = $('<option>')
-                .attr('value', i)
-                .text(port_profile_viewer_plugin.asset_port_profile_list[i].port_name);
-            $port_select.append($option);
-        }
-        $port_select.change(port_profile_viewer_plugin.update_port_profile_list);
 
         let $profile_select = $('<select>').attr('id', 'profile_select');
-        for (let i=0; i<port_profile_viewer_plugin.asset_port_profile_list[0].profiles.length; i++) {
+        for (let i=0; i<port_profile_viewer_plugin.asset_port_profile_list.length; i++) {
+            let profile = port_profile_viewer_plugin.asset_port_profile_list[i];
+            let name = profile['port_type'] + ' - ' + profile['type'];
+            if (profile['uiname']) {
+                name = name + '(' + profile['uiname'] + ')';
+            }
+
             let $option = $('<option>')
                 .attr('value', i)
-                .text(port_profile_viewer_plugin.asset_port_profile_list[0].profiles[i].uiname);
+                .text(name);
             $profile_select.append($option);
         }
         $profile_select.change(port_profile_viewer_plugin.change_selected_profile);
 
-        $select_div.append($port_select);
         $select_div.append($profile_select);
 
-        let $show_similar_profiles_button = $('<button>')
-            .attr('id', 'show_similar_profiles_button')
-            .text('Show similar profiles')
-            .click(function() {
-                console.log("here");
-                let port_idx = $('#port_select').val();
-                let profile_idx = $('#profile_select').val();
-                let profile_info = port_profile_viewer_plugin.asset_port_profile_list[port_idx].profiles[profile_idx];
-                if (profile_info) {
-                    socket.emit('show_similar_profiles', profile_info['id'], function(embed_url) {
-                        if (embed_url) {
-                            $('#profile_div').html('<iframe width="100%" height="100%" src="'+embed_url+'"></iframme>');
-                        } else {
-                            $('#profile_div').html('<p>Error - no profile URL returned</p>');
-                        }
-                    });
-                }
-            });
-        $select_div.append($show_similar_profiles_button);
+        // Only show "similar profiles" button, when only one asset was selected
+        if (port_profile_viewer_plugin.asset_port_profile_list[0]['id_list'].length == 1) {
+            let $show_similar_profiles_button = $('<button>')
+                .attr('id', 'show_similar_profiles_button')
+                .text('Show similar profiles')
+                .click(function () {
+                    let profile_idx = $('#profile_select').val();
+                    let profile_info = port_profile_viewer_plugin.asset_port_profile_list[profile_idx];
+                    if (profile_info) {
+                        socket.emit('show_similar_profiles', profile_info.id_list[0], function (embed_url) {
+                            if (embed_url) {
+                                $('#profile_div').html('<iframe width="100%" height="100%" src="' + embed_url + '"></iframme>');
+                            } else {
+                                $('#profile_div').html('<p>Error - no profile URL returned</p>');
+                            }
+                        });
+                    }
+                });
+            $select_div.append($show_similar_profiles_button);
+        }
 
         let $profile_div = $('<div>').attr('id', 'profile_div');
         $content_div.append($profile_div);
@@ -125,7 +105,18 @@ class Port_profile_viewer{
     }
 
     request_profiles_for_asset(e, id) {
-        socket.emit('port_profile_viewer_request_asset', id, function(port_profile_list) {
+        let layer = e.relatedTarget;
+        let asset_list = [id];
+
+        if (select_assets.is_select_mode()) {
+            // One or more assets have been selected
+            if (select_assets.is_selected(layer)) {
+                // the current asset is part of this selection
+                asset_list = select_assets.get_selected_assets();
+            }
+        }
+
+        socket.emit('port_profile_viewer_request_asset', asset_list, function(port_profile_list) {
             port_profile_viewer_plugin.asset_port_profile_list = port_profile_list;
             port_profile_viewer_plugin.show_window();
         });
