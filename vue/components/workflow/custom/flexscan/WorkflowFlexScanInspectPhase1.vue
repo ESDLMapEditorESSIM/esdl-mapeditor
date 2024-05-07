@@ -1,12 +1,12 @@
 <template>
   <p>
-    Here you can find an overview of the FlexScan phase 1 results.
+    Here you can find an overview of the Flex Scan phase 1 results.
   </p>
   <p>
-    For now you can view the results in the FlexScan Dashoard.
+    For now you can view the results in the Flex Scan dashboard.
     If you have not yet confirmed these results, you can change them there.
   </p>
-  <a-button type="primary" :href="flexDashboardResultUrl" target="_blank">Go to FlexScan F1 results dashboard</a-button>
+  <a-button type="primary" :href="flexDashboardResultUrl" target="_blank">Go to Flex Scan F1 results dashboard</a-button>
 </template>
 
 <script setup="props">

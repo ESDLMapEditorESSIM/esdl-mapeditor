@@ -1,11 +1,11 @@
 <template>
   <p>
-    In the FlexSCan, the capacities of current and future flex assets on the business park can be estimated.
+    In the Flex Scan, the capacities of current and future flex assets on the business park can be estimated.
   </p>
   <p>
-    Click the button below to navigate to the FlexScan dashboard. In this dashboard, you can import the EPS data, run the FlexScan phase 1, and edit/correct its results if more information is available.
+    Click the button below to navigate to the Flex Scan dashboard. In this dashboard, you can import the EPS data, run the Flex Scan phase 1, and edit/correct its results if more information is available.
   </p>
-  <a-button type="primary" :href="flexDashboardImportEPSUrl" style="color: #fff" target="_blank">Go to FlexScan dashboard</a-button>
+  <a-button type="primary" :href="flexDashboardImportEPSUrl" style="color: #fff" target="_blank">Go to Flex Scan dashboard</a-button>
 </template>
 
 <script setup="props">

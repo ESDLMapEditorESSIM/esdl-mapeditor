@@ -456,20 +456,20 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                                 "next_step": 18,
                             },
-                            # FLEXSCAN F1
+                            # FLEX SCAN F1
                             {
-                                "name": "FlexScan phase 1 (F1)",
+                                "name": "Flex Scan phase 1 (F1)",
                                 "type": "header",
                             },
                             {
-                                "name": "Import EPS results into FlexScan",
+                                "name": "Import EPS results into Flex Scan",
                                 "type": "primary",
                                 "enable_if_state": "execution.success",
                                 "disable_if_state": "flexscanf1.imported",
                                 "next_step": 22,
                             },
                             {
-                                "name": "Load FlexScan F1",
+                                "name": "Load Flex Scan F1",
                                 "type": "primary",
                                 "enable_if_state": {
                                     "type": "every",
@@ -481,7 +481,7 @@ esdl_config = {
                                 "next_step": 24,
                             },
                             {
-                                "name": "Explore FlexScan F1 results",
+                                "name": "Explore Flex Scan F1 results",
                                 "type": "default",
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 26,
@@ -520,19 +520,19 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                                 "next_step": 28,
                             },
-                            # FLEXSCAN F2
+                            # FLEX SCAN F2
                             {
-                                "name": "FlexScan phase 2 (F2)",
+                                "name": "Flex Scan phase 2 (F2)",
                                 "type": "header",
                             },
                             {
-                                "name": "Export to FlexScan F2",
+                                "name": "Export to Flex Scan F2",
                                 "type": "primary",
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 29,
                             },
                             {
-                                "name": "Load FlexScan F2",
+                                "name": "Load Flex Scan F2",
                                 "type": "primary",
                                 "enable_if_state": "flexscanf2.loaded",
                                 "next_step": 30,
@@ -925,15 +925,15 @@ esdl_config = {
                         "component": "dice-upload-profiles",
                     },
                     # {
-                    #     # TODO: for future reference, if we ever want to start / run flexscan f1 from mapeditor
+                    #     # TODO: for future reference, if we ever want to start / run flex scan f1 from mapeditor
                     #     # 22
-                    #     "name": "Run FlexScan F1",
-                    #     "description": "Please wait a moment while we run the FlexScan phase 1",
+                    #     "name": "Run Flex Scan F1",
+                    #     "description": "Please wait a moment while we run the Flex Scan phase 1",
                     #     "type": "service",
                     #     "state_params": {"execution_id": "execution.id"},
                     #     "service": {
                     #         "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca0",
-                    #         "name": "Run FlexScan phase 1",
+                    #         "name": "Run Flex Scan phase 1",
                     #         "headers": {
                     #             "Accept": "application/json",
                     #             "User-Agent": "ESDL Mapeditor/0.1",
@@ -947,7 +947,7 @@ esdl_config = {
                     #             {
                     #                 "code": 200, 
                     #                 "action": "show_message",
-                    #                 "message": "FlexScan Phase 1 started",
+                    #                 "message": "Flex Scan Phase 1 started",
                     #             },
                     #         ],
                     #         "query_parameters": [
@@ -963,7 +963,7 @@ esdl_config = {
                     # },
                     {
                         # 22
-                        "name": "Import EPS data into FlexScan",
+                        "name": "Import EPS data into Flex Scan",
                         "description": "",
                         "type": "custom",
                         "component": "flexscan-import-eps",
@@ -973,10 +973,10 @@ esdl_config = {
                     },
                     {
                         # 23
-                        # TODO: placeholder for when we might allow multiple flexscan runs for a single EPS based on scenario (e.g. EPS measures)
-                        "name": "Load FlexScan F1 results",
-                        "description": "Load FlexScan phase 1 results. If no results are shown, you must first import the EPS data and/or accept the phase 1 results (see previous step).",
-                        "label": "Choose FlexScan F1 run",
+                        # TODO: placeholder for when we might allow multiple flex scan runs for a single EPS based on scenario (e.g. EPS measures)
+                        "name": "Load Flex Scan F1 results",
+                        "description": "Load Flex Scan phase 1 results. If no results are shown, you must first import the EPS data and/or accept the phase 1 results (see previous step).",
+                        "label": "Choose Flex Scan F1 run",
                         "type": "select-query",
                         "multiple": False,
                         "source": {
@@ -992,8 +992,8 @@ esdl_config = {
                     },
                     {
                         # 24
-                        "name": "Select FlexScan F1 year",
-                        "description": "Choose the year for which you want to load the FlexScan Phase 1 results. N.B. make sure to select the correct ESDL layer you wish to use as base for the FlexScan F1 results.",
+                        "name": "Select Flex Scan F1 year",
+                        "description": "Choose the year for which you want to load the Flex Scan Phase 1 results. N.B. make sure to select the correct ESDL layer you wish to use as base for the Flex Scan F1 results.",
                         "type": "choice",
                         "options": [
                             {
@@ -1025,7 +1025,7 @@ esdl_config = {
                     },
                     {
                         # 25
-                        "name": "Load FlexScan F1",
+                        "name": "Load Flex Scan F1",
                         "type": "service",
                         "state_params": {
                             "execution_id": "execution.id",
@@ -1033,7 +1033,7 @@ esdl_config = {
                         },
                         "service": {
                             "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
-                            "name": "Load FlexScan phase 1 results",
+                            "name": "Load Flex Scan phase 1 results",
                             "headers": {
                                 "Accept": "application/json",
                                 "User-Agent": "ESDL Mapeditor/0.1",
@@ -1053,7 +1053,7 @@ esdl_config = {
                                     "location": "url",
                                 },
                                 {
-                                    "name": "FlexScan F1 year",
+                                    "name": "Flex Scan F1 year",
                                     "parameter_name": "year",
                                     "location": "url",
                                 }
@@ -1068,8 +1068,8 @@ esdl_config = {
                     },
                     {
                         # 26
-                        # TODO: for now link to FlexScan dashboard F1 results table, optionally later this table could be displayed in the map-editor or KPI layers could be added like for EPS
-                        "name": "Explore FlexScan F1 results",
+                        # TODO: for now link to Flex Scan dashboard F1 results table, optionally later this table could be displayed in the map-editor or KPI layers could be added like for EPS
+                        "name": "Explore Flex Scan F1 results",
                         "description": "",
                         "type": "custom",
                         "component": "flexscan-inspect-phase1",
@@ -1096,7 +1096,7 @@ esdl_config = {
                     {
                         # 29
                         # TODO: choose correct type and implement
-                        "name": "Run/export for FlexScan F2",
+                        "name": "Run/export for Flex Scan F2",
                         "description": "",
                         "type": "text",
                         "text": "TODO: implement this step",
@@ -1104,7 +1104,7 @@ esdl_config = {
                     {
                         # 30
                         # TODO: choose correct type and implement
-                        "name": "Load FlexScan F2",
+                        "name": "Load Flex Scan F2",
                         "description": "",
                         "type": "text",
                         "text": "TODO: implement this step",
