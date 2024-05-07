@@ -6,7 +6,7 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 WORKDIR /src/js
 
 # Move the necessary files into the image.
-COPY yarn.lock .yarnrc.yml package.json vue.config.js babel.config.js .eslintrc.js .babelrc ./
+COPY yarn.lock .yarnrc.yml package.json vue.config.js babel.config.js .eslintrc.js ./
 COPY .yarn .yarn
 COPY static static
 COPY vue vue
