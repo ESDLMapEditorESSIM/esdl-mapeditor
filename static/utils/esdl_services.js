@@ -349,7 +349,7 @@ function show_service_settings(index, state=null) {
 
     let service = esdl_services_information[index];
     service_settings_div.innerHTML = '<h1>' + service['name'] + '</h1>';
-    service_settings_div.innerHTML += '<p>' + service['explanation'] + '</p>';
+    service_settings_div.innerHTML += '<p><i>' + service['explanation'] + '</i></p>';
 
     if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
         window.activate_service_workflow(index, service, state).then();
