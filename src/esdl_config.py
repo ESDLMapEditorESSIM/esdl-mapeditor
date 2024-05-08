@@ -503,19 +503,19 @@ esdl_config = {
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 32,
                             },
-                            # ERM
+                            # EHC
                             {
-                                "name": "ERM",
+                                "name": "EHC",
                                 "type": "header",
                             },
                             {
-                                "name": "Export to ERM",
+                                "name": "Export to EHC",
                                 "type": "primary",
                                 "enable_if_state": "execution.success",
                                 "next_step": 27,
                             },
                             {
-                                "name": "Load ERM",
+                                "name": "Load EHC",
                                 "type": "primary",
                                 "enable_if_state": "execution.success",
                                 "next_step": 28,
@@ -1080,18 +1080,18 @@ esdl_config = {
                     {
                         # 27
                         # TODO: choose correct type and implement
-                        "name": "Export for ERM",
+                        "name": "Export to EHC",
                         "description": "",
                         "type": "text",
-                        "text": "The currently active ESDL is being exported to the ERM...",
+                        "text": "The currently active ESDL is being exported to the EHC...",
                     },
                     {
                         # 28
                         # TODO: choose correct type and implement
-                        "name": "Load ERM",
+                        "name": "Load EHC",
                         "description": "",
                         "type": "text",
-                        "text": "TODO: implement this step",
+                        "text": "Work in progress...",
                     },
                     {
                         # 29
@@ -1099,7 +1099,7 @@ esdl_config = {
                         "name": "Run/export for Flex Scan F2",
                         "description": "",
                         "type": "text",
-                        "text": "TODO: implement this step",
+                        "text": "Work in progress...",
                     },
                     {
                         # 30
@@ -1107,7 +1107,7 @@ esdl_config = {
                         "name": "Load Flex Scan F2",
                         "description": "",
                         "type": "text",
-                        "text": "TODO: implement this step",
+                        "text": "Work in progress...",
                     },
                     {
                         # 31
@@ -1123,7 +1123,7 @@ esdl_config = {
                         "name": "Select energy hub assets",
                         "description": "",
                         "type": "text",
-                        "text": "TODO: implement this step",
+                        "text": "Work in progress...",
                     },
                     {
                         # 33
