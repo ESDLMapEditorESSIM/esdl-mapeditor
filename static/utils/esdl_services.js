@@ -259,8 +259,12 @@ function process_service_results(results) {
         }
     }
     if ('message' in results) {
-        service_results_div.innerHTML += `<p>${results["message"]}</p>`;
-        service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        if ($("#service_message").length) { // check if service_message exists already
+            $("#service_message").innerHTML = `${results["message"]}`;
+        } else {
+            service_results_div.innerHTML += `<p id="service_message">${results["message"]}</p>`;
+            service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        }
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
