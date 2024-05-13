@@ -194,7 +194,10 @@ const doGetData = async () => {
             }
           }
           //column.sortOrder = 'descend'; -> moved to config
-        }
+        } 
+      } else { 
+        // add default sorter otherwise
+        column.sorter = (a, b) => ('' + a[column.dataIndex]).localeCompare(b[column.dataIndex]);  // '' forces a string comparison
       }
     });
     let hasActionColumn = source.columns.find(o => o.key === 'action');
