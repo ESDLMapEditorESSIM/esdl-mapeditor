@@ -19,6 +19,7 @@ from typing import Optional
 from pyecore.commands import Command
 from pyecore.ecore import EObject, EReference
 from pyecore import commands as pyecore_commands
+from esdl import undo_pyecore_extensions as patched_pyecore
 
 from esdlproject import Variant, HighLevelChange, Add, Set, Delete, Remove
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
@@ -61,6 +62,7 @@ class LabelledAction(Command, UserList):
     def __repr__(self):
         return '{}(label={}: {})'.format(self.__class__.__name__, self.label, self.data)
 
+
 def convertActionToVariantChanges(action: LabelledAction, variant: Variant):
     """
     Convert an action, retrieved from the tracker stack, to a high level change containing the detailed changes which can be stored and serialized with projects.
@@ -89,7 +91,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
     if last_changed is not None and action.created < last_changed:
         print(f"Action  {action.label} already part of changes according to last_changed value, ignoring")
         return None
-    print(f"Converting LabelledAction {action.label} )")
+    print(f"Converting LabelledAction {action.label}")
     hlc = HighLevelChange(label=action.label, changedAt=datetime.now())  # EDate.from_string("2021-10-27T12:00:00")
     change_list = []
 
@@ -97,12 +99,11 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
         command: pyecore_commands.AbstractCommand
         change = None
         print(f"------ Handling {command}")
-        if isinstance(command, pyecore_commands.Add):
+        if isinstance(command, patched_pyecore.Add):
             if isinstance(command.value, EObject):  # could also be a numeric change or string change
                 if command.feature.containment:  # isinstance(command.feature, EReference):
                     # value = command.value.serialized_deepcopy(resource=self.active_resource) #clone()
                     value, x_ref_changes = deepcopy_eobject_change(command.value)
-                    # TODO make deepcopy() work
                     change = Add(
                         ownerFragment=command.owner.eURIFragment(),
                         feature=command.feature.name,
@@ -110,15 +111,21 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                     )
                     change_list.extend(x_ref_changes)
                 else:
-                    # this is a x-reference, zo add it to the changeList, to add it as last, otherwise
+                    # this is a x-reference, so add it to the changeList, to add it as last, otherwise
                     # some x-ref targets might not be available when deserializing
+                    # Additionally, values are deepcopy()-ed, so eURIFragment() does not work because
+                    # the object is disconnected from the object tree (and does not have a resource)
+                    # therefore, use the valueURIFragment, as the Add is based on existing objects in the object tree
+                    # and only a (cross)-reference is needed here.
                     try:
                         print(f"convertActionToVariantChanges(): using ref for {command.value} to "
-                              f"{command.value.eURIFragment()} ")
+                              f"{command.valueURIFragment} or {command.testURIFragment}, (and not:{command.value.eURIFragment()})")
                         change = Add(
                             ownerFragment=command.owner.eURIFragment(),
                             feature=command.feature.name,
-                            stringValue=command.value.eURIFragment(),
+                            stringValue=command.valueURIFragment
+                            # Warining: command.value.eURIFragment() is not available in deepcopy()
+                            # stringValue=command.value.eURIFragment(),
                         )
                         change_list.append(change)
                         change = None
@@ -135,7 +142,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                 print(f"TODO Add: convert {command.value} to something")
 
         # variant.changes.append(change)
-        if isinstance(command, pyecore_commands.Set):
+        elif isinstance(command, patched_pyecore.Set):
             if isinstance(command.value, EObject) or \
                     isinstance(command.previous_value, EObject):  # could also be a numeric change or string change
                 if isinstance(command.feature, EReference):
@@ -188,7 +195,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                     previousValue=previousValue,
                 )
 
-        if isinstance(command, pyecore_commands.Remove):
+        elif isinstance(command, patched_pyecore.Remove):
             if isinstance(command.value, EObject):  # could also be a numeric change or string change
                 if command.feature.containment:
                     change = Delete(ownerFragment=command.refURIFragment)  # see undo.py:289
@@ -201,8 +208,13 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                         feature=command.feature.name,
                         stringValue=ref,
                     )
+                    change_list.append(change)  # this is a cross reference removal, add it to the change list
+                                                # to filter out double connectedTo relations
+                    change = None
+        else:
+            print(f"       \\- ! Don\'t know how to handle' {command}")
 
-        if change:  # in case of x-ref: add it to the changeList instead directly in this list
+        if change:  # in case of x-ref: add it to the change_list instead directly in this list
             hlc.change.append(change)
 
     if len(change_list) > 0:  # add last, to make sure that x-ref targets are present

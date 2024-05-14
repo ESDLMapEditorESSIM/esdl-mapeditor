@@ -18,11 +18,12 @@ from typing import Optional, TypedDict, Any
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute, EClass
 from pyecore.resources import Resource
-from pyecore.commands import Set, Add, Delete, Remove, CommandStack, Command, AbstractCommand
+from pyecore.commands import CommandStack, Command, AbstractCommand, Compound
 
 from dataclasses import dataclass
 
 from esdl.resources.xmlresource import XMLResource
+from esdl.undo_pyecore_extensions import deepcopy_with_xrefs, Set, Add, Delete, Remove
 from esdl.undo_pyecore_patch import patch_notification_system
 from esdlproject.actions import LabelledAction
 
@@ -153,6 +154,9 @@ class UndoRedoCommandStack(CommandStack):
         self._recording = False  # suppress generated notifications for redo
         action = self.peek_next_top
         print('Undo', self.peek_next_top)
+
+        # TODO: following code is not necessary with updateResourceUUIDdict() now in place
+        # check if that is true
         for command in action:
             c: AbstractCommand = command
             if isinstance(c, Delete) or isinstance(c, Remove):
@@ -161,9 +165,12 @@ class UndoRedoCommandStack(CommandStack):
                 if c.feature.name != "connectedTo" and isinstance(value, EObject) and hasattr(value, 'id') and value.id is not None:
                     resource = value.eResource
                     # do removing from uuid_dict before removing it from the eResource
-                    print("Redo: remove from to uuid_dict", value.id, value)
                     if value.id in resource.uuid_dict:
-                        del resource.uuid_dict[value.id]
+                        print("Redo: remove from to uuid_dict", value.id, value)
+                        try:
+                            del resource.uuid_dict[value.id]
+                        except KeyError:
+                            pass
 
         super().redo()
         self._recording = True
@@ -180,6 +187,9 @@ class UndoRedoCommandStack(CommandStack):
         self.lastChanged = datetime.now()
         print('Undo', action)
         super().undo()
+
+        # TODO: following code is not necessary with updateResourceUUIDdict() now in place
+        # check if that is true
         for command in action:
             c: AbstractCommand = command
             if isinstance(c, Delete) or isinstance(c, Remove):
@@ -217,8 +227,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
         value = notification.new
         previous_value = notification.old
         if isinstance(value, EObject):
-            #value = notification.new.deepcopy() if notification.new else None
-            stack.pause_recording() # disable handling of events during deepcopy()
+            stack.pause_recording()  # disable handling of events during deepcopy() in code below
             value = notification.new.deepcopy() if notification.new else None
             previous_value = notification.old.deepcopy() if notification.old else None
             stack.continue_recording()
@@ -236,9 +245,13 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
                 print("  \ -- Ignoring opposite unset for ", f.name)
                 return
             if isinstance(f, EAttribute) or not f.containment:
-                unsetNotification = Set(owner=notification.notifier, feature=notification.feature, value=notification.new)
-                unsetNotification.previous_value = notification.old
-                unsetNotification.can_execute
+                stack.pause_recording()  # disable handling of events during deepcopy() in code below
+                value = notification.new.deepcopy() if notification.new else None
+                previous_value = notification.old.deepcopy() if notification.old else None
+                stack.continue_recording()
+                unsetNotification = Set(owner=notification.notifier, feature=notification.feature, value=value)
+                unsetNotification.previous_value = previous_value
+                unsetNotification.can_execute  # calls a property in notification, although it is a function... horrible python
                 print("\ -- [(Un)Set], not delete")
             else:
                 unsetNotification = Delete(owner=notification.old)
@@ -252,17 +265,42 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
             unsetNotification._executed = True
             stack.append(unsetNotification)
     elif notification.kind == Kind.ADD: # add an item to a collection
-        addNotification = Add(owner=notification.notifier, feature=notification.feature, value=notification.new)
-        addNotification.previous_value = notification.old
+        # make sure we get the current EObject /as is/ to make sure that later on we don't work with an updated
+        # version
+        stack.pause_recording()  # disable handling of events during deepcopy() in code below
+        #value = notification.new.deepcopy() if notification.new else None
+        #previous_value = notification.old.deepcopy() if notification.old else None
+        value, xrefs = deepcopy_with_xrefs(notification.new) if notification.new else (None, [])
+        previous_value, pref_xrefs = deepcopy_with_xrefs(notification.old) if notification.old else (None, [])
+        stack.continue_recording()
+        addNotification = Add(owner=notification.notifier, feature=notification.feature, value=value)
+        addNotification.valueURIFragment = notification.new.eURIFragment()
+        addNotification.previous_value = previous_value
         addNotification.index = notification.notifier.eGet(notification.feature).index(notification.new)
         addNotification._collection = notification.notifier.eGet(notification.feature)
+        addNotification.deepcopy = True
+        if notification.new and notification.new.eContainer():
+            addNotification.testURIFragment = notification.new.eContainer().eURIFragment() + \
+                                              '/@' + notification.new.eContainmentFeature().name + \
+                                              '.' + str(addNotification.index)
+        else:
+            addNotification.testURIFragment = None
         addNotification._executed = True
         stack.append(addNotification)
+        for command in xrefs:
+            stack.append(command)
     elif notification.kind == Kind.REMOVE: # remove eobject from collection
         if notification.old is not None:
-            removeNotification = Remove(owner=notification.notifier, feature=notification.feature, value=notification.old, index=None)
-            removeNotification.previous_value = notification.new
-            removeNotification.value = notification.old
+            stack.pause_recording()  # disable handling of events during deepcopy() in code below
+            #value = notification.old.deepcopy()
+            #previous_value = notification.new.deepcopy() if notification.new else None
+            value, xrefs = deepcopy_with_xrefs(notification.old) if notification.old else (None, [])
+            previous_value, pref_xrefs = deepcopy_with_xrefs(notification.new) if notification.new else (None, [])
+            stack.continue_recording()
+            removeNotification = Remove(owner=notification.notifier, feature=notification.feature, value=value, index=None)
+            removeNotification.previous_value = previous_value
+            removeNotification.deepcopy = True
+            #removeNotification.value = notification.old
             if notification.feature.many:
                 removeNotification._collection = notification.notifier.eGet(notification.feature)
                 print("\ -- [Remove] collection of {} has length {}".format(notification.feature.name, len(removeNotification._collection)))
@@ -281,6 +319,8 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
                 ownerFragment = notification.notifier.eURIFragment()
                 removeNotification.ownerFragment = ownerFragment
                 stack.append(removeNotification)
+                for command in xrefs:
+                    stack.append(command)
             except KeyError:
                 print("***************************************************** Not adding this remove, as the owner has been removed from the tree already")
                 pass #ignore this notification, as owner is not part of the tree anymore
@@ -294,7 +334,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     #     stack.append(deleteNotification)
     else:
         print("Not handled notification: ", notification)
-
+    stack.continue_recording()
     print("**** exit handleNotification ****")
 
 

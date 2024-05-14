@@ -12,7 +12,7 @@ from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker
 from esdlproject import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set
 from esdl.support_functions import clone, deepcopy
-from esdlproject.ChangeHandler import ChangeHandler
+from esdlproject.actions import convertActionToVariantChanges
 
 
 class VariantModelTestCase(unittest.TestCase):
@@ -139,18 +139,17 @@ class VariantModelTestCase(unittest.TestCase):
         undoredo.stop_recording()
 
         print(f'project resource: {project.eResource}: {project.eResource.uri}')
-        ch = ChangeHandler(es_resource)
         action = undoredo.top
-        ch.covertActionToVariantChanges(action, v1)
+        convertActionToVariantChanges(action, v1)
 
         print("** Current project after adding 1st pipe add: ")
         project_resource.save()
         print(project_resource.uri.getvalue())
 
-        snapshot1 = ch.createSnapshot2(v1, rset)
+        #snapshot1 = ch.createSnapshot2(v1, rset)
 
         print("Snapshot1: ")
-        print(ch.eobject_tree_to_string(snapshot1))
+        #print(ch.eobject_tree_to_string(snapshot1))
         #snapshot1.eResource.save()
         #uri: StringURI = snapshot1.eResource.uri
         #print(uri.getvalue())
@@ -173,7 +172,7 @@ class VariantModelTestCase(unittest.TestCase):
         v2 = Variant(name="Add 2nd pipe")
         v1.variant.append(v2)
         action = undoredo.top
-        ch.covertActionToVariantChanges(action, v2)
+        convertActionToVariantChanges(action, v2)
 
         print("current project after adding 2nd pipe and connect: ")
         project_resource.save()
@@ -181,16 +180,16 @@ class VariantModelTestCase(unittest.TestCase):
 
 
         print("Snapshot2: ")
-        snapshot2 = ch.createSnapshot2(v2, rset)
-        print(ch.eobject_tree_to_string(snapshot2))
+        #snapshot2 = ch.createSnapshot2(v2, rset)
+        #print(ch.eobject_tree_to_string(snapshot2))
 
-        rset_config = create_rset(project, snapshot2.deepcopy(), json=False)
+        #rset_config = create_rset(project, snapshot2.deepcopy(), json=False)
         # print(pprint(json.loads(to_string2(p,es))))
-        rset_config['project_resource'].save()
-        rset_config['es_resource'].save()
-        print("\n\n\nPrinting current state")
-        print(rset_config['project_uri'].getvalue())
-        print(rset_config['es_uri'].getvalue())
+        # rset_config['project_resource'].save()
+        # rset_config['es_resource'].save()
+        # print("\n\n\nPrinting current state")
+        # print(rset_config['project_uri'].getvalue())
+        # print(rset_config['es_uri'].getvalue())
 
 
 

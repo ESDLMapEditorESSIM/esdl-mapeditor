@@ -3,7 +3,7 @@ from typing import List, Tuple
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection
 
-from esdlproject import AbstractChange, Add, Set, DetailedChange
+from esdlproject import AbstractChange, Add, Set, DetailedChange, Remove
 
 import logging
 
@@ -91,6 +91,8 @@ def filterDoubleConnectedTo(changeList: List[DetailedChange]) -> List[DetailedCh
     otherList = []
     for ch in changeList:
         if isinstance(ch, Add) and ch.feature == 'connectedTo':
+            connectedToList.append(ch)
+        elif isinstance(ch, Remove) and ch.feature == 'connectedTo':
             connectedToList.append(ch)
         else:
             otherList.append(ch)

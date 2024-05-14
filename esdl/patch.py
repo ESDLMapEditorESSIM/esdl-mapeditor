@@ -61,4 +61,9 @@ def patch_esdl():
     esdl.EnergySystem.__repr__ = \
         lambda x: '{}: ({})'.format(x.name, esdl_attr_to_dict(x))
 
+    esdl.Port.__repr__ = \
+        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id={x.id}>'
+    esdl.Area.__repr__ = \
+        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id={x.id}>'
+
     setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)

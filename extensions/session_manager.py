@@ -82,11 +82,11 @@ def on_change_recorded(action):
     pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
     hlc = actionToHighlevelChange(action)
-    print(hlc)
 
     #options = {'encoder': DateTimeEncoder, 'indent': 2}
     options = {JsonOptions.INDENT: 2}
     hlc_string = eobject_to_string(hlc, ESDLFormat.JSON, options=options)
+    logger.debug(f"Sending HighLevelChange: {hlc_string}")
 
     # uri = StringURI("high_level_change.json")
     # resource = pm.rset.create_resource(uri)

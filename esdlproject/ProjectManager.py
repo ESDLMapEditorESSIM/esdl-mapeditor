@@ -989,8 +989,8 @@ class ProjectManager:
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
         print(self.to_debug_string())
-        print("Current ESDL:")
-        print(self.active_energy_system_to_string())
+        #print("Current ESDL:")
+        #print(self.active_energy_system_to_string())
             #for v in vc.variant.variant:
             #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
