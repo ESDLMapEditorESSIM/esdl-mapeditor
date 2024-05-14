@@ -882,6 +882,7 @@ z-index for jstree context menu, sidebar has 2000
     z-index: 2800;
 }
 
+.leaflet-ldc .title,
 .leaflet-td-assets-monitor .title {
     width: 100%;
     background-color: green;
@@ -889,8 +890,11 @@ z-index for jstree context menu, sidebar has 2000
     padding-left: 10px;
     padding-top: 1px;
     padding-bottom: 1px;
+    font-size: 16pt;
+    font-weight: normal;
 }
 
+.leaflet-ldc .content,
 .leaflet-td-assets-monitor .content {
     padding: 10px;
 }

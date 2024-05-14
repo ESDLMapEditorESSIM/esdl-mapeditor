@@ -38,7 +38,6 @@ from src.tno.shared import excel
 
 logger = log.get_logger(__name__)
 
-
 ESSIM_SIMULATION_LIST = 'ESSIM_simulations'
 ESSIM_FAVORITES_LIST = 'ESSIM_favorites'
 
@@ -49,7 +48,8 @@ def send_alert(message):
 
 
 class ESSIM:
-    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, essim_kpis: ESSIM_KPIs, settings_storage: SettingsStorage):
+    def __init__(self, flask_app: Flask, socket: SocketIO, executor: Executor, essim_kpis: ESSIM_KPIs,
+                 settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
@@ -66,7 +66,7 @@ class ESSIM:
             with self.flask_app.app_context():
                 esh = get_handler()
 
-                print('Set ESSIM simulationRun ID: '+sim_id)
+                print('Set ESSIM simulationRun ID: ' + sim_id)
                 set_session('simulationRun', sim_id)
 
                 try:
@@ -152,7 +152,8 @@ class ESSIM:
                                     edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
                                     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
                                     influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                                    self.essim_kpis.init_simulation(current_es, es_simid, influxdb_startdate, influxdb_enddate)
+                                    self.essim_kpis.init_simulation(current_es, es_simid, influxdb_startdate,
+                                                                    influxdb_enddate)
 
                                     return (jsonify({'status': status, 'url': dashboardURL,
                                                      'simulationRun': es_simid})), 200
@@ -162,7 +163,7 @@ class ESSIM:
                             else:
                                 if status == "CREATED":
                                     percentage = 0
-                                else:   # status == "RUNNING"
+                                else:  # status == "RUNNING"
                                     percentage = float(result["Description"])
                                 return (jsonify({'status': status, 'percentage': percentage,
                                                  'simulationRun': es_simid})), 200
@@ -423,13 +424,16 @@ class ESSIM:
                                     field_map[k] = k
 
                                 if not wb:
-                                    wb = excel.create_simple_excel_file(sheet_name=sheet_name, field_map=field_map, entities=pp_result)
+                                    wb = excel.create_simple_excel_file(sheet_name=sheet_name, field_map=field_map,
+                                                                        entities=pp_result)
                                 else:
-                                    wb = excel.add_excel_sheet(workbook=wb, sheet_name=sheet_name, field_map=field_map, entities=pp_result)
+                                    wb = excel.add_excel_sheet(workbook=wb, sheet_name=sheet_name, field_map=field_map,
+                                                               entities=pp_result)
 
                             excel_file_b64 = excel.base64encode_excel_file(wb)
 
-                            return json.dumps({'excel_file_b64': excel_file_b64, 'filename': f"{result['simulationDescription']}.xlsx"})
+                            return json.dumps({'excel_file_b64': excel_file_b64,
+                                               'filename': f"{result['simulationDescription']}.xlsx"})
                         else:
                             logger.error("Simulation results could not be retrieved")
                             return None
@@ -453,7 +457,8 @@ class ESSIM:
 
         return sim_list
 
-    def store_simulation(self, es_id, user_email, simulation_id, simulation_datetime, simulation_descr, simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
+    def store_simulation(self, es_id, user_email, simulation_id, simulation_datetime, simulation_descr,
+                         simulation_es_name=None, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None:
                 if self.settings_storage.has_user(user_email, essim_list):
@@ -476,7 +481,8 @@ class ESSIM:
                 # print(sim_list)
                 self.settings_storage.set_user(user_email, essim_list, sim_list)
 
-    def update_stored_simulation(self, user_email, simulation_id, param_name, param_value, essim_list=ESSIM_SIMULATION_LIST):
+    def update_stored_simulation(self, user_email, simulation_id, param_name, param_value,
+                                 essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
             if user_email is not None and self.settings_storage.has_user(user_email, essim_list):
                 sim_list = self.settings_storage.get_user(user_email, essim_list)
@@ -570,7 +576,9 @@ class ESSIM:
                     set_session('es_simid', sim_id)
                     print("ESSIM started, sim_id: " + sim_id)
 
-                    self.store_simulation(active_es_id, user_email, sim_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description, current_es_name)
+                    self.store_simulation(active_es_id, user_email, sim_id,
+                                          datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sim_description,
+                                          current_es_name)
                     # emit('', {})
 
                     active_simulation = {
@@ -589,7 +597,7 @@ class ESSIM:
                         'Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(
                             r.reason))
                     print('Error starting ESSIM simulation - response ' + str(r.status_code) + ' with reason: ' + str(
-                            r.reason))
+                        r.reason))
                     print(r.content)
                     # emit('', {})
                     return 0
@@ -637,12 +645,12 @@ class ESSIM:
 
         if kpi_result_list:
             kpis_per_simid = kpi_result_list["kpis_per_simid"]
-            if active_es_id != kpi_result_list["es_id"]:    # if this is a simulation of a new energy system
-                kpis_per_simid = dict()                     # start with an empty dict
-                kpi_result_list["es_id"] = active_es_id     # set the current es_id
-            kpis_per_simid[simid] = kpis_this_sim_run       # add the kpis of the last simulation run
+            if active_es_id != kpi_result_list["es_id"]:  # if this is a simulation of a new energy system
+                kpis_per_simid = dict()  # start with an empty dict
+                kpi_result_list["es_id"] = active_es_id  # set the current es_id
+            kpis_per_simid[simid] = kpis_this_sim_run  # add the kpis of the last simulation run
         else:
-            kpi_result_list = dict()                        # first KPIs for the energy system
+            kpi_result_list = dict()  # first KPIs for the energy system
             kpi_result_list["es_id"] = active_es_id
             kpi_result_list["kpis_per_simid"] = dict()
             kpi_result_list["kpis_per_simid"][simid] = kpis_this_sim_run

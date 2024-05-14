@@ -147,13 +147,16 @@ class TimeDimension:
 
         @self.socketio.on('td_monitor_asset', namespace='/esdl')
         def td_monitor_asset(info):
-            asset_id = info['id']
-            td_monitor_ids = get_session('td_monitor_ids')
-            if asset_id in td_monitor_ids:
-                td_monitor_ids.remove(asset_id)
+            if info:
+                asset_id = info['id']
+                td_monitor_ids = get_session('td_monitor_ids')
+                if asset_id in td_monitor_ids:
+                    td_monitor_ids.remove(asset_id)
+                else:
+                    td_monitor_ids.append(asset_id)
+                set_session('td_monitor_ids', td_monitor_ids)
             else:
-                td_monitor_ids.append(asset_id)
-            set_session('td_monitor_ids', td_monitor_ids)
+                set_session('td_monitor_ids', [])
 
         @self.socketio.on('request_load_duration_curve', namespace='/esdl')
         def request_load_duration_curve(info):
@@ -282,7 +285,7 @@ class TimeDimension:
         active_es_id = get_session('active_es_id')
         esh = get_handler()
         colors = dict()
-        num_default_colors = 0
+        color_index = 0
 
         es = esh.get_energy_system(active_es_id)
         esi = es.energySystemInformation
@@ -296,9 +299,9 @@ class TimeDimension:
                         colors[active_es_id + c.id] = {
                             "es_id": active_es_id,
                             "carrier_id": c.id,
-                            "color": default_colors[num_default_colors]
+                            "color": default_colors[color_index]
                         }
-                    num_default_colors += 1
+                    color_index += 1
 
         return colors
 
@@ -368,6 +371,7 @@ class TimeDimension:
 
         monitor_data = dict()
         logger.debug(monitor_asset_ids)
+        print(f"MON ASSET IDS: { monitor_asset_ids}")
         if monitor_asset_ids:
             start_cet = sdt.astimezone(pytz.timezone("Europe/Amsterdam"))
             date_cet = start_cet.strftime('%Y-%m-%d')

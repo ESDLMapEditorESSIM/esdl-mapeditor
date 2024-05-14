@@ -30,14 +30,14 @@ function update_layer_control_tree() {
         child = {
             label: es.title,
             children: [
-                { label: 'Area', layer: es.layers['area_layer'] },
-                { label: 'Assets', layer: es.layers['esdl_layer'] },
-                { label: 'Connections', layer: es.layers['connection_layer'] },
-                { label: 'Buildings', layer: es.layers['bld_layer'] },
-                { label: 'Potentials', layer: es.layers['pot_layer'] },
-                { label: 'KPIs', layer: es.layers['kpi_layer'] },
-                { label: 'Simulation results', layer: es.layers['sim_layer'] },
-                { label: 'Notes', layer: es.layers['notes_layer'] }
+                {label: 'Area', layer: es.layers['area_layer']},
+                {label: 'Assets', layer: es.layers['esdl_layer']},
+                {label: 'Connections', layer: es.layers['connection_layer']},
+                {label: 'Buildings', layer: es.layers['bld_layer']},
+                {label: 'Potentials', layer: es.layers['pot_layer']},
+                {label: 'KPIs', layer: es.layers['kpi_layer']},
+                {label: 'Simulation results', layer: es.layers['sim_layer']},
+                {label: 'Notes', layer: es.layers['notes_layer']}
             ]
         };
         esdl_layers.push(child)
@@ -68,7 +68,7 @@ function select_active_layer(active_esdl_layer) {
     if (Object.keys(bounds).length !== 0) {
         map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
     }
-    window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', { active_layer_id: active_layer_id });
+    window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', {active_layer_id: active_layer_id});
 }
 
 function add_select_esdl() {
@@ -83,9 +83,11 @@ function add_select_esdl() {
         var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
         for (let id in esdl_list) {
             es = esdl_list[id]
-            select += '<option id="'+es.id+'"';
-            if (es.id == active_layer_id) { select += ' selected'; }
-            select += '>'+es.title+'</option>';
+            select += '<option id="' + es.id + '"';
+            if (es.id == active_layer_id) {
+                select += ' selected';
+            }
+            select += '>' + es.title + '</option>';
         }
         select += '</select>';
         div.innerHTML += select;
@@ -129,9 +131,9 @@ function add_draw_control(dc, mp) {
                 repeatMode: true,
                 zIndexOffset: -2000, // for drawing using the port handlers
                 touchIcon: new L.DivIcon({ // create smaller touch icon
-			        iconSize: new L.Point(12, 12),
-		        	className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
-		        })
+                    iconSize: new L.Point(12, 12),
+                    className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
+                })
             },
             marker: {
                 icon: new WindTurbineMarker(),
@@ -202,7 +204,7 @@ function remove_esdl_layer(es_id) {
     // set new active_es_id
     let list = Object.keys(esdl_list);
     if (list.length > 0) {
-        active_es_id = list[list.length-1];  // select last esdl from the list
+        active_es_id = list[list.length - 1];  // select last esdl from the list
         es_bld_id = active_es_id
         select_active_layer(active_es_id);
     }
@@ -274,16 +276,16 @@ function get_layers(es_id, layer_name) {
 
 function find_layer_by_id(es_id, layer_name, id) {
     let layer_list = esdl_list[es_id].layers[layer_name].getLayers();
-    for (let i=0; i<layer_list.length; i++) {
+    for (let i = 0; i < layer_list.length; i++) {
         let layer = layer_list[i];
         if (layer instanceof L.GeoJSON) {     // building layer
-          let geojson_layer_list = Object.entries(layer._layers);   // _layers is an Object with ids as keys
-          for (let j=0; j<geojson_layer_list.length; j++) {
-            let geojson_layer = geojson_layer_list[j];
-            if (geojson_layer[1].feature.properties.id == id) {
-              return geojson_layer;
+            let geojson_layer_list = Object.entries(layer._layers);   // _layers is an Object with ids as keys
+            for (let j = 0; j < geojson_layer_list.length; j++) {
+                let geojson_layer = geojson_layer_list[j];
+                if (geojson_layer[1].feature.properties.id == id) {
+                    return geojson_layer;
+                }
             }
-          }
         } else if (layer.id == id) {
             return layer;
         }
@@ -313,40 +315,53 @@ function get_carrier_style_class_name(carrier_mapping) {
 }
 
 /**
-Creates a dynamic class based on a carrier color that can be added to ports
-*/
+ Creates a dynamic class based on a carrier color that can be added to ports
+ */
 function update_carrier_style_class(carrier_mapping) {
     let carrier_class_name = carrier_mapping.name;
     carrier_class_name = get_carrier_style_class_name(carrier_mapping);
     let carrier_color = carrier_mapping.color;
     // dynamically create a style we can add to the marker
-    if ( $("head").children("#"+carrier_class_name).length === 0) {
+    if ($("head").children("#" + carrier_class_name).length === 0) {
         // add only when class is not defined
-        let style = $("<style id="+carrier_class_name+" type='text/css'> ."+carrier_class_name+" { background: "+carrier_color+";} </style>");
+        let style = $("<style id=" + carrier_class_name + " type='text/css'> ." + carrier_class_name + " { background: " + carrier_color + ";} </style>");
         style.appendTo("head"); // add to <head> element
     } else {
-        $("head").children("#"+carrier_class_name).text('.'+carrier_class_name+' { background: '+carrier_color+';}');
+        $("head").children("#" + carrier_class_name).text('.' + carrier_class_name + ' { background: ' + carrier_color + ';}');
     }
 }
 
 // Copied colors from building_type_colors in area_building_layer.js
 // var conn_line_colors = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
-var conn_line_colors = ['#ff0000', '#0000ff', '#00ff00', '#800080', '#ffa500', '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a', '#ffff99', '#b15928']
+var conn_line_colors = [
+    '#ff0000',
+    '#0000ff',
+    '#00ff00',
+    '#800080',
+    '#ffa500',
+    '#e31a1c',
+    '#fdbf6f',
+    '#ff7f00',
+    '#cab2d6',
+    '#6a3d9a',
+    '#ffff99',
+    '#b15928'
+]
 
 function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
 
-    carrier_info_mapping = {};
-    carrier_info_mapping[0] = { color: '#808080', name: 'No carrier specified'}
-    carrier_info_mapping[1] = { color: '#FF0000', name: 'Conflicting carriers specified'}
+    let carrier_info_mapping = {};
+    carrier_info_mapping[0] = {color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[1] = {color: '#FF0000', name: 'Conflicting carriers specified'}
 
-    for (i=0; i<carrier_list.length; i++) {
+    for (let i = 0; i < carrier_list.length; i++) {
         let color = conn_line_colors[i % conn_line_colors.length]; // default color if no color stored
 
         if (carrier_color_dict) {
             if (es_id + carrier_list[i]['id'] in carrier_color_dict) {
                 color = carrier_color_dict[es_id + carrier_list[i]['id']]['color'];
-                console.log('found '+color+' in color_dict');
+                console.log('found ' + color + ' in color_dict');
             }
         }
         carrier_info_mapping[carrier_list[i].id] = {
