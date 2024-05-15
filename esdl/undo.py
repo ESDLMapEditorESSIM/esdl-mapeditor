@@ -43,9 +43,9 @@ class UndoRedoCommandStack:
     """
     def __init__(self, max_stack_length: int = 100, change_handler=None):
         # The actual changes. Right now it is a list of pyEcore commands.
-        self._stack = []
+        self.stack = []
         # The location in the stack where the last currently active change is stored.
-        self._stack_index = -1
+        self.stack_index = -1
         self._recording = False
         self._combine_commands = True
         self._compound = None
@@ -59,10 +59,10 @@ class UndoRedoCommandStack:
         Returns the element at the top of the stack. Returns None if the stack is empty or the stack index is out of
         bounds.
         """
-        if self._stack_index < 0:
+        if self.stack_index < 0:
             return None
         try:
-            return self._stack[self._stack_index]
+            return self.stack[self.stack_index]
         except IndexError:
             return None
 
@@ -71,15 +71,15 @@ class UndoRedoCommandStack:
         """
         Returns the element above the current top of the stack. Returns None if there is no such element.
         """
-        if self._stack_index + 1 >= len(self._stack):
+        if self.stack_index + 1 >= len(self.stack):
             return None
-        return self._stack[self._stack_index + 1]
+        return self.stack[self.stack_index + 1]
 
     def is_empty(self):
-        return len(self._stack) == 0
+        return len(self.stack) == 0
 
     def size(self):
-        return len(self._stack)
+        return len(self.stack)
 
     def start_recording(self, combine_commands: bool = True, label: str = None):
         """
@@ -180,17 +180,17 @@ class UndoRedoCommandStack:
                 else:
                     raise ValueError('Cannot execute command {}'.format(command))
 
-            index = self._stack_index + 1
-            self._stack[index:index] = [command]
-            self._stack_index = index
+            index = self.stack_index + 1
+            self.stack[index:index] = [command]
+            self.stack_index = index
             self.last_changed = datetime.now()
             print(f"Pushed {command} to the stack")
 
         # make sure the stack length is not larger than its max length
         if self.max_stack_length > 0:
-            while len(self._stack) > self.max_stack_length and len(self._stack) > 1:
-                self._stack.pop(0)
-                self._stack_index = self._stack_index - 1
+            while len(self.stack) > self.max_stack_length and len(self.stack) > 1:
+                self.stack.pop(0)
+                self.stack_index = self.stack_index - 1
 
     def can_redo(self):
         return self.next_top is not None
@@ -225,7 +225,7 @@ class UndoRedoCommandStack:
                                 pass
 
             self.next_top.redo()
-            self._stack_index += 1
+            self.stack_index += 1
 
     def can_undo(self):
         return self.top is not None
@@ -242,7 +242,7 @@ class UndoRedoCommandStack:
             print('Undo', action)
             if self.top.can_undo:
                 self.top.undo()
-                self._stack_index -= 1
+                self.stack_index -= 1
 
             # TODO: following code is not necessary with updateResourceUUIDdict() now in place
             # check if that is true
@@ -278,7 +278,7 @@ def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
     if not stack.is_recording():  # ignore all notifications when not recording
         #print('Ignoring ', notification)
         return
-    print(f"=== handleNotification ====== len(stack): {len(stack._stack)}, {notification} =============================")
+    print(f"=== handleNotification ====== len(stack): {len(stack.stack)}, {notification} =============================")
     if notification.old is None and notification.new is None:
         print('\ -- Ignoring (change=None)', notification)
         return
