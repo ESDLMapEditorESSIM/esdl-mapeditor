@@ -127,7 +127,7 @@ class VariantModelTestCase(unittest.TestCase):
 
         #undoredo: UndoRedoCommandStack = esh.change_tracker.get_tracker_stack(es)
         ct = ChangeTracker()
-        tracker = ct.newTracker( eobj=es )
+        tracker = ct.new_tracker(eobj=es)
         undoredo = tracker.stack
 
         undoredo.start_recording(label="Add Pipe")
@@ -158,7 +158,7 @@ class VariantModelTestCase(unittest.TestCase):
 
         #active_es_resource: XMLResource = self.get_or_create_resource(rset, StringURI('active.esdl'))
         #rset.resources['active.esdl'].contents[0]
-        ct.newTracker(eobj=rset.resources[StringURI('active.esdl').normalize()].contents[0])
+        ct.new_tracker(eobj=rset.resources[StringURI('active.esdl').normalize()].contents[0])
 
         undoredo = tracker.stack
         undoredo.start_recording(label="add 2nd pipe and connect")

@@ -26,7 +26,7 @@ def main():
 
     es: esdl.EnergySystem = esh.energy_system
 
-    stack.start_recording(combineCommands=True, label="add pipes")
+    stack.start_recording(combine_commands=True, label="add pipes")
     pipe1 = esdl.Pipe(name="TestPipe1", id='TestPipe1')
     pipe2 = esdl.Pipe(name="TestPipe2", id='TestPipe2')
     ip1 = esdl.InPort(name="Pipe1IP1", id="Pipe1IP1")
@@ -51,7 +51,7 @@ def main():
 
     print("\n\n====================================== TEST 2: delete InPort 1 of Pipe1 ===========================\n")
 
-    stack.start_recording(combineCommands=True, label="Delete Port1")
+    stack.start_recording(combine_commands=True, label="Delete Port1")
     print("Ports of Pipe1 before port delete:", pipe1.port)
     print("Ports of Pipe1 before connectedTo:", pipe1.port[0].connectedTo)
     assert len(pipe1.port) == 1
@@ -67,7 +67,7 @@ def main():
     assert pipe1.port[0].connectedTo[0] == op1
 
     print("\n\n====================================== TEST 3: delete all of Pipe1 ===========================\n")
-    stack.start_recording(combineCommands=True, label="Delete Pipe1")
+    stack.start_recording(combine_commands=True, label="Delete Pipe1")
     print('Before deletion assets:', [a.name for a in es.instance[0].area.asset])
     assert len(es.instance[0].area.asset) == 5
     pipe1.delete(recursive=True)

@@ -159,7 +159,7 @@ class ProjectManager:
         variant_snapshot = self.get_variant_snapshot(self.active_variant)
         active_tracker = self.change_tracker.get_tracker(variant_snapshot)
         if active_tracker is None:
-            active_tracker = self.change_tracker.newTracker(variant_snapshot)
+            active_tracker = self.change_tracker.new_tracker(variant_snapshot)
         return active_tracker
 
     def add_change_listener(self, listener_id: str, call_back_fun):
@@ -434,7 +434,7 @@ class ProjectManager:
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
         if tracker is None:
-            tracker = self.change_tracker.newTracker(resource=resource)
+            tracker = self.change_tracker.new_tracker(resource=resource)
         for high_level_change in variant.change:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:

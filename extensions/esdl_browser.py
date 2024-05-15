@@ -59,7 +59,7 @@ class ESDLBrowser:
             pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             stack = pm.change_tracker.get_tracker_stack(pm.get_active_energy_system())
-            stack.start_recording(combineCommands=True, label='Create {}'.format(message['type']))
+            stack.start_recording(combine_commands=True, label='Create {}'.format(message['type']))
             parent_object = self.get_object_from_identifier(message['parent'])
             reference_name = message['name']
             attribute = parent_object.eClass.findEStructuralFeature(reference_name)
@@ -93,7 +93,7 @@ class ESDLBrowser:
             stack = pm.get_undo_redo_stack(es_id=active_es_id)
             ref_object = self.get_object_from_identifier(message['ref_id'])
             parent_object = self.get_object_from_identifier(message['parent'])
-            stack.start_recording(combineCommands=True,
+            stack.start_recording(combine_commands=True,
                                   label='Delete {} {} of {}'.format(ref_object.eClass.name,
                                       ref_object.name if hasattr(ref_object, 'name') else "",
                                       parent_object.name if hasattr(parent_object, 'name') else parent_object.eClass.name
@@ -162,7 +162,7 @@ class ESDLBrowser:
                 message['name'],
                 xref.name if hasattr(xref, 'name') else xref.eClass.name
             )
-            stack.start_recording(combineCommands=True, label=description)
+            stack.start_recording(combine_commands=True, label=description)
             if not reference.many:
                 parent_object.eSet(reference, xref)
             else:

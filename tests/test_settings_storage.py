@@ -9,11 +9,11 @@ MONGO_TEST_SERVER_HOST = "mongo.unittests.com"
 MONGO_TEST_SERVER_PORT = 27017
 TEST_IDENTIFIER = 'test@example.com'
 
+
 class TestSettingsStorage(unittest.TestCase):
     @mongomock.patch(servers=((MONGO_TEST_SERVER_HOST, MONGO_TEST_SERVER_PORT),))
     def setUp(self):
         named_locker = NamedLocker()
-        # TODO: Either mock the mongo database or make configuration configurable.
         self.settings_storage = SettingsStorage(
             named_locker,
             database_uri=f"mongodb://{MONGO_TEST_SERVER_HOST}:{MONGO_TEST_SERVER_PORT}/test_db",
