@@ -247,12 +247,11 @@ function get_boundary_info(obj) {
     let initialize_ES = document.getElementById('initialize_ES').checked;
     let add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
 
+    let add_service_area_info = false;
+    let add_station_info = false;
     if (check_role('service_area_service')) {
-        let add_service_area_info = document.getElementById('service_area_dso').checked;
-        let add_station_info = document.getElementById('station_dso').checked;
-    } else {
-        let add_service_area_info = false;
-        let add_station_info = false;
+        add_service_area_info = document.getElementById('service_area_dso').checked;
+        add_station_info = document.getElementById('station_dso').checked;
     }
 
     show_loader();
