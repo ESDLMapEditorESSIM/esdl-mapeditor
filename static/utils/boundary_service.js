@@ -236,18 +236,24 @@ function boundary_info_window() {
 
 function get_boundary_info(obj) {
 //    identifier = document.getElementById('identifier').value;
-    identifier = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].value;
-    toparea_name = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].text;
-    scope = document.getElementById('scope').value;
-    subscope_enabled = document.getElementById('cb_subareas').checked;
-    add_toparea = document.getElementById('cb_include_toparea').checked;
-    subscope = document.getElementById('subscope').value;
-    select_subareas = document.getElementById('cb_select_subareas').checked;
-    selected_subareas = $('#select_subareas').val();
-    initialize_ES = document.getElementById('initialize_ES').checked;
-    add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
-    add_service_area_info = document.getElementById('service_area_dso').checked;
-    add_station_info = document.getElementById('station_dso').checked;
+    let identifier = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].value;
+    let toparea_name = document.getElementById('boundary_identifier').options[document.getElementById('boundary_identifier').selectedIndex].text;
+    let scope = document.getElementById('scope').value;
+    let subscope_enabled = document.getElementById('cb_subareas').checked;
+    let add_toparea = document.getElementById('cb_include_toparea').checked;
+    let subscope = document.getElementById('subscope').value;
+    let select_subareas = document.getElementById('cb_select_subareas').checked;
+    let selected_subareas = $('#select_subareas').val();
+    let initialize_ES = document.getElementById('initialize_ES').checked;
+    let add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
+
+    if (check_role('service_area_service')) {
+        let add_service_area_info = document.getElementById('service_area_dso').checked;
+        let add_station_info = document.getElementById('station_dso').checked;
+    } else {
+        let add_service_area_info = false;
+        let add_station_info = false;
+    }
 
     show_loader();
     socket.emit('get_boundary_info', {identifier: identifier, toparea_name: toparea_name, scope: scope,
