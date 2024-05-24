@@ -1,7 +1,5 @@
 """Definition of meta model 'esdlproject'."""
 from functools import partial
-from typing import List
-
 import pyecore.ecore as Ecore
 from pyecore.ecore import *
 
@@ -51,7 +49,7 @@ When serializing the changes of a variant are serialized in XML. """
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     change = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
-    variant: List = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    variant = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     parentVariant = EReference(ordered=True, unique=True, containment=False, derived=False)
     snapshot = EReference(ordered=True, unique=True, containment=True, derived=False)
     variantCollection = EReference(ordered=True, unique=True, containment=False, derived=False)
@@ -123,7 +121,7 @@ class VariantCollection(EObject, metaclass=MetaEClass):
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     lastChanged = EAttribute(eType=EDate, unique=True, derived=False, changeable=True)
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
-    variant: Variant = EReference(ordered=True, unique=True, containment=True, derived=False)
+    variant = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystem = EReference(ordered=True, unique=True, containment=True, derived=False)
     energysystemRef = EReference(ordered=True, unique=True, containment=False, derived=False)
 
@@ -186,11 +184,15 @@ class DetailedChange(AbstractChange):
     previousValue = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     feature = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     ownerFragment = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    objectFragment = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     owner = EReference(ordered=True, unique=True, containment=False, derived=False)
     objectValue = EReference(ordered=True, unique=True, containment=True, derived=False)
-    objectReference = EReference(ordered=True, unique=True, containment=False, derived=False)
+    objectValue_xrefs = EReference(ordered=True, unique=True,
+                                   containment=True, derived=False, upper=-1)
+    previousValue_xrefs = EReference(ordered=True, unique=True,
+                                     containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, owner=None, stringValue=None, previousValue=None, feature=None, objectValue=None, objectReference=None, ownerFragment=None, **kwargs):
+    def __init__(self, *, owner=None, stringValue=None, previousValue=None, feature=None, objectValue=None, ownerFragment=None, objectValue_xrefs=None, previousValue_xrefs=None, objectFragment=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -206,14 +208,20 @@ class DetailedChange(AbstractChange):
         if ownerFragment is not None:
             self.ownerFragment = ownerFragment
 
+        if objectFragment is not None:
+            self.objectFragment = objectFragment
+
         if owner is not None:
             self.owner = owner
 
         if objectValue is not None:
             self.objectValue = objectValue
 
-        if objectReference is not None:
-            self.objectReference = objectReference
+        if objectValue_xrefs:
+            self.objectValue_xrefs.extend(objectValue_xrefs)
+
+        if previousValue_xrefs:
+            self.previousValue_xrefs.extend(previousValue_xrefs)
 
 
 class Set(DetailedChange):

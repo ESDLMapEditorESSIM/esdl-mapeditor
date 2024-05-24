@@ -108,6 +108,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                         ownerFragment=command.owner.eURIFragment(),
                         feature=command.feature.name,
                         objectValue=value,
+                        #objectReference=command.value.eURIFragment()
                     )
                     change_list.extend(x_ref_changes)
                 else:
@@ -152,6 +153,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                             ownerFragment=command.owner.eURIFragment(),
                             feature=command.feature.name,
                             objectValue=value,
+                            previousValue=command.previous_value
                         )
                         change_list.extend(x_ref_changes)
                     else:
@@ -165,6 +167,7 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
                             ownerFragment=command.owner.eURIFragment(),
                             feature=command.feature.name,
                             stringValue=refValue,
+                            previousValue=command.previous_valueURIFragment
                         )
                 else: # EAttribute and possibly EEnum, see if we can merge this with else: below
                     previousValue = None
@@ -198,7 +201,10 @@ def actionToHighlevelChange(action: LabelledAction, last_changed: datetime = Non
         elif isinstance(command, patched_pyecore.Remove):
             if isinstance(command.value, EObject):  # could also be a numeric change or string change
                 if command.feature.containment:
-                    change = Delete(ownerFragment=command.refURIFragment)  # see undo.py:289
+                    #change = Delete(ownerFragment=command.refURIFragment)  # see undo.py:289
+                    value, x_ref_changes = deepcopy_eobject_change(command.value)
+                    change = Delete(ownerFragment=command.owner.eURIFragment(), feature=command.feature, stringValue=command.refURIFragment, objectValue=value)  # see undo.py:289
+                    change_list.extend(x_ref_changes)
                 else:
                     # owner = command.owner.eURIFragment()
                     owner = command.ownerFragment

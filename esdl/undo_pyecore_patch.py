@@ -157,5 +157,5 @@ def patch_notification_system():
             #previous_value._container = None
             #previous_value._containment_feature = None
 
-    setattr(PyEcoreValue, '_update_container', _update_container)
+    #setattr(PyEcoreValue, '_update_container', _update_container)
 

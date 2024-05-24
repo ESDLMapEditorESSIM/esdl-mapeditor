@@ -99,11 +99,11 @@ def filterDoubleConnectedTo(changeList: List[DetailedChange]) -> List[DetailedCh
     for i,change in enumerate(connectedToList):
         for j,change2 in enumerate(connectedToList[i+1:]):
             #k = i+1+j
-            if change.ownerFragment == change2.stringValue and change2.ownerFragment == change.stringValue:
+            if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment:
                 # change2 is double
                 #print(f'DoubleConnectedTo: {i} remove {j}/{k}: {change2.ownerFragment} <-> {change2.stringValue}')
                 connectedToList.remove(change2)
-            elif change.ownerFragment == change2.ownerFragment and change2.stringValue == change.stringValue:
+            elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
                 #print(f'DoubleConnectedTo: {i}remove {j}/{k} {change2.ownerFragment} <-> {change2.stringValue}')
                 connectedToList.remove(change2)
     otherList.extend(connectedToList)

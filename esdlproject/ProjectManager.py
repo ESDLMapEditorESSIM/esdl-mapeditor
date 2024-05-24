@@ -20,6 +20,7 @@ from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, 
     VariantCollection
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 from esdlproject.actions import convertActionToVariantChanges
+from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
 import src.log as log
@@ -159,7 +160,7 @@ class ProjectManager:
         variant_snapshot = self.get_variant_snapshot(self.active_variant)
         active_tracker = self.change_tracker.get_tracker(variant_snapshot)
         if active_tracker is None:
-            active_tracker = self.change_tracker.new_tracker(variant_snapshot)
+            active_tracker = self.change_tracker.new_tracker(self.active_variant, variant_snapshot)
         return active_tracker
 
     def add_change_listener(self, listener_id: str, call_back_fun):
@@ -434,91 +435,20 @@ class ProjectManager:
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
         if tracker is None:
-            tracker = self.change_tracker.new_tracker(resource=resource)
+            tracker = self.change_tracker.new_tracker(variant=variant, resource=resource)
         for high_level_change in variant.change:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
                 print(f"Handling High level change {high_level_change.label}")
                 for change in high_level_change.change:
-                    self.processChange(change, resource)
+                    applyChange(change, resource)
                 if record_changes:
                     tracker.stack.stop_recording()
             else:
                 print(f"Fixme: ignoring DetailedChanges at this level")
 
-    def processChange(self, change, resource: XMLResource):
-        """
-        Process a change and apply it to the given resource.
 
-        :param change: the change to apply
-        :param resource: the resource to apply the change to
-        """
-        print(
-            f"Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}"
-        )
-        if isinstance(change, Set):
-            if change.objectValue is not None:
-                print(f"\- Set change applied to {change.ownerFragment}")
-                owner = resource.resolve(change.ownerFragment)
-                owner.eSet(change.feature, change.objectValue.deepcopy())
-            elif change.stringValue is not None:
-                owner = resource.resolve(change.ownerFragment)
-                feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
-                if isinstance(feature, EAttribute):
-                    owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
-                else:  # eReference and not many
-                    if change.stringValue == "":
-                        owner.eSet(change.feature, None)
-                    else:
-                        target = resource.resolve(change.stringValue)
-                        owner.eSet(change.feature, target)
-
-        elif isinstance(change, Add):
-            if change.objectValue is not None:
-                print(f"\- Add change applied to {change.ownerFragment}")
-                owner = resource.resolve(change.ownerFragment)
-                abstractList = owner.eGet(change.feature)
-                abstractList.append(change.objectValue.deepcopy())
-            elif change.objectReference:
-                print("\- processChange() - Not implemented change.objectReference")
-            elif change.stringValue:
-                owner: EObject = resource.resolve(change.ownerFragment)
-                abstractList = owner.eGet(change.feature)
-                eClass: EClass = owner.eClass
-                feature: EStructuralFeature = eClass.findEStructuralFeature(change.feature)
-                if isinstance(feature, EReference):
-                    eReference: EReference = feature
-                    if eReference.containment:
-                        print("processChange(): Not handled reference.containment")
-                    else:
-                        print(f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}")
-                        ref = resource.resolve(change.stringValue)
-                        abstractList.append(ref)
-                else:
-                    print(f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
-                    abstractList.append(change.stringValue)
-        elif isinstance(change, Remove):
-            # remove a value or reference from a list
-            try:
-                owner: EObject = resource.resolve(change.ownerFragment)
-            except ValueError:
-                print(f"\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
-                return
-            feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
-            abstractList = owner.eGet(change.feature)
-            if isinstance(feature, EReference):
-                try:
-                    ref = resource.resolve(change.stringValue)
-                    abstractList.remove(ref)
-                except Exception:
-                    print(f"\- ###: Cannot execute change, resolving of {change.stringValue} failed")
-            else:
-                # stringvalue is a value (enum, string, int, etc)
-                abstractList.remove(feature.eType.from_string(change.stringValue))
-        elif isinstance(change, Delete):
-            owner: EObject = resource.resolve(change.ownerFragment)
-            owner.delete()
 
     def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """"

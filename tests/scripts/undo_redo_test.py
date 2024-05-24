@@ -36,7 +36,7 @@ def test():
     resource = esh.get_resource(es.id)
     print(resource.uri.plain)
     from esdl.undo import ResourceObserver
-    ro = ResourceObserver(command_stack=stack)
+    ro = ResourceObserver(changes_stack=stack)
 
     ro.observe(resource)
 
