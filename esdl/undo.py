@@ -144,6 +144,8 @@ class UndoRedoCommandStack:
         if self._hlc is not None and len(self._hlc.change) > 0:
             # filter out eOpposite relations that are double (e.g. connectedTo)
             filtered = filterDoubleConnectedTo(self._hlc.change)
+            if len(filtered) != len(self._hlc.change):
+                print(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
             self._hlc.change = filtered
             self.push(self._hlc)
 
@@ -232,21 +234,22 @@ class UndoRedoCommandStack:
             print("Cannot redo while recording combined commands")
             return
 
-        print('Redo', self.next_top)
-        if self.next_top is None:
-            return
 
         #self.next_top.redo()
-        with self.pause_recording():
-            if isinstance(self.next_top, ep.HighLevelChange):
-                for change in self.next_top.change:
-                    applyChange(change, self.resource)
-            else:
-                applyChange(self.next_top, self.resource)
-        self.stack_index += 1
+        if self.can_redo():
+            print('Redo', self.next_top)
+            with self.pause_recording():
+                if isinstance(self.next_top, ep.HighLevelChange):
+                    for change in self.next_top.change:
+                        applyChange(change, self.resource)
+                else:
+                    applyChange(self.next_top, self.resource)
+            self.stack_index += 1
+        else:
+            print("Cannot Redo")
 
     def can_undo(self):
-        return self.top is not None
+        return self.top is not None and len(self) > 0
 
     def undo(self):
         if self._combine_multiple_changes is True:
@@ -259,7 +262,7 @@ class UndoRedoCommandStack:
             self.last_changed = datetime.now()
             print('Undo', abstract_change)
             #if self.top.can_undo:
-            if self.can_undo:
+            if self.can_undo():
                 # self.top.undo()
                 if isinstance(self.top, ep.HighLevelChange):
                     for change in reversed(self.top.change):
@@ -267,6 +270,8 @@ class UndoRedoCommandStack:
                 else:
                     undoChange(self.top, self.resource)
                 self.stack_index -= 1
+            else:
+                print("Cannot undo")
 
     def __len__(self):
         return len(self.stack)
@@ -434,11 +439,20 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     if not stack.is_recording():  # ignore all notifications when not recording
         #print('Ignoring ', notification)
         return
-    print(f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} =============================")
+
     if notification.old is None and notification.new is None:
-        print('\ -- Ignoring (change=None)', notification)
+        #print('\ -- Ignoring (change=None)', notification)
         return
-    print('Handling', notification)
+
+    if (notification.kind == Kind.SET or notification.kind == Kind.UNSET) and \
+            isinstance(notification.feature, EReference) and notification.feature.eOpposite and \
+            notification.feature.eOpposite.containment:
+        # bi-directional references generate 2 notifications, we can ignore the opposite
+        # SET and UNSET operations (e.g. asset.area and port.energyasset)
+        #print("  \ -- Ignoring opposite setters for", f.name)
+        return
+
+    change = None
     feature_name = notification.feature.name
     value = notification.new
     previous_value = notification.old
@@ -448,15 +462,21 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     if isinstance(value, EObject) or isinstance(previous_value, EObject):
         # disable handling of events during deepcopy() in code below
         with stack.pause_recording():
-            value, value_x_refs = deepcopy_eobject_change(notification.new) if notification.new else (None, [])
-            previous_value, prev_value_x_refs = deepcopy_eobject_change(notification.old) if notification.old else (None, [])
+            try:
+                value, value_x_refs = deepcopy_eobject_change(notification.new) if notification.new else (None, [])
+                previous_value, prev_value_x_refs = deepcopy_eobject_change(notification.old) if notification.old else (None, [])
+            except KeyError:
+                # object already removed from tree, ignore
+                print("\\ object alread removed from tree, ignore...")
+                return
 
+    print(f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} =============================")
     if notification.kind == Kind.SET or notification.kind == Kind.UNSET:
-        f: EStructuralFeature = notification.feature
-        if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
-            print("  \ -- Ignoring opposite setters for", f.name)
-            return
-
+        # f: EStructuralFeature = notification.feature
+        # if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
+        #     # bi-directional references generate 2 notifications, we can ignore the opposite
+        #     print("  \ -- Ignoring opposite setters for", f.name)
+        #     return
         owner_fragment = notification.notifier.eURIFragment()
         if isinstance(notification.feature, EReference):
             if notification.feature.containment:
@@ -466,9 +486,8 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 previous_value = notification.old.eURIFragment() if notification.old else None
                 change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
                                 objectFragment=notification.new.eURIFragment()
-                                if notification.kind == Kind.SET else notification.old.eURIFragment(),
-                                previousValue=previous_value
-                                if notification.kind == Kind.SET else notification.new.eURIFragment())
+                                if notification.kind == Kind.SET else None,
+                                previousValue=previous_value)
         else:  # EAttribute
             previous_value = None
             if notification.new is None:
@@ -486,11 +505,16 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         if notification.feature.containment:
             change = ep.Add(ownerFragment=owner_fragment, feature=feature_name, objectValue=value,
                             objectFragment=notification.new.eURIFragment())
-            change.objectValue_xrefs.extend(value_x_refs)
+            #change.objectValue_xrefs.extend(value_x_refs)
         else:
             change = ep.Add(ownerFragment=owner_fragment, feature=feature_name,
                             objectFragment=notification.new.eURIFragment())
+
     elif notification.kind == Kind.REMOVE:  # remove eobject from collection, only .old is available as previous value
+        f = notification.feature
+        if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
+            # bi-directional references generate 2 notifications, we can ignore the opposite
+            print("  \ -- f.eOpposite and f.eOposite.containment", f.name)
         owner_fragment = notification.notifier.eURIFragment()
         if notification.feature.containment:
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
@@ -499,8 +523,38 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         else:  # remove a reference
             change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name,
                                objectFragment=notification.old.eURIFragment())
+            # TODO check if this is true:
+            # if we remove a reference, we don't need to do a deepcopy and
+            # we don't need to add x-refs
+            prev_value_x_refs = []
+            value_x_refs = []
+
+    elif notification.kind == Kind.REMOVE_MANY:  # remove eobject from collection, only .old is available as previous value
+        f = notification.feature
+        if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
+            # bi-directional references generate 2 notifications, we can ignore the opposite
+            print("  \ -- f.eOpposite and f.eOposite.containment", f.name)
+        owner_fragment = notification.notifier.eURIFragment()
+        if notification.feature.containment:
+            if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
+                for obj in notification.old:
+                    copy, xrefs = deepcopy_eobject_change(value)
+                    change = ep.Delete(ownerFragment=owner_fragment, feature=feature_name, objectValue=copy,
+                                       objectFragment=obj.eURIFragment())
+                    change.previousValue_xrefs.extend(filterDoubleConnectedTo(xrefs))
+                    # manually add multiple changes to the stack
+                    stack.push(change)
+                    change = None
+        else:  # remove a reference
+            for obj in notification.old:
+                change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name,
+                                   objectFragment=obj.eURIFragment())
+                stack.push(change)
+                change = None
     else:
         print("Not converted notification: ", notification)
+
+
 
     # add possible xrefs from a deepcopy
     if len(value_x_refs) > 0:
@@ -515,8 +569,6 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         change.previousValue_xrefs.extend(cleaned_change_list)
     if change:
         stack.push(change)
-    else:
-        print(f'####################################  Warning, not handled {notification}')
     print("**** exit convertNotificationToChange ****")
 
 

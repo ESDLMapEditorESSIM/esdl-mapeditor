@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 from pyecore.ecore import EStructuralFeature, EAttribute, EObject, EClass, EReference
+from pyecore.valuecontainer import ECollection
 
 from esdl.resources.xmlresource import XMLResource
 from esdlproject import Set, Add, Remove, Delete
@@ -29,7 +30,7 @@ def applyChange(change, resource: XMLResource):
     )
     if isinstance(change, Set):
         if change.objectValue is not None:
-            print(f"\- Set change applied to {change.ownerFragment}")
+            print(f"\\- Set change applied to {change.ownerFragment}")
             owner = resource.resolve(change.ownerFragment)
             owner.eSet(change.feature, change.objectValue.deepcopy())
         elif change.stringValue is not None:
@@ -41,23 +42,31 @@ def applyChange(change, resource: XMLResource):
                 if change.stringValue == "":
                     owner.eSet(change.feature, None)
                 else:
+                    # todo, this case is handled with objectFragment nowadays instead of stringValue...
                     target = resource.resolve(change.stringValue)
                     owner.eSet(change.feature, target)
+        elif change.objectFragment is not None:
+            owner = resource.resolve(change.ownerFragment)
+            #feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
+            target = resource.resolve(change.objectFragment)
+            owner.eSet(change.feature, target)
+        else:
+            print("Missing case for SET", change)
 
     elif isinstance(change, Add):
         if change.objectValue is not None:
-            print(f"\- Add change applied to {change.ownerFragment} using objectValue")
+            print(f"\\- Add change applied to {change.ownerFragment} using objectValue")
             owner = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
             abstractList.append(change.objectValue.deepcopy())
         elif change.objectFragment:
-            print(f"\- Add change applied to {change.ownerFragment} using objectFragment")
+            print(f"\\- Add change applied to {change.ownerFragment} using objectFragment {change.objectFragment}")
             owner = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
             target_reference = resource.resolve(change.objectFragment)
             abstractList.append(target_reference)
         elif change.stringValue:
-            print(f"\- Add change applied to {change.ownerFragment} using stringValue")
+            print(f"\\- Add change applied to {change.ownerFragment} using stringValue")
             owner: EObject = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
             eClass: EClass = owner.eClass
@@ -65,20 +74,20 @@ def applyChange(change, resource: XMLResource):
             if isinstance(feature, EReference):
                 eReference: EReference = feature
                 if eReference.containment:
-                    print("processChange(): Not handled reference.containment")
+                    print("  \\- processChange(): Not handled reference.containment for ", change)
                 else:
-                    print(f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}")
+                    print(f"  \\- Add reference {change.stringValue} applied to {change.ownerFragment}")
                     ref = resource.resolve(change.stringValue)
                     abstractList.append(ref)
             else:
-                print(f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
+                print(f"   \\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
                 abstractList.append(change.stringValue)
     elif isinstance(change, Remove):
         # remove a value or reference from a list
         try:
             owner: EObject = resource.resolve(change.ownerFragment)
         except ValueError:
-            print(f"\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
+            print(f"\\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
             return
         feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
         abstractList = owner.eGet(change.feature)
@@ -87,7 +96,7 @@ def applyChange(change, resource: XMLResource):
                 ref = resource.resolve(change.stringValue)
                 abstractList.remove(ref)
             except Exception:
-                print(f"\- ###: Cannot execute change, resolving of {change.stringValue} failed")
+                print(f"\\- ###: Cannot execute change, resolving of {change.stringValue} failed")
         else:
             # stringvalue is a value (enum, string, int, etc)
             abstractList.remove(feature.eType.from_string(change.stringValue))
@@ -113,11 +122,20 @@ def undoChange(change, resource: XMLResource):
     )
     if isinstance(change, Set):
         if change.previousValue is not None and isinstance(change.previousValue, EObject):
-            print(f"\- Undo Set change applied to {change.ownerFragment}")
+            print(f"\\- Undo Set change applied to {change.ownerFragment}")
             owner = resource.resolve(change.ownerFragment)
             #owner.eSet(change.feature, change.objectValue.deepcopy())
             owner.eSet(change.feature, change.previousValue.deepcopy())
-        elif change.objectFragment or change.stringValue:
+        # elif change.previousValue is not None and isinstance(change.previousValue, str):
+        #     print(f"\- Undo Set reference change applied to {change.ownerFragment}")
+        #     # originally an unset, so when undoing, we need to set it to previous_value as reference
+        #     owner = resource.resolve(change.ownerFragment)
+        #     feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
+        #     if isinstance(feature, EReference) and not feature.containment:
+        #         target = target = resource.resolve(change.previousValue)
+        #         owner.eSet(change.feature, target)
+
+        elif change.objectFragment or change.stringValue or change.previousValue:
             owner = resource.resolve(change.ownerFragment)
             feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             if isinstance(feature, EAttribute):
@@ -130,12 +148,12 @@ def undoChange(change, resource: XMLResource):
                     target = resource.resolve(change.previousValue)
                     owner.eSet(change.feature, target)
         else:
-            print("Set: NOT HANDLED ", change)
+            print("Undo Set: NOT HANDLED ", change)
 
     elif isinstance(change, Add):
         # undo this Add
         if change.objectValue is not None:
-            print(f"\- Add change applied to {change.ownerFragment}")
+            print(f"\\- Undo Add change applied to {change.ownerFragment}")
             owner = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
             #abstractList.remove(change.objectValue)
@@ -154,20 +172,20 @@ def undoChange(change, resource: XMLResource):
             if isinstance(feature, EReference):
                 eReference: EReference = feature
                 if eReference.containment:
-                    print("processChange(): Not handled reference.containment")
+                    print("\\- Undo processChange(): Not handled reference.containment")
                 else:
-                    print(f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}")
+                    print(f"\\- Undo Add change reference {change.stringValue} applied to {change.ownerFragment}")
                     ref = resource.resolve(change.stringValue)
                     abstractList.remove(ref)
             else:
-                print(f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
+                print(f"\\- Undo Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
                 abstractList.remove(change.stringValue)
     elif isinstance(change, Remove):
         # remove a value or reference from a list
         try:
             owner: EObject = resource.resolve(change.ownerFragment)
         except ValueError:
-            print(f"\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
+            print(f"\\- ###: Undo Cannot execute change, resolving of {change.ownerFragment} failed")
             return
         feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
         abstractList = owner.eGet(change.feature)
@@ -176,7 +194,7 @@ def undoChange(change, resource: XMLResource):
                 ref = resource.resolve(change.objectFragment)
                 abstractList.append(ref)
             except Exception:
-                print(f"\- ###: Cannot execute change, resolving of {change.objectFragment} failed")
+                print(f"\\- ###: Undo Cannot execute change, resolving of {change.objectFragment} failed")
         else:
             # stringvalue is a value (enum, string, int, etc)
             abstractList.append(feature.eType.from_string(change.stringValue))
@@ -190,10 +208,21 @@ def undoChange(change, resource: XMLResource):
         if isinstance(feature, EReference):
             feature: EReference
             if feature.many:
-                abstractList = owner.eGet(feature)
-                abstractList.append(change.objectValue.deepcopy())
+                abstractList: ECollection = owner.eGet(feature)
+                index_loc = change.objectFragment.rfind('.')  # find index in collection
+                if index_loc > 0:
+                    index = int(change.objectFragment[change.objectFragment.rfind('.')+1:])
+                    print("\\ - Found index! ", index)
+                    abstractList.insert(index, change.objectValue.deepcopy())
+                else:
+                    abstractList.append(change.objectValue.deepcopy())
                 # todo handle added x-refs
             else:
                 owner.eSet(feature, change.objectValue.deepcopy())
         else:
-            print("Undo Delete: no reference feature but attribute...")
+            print("\\- Undo Delete: no reference feature but attribute...")
+
+    if len(change.previousValue_xrefs) > 0:
+        for ref_change in change.previousValue_xrefs:
+            print("\\- Undo: Applying x-ref ", ref_change)
+            applyChange(ref_change, resource)  # recreate cross-references

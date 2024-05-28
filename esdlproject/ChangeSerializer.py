@@ -72,12 +72,12 @@ def deepcopy_eobject_change(eobject: EObject,
                         if x.many:
                             for orig_ref_value in orig_value:
                                 fragment = orig_ref_value.eURIFragment()
-                                change = Add(ownerFragment=k.eURIFragment(), stringValue=fragment, feature=x.name)
+                                change = Add(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                                 changeList.append(change)
                                 logger.debug("deepcopy change{}: processing x-reference {}: {}".format(eobject, x.name, fragment))
                         else:
                             fragment = orig_value.eURIFragment()
-                            change = Set(ownerFragment=k.eURIFragment(), stringValue=fragment, feature=x.name)
+                            change = Set(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                             changeList.append(change)
     changeList = filterDoubleConnectedTo(changeList)
     return copy, changeList

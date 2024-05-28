@@ -81,5 +81,9 @@ def patch_esdl():
                 if isinstance(f, EAttribute):
                     s.append(f'{f.name}="{e.eGet(f)}"')
                 else:
-                    s.append(f'{f.name}=[content]')
+                    v = e.eGet(f)
+                    content = "[content]"
+                    if isinstance(v, EObject):
+                        content = f'[<{v.eClass.name} name="{v.name if v.name else "?"}"]>'
+                    s.append(f'{f.name}={content}')
         return ', '.join(s)

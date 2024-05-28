@@ -14,17 +14,12 @@
 
 import unittest
 
-from pyecore.ecore import EStructuralFeature
-
-import esdlproject.esdlproject
 from esdl import esdl
 from esdl.resources.json import JsonOptions
 from esdlproject.ProjectManager import eobject_to_string, ESDLFormat, ProjectManager
-from esdlproject.actions import actionToHighlevelChange
-from esdlproject.change_handler import undoChange
 
 
-class test_new_undo(unittest.TestCase):
+class TestNewUndo(unittest.TestCase):
     def test_high_level_change_undo(self):
         """"
         Note: due to deepcopying each change, undo/redo object will be recreated and therefore original refrences
@@ -215,6 +210,54 @@ class test_new_undo(unittest.TestCase):
         self.assertEqual(es.instance[0].area.asset[0].type, esdl.PowerPlantTypeEnum.COMBINED_CYCLE_GAS_TURBINE)
         print(pm.to_debug_string())
 
+    def test_add_and_delete_object_with_xrefs(self):
+        pm = ProjectManager()
+        es: esdl.EnergySystem = pm.get_active_energy_system()
+        stack = pm.active_tracker.stack
+
+        with stack.track_changes("add object"):
+            # pp = esdl.PowerPlant(name="Cool PP", id="pp123", power=50000.0,
+            #                      type=esdl.PowerPlantTypeEnum.COMBINED_CYCLE_GAS_TURBINE)
+            # es.instance[0].area.asset.append(pp)
+            transformer1 = esdl.Transformer(name="Transformer1")
+            transformer2 = esdl.Transformer(name="Transformer2")
+            windturbine = esdl.WindTurbine(name="WindTurbine1")
+            inport1 = esdl.InPort(name="In1")
+            inport2 = esdl.InPort(name="In2")
+            outport = esdl.OutPort(name="Out")
+            transformer1.port.append(inport1)
+            transformer2.port.append(inport2)
+            windturbine.port.append(outport)
+            area = es.instance[0].area
+            area.asset.append(transformer1)
+            area.asset.append(transformer2)
+            area.asset.append(windturbine)
+            inport1.connectedTo.append(outport)
+
+        print(eobject_to_string(es, ESDLFormat.XML))
+        self.assertIn(inport1, outport.connectedTo)
+        self.assertIn(outport, inport1.connectedTo)
+        self.assertNotIn(inport2, outport.connectedTo)
+
+        with stack.track_changes("remove object with x_refs"):
+            transformer1.delete()
+
+        self.assertNotIn(inport1, outport.connectedTo)
+        self.assertNotIn(transformer1, area.asset)
+        print(eobject_to_string(stack.top, ESDLFormat.JSON, {JsonOptions.INDENT: 2}))
+
+        stack.undo()
+        # now all object delete are recreated with different memory locations, so can't use transformer1 and inport here
+        print(eobject_to_string(es, ESDLFormat.XML))
+        # TODO: why extra Remove...?
+        #stack.redo()
+        # Transformer is applied again, but is a copy of the original, so we can't check for 'pp' object here
+        # but on attributes is ok
+        # print(eobject_to_string(es, ESDLFormat.XML, {JsonOptions.INDENT: 2}))
+        # self.assertEqual(len(es.instance[0].area.asset), 1)
+        # self.assertEqual(es.instance[0].area.asset[0].name, pp.name)
+        # self.assertEqual(es.instance[0].area.asset[0].type, esdl.PowerPlantTypeEnum.COMBINED_CYCLE_GAS_TURBINE)
+
 
     def test_delete_object_without_xrefs(self):
         pm = ProjectManager()
@@ -254,7 +297,6 @@ class test_new_undo(unittest.TestCase):
         es.energySystemInformation.carriers = esdl.Carriers()
         carrier = esdl.ElectricityCommodity(name="electricity", id="electricity_id")
         es.energySystemInformation.carriers.carrier.append(carrier)
-
 
         pp = esdl.PowerPlant(name="Cool PP", id="pp123", power=50000.0,
                              type=esdl.PowerPlantTypeEnum.COMBINED_CYCLE_GAS_TURBINE)
