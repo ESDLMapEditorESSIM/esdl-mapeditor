@@ -57,6 +57,7 @@ import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
 import ResidentialArea from "@/apps/ResidentialArea.vue";
+import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
@@ -215,3 +216,9 @@ window.sectors_window = () => {
 }
 
 mountApp(ResidentialArea, '#vue_test_edr_residential_area')
+
+window.heat_transition_window = (area_id) => {
+    const { newObject } = useObject();
+    newObject(area_id);
+    mountSidebarComponent(HeatTransition);
+}
