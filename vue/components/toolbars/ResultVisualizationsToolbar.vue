@@ -1,7 +1,7 @@
 <template>
   <div
     v-show="kpis_present || animation_possible"
-    class="my-control leaflet-announce-kpis-toolbar"
+    class="my-control leaflet-result-visualizations-toolbar"
   >
     <a-row type="flex" justify="space-between">
       <a-col>
@@ -106,7 +106,7 @@ const handleChange = (value) => {
 </script>
 
 <style>
-.leaflet-announce-kpis-toolbar {
+.leaflet-result-visualizations-toolbar {
   padding: 5px;
   z-index: 2000;
   background: white;
@@ -115,7 +115,7 @@ const handleChange = (value) => {
   border-radius: 5px;
 }
 
-.leaflet-announce-kpis-toolbar p {
+.leaflet-result-visualizations-toolbar p {
   margin-bottom: 0;
 }
 

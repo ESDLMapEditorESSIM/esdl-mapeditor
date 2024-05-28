@@ -33,7 +33,7 @@ class KPIs {
             set_kpi_info(es_id, {scope: scope, kpis_description: kpi_info.kpis_description, kpi_list: kpi_info.kpi_list});
 
             // Don't show the old small KPI dialog anymore by default.
-            // There is an AnnounceKPI control, that allows to open the bigger dashboard.
+            // There is an ResultVisualizationsToolbar control, that allows to open the bigger dashboard.
             // The old small KPI dialog can still be opened from the menu
             // kpis.show_all_kpis();
         });
