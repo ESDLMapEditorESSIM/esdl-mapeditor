@@ -148,7 +148,7 @@ class Profiles:
             embedUrl = create_panel(
                 graph_title=profile_info["profile_uiname"],
                 axis_title="",
-                host=None,
+                host=profile_info["host"] if profile_info["host"] != "" else None,
                 database=profile_info["database"],
                 measurement=profile_info["measurement"],
                 field=profile_info["field"],
