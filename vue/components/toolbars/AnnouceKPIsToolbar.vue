@@ -1,59 +1,141 @@
 <template>
   <div
-    v-show="kpis_present"
+    v-show="kpis_present || animation_possible"
     class="my-control leaflet-announce-kpis-toolbar"
   >
-    <a-space>
-      <span>KPIs are present in ESDL:</span>
-      <a-button size="small" type="primary" @click="handleShowDashboard">Show dashboard</a-button>
-      <a-button size="small" type="default" @click="handleDismiss">Dismiss</a-button>
+    <a-row type="flex" justify="space-between">
+      <a-col>
+        <span><b>Visualization Options</b></span>
+      </a-col>
+      <a-col :span="3">
+        <a-button size="small" type="ghost" @click="handleDismiss">
+          <close-outlined />
+        </a-button>
+      </a-col>
+    </a-row>
+
+    <a-space direction="vertical" align="center">
+      <a-space>
+        <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
+          Show KPI dashboard
+        </a-button>
+        <span v-else>No KPI's available</span>
+      </a-space>
+
+      <a-space-compact v-if="animation_possible" block size="small">
+        <a-select
+          ref="select"
+          v-model:value="selected_field"
+          style="width: 150px"
+          :options="field_options"
+          @focus="focus"
+          @change="handleChange"
+        />
+        <a-button
+          :disabled="selected_field === 'Choose field ...'"
+          size="small"
+          type="primary"
+          @click="handleResultsAnimation"
+        >
+          Animate
+        </a-button>
+      </a-space-compact>
+      <a-space v-else>
+        <span>No animation available</span>
+      </a-space>
     </a-space>
   </div>
 </template>
 
-<script>
-import { ref } from 'vue';
+<script setup>
+import {ref, onMounted} from 'vue';
+import {CloseOutlined} from '@ant-design/icons-vue';
 
 const kpis_present = ref(false);
+const animation_possible = ref(false);
+const field_options = ref([]);
+const selected_field = ref("Choose field ...");
+const anim_esdl_id = ref(null);
 const visible = ref(true);
 
-export default {
-  name: "AnnounceKPIsToolbar",
-  setup() {
-    return {
-      kpis_present,
-      visible,
-    };
+const options1 = ref([
+  {
+    value: 'jack',
+    label: 'Jack',
   },
-  mounted() {
-    window.addEventListener('load', () => {
-      // run after everything is in-place
-      window.socket.on('kpis_present', function(res) {
-        console.log(res);
-        kpis_present.value = res;
-      });
+  {
+    value: 'lucy',
+    label: 'Lucy',
+  },
+  {
+    value: 'disabled',
+    label: 'Disabled',
+    disabled: true,
+  },
+  {
+    value: 'yiminghe',
+    label: 'Yiminghe',
+  },
+]);
+
+onMounted(() => {
+  window.addEventListener('load', () => {
+    // run after everything is in-place
+    window.socket.on('kpis_present', function (res) {
+      console.log('kpis_present', res);
+      kpis_present.value = res;
     });
-  },
-  methods: {
-    handleShowDashboard: function() {
-      kpis_present.value = false;
-      window.kpi_dashboard.open();
-    },
-    handleDismiss: function() {
-      kpis_present.value = false;
-    }
-  },
+    window.socket.on('animation_esdl_data', function (data) {
+      console.log('animation_possible, esdl id: ', data['es_id']);
+      animation_possible.value = true;
+      field_options.value = [];
+      data['fields'].forEach((field) => {
+        field_options.value.push(
+            {
+              value: field,
+              label: field,
+            }
+        )
+      });
+      console.log("field_options", field_options.value)
+      anim_esdl_id.value = data['es_id'];
+    });
+  });
+});
+
+const handleShowDashboard = () => {
+  window.kpi_dashboard.open();
 };
+const handleResultsAnimation = () => {
+  console.log("Results animation");
+  // TODO why 2 different 'simulationRun' tags in mesido influxdb output?
+
+  // TODO database name: not available in mesido output esdl, to be updated to esdl_id
+  const input_esdl_id = "15174819-d1af-4ba6-9f1d-2cd07991f14a";
+
+  // TODO select in UI
+  const animation_column_name = 'Heat_flow';
+  time_dimension.initialize(input_esdl_id, anim_esdl_id.value, [], selected_field.value);
+};
+const handleDismiss = () => {
+  kpis_present.value = false;
+  animation_possible.value = false;
+};
+const handleChange = (value) => {
+  console.log(`selected: ${value}`);
+  selected_field.value = value;
+};
+
 </script>
 
 <style>
 .leaflet-announce-kpis-toolbar {
-    padding: 5px;
-    z-index: 2000;
-    background: white;
+  padding: 5px;
+  z-index: 2000;
+  background: white;
 
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
-    border-radius: 5px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+  border-radius: 5px;
 }
 
 .leaflet-announce-kpis-toolbar p {

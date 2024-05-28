@@ -62,7 +62,7 @@ class PortProfileViewer:
 
             if profiles_list:
                 # Check if all profiles use same host / port / database
-                if PortProfileViewer.check_if_profiles_have_same_host_port_database(profiles_list):
+                if Profiles.check_if_profiles_have_same_host_port_database(profiles_list):
                     # Determine some parameters based on first profile
                     profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profiles_list[0])
                     datasource = self.find_datasource(profiles_list[0])
@@ -130,10 +130,10 @@ class PortProfileViewer:
 
                 if similar_profiles_list:
                     # Check if all profiles use same host / port / database
-                    if PortProfileViewer.check_if_profiles_have_same_host_port_database(similar_profiles_list):
+                    if Profiles.check_if_profiles_have_same_host_port_database(similar_profiles_list):
                         # Determine some parameters based on first profile
                         profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profile)
-                        datasource = self.find_datasource(profile)
+                        datasource = Profiles.get_instance().find_datasource(profile)
 
                         # Create a list with appropriate info for all datasets to be visualized
                         dataset_info_list = list()
@@ -180,32 +180,7 @@ class PortProfileViewer:
         else:
             return "mean"
 
-    def determine_database_credentials(self, host, port, database):
-        # Whenever the port profile viewer is called based on information (host / database) in the ESDL InfluxDB profile
-        # this functions tries to see if the credentials are stored in the profile server settings
 
-        # Example profile server configuration in MongoDB
-        #       {
-        #         "name": "Standard profiles server",
-        #         "host": "influxdb",
-        #         "port": "8086",
-        #         "username": "admin",
-        #         "password": "admin",
-        #         "database": "energy_profiles",
-        #         "ssl_enabled": false
-        #       }
-
-        with self.flask_app.app_context():
-            profiles_settings = Profiles.get_instance().get_profiles_settings()
-
-            for prof_server in profiles_settings['profiles_servers']:
-                if prof_server["host"] == host and prof_server["port"] == str(port):
-                    return {
-                        "username": prof_server["username"],
-                        "password": prof_server["password"]
-                    }
-
-        return None
 
     @staticmethod
     def determine_profile_name(profile, profile_type):
@@ -244,12 +219,15 @@ class PortProfileViewer:
 
         return profile_type, aggr_method
 
-    def find_datasource(self, profile):
+    @staticmethod
+    def find_datasource(profile):
         """
         Find out if credentials are required (these are not stored in the ESDL and must be stored as
         an external profile server configuration)
         """
-        credentials = self.determine_database_credentials(profile.host, profile.port, profile.database)
+        credentials = Profiles.get_instance().determine_database_credentials(
+            profile.host, profile.port, profile.database
+        )
         if credentials:
             datasource = get_panel_service_datasource(
                 profile.database,
@@ -262,29 +240,6 @@ class PortProfileViewer:
 
         return datasource
 
-    @staticmethod
-    def check_if_profiles_have_same_host_port_database(profile_list):
-        used_host = None
-        used_port = None
-        used_database = None
-
-        for p in profile_list:
-            if used_host and p.host != used_host:
-                return False
-            else:
-                used_host = p.host
-
-            if used_port and p.port != used_port:
-                return False
-            else:
-                used_port = p.port
-
-            if used_database and p.database != used_database:
-                return False
-            else:
-                used_database = p.database
-
-        return True
 
     @staticmethod
     def check_if_profiles_have_same_profile_qau(profile1: esdl.GenericProfile, profile2: esdl.GenericProfile):

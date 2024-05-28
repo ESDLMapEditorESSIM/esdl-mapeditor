@@ -28,7 +28,8 @@ import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
-from esdl.processing import ESDLAsset, ESDLGeometry
+from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
+from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
@@ -130,7 +131,7 @@ class ESDLServices:
                 resource = rset.create_resource(uri)
                 resource.append(obj.deepcopy())
                 resource.save()
-                obj_esdl_string =  uri.getvalue()
+                obj_esdl_string = uri.getvalue()
                 return {"esdl": obj_esdl_string}
 
             return None
@@ -213,7 +214,7 @@ class ESDLServices:
             if config_service["type"] in ("workflow", "vueworkflow"):
                 for step in config_service["workflow"]:
                     if (
-                        step["type"] in ("service", "custom")
+                            step["type"] in ("service", "custom")
                     ):
                         if "service" in step and step["service"]["id"] == service_params["service_id"]:
                             service = step["service"]
@@ -281,7 +282,7 @@ class ESDLServices:
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                     body = esdlstr_base64_bytes.decode('utf-8')
             if service["body_config"]["type"] == "json":
-                #body = {}
+                # body = {}
                 for param in service["body_config"]['parameters']:
                     if param["type"] == "esdl":
                         if "energysystem" in body:
@@ -317,7 +318,7 @@ class ESDLServices:
                     # Find the relevant service config for this parameter
                     for cfg_service_param in config_service_params:
                         if cfg_service_param["parameter_name"] == key:
-                            param = query_params[key]   # param now contains the communicated value (by the UI)
+                            param = query_params[key]  # param now contains the communicated value (by the UI)
                             # Is there any parameter formatting required...
                             if "formatter" in cfg_service_param:
                                 if "type" in cfg_service_param["formatter"] and \
@@ -349,7 +350,7 @@ class ESDLServices:
                                 else:
                                     url = url + "&"
                                 url = (
-                                    url + key + "=" + str(self.array2list(param))
+                                        url + key + "=" + str(self.array2list(param))
                                 )
                                 first_qp = False
 
@@ -359,7 +360,8 @@ class ESDLServices:
             elif service["http_method"] == "delete":
                 r = requests.delete(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"].endswith("json") or ("body_config" in service and service["body_config"]["type"] == "json"):
+                if service["type"].endswith("json") or (
+                        "body_config" in service and service["body_config"]["type"] == "json"):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
@@ -389,6 +391,19 @@ class ESDLServices:
 
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
+
+                    if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
+                        # TODO es.id instead hardcoded id when mesido output is updated:
+                        influxdb_client = Profiles.connect_to_animation_profiles_database(es.id,
+                                                                                          "15174819-d1af-4ba6-9f1d-2cd07991f14a")
+                        first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
+                        fields_query = f"SHOW FIELD KEYS FROM \"{first_carrier_id}\""
+                        results = influxdb_client.query(fields_query)
+                        fields = [
+                            result['fieldKey'] for result in results.get_points() if result['fieldType'] == 'float'
+                        ]
+                        emit('animation_esdl_data', {'es_id': es.id, 'fields': fields})
+
                     return True, None
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text)
@@ -432,13 +447,15 @@ class ESDLServices:
                                 area_to_be_added_to = area
 
                             area_shape = None
+                            # TODO add similar mode and emit animation possible
                             if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
                                 # The assets that will be added must be placed on a grid within the area boundary
                                 shape_dictionary = get_session('shape_dictionary')
                                 if area_to_be_added_to.id in shape_dictionary:
                                     area_shape = shape_dictionary[area_to_be_added_to.id]
                                     # Calculate "enough" possible locations for assets inside the area
-                                    possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
+                                    possible_locations = calc_possible_locations_in_area(area_shape,
+                                                                                         len(asset_str_list))
 
                             for asset_str in asset_str_list:
                                 asset = ESDLAsset.load_asset_from_string(asset_str)
@@ -565,7 +582,8 @@ class ESDLServices:
                                                    'text': note.text, 'author': note.author})  # , 'date': n.date})
                         emit('add_notes', {'es_id': active_es_id, 'notes_list': notes_list})
                     else:
-                        logger.error("Service with id "+service_params["service_id"]+" did not return a esdl.Notes object")
+                        logger.error(
+                            "Service with id " + service_params["service_id"] + " did not return a esdl.Notes object")
                         return False, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}

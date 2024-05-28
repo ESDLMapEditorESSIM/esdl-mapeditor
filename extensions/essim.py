@@ -92,7 +92,7 @@ class ESSIM:
 
                     # Call init_simulation to enable the loadflow calculations
                     self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
-                    self.executor.submit(process_energy_system, esh, 'test')  # run in seperate thread
+                    self.executor.submit(process_energy_system, esh, 'test')  # run in separate thread
 
                     return res_es.id
 
@@ -247,6 +247,7 @@ class ESSIM:
         def essim_kpi_list():
             ESSIM_config = settings.essim_config
             url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/kpiModules'
+            print(f"URL: {url}")
 
             try:
                 r = requests.get(url)

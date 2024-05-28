@@ -22,13 +22,14 @@ from geojson import Feature, MultiLineString, FeatureCollection, dumps
 from math import fabs
 import pytz
 
-import esdl.esdl
+from esdl import esdl
+from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 
-import src.settings as settings
 import src.log as log
+from src import settings
 
 logger = log.get_logger(__name__)
 
@@ -109,14 +110,19 @@ class TimeDimension:
             """
             with self.flask_app.app_context():
                 database = info["database"]
+                animation_column_name = info["animation_column_name"]
                 simulation_id = info["simulation_id"]
                 networks = info["networks"]
 
-                set_session('timedimension-database', database)
                 set_session('timedimension-simulation-id', simulation_id)
-                set_session('timedimension-parameter', 'allocationEnergy')  # To be decided if configurable
+                set_session('timedimension-parameter', animation_column_name)
 
                 set_session('td_monitor_ids', [])
+
+                active_es_id = get_session('active_es_id')
+                set_session(
+                    'influxdb_connection', Profiles.connect_to_animation_profiles_database(active_es_id, database)
+                )
 
                 self.preprocess_data(networks)
                 time_list = self.get_all_times_from_simulation()
@@ -166,6 +172,7 @@ class TimeDimension:
             asset = esh.get_by_id(active_es_id, asset_id)
             asset_name = asset.name
             power = None
+            # TODO leave out for mesido for now
             if hasattr(asset, 'power'):
                 power = asset.power
             elif hasattr(asset, 'capacity'):
@@ -173,7 +180,7 @@ class TimeDimension:
             power_pos = None
             power_neg = None
 
-            influxdb_client = self.connect_to_database()
+            influxdb_client = get_session('influxdb_connection')
 
             measurements_query = 'SHOW MEASUREMENTS'
             measurements_result = influxdb_client.query(measurements_query)
@@ -226,17 +233,42 @@ class TimeDimension:
     def set_user_settings(self, user, user_settings):
         self.settings_storage.set_user(user, TIME_DIMENSION_USER_CONFIG, user_settings)
 
-    def connect_to_database(self):
-        database = get_session('timedimension-database')
-        # TODO check if <profile/> present in ESDL, if so use those influx settings (including user/password from mongo)
-        return InfluxDBClient(
-            host=settings.essim_config['ESSIM_database_server'],
-            port=settings.essim_config['ESSIM_database_port'],
-            database=database
-        )
+    # def connect_to_database(self, database: str):
+    #     # get influxdb host and port from first pipe/cable
+    #     anim_profiles = Profiles.get_active_es_profiles_for_asset_type(
+    #         [esdl.ElectricityCable, esdl.Pipe]
+    #     )
+    #     if not anim_profiles:  # essim profiles
+    #         return InfluxDBClient(
+    #             host=settings.essim_config['ESSIM_database_server'],
+    #             port=settings.essim_config['ESSIM_database_port'],
+    #             database=database
+    #         )
+    #     elif Profiles.check_if_profiles_have_same_host_port_database(anim_profiles):
+    #         profile = anim_profiles[0]
+    #         credentials = Profiles.get_instance().determine_database_credentials(
+    #             profile.host, profile.port, profile.database
+    #         )
+    #         if credentials:
+    #             return InfluxDBClient(
+    #                 host=profile.host,
+    #                 port=profile.port,
+    #                 database=database,
+    #                 username=credentials['username'],
+    #                 password=credentials['password']
+    #             )
+    #         else:
+    #             return InfluxDBClient(
+    #                 host=profile.host,
+    #                 port=profile.port,
+    #                 database=database
+    #             )
+    #     else:
+    #         logger.info("Not all profiles use same host, port, database")
+    #         return None
 
     def preprocess_data(self, networks):
-        influxdb_client = self.connect_to_database()
+        influxdb_client = get_session('influxdb_connection')
         # Figure out all the time stamps.
 
         determine_networks_automatically = True
@@ -269,7 +301,7 @@ class TimeDimension:
         simulation_parameter = get_session('timedimension-parameter')
         query = "SELECT MIN({}), MAX({}) FROM {}".format(simulation_parameter, simulation_parameter,
                                                          ",".join(networks_list))
-        print(f"query: {query}")
+        logger.debug(f"query: {query}")
         result = allocation_energy = influxdb_client.query(query)
         if result:
             for key in list(allocation_energy.keys()):
@@ -327,7 +359,7 @@ class TimeDimension:
         networks_list = get_session('timedimension-networks-list')
         simulation_id = get_session('timedimension-simulation-id')
         try:
-            influxdb_client = self.connect_to_database()
+            influxdb_client = get_session('influxdb_connection')
             query = 'SELECT * FROM ' + ",".join(networks_list) + ' WHERE "simulationRun" = \'' + simulation_id + '\''
             sim_results = influxdb_client.query(query)
 
@@ -355,7 +387,7 @@ class TimeDimension:
         # self.get_all_times_from_simulation()
 
         logger.debug("--- Retrieving Simulation Data ---")
-        influxdb_client = self.connect_to_database()
+        influxdb_client = get_session('influxdb_connection')
         # active_simulation = get_session('active_simulation')
         active_es_id = get_session('active_es_id')
         # active_es_id = "ea50089c-0404-4048-97b8-94f0b0aa866b"
@@ -371,7 +403,6 @@ class TimeDimension:
 
         monitor_data = dict()
         logger.debug(monitor_asset_ids)
-        print(f"MON ASSET IDS: { monitor_asset_ids}")
         if monitor_asset_ids:
             start_cet = sdt.astimezone(pytz.timezone("Europe/Amsterdam"))
             date_cet = start_cet.strftime('%Y-%m-%d')
@@ -380,7 +411,7 @@ class TimeDimension:
                 try:
                     asset = esh.get_by_id(active_es_id, aid)
                 except:
-                    print("(Monitor) Asset id not found.")
+                    logger.warning("(Monitor) Asset id not found.")
                     continue
                 asset_name = asset.name + ' - ' + date_cet
 
@@ -397,7 +428,7 @@ class TimeDimension:
         sim_results = None
         try:
             # if start and end date are the same, it means that we have reached the end of the time series.
-            # But this also eans that we miss exactly the final entry, so handle this here.
+            # But this also means that we miss exactly the final entry, so handle this here.
             if influxdb_startdate == influxdb_enddate:
                 influxdb_enddate = datetime.strptime(influxdb_enddate, '%Y-%m-%dT%H:%M:%SZ')
                 influxdb_enddate = influxdb_enddate + timedelta(days=1)
@@ -425,11 +456,11 @@ class TimeDimension:
                             continue
                         current_asset = esh.get_by_id(active_es_id, item['assetId'])
                     except:
-                        print("Asset id not found.")
+                        logger.warning("Asset id not found.")
                         continue
 
-                    if not isinstance(current_asset, esdl.esdl.Pipe) and not isinstance(current_asset,
-                                                                                        esdl.esdl.ElectricityCable):
+                    if not isinstance(current_asset, esdl.Pipe) and not isinstance(current_asset,
+                                                                                   esdl.ElectricityCable):
                         logger.debug(f"Asset type for: '{current_asset}' not animated.")
                         continue
 
@@ -441,7 +472,10 @@ class TimeDimension:
                             (point_items[i_segment + 1].lon, point_items[i_segment + 1].lat)
                         ]])
 
-                    color = colors[active_es_id + item['carrierId']]['color']  # 32a852"
+                    if 'carrierId' in item:  # for essim
+                        color = colors[active_es_id + item['carrierId']]['color']
+                    else:
+                        color = colors[active_es_id + key[0]]['color']
                     if abs(item[simulation_parameter]) > 1e-2:
                         for coordinates in coordinates_segments:
                             feature_list.append(

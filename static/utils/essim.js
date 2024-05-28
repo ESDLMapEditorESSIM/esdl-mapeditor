@@ -68,7 +68,7 @@ function set_simulation_id(sim_id) {
 function animate_simulation(sim_id) {
     console.log('animate_simulation: '+ sim_id);
     socket.emit('essim_set_simulation_id', sim_id, function(es_id){
-        time_dimension.initialize(es_id, sim_id, []);
+        time_dimension.initialize(es_id, sim_id, [], 'allocationEnergy');
     });
 }
 

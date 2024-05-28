@@ -106,7 +106,7 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
             contextmenuWidth: 140,
             contextmenuItems: [{
                 icon: '/icons/Graph.png',
-                text: 'Show load duraction curve',
+                text: 'Show load duration curve',
                 callback: function (e) {
                     let id = feature.properties.id;
                     socket.emit('request_load_duration_curve', {'id': id});
@@ -196,13 +196,14 @@ class TimeDimension {
         });
     }
 
-    initialize(database, simulation_id, networks = []) {
+    initialize(database, simulation_id, networks = [], animation_column_name) {
         time_dimension.removeGeoJSONLayers();
         show_loader();
         socket.emit('timedimension_initialize', {
             database: database,
             simulation_id: simulation_id,
-            networks: networks
+            networks: networks,
+            animation_column_name: animation_column_name
         }, function (result) {
             if (result) {
                 var time_list = result;

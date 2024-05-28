@@ -23,7 +23,7 @@ from pyecore.ecore import EDate
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from extensions.settings_storage import SettingType, SettingsStorage
-from extensions.session_manager import get_session
+from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
 from influxdb import InfluxDBClient
 import copy
@@ -496,6 +496,33 @@ class Profiles:
             identifier = self._get_identifier(SettingType.USER)
             return SettingType.USER.value, identifier
 
+    def determine_database_credentials(self, host, port, database):
+        # Whenever the port profile viewer is called based on information (host / database) in the ESDL InfluxDB profile
+        # this functions tries to see if the credentials are stored in the profile server settings
+
+        # Example profile server configuration in MongoDB
+        #       {
+        #         "name": "Standard profiles server",
+        #         "host": "influxdb",
+        #         "port": "8086",
+        #         "username": "admin",
+        #         "password": "admin",
+        #         "database": "energy_profiles",
+        #         "ssl_enabled": false
+        #       }
+
+        with self.flask_app.app_context():
+            profiles_settings = self.get_profiles_settings()
+
+            for prof_server in profiles_settings['profiles_servers']:
+                if prof_server["host"] == host and prof_server["port"] == str(port):
+                    return {
+                        "username": prof_server["username"],
+                        "password": prof_server["password"]
+                    }
+
+        return None
+
     def get_EDR_profiles(self):
         return self.EDR_profiles_cache
 
@@ -680,6 +707,87 @@ class Profiles:
 
         return esdl_profile
 
+    @staticmethod
+    def get_profiles_for_asset_type(es_id: str, asset_types: list[type(esdl.Asset)]):
+        """Build a list of all profiles of specific asset types in the ESDL file.
+        """
+        logger.info(es_id)
+        esh = get_handler()
+        energy_system = esh.get_energy_system(es_id=es_id)
+
+        instance = energy_system.instance[0]
+        profiles = []
+        if instance and instance.area:
+            for asset in instance.area.asset:
+                if isinstance(asset, tuple(asset_types)):
+                    for port in getattr(asset, 'port', []):
+                        for profile in getattr(port, 'profile', []):
+                            profiles.append(profile)
+                    for inner_asset in getattr(asset, 'asset', []):
+                        for port in getattr(inner_asset, 'port', []):
+                            for profile in getattr(port, 'profile', []):
+                                profiles.append(profile)
+
+        return profiles
+
+    @staticmethod
+    def connect_to_animation_profiles_database(es_id: str, database: str):
+        # get influxdb host and port from first pipe/cable
+        anim_profiles = Profiles.get_profiles_for_asset_type(
+            es_id, [esdl.ElectricityCable, esdl.Pipe]
+        )
+        if not anim_profiles:  # essim profiles
+            return InfluxDBClient(
+                host=settings.essim_config['ESSIM_database_server'],
+                port=settings.essim_config['ESSIM_database_port'],
+                database=database
+            )
+        elif Profiles.check_if_profiles_have_same_host_port_database(anim_profiles):
+            profile = anim_profiles[0]
+            credentials = Profiles.get_instance().determine_database_credentials(
+                profile.host, profile.port, profile.database
+            )
+            if credentials:
+                return InfluxDBClient(
+                    host=profile.host,
+                    port=profile.port,
+                    database=database,
+                    username=credentials['username'],
+                    password=credentials['password']
+                )
+            else:
+                return InfluxDBClient(
+                    host=profile.host,
+                    port=profile.port,
+                    database=database
+                )
+        else:
+            logger.info("Not all profiles use same host, port, database")
+            return None
+
+    @staticmethod
+    def check_if_profiles_have_same_host_port_database(profile_list):
+        used_host = None
+        used_port = None
+        used_database = None
+
+        for p in profile_list:
+            if used_host and p.host != used_host:
+                return False
+            else:
+                used_host = p.host
+
+            if used_port and p.port != used_port:
+                return False
+            else:
+                used_port = p.port
+
+            if used_database and p.database != used_database:
+                return False
+            else:
+                used_database = p.database
+
+        return True
 
 default_profile_groups = {
     "groups": [
