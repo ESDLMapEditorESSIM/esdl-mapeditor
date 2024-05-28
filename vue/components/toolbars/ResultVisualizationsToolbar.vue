@@ -56,27 +56,6 @@ const animation_possible = ref(false);
 const field_options = ref([]);
 const selected_field = ref("Choose field ...");
 const anim_esdl_id = ref(null);
-const visible = ref(true);
-
-const options1 = ref([
-  {
-    value: 'jack',
-    label: 'Jack',
-  },
-  {
-    value: 'lucy',
-    label: 'Lucy',
-  },
-  {
-    value: 'disabled',
-    label: 'Disabled',
-    disabled: true,
-  },
-  {
-    value: 'yiminghe',
-    label: 'Yiminghe',
-  },
-]);
 
 onMounted(() => {
   window.addEventListener('load', () => {
@@ -113,8 +92,6 @@ const handleResultsAnimation = () => {
   // TODO database name: not available in mesido output esdl, to be updated to esdl_id
   const input_esdl_id = "15174819-d1af-4ba6-9f1d-2cd07991f14a";
 
-  // TODO select in UI
-  const animation_column_name = 'Heat_flow';
   time_dimension.initialize(input_esdl_id, anim_esdl_id.value, [], selected_field.value);
 };
 const handleDismiss = () => {

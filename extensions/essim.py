@@ -247,7 +247,6 @@ class ESSIM:
         def essim_kpi_list():
             ESSIM_config = settings.essim_config
             url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/kpiModules'
-            print(f"URL: {url}")
 
             try:
                 r = requests.get(url)
