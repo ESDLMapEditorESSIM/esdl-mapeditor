@@ -259,8 +259,12 @@ function process_service_results(results) {
         }
     }
     if ('message' in results) {
-        service_results_div.innerHTML += `<p>${results["message"]}</p>`;
-        service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        if ($("#service_message").length) { // check if service_message exists already
+            $("#service_message").innerHTML = `${results["message"]}`;
+        } else {
+            service_results_div.innerHTML += `<p id="service_message">${results["message"]}</p>`;
+            service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        }
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
@@ -345,7 +349,7 @@ function show_service_settings(index, state=null) {
 
     let service = esdl_services_information[index];
     service_settings_div.innerHTML = '<h1>' + service['name'] + '</h1>';
-    service_settings_div.innerHTML += '<p>' + service['explanation'] + '</p>';
+    service_settings_div.innerHTML += '<p><i>' + service['explanation'] + '</i></p>';
 
     if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
         window.activate_service_workflow(index, service, state).then();
@@ -571,10 +575,10 @@ function update_map_service_contextmenus(services_list) {
  * @param service
  * @param callback
  */
-function add_service_to_contextmenu(layer, service, callback) {
+function add_service_to_contextmenu(layer, service, callback, icon) {
     layer.options.contextmenuItems.push({
         text: service['name'],
-        icon: resource_uri + 'icons/service.png',
+        icon: resource_uri + (icon ? icon : 'icons/service.png'),
         callback: callback,
     });
 }
@@ -585,8 +589,8 @@ function add_service_to_contextmenu(layer, service, callback) {
  * @param service
  * @param idx
  */
-function add_service_to_area_contextmenu(layer, service, idx) {
-    let scope_map = {
+function add_service_to_area_contextmenu(layer, service, idx, icon) {
+    const scope_map = {
         "PV": "PROVINCE",
         "ES": "REGION",
         "GM": "MUNICIPALITY",
@@ -603,7 +607,7 @@ function add_service_to_area_contextmenu(layer, service, idx) {
         } else {
             query_esdl_service(service, state);
         }
-    });
+    }, icon);
 }
 
 function update_esdl_services(event) {
@@ -622,7 +626,7 @@ function update_esdl_services(event) {
         if (event.layer_type === 'area') {
             for (let i = 0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i]['type'] == "area_context_menu" || esdl_services_information[i]['location'] == "area_context_menu") {
-                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i);
+                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i, null);
                 }
             }
         }

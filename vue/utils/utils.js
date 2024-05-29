@@ -39,3 +39,10 @@ export const union = (a, b) => diff(a, b).concat(b);
 export const camelCase = (str) => {
     return window.camelCaseToWords(str);
 };
+
+export const layerHasContextMenuItem = (layer, text) => {
+    const result = layer.options.contextmenuItems.filter(function(contextmenuItem) {
+        return contextmenuItem.text == text;
+    });
+    return result.length > 0;
+}

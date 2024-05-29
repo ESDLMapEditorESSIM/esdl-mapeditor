@@ -235,6 +235,9 @@ class ResidentialArea:
             elif isinstance(bld_asset, esdl.Consumer):
                 bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_outp)
 
+        # Expose the InPort of the EConnection to the outside of the Building
+        aggr_bld.port.append(aggr_bld_econn_inp)
+
         # Create string representation of the ESDL of the AggregatedBuilding
         rset = ResourceSet()
         resource = rset.create_resource(URI("aggr_bld.esdl"))

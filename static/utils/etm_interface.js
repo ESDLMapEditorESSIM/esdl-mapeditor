@@ -66,6 +66,10 @@
         });
     }
 
+    area_heat_transition(event, id) {
+        heat_transition_window(id);
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
             etm_interface_plugin = new ETMInterface();
@@ -93,6 +97,15 @@
                     }
                 });
             }
+            if (layer_type === 'area') {
+                layer.options.contextmenuItems.push({
+                    text: 'Warmtetransitie',
+                    icon: resource_uri + 'images/HeatDemand.png',
+                    callback: function(e) {
+                        etm_interface_plugin.area_heat_transition(e, id);
+                    }
+                });
+            }
         }
         if (event.type === 'settings_menu_items') {
             let menu_items = {
@@ -108,6 +121,13 @@
 }
 
 var etm_interface_plugin;   // global variable for the etm_interface plugin
+
+window.etm_interface_area_info = function(event, id) {
+    etm_interface_plugin.area_info(event, id);
+}
+window.etm_interface_area_info_update = function(event, id) {
+    etm_interface_plugin.area_info_update(event, id);
+}
 
 $(document).ready(function() {
     extensions.push(function(event) { return ETMInterface.create(event) });

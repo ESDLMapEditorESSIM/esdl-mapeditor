@@ -24,7 +24,13 @@ from extensions.profiles import Profiles
 from esdlproject.ProjectManager import ProjectManager
 
 
-def generate_profile_info(profile_list):
+def generate_profile_info(profile_list, only_of_type: str = None):
+    """
+    Generates a list with information about a list of profiles
+
+    :param profile_list: The list of profiles for which the information must be generated
+    :param only_of_type: Only add profile information if the profile is of this type
+    """
     profile_info_list = []
     for profile in profile_list:
         profile_class = type(profile).__name__
@@ -38,9 +44,13 @@ def generate_profile_info(profile_list):
         profile_name = profile.name
         profile_id = profile.id
         if profile_class == 'SingleValue':
+            if only_of_type and profile_class != only_of_type:
+                break
             value = profile.value
             profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
+            if only_of_type and profile_class != only_of_type:
+                break
             database = profile.database
             multiplier = profile.multiplier
             measurement = profile.measurement
@@ -55,12 +65,21 @@ def generate_profile_info(profile_list):
                 profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
+            if only_of_type and profile_class != only_of_type:
+                break
             profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 
     return profile_info_list
 
 
-def get_port_profile_info(asset):
+def get_port_profile_info(asset, only_if_profile: bool = False, only_of_type: str = None):
+    """
+    Retrieves information about the ports and profiles of an asset
+
+    :param asset: The asset for which the information must be retrieved
+    :param only_if_profile: Only add the port information if the port has profiles attached to it
+    :param only_of_type: Only add profile information if the profile is of this type
+    """
     ports = asset.port
 
     port_profile_list = []
@@ -68,7 +87,10 @@ def get_port_profile_info(asset):
         prof = p.profile
         profile_info_list = []
         if prof:
-            profile_info_list = generate_profile_info(prof)
+            profile_info_list = generate_profile_info(prof, only_of_type)
+
+        if only_if_profile and not profile_info_list:
+            continue
 
         port_profile_list.append({'port_id': p.id, 'port_name': p.name, 'profiles': profile_info_list})
 

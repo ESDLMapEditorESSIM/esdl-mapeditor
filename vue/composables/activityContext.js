@@ -14,21 +14,96 @@
  *     TNO
  */
 
-import {ref} from "vue";
+import {ref, watch} from "vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
+import { useToast } from "vue-toastification";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
-const { esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
+const { addAreaContextMenuItem, esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 // The active activity context is the context that is currently active in the map.
 const activeActivityContext = ref({});
 
 // Track the services that are enabled in the context menu's so we can remove them when the context is cleared.
-const enabledAreaEsdlServices = ref([]);
-const enabledBuildingEsdlServices = ref([]);
+const enabledAreaContextMenus = ref([]);
+const enabledBuildingContextMenus = ref([]);
+
+const toast = useToast();
+
+watch(esdlAreas,
+    (newAreas, oldAreas) => {
+        addContextMenuJsFunctions(activeActivityContext.value)
+    }, {deep: true}
+)
+
+/**
+ * Add the context menu js functions that are part of the context to the context menus.
+ * @param activityContext
+ */
+function addContextMenuJsFunctions(activityContext) {
+    const contextMenuJsFunctions = activityContext.context_menu_js_functions;
+    if (contextMenuJsFunctions) {
+        for (const contextMenuJsFunction of contextMenuJsFunctions) {
+            if (contextMenuJsFunction.location === "area") {
+                addAreaContextMenuItem(contextMenuJsFunction.title, contextMenuJsFunction.icon, window[contextMenuJsFunction.js_function]);
+                enabledAreaContextMenus.value.push(contextMenuJsFunction.title);
+            } else if (contextMenuJsFunction.location === "map") {
+                console.warn("Context menu js function with location 'map' is not yet supported")
+            } else if (contextMenuJsFunction.location === "building") {
+                console.warn("Context menu js function with location 'building' is not yet supported")
+            }
+        }
+    }
+}
+
+/**
+ * Add the services that are part of the context to the context menus.
+ * @param activityContext
+ */
+function addContextMenuServices(activityContext) {
+    // Add the services to the context menus.
+    const contextMenuServices = activityContext.context_menu_services;
+    if (contextMenuServices) {
+        // For each contextService, find the corresponding service in the esdl_services_information.
+        // Then update the location of the service.
+        for (const contextMenuService of contextMenuServices) {
+            let foundService = null;
+            let foundServiceIdx = null;
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                const esdlService = esdl_services_information[i];
+                if (esdlService.id === contextMenuService.id) {
+                    foundService = esdlService;
+                    foundServiceIdx = i;
+                    break
+                }
+            }
+            if (!foundService) {
+                console.warn("Service with id " + contextMenuService.id + " not found in esdl_services_information");
+            } else {
+                if (contextMenuService.location === "area") {
+                    for (const [, esdlArea] of Object.entries(esdlAreas.value)) {
+                        window.add_service_to_area_contextmenu(esdlArea.layer, foundService, foundServiceIdx, contextMenuService.icon)
+                    }
+                    enabledAreaContextMenus.value.push(foundService.name);
+                } else if (contextMenuService.location === "map") {
+                    console.debug("Service " + foundService.name + " is added to the map context menu");
+                    foundService.location = "map_context_menu"
+                } else if (contextMenuService.location === "building") {
+                    addBuildingContextMenuItem(foundService['name'], window.resource_uri + 'icons/service.png', function (e, id) {
+                        window.show_service_settings(foundServiceIdx)
+                    });
+                    enabledBuildingContextMenus.value.push(foundService.name);
+                }
+
+            }
+        }
+        // Update the context menus for the services.
+        window.update_map_service_contextmenus(window.esdl_services_information)
+    }
+}
 
 export function useActivityContext() {
     /**
@@ -38,6 +113,9 @@ export function useActivityContext() {
      * @param activityContext
      */
     function activateActivityContext(activityContext) {
+        if (activeActivityContext.value) {
+            clearActivityContext();
+        }
         activeActivityContext.value = activityContext;
 
         // Clear the WMS layers and add the layers from the activity context.
@@ -55,8 +133,9 @@ export function useActivityContext() {
         }
 
         // Clear the WMS layers and add the layers from the activity context.
-        if (activityContext.wms_layers !== undefined) {
+        if (activityContext.wms_layers) {
             clearWmsLayers()
+            console.log("Enabling WMS layers " + activityContext.wms_layers)
             for (const layer of activityContext.wms_layers) {
                 try {
                     showWmsLayer(layer)
@@ -71,56 +150,53 @@ export function useActivityContext() {
             }
         }
 
-        // Add the services to the context menus.
-        const contextServices = activityContext.context_services;
-        if (contextServices) {
-            // For each contextService, find the corresponding service in the esdl_services_information.
-            // Then update the location of the service.
-            for (const contextService of contextServices) {
-                let foundService = null;
-                let foundServiceIdx = null;
-                for (let i = 0; i < esdl_services_information.length; i++) {
-                    const esdlService = esdl_services_information[i];
-                    if (esdlService.id === contextService.id) {
-                        foundService = esdlService;
-                        foundServiceIdx = i;
-                        break
-                    }
-                }
-                if (!foundService) {
-                    console.warn("Service with id " + contextService.id + " not found in esdl_services_information");
-                } else {
-                    if (contextService.location === "area_context_menu") {
-                        for (const [, esdlArea] of Object.entries(esdlAreas.value)) {
-                            window.add_service_to_area_contextmenu(esdlArea.layer, foundService, foundServiceIdx)
-                        }
-                        enabledAreaEsdlServices.value.push(foundService);
-                    } else if (contextService.location === "map_context_menu") {
-                        foundService.location = contextService.location;
-                    } else if (contextService.location === "building_context_menu") {
-                        addBuildingContextMenuItem(foundService['name'], resource_uri + 'icons/service.png', function (id) {
-                            window.show_service_settings(foundServiceIdx)
-                        });
-                        enabledBuildingEsdlServices.value.push(foundService);
-                    }
-
+        const disableEsdlLayers = activityContext.disable_esdl_layers;
+        if (disableEsdlLayers) {
+            for (const [es_id,] of Object.entries(window.esdl_list)) {
+                for (const esdlLayer of disableEsdlLayers) {
+                    console.debug("Disabling ESDL layer: " + esdlLayer);
+                    window.hide_esdl_layer_from_map(es_id, esdlLayer);
                 }
             }
-            // Update the context menus for the services.
-            window.update_map_service_contextmenus(window.esdl_services_information)
+        }
+
+        addContextMenuJsFunctions(activityContext)
+        addContextMenuServices(activityContext)
+
+        if (activityContext.toast_text) {
+            toast.info(activityContext.toast_text);
         }
     }
 
+    /**
+     * Clear the active activity context. This will remove all the context services and context menu items that were
+     * added by the active activity context.
+     */
     function clearActivityContext() {
+        const activityContext = activeActivityContext.value;
+        if (activityContext.wms_layers) {
+            // Only clear if we added something.
+            clearWmsLayers()
+        }
+
+        const disableEsdlLayers = activityContext.disable_esdl_layers;
+        if (disableEsdlLayers) {
+            for (const [es_id,] of Object.entries(window.esdl_list)) {
+                for (const esdlLayer of disableEsdlLayers) {
+                    window.show_esdl_layer_on_map(es_id, esdlLayer);
+                }
+            }
+        }
+
+        for (const name of enabledAreaContextMenus.value) {
+            removeAreaContextMenuItem(name)
+        }
+        for (const name of enabledBuildingContextMenus.value) {
+            removeBuildingContextMenuItem(name)
+        }
+        enabledAreaContextMenus.value = [];
+
         activeActivityContext.value = {};
-        clearWmsLayers()
-        for (const service of enabledAreaEsdlServices.value) {
-            removeAreaContextMenuItem(service.name)
-        }
-        for (const service of enabledBuildingEsdlServices.value) {
-            removeBuildingContextMenuItem(service.name)
-        }
-        enabledAreaEsdlServices.value = [];
     }
 
     const fetchActivityContexts = async () => {
