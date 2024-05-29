@@ -82,7 +82,7 @@ class PICO_RooftopPV {
         }
     }
 
-    choose_rooftop_pv_potential_usage(e, id, type) {
+    use_rooftop_pv_potential_usage(e, id, type) {
         if (type == 'potential') {
             this.potential_id = id;
             this.area_id = null;
@@ -123,32 +123,38 @@ class PICO_RooftopPV {
                     text: 'Use Rooftop PV Potential',
                     icon: resource_uri + 'icons/RooftopPV.png',
                     callback: function(e) {
-                        pico_rooftoppv_potential_plugin.choose_rooftop_pv_potential_usage(e, id, 'potential');
+                        pico_rooftoppv_potential_plugin.use_rooftop_pv_potential_usage(e, id, 'potential');
                     }
                 });
             }
-           if (layer_type === 'area') {
-                layer.options.contextmenuItems.push({
-                    text: 'Query Rooftop PV Potential',
-                    icon: resource_uri + 'icons/RooftopPV.png',
-                    callback: function(e) {
-                        pico_rooftoppv_potential_plugin.query_rooftop_pv_potential(e, id);
-                    }
-                });
-                layer.options.contextmenuItems.push({
-                    text: 'Use Rooftop PV Potential',
-                    icon: resource_uri + 'icons/RooftopPV.png',
-                    callback: function(e) {
-                        pico_rooftoppv_potential_plugin.choose_rooftop_pv_potential_usage(e, id, 'area');
-                    }
-                });
-           }
-
+           // if (layer_type === 'area') {
+           //      layer.options.contextmenuItems.push({
+           //          text: 'Query Rooftop PV Potential',
+           //          icon: resource_uri + 'icons/RooftopPV.png',
+           //          callback: function(e) {
+           //              pico_rooftoppv_potential_plugin.query_rooftop_pv_potential(e, id);
+           //          }
+           //      });
+           //      layer.options.contextmenuItems.push({
+           //          text: 'Use Rooftop PV Potential',
+           //          icon: resource_uri + 'icons/RooftopPV.png',
+           //          callback: function(e) {
+           //              pico_rooftoppv_potential_plugin.use_rooftop_pv_potential_usage(e, id, 'area');
+           //          }
+           //      });
+           // }
         }
     }
 }
 
 var pico_rooftoppv_potential_plugin;   // global variable for the PICO_RooftopPV plugin
+
+window.pico_interface_query_rooftop_pv_potential = function(event, id) {
+    pico_rooftoppv_potential_plugin.query_rooftop_pv_potential(event, id);
+}
+window.pico_interface_use_rooftop_pv_potential = function(event, id) {
+    pico_rooftoppv_potential_plugin.use_rooftop_pv_potential_usage(event, id, 'area');
+}
 
 $(document).ready(function() {
     extensions.push(function(event) { PICO_RooftopPV.create(event) });

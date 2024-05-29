@@ -75,38 +75,38 @@
             etm_interface_plugin = new ETMInterface();
             return etm_interface_plugin;
         }
-        if (event.type === 'add_contextmenu') {
-            let layer = event.layer;
-            let layer_type = event.layer_type;
-            let id = layer.id;
-            if (layer_type === 'area') {
-                layer.options.contextmenuItems.push({
-                    text: 'get ETM sankey info',
-                    icon: resource_uri + 'icons/pie.png',
-                    callback: function(e) {
-                        etm_interface_plugin.area_info(e, id);
-                    }
-                });
-            }
-            if (layer_type === 'area') {
-                layer.options.contextmenuItems.push({
-                    text: 'update ETM sankey info',
-                    icon: resource_uri + 'icons/pie.png',
-                    callback: function(e) {
-                        etm_interface_plugin.area_info_update(e, id);
-                    }
-                });
-            }
-            if (layer_type === 'area') {
-                layer.options.contextmenuItems.push({
-                    text: 'Warmtetransitie',
-                    icon: resource_uri + 'images/HeatDemand.png',
-                    callback: function(e) {
-                        etm_interface_plugin.area_heat_transition(e, id);
-                    }
-                });
-            }
-        }
+        // if (event.type === 'add_contextmenu') {
+        //     let layer = event.layer;
+        //     let layer_type = event.layer_type;
+        //     let id = layer.id;
+        //     if (layer_type === 'area') {
+        //         layer.options.contextmenuItems.push({
+        //             text: 'get ETM sankey info',
+        //             icon: resource_uri + 'icons/pie.png',
+        //             callback: function(e) {
+        //                 etm_interface_plugin.area_info(e, id);
+        //             }
+        //         });
+        //     }
+        //     if (layer_type === 'area') {
+        //         layer.options.contextmenuItems.push({
+        //             text: 'update ETM sankey info',
+        //             icon: resource_uri + 'icons/pie.png',
+        //             callback: function(e) {
+        //                 etm_interface_plugin.area_info_update(e, id);
+        //             }
+        //         });
+        //     }
+        //     if (layer_type === 'area') {
+        //         layer.options.contextmenuItems.push({
+        //             text: 'Warmtetransitie',
+        //             icon: resource_uri + 'images/HeatDemand.png',
+        //             callback: function(e) {
+        //                 etm_interface_plugin.area_heat_transition(e, id);
+        //             }
+        //         });
+        //     }
+        // }
         if (event.type === 'settings_menu_items') {
             let menu_items = {
                 'value': 'etm_interface_plugin_settings',
@@ -127,6 +127,9 @@ window.etm_interface_area_info = function(event, id) {
 }
 window.etm_interface_area_info_update = function(event, id) {
     etm_interface_plugin.area_info_update(event, id);
+}
+window.etm_interface_heat_transition = function(event, id) {
+    etm_interface_plugin.area_heat_transition(event, id);
 }
 
 $(document).ready(function() {
