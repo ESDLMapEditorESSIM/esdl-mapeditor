@@ -116,7 +116,6 @@ export function useWorkflow() {
     const activatePersistedWorkflow = (uuid) => {
         window.show_loader();
         window.socket.emit('/workflow/load', {workflow_id: uuid}, function (response) {
-            console.log(response);
             if (response.message) {
                 window.hide_loader();
                 alert(response.message);
