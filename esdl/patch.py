@@ -12,9 +12,10 @@
 #  Manager:
 #      TNO
 
-from pyecore.ecore import EObject
+from pyecore.ecore import EObject, EClass, EAttribute
 from pyecore.utils import alias
 
+import esdlproject
 from esdl import support_functions, esdl
 
 
@@ -49,7 +50,7 @@ def patch_esdl():
     setattr(esdl.FromToDoubleItem, 'from', esdl.FromToDoubleItem.from_)
     alias('start', esdl.FromToDoubleItem.from_)
 
-    # add support for cloning of EObjects and coppy.copy()
+    # add support for cloning of EObjects and copy.copy()
     setattr(EObject, '__copy__', support_functions.clone)
     setattr(EObject, 'clone', support_functions.clone)
 
@@ -61,4 +62,28 @@ def patch_esdl():
     esdl.EnergySystem.__repr__ = \
         lambda x: '{}: ({})'.format(x.name, esdl_attr_to_dict(x))
 
-    setattr(EObject, 'serialized_deepcopy', support_functions.serialized_deepcopy)
+    esdl.Port.__repr__ = \
+        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id="{x.id}">'
+    esdl.Area.__repr__ = \
+        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id="{x.id}">'
+
+    esdlproject.DetailedChange.__repr__ = \
+        lambda x: f'<{x.eClass.name} {attr_string(x)}>'
+        #lambda x: f'<{x.eClass.name} ownerFragment="{x.ownerFragment}", feature="{x.feature}", stringValue="{x.stringValue}", previousValue="{x.previousValue}", objectFragment="{x.objectFragment}">'
+    esdlproject.HighLevelChange.__repr__ = \
+        lambda x: f'<{x.eClass.name} label="{x.label}", len(change)={len(x.change)}, change={x.change}>'
+
+    def attr_string(e: EObject):
+        cls: EClass = e.eClass
+        s = []
+        for f in cls.eAllStructuralFeatures():
+            if e.eIsSet(f):
+                if isinstance(f, EAttribute):
+                    s.append(f'{f.name}="{e.eGet(f)}"')
+                else:
+                    v = e.eGet(f)
+                    content = "[content]"
+                    if isinstance(v, EObject):
+                        content = f'<{v.eClass.name} {"name=" + v.name + "" if hasattr(v, "name") and v.name is not None else ""}>'
+                    s.append(f'{f.name}={content}')
+        return ', '.join(s)

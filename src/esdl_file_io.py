@@ -88,7 +88,7 @@ class ESDLFileIO:
             for v in variants:
                 es = pm.get_variant_snapshot(v)
                 stack = pm.get_undo_redo_stack(es)
-                if stack.lastChanged > datetime.min:
+                if stack.last_changed > datetime.min:
                     # warn for unsaved changes
                     self.send_alert(f"{v.name} contains unsaved changes")
                     return

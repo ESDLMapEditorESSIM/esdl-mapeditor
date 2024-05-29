@@ -1,4 +1,3 @@
-import json
 import threading
 import traceback
 from datetime import datetime
@@ -6,20 +5,17 @@ from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
 from uuid import uuid4
 
-from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
+from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI, Resource
-from pyecore import commands as pyecore_commands
 
-from esdl import EnergySystem, esdl, support_functions
+from esdl import EnergySystem, esdl
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
-from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
-from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
-    VariantCollection
-from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
-from esdlproject.actions import convertActionToVariantChanges
+from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack
+from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection
+from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
 import src.log as log
@@ -135,7 +131,6 @@ class ProjectManager:
         If using uri to load a project, use StringURI(uri, text) to load a text string
         """
         patch_esdl()
-
         self.rset = ResourceSet()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
@@ -160,7 +155,7 @@ class ProjectManager:
         variant_snapshot = self.get_variant_snapshot(self.active_variant)
         active_tracker = self.change_tracker.get_tracker(variant_snapshot)
         if active_tracker is None:
-            active_tracker = self.change_tracker.newTracker(variant_snapshot)
+            active_tracker = self.change_tracker.new_tracker(self.active_variant, variant_snapshot)
         return active_tracker
 
     def add_change_listener(self, listener_id: str, call_back_fun):
@@ -181,16 +176,16 @@ class ProjectManager:
         else:
             print(f"Cannot remove change listener with id={listener_id}")
 
-    def change_handler(self, action: LabelledAction):
+    def change_handler(self, change: HighLevelChange):
         """
         Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
         Parameters
         ----------
-        action LabelledAction
+        change HighLevelChange to send to the listeners
         """
         for listener_id, call_back_fun in self.change_listeners.items():
             print(f"Change detected, informing {listener_id}")
-            call_back_fun(action)
+            call_back_fun(change)
 
     def init_empty_project(self,
                            es_name="New Energy System",
@@ -435,91 +430,20 @@ class ProjectManager:
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
         if tracker is None:
-            tracker = self.change_tracker.newTracker(resource=resource)
+            tracker = self.change_tracker.new_tracker(variant=variant, resource=resource)
         for high_level_change in variant.change:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
                 print(f"Handling High level change {high_level_change.label}")
                 for change in high_level_change.change:
-                    self.processChange(change, resource)
+                    applyChange(change, resource)
                 if record_changes:
                     tracker.stack.stop_recording()
             else:
                 print(f"Fixme: ignoring DetailedChanges at this level")
 
-    def processChange(self, change, resource: XMLResource):
-        """
-        Process a change and apply it to the given resource.
 
-        :param change: the change to apply
-        :param resource: the resource to apply the change to
-        """
-        print(
-            f"Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}"
-        )
-        if isinstance(change, Set):
-            if change.objectValue is not None:
-                print(f"\- Set change applied to {change.ownerFragment}")
-                owner = resource.resolve(change.ownerFragment)
-                owner.eSet(change.feature, change.objectValue.deepcopy())
-            elif change.stringValue is not None:
-                owner = resource.resolve(change.ownerFragment)
-                feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
-                if isinstance(feature, EAttribute):
-                    owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
-                else:  # eReference and not many
-                    if change.stringValue == "":
-                        owner.eSet(change.feature, None)
-                    else:
-                        target = resource.resolve(change.stringValue)
-                        owner.eSet(change.feature, target)
-
-        elif isinstance(change, Add):
-            if change.objectValue is not None:
-                print(f"\- Add change applied to {change.ownerFragment}")
-                owner = resource.resolve(change.ownerFragment)
-                abstractList = owner.eGet(change.feature)
-                abstractList.append(change.objectValue.deepcopy())
-            elif change.objectReference:
-                print("\- processChange() - Not implemented change.objectReference")
-            elif change.stringValue:
-                owner: EObject = resource.resolve(change.ownerFragment)
-                abstractList = owner.eGet(change.feature)
-                eClass: EClass = owner.eClass
-                feature: EStructuralFeature = eClass.findEStructuralFeature(change.feature)
-                if isinstance(feature, EReference):
-                    eReference: EReference = feature
-                    if eReference.containment:
-                        print("processChange(): Not handled reference.containment")
-                    else:
-                        print(f"\- Add change reference {change.stringValue} applied to {change.ownerFragment}")
-                        ref = resource.resolve(change.stringValue)
-                        abstractList.append(ref)
-                else:
-                    print(f"\- Add change attribute value {change.stringValue} applied to {change.ownerFragment}")
-                    abstractList.append(change.stringValue)
-        elif isinstance(change, Remove):
-            # remove a value or reference from a list
-            try:
-                owner: EObject = resource.resolve(change.ownerFragment)
-            except ValueError:
-                print(f"\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
-                return
-            feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
-            abstractList = owner.eGet(change.feature)
-            if isinstance(feature, EReference):
-                try:
-                    ref = resource.resolve(change.stringValue)
-                    abstractList.remove(ref)
-                except Exception:
-                    print(f"\- ###: Cannot execute change, resolving of {change.stringValue} failed")
-            else:
-                # stringvalue is a value (enum, string, int, etc)
-                abstractList.remove(feature.eType.from_string(change.stringValue))
-        elif isinstance(change, Delete):
-            owner: EObject = resource.resolve(change.ownerFragment)
-            owner.delete()
 
     def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """"
@@ -673,22 +597,25 @@ class ProjectManager:
 
         resources_dict = {}
 
-        for variantCollection in self.project.variantCollection:
+        # TODO: not needed anymore? Check
+        # TODO: as changes are saved in variant already (and the stack is same as variant.changes)
 
-            collection_resource = get_variant_collection_resource(variantCollection)
-            resources_dict[variantCollection.id] = collection_resource
-            variantCollection.energysystem = collection_resource.contents[0].deepcopy()
-            variantCollection.energysystemRef = None
-            # todo: change such that we iterate over subvariants
-            #for variant in variantCollection.variant:
-            variant = variantCollection.variant  # main variant
-            if variant.snapshotRef:
-                variant_tracker = self.change_tracker.get_tracker(variant.snapshotRef)
-                if variant_tracker:
-                    variant_stack = variant_tracker.stack
-                    for action in variant_stack.stack:
-                        convertActionToVariantChanges(action, variant)
-                variant.snapshotRef = None
+        # for variantCollection in self.project.variantCollection:
+        #
+        #     collection_resource = get_variant_collection_resource(variantCollection)
+        #     resources_dict[variantCollection.id] = collection_resource
+        #     variantCollection.energysystem = collection_resource.contents[0].deepcopy()
+        #     variantCollection.energysystemRef = None
+        #     # todo: change such that we iterate over subvariants
+        #     #for variant in variantCollection.variant:
+        #     variant = variantCollection.variant  # main variant
+        #     if variant.snapshotRef:
+        #         variant_tracker = self.change_tracker.get_tracker(variant.snapshotRef)
+        #         if variant_tracker:
+        #             variant_stack = variant_tracker.stack
+        #             for action in variant_stack.stack:
+        #                 convertActionToVariantChanges(action, variant)
+        #         variant.snapshotRef = None
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)
@@ -990,6 +917,7 @@ class ProjectManager:
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
         print(self.to_debug_string())
+        #print("Current ESDL:")
         #print(self.active_energy_system_to_string())
             #for v in vc.variant.variant:
             #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
@@ -1070,3 +998,4 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     # index = self.get_base_variant_index(base_variant)
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
+

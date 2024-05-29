@@ -967,6 +967,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
 
             emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
             emit('set_active_layer_id', es.id)
+            set_session('active_es_id', es.id)
 
             area = es.instance[0].area
             find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible

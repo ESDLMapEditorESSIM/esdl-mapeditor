@@ -25,8 +25,8 @@ from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
-from extensions.session_manager import get_project_manager, get_project_manager_with_client_id, managed_sessions
-from src.app import socketio
+from esdlproject.change_handler import applyChange
+from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
 from src.tno.events.config import AMQP_URL
@@ -70,7 +70,7 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
         tracker = pm.active_tracker
         tracker.stack.start_recording(label=hlc.label)
         for change in hlc.change:
-            pm.processChange(change, es.eResource)
+            applyChange(change, es.eResource)
         tracker.stack.stop_recording(call_change_handler=False)
 
         global local_app

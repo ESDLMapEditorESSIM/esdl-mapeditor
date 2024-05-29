@@ -49,21 +49,21 @@ def serialize_command_stack(command_stack: UndoRedoCommandStack) -> UndoRedoSeri
     """
     stack = []
     for entry in command_stack.stack:
-        commands: List[UndoRedoCommandDict] = [{
-            'id': command.value.id if hasattr(command.value, "id") else None,
-            'name': command.value.name if hasattr(command.value, "name") else None,
-            'type': command.__class__.__name__,
-        } for command in entry.data if command.value is not None]
+        changes: List[UndoRedoCommandDict] = [{
+            'id': change.objectValue.id if hasattr(change.objectValue, "id") else None,
+            'name': change.objectValue.name if hasattr(change.objectValue, "name") else None,
+            'type': change.__class__.__name__,
+        } for change in entry.change if change.objectValue is not None]
         # To find the kind of action the user did, we look at the last command in the set.
         # For a delete, we first remove everything that is attached and the last action is to remove what
         # the user wanted gone. For an add, we just add.
         entry_type = ""
-        if commands:
-            entry_type = commands[-1]['type']
+        if changes:
+            entry_type = changes[-1]['type']
         dict_entry: UndoRedoStackEntryDict = {
             'label': entry.label,
             'type': entry_type,
-            'commands': commands,
+            'commands': changes,
         }
         stack.append(dict_entry)
     return dict(

@@ -25,6 +25,7 @@ from esdl import esdl
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
+from esdl.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
@@ -69,6 +70,7 @@ class ETMInterface:
         logger.info('Registering ETMInterface extension')
 
         @self.socketio.on('etm_get_sankey_data', namespace='/esdl')
+        @undo_record_changes(label="Add ETM Sankey data")
         def etm_get_sankey_data(area_id):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
@@ -124,6 +126,7 @@ class ETMInterface:
                     return False
 
         @self.socketio.on('etm_update_sankey_data', namespace='/esdl')
+        @undo_record_changes(label="Update ETM Sankey data")
         def etm_update_sankey_data(area_id):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
