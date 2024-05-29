@@ -56,6 +56,7 @@ def emit_active_esdl_project():
 
 def emit_clear_ui():
     set_session("es_info_list", {})
+    del_session("shape_dictionary")
     emit('clear_ui')
 
 def emit_clear_frontend_esdls():

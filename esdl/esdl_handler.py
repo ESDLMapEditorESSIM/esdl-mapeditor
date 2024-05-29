@@ -115,7 +115,7 @@ class EnergySystemHandler(): #EnergyProjectHandlerMixin):
         else:
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
         self.add_object_to_dict(self.energy_system.id, self.energy_system, False)
-        self.change_tracker.newTracker(self.energy_system)
+        self.change_tracker.new_tracker(self.energy_system)
         return self.energy_system, parse_info
 
     def add_uri(self, uri):
@@ -137,7 +137,7 @@ class EnergySystemHandler(): #EnergyProjectHandlerMixin):
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         # Ewoud: precies, dus in False veranderd
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
-        self.change_tracker.newTracker(self.energy_system)
+        self.change_tracker.new_tracker(self.energy_system)
         return tmp_resource.contents[0], parse_info
 
     def load_from_string(self, esdl_string, name='from_string'):
@@ -203,7 +203,7 @@ class EnergySystemHandler(): #EnergyProjectHandlerMixin):
             self.validate(es=tmp_es)
             self.esid_uri_dict[tmp_es.id] = uri.normalize()
             self.add_object_to_dict(tmp_es.id, tmp_es, True)
-            self.change_tracker.newTracker(tmp_es)
+            self.change_tracker.new_tracker(tmp_es)
             return tmp_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(name, e))
@@ -404,7 +404,7 @@ class EnergySystemHandler(): #EnergyProjectHandlerMixin):
         # add the current energy system
         self.resource.append(self.energy_system)
         self.esid_uri_dict[self.energy_system.id] = uri.normalize()
-        self.change_tracker.newTracker(self.energy_system)
+        self.change_tracker.new_tracker(self.energy_system)
 
         instance = esdl.Instance(id=str(uuid4()), name=inst_title)
         self.energy_system.instance.append(instance)

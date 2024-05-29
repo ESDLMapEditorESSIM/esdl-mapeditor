@@ -36,11 +36,11 @@ def test():
     resource = esh.get_resource(es.id)
     print(resource.uri.plain)
     from esdl.undo import ResourceObserver
-    ro = ResourceObserver(command_stack=stack)
+    ro = ResourceObserver(changes_stack=stack)
 
     ro.observe(resource)
 
-    stack.start_recording(combineCommands=True)
+    stack.start_recording(combine_commands=True)
     #changeESName = Set(owner=es, feature='name', value="Please undo me!")
     #stack.execute(changeESName)
     print('Initial value:', es.name, es.description)
@@ -68,7 +68,7 @@ def test():
 
     print("---- next test ----")
 
-    stack.start_recording(combineCommands=True)
+    stack.start_recording(combine_commands=True)
     area: esdl.Area = es.instance[0].area
     #observer.observe(area)
     #addAsset = Add(owner=area, feature='asset', value=chp)
@@ -90,7 +90,7 @@ def test():
     r2Stack = UndoRedoCommandStack()
     ResourceObserver(r2Stack).observe(esh.get_resource(es_id=es2.id))
     r2Stack.start_recording()
-    stack.start_recording(combineCommands=True)
+    stack.start_recording(combine_commands=True)
     es2.name = 'test'
     stack.stop_recording()
     r2Stack.stop_recording()

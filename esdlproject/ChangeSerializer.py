@@ -3,7 +3,7 @@ from typing import List, Tuple
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection
 
-from esdlproject import AbstractChange, Add, Set, DetailedChange
+from esdlproject import AbstractChange, Add, Set, DetailedChange, Remove
 
 import logging
 
@@ -72,37 +72,40 @@ def deepcopy_eobject_change(eobject: EObject,
                         if x.many:
                             for orig_ref_value in orig_value:
                                 fragment = orig_ref_value.eURIFragment()
-                                change = Add(ownerFragment=k.eURIFragment(), stringValue=fragment, feature=x.name)
+                                change = Add(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                                 changeList.append(change)
                                 logger.debug("deepcopy change{}: processing x-reference {}: {}".format(eobject, x.name, fragment))
                         else:
                             fragment = orig_value.eURIFragment()
-                            change = Set(ownerFragment=k.eURIFragment(), stringValue=fragment, feature=x.name)
+                            change = Set(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                             changeList.append(change)
     changeList = filterDoubleConnectedTo(changeList)
     return copy, changeList
 
 
-def filterDoubleConnectedTo(changeList: List[DetailedChange]) -> List[DetailedChange]:
+def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedChange]:
     """
     Filter out double ConnectedTo relations in a list of DetailedChanges
     """
-    connectedToList = []
-    otherList = []
-    for ch in changeList:
-        if isinstance(ch, Add) and ch.feature == 'connectedTo':
-            connectedToList.append(ch)
-        else:
-            otherList.append(ch)
-    for i,change in enumerate(connectedToList):
-        for j,change2 in enumerate(connectedToList[i+1:]):
+    connected_to_list = []
+    return_list = list(change_list)
+
+    # find possible duplicates
+    for i, ch in enumerate(change_list):
+        if (isinstance(ch, Add) or isinstance(ch, Remove)) and ch.feature == 'connectedTo':
+            connected_to_list.append((i, ch))
+
+    # filter out duplicates
+    for i, (index, change) in enumerate(connected_to_list):
+        for j, (jndex, change2) in enumerate(connected_to_list[i+1:]):
             #k = i+1+j
-            if change.ownerFragment == change2.stringValue and change2.ownerFragment == change.stringValue:
+            if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment:
                 # change2 is double
-                #print(f'DoubleConnectedTo: {i} remove {j}/{k}: {change2.ownerFragment} <-> {change2.stringValue}')
-                connectedToList.remove(change2)
-            elif change.ownerFragment == change2.ownerFragment and change2.stringValue == change.stringValue:
-                #print(f'DoubleConnectedTo: {i}remove {j}/{k} {change2.ownerFragment} <-> {change2.stringValue}')
-                connectedToList.remove(change2)
-    otherList.extend(connectedToList)
-    return otherList
+                #print(f'DoubleConnectedTo: {i} remove {j}: {change2.ownerFragment} <-> {change2.objectFragment}')
+                connected_to_list.remove((jndex, change2))
+                return_list.remove(change2)
+            elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
+                #print(f'DoubleConnectedTo: {i} remove {j} {change2.ownerFragment} <-> {change2.objectFragment}')
+                connected_to_list.remove((jndex, change2))
+                return_list.remove(change2)
+    return return_list

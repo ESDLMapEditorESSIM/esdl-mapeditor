@@ -1202,7 +1202,7 @@ def update_coordinates(message):
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
         undo_redo = pm.get_undo_redo_stack(object)
-        undo_redo.start_recording(combineCommands=True,
+        undo_redo.start_recording(combine_commands=True,
                                   label="Change location of {}".format(object.name or object.eClass.name))
         if isinstance(object, esdl.Note):
             geom = object.mapLocation
@@ -1245,7 +1245,7 @@ def update_line_coordinates(message):
 
     if asset:
         undo_redo = pm.get_undo_redo_stack(asset)
-        undo_redo.start_recording(combineCommands=True,
+        undo_redo.start_recording(combine_commands=True,
                                   label="Change geometry of {}".format(asset.name or asset.eClass.name))
         polyline_data = message['polyline']
         # logger.debug(polyline_data)
@@ -1281,7 +1281,7 @@ def update_polygon_coordinates(message):
 
     if asset:
         undo_redo = pm.get_undo_redo_stack(asset)
-        undo_redo.start_recording(combineCommands=True,
+        undo_redo.start_recording(combine_commands=True,
                                   label="Change geometry of {}".format(asset.name or asset.eClass.name))
         polygon_data = message['polygon']
         # logger.debug(polygon_data)
@@ -1563,7 +1563,7 @@ def process_command(message):
     area_bld_list = get_session_for_esid(active_es.id, 'area_bld_list')
 
     undo_redo = pm.get_undo_redo_stack()
-    undo_redo.start_recording(combineCommands=True, label=message['cmd'])
+    undo_redo.start_recording(combine_commands=True, label=message['cmd'])
 
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
