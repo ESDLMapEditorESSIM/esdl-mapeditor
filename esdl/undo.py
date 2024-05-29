@@ -14,7 +14,7 @@
 from collections import UserList
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute, EClass
@@ -24,9 +24,7 @@ from pyecore.commands import Command, AbstractCommand
 from dataclasses import dataclass
 
 from esdl.resources.xmlresource import XMLResource
-from esdl.undo_pyecore_extensions import deepcopy_with_xrefs, Set, Add, Delete, Remove
 from esdl.undo_pyecore_patch import patch_notification_system
-from esdlproject.actions import LabelledAction
 import esdlproject.esdlproject as ep
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 
@@ -169,7 +167,7 @@ class UndoRedoCommandStack:
             self._combine_multiple_changes = False
             self.push(self._hlc)
             self._combine_multiple_changes = True
-        self._hlc = LabelledAction(label)
+        self._hlc = ep.HighLevelChange(label)
 
     def push(self, abstract_change: ep.AbstractChange):
         """
@@ -423,6 +421,7 @@ class UndoRedoCommandStack:
 #     print("**** exit handleNotification ****")
 #
 
+post_process_list: List[Notification] = []
 
 def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notification):
     """
@@ -433,6 +432,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
 
     :return: None
     """
+
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
         print('=== convertNotificationToChange ====== !!! No eResource for', notification)
         return
@@ -447,7 +447,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     if (notification.kind == Kind.SET or notification.kind == Kind.UNSET) and \
             isinstance(notification.feature, EReference) and notification.feature.eOpposite and \
             notification.feature.eOpposite.containment:
-        # bi-directional references generate 2 notifications, we can ignore the opposite
+        # bi-directional references generate 2 notifications, we can ignore the opposite that is not a containment relation
         # SET and UNSET operations (e.g. asset.area and port.energyasset)
         #print("  \ -- Ignoring opposite setters for", f.name)
         return
@@ -507,8 +507,15 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                             objectFragment=notification.new.eURIFragment())
             #change.objectValue_xrefs.extend(value_x_refs)
         else:
-            change = ep.Add(ownerFragment=owner_fragment, feature=feature_name,
-                            objectFragment=notification.new.eURIFragment())
+            # this is a cross-reference
+            if notification.new.eResource is None:
+                print("Add: eResource is none, delay resolution of fragment for ", notification)
+                if notification not in post_process_list:
+                    post_process_list.append(notification)
+            else:
+                change = ep.Add(ownerFragment=owner_fragment, feature=feature_name,
+                                objectFragment=notification.new.eURIFragment())
+                value_x_refs = []  # don't need to include cross references here as this is the cross reference
 
     elif notification.kind == Kind.REMOVE:  # remove eobject from collection, only .old is available as previous value
         f = notification.feature
@@ -516,13 +523,38 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             # bi-directional references generate 2 notifications, we can ignore the opposite
             print("  \ -- f.eOpposite and f.eOposite.containment", f.name)
         owner_fragment = notification.notifier.eURIFragment()
+        old_uri_fragment = notification.old.eURIFragment()
+        try:
+            resolved = notification.notifier.eResource.resolve(old_uri_fragment)
+        except AttributeError:
+            print("Resolving of old URI fragment fails, Ignoring for now:", notification)
+            return
+        if not isinstance(resolved, f.eType):
+            # TODO: the way pyEcore deletes objects with references in non-deterministic, because it uses a unordered set()
+            # for storing the list of references of an object. That's why the order of notification differs among different
+            # runs. Our code should deal with it (as the order shouldn't matter) but when pyEcore unlinks an object from
+            # the tree, cross-references (such as connectedTo and carrier) do not have eContainer() information anymore
+            # and eURIFragment() will return "/" in that case, which is wrong.
+            # The above check removes these faulty cross-reference notifications, as they are (hopefully) captered by the
+            # deepcopy_eobject_change in the x-refs.
+            #
+            # @see https://365tno.sharepoint.com/:p:/r/teams/T94910/TeamDocuments/Team/Design/ProjectManager/Non-determinisme%20in%20notification%20generation%20of%20PyEcore.pptx?d=w9fc13e3db82246119c7b02b7ed3b3513&csf=1&web=1&e=R07dvF
+            # @see undo_pyecore_patch.py to make sure notifications are send before the actual removal.
+            #
+            # check if old_uri_fragment is valid, as sometimes an event comes too late and
+            # old uri_fragment is "/" instead of the correct one.
+            #print(f"!!!!!!!!!!!!!!! missing container information, should be handled previously..., {f.eType.eClass} <-> {notification.notifier.eResource.resolve(old_uri_fragment).eClass}")
+            return
+        # else:
+        #     pass
+
         if notification.feature.containment:
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
                 change = ep.Delete(ownerFragment=owner_fragment, feature=feature_name, objectValue=previous_value,
-                                   objectFragment=notification.old.eURIFragment())
+                                   objectFragment=old_uri_fragment)
         else:  # remove a reference
             change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name,
-                               objectFragment=notification.old.eURIFragment())
+                               objectFragment=old_uri_fragment)
             # TODO check if this is true:
             # if we remove a reference, we don't need to do a deepcopy and
             # we don't need to add x-refs
@@ -569,6 +601,15 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         change.previousValue_xrefs.extend(cleaned_change_list)
     if change:
         stack.push(change)
+
+    if len(post_process_list) > 0:
+        if notification not in post_process_list:
+            for n in list(post_process_list):
+                convertNotificationToChange(stack, n)
+                post_process_list.remove(n)
+            if len(post_process_list) == 0:
+                print("****** Emptied post_proces_list")
+
     print("**** exit convertNotificationToChange ****")
 
 
@@ -606,22 +647,40 @@ def updateResourceUUIDdict(notification: Notification):
             print(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
 
     elif notification.kind == Kind.REMOVE:
-        prev_value = notification.old
-        if isinstance(f, EReference) and f.containment and isinstance(prev_value, EObject):
+        prev_values = notification.old
+        if isinstance(f, EReference) and f.containment and isinstance(prev_values, EObject):
             # whole object is removed: iterate though contents and remove all ids
-            resource = prev_value.eResource
+            resource = prev_values.eResource
             if not resource:
                 resource = notification.notifier.eResource
             if not resource:
                 print(f"Can't update uuid_dict as no resource available: {notification}")
                 return
-            if hasattr(prev_value, 'id') and prev_value.id is not None:
-                save_delete_dict_key_with_warning(resource.uuid_dict, prev_value.id)
-                print(f"|Updating UUID dict, remove {prev_value}.id={prev_value.id}")
-            for obj in prev_value.eAllContents():
+            if hasattr(prev_values, 'id') and prev_values.id is not None:
+                save_delete_dict_key_with_warning(resource.uuid_dict, prev_values.id)
+                print(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
+            for obj in prev_values.eAllContents():
                 if hasattr(obj, 'id') and obj.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
                     print(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
+    elif notification.kind == Kind.REMOVE_MANY:
+        prev_values = notification.old
+        if isinstance(f, EReference) and f.containment and isinstance(prev_values, list) and len(prev_values) > 0:
+            # whole object is removed: iterate though contents and remove all ids
+            resource = prev_values[0].eResource
+            if not resource:
+                resource = notification.notifier.eResource
+            if not resource:
+                print(f"Can't update uuid_dict as no resource available: {notification}")
+                return
+            for prev_value in prev_values:
+                if hasattr(prev_value, 'id') and prev_value.id is not None:
+                    save_delete_dict_key_with_warning(resource.uuid_dict, prev_value.id)
+                    print(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
+                for obj in prev_value.eAllContents():
+                    if hasattr(obj, 'id') and obj.id is not None:
+                        save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
+                        print(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
     else:
         print(f"Warning: updateResourceUUIDdict() unsupported notification {notification.kind}")
 

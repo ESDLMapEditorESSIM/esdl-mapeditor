@@ -102,8 +102,8 @@ class TestNewUndo(unittest.TestCase):
 
         hlc = stack.top
         json = eobject_to_string(hlc, format=ESDLFormat.JSON, options={JsonOptions.INDENT: 2})
-
         print(json)
+
         inport1 = area.asset[0].port[0]
         inport2 = area.asset[1].port[0]
         outport = area.asset[2].port[0]
@@ -157,8 +157,15 @@ class TestNewUndo(unittest.TestCase):
         print(eobject_to_string(stack.top, ESDLFormat.JSON, {JsonOptions.INDENT: 2}))
 
     def test_multi_attribute_change(self):
-        # TODO
-        pass
+        # TODO: multi attributes is not use a lot in ESDL and is not supported in the MapEditor Gui currently (May 2024)
+        pm = ProjectManager()
+        es: esdl.EnergySystem = pm.get_active_energy_system()
+        stack = pm.active_tracker.stack
+
+        with stack.track_changes(label="multi attribute change"):
+            es.sector = [esdl.SectorEnum.GEBOUWDE_OMGEVING, esdl.SectorEnum.INDUSTRIE]
+
+        print(stack.top)
 
     def test_reference_change(self):
         pm = ProjectManager()
@@ -230,8 +237,8 @@ class TestNewUndo(unittest.TestCase):
             windturbine.port.append(outport)
             area = es.instance[0].area
             area.asset.append(transformer1)
-            area.asset.append(transformer2)
             area.asset.append(windturbine)
+            area.asset.append(transformer2)
             inport1.connectedTo.append(outport)
 
         print(eobject_to_string(es, ESDLFormat.XML))
@@ -240,23 +247,30 @@ class TestNewUndo(unittest.TestCase):
         self.assertNotIn(inport2, outport.connectedTo)
 
         with stack.track_changes("remove object with x_refs"):
+            transformer1.port[0].eClass.eStructuralFeatures
+            for ref in transformer1.port[0].eClass.eAllReferences():
+                print(f"- {ref}")
             transformer1.delete()
+            #windturbine.delete()
 
         self.assertNotIn(inport1, outport.connectedTo)
         self.assertNotIn(transformer1, area.asset)
+        #self.assertNotIn(windturbine, area.asset)
         print(eobject_to_string(stack.top, ESDLFormat.JSON, {JsonOptions.INDENT: 2}))
-
+        return
         stack.undo()
         # now all object delete are recreated with different memory locations, so can't use transformer1 and inport here
         print(eobject_to_string(es, ESDLFormat.XML))
         # TODO: why extra Remove...?
-        #stack.redo()
-        # Transformer is applied again, but is a copy of the original, so we can't check for 'pp' object here
+        stack.redo()
+        # Transformer is deleted again,
         # but on attributes is ok
-        # print(eobject_to_string(es, ESDLFormat.XML, {JsonOptions.INDENT: 2}))
-        # self.assertEqual(len(es.instance[0].area.asset), 1)
-        # self.assertEqual(es.instance[0].area.asset[0].name, pp.name)
-        # self.assertEqual(es.instance[0].area.asset[0].type, esdl.PowerPlantTypeEnum.COMBINED_CYCLE_GAS_TURBINE)
+
+        print(eobject_to_string(es, ESDLFormat.XML, {JsonOptions.INDENT: 2}))
+        self.assertEqual(len(es.instance[0].area.asset), 2)
+        self.assertEqual(es.instance[0].area.asset[0].name, windturbine.name)  # check if same transformer
+        self.assertEqual(es.instance[0].area.asset[1].name, transformer2.name)  # check if same transformer
+
 
 
     def test_delete_object_without_xrefs(self):

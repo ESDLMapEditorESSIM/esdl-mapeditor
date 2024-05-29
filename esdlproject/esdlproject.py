@@ -254,6 +254,6 @@ class Add(DetailedChange):
 
 class Remove(DetailedChange):
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: object) -> object:
 
         super().__init__(**kwargs)

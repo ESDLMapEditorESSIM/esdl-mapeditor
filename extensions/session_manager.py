@@ -19,11 +19,9 @@ import time
 import src.log as log
 import os, glob
 
-from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource, JsonOptions
+from esdlproject import AbstractChange, HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
-from esdlproject.actions import actionToHighlevelChange
-from esdlproject.encoders import DateTimeEncoder
 from src.tno.events.messages import HighLevelChangeMessage
 from src.tno.events.publisher import send_rabbitmq_message
 
@@ -63,16 +61,15 @@ CLEANUP_INTERVAL = 60*60  # every hour
 #     logger.debug('Set ESH client_id={}'.format(client_id))
 #     set_session(ESH_KEY, esh)
 
-def on_change_recorded(action):
+def on_change_recorded(change: HighLevelChange):
     """
     This function is called when a change is recorded on the UndoRedoCommandStack by adding this function
     as call back function to the ProjectManager's change listeners (see get_project_manager()).
-    It will convert the action to a high level change (see ESDLProject ecore model) and serializes
-    this to json to send to interested live models.
+    It will serialize a high level change (see ESDLProject ecore model) to send to interested live models.
 
     Parameters
     ----------
-    action A LabelledAction
+    change A HighLevelChange to be send away
 
     Returns
     -------
@@ -81,11 +78,9 @@ def on_change_recorded(action):
     pm = get_project_manager()
     pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
-    hlc = actionToHighlevelChange(action)
-
     #options = {'encoder': DateTimeEncoder, 'indent': 2}
     options = {JsonOptions.INDENT: 2}
-    hlc_string = eobject_to_string(hlc, ESDLFormat.JSON, options=options)
+    hlc_string = eobject_to_string(change, ESDLFormat.JSON, options=options)
     logger.debug(f"Sending HighLevelChange: {hlc_string}")
 
     # uri = StringURI("high_level_change.json")

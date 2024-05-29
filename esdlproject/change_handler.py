@@ -18,6 +18,12 @@ from esdl.resources.xmlresource import XMLResource
 from esdlproject import Set, Add, Remove, Delete
 
 
+"""
+Implements undo and redo based on a change.
+
+Applies a change or undos a change to a specific resource
+"""
+
 def applyChange(change, resource: XMLResource):
     """
     Process a change and apply it to the given resource.

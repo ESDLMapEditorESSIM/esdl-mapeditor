@@ -1,4 +1,3 @@
-import json
 import threading
 import traceback
 from datetime import datetime
@@ -6,20 +5,16 @@ from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
 from uuid import uuid4
 
-from pyecore.ecore import EObject, EReference, EClass, EStructuralFeature, EAttribute
+from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI, Resource
-from pyecore import commands as pyecore_commands
 
-from esdl import EnergySystem, esdl, support_functions
+from esdl import EnergySystem, esdl
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
-from esdl.undo import ChangeTracker, LabelledAction, Tracker, UndoRedoCommandStack
-from esdlproject import Add, Delete, ESDLProject, HighLevelChange, Remove, Set, Variant, \
-    VariantCollection
-from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
-from esdlproject.actions import convertActionToVariantChanges
+from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack
+from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
@@ -181,16 +176,16 @@ class ProjectManager:
         else:
             print(f"Cannot remove change listener with id={listener_id}")
 
-    def change_handler(self, action: LabelledAction):
+    def change_handler(self, change: HighLevelChange):
         """
         Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
         Parameters
         ----------
-        action LabelledAction
+        change HighLevelChange to send to the listeners
         """
         for listener_id, call_back_fun in self.change_listeners.items():
             print(f"Change detected, informing {listener_id}")
-            call_back_fun(action)
+            call_back_fun(change)
 
     def init_empty_project(self,
                            es_name="New Energy System",
@@ -602,22 +597,25 @@ class ProjectManager:
 
         resources_dict = {}
 
-        for variantCollection in self.project.variantCollection:
+        # TODO: not needed anymore? Check
+        # TODO: as changes are saved in variant already (and the stack is same as variant.changes)
 
-            collection_resource = get_variant_collection_resource(variantCollection)
-            resources_dict[variantCollection.id] = collection_resource
-            variantCollection.energysystem = collection_resource.contents[0].deepcopy()
-            variantCollection.energysystemRef = None
-            # todo: change such that we iterate over subvariants
-            #for variant in variantCollection.variant:
-            variant = variantCollection.variant  # main variant
-            if variant.snapshotRef:
-                variant_tracker = self.change_tracker.get_tracker(variant.snapshotRef)
-                if variant_tracker:
-                    variant_stack = variant_tracker.stack
-                    for action in variant_stack.stack:
-                        convertActionToVariantChanges(action, variant)
-                variant.snapshotRef = None
+        # for variantCollection in self.project.variantCollection:
+        #
+        #     collection_resource = get_variant_collection_resource(variantCollection)
+        #     resources_dict[variantCollection.id] = collection_resource
+        #     variantCollection.energysystem = collection_resource.contents[0].deepcopy()
+        #     variantCollection.energysystemRef = None
+        #     # todo: change such that we iterate over subvariants
+        #     #for variant in variantCollection.variant:
+        #     variant = variantCollection.variant  # main variant
+        #     if variant.snapshotRef:
+        #         variant_tracker = self.change_tracker.get_tracker(variant.snapshotRef)
+        #         if variant_tracker:
+        #             variant_stack = variant_tracker.stack
+        #             for action in variant_stack.stack:
+        #                 convertActionToVariantChanges(action, variant)
+        #         variant.snapshotRef = None
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)

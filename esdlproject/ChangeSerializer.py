@@ -83,28 +83,28 @@ def deepcopy_eobject_change(eobject: EObject,
     return copy, changeList
 
 
-def filterDoubleConnectedTo(changeList: List[DetailedChange]) -> List[DetailedChange]:
+def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedChange]:
     """
     Filter out double ConnectedTo relations in a list of DetailedChanges
     """
-    connectedToList = []
-    otherList = []
-    for ch in changeList:
+    connected_to_list = []
+    return_list = list(change_list)
+
+    # find possible duplicates
+    for i, ch in enumerate(change_list):
         if isinstance(ch, Add) and ch.feature == 'connectedTo':
-            connectedToList.append(ch)
+            connected_to_list.append((i, ch))
         elif isinstance(ch, Remove) and ch.feature == 'connectedTo':
-            connectedToList.append(ch)
-        else:
-            otherList.append(ch)
-    for i,change in enumerate(connectedToList):
-        for j,change2 in enumerate(connectedToList[i+1:]):
+            connected_to_list.append((i, ch))
+    # filter out duplicates
+    for i, (index, change) in enumerate(connected_to_list):
+        for j, (jndex, change2) in enumerate(connected_to_list[i+1:]):
             #k = i+1+j
             if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment:
                 # change2 is double
-                #print(f'DoubleConnectedTo: {i} remove {j}/{k}: {change2.ownerFragment} <-> {change2.stringValue}')
-                connectedToList.remove(change2)
+                #print(f'DoubleConnectedTo: {i} remove {j}: {change2.ownerFragment} <-> {change2.objectFragment}')
+                return_list.remove(change2)
             elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
-                #print(f'DoubleConnectedTo: {i}remove {j}/{k} {change2.ownerFragment} <-> {change2.stringValue}')
-                connectedToList.remove(change2)
-    otherList.extend(connectedToList)
-    return otherList
+                #print(f'DoubleConnectedTo: {i} remove {j} {change2.ownerFragment} <-> {change2.objectFragment}')
+                return_list.remove(change2)
+    return return_list
