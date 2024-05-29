@@ -18,7 +18,6 @@ from esdl import esdl, EnergySystem
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource, JsonOptions
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
-from esdlproject.actions import actionToHighlevelChange
 
 
 class MyTestCase(unittest.TestCase):
@@ -47,7 +46,7 @@ class MyTestCase(unittest.TestCase):
         inport2.connectedTo.append(outport)
         pm.active_tracker.stack.stop_recording()
 
-        hlc = actionToHighlevelChange(pm.active_tracker.stack.top)
+        hlc = pm.active_tracker.stack.top
         json = eobject_to_string(hlc, format=ESDLFormat.JSON, options={JsonOptions.INDENT: 2})
 
         print(json)

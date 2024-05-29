@@ -5,17 +5,10 @@ from pyecore.resources.json import JsonResource
 
 from esdl import esdl
 from esdl.processing.string_uri import StringURI
-from esdlproject.ProjectManager import ProjectManager, convertActionToVariantChanges, resource_as_string
+from esdlproject.ProjectManager import ProjectManager, resource_as_string
 
 import json
 import datetime
-
-from esdlproject.actions import actionToHighlevelChange
-
-
-# from esdlproject.actions import actionToHighlevelChange
-# from esdlproject.actions import actionToHighlevelChange
-# from esdlproject.encoders import DateTimeEncoder
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -43,7 +36,7 @@ class SerializeHLCTest(unittest.TestCase):
 
         print(f'pipe1 resource: {pipe1.eResource}, {pipe1.eURIFragment()}')
 
-        hlc = actionToHighlevelChange(stack.top)
+        hlc = stack.top
         print(hlc)
 
         pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)

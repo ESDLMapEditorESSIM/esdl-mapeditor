@@ -1012,7 +1012,6 @@ def process_energy_system(force_update_es_id=None, zoom=True):
             es_info_list[es.id] = {
                 "processed": True
             }
-            print(pm.active_energy_system_to_string())
         else:
             print("- Energysystem with id {} already processed".format(es.id))
 
