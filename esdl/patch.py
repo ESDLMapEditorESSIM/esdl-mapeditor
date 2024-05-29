@@ -84,6 +84,6 @@ def patch_esdl():
                     v = e.eGet(f)
                     content = "[content]"
                     if isinstance(v, EObject):
-                        content = f'<{v.eClass.name} {"name=" + v.name + "" if hasattr(v, "name") else ""}>'
+                        content = f'<{v.eClass.name} {"name=" + v.name + "" if hasattr(v, "name") and v.name is not None else ""}>'
                     s.append(f'{f.name}={content}')
         return ', '.join(s)

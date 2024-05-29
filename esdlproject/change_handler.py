@@ -92,23 +92,28 @@ def applyChange(change, resource: XMLResource):
         # remove a value or reference from a list
         try:
             owner: EObject = resource.resolve(change.ownerFragment)
-        except ValueError:
-            print(f"\\- ###: Cannot execute change, resolving of {change.ownerFragment} failed")
+        except ValueError as e:
+            print(f"\\- ###: Cannot execute change, resolving of {change.ownerFragment} failed", e)
             return
         feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
         abstractList = owner.eGet(change.feature)
         if isinstance(feature, EReference):
             try:
-                ref = resource.resolve(change.stringValue)
+                ref = resource.resolve(change.objectFragment)
                 abstractList.remove(ref)
-            except Exception:
-                print(f"\\- ###: Cannot execute change, resolving of {change.stringValue} failed")
+            except Exception as e:
+                print(f"\\- ###: Cannot execute change, resolving of {change.objectFragment} failed", e)
         else:
             # stringvalue is a value (enum, string, int, etc)
             abstractList.remove(feature.eType.from_string(change.stringValue))
     elif isinstance(change, Delete):
         obj: EObject = resource.resolve(change.objectFragment)
         obj.delete()
+
+    if len(change.objectValue_xrefs) > 0:
+        for ref_change in change.objectValue_xrefs:
+            print("\\- Undo: Applying x-ref ", ref_change)
+            applyChange(ref_change, resource)  # recreate cross-references
 
 
 def undoChange(change, resource: XMLResource):
@@ -127,11 +132,10 @@ def undoChange(change, resource: XMLResource):
         f"Undo - Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}"
     )
     if isinstance(change, Set):
-        if change.previousValue is not None and isinstance(change.previousValue, EObject):
+        if change.previousObjectValue is not None and isinstance(change.previousObjectValue, EObject):
             print(f"\\- Undo Set change applied to {change.ownerFragment}")
             owner = resource.resolve(change.ownerFragment)
-            #owner.eSet(change.feature, change.objectValue.deepcopy())
-            owner.eSet(change.feature, change.previousValue.deepcopy())
+            owner.eSet(change.feature, change.previousObjectValue.deepcopy())
         # elif change.previousValue is not None and isinstance(change.previousValue, str):
         #     print(f"\- Undo Set reference change applied to {change.ownerFragment}")
         #     # originally an unset, so when undoing, we need to set it to previous_value as reference
@@ -230,5 +234,5 @@ def undoChange(change, resource: XMLResource):
 
     if len(change.previousValue_xrefs) > 0:
         for ref_change in change.previousValue_xrefs:
-            print("\\- Undo: Applying x-ref ", ref_change)
+            print("\\- Undo: Applying prev x-ref ", ref_change)
             applyChange(ref_change, resource)  # recreate cross-references

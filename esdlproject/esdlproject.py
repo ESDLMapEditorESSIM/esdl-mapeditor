@@ -226,9 +226,14 @@ class DetailedChange(AbstractChange):
 
 class Set(DetailedChange):
 
-    def __init__(self, **kwargs):
+    previousObjectValue = EReference(ordered=True, unique=True, containment=True, derived=False)
+
+    def __init__(self, *, previousObjectValue=None, **kwargs):
 
         super().__init__(**kwargs)
+
+        if previousObjectValue is not None:
+            self.previousObjectValue = previousObjectValue
 
 
 class Delete(DetailedChange):
@@ -254,6 +259,6 @@ class Add(DetailedChange):
 
 class Remove(DetailedChange):
 
-    def __init__(self, **kwargs: object) -> object:
+    def __init__(self, **kwargs):
 
         super().__init__(**kwargs)

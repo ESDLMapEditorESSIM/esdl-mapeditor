@@ -25,6 +25,7 @@ DetailedChange.owner.eType = EObject
 DetailedChange.objectValue.eType = EObject
 DetailedChange.objectValue_xrefs.eType = DetailedChange
 DetailedChange.previousValue_xrefs.eType = DetailedChange
+Set.previousObjectValue.eType = EObject
 VariantCollection.energysystem.eType = EnergySystem
 VariantCollection.energysystemRef.eType = EnergySystem
 Variant.change.eType = AbstractChange

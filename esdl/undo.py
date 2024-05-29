@@ -480,8 +480,12 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         owner_fragment = notification.notifier.eURIFragment()
         if isinstance(notification.feature, EReference):
             if notification.feature.containment:
-                change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
-                                objectValue=value, previousValue=previous_value)
+                if isinstance(previous_value, EObject):
+                    change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
+                                    objectValue=value, previousObjectValue=previous_value)
+                else:
+                    change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
+                                    objectValue=value, previousValue=previous_value)
             else:
                 previous_value = notification.old.eURIFragment() if notification.old else None
                 change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
@@ -589,18 +593,19 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
 
 
     # add possible xrefs from a deepcopy
-    if len(value_x_refs) > 0:
-        cleaned_change_list = filterDoubleConnectedTo(value_x_refs)
-        print(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-              f"(removed {len(value_x_refs) - len(cleaned_change_list)} duplicates)")
-        change.objectValue_xrefs.extend(cleaned_change_list)
-    if len(prev_value_x_refs) > 0:
-        cleaned_change_list = filterDoubleConnectedTo(prev_value_x_refs)
-        print(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-              f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)")
-        change.previousValue_xrefs.extend(cleaned_change_list)
     if change:
+        if len(value_x_refs) > 0:
+            cleaned_change_list = filterDoubleConnectedTo(value_x_refs)
+            print(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+                  f"(removed {len(value_x_refs) - len(cleaned_change_list)} duplicates)")
+            change.objectValue_xrefs.extend(cleaned_change_list)
+        if len(prev_value_x_refs) > 0:
+            cleaned_change_list = filterDoubleConnectedTo(prev_value_x_refs)
+            print(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+                  f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)")
+            change.previousValue_xrefs.extend(cleaned_change_list)
         stack.push(change)
+
 
     if len(post_process_list) > 0:
         if notification not in post_process_list:

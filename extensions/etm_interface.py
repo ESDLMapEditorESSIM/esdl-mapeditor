@@ -25,6 +25,7 @@ from esdl import esdl
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
+from esdl.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
@@ -44,11 +45,11 @@ ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
 
 # Global profile information about clusters, so information can be retrieved once and reused between calls
 global_clusters = {
-    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw [POWER in %].edd", "profile_data": None},
-    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten [POWER in %].edd", "profile_data": None},
-    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie [POWER in %].edd", "profile_data": None},
-    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens [POWER in %].edd", "profile_data": None},
-    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit [POWER in %].edd", "profile_data": None},
+    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw.edd", "profile_data": None},
+    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten.edd", "profile_data": None},
+    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie.edd", "profile_data": None},
+    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens.edd", "profile_data": None},
+    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit.edd", "profile_data": None},
 }
 
 
@@ -68,6 +69,7 @@ class ETMInterface:
         logger.info('Registering ETMInterface extension')
 
         @self.socketio.on('etm_get_sankey_data', namespace='/esdl')
+        @undo_record_changes(label="Add ETM Sankey data")
         def etm_get_sankey_data(area_id):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
@@ -123,6 +125,7 @@ class ETMInterface:
                     return False
 
         @self.socketio.on('etm_update_sankey_data', namespace='/esdl')
+        @undo_record_changes(label="Update ETM Sankey data")
         def etm_update_sankey_data(area_id):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)

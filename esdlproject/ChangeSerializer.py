@@ -92,10 +92,9 @@ def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedC
 
     # find possible duplicates
     for i, ch in enumerate(change_list):
-        if isinstance(ch, Add) and ch.feature == 'connectedTo':
+        if (isinstance(ch, Add) or isinstance(ch, Remove)) and ch.feature == 'connectedTo':
             connected_to_list.append((i, ch))
-        elif isinstance(ch, Remove) and ch.feature == 'connectedTo':
-            connected_to_list.append((i, ch))
+
     # filter out duplicates
     for i, (index, change) in enumerate(connected_to_list):
         for j, (jndex, change2) in enumerate(connected_to_list[i+1:]):
@@ -103,8 +102,10 @@ def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedC
             if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment:
                 # change2 is double
                 #print(f'DoubleConnectedTo: {i} remove {j}: {change2.ownerFragment} <-> {change2.objectFragment}')
+                connected_to_list.remove((jndex, change2))
                 return_list.remove(change2)
             elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
                 #print(f'DoubleConnectedTo: {i} remove {j} {change2.ownerFragment} <-> {change2.objectFragment}')
+                connected_to_list.remove((jndex, change2))
                 return_list.remove(change2)
     return return_list
