@@ -36,7 +36,8 @@ logger = log.get_logger(__name__)
 
 ETM_INTERFACE_SYSTEM_CONFIG = 'ETM_INTERFACE_SYSTEM_CONFIG'
 ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
-    'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
+    # 'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
+    'etm_base_url': 'https://beta.energytransitionmodel.com/api/v3',
     'etm_municipalities_file': 'data/ETM_municipalities.csv'
 }
 
