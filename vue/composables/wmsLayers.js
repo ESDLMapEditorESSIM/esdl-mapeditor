@@ -71,6 +71,7 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
                 layers: layer_info.layer_name,
                 format: 'image/png',
                 transparent: true,
+                opacity: 0.7,
                 attribution: layer_info.attribution
             });
         }

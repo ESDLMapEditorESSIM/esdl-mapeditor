@@ -598,9 +598,14 @@ function add_service_to_area_contextmenu(layer, service, idx, icon) {
         "BU": "NEIGHBOURHOOD"
     }
     add_service_to_contextmenu(layer, service, function (e) {
-        const state = {
+        let state = {
             area_id: layer.id,
-            scope: scope_map[layer.id.substring(0, 2)]
+            lat: e.latlng.lat.toString(),
+            lng: e.latlng.lng.toString(),
+        }
+        const scope_abbr = layer.id.substring(0, 2);
+        if (scope_abbr in scope_map) {
+            state.scope = scope_map[scope_abbr];
         }
         if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
             window.show_service_settings(idx, state);

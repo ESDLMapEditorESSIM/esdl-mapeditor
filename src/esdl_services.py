@@ -214,7 +214,7 @@ class ESDLServices:
                 service = config_service
                 break
             # If it's a workflow, look in its steps.
-            if config_service["type"] in ("workflow", "vueworkflow"):
+            if "type" in config_service and config_service["type"] in ("workflow", "vueworkflow"):
                 for step in config_service["workflow"]:
                     if (
                         step["type"] in ("service", "custom")
