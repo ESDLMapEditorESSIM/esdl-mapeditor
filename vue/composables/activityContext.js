@@ -29,6 +29,7 @@ const activeActivityContext = ref({});
 
 // Track the services that are enabled in the context menu's so we can remove them when the context is cleared.
 const enabledAreaContextMenus = ref([]);
+const enabledMapContextMenus = ref([]);
 const enabledBuildingContextMenus = ref([]);
 
 const toast = useToast();
@@ -60,6 +61,25 @@ function addContextMenuJsFunctions(activityContext) {
 }
 
 /**
+ * Find the service in the esdl_services_information by id.
+ * @param id
+ * @returns {*[]}
+ */
+function findServiceById(id) {
+    let foundService = null;
+    let foundServiceIdx = null;
+    for (let i = 0; i < window.esdl_services_information.length; i++) {
+        const esdlService = window.esdl_services_information[i];
+        if (esdlService.id === id) {
+            foundService = esdlService;
+            foundServiceIdx = i;
+            break
+        }
+    }
+    return [foundService, foundServiceIdx];
+}
+
+/**
  * Add the services that are part of the context to the context menus.
  * @param activityContext
  */
@@ -70,16 +90,7 @@ function addContextMenuServices(activityContext) {
         // For each contextService, find the corresponding service in the esdl_services_information.
         // Then update the location of the service.
         for (const contextMenuService of contextMenuServices) {
-            let foundService = null;
-            let foundServiceIdx = null;
-            for (let i = 0; i < esdl_services_information.length; i++) {
-                const esdlService = esdl_services_information[i];
-                if (esdlService.id === contextMenuService.id) {
-                    foundService = esdlService;
-                    foundServiceIdx = i;
-                    break
-                }
-            }
+            let [foundService, foundServiceIdx] = findServiceById(contextMenuService.id);
             if (!foundService) {
                 console.warn("Service with id " + contextMenuService.id + " not found in esdl_services_information");
             } else {
@@ -91,6 +102,7 @@ function addContextMenuServices(activityContext) {
                 } else if (contextMenuService.location === "map") {
                     console.debug("Service " + foundService.name + " is added to the map context menu");
                     foundService.location = "map_context_menu"
+                    enabledMapContextMenus.value.push(foundService.id);
                 } else if (contextMenuService.location === "building") {
                     addBuildingContextMenuItem(foundService['name'], window.resource_uri + 'icons/service.png', function (e, id) {
                         window.show_service_settings(foundServiceIdx)
@@ -191,10 +203,17 @@ export function useActivityContext() {
         for (const name of enabledAreaContextMenus.value) {
             removeAreaContextMenuItem(name)
         }
+        for (const id of enabledMapContextMenus.value) {
+            let [foundService, foundServiceIdx] = findServiceById(id);
+            foundService.location = "hidden";
+        }
+        window.update_map_service_contextmenus(window.esdl_services_information)
         for (const name of enabledBuildingContextMenus.value) {
             removeBuildingContextMenuItem(name)
         }
         enabledAreaContextMenus.value = [];
+        enabledMapContextMenus.value = [];
+        enabledBuildingContextMenus.value = [];
 
         activeActivityContext.value = {};
     }
