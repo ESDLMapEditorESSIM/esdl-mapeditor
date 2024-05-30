@@ -198,7 +198,7 @@ function remove_esdl_layer_from_ui(es_id) {
 
 function remove_esdl_layer(es_id) {
     remove_esdl_layer_from_ui(es_id);
-    socket.emit('command', {cmd: 'remove_energysystem', remove_es_id: es_id});
+
     // set new active_es_id
     let list = Object.keys(esdl_list);
     if (list.length > 0) {

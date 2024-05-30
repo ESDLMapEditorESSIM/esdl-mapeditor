@@ -3058,11 +3058,11 @@ def process_command(message):
         es_rename = pm.get_energy_system_by_id(es_id=rename_es_id)
         es_rename.name = name
 
-    # if message['cmd'] == 'remove_energysystem':
-    #     remove_es_id = message['remove_es_id']
-    #     es_info_list = get_session("es_info_list")
-    #     del es_info_list[remove_es_id]  # update es info list too
-    #     pm.remove_energy_system(es_id=remove_es_id)
+    if message['cmd'] == 'remove_energysystem':
+        remove_es_id = message['remove_es_id']
+        es_info_list = get_session("es_info_list")
+        del es_info_list[remove_es_id]  # update es info list too
+        pm.remove_variant_by_energy_system_id(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
@@ -3118,7 +3118,6 @@ def process_command(message):
 
 @executor.job
 def query_esdl_services(params):
-    pm = get_project_manager()
     logger.debug('calling service')
     try:
         esdl_service_ok, esdl_service_result, es = esdl_services.call_esdl_service(params)

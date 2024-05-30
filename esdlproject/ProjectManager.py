@@ -443,8 +443,6 @@ class ProjectManager:
             else:
                 print(f"Fixme: ignoring DetailedChanges at this level")
 
-
-
     def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """"
         Creates a list of all the variants associated energy systems (but not of the variantCollection energy system,
@@ -459,6 +457,24 @@ class ProjectManager:
             es = self.get_variant_snapshot(v)
             energy_systems.append(es)
         return energy_systems
+
+    def remove_variant_by_energy_system_id(self, es_id: int) -> Variant | None:
+        """
+        Removes a variant by its energy system id. This will also remove the snapshot of the variant.
+        :param es_id: the id of the energy system to remove
+        :return: the removed variant or None if no variant was found with the given id
+        """
+        variants: List[Variant] = []
+        for vc in self.project.variantCollection:
+            vc: VariantCollection = vc
+            self.get_variant_list(vc.variant, variants)
+        for v in variants:
+            es = self.get_variant_snapshot(v)
+            if es.id == es_id:
+                self.delete_variant(v)
+                return v
+        logger.warning("Did not find variant with energy system ID", es_id=es_id)
+        return None
 
     def get_variant_list(self, v: Variant, variant_list: List[Variant]):
         """
@@ -551,7 +567,7 @@ class ProjectManager:
                 self._delete_variant_recursive(subvariant)
         print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
 
-        if variant in get_variant_path_list(self.active_variant): # or get_variant_collection(variant) == variant:
+        if variant in get_variant_path_list(self.active_variant):  # or get_variant_collection(variant) == variant:
             # todo reset active variant to other variant and check if there is at least 1 variant
             print("Deleted variant was active variant. Please set a new active variant")
             #self.active_variant = None
@@ -889,10 +905,13 @@ class ProjectManager:
         print('All resources: ', self.rset.resources)
         for uri, resource in self.rset.resources.items():
             rs_type = resource.type.name if resource.type else None
-            if isinstance(resource.contents[0], esdl.EnergySystem):
-                print(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
+            if resource.contents:
+                if isinstance(resource.contents[0], esdl.EnergySystem):
+                    print(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
+                else:
+                    print(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
             else:
-                print(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
+                print("No contents in resource")
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
@@ -972,7 +991,7 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
     return string_uri.getvalue()
 
 
-def get_variant_collection(variant: Union[VariantCollection, Variant]) -> VariantCollection:
+def get_variant_collection(variant: Union[VariantCollection, Variant]) -> VariantCollection | None:
     """
     Get the base variant of the given variant.
 
@@ -983,8 +1002,10 @@ def get_variant_collection(variant: Union[VariantCollection, Variant]) -> Varian
         return variant
     elif variant.variantCollection is None and variant.parentVariant is not None:
         return get_variant_collection(variant.parentVariant)
-    else:
+    elif variant.variantCollection is not None:
         return get_variant_collection(variant.variantCollection)
+    else:
+        return None
 
 
 def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) -> XMLResource:
