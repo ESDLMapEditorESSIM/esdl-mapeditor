@@ -383,7 +383,7 @@ function set_marker_handlers(marker) {
                // all_layers = esdl_layer.getLayers();
                all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
                for (let i=0; i<all_layers.length; i++) {
-                    layer = all_layers[i];
+                    let layer = all_layers[i];
                     if (layer.id == asset_id && layer instanceof L.Polygon) {
                         // esdl_layer.removeLayer(layer);
                         remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
@@ -695,6 +695,11 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         polygon.asspot = asset_info[1];
         polygon.attrs = asset_info[6];
         // esdl_layer.addLayer(polygon);
+
+        polygon.off('remove');
+        polygon.on('remove', delete_polygon_by_tool);
+
+
         add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
         if (spatial_buffers_plugin.show_spatial_buffers())
             spatial_buffers_plugin.add_spatial_buffers(polygon);
@@ -768,6 +773,28 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
                 '                   ', {repeat: true});
+    }
+}
+
+function delete_polygon_by_tool(event) {
+// when the user uses the leaflet draw bin tool to delete a layer and presses a polygon of an asset.
+// The layer gets removed anyway by leaflet, but the marker of the asset itself is not
+// this function makes sure deletion of polygons also work by looking up the associated asset and remove the asset
+    $(".ui-tooltip-content").parents('div').remove();
+    marker = event.target;
+
+    if (deleting_objects == true) {
+        if (marker.id) {
+           // all_layers = esdl_layer.getLayers();
+           all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+           for (let i=0; i<all_layers.length; i++) {
+                let layer = all_layers[i];
+                if (layer.id == marker.id) {
+                    // this will trigger the deletion of the asset itself (leaflet delete event on the asset)
+                    remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                }
+           }
+        }
     }
 }
 
