@@ -745,11 +745,11 @@
                 }
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
-                $('div[title]').tooltip({
-                    content: function() {
-                        return $(this).attr('title');
-                    }
-                });
+                //$('div[title]').tooltip({
+                //    content: function() {
+                //        return $(this).attr('title');
+                //    }
+                //});
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
@@ -1213,7 +1213,9 @@
                 if (layer instanceof L.Marker) {
                     set_marker_handlers(layer);
                 }
-                if (layer instanceof L.Polyline) {
+                if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                    // polygon is a subclass of polyline in Leaflet.
+                    console.log('update_asset', layer);
                     set_line_handlers(layer);
                     update_line_color(layer);
                 }

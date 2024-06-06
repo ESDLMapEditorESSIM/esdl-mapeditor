@@ -703,7 +703,8 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         if (asset_info[0] == 'polygon') {   // if its a polygon, calculate the center
             polygon_center = calculate_array_polygon_center(coords);
         }
-        var marker = L.marker(polygon_center, {icon: divicon, title: title, riseOnHover: true});
+        // todo make assets with polygon draggable (needs difficult updates in backend)
+        var marker = L.marker(polygon_center, {icon: divicon, title: '', riseOnHover: true /*, draggable:true */});
   
         marker.title = title;
         marker.id = asset_info[3];
