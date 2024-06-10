@@ -2062,6 +2062,11 @@ def process_command(message):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
+                        shape_dictionary = get_session('shape_dictionary')
+                        try:
+                            del shape_dictionary[area_id]  # delete area from shape dictionary
+                        except KeyError:
+                            pass
                         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
     if message['cmd'] == 'get_asset_ports':

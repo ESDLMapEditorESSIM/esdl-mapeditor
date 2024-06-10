@@ -87,6 +87,7 @@ onBeforeMount(() => {
       layerName: '',
       legendUrl: '',
       attribution: '',
+      minZoomLevel: '',
     }
   } else {
     window.socket.emit('get_wms_layer', {id: currentObjectID.value}, function (lyr_info) {
@@ -95,6 +96,7 @@ onBeforeMount(() => {
         url: lyr_info.url,
         layerName: lyr_info.layer_name,
         legendUrl: lyr_info.legend_url,
+        minZoomLevel: lyr_info.min_zoom_level,
         attribution: lyr_info.attribution,
       }
     });
@@ -110,6 +112,7 @@ const addUpdate = () => {
         wmsLayer.value.layerName,
         wmsLayer.value.legendUrl,
         wmsLayer.value.attribution,
+        wmsLayer.value.min_zoom_level,
         parentLayerGroup.value.project_name,
         parentLayerGroup.value.setting_type,
         parentId.value,
@@ -121,7 +124,8 @@ const addUpdate = () => {
         wmsLayer.value.url,
         wmsLayer.value.layerName,
         wmsLayer.value.legendUrl,
-        ''
+        '',
+        wmsLayer.value.minZoomLevel,
     );
   }
   cancel();
