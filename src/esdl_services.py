@@ -394,8 +394,9 @@ class ESDLServices:
 
                     if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
                         # TODO es.id instead hardcoded id when mesido output is updated:
-                        influxdb_client = Profiles.connect_to_animation_profiles_database(es.id,
-                                                                                          "15174819-d1af-4ba6-9f1d-2cd07991f14a")
+                        influxdb_client = Profiles.connect_to_animation_profiles_database(
+                            es.id, "15174819-d1af-4ba6-9f1d-2cd07991f14a"
+                        )
                         first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
                         fields_query = f"SHOW FIELD KEYS FROM \"{first_carrier_id}\""
                         results = influxdb_client.query(fields_query)

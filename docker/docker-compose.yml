@@ -10,17 +10,17 @@ services:
       - mapeditor-net
     volumes:
       - ..:/usr/src/app
-    entrypoint: >
-      watchmedo auto-restart
-          --recursive
-          --pattern="*.py"
-          --directory="."
-          --
+#    entrypoint: >
+#      watchmedo auto-restart
+#          --recursive
+#          --pattern="*.py"
+#          --directory="."
+#          --
     command: ["python", "-u", "app.py"]
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
-      - ../.env
+      - ../.env.local-docker
 
   vue-watch:
     image: node:20

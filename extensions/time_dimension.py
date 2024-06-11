@@ -23,6 +23,7 @@ from math import fabs
 import pytz
 
 from esdl import esdl
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -337,9 +338,11 @@ class TimeDimension:
 
         return colors
 
-    def generate_timed_geojson_for_line(self, coordinates, time, load, allocationEnergy, id, color, min_en, max_en):
+    def generate_timed_geojson_for_line(self, coordinates, time, load, allocationEnergy, id, unit, color, min_en,
+                                        max_en):
         my_feature = Feature(geometry=MultiLineString(coordinates))
         my_feature['properties']['id'] = id
+        my_feature['properties']['unit'] = unit
         my_feature['properties']['time'] = time
         my_feature['properties']['load'] = allocationEnergy
         my_feature['properties']['stroke'] = color
@@ -390,7 +393,6 @@ class TimeDimension:
         influxdb_client = get_session('influxdb_connection')
         # active_simulation = get_session('active_simulation')
         active_es_id = get_session('active_es_id')
-        # active_es_id = "ea50089c-0404-4048-97b8-94f0b0aa866b"
 
         sdt = datetime.strptime(start, '%Y-%m-%dT%H:%M:%S.%f%z')
         edt = datetime.strptime(end, '%Y-%m-%dT%H:%M:%S.%f%z')
@@ -476,13 +478,24 @@ class TimeDimension:
                         color = colors[active_es_id + item['carrierId']]['color']
                     else:
                         color = colors[active_es_id + key[0]]['color']
+
+                    # TODO get from current_asset
+                    profile = Profiles.get_profile_of_asset_with_field(current_asset, simulation_parameter)
+                    if profile and profile.profileQuantityAndUnit:
+                        qau = profile.profileQuantityAndUnit
+                        if isinstance(qau, esdl.QuantityAndUnitReference):
+                            qau = qau.reference
+                        unit = unit_to_string(qau)
+                    else:
+                        unit = ''
+
                     if abs(item[simulation_parameter]) > 1e-2:
                         for coordinates in coordinates_segments:
                             feature_list.append(
-                                self.generate_timed_geojson_for_line(coordinates, item['time'], 0.5,
-                                                                     item[simulation_parameter], item['assetId'], color,
-                                                                     allocation_boundaries[key][0],
-                                                                     allocation_boundaries[key][1]))
+                                self.generate_timed_geojson_for_line(
+                                    coordinates, item['time'], 0.5, item[simulation_parameter], item['assetId'], unit,
+                                    color, allocation_boundaries[key][0], allocation_boundaries[key][1])
+                            )
                             fid += 1
                     if 'data' in monitor_data and item['assetId'] in monitor_data['data']:
                         monitor_data['data'][item['assetId']]['data_x'].append(item['time'].split('T')[1].strip('Z'))

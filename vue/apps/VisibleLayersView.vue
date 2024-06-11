@@ -17,9 +17,10 @@
 <template>
   <a-card id="visible_layers_view">
     <h3>Visible WMS layers</h3>
-    <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                 :check-call-back="checkCallBack"
+    <vue-js-tree
+      v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+      :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+      :check-call-back="checkCallBack"
     />
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
@@ -31,8 +32,8 @@
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
-import {useSocketIO} from "../composables/socketio";
-import {useVisibleLayers} from "../composables/visibleLayers"
+import {useSocketIO} from "@/composables/socketio";
+import {useVisibleLayers} from "@/composables/visibleLayers"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();

@@ -37,7 +37,7 @@
           type="primary"
           @click="handleResultsAnimation"
         >
-          Animate
+          Load animation
         </a-button>
       </a-space-compact>
       <a-space v-else>

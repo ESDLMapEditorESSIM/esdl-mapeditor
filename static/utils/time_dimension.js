@@ -98,8 +98,8 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
         });
 
         load_str = Math.round((feature.properties.load + Number.EPSILON) * 100) / 100
-        layer.bindPopup('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' MWh');
-        layer.bindTooltip('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' MWh');
+        layer.bindPopup('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' ' + feature.properties.unit);
+        layer.bindTooltip('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' ' + feature.properties.unit);
 
         layer.bindContextMenu({
             contextmenu: true,
