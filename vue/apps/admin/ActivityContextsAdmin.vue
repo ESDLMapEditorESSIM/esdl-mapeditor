@@ -100,7 +100,6 @@ const columns = [
 ]
 
 const deleteActivityContext = async (id) => {
-  console.log('Delete activity context', id)
   const response = await fetch('/admin/context/activities/' + id, {
     method: 'DELETE'
   })

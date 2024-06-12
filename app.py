@@ -26,23 +26,21 @@ from warnings import warn
 import jwt
 import requests
 import structlog.contextvars
-from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
-from flask_executor import Executor
+from flask import Response, redirect, render_template, request, send_from_directory, session
 from flask_oidc import OpenIDConnect
 from flask_socketio import emit
-from flask_session import Session
 from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 from esdlproject import Variant
-from src.live_model_interface import start_live_model_interface_thread
-from src.tno.events.results_listener import start_rmq_thread
+from src.tno.live_model_interface.api import send_new_esdl
+from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
+from src.tno.live_model_interface.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
 from src.app import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
@@ -83,7 +81,6 @@ from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
 from src.tno.events_api import EventsAPI
-from src.edr_assets import EDRAssets
 from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
@@ -92,9 +89,9 @@ from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.log import get_logger
-from src.process_es_area_bld import call_process_energy_system, get_building_information
+from src.process_es_area_bld import call_process_energy_system
 from src.tno.undoredo.types import serialize_command_stack
-from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
+from src.process_es_area_bld import get_building_information, get_building_connections, \
     find_area_location_based, calc_building_assets_location
 from src.roles import is_mapeditor_admin
 from src.shape import Shape
@@ -3191,7 +3188,7 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        EventsAPI.emit_new_esdl()
+        send_new_esdl()
 
     # 02-2024: is not used anymore, siee esdl_file_io
     # if message['cmd'] == 'load_esdl_from_file':
@@ -3467,7 +3464,7 @@ def default_error_handler(e):
 
 @app.before_first_request
 def before_first_request():
-    start_rmq_thread()
+    # start_rmq_thread()
     start_live_model_interface_thread(app)
 
 

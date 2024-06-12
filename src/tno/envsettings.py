@@ -32,6 +32,10 @@ class EnvSettings:
         return os.getenv("RABBITMQ_EXCHANGE", "mapeditor.topic")
 
     @staticmethod
+    def rabbitmq_queue() -> str:
+        return os.getenv("RABBITMQ_QUEUE", "rve-poc")
+
+    @staticmethod
     def rabbitmq_user() -> str:
         return os.getenv("RABBITMQ_USER", "admin")
 

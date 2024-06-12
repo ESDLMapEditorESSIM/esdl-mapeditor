@@ -29,6 +29,13 @@ ACTIVITY_CONTEXTS_SETTING = "ACTIVITY_CONTEXT_IDS"
 
 
 class ActivityContextExtension:
+    """
+    This extension provides the ability to manage activity contexts. Activity contexts are used to give the user an
+    easy way to switch between different sets of activities.
+
+    This extension provides the ability to get the activity contexts for the current user, and to manage activity
+    contexts for the admin.
+    """
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
@@ -40,6 +47,10 @@ class ActivityContextExtension:
 
         @self.flask_app.route('/context/activities')
         def get_user_activity_contexts():
+            """
+            Get the activity contexts for the current user.
+            :return:
+            """
             context_ids = self.settings_storage.get_for_current_user(ACTIVITY_CONTEXTS_SETTING, default=[])
             # Get the actual activity contexts by querying mongodb for all entries with the given ids.
             db = get_database()
@@ -48,9 +59,21 @@ class ActivityContextExtension:
             json_result = json_util.dumps(activity_contexts)
             return json_result
 
+        @self.flask_app.route("/context/activities/<activity_id>/activate", methods=["POST"])
+        def activate_context(activity_id):
+            db = get_database()
+            activity_context = db.activity_contexts.find_one({"activity_id": activity_id})
+            if not activity_context:
+                return jsonify({"error": "Activity ID not found"}), 404
+            return {}, 200
+
         @self.flask_app.route("/admin/context/activities")
         @mapeditor_admin_required
         def get_all_contexts():
+            """
+            Get all activity contexts from the database and return them as a json string.
+            :return:
+            """
             db = get_database()
             contexts_result = db.activity_contexts.find()
             return json_util.dumps(contexts_result), 200
@@ -58,6 +81,10 @@ class ActivityContextExtension:
         @self.flask_app.route("/admin/context/activities", methods=["POST"])
         @mapeditor_admin_required
         def create_context():
+            """
+            Create a new activity context. The activity_id must be unique.
+            :return:
+            """
             activity_json = request.json
             activity_context = ActivityContext(**activity_json)
             activity_context._id = None
@@ -71,6 +98,12 @@ class ActivityContextExtension:
         @self.flask_app.route("/admin/context/activities/<activity_id>", methods=["DELETE"])
         @mapeditor_admin_required
         def delete_context(activity_id):
+            """
+            Delete a context by activity_id
+            :param activity_id:
+            :return:
+            """
             db = get_database()
             db.activity_contexts.delete_one({"activity_id": activity_id})
             return {}, 204
+

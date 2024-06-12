@@ -22,8 +22,8 @@ import os, glob
 from esdl.resources.json import JsonResource, JsonOptions
 from esdlproject import AbstractChange, HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
-from src.tno.events.messages import HighLevelChangeMessage
-from src.tno.events.publisher import send_rabbitmq_message
+from src.tno.live_model_interface.message_types import HighLevelChangeMessage
+from src.tno.live_model_interface.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
