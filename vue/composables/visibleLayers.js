@@ -24,9 +24,27 @@ import {useWmsLayers} from "./wmsLayers";
 const {getWmsLayerList} = useWmsLayers()
 const globalVisibleLayerList = ref([]);
 
+const map = window.map;
 const layerTreeId = "layer_tree";
 const $ = window.$;
 const getLayerTree = () => $('#' + layerTreeId).jstree(true);
+
+map.on('moveend', function () {
+    for (const visibleLayer of globalVisibleLayerList.value) {
+        const wms_layer = getWmsLayerList()['layers'][visibleLayer.id];
+        if (wms_layer.min_zoom_level) {
+            if (map.getZoom() >= wms_layer.min_zoom_level) {
+                if (!map.hasLayer(wms_layer.layer_ref)) {
+                    wms_layer.layer_ref.addTo(map);
+                }
+            } else {
+                if (map.hasLayer(wms_layer.layer_ref)) {
+                    map.removeLayer(wms_layer.layer_ref);
+                }
+            }
+        }
+    }
+})
 
 export function useVisibleLayers() {
     /**
