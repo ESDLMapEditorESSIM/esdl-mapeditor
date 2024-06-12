@@ -919,9 +919,12 @@ function set_leaflet_sizes(mp) {
     });
     $('#'+map_id+' .image-div').css({'text-align':'center'});
     $('#'+map_id+' .zoom.circle-img').css({'width':size_image, 'height':size_image});
+    $('#'+map_id+' .zoom.circle-img-disabled').css({'width':size_image, 'height':size_image});
 
     if (zoom_level < 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'none'}); }
+    if (zoom_level < 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img-disabled').css({'display':'none'}); }
     if (zoom_level >= 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img').css({'display':'inline'}); }
+    if (zoom_level >= 10) {  $('#'+map_id+' .hide_when_small.zoom.circle-img-disabled').css({'display':'inline'}); }
 
     /* Joints */
     if (size/3 < 3) size_joint = 3; else size_joint = size/3;

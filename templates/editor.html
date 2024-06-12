@@ -805,7 +805,7 @@
                     if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
+                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title, draggable: true});
 
                         marker.title = title;
                         marker.id = list[i][2];
