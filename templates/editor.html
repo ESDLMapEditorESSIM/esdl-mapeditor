@@ -743,11 +743,11 @@
                 }
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
-                $('div[title]').tooltip({
-                    content: function() {
-                        return $(this).attr('title');
-                    }
-                });
+                //$('div[title]').tooltip({
+                //    content: function() {
+                //        return $(this).attr('title');
+                //    }
+                //});
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
@@ -803,7 +803,7 @@
                     if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
+                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title, draggable: true});
 
                         marker.title = title;
                         marker.id = list[i][2];
@@ -1211,7 +1211,9 @@
                 if (layer instanceof L.Marker) {
                     set_marker_handlers(layer);
                 }
-                if (layer instanceof L.Polyline) {
+                if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                    // polygon is a subclass of polyline in Leaflet.
+                    console.log('update_asset', layer);
                     set_line_handlers(layer);
                     update_line_color(layer);
                 }
@@ -1483,6 +1485,9 @@
 
             <!-- Navbar -->
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                   <span class="navbar-toggler-icon"></span>
+                </button>
                 <div class="container">
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 

@@ -265,6 +265,7 @@ class WMSLayers:
         layer["layer_name"] = lyr_info["layer_name"]
         layer["legend_url"] = lyr_info.get("legend_url")
         layer["attribution"] = lyr_info["attribution"]
+        layer["min_zoom_level"] = lyr_info["min_zoom_level"]
 
         self.add_wms_layer(layer_id, layer)
 
