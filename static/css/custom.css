@@ -526,7 +526,7 @@ h6 {
 
 .jstree-contextmenu {
     font-family: sans-serif;
-    font-size: 10px;
+    font-size: 11px;
 }
 
 .group_es_layers_anchor {
@@ -561,14 +561,47 @@ h6 {
 }
 
 /* Smaller icons */
+/*
 .jstree-default .jstree-icon {
     background-image: url(../icons/32px.png);
+}
+*/
+
+/* follwing definitions are created to make sure a dense set of icons are possible */
+.jstree-default .jstree-checkbox
+{
+  background-position: -168px -5px;
+}
+
+.jstree-default .jstree-checkbox:hover
+{
+  background-position: -168px -37px;
+}
+
+.jstree-default.jstree-checkbox-selection .jstree-clicked > .jstree-checkbox, .jstree-default .jstree-checked > .jstree-checkbox
+{
+  background-position: -232px -5px;
+}
+
+.jstree-default.jstree-checkbox-selection .jstree-clicked > .jstree-checkbox:hover, .jstree-default .jstree-checked > .jstree-checkbox:hover
+{
+  background-position: -232px -37px;
+}
+
+.jstree-default .jstree-anchor > .jstree-undetermined
+{
+  background-position: -200px -5px;
+}
+
+.jstree-default .jstree-anchor > .jstree-undetermined:hover
+{
+  background-position: -200px -37px;
 }
 
 .jstree-default .jstree-icon:empty {
     width: 18px;
     height: 18px;
-    line-height: 18px;
+    line-height: 21px;
 }
 
 /*
