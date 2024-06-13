@@ -22,8 +22,8 @@ from threading import Thread
 from src.app import socketio
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.config import AMQP_URL
-from src.tno.live_model_interface.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
+from src.tno.live_model_interface.shared.config import AMQP_URL
+from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class RMQThread(Thread):
             exchange=EnvSettings.rabbitmq_exchange(),
             exchange_type=ExchangeType.topic,
             queue=EnvSettings.rabbitmq_queue(),
-            routing_key="results.#",
+            routing_keys=["results.#"],
             on_message=on_result_message,
         )
 

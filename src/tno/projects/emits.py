@@ -11,16 +11,11 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import base64
 
-from flask import session
 from flask_socketio import emit
 
-from extensions.session_manager import get_project_manager, get_session, del_session, set_session
+from extensions.session_manager import get_project_manager, del_session, set_session
 from src.log import get_logger
-from src.tno.live_model_interface.message_types import NewESDLMessage
-from src.tno.live_model_interface.publisher import send_rabbitmq_message
-from src.tno.events_api import EventsAPI
 from src.tno.projects.types import serialize_esdl_project
 
 logger = get_logger(__name__)

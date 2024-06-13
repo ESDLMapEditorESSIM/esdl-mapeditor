@@ -11,19 +11,20 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import base64
+import uuid
+from datetime import datetime, timezone
 from typing import TypedDict
 
 from flask_socketio import SocketIO
 
-from extensions.session_manager import get_session, get_project_manager
+from extensions.session_manager import get_session
 import src.log as log
 from flask import Flask, session
 
 from extensions.settings_storage import SettingsStorage
-from src.tno.live_model_interface.message_types import AssetPositionMessage, Point, NewESDLMessage
+from src.tno.live_model_interface.shared.message_types import AssetPositionMessage, Point
 
-from src.tno.live_model_interface.publisher import send_rabbitmq_message
+from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
 
@@ -52,6 +53,12 @@ class EventsAPI:
             logger.info("Positioning asset", message=frontend_message)
             user_email = get_session('user-email')
             client_id = session['client_id']
-            message: AssetPositionMessage = dict(**frontend_message, user_email=user_email, client_id=client_id)
+            message: AssetPositionMessage = dict(
+                **frontend_message,
+                user_email=user_email,
+                client_id=client_id,
+                id=str(uuid.uuid4()),
+                timestamp=datetime.now(timezone.utc),
+            )
             # rabbitmq_fanout_publisher.publish_message(message)
             send_rabbitmq_message(message, "events.asset.positioning")

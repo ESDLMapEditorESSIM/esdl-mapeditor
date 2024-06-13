@@ -35,7 +35,7 @@ class RabbitMQConsumerConfig:
     exchange: str
     exchange_type: ExchangeType
     queue: str
-    routing_key: str | list[str]
+    routing_keys: list[str]
     on_message: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], None] | None
 
 
@@ -68,10 +68,10 @@ class RabbitMQConsumer(object):
         self.exchange = consumer_config.exchange
         self.exchange_type = consumer_config.exchange_type
         self.queue = consumer_config.queue
-        if isinstance(consumer_config.routing_key, str):
-            self.routing_keys = [consumer_config.routing_key]
+        if isinstance(consumer_config.routing_keys, str):
+            self.routing_keys = [consumer_config.routing_keys]
         else:
-            self.routing_keys = consumer_config.routing_key
+            self.routing_keys = consumer_config.routing_keys
         self._my_on_message = consumer_config.on_message
         self.should_reconnect = False
         self.was_consuming = False

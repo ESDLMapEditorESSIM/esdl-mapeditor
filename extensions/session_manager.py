@@ -11,8 +11,10 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import uuid
+
 from flask import session
-from datetime import datetime
+from datetime import datetime, timezone
 import threading
 import time
 
@@ -20,10 +22,10 @@ import src.log as log
 import os, glob
 
 from esdl.resources.json import JsonResource, JsonOptions
-from esdlproject import AbstractChange, HighLevelChange
+from esdlproject import HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
-from src.tno.live_model_interface.message_types import HighLevelChangeMessage
-from src.tno.live_model_interface.publisher import send_rabbitmq_message
+from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage
+from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
@@ -94,6 +96,8 @@ def on_change_recorded(change: HighLevelChange):
     user_email = get_session('user-email')
     client_id = session['client_id']
     message = HighLevelChangeMessage(
+        id=str(uuid.uuid4()),
+        timestamp=datetime.now(timezone.utc),
         user_email=user_email,
         client_id=client_id,
         high_level_change=hlc_string

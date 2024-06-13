@@ -11,7 +11,18 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from datetime import datetime
 from typing import TypedDict
+
+
+class LmiMessage(TypedDict):
+    # Unique identifier for the message.
+    id: str
+    # Timestamp when the message was sent.
+    timestamp: datetime
+    # The client_id is used to identify the client that sent the message.
+    client_id: str | None
+    user_email: str | None
 
 
 class Point(TypedDict):
@@ -19,26 +30,22 @@ class Point(TypedDict):
     lng: float
 
 
-class AssetPositionMessage(TypedDict):
+class AssetPositionMessage(LmiMessage):
     point: Point
-    client_id: str
-    user_email: str
 
 
-class WindPotentialResultMessage(TypedDict):
-    user_email: str
-    client_id: str
+class WindPotentialResultMessage(LmiMessage):
     wind_potential: float
 
 
-class NewESDLMessage(TypedDict):
-    user_email: str
-    client_id: str
+class NewESDLMessage(LmiMessage):
     b64_esdl: str
 
 
-class HighLevelChangeMessage(TypedDict):
-    user_email: str
-    client_id: str
-    high_level_change: str
+class ProjectManagerMessage(LmiMessage):
+    b64_project: str
+    project_name: str
 
+
+class HighLevelChangeMessage(LmiMessage):
+    high_level_change: str

@@ -11,8 +11,10 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+import base64
 import json
+import uuid
+from datetime import datetime, timezone
 
 from flask import session, request
 from pika import BasicProperties
@@ -25,32 +27,36 @@ from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
+from esdlproject.ProjectManager import ProjectManager
 from esdlproject.change_handler import applyChange
-from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
+from extensions.session_manager import get_project_manager_with_client_id, managed_sessions, PM_KEY
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.api import send_new_esdl
-from src.tno.live_model_interface.config import AMQP_URL
-from src.tno.live_model_interface.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
+from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
+from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.process_es_area_bld import call_process_energy_system
-from src.tno.live_model_interface.message_types import HighLevelChangeMessage
+from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewESDLMessage, \
+    ProjectManagerMessage
+from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = get_logger(__name__)
 
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
 
+last_pm_refresh_sent = None
+
+
 def on_high_level_change(message: HighLevelChangeMessage):
     """
     Handle a high level change message from the live model interface.
     """
     logger.debug("High level change received", message=message)
-    del message["user_email"]
     client_id = message['client_id']
 
     uri = StringURI('hlc.json', message['high_level_change'])
     logger.info(f"Received HighLevelChange from Live model: {message['high_level_change']}")
-    # user_email = msg['user_email']
     external_rset = ResourceSet()
     external_rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
     external_resource = external_rset.create_resource(uri)
@@ -90,9 +96,39 @@ def on_esdl_refresh_request(message):
     send_new_esdl()
 
 
+def on_pm_refresh_request(message: LmiMessage):
+    """
+    Handle an Project Manager refresh request from the live model interface.
+    :param message:
+    :return:
+    """
+    timestamp = message['timestamp']
+    if last_pm_refresh_sent is not None and last_pm_refresh_sent >= timestamp:
+        logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
+        return
+    for client_id, session_data in managed_sessions.items():
+        pm: ProjectManager | None = session_data.get(PM_KEY)
+        if pm is None:
+            continue
+        project = pm.project
+        project_as_string = pm.save()
+        base64_file = base64.b64encode(project_as_string.encode()).decode()
+        message = ProjectManagerMessage(
+            id=str(uuid.uuid4()),
+            timestamp=datetime.now(timezone.utc),
+            user_email=None,
+            client_id=client_id,
+            b64_project=base64_file,
+            project_name=project.name,
+        )
+
+        send_rabbitmq_message(message, "events.pm")
+
+
 message_handlers = {
     "lmi.esdl.high_level_change": on_high_level_change,
     "lmi.esdl.refresh": on_esdl_refresh_request,
+    "lmi.pm.refresh": on_pm_refresh_request,
 }
 
 
@@ -105,6 +141,9 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     infinite loop of exceptions.
     """
     try:
+        if properties.app_id == RABBITMQ_APP_ID:
+            logger.debug("Ignoring message from myself")
+            return
         # Get the routing key.
         routing_key = basic_deliver.routing_key
         logger.info(
@@ -146,7 +185,7 @@ class LiveModelInterfaceThread(Thread):
             exchange=EnvSettings.rabbitmq_exchange(),
             exchange_type=ExchangeType.topic,
             queue=EnvSettings.rabbitmq_queue(),
-            routing_key="lmi.#",
+            routing_keys=["lmi.#"],
             on_message=on_live_model_interface_message,
         )
 

@@ -414,7 +414,7 @@ class ProjectManager:
         # add changes to stack, clear stack
         for parent_variant in variant_path_list:
             print(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
-            self.apply_variant_changes(parent_variant, variant_snapshot, True)
+            self.apply_variant_changes(parent_variant, variant_snapshot, False)
 
     def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
         """
@@ -615,23 +615,19 @@ class ProjectManager:
 
         # TODO: not needed anymore? Check
         # TODO: as changes are saved in variant already (and the stack is same as variant.changes)
+        variant_snapshot_refs = dict()
 
-        # for variantCollection in self.project.variantCollection:
-        #
-        #     collection_resource = get_variant_collection_resource(variantCollection)
-        #     resources_dict[variantCollection.id] = collection_resource
-        #     variantCollection.energysystem = collection_resource.contents[0].deepcopy()
-        #     variantCollection.energysystemRef = None
+        for variantCollection in self.project.variantCollection:
+            collection_resource = get_variant_collection_resource(variantCollection)
+            resources_dict[variantCollection.id] = collection_resource
+            variantCollection.energysystem = collection_resource.contents[0].deepcopy()
+            variantCollection.energysystemRef = None
         #     # todo: change such that we iterate over subvariants
-        #     #for variant in variantCollection.variant:
-        #     variant = variantCollection.variant  # main variant
-        #     if variant.snapshotRef:
-        #         variant_tracker = self.change_tracker.get_tracker(variant.snapshotRef)
-        #         if variant_tracker:
-        #             variant_stack = variant_tracker.stack
-        #             for action in variant_stack.stack:
-        #                 convertActionToVariantChanges(action, variant)
-        #         variant.snapshotRef = None
+            variant = variantCollection.variant  # main variant
+            if variant.snapshotRef:
+                # TODO: Also do this for other variants?
+                variant_snapshot_refs[variant.id] = variant.snapshotRef
+                variant.snapshotRef = None
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)
@@ -640,10 +636,11 @@ class ProjectManager:
         # reset everything (use reference instead of energysystem containment relations)
 
         for variantCollection in self.project.variantCollection:
-            #collection_resource = get_variant_collection_resource(variantCollection)
             collection_resource = resources_dict[variantCollection.id]
             variantCollection.energysystem = None
             variantCollection.energysystemRef = collection_resource.contents[0]
+            variant = variantCollection.variant  # main variant
+            variant.snapshotRef = variant_snapshot_refs[variant.id]
 
         resources_dict = None
         return project_as_string

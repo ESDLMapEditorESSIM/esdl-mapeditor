@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from typing import Union
+from datetime import datetime, date
 
 import json
 
@@ -21,7 +21,8 @@ import src.log as log
 import pika
 
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.config import PIKA_CONNECTION_PARAMETERS
+from src.tno.live_model_interface.shared.config import PIKA_CONNECTION_PARAMETERS, RABBITMQ_APP_ID
+from src.tno.live_model_interface.shared.message_types import LmiMessage
 
 logger = log.get_logger(__name__)
 
@@ -332,16 +333,26 @@ def get_rabbitmq_topic_channel():
     return channel
 
 
-def send_rabbitmq_message(message: Union[dict, list], routing_key):
+def _json_serializer(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError("Type %s not serializable" % type(obj))
+
+
+def send_rabbitmq_message(message: LmiMessage, routing_key):
     """
     Publish a message on the RabbitMQ fanout exchange, so that all queues will receive it.
 
     Message is send as JSON.
     """
     channel = get_rabbitmq_topic_channel()
+    body = json.dumps(message, default=_json_serializer).encode()
     channel.basic_publish(
         exchange=EnvSettings.rabbitmq_exchange(),
         routing_key=routing_key,
-        body=json.dumps(message).encode(),
+        body=body,
+        properties=pika.BasicProperties(app_id=RABBITMQ_APP_ID, content_type='application/json'),
     )
     channel.close()

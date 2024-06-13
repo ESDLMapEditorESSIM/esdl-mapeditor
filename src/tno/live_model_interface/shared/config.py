@@ -15,6 +15,8 @@ import pika
 
 from src.tno.envsettings import EnvSettings
 
+RABBITMQ_APP_ID = "esdl-mapeditor"
+
 PIKA_CONNECTION_PARAMETERS = pika.ConnectionParameters(
     host=EnvSettings.rabbitmq_host(),
     port=EnvSettings.rabbitmq_port(),
