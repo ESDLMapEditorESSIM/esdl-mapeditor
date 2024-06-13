@@ -88,7 +88,8 @@ class PortProfileViewer:
                     embed_url = create_panel_multiple(
                         graph_title=graph_name,
                         axis_title="",
-                        host=profile.host + ':' + str(profile.port),
+                        host='https://' + profile.host,  # TODO temp fix, probably not ok, discuss with Edwin
+                        # host=profile.host + ':' + str(profile.port),
                         database=profile.database,
                         dataset_info=dataset_info_list,
                         qau=profile.profileQuantityAndUnit,

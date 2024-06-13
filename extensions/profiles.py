@@ -762,7 +762,7 @@ class Profiles:
             )
             if credentials:
                 influxdb_client = InfluxDBClient(
-                    host='localhost',  # TODO temp for dev
+                    host=profile.host,
                     # host=profile.host,
                     port=profile.port,
                     database=database,
