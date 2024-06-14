@@ -435,7 +435,7 @@ class ProjectManager:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
-                print(f"Handling High level change {high_level_change.label}")
+                print(f"Apply variant change: High level change {high_level_change.label}")
                 for change in high_level_change.change:
                     applyChange(change, resource)
                 if record_changes:
