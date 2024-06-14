@@ -43,10 +43,12 @@ export function useMultiEsdl() {
 
     function showEsdlLayerOnMap(es_id, layer_name) {
         window.show_esdl_layer_on_map(es_id, layer_name);
+        window.set_leaflet_sizes();
     }
 
     function hideEsdlLayerFromMap(es_id, layer_name) {
         window.hide_esdl_layer_from_map(es_id, layer_name);
+        //window.set_leaflet_sizes();
     }
 
 

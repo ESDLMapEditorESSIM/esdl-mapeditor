@@ -17,7 +17,8 @@
 <template>
   <div id="project_view" >
     <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
-                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs" 
+                 :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
     />
     <div v-else>
       <p class="text-only">No project loaded.</p>
@@ -55,6 +56,7 @@ const getTree = () => $('#' + treeId).jstree(true);
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
+  console.log("Compute tree data")
   if (esdlProject.value) {
     const variants = esdlProject.value.variants;
     const variantJstreeDatas = [];
@@ -75,6 +77,7 @@ const treeData = computed(() => {
       projectData,
     ];
   } else {
+    console.log("No data...");
     return null;
   }
 });
@@ -182,6 +185,13 @@ class ProjectTreeSpec {
             }
           });
         }
+      },
+      'refresh': {
+        'label': 'Refresh Project',
+        'icon': 'fa fa-refresh',
+        'action': function () {
+            getESDLProject();
+        } 
       },
     }
   }
@@ -300,26 +310,33 @@ const eventHandlersByName = {
     }
   },
   'check_node.jstree': function (e, data) {
-    console.log("Checking node", data);
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
       if (original.esId in esdlList.value) {
-        showEsdlLayerOnMap(original.esId);        
+        showEsdlLayerOnMap(original.esId); 
+        if (data.event) {
+          if (!data.event.ctrlKey) {
+            // if event and ctrlKey + click do not hide other variants
+            hideOtherVariantsInTree(data.node);
+          }
+        } else {
+          hideOtherVariantsInTree(data.node);
+        }
       } else {
         // TODO: Just get the energy system from this variant, it should not be necessary to also activate it.
         socket.value.emit("set_active_variant", {id: original.id});
       }
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
-      showBaseLayer(baseLayer);
+      showBaseLayer(baseLayer);     
+      selectOnlyOneBaseLayer(data.node);
     }
   },
   'uncheck_node.jstree': function (e, data) {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      console.log("Uncheck", data);
       hideEsdlLayerFromMap(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
@@ -363,18 +380,42 @@ function get_base_layers_control_tree_data() {
 }
 
 function hideOtherVariantsInTree(node) {
-  console.log('Treedata', treeData);
-  const parents = node.parents.slice(0, node.parents.length - 2); // last 2 elements are not variants
-  const children = node.children;
-  for(const es_id of children) {
-    console.log("Hiding", es_id);
-    getTree().uncheck_node(es_id);
-    hideEsdlLayerFromMap(es_id);
+  // filter out variants (and not high level changes or others)
+  let parents = [];
+  for (const id of node.parents) {
+    let node_data = getTree().get_node(id);
+    if (node_data && node_data.type === 'variant') {
+      parents.push(id);
+    }
   }
-  for(const es_id of parents) {
-    console.log("Hiding parent", es_id);
+  
+  let children = [];
+  for (const id of node.children) {
+    let node_data = getTree().get_node(id);
+    if (node_data && node_data.type === 'variant') {
+      children.push(id);
+    }
+  }
+  
+  for(const es_id of children) {
     getTree().uncheck_node(es_id);
     hideEsdlLayerFromMap(es_id);
+  }  
+  for(const es_id of parents) {
+    getTree().uncheck_node(es_id);
+    hideEsdlLayerFromMap(es_id);
+  }  
+}
+
+function selectOnlyOneBaseLayer(node) {
+  // show only one base layer at the time, deselect others
+  const selected = node.id;
+  const parent = node.parent;
+  const children = getTree().get_node(parent).children;
+  for (const child of children) {
+    if (child != selected) {
+      getTree().uncheck_node(child);      
+    }
   }
 }
 
@@ -397,5 +438,6 @@ function hideOtherVariantsInTree(node) {
 
 .bold {
   font-weight: bold;
+  background-color: #beebff //#92a800; // esdl green
 }
 </style>

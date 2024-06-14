@@ -540,11 +540,7 @@ h6 {
 .jstree-anchor:hover,
 .jstree-anchor:active {
     font-size: 12px;
-    padding: 0 0px 0 0px;
-}
-
-.jstree-default .jstree-node {
-    margin-left: 12px
+    padding: 1px 3px 0px 0px;
 }
 
 /* Minimizing height of lines */
@@ -556,7 +552,7 @@ h6 {
 .jstree-default .jstree-node {
     min-height: 18px;
     line-height: 18px;
-    margin-left: 24px;
+    margin-left: 14px;
     min-width: 24px;
 }
 
@@ -567,7 +563,7 @@ h6 {
 }
 */
 
-/* follwing definitions are created to make sure a dense set of icons are possible */
+/* following definitions are created to make sure a dense set of icons are possible */
 .jstree-default .jstree-checkbox
 {
   background-position: -168px -5px;
