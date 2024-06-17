@@ -116,7 +116,7 @@ class ProjectManager:
     # The change tracker that keeps track of changes.
     change_tracker: Final[ChangeTracker]
     # The currently selected variant to which changes should be applied.
-    active_variant: Optional[Variant]
+    active_variant: Variant | None
     change_listeners = dict()
 
     lock = threading.Lock()
@@ -390,6 +390,9 @@ class ProjectManager:
             self.active_variant = new_variant
 
         self.debug()
+
+    def get_active_variant(self) -> Variant | None:
+        return self.active_variant
 
     def remove_variant_snapshot(self, variant):
         print(f"Removing {variant.snapshotRef.eResource}")

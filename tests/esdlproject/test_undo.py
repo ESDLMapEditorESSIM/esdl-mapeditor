@@ -89,6 +89,5 @@ class TestUndo(unittest.TestCase):
         self.assertEquals(asset.id, transformer.id)
 
 
-
 if __name__ == '__main__':
     unittest.main()
