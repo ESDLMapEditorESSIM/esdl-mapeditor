@@ -19,7 +19,7 @@ class LmiMessage(TypedDict):
     # Unique identifier for the message.
     id: str
     # Timestamp when the message was sent.
-    timestamp: datetime
+    timestamp: datetime | str
     # The client_id is used to identify the client that sent the message.
     client_id: str | None
     user_email: str | None

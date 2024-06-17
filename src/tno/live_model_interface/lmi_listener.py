@@ -94,6 +94,9 @@ def on_pm_refresh_request(message: LmiMessage):
     """
     global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
+    if isinstance(timestamp, str):
+        # Parse the timestamp from string to datetime.
+        timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
     if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return

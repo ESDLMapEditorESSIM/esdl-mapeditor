@@ -115,7 +115,7 @@ class TestProjectManager(unittest.TestCase):
         self.assertIn("Nice GP", project_string)
 
         second_pm = ProjectManager()
-        loaded_project = second_pm.load_from_string(project_string)
+        second_pm.load_from_string(project_string)
         self.assertEquals(pm.get_active_energy_system().name, second_pm.get_active_energy_system().name)
 
     def test_search_variant(self):
