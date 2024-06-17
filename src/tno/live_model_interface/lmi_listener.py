@@ -32,7 +32,6 @@ from esdlproject.change_handler import applyChange
 from extensions.session_manager import get_project_manager_with_client_id, managed_sessions, PM_KEY
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_new_esdl
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.process_es_area_bld import call_process_energy_system
@@ -45,7 +44,8 @@ logger = get_logger(__name__)
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
 
-last_pm_refresh_sent = None
+LAST_PM_REFRESH_SENT: datetime | None = None
+"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
 def on_high_level_change(message: HighLevelChangeMessage):
@@ -92,11 +92,13 @@ def on_pm_refresh_request(message: LmiMessage):
     :param message:
     :return:
     """
+    global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
-    if last_pm_refresh_sent is not None and last_pm_refresh_sent >= timestamp:
+    if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return
-    for client_id, session_data in managed_sessions.items():
+    sessions = managed_sessions
+    for client_id, session_data in sessions.items():
         pm: ProjectManager | None = session_data.get(PM_KEY)
         if pm is None:
             continue
@@ -113,6 +115,7 @@ def on_pm_refresh_request(message: LmiMessage):
         )
 
         send_rabbitmq_message(message, "events.pm")
+        LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
 
 
 message_handlers = {

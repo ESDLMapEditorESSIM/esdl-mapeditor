@@ -648,6 +648,16 @@ class ProjectManager:
         resources_dict = None
         return project_as_string
 
+    def load_from_string(self, project_string: str) -> ESDLProject:
+        """
+        Loads a project from a string and returns the project object.
+
+        :param project_string: the string to load the project from
+        :return: the project object
+        """
+        uri = StringURI("from_string.project", project_string)
+        return self.load(uri)
+
     def load(self, uri: URI) -> ESDLProject:
         """
         Loads a project from a URI and returns the project object.
