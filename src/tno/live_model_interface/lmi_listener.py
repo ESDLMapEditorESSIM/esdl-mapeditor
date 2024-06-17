@@ -86,16 +86,6 @@ def on_high_level_change(message: HighLevelChangeMessage):
         call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
 
 
-def on_esdl_refresh_request(message):
-    """
-    Handle an ESDL refresh request from the live model interface.
-    :param message:
-    :return:
-    """
-    # TODO: I don't think this is the right message to send here. We should probably send the entire project manager.
-    send_new_esdl()
-
-
 def on_pm_refresh_request(message: LmiMessage):
     """
     Handle an Project Manager refresh request from the live model interface.
@@ -127,7 +117,6 @@ def on_pm_refresh_request(message: LmiMessage):
 
 message_handlers = {
     "lmi.esdl.high_level_change": on_high_level_change,
-    "lmi.esdl.refresh": on_esdl_refresh_request,
     "lmi.pm.refresh": on_pm_refresh_request,
 }
 
