@@ -23,8 +23,14 @@ export function useEsdlAreas() {
                     text: text,
                     icon: icon,
                     callback: function (e) {
-                        // Pass the id of the area to the onclick function.
-                        onclick(e, id);
+                        const callback_info = {
+                            id: id,
+                            lat: e.latlng.lat.toString(),
+                            lng: e.latlng.lng.toString(),
+                        };
+                        console.log(callback_info);
+                        // Pass the id of the area and the mouse coordinates to the onclick function.
+                        onclick(e, callback_info);
                     },
                 });
             }

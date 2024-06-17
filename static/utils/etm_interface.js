@@ -14,7 +14,7 @@
  *      TNO
  */
 
- class ETMInterface {
+class ETMInterface {
     constructor() {
         this.initSocketIO();
     }

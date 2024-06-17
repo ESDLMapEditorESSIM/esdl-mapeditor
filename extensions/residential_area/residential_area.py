@@ -11,6 +11,8 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import codecs
+import csv
 import importlib
 import json
 from datetime import datetime, timedelta
@@ -25,9 +27,10 @@ from pyecore.resources import ResourceSet, URI
 import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset
-from extensions.session_manager import set_session
+from extensions.session_manager import set_session, get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
+from src.esdl_helper import energy_asset_to_ui
 
 from src.log import get_logger
 from src.settings import edr_config
@@ -57,6 +60,7 @@ class ResidentialArea:
         self.settings = self.get_settings()
         self.building_list = list()
         self.building_list_datetime_retrieved = None
+        self.primos_data = None
 
         self.register()
 
@@ -128,17 +132,58 @@ class ResidentialArea:
 
             return {}
 
-        @self.flask_app.route("/residential_area/create", methods=["POST"])
-        def create():
-            bld_composition = request.json["building_composition"]
-            return self.create_aggregated_building(bld_composition)
+        @self.socketio.on("residential_area_create", namespace="/esdl")
+        def residential_area_create(params):
+            with self.flask_app.app_context():
+                bld_composition = params["building_composition"]
+                aggr_bld = self.create_aggregated_building(bld_composition)
 
-    def get_settings(self):
-        if self.settings_storage.has_system(RESIDENTIAL_AREA_SETTINGS):
+                if 'id' in params:
+                    # Request was sent by right-clicking on an Area / map location
+                    area_id = params['id']
+                    pm = get_project_manager()
+                    active_es_id = get_session('active_es_id')
+                    area = pm.get_by_id(active_es_id, area_id)
+                    if area:
+                        aggr_bld.geometry = esdl.Point(lat=float(params["lat"]), lon=float(params["lon"]))
+                        area.asset.append(aggr_bld)
+
+                        buildings_to_be_added_list = list()
+                        extra_attributes = dict()
+                        extra_attributes['assetType'] = aggr_bld.assetType
+                        buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
+                                                           [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
+                                                           False, {}, extra_attributes])
+
+                        emit(
+                            'add_building_objects',
+                            {
+                                'es_id': active_es_id,
+                                'building_list': buildings_to_be_added_list,
+                                'zoom': False
+                            },
+                            namespace='/esdl'
+                        )
+                    else:
+                        logger.error("Area to which aggregated building should be added, could not be found")
+                else:
+                    # Request was sent from the menu, location still needs to be determined by the user
+                    self.store_asset_for_drawing_on_map(aggr_bld)
+
+                return {}
+
+        @self.flask_app.route("/residential_area/get_primos", methods=["POST"])
+        def get_primos():
+            area_id = request.json["id"]
+            return self.get_primos_data(area_id)
+
+    def get_settings(self, force_reset=False):
+        if self.settings_storage.has_system(RESIDENTIAL_AREA_SETTINGS) and not force_reset:
             settings = self.settings_storage.get_system(RESIDENTIAL_AREA_SETTINGS)
         else:
             settings = {
-                "tags": "residential_area_plugin"
+                "tags": "residential_area_plugin",
+                "primos_file": "data/primos_2019.csv"
             }
             self.settings_storage.set_system(RESIDENTIAL_AREA_SETTINGS, settings)
 
@@ -238,17 +283,18 @@ class ResidentialArea:
         # Expose the InPort of the EConnection to the outside of the Building
         aggr_bld.port.append(aggr_bld_econn_inp)
 
-        # Create string representation of the ESDL of the AggregatedBuilding
+        return aggr_bld
+
+    def store_asset_for_drawing_on_map(self, asset):
+        # Create string representation of the ESDL of the Asset
         rset = ResourceSet()
-        resource = rset.create_resource(URI("aggr_bld.esdl"))
-        resource.append(aggr_bld)
-        uri = StringURI("aggr_bld_str.esdl")
+        uri = StringURI("asset_to_be_drawn.esdl")
+        resource = rset.create_resource(uri)
+        resource.append(asset)
         resource.save(uri)
 
         # Put this string in the adding_edr_assets session variable so it can be used after asset placement on the map
         set_session("adding_edr_assets", uri.getvalue())
-
-        return {}
 
     def get_edr_residential_area_buildings(self):
         now = datetime.now()
@@ -276,3 +322,65 @@ class ResidentialArea:
             send_alert('Error accessing EDR API: ' + str(e))
             return None
 
+    def read_primos_data(self):
+        if "primos_file" not in self.settings:
+            self.settings = self.get_settings(force_reset=True)
+
+        primos_file = self.settings['primos_file']
+
+        self.primos_data = dict()
+        with codecs.open(primos_file, encoding='utf-8-sig') as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=',')
+            for row in reader:
+                self.primos_data[row['gm_code']] = row
+
+        logger.debug(f"Residential_area plugin read {len(self.primos_data)} municipalities from input file")
+
+    def get_primos_data(self, area_id: str):
+        """ Gets the data from the PRIMOS database for this municipality """
+
+        if not self.primos_data:
+            self.read_primos_data()
+
+        if area_id in self.primos_data:
+            mun_info = self.primos_data[area_id]
+
+            return {
+                "gm_naam": mun_info["gm_naam"],
+                "gm_code": mun_info["gm_code"],
+                "info": [
+                    {
+                        "label": '2019-2023',
+                        "additions": "???",
+                        "removals": "???",
+                        "cumulative": "???"
+                    },
+                    {
+                        "label": '2023-2025',
+                        "additions": mun_info['2023-Nieuwbouw (cumulatief komende 2 jaren)'],
+                        "removals": mun_info['2023-Onttrekkingen (cumulatief komende 2 jaren)'],
+                        "cumulative": mun_info['2023-Woningvoorraadontwikkeling (cumulatief komende 2 jaren)']
+                    },
+                    {
+                        "label": '2025-2030',
+                        "additions": mun_info['2025-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2025-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2025-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },
+                    {
+                        "label": '2030-2035',
+                        "additions": mun_info['2030-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2030-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2030-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },\
+                    {
+                        "label": '2035-2040',
+                        "additions": mun_info['2035-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2035-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2035-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },
+
+                ]
+            }
+        else:
+            return None
