@@ -363,7 +363,9 @@ class TimeDimension:
         simulation_id = get_session('timedimension-simulation-id')
         try:
             influxdb_client = get_session('influxdb_connection')
-            query = 'SELECT * FROM ' + ",".join(networks_list) + ' WHERE "simulationRun" = \'' + simulation_id + '\''
+            query = 'SELECT * FROM ' + ",".join(networks_list)
+            if simulation_id:
+                query += ' WHERE "simulationRun" = \'' + simulation_id + '\''
             sim_results = influxdb_client.query(query)
 
             time_list = list()
@@ -435,9 +437,13 @@ class TimeDimension:
                 influxdb_enddate = datetime.strptime(influxdb_enddate, '%Y-%m-%dT%H:%M:%SZ')
                 influxdb_enddate = influxdb_enddate + timedelta(days=1)
                 influxdb_enddate = influxdb_enddate.strftime('%Y-%m-%dT%H:%M:%SZ')
+
             query = 'SELECT * FROM ' + ",".join(networks_list) + \
-                    ' WHERE (time >= \'' + influxdb_startdate + '\' AND time <= \'' + influxdb_enddate + '\'' + \
-                    ' AND "simulationRun" = \'' + simulation_id + '\')'
+                    ' WHERE (time >= \'' + influxdb_startdate + '\' AND time <= \'' + influxdb_enddate + '\''
+            if simulation_id:
+                query += ' AND "simulationRun" = \'' + simulation_id + '\''
+            query += ')'
+
             sim_results = influxdb_client.query(query)
         except Exception as e:
             logger.error('error with query: ', str(e))

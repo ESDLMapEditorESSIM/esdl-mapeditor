@@ -209,10 +209,8 @@ class TimeDimension {
                 var time_list = result;
                 var startDate = time_list[0];
                 // Time dimension expects time list to be a single string with times separated by a comma.
-
                 time_list = time_list.join();
                 map.timeDimension.setAvailableTimes(time_list, 'replace');
-                // console.log(time_list);
 
                 time_dimension.addGeoJSONLayer(startDate);
             }

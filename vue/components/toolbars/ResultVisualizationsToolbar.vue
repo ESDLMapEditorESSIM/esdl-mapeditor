@@ -87,12 +87,10 @@ const handleShowDashboard = () => {
 };
 const handleResultsAnimation = () => {
   console.log("Results animation");
-  // TODO why 2 different 'simulationRun' tags in mesido influxdb output?
+  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun.
+  //    Probably ask mesido to remove the tag all together?
 
-  // TODO database name: not available in mesido output esdl, to be updated to esdl_id
-  const input_esdl_id = "15174819-d1af-4ba6-9f1d-2cd07991f14a";
-
-  time_dimension.initialize(input_esdl_id, anim_esdl_id.value, [], selected_field.value);
+  time_dimension.initialize(anim_esdl_id.value, null, [], selected_field.value);
 };
 const handleDismiss = () => {
   kpis_present.value = false;
