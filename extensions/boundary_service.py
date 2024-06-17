@@ -246,6 +246,7 @@ class BoundaryService:
 
                 area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
                 area.name = toparea_name
+                es_edit.name = toparea_name
                 if add_boundary_to_ESDL:
                     # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
                     if not boundary:    # check if already requested
