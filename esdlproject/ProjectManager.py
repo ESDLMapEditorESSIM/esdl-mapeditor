@@ -1,6 +1,6 @@
 import threading
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
 from uuid import uuid4
@@ -118,6 +118,8 @@ class ProjectManager:
     # The currently selected variant to which changes should be applied.
     active_variant: Variant | None
     change_listeners = dict()
+    # Key is variant ID, value is the timestamp of the last activation of the variant.
+    variant_activation_timestamps: dict[str, datetime] = dict()
 
     lock = threading.Lock()
 
@@ -332,39 +334,39 @@ class ProjectManager:
         :param new_variant: the new active variant
         """
 
-        if self.active_variant == new_variant:
-            print("set_active_variant(): no change in variant")
-        elif new_variant.snapshotRef is not None:
+        if new_variant.snapshotRef is not None:
             # TODO: We need to handle the situation where changes were done in the parent. The snapshot should then be
             # regenerated, but the changes from the child should be maintained. This means that before switching, we
             # need to make sure that any variant changes are persisted.
-            # Right now we ignore any changes in the parent if we already have a snapshot.
 
-            print("Variant snapshot already generated. Creating new one based on changes (now always, should be smarter). "
-                  "(WIP)")
-            # if new_variant.snapshotRef:
-            #     variant_tracker = self.change_tracker.get_tracker(new_variant.snapshotRef)
-            #     if variant_tracker:
-            #         variant_stack = variant_tracker.stack
-            #         if variant_stack.lastChanged > new_variant.lastChanged:
-            #             for action in variant_stack.stack:
-            #                 convertActionToVariantChanges(action, new_variant)
+            print("Variant snapshot already generated. Creating new one based on changes. (WIP)")
 
             # Calculate the list of variants between the VariantCollection and this variant such that we can check
             # if there are changes there, newer than ours and apply them to the new snapshot
             variant_path_list = get_variant_path_list(new_variant)
             variant_path_list.remove(new_variant)
             variant_path_list.reverse()
-            print("Checking following parent variants for changes: ", [v.name for v in variant_path_list])
-            for v in variant_path_list:
-                if v.lastChanged > new_variant.lastChanged:
-                    print(f"Variant {v.name} contains changes not in the snapshot, recreating")
+            logger.info("Checking parent variants for changes", variants=[v.name for v in variant_path_list])
+            for parent_variant in variant_path_list:
+                # Find the latest change in the parent with the highest changedAt.
+                parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant.change]) if parent_variant.change else None
+                # Get the timestamp of the last activation of the variant.
+                variant_last_activated_at = self.variant_activation_timestamps.get(new_variant.id, None)
+                # Only recreate the snapshot if 1) the variant was never activated, or 2) the parent has changes that
+                # are newer than the last time we activated this variant.
+                if (variant_last_activated_at is None or
+                        (parent_latest_change is not None and parent_latest_change > variant_last_activated_at)):
+                    logger.info(
+                        f"Parent variant contains changes not in the snapshot, recreating",
+                        parent_variant=parent_variant.name, variant=new_variant.name
+                    )
 
                     self.remove_variant_snapshot(new_variant)  # delete previous variant
                     self.replay_parent_variant_changes(new_variant)
                     self.active_variant = new_variant
                     if len(new_variant.change) > 0:
                         # this variant has changes, replay these
+                        # TODO: Do we need this?
                         #self.apply_variant_changes(new_variant, new_variant.snapshotRef, False)
                         pass
             self.active_variant = new_variant
@@ -384,12 +386,15 @@ class ProjectManager:
         #         self.apply_variant_changes(self.active_variant, new_variant.snapshotRef)
         #     self.active_variant = new_variant
         else:
+            # New variant is selected and activated for the first time.
             print(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
-            # workflow is discontinued: different variant is selected
             self.replay_parent_variant_changes(new_variant)
             self.active_variant = new_variant
 
-        self.debug()
+        # Update the timestamp of the last activation of the variant.
+        self.variant_activation_timestamps[new_variant.id] = datetime.now(timezone.utc)
+
+        # self.debug()
 
     def get_active_variant(self) -> Variant | None:
         return self.active_variant

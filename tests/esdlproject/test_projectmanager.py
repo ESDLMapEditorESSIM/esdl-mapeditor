@@ -5,6 +5,7 @@ from esdl.processing.string_uri import StringURI
 from esdlproject.ChangeSerializer import deepcopy_eobject_change
 from esdlproject.ProjectManager import ProjectManager, resource_as_string
 from esdlproject.variant_api import create_new_variant, get_parent_variant
+from tests.test_utils import find_asset_in_es
 
 
 class TestProjectManager(unittest.TestCase):
@@ -73,36 +74,37 @@ class TestProjectManager(unittest.TestCase):
         parent_variant = pm.active_variant
         parent_variant.name = "Parent variant"
         parent_variant_stack = pm.get_undo_redo_stack()
+        # Add pipe1 to the parent variant.
         with parent_variant_stack.track_changes("Add pipe1"):
             pipe1 = esdl.Pipe(name="pipe1")
             parent_es.instance[0].area.asset.append(pipe1)
 
         # Check that pipe1 is in parent variant.
-        found_pipe1_parent = False
-        contents = pm.get_active_energy_system().eAllContents()
-        for asset in contents:
-            if isinstance(asset, esdl.Pipe):
-                if asset.name == "pipe1":
-                    found_pipe1_parent = True
-                    break
+        found_pipe1_parent = find_asset_in_es(parent_es, esdl.Pipe, "pipe1") is not None
         self.assertTrue(found_pipe1_parent)
 
-        # Add a child.
+        # Add a child variant.
         child_variant = create_new_variant(parent_variant, "Child variant")
         pm.set_active_variant(child_variant)
         self.assertEquals(pm.get_active_variant().parentVariant, parent_variant)
-        # The change from the parent is not in the child.
+        # The change from the parent is not in the child. After all, the change is from the parent.
         self.assertEquals(len(pm.get_active_variant().change), 0)
 
         # Check that pipe1 is in child variant.
-        found_pipe1_child = False
-        contents = pm.get_active_energy_system().eAllContents()
-        for asset in contents:
-            if isinstance(asset, esdl.Pipe):
-                if asset.name == "pipe1":
-                    found_pipe1_child = True
-                    break
+        found_pipe1_child = find_asset_in_es(pm.get_active_energy_system(), esdl.Pipe, "pipe1") is not None
         self.assertTrue(found_pipe1_child)
+
+        # Now add pipe2 to the parent. We want this to propagate to the child.
+        with parent_variant_stack.track_changes("Add pipe2"):
+            pipe2 = esdl.Pipe(name="pipe2")
+            parent_es.instance[0].area.asset.append(pipe2)
+
+        # Pipe2 is not in child variant until the child variant is activated (again).
+        self.assertFalse(find_asset_in_es(pm.get_active_energy_system(), esdl.Pipe, "pipe2") is not None)
+
+        pm.set_active_variant(child_variant)
+        found_pipe2_child = find_asset_in_es(pm.get_active_energy_system(), esdl.Pipe, "pipe2") is not None
+        self.assertTrue(found_pipe2_child)
 
     def test_save_load_project(self):
         pm = ProjectManager()
