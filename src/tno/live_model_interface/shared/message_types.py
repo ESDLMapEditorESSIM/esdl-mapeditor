@@ -48,4 +48,5 @@ class ProjectManagerMessage(LmiMessage):
 
 
 class HighLevelChangeMessage(LmiMessage):
+    variant_id: str
     high_level_change: str

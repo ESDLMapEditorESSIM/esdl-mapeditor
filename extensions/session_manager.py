@@ -100,7 +100,8 @@ def on_change_recorded(change: HighLevelChange):
         timestamp=datetime.now(timezone.utc),
         user_email=user_email,
         client_id=client_id,
-        high_level_change=hlc_string
+        variant_id=pm.get_active_variant().id,
+        high_level_change=hlc_string,
     )
     # logger.debug("Sending high level change on topic events.esdl.high_level_change")
     send_rabbitmq_message(message, "events.esdl.high_level_change")
