@@ -50,3 +50,10 @@ class ProjectManagerMessage(LmiMessage):
 class HighLevelChangeMessage(LmiMessage):
     variant_id: str
     high_level_change: str
+
+
+class NewVariantMessage(LmiMessage):
+    parent_variant_id: str
+    variant_id: str
+    variant_name: str
+    high_level_changes: list[str]

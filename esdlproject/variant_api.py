@@ -31,7 +31,7 @@ def get_parent_variant(variant: Variant) -> Union[VariantCollection, Variant]:
         return variant.parentVariant
 
 
-def create_new_variant(parent_variant: Union[VariantCollection, Variant], variant_name: Optional[str] = None) -> Variant:
+def create_new_variant(parent_variant: Union[VariantCollection, Variant], variant_name: Optional[str] = None, variant_id: str | None = None) -> Variant:
     """
     Create a new variant under an VariantCollection or Variant.
 
@@ -44,7 +44,7 @@ def create_new_variant(parent_variant: Union[VariantCollection, Variant], varian
         parent_variant = parent_variant.variant  #
     if variant_name is None:
         variant_name = f"Untitled variant {len(parent_variant.variant) + 1}"
-    new_variant = Variant(name=variant_name, id=str(uuid4()), lastChanged=datetime.now())
+    new_variant = Variant(name=variant_name, id=variant_id or str(uuid4()), lastChanged=datetime.now())
     parent_variant.variant.append(new_variant)
     return new_variant
 
