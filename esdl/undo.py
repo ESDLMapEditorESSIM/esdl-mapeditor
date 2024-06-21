@@ -95,7 +95,7 @@ class UndoRedoCommandStack:
         self._recording = True
         self._combine_multiple_changes = combine_commands
         if combine_commands:
-            self._hlc = ep.HighLevelChange(label=label)
+            self._hlc = ep.HighLevelChange(label=label, changedAt=datetime.now(timezone.utc))
 
     def is_recording(self):
         return self._recording
@@ -168,7 +168,7 @@ class UndoRedoCommandStack:
             self._combine_multiple_changes = False
             self.push(self._hlc)
             self._combine_multiple_changes = True
-        self._hlc = ep.HighLevelChange(label)
+        self._hlc = ep.HighLevelChange(label, changedAt=datetime.now(timezone.utc))
 
     def push(self, abstract_change: ep.AbstractChange):
         """

@@ -349,7 +349,8 @@ class ProjectManager:
             logger.info("Checking parent variants for changes", variants=[v.name for v in variant_path_list])
             for parent_variant in variant_path_list:
                 # Find the latest change in the parent with the highest changedAt.
-                parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant.change]) if parent_variant.change else None
+                parent_variant_changes = [change for change in parent_variant.change if change.changedAt is not None]
+                parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant_changes]) if parent_variant_changes else None
                 # Get the timestamp of the last activation of the variant.
                 variant_last_activated_at = self.variant_activation_timestamps.get(new_variant.id, None)
                 # Only recreate the snapshot if 1) the variant was never activated, or 2) the parent has changes that
@@ -624,30 +625,33 @@ class ProjectManager:
         # TODO: not needed anymore? Check
         # TODO: as changes are saved in variant already (and the stack is same as variant.changes)
         variant_snapshot_refs = dict()
+        all_variants = []
 
+        # Go through all variant collections and variants and empty the snapshotRef. Store this in the
+        # variant_snapshot_refs dict to restore it after we are done saving.
         for variantCollection in self.project.variantCollection:
             collection_resource = get_variant_collection_resource(variantCollection)
             resources_dict[variantCollection.id] = collection_resource
             variantCollection.energysystem = collection_resource.contents[0].deepcopy()
             variantCollection.energysystemRef = None
-        #     # todo: change such that we iterate over subvariants
-            variant = variantCollection.variant  # main variant
-            if variant.snapshotRef:
-                # TODO: Also do this for other variants?
-                variant_snapshot_refs[variant.id] = variant.snapshotRef
-                variant.snapshotRef = None
+            # Find all variants in the variant collection
+            all_variants.append(variantCollection.variant)
+            for variant in all_variants:
+                if variant.snapshotRef:
+                    variant_snapshot_refs[variant.id] = variant.snapshotRef
+                    variant.snapshotRef = None
+                all_variants.extend(variant.variant)
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)
         project_as_string = uri.getvalue()
 
-        # reset everything (use reference instead of energysystem containment relations)
-
+        # Reset everything (use reference instead of energysystem containment relations)
         for variantCollection in self.project.variantCollection:
             collection_resource = resources_dict[variantCollection.id]
             variantCollection.energysystem = None
             variantCollection.energysystemRef = collection_resource.contents[0]
-            variant = variantCollection.variant  # main variant
+        for variant in all_variants:
             variant.snapshotRef = variant_snapshot_refs[variant.id]
 
         resources_dict = None
