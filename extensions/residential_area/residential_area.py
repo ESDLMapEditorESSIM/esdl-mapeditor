@@ -33,6 +33,7 @@ from src.edr_client import EDRClient
 from src.esdl_helper import energy_asset_to_ui
 
 from src.log import get_logger
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from src.settings import edr_config
 
 logger = get_logger(__name__)
@@ -179,6 +180,8 @@ class ResidentialArea:
         @self.flask_app.route("/residential_area/get_primos", methods=["POST"])
         def get_primos():
             area_id = request.json["id"]
+            # Filter out 'GMxxxx (1 of 4)' to 'GMxxxx'
+            area_id = get_area_id_from_mapeditor_id(area_id)
             return self.get_primos_data(area_id)
 
     def get_settings(self, force_reset=False):
