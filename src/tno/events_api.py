@@ -50,7 +50,7 @@ class EventsAPI:
 
         @self.socketio.on("events.asset.positioning", namespace="/esdl")
         def mouse_positioning(frontend_message: MousePositionMessage):
-            logger.info("Positioning asset", message=frontend_message)
+            logger.debug("Positioning asset", message=frontend_message)
             user_email = get_session('user-email')
             client_id = session['client_id']
             message: AssetPositionMessage = dict(
@@ -60,5 +60,5 @@ class EventsAPI:
                 id=str(uuid.uuid4()),
                 timestamp=datetime.now(timezone.utc),
             )
-            # rabbitmq_fanout_publisher.publish_message(message)
-            send_rabbitmq_message(message, "events.asset.positioning")
+            # Disabled temporarily because we aren't using it and it causes lot of spam.
+            # send_rabbitmq_message(message, "events.asset.positioning")

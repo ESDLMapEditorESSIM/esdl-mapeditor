@@ -343,7 +343,7 @@ def _json_serializer(obj):
 
 def send_rabbitmq_message(message: LmiMessage, routing_key):
     """
-    Publish a message on the RabbitMQ fanout exchange, so that all queues will receive it.
+    Publish a message on the RabbitMQ exchange, so that all queues will receive it.
 
     Message is send as JSON.
     """

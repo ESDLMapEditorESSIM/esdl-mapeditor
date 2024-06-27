@@ -19,7 +19,8 @@ import threading
 import time
 
 import src.log as log
-import os, glob
+import glob
+import os
 
 from esdl.resources.json import JsonResource, JsonOptions
 from esdlproject import HighLevelChange
@@ -119,7 +120,6 @@ def get_project_manager() -> ProjectManager:
             logger.debug('Retrieve pm client_id={}'.format(client_id))
         else:
             logger.warning('No Project Manager in session. Returning empty project manager')
-            #pm = ProjectManager(on_change_recorded=on_change_recorded)
             pm = ProjectManager()
             pm.add_change_listener("session_manager", on_change_recorded)
             set_project_manager(pm)

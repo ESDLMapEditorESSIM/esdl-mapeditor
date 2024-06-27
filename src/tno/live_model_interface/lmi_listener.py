@@ -27,26 +27,22 @@ from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
-from esdlproject.ProjectManager import ProjectManager
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager_with_client_id, managed_sessions, PM_KEY
+from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
+from src.tno.live_model_interface.api import send_project_manager, LAST_PM_REFRESH_SENT
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.process_es_area_bld import call_process_energy_system
-from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewESDLMessage, \
-    ProjectManagerMessage, NewVariantMessage
+from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = get_logger(__name__)
 
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
-
-LAST_PM_REFRESH_SENT: datetime | None = None
-"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
 def on_high_level_change(message: HighLevelChangeMessage):
@@ -96,7 +92,6 @@ def on_pm_refresh_request(message: LmiMessage):
     :param message:
     :return:
     """
-    global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
     if isinstance(timestamp, str):
         # Parse the timestamp from string to datetime.
@@ -104,25 +99,7 @@ def on_pm_refresh_request(message: LmiMessage):
     if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return
-    sessions = managed_sessions
-    for client_id, session_data in sessions.items():
-        pm: ProjectManager | None = session_data.get(PM_KEY)
-        if pm is None:
-            continue
-        project = pm.project
-        project_as_string = pm.save()
-        base64_file = base64.b64encode(project_as_string.encode()).decode()
-        message = ProjectManagerMessage(
-            id=str(uuid.uuid4()),
-            timestamp=datetime.now(timezone.utc),
-            user_email=None,
-            client_id=client_id,
-            b64_project=base64_file,
-            project_name=project.name,
-        )
-
-        send_rabbitmq_message(message, "events.pm")
-        LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+    send_project_manager()
 
 
 def on_new_variant(message: NewVariantMessage):
@@ -168,11 +145,11 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     infinite loop of exceptions.
     """
     try:
-        if properties.app_id == RABBITMQ_APP_ID:
-            logger.debug("Ignoring message from myself")
-            return
         # Get the routing key.
         routing_key = basic_deliver.routing_key
+        if properties.app_id == RABBITMQ_APP_ID:
+            logger.debug("Ignoring message from myself", routing_key=routing_key)
+            return
         logger.info(
             "Received message",
             delivery_tag=basic_deliver.delivery_tag,
@@ -199,6 +176,9 @@ def start_live_model_interface_thread(app):
     logger.info("Starting RabbitMQ thread for live_model_interface listener")
     thread = LiveModelInterfaceThread()
     thread.start()
+    # Send clear project manager message, to indicate live model interfaces can clear their project managers.
+    clear_pm_message = dict(id=str(uuid.uuid4()), timestamp=datetime.now(timezone.utc), client_id=None, user_email=None)
+    send_rabbitmq_message(clear_pm_message, "events.pm.clear")
 
 
 class LiveModelInterfaceThread(Thread):

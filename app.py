@@ -33,7 +33,7 @@ from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 from esdlproject import Variant
-from src.tno.live_model_interface.api import send_new_esdl
+from src.tno.live_model_interface.api import send_new_esdl, send_project_manager
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.live_model_interface.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
@@ -3367,6 +3367,7 @@ def initialize_app():
         # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in Project Manager - Edwin and Ewoud discuss!!")
 
+    send_project_manager()
     es_info_list = {}
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
