@@ -113,6 +113,7 @@ function showProfileInformation(port_id) {
     if (tooltip_info.value.profiles[port_id].profs_info.length > 0) {
       current_port_id.value = port_id;
       profile_info_visible.value = true;
+      window.remove_tooltip(); // remove nagging tooltip when hovered this tooltip dissapears.
     } else {
       window.set_port_profile(null, tooltipObjectID.value, port_id);
     }
@@ -131,7 +132,7 @@ function changeProfileValue(profile_id, attr_name, value) {
 
 // eslint-disable-next-line no-unused-vars
 function editProfile(port_id) {
-  window.set_port_profile(null, tooltipObjectID.value, port_id)
+  window.set_port_profile(null, tooltipObjectID.value, port_id);
 }
 
 </script>

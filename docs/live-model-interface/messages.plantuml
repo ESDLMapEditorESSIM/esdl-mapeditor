@@ -1,0 +1,41 @@
+@startuml
+
+actor User
+
+rectangle RabbitMQ {
+    [mapeditor.topic] as TopicExchange
+}
+
+User --> MapEditor
+
+rectangle MapEditor {
+    [MapEditor] --> TopicExchange : "events.esdl.high_level_change"
+    [MapEditor] --> TopicExchange : "events.esdl.new"
+    [MapEditor] --> TopicExchange : "events.asset.positioning"
+}
+
+rectangle "Live Model Interfaces" {
+    [connect-nearest-infra] --> TopicExchange : "lmi.esdl.high_level_change"
+    [connect-nearest-infra] --> TopicExchange : "lmi.esdl.refresh"
+}
+
+TopicExchange --> "Live Model Interfaces" : "events.esdl.high_level_change"
+TopicExchange --> "Live Model Interfaces" : "events.esdl.new"
+TopicExchange --> "Live Model Interfaces" : "events.asset.positioning"
+TopicExchange --> MapEditor : "lmi.esdl.high_level_change"
+TopicExchange --> MapEditor : "lmi.esdl.refresh"
+
+rectangle "Message Types" {
+    [HighLevelChangeMessage]
+    [NewESDLMessage]
+    [AssetPositionMessage]
+    [StateRefreshRequestMessage]
+}
+
+MapEditor --> [HighLevelChangeMessage] : sends
+MapEditor --> [NewESDLMessage] : sends
+MapEditor --> [AssetPositionMessage] : sends
+[connect-nearest-infra] --> [HighLevelChangeMessage] : sends
+[connect-nearest-infra] --> [StateRefreshRequestMessage] : sends
+
+@enduml

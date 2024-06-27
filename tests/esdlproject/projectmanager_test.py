@@ -1,9 +1,9 @@
 import unittest
 
-from esdl import esdl, EnergySystem, GenericProducer, InPort, OutPort, GenericConsumer, Instance, HeatCommodity
+from esdl import esdl, GenericProducer, InPort, OutPort, GenericConsumer, HeatCommodity
 from esdl.processing.string_uri import StringURI
 from esdlproject.ChangeSerializer import deepcopy_eobject_change
-from esdlproject.ProjectManager import ProjectManager, convertActionToVariantChanges, resource_as_string
+from esdlproject.ProjectManager import ProjectManager, resource_as_string
 from esdlproject.variant_api import create_new_variant
 
 
@@ -30,7 +30,6 @@ class MyTestCase(unittest.TestCase):
         stack.stop_recording()
         print(f'pipe1 resource: {pipe1.eResource}, {pipe1.eURIFragment()}')
 
-        convertActionToVariantChanges(stack.top, pm.active_variant)
 
         variant2 = create_new_variant(pm.active_variant, "Variant2")
         pm.set_active_variant(variant2)
@@ -41,7 +40,6 @@ class MyTestCase(unittest.TestCase):
         es.instance[0].area.asset.append(pipe2)
         stack.stop_recording()
 
-        convertActionToVariantChanges(stack.top, pm.active_variant)
 
         pm.set_active_variant(variant1)
         print(f'=== pipe1 resource: {pipe1.eResource}, {pipe1.eURIFragment()}')
@@ -67,7 +65,6 @@ class MyTestCase(unittest.TestCase):
         pipe2.port.append(port2)
         port1.connectedTo.append(port2)
         stack.stop_recording()
-        convertActionToVariantChanges(stack.top, pm.active_variant)
 
         pm.set_active_variant(variant1)
         pm.set_active_variant(variant3)
@@ -78,16 +75,13 @@ class MyTestCase(unittest.TestCase):
         gp = esdl.GenericProducer()
         pm.get_active_energy_system().instance[0].area.asset.append(gp)
         stack.stop_recording()
-        convertActionToVariantChanges(stack.top, pm.active_variant)
         stack.start_recording(label="Set power value")
         gp.power = 1E6
         stack.stop_recording()
-        convertActionToVariantChanges(stack.top, pm.active_variant)
 
         stack.start_recording(label="Set power value")
         gp.power = 1E6
         stack.stop_recording()
-        convertActionToVariantChanges(stack.top, pm.active_variant)
 
         print(pm.to_debug_string())
         print("active es:")

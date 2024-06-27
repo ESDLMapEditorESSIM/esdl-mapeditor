@@ -13,7 +13,7 @@
 #      TNO
 from collections import UserList
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Any, List
 
 from pyecore.notification import EObserver, Notification, Kind
@@ -51,7 +51,7 @@ class UndoRedoCommandStack:
         self.stack_index = len(self.stack) - 1  #-1
         self._recording = False
         self._combine_multiple_changes = True
-        self._hlc = None
+        self._hlc: ep.HighLevelChange | None = None
         self.max_stack_length = max_stack_length
         self.last_changed: datetime = datetime.min
         self.change_handler = change_handler
@@ -95,7 +95,7 @@ class UndoRedoCommandStack:
         self._recording = True
         self._combine_multiple_changes = combine_commands
         if combine_commands:
-            self._hlc = ep.HighLevelChange(label=label)
+            self._hlc = ep.HighLevelChange(label=label, changedAt=datetime.now(timezone.utc))
 
     def is_recording(self):
         return self._recording
@@ -146,6 +146,7 @@ class UndoRedoCommandStack:
                 print(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
             self._hlc.change = filtered
             self.push(self._hlc)
+            self._hlc.changedAt = datetime.now(timezone.utc)
 
             # Notify listeners in ProjectManger of this change
             print('undo.py stop recording: self._hlc:', self._hlc)
@@ -167,7 +168,7 @@ class UndoRedoCommandStack:
             self._combine_multiple_changes = False
             self.push(self._hlc)
             self._combine_multiple_changes = True
-        self._hlc = ep.HighLevelChange(label)
+        self._hlc = ep.HighLevelChange(label, changedAt=datetime.now(timezone.utc))
 
     def push(self, abstract_change: ep.AbstractChange):
         """
@@ -467,7 +468,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 previous_value, prev_value_x_refs = deepcopy_eobject_change(notification.old) if notification.old else (None, [])
             except KeyError:
                 # object already removed from tree, ignore
-                print("\\ object alread removed from tree, ignore...")
+                print("\\ object already removed from tree, ignore...")
                 return
 
     print(f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} =============================")

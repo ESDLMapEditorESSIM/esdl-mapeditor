@@ -124,7 +124,7 @@ export function useActivityContext() {
      * context menus.
      * @param activityContext
      */
-    function activateActivityContext(activityContext) {
+    async function activateActivityContext(activityContext) {
         if (activeActivityContext.value) {
             clearActivityContext();
         }
@@ -145,9 +145,8 @@ export function useActivityContext() {
         }
 
         // Clear the WMS layers and add the layers from the activity context.
-        if (activityContext.wms_layers) {
+        if (activityContext.wms_layers !== undefined) {
             clearWmsLayers()
-            console.log("Enabling WMS layers " + activityContext.wms_layers)
             for (const layer of activityContext.wms_layers) {
                 try {
                     showWmsLayer(layer)
@@ -175,9 +174,20 @@ export function useActivityContext() {
         addContextMenuJsFunctions(activityContext)
         addContextMenuServices(activityContext)
 
+        const response = await fetch(`/context/activities/${activityContext.activity_id}/activate`, {
+            method: 'POST'
+        })
+        if (!response.ok) {
+            console.error('Error activating activity context', response)
+            alert('Error activating activity context. Please check the console for more information.')
+            clearActivityContext();
+            return
+        }
+
         if (activityContext.toast_text) {
             toast.info(activityContext.toast_text);
         }
+
     }
 
     /**
