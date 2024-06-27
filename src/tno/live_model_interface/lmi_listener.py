@@ -29,15 +29,15 @@ from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdlproject.ProjectManager import ProjectManager
 from esdlproject.change_handler import applyChange
+from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_with_client_id, managed_sessions, PM_KEY
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_new_esdl
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewESDLMessage, \
-    ProjectManagerMessage
+    ProjectManagerMessage, NewVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = get_logger(__name__)
@@ -45,7 +45,8 @@ logger = get_logger(__name__)
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
 
-last_pm_refresh_sent = None
+LAST_PM_REFRESH_SENT: datetime | None = None
+"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
 def on_high_level_change(message: HighLevelChangeMessage):
@@ -67,6 +68,9 @@ def on_high_level_change(message: HighLevelChangeMessage):
     except KeyError as e:
         logger.warn(f"Ignoring received message due to: {str(e)}")
         return
+
+    variant_id = message['variant_id']
+    # TODO: Use the variant ID. But how? I would prefer not to activate that variant if it is not active.
     es = pm.get_active_energy_system()
     tracker = pm.active_tracker
     tracker.stack.start_recording(label=hlc.label)
@@ -86,27 +90,22 @@ def on_high_level_change(message: HighLevelChangeMessage):
         call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
 
 
-def on_esdl_refresh_request(message):
-    """
-    Handle an ESDL refresh request from the live model interface.
-    :param message:
-    :return:
-    """
-    # TODO: I don't think this is the right message to send here. We should probably send the entire project manager.
-    send_new_esdl()
-
-
 def on_pm_refresh_request(message: LmiMessage):
     """
     Handle an Project Manager refresh request from the live model interface.
     :param message:
     :return:
     """
+    global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
-    if last_pm_refresh_sent is not None and last_pm_refresh_sent >= timestamp:
+    if isinstance(timestamp, str):
+        # Parse the timestamp from string to datetime.
+        timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
+    if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return
-    for client_id, session_data in managed_sessions.items():
+    sessions = managed_sessions
+    for client_id, session_data in sessions.items():
         pm: ProjectManager | None = session_data.get(PM_KEY)
         if pm is None:
             continue
@@ -123,12 +122,40 @@ def on_pm_refresh_request(message: LmiMessage):
         )
 
         send_rabbitmq_message(message, "events.pm")
+        LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+
+
+def on_new_variant(message: NewVariantMessage):
+    """
+    Handle a new variant message from the live model interface.
+    :param message:
+    :return:
+    """
+    client_id = message['client_id']
+    variant_id = message['variant_id']
+    variant_name = message['variant_name']
+    try:
+        pm = get_project_manager_with_client_id(client_id)
+    except KeyError as e:
+        logger.warn(f"Ignoring received message due to: {str(e)}")
+        return
+    existing_variant = pm.get_variant_by_id(variant_id)
+    if existing_variant is not None:
+        logger.info(f"Ignoring new variant message, because the variant already exists.")
+        return
+
+    parent_variant_id = message['parent_variant_id']
+    parent_variant = pm.get_variant_by_id(parent_variant_id)
+    if parent_variant is None:
+        logger.warn(f"Parent variant not found. Are we out of sync?", parent_variant_id)
+        return
+    create_new_variant(parent_variant, variant_name=variant_name, variant_id=variant_id)
 
 
 message_handlers = {
     "lmi.esdl.high_level_change": on_high_level_change,
-    "lmi.esdl.refresh": on_esdl_refresh_request,
     "lmi.pm.refresh": on_pm_refresh_request,
+    "events.variant.new": on_new_variant,
 }
 
 

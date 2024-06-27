@@ -145,7 +145,7 @@ export function useActivityContext() {
         }
 
         // Clear the WMS layers and add the layers from the activity context.
-        if (activityContext.wms_layers) {
+        if (activityContext.wms_layers !== undefined) {
             clearWmsLayers()
             for (const layer of activityContext.wms_layers) {
                 try {

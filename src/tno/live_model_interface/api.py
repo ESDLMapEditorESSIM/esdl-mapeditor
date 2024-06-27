@@ -31,7 +31,7 @@ def send_new_esdl():
         b64_esdl=esdlstr_base64_str
     )
 
-    send_rabbitmq_message(message, "live_model_interface.esdl.new")
+    send_rabbitmq_message(message, "events.esdl.new")
 
 
 def send_pm_state():

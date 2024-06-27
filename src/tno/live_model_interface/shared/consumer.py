@@ -341,7 +341,7 @@ class RabbitMQConsumer(object):
         Basic.Ack RPC method for the delivery tag.
         :param int delivery_tag: The delivery tag from the Basic.Deliver frame
         """
-        logger.info("Acknowledging message", delivery_tag=delivery_tag)
+        # logger.debug("Acknowledging message", delivery_tag=delivery_tag)
         self._channel.basic_ack(delivery_tag)
 
     def stop_consuming(self):

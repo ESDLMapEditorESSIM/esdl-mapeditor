@@ -19,7 +19,7 @@ class LmiMessage(TypedDict):
     # Unique identifier for the message.
     id: str
     # Timestamp when the message was sent.
-    timestamp: datetime
+    timestamp: datetime | str
     # The client_id is used to identify the client that sent the message.
     client_id: str | None
     user_email: str | None
@@ -48,4 +48,12 @@ class ProjectManagerMessage(LmiMessage):
 
 
 class HighLevelChangeMessage(LmiMessage):
+    variant_id: str
     high_level_change: str
+
+
+class NewVariantMessage(LmiMessage):
+    parent_variant_id: str
+    variant_id: str
+    variant_name: str
+    high_level_changes: list[str]

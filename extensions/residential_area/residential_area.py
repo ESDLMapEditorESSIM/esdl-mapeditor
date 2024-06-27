@@ -33,6 +33,7 @@ from src.edr_client import EDRClient
 from src.esdl_helper import energy_asset_to_ui
 
 from src.log import get_logger
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from src.settings import edr_config
 
 logger = get_logger(__name__)
@@ -145,8 +146,12 @@ class ResidentialArea:
                     active_es_id = get_session('active_es_id')
                     area = pm.get_by_id(active_es_id, area_id)
                     if area:
+                        stack = pm.get_undo_redo_stack(es_id=active_es_id)
+                        stack.start_recording(label="Add residential area")
+
                         aggr_bld.geometry = esdl.Point(lat=float(params["lat"]), lon=float(params["lon"]))
                         area.asset.append(aggr_bld)
+                        pm.add_object_to_dict(active_es_id, aggr_bld, recursive=True)
 
                         buildings_to_be_added_list = list()
                         extra_attributes = dict()
@@ -154,7 +159,6 @@ class ResidentialArea:
                         buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
                                                            [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
                                                            False, {}, extra_attributes])
-
                         emit(
                             'add_building_objects',
                             {
@@ -164,6 +168,7 @@ class ResidentialArea:
                             },
                             namespace='/esdl'
                         )
+                        stack.stop_recording()
                     else:
                         logger.error("Area to which aggregated building should be added, could not be found")
                 else:
@@ -175,6 +180,8 @@ class ResidentialArea:
         @self.flask_app.route("/residential_area/get_primos", methods=["POST"])
         def get_primos():
             area_id = request.json["id"]
+            # Filter out 'GMxxxx (1 of 4)' to 'GMxxxx'
+            area_id = get_area_id_from_mapeditor_id(area_id)
             return self.get_primos_data(area_id)
 
     def get_settings(self, force_reset=False):
@@ -351,9 +358,9 @@ class ResidentialArea:
                 "info": [
                     {
                         "label": '2019-2023',
-                        "additions": "???",
-                        "removals": "???",
-                        "cumulative": "???"
+                        "additions": "No data",
+                        "removals": "No data",
+                        "cumulative": "No data"
                     },
                     {
                         "label": '2023-2025',
