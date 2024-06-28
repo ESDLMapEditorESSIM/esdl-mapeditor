@@ -36,13 +36,13 @@
 <script setup>
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
-import VueJsTree from "../components/jstree/VueJsTree";
-import {useSocketIO} from "../composables/socketio";
-import {useBaseLayers,} from "../composables/baseLayers";
+import VueJsTree from "../jstree/VueJsTree.vue";
+import {useSocketIO} from "../../composables/socketio";
+import {useBaseLayers,} from "../../composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
-import VisibleLayersView from "./VisibleLayersView.vue";
-import {useWmsLayers} from "../composables/wmsLayers";
-import {useVisibleLayers} from "../composables/visibleLayers";
+import VisibleLayersView from "../../apps/VisibleLayersView.vue";
+import {useWmsLayers} from "../../composables/wmsLayers";
+import {useVisibleLayers} from "../../composables/visibleLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerIsVisible} = useVisibleLayers();

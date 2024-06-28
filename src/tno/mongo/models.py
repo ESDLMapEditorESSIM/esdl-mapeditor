@@ -59,3 +59,15 @@ class ActivityContext:
     @classmethod
     def from_json(cls, json_str):
         return ActivityContext(**json_util.loads(json_str))
+
+
+class ApplicationContext(TypedDict):
+    """
+    Stored in MongoDB
+    """
+    application_id: str
+    name: str
+    # The live model interfaces to activate.
+    live_model_interfaces: list[dict]
+    # If a context is global, it is shown to all users.
+    is_global: bool | None

@@ -325,6 +325,7 @@ def get_rabbitmq_topic_channel():
     """
     connection = pika.BlockingConnection(parameters=PIKA_CONNECTION_PARAMETERS)
     channel = connection.channel()
+    # I suppose we don't need to do this every time we make a connection, but I don't think it's a big deal.
     channel.exchange_declare(
         exchange=EnvSettings.rabbitmq_exchange(),
         exchange_type=ExchangeType.topic,
@@ -341,7 +342,7 @@ def _json_serializer(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-def send_rabbitmq_message(message: LmiMessage, routing_key):
+def send_rabbitmq_message(message: LmiMessage, routing_key, delivery_mode=None):
     """
     Publish a message on the RabbitMQ exchange, so that all queues will receive it.
 
@@ -349,10 +350,13 @@ def send_rabbitmq_message(message: LmiMessage, routing_key):
     """
     channel = get_rabbitmq_topic_channel()
     body = json.dumps(message, default=_json_serializer).encode()
+    properties = pika.BasicProperties(app_id=RABBITMQ_APP_ID, content_type='application/json')
+    if delivery_mode:
+        properties.delivery_mode = delivery_mode
     channel.basic_publish(
         exchange=EnvSettings.rabbitmq_exchange(),
         routing_key=routing_key,
         body=body,
-        properties=pika.BasicProperties(app_id=RABBITMQ_APP_ID, content_type='application/json'),
+        properties=properties,
     )
     channel.close()

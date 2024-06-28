@@ -69,11 +69,9 @@ function loadUndoRedoStack() {
   }
   isLoading.value = true;
   window.socket.emit('get_undo_redo_stack', {}, (res) => {
-    console.log(res);
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     isLoading.value = false;
-    console.log('undo', stack, stack_index)
   });
 }
 

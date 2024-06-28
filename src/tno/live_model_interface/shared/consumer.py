@@ -36,7 +36,9 @@ class RabbitMQConsumerConfig:
     exchange_type: ExchangeType
     queue: str
     routing_keys: list[str]
+    on_start_consuming_callback: Callable[[], None] | None
     on_message: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], None] | None
+    durable_queue: bool
 
 
 class RabbitMQConsumer(object):
@@ -73,6 +75,8 @@ class RabbitMQConsumer(object):
         else:
             self.routing_keys = consumer_config.routing_keys
         self._my_on_message = consumer_config.on_message
+        self._on_start_consuming_callback = consumer_config.on_start_consuming_callback
+        self._durable_queue = consumer_config.durable_queue
         self.should_reconnect = False
         self.was_consuming = False
 
@@ -221,7 +225,7 @@ class RabbitMQConsumer(object):
         """
         logger.info("Declaring queue", queue=queue_name)
         cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
-        self._channel.queue_declare(queue=queue_name, callback=cb)
+        self._channel.queue_declare(queue=queue_name, durable=self._durable_queue, callback=cb)
 
     def on_queue_declareok(self, _unused_frame: Method, userdata: str):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -287,6 +291,8 @@ class RabbitMQConsumer(object):
         self._consumer_tag = self._channel.basic_consume(self.queue, self.on_message)
         self.was_consuming = True
         self._consuming = True
+        if self._on_start_consuming_callback:
+            self._on_start_consuming_callback()
 
     def add_on_cancel_callback(self):
         """Add a callback that will be invoked if RabbitMQ cancels the consumer
@@ -327,13 +333,6 @@ class RabbitMQConsumer(object):
         )
         if self._my_on_message:
             self._my_on_message(_unused_channel, basic_deliver, properties, body)
-        else:
-            logger.info(
-                "Received message",
-                delivery_tag=basic_deliver.delivery_tag,
-                app_id=properties.app_id,
-                body=body,
-            )
         self.acknowledge_message(basic_deliver.delivery_tag)
 
     def acknowledge_message(self, delivery_tag):

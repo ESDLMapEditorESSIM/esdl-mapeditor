@@ -57,3 +57,8 @@ class NewVariantMessage(LmiMessage):
     variant_id: str
     variant_name: str
     high_level_changes: list[str]
+
+
+class ActivateDeactivateLmiMessage(LmiMessage):
+    lmi_id: str
+    activate: bool

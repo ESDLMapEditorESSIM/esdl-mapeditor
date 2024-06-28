@@ -60,7 +60,7 @@ class ActivityContextExtension:
             return json_result
 
         @self.flask_app.route("/context/activities/<activity_id>/activate", methods=["POST"])
-        def activate_context(activity_id):
+        def activate_activity_context(activity_id):
             db = get_database()
             activity_context = db.activity_contexts.find_one({"activity_id": activity_id})
             if not activity_context:
@@ -69,7 +69,7 @@ class ActivityContextExtension:
 
         @self.flask_app.route("/admin/context/activities")
         @mapeditor_admin_required
-        def get_all_contexts():
+        def get_all_activity_contexts():
             """
             Get all activity contexts from the database and return them as a json string.
             :return:
@@ -80,7 +80,7 @@ class ActivityContextExtension:
 
         @self.flask_app.route("/admin/context/activities", methods=["POST"])
         @mapeditor_admin_required
-        def create_context():
+        def create_activity_context():
             """
             Create a new activity context. The activity_id must be unique.
             :return:
@@ -97,7 +97,7 @@ class ActivityContextExtension:
 
         @self.flask_app.route("/admin/context/activities/<activity_id>", methods=["DELETE"])
         @mapeditor_admin_required
-        def delete_context(activity_id):
+        def delete_activity_context(activity_id):
             """
             Delete a context by activity_id
             :param activity_id:

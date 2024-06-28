@@ -147,23 +147,23 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
     try:
         # Get the routing key.
         routing_key = basic_deliver.routing_key
+        log = logger.bind(delivery_tag=basic_deliver.delivery_tag, app_id=properties.app_id, routing_key=routing_key)
         if properties.app_id == RABBITMQ_APP_ID:
-            logger.debug("Ignoring message from myself", routing_key=routing_key)
+            log.debug("Ignoring message from myself")
             return
-        logger.info(
+
+        log.info(
             "Received message",
-            delivery_tag=basic_deliver.delivery_tag,
-            routing_key=routing_key,
-            app_id=properties.app_id,
             body=body[:150],
         )
         message = json.loads(body.decode("utf-8"))
 
         # Call the appropriate message handler.
-        if routing_key in message_handlers:
-            message_handlers[routing_key](message)
+        handler = message_handlers.get(routing_key)
+        if handler:
+            handler(message)
         else:
-            logger.warn(f"No handler found for message with routing key {routing_key}")
+            log.warn(f"No handler found for message with routing key")
     except Exception:
         logger.exception("Failed to process live model interface message")
 
@@ -193,7 +193,9 @@ class LiveModelInterfaceThread(Thread):
             exchange_type=ExchangeType.topic,
             queue=EnvSettings.rabbitmq_queue(),
             routing_keys=["lmi.#"],
+            on_start_consuming_callback=None,
             on_message=on_live_model_interface_message,
+            durable_queue=True,
         )
 
         consumer = ReconnectingConsumer(consumer_config)

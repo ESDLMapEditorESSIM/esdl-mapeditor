@@ -67,7 +67,9 @@ class RMQThread(Thread):
             exchange_type=ExchangeType.topic,
             queue=EnvSettings.rabbitmq_queue(),
             routing_keys=["results.#"],
+            on_start_consuming_callback=None,
             on_message=on_result_message,
+            durable_queue=True,
         )
 
         consumer = ReconnectingConsumer(consumer_config)

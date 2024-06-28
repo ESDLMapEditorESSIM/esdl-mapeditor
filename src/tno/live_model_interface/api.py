@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from flask import session
 
 from esdlproject.ProjectManager import ProjectManager
-from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
-from src.tno.live_model_interface.shared.message_types import NewESDLMessage, ProjectManagerMessage
+from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY, set_session
+from src.tno.live_model_interface.shared.message_types import NewESDLMessage, ProjectManagerMessage, ActivateDeactivateLmiMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 LAST_PM_REFRESH_SENT: datetime | None = None
@@ -43,8 +43,7 @@ def send_project_manager(only_send_client_id: str | None = None):
     Send project managers for all users, or only for the provided users.
     """
     global LAST_PM_REFRESH_SENT
-    sessions = managed_sessions
-    for client_id, session_data in sessions.items():
+    for client_id, session_data in managed_sessions.items():
         if only_send_client_id is not None and client_id != only_send_client_id:
             continue
         pm: ProjectManager | None = session_data.get(PM_KEY)
@@ -63,3 +62,39 @@ def send_project_manager(only_send_client_id: str | None = None):
         )
         send_rabbitmq_message(message, "events.pm")
     LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+
+
+def activate_live_model_interface(lmi_id: str, client_id: str):
+    """
+    Activate the live model interface with the given id for the given user.
+    :param lmi_id:
+    :param client_id:
+    :return:
+    """
+    message = ActivateDeactivateLmiMessage(
+        id=str(uuid.uuid4()),
+        timestamp=datetime.now(timezone.utc),
+        client_id=client_id,
+        user_email=None,
+        lmi_id=lmi_id,
+        activate=True
+    )
+    send_rabbitmq_message(message, f"{lmi_id}.activation")
+
+
+def deactivate_live_model_interface(lmi_id: str, client_id: str):
+    """
+    Activate the live model interface with the given id for the given user.
+    :param lmi_id:
+    :param client_id:
+    :return:
+    """
+    message = ActivateDeactivateLmiMessage(
+        id=str(uuid.uuid4()),
+        timestamp=datetime.now(timezone.utc),
+        client_id=client_id,
+        user_email=None,
+        lmi_id=lmi_id,
+        activate=False
+    )
+    send_rabbitmq_message(message, f"{lmi_id}.activation")

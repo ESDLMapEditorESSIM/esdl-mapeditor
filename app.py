@@ -33,6 +33,7 @@ from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 from esdlproject import Variant
+from extensions.application_context import ApplicationContextExtension
 from src.tno.live_model_interface.api import send_new_esdl, send_project_manager
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.live_model_interface.results_listener import start_rmq_thread
@@ -200,6 +201,7 @@ custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
+ApplicationContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 
 #TODO: check secret key with itsdangerous error and testing and debug here

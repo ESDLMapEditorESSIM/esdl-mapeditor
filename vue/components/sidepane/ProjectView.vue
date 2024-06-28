@@ -15,10 +15,11 @@
   -->
 
 <template>
-  <div id="project_view" >
-    <vue-js-tree v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
-                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs" 
-                 :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
+  <div id="project_view">
+    <vue-js-tree
+      v-if="treeData != null" :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox']"
+      :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs" 
+      :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
     />
     <div v-else>
       <p class="text-only">No project loaded.</p>
@@ -32,11 +33,11 @@
 <script setup>
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
-import VueJsTree from "../components/jstree/VueJsTree";
-import {useESDLProjects} from "../composables/esdlProjects";
-import {useSocketIO} from "../composables/socketio";
-import {useMultiEsdl} from "../composables/multiEsdl";
-import {useBaseLayers,} from "../composables/baseLayers";
+import VueJsTree from "../jstree/VueJsTree.vue";
+import {useESDLProjects} from "../../composables/esdlProjects";
+import {useSocketIO} from "../../composables/socketio";
+import {useMultiEsdl} from "../../composables/multiEsdl";
+import {useBaseLayers,} from "../../composables/baseLayers";
 
 const {
   showBaseLayer,
@@ -433,7 +434,6 @@ function selectOnlyOneBaseLayer(node) {
   .text-only {
     padding-left: 8px;
   }
-
 }
 
 .bold {

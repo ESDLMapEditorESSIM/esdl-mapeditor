@@ -56,6 +56,7 @@ import {useUndoRedo} from "./composables/undoRedo";
 import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
+import ApplicationContextSelector from "@/apps/application-context/ApplicationContextSelector.vue";
 import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
@@ -191,6 +192,7 @@ createVueLControl(AssetDrawToolbar, {});
 mountApp(ToggleShowAssetDrawToolbar, '#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
+createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 
 mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
 mountApp(LoadProjectFileButton, '#vue_load_project_file')

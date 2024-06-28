@@ -170,8 +170,13 @@ def valid_session():
 
 
 def set_session(key, value):
+    """
+    Set memory-based session variable. Also update the last accessed time for this session.
+    :param key:
+    :param value:
+    :return:
+    """
     global managed_sessions
-    #logger.debug('Current Thread %s' % threading.currentThread().getName())
     if 'client_id' not in session:
         logger.warning('No client_id for the session is available, cannot set value for key {}'.format(key))
         return
@@ -180,12 +185,11 @@ def set_session(key, value):
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[client_id][key] = value
-    #logger.debug(managed_sessions)
 
 
 def get_session(key=None):
     """
-    Return memory-bases session variable
+    Return memory-based session variable
     :param key: key to retrieve a value for. If key is None, it will return the whole session for this client
     :return:
     """
@@ -208,6 +212,11 @@ def get_session(key=None):
 
 
 def del_session(key):
+    """
+    Delete memory-based session variable.
+    :param key:
+    :return:
+    """
     global managed_sessions
     client_id = session['client_id']
     if client_id not in managed_sessions:
