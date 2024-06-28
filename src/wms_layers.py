@@ -15,7 +15,8 @@
 from uuid import uuid4
 
 from flask import Flask
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
+import requests
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
@@ -129,7 +130,39 @@ class WMSLayers:
             position = params['position']
             self.copy_wms_item_and_children(item_id, new_parent_id, position)
             return self.get_layers()
+        
+        @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
+        def _query_wms_layer_feature(params: dict) -> None:
+            layers = params['layers']
+            layers_features_props = []
+            for layer in layers:
+                props = self.query_wms_layer_feature_properties(layer['url'])                
+                layers_features_props.append({
+                    "name": layer['name'],
+                    "props": props if props is not None else None
+                })
+            resp = {
+                "ev_lat_lng": params['evLatLng'],
+                "layers_features_props": layers_features_props
+            }
+            emit('on_wms_layer_feature_resp', resp)
 
+    def query_wms_layer_feature_properties(self, url: str) -> dict | None:    
+        feature_props = None
+
+        try:
+            resp = requests.get(url)
+            if resp.status_code == 200:
+                data = resp.json()
+                if 'features' in data and len(data['features']) > 0:
+                    feature_props = data['features'][0]['properties']
+                else:
+                    feature_props = {}
+        except Exception as e:
+            logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
+
+        return feature_props
+    
     def add_wms_layer_group(self, layer_group_id: str, layer_group: dict, parent_group_id: str = None,
                             position: str = None):
         setting_type = SettingType(layer_group['setting_type'])
