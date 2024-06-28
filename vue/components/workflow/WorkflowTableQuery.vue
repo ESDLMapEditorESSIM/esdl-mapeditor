@@ -5,19 +5,20 @@
       <a-button type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
         Reload
       </a-button>
-      <a-table :columns="columns" 
-               :row-key="rowkey" 
-               :data-source="dataSource"
-               :pagination="pagination" 
-               :loading="isLoading" 
-               size="small" 
-               class="resulttable"                
-               style="font-size: 12px;"
+      <a-table
+        :columns="columns" 
+        :row-key="rowkey" 
+        :data-source="dataSource"
+        :pagination="pagination" 
+        :loading="isLoading" 
+        size="small" 
+        class="resulttable"                
+        style="font-size: 12px;"
       >
         <template #action="{ record }">
           <span>
             <li v-for="a in actions" :key="a.title">
-              <a v-if="actionEnabled(a, record[rowkey])" href="#" @click="doAction(record[rowkey], a.next_step)">{{ a.title }}</a>
+              <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record[rowkey], a.next_step)">{{ a.title }}</a>
               <div v-else style="color: lightgray">{{ a.title }}</div>
             </li>
           </span>
