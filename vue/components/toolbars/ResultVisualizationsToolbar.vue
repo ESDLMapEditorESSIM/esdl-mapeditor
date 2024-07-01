@@ -14,36 +14,44 @@
       </a-col>
     </a-row>
 
-    <a-space direction="vertical" align="center">
-      <a-space>
-        <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
-          Show KPI dashboard
-        </a-button>
-        <span v-else>No KPI's available</span>
+    <a-row v-if="service_short_name!=null && calc_name!=null">
+      <a-space direction="vertical" align="center">
+        <span>For '{{ service_short_name }}' result: '{{ calc_name }}'</span>
       </a-space>
+    </a-row>
+    <br>
+    <a-row>
+      <a-space direction="vertical" align="center">
+        <a-space>
+          <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
+            Show KPI dashboard
+          </a-button>
+          <span v-else>No KPI's available</span>
+        </a-space>
 
-      <a-space-compact v-if="animation_possible" block size="small">
-        <a-select
-          ref="select"
-          v-model:value="selected_field"
-          style="width: 150px"
-          :options="field_options"
-          @focus="focus"
-          @change="handleChange"
-        />
-        <a-button
-          :disabled="selected_field === 'Choose field ...'"
-          size="small"
-          type="primary"
-          @click="handleResultsAnimation"
-        >
-          Load animation
-        </a-button>
-      </a-space-compact>
-      <a-space v-else>
-        <span>No animation available</span>
+        <a-space-compact v-if="animation_possible" block size="small">
+          <a-select
+            ref="select"
+            v-model:value="selected_field"
+            style="width: 150px"
+            :options="field_options"
+            @focus="focus"
+            @change="handleChange"
+          />
+          <a-button
+            :disabled="selected_field === 'Choose field ...'"
+            size="small"
+            type="primary"
+            @click="handleLoadAnimation"
+          >
+            Load animation
+          </a-button>
+        </a-space-compact>
+        <a-space v-else-if="service_short_name!=null && calc_name!=null">
+          <span>No animation available</span>
+        </a-space>
       </a-space>
-    </a-space>
+    </a-row>
   </div>
 </template>
 
@@ -56,13 +64,23 @@ const animation_possible = ref(false);
 const field_options = ref([]);
 const selected_field = ref("Choose field ...");
 const anim_esdl_id = ref(null);
+const service_short_name = ref(null);
+const calc_name = ref(null);
 
 onMounted(() => {
   window.addEventListener('load', () => {
     // run after everything is in-place
-    window.socket.on('kpis_present', function (res) {
-      console.log('kpis_present', res);
-      kpis_present.value = res;
+    window.socket.on('kpis_present', function (data) {
+      console.log('kpis_present:', data['es_id']);
+      if (data['es_id'] !== anim_esdl_id.value) {  // remove animation info if new ESDL
+        time_dimension.removeGeoJSONLayers();
+        time_dimension.show_hide_animation_toolbar(false);
+        animation_possible.value = false;
+        anim_esdl_id.value = null;
+        service_short_name.value = null;
+        calc_name.value = null;
+      }
+      kpis_present.value = true;
     });
     window.socket.on('animation_esdl_data', function (data) {
       console.log('animation_possible, esdl id: ', data['es_id']);
@@ -76,8 +94,9 @@ onMounted(() => {
             }
         )
       });
-      console.log("field_options", field_options.value)
       anim_esdl_id.value = data['es_id'];
+      service_short_name.value = data['service_short_name'];
+      calc_name.value = data['calc_name'];
     });
   });
 });
@@ -85,16 +104,20 @@ onMounted(() => {
 const handleShowDashboard = () => {
   window.kpi_dashboard.open();
 };
-const handleResultsAnimation = () => {
+const handleLoadAnimation = () => {
   console.log("Results animation");
-  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun.
-  //    Probably ask mesido to remove the tag all together?
+  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun, use for essim
 
   time_dimension.initialize(anim_esdl_id.value, null, [], selected_field.value);
 };
 const handleDismiss = () => {
+  time_dimension.removeGeoJSONLayers();
+  time_dimension.show_hide_animation_toolbar(false);
   kpis_present.value = false;
   animation_possible.value = false;
+  anim_esdl_id.value = null;
+  service_short_name.value = null;
+  calc_name.value = null;
 };
 const handleChange = (value) => {
   console.log(`selected: ${value}`);

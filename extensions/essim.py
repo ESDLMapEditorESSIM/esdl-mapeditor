@@ -720,7 +720,7 @@ class ESSIM:
             with self.flask_app.app_context():
                 es_id = get_session('active_es_id')
                 emit('kpis', {'es_id': es_id, 'scope': "essim kpis", 'kpi_info': kpi_info})
-                emit('kpis_present', True)
+                emit('kpis_present', {'es_id': es_id})
 
     def process_sub_kpi(self, sub_kpi):
         sub_kpi_res = dict()

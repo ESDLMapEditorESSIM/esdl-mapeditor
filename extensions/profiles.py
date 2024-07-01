@@ -26,7 +26,6 @@ from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
 from influxdb import InfluxDBClient
-from requests.exceptions import ConnectionError
 import copy
 import src.log as log
 import csv
@@ -775,31 +774,6 @@ class Profiles:
                     port=profile.port,
                     database=database
                 )
-            # try:
-            #     influxdb_client.ping()
-            # except ConnectionError as original_connection_error:
-            #     # try localhost for mapeditor running in local dev mode
-            #     if credentials:
-            #         influxdb_client = InfluxDBClient(
-            #             host='localhost',
-            #             port=profile.port,
-            #             database=database,
-            #             username=credentials['username'],
-            #             password=credentials['password']
-            #         )
-            #     else:
-            #         influxdb_client = InfluxDBClient(
-            #             host='localhost',
-            #             port=profile.port,
-            #             database=database
-            #         )
-            #     try:
-            #         influxdb_client.ping()
-            #     except ConnectionError:
-            #         logger.error(
-            #             f"Extracting animation data, cannot reach influx DB on '{profile.host}:{profile.port}'."
-            #         )
-            #         raise original_connection_error
 
             return influxdb_client
         else:
