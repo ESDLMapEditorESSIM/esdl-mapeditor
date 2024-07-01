@@ -118,18 +118,17 @@ const showWmsLayerFeaturePopup = (resp) => {
         resp.layers_features_props.forEach((l) => {
             const layerName = l.name;
             const layerFeatureProps = l.props;
-            
-            if (layerFeatureProps) {
-                // Only display layer name and feature props when layerFeatureProps is not empty
-                if (Object.keys(layerFeatureProps).length) {
-                    // Layer name node
-                    const layerNameNode = document.createElement("p");
-                    layerNameNode.innerHTML = `${layerName}`
-                    layerNameNode.style.margin = "4px 0px";
-                    layerNameNode.style.fontWeight = 600;
-                    layerNameNode.style.fontSize = "1.2em";
-                    popupDiv.appendChild(layerNameNode);
 
+            // Layer name node
+            const layerNameNode = document.createElement("p");
+            layerNameNode.innerHTML = `${layerName}`
+            layerNameNode.style.margin = "4px 0px";
+            layerNameNode.style.fontWeight = 600;
+            layerNameNode.style.fontSize = "1.2em";
+            popupDiv.appendChild(layerNameNode);
+
+            if (layerFeatureProps !== null) {
+                if (Object.keys(layerFeatureProps).length) {
                     // Layer feature properties node
                     Object.keys(layerFeatureProps).forEach((pName) => {
                         const propNameNode = document.createElement("p");
@@ -139,9 +138,16 @@ const showWmsLayerFeaturePopup = (resp) => {
                         propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
                         popupDiv.appendChild(propNameNode).appendChild(propValueNode);
                     });
+                } else {
+                    // If the event location has no feature, remove the layerNameNode from the popup
+                    popupDiv.removeChild(layerNameNode);
                 }
             } else {
-                console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature property.`)
+                console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature properties.`);
+                const propErrorNode = document.createElement("p");
+                propErrorNode.style.margin = "2px 0px";
+                propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
+                popupDiv.appendChild(propErrorNode)
             }
         })
         
@@ -153,16 +159,7 @@ const showWmsLayerFeaturePopup = (resp) => {
     }
 }
 
-/**
- * Close the WMS layers features properties map popup
- */
-const closeWmsLayersFeaturesPopup = () => {
-    map.closePopup(layersPopup);
-}
-
 map.on('click', queryWmsLayersFeaturesOnClick);
-
-map.on('mousemove', closeWmsLayersFeaturesPopup);
 
 map.on('moveend', function () {
     for (const visibleLayer of globalVisibleLayerList.value) {
