@@ -29,10 +29,12 @@ const layerTreeId = "layer_tree";
 const $ = window.$;
 const getLayerTree = () => $('#' + layerTreeId).jstree(true);
 
+// Initialize the layer popup and specify popup options
 const L = window.L;
 const layersPopup = L.popup({
-    autoPan: false,
-    offset: L.point(90, -15),
+    autoPan: true,
+    maxWidth: 400,
+    maxHeight: 400
 });
 
 let socket = null;
@@ -109,24 +111,21 @@ const showWmsLayerFeaturePopup = (resp) => {
         }
         const popupDiv = document.createElement("div");
         popupDiv.setAttribute("id", popupDivId);
-        popupDiv.style.lineHeight = 0.2;
+        popupDiv.style.display = "flex";
+        popupDiv.style.flexDirection = "column";
 
         // Updating the popup content
-        resp.layers_features_props.forEach((l, idx) => {
+        resp.layers_features_props.forEach((l) => {
             const layerName = l.name;
             const layerFeatureProps = l.props;
             
             if (layerFeatureProps) {
                 // Only display layer name and feature props when layerFeatureProps is not empty
                 if (Object.keys(layerFeatureProps).length) {
-                    // Add a space to separate layer content if not the first one
-                    if (idx) {
-                        popupDiv.appendChild(document.createElement("br"));
-                    }
-
                     // Layer name node
                     const layerNameNode = document.createElement("p");
                     layerNameNode.innerHTML = `${layerName}`
+                    layerNameNode.style.margin = "4px 0px";
                     layerNameNode.style.fontWeight = 600;
                     layerNameNode.style.fontSize = "1.2em";
                     popupDiv.appendChild(layerNameNode);
@@ -134,6 +133,7 @@ const showWmsLayerFeaturePopup = (resp) => {
                     // Layer feature properties node
                     Object.keys(layerFeatureProps).forEach((pName) => {
                         const propNameNode = document.createElement("p");
+                        propNameNode.style.margin = "2px 0px";
                         const propValueNode = document.createElement("span");
                         propNameNode.innerHTML = `${pName}: `;
                         propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
