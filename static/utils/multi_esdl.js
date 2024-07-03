@@ -272,7 +272,11 @@ function get_layers(es_id, layer_name) {
     return esdl_list[es_id].layers[layer_name];
 }
 
-function find_layer_by_id(es_id, layer_name, id) {
+/**
+  find layer by id
+  type allows you to filter for layers that have 'marker' property set or 'polygon' property set.
+*/
+function find_layer_by_id(es_id, layer_name, id, type) {
     let layer_list = esdl_list[es_id].layers[layer_name].getLayers();
     for (let i=0; i<layer_list.length; i++) {
         let layer = layer_list[i];
@@ -285,7 +289,22 @@ function find_layer_by_id(es_id, layer_name, id) {
             }
           }
         } else if (layer.id == id) {
-            return layer;
+            if (type !== undefined || type != null) {
+                if (layer.marker  || layer.polygon) {
+                    // we're dealing with an asset that exists of 2 layers: a polygon layer and marker layer, return
+                    // the layer that is defined by the type parameter
+                    if (layer.marker && type === 'polygon') {  // layer with marker is a polygon geometry
+                        return layer;
+                    } else if (layer.polygon && type === 'marker') { // layer with polygon is a marker
+                        return layer;
+                    }
+                } else {
+                    return layer;
+                }
+                // else ignore this layer and don't return it
+            } else {
+                return layer;
+            }
         }
     }
 }

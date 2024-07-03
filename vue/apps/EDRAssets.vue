@@ -16,6 +16,34 @@
       </p>
     </a-card>
 
+    <a-space direction="horizontal">
+      <a-checkbox
+        v-model:checked="filter_status_experimental"
+        @change="e => filterOnExperimental(e)"
+      >
+        Status:Experimental
+      </a-checkbox>
+      <a-checkbox
+        v-model:checked="filter_status_final"
+        @change="e => filterOnFinal(e)"
+      >
+        Status:Final
+      </a-checkbox>
+    </a-space>
+
+    <a-space direction="horizontal">
+      <a-checkbox
+        v-model:checked="filter_cost_information"
+      >
+        esdl:CostInformation
+      </a-checkbox>
+      <a-checkbox
+        v-model:checked="filter_input_output_relation"
+      >
+        esdl:InputOutputRelation
+      </a-checkbox>
+    </a-space>
+
     <div>
       <h3>Filter asset list on EDR asset category:</h3>
       <a-select
@@ -88,7 +116,11 @@ export default {
       asset_categories: [],
       selected_asset_category: undefined,
       selected_asset_type: undefined,
-      isLoading: true
+      isLoading: true,
+      filter_status_experimental: false,
+      filter_status_final: true,
+      filter_cost_information: false,
+      filter_input_output_relation: false,
     }
   },
   computed: {
@@ -100,6 +132,18 @@ export default {
       if (this.selected_asset_category !== 'No filter' && this.selected_asset_category !== undefined) {
         temp_list = temp_list.filter(item => item.edr_cat === this.selected_asset_category);
       }
+      if (this.filter_status_experimental) {
+        temp_list = temp_list.filter(item => (item.tags.includes("status:Experimental")));
+      }
+      if (this.filter_status_final) {
+        temp_list = temp_list.filter(item => (item.tags.includes("status:Final")));
+      }
+      if (this.filter_cost_information) {
+        temp_list = temp_list.filter(item => (item.tags.includes("esdl:CostInformation")));
+      }
+      if (this.filter_input_output_relation) {
+        temp_list = temp_list.filter(item => (item.tags.includes("esdl:InputOutputRelation")));
+      }
       return temp_list;
     }
   },
@@ -107,7 +151,7 @@ export default {
     this.getDataSocketIO();
   },
   methods: {
-    getDataSocketIO: function() {
+    getDataSocketIO: function () {
       // console.log(currentObjectID.value);
       // window.socket.emit('edr_assets', (res) => {
       const path = '/edr_assets';
@@ -124,7 +168,9 @@ export default {
             }
           });
           // Create a list that can be used by the Antdv Select component
-          this.asset_categories = cat_list.map((cat) => {return {label:cat, value:cat};});
+          this.asset_categories = cat_list.map((cat) => {
+            return {label: cat, value: cat};
+          });
           this.isLoading = false;
         })
         .catch((error) => {
@@ -132,25 +178,39 @@ export default {
           console.error(error);
         });
     },
-    select: function() {
+    select: function () {
       const selected_value = this.selected_asset;
       if (selected_value) {
         window.socket.emit('command', {cmd: 'get_edr_asset', edr_asset_id: selected_value});
         window.sidebar.hide();
       }
     },
-    cancel: function() {
+    cancel: function () {
       window.sidebar.hide();
     },
-    filter_select: function(input, option) {
+    filter_select: function (input, option) {
       return option.props.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
     },
-    buildResultInfo: function() {
+    buildResultInfo: function () {
       let result = {};
       return result;
     },
-    hide_jquery_ui_popup: function() {
+    hide_jquery_ui_popup: function () {
       window.jquery(".ui-tooltip-content").parents('div').remove();
+    },
+    filterOnExperimental: function (e) {
+      // The tags experimental and final should be mutually exclusive
+      // If experimental is checked, uncheck final
+      if (e.target.checked) {
+        this.filter_status_final = false;
+      }
+    },
+    filterOnFinal: function (e) {
+      // The tags experimental and final should be mutually exclusive
+      // If final is checked, uncheck experimental
+      if (e.target.checked) {
+        this.filter_status_experimental = false;
+      }
     },
   }
 };

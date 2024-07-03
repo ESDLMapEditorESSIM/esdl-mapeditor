@@ -105,7 +105,7 @@ Perform the following steps to run the mapeditor directly on your own machine.
 
 ## Local development in Docker
 
-It is also possible to develop on this project directly from Docker. For this, we've defined a `docker-compose.dev.yml` file.
+It is also possible to develop on this project directly from Docker. For this, we've defined a `docker-compose.yml` file.
 
 Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to be running.
 
@@ -113,7 +113,7 @@ Prerequisites are Docker and docker-compose. Also, the Docker toolsuite needs to
 
 2. Build the local Docker image: `docker-compose -f docker/docker-compose.yml build`
 
-3. Run the container: `docker-compose -f docker/docker-compose.dev.yml up`.
+3. Run the container: `docker-compose -f docker/docker-compose.yml up`.
 
 Every change made to the code will automatically reload the application, both the Python as well as the Vue part. The above commands can also be found in the `Makefile`, for convenience.
 
