@@ -157,12 +157,12 @@ class LayerFolderTreeSpec {
       'uncheck_node.jstree': function (e, data) {
         setVisibilityWmsLayerGroup(data.node.id, false);
       },
-      'open_node.jstree': function (e, data) {
-        setWmsLayerGroupOpened(data.node.id, true);
-      },
-      'close_node.jstree': function (e, data) {
-        setWmsLayerGroupOpened(data.node.id, false);
-      }
+      // 'open_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, true);
+      // },
+      // 'close_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, false);
+      // }
     }
   }
 
