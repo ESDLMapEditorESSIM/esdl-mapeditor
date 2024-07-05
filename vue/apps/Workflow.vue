@@ -166,6 +166,7 @@ const { getActiveEsdlLayerId } = useEsdlLayers();
 const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow, getState } = useWorkflow();
 
 const activeEnergySystemTitle = ref("Please select an energy system");
+const activeEnergySystemId = ref("");
 try {
   activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
 } catch (e) {
@@ -174,6 +175,7 @@ try {
 
 PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
   activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
+  activeEnergySystemId.value = window.esdl_list[getActiveEsdlLayerId().value].id;
 });
 
 function confirmPersistWorkflow() {

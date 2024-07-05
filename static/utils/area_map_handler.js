@@ -186,6 +186,8 @@ function add_area_map_handlers(socket, map) {
 
     map.on('click', function(e) {
         map.contextmenu.hide();
+        // TODO find best way to hide sidebar
+        //window.sidebar.hide();
     });
 
 //    map.on('draw:canceled', function(e) {
@@ -200,11 +202,13 @@ function add_area_map_handlers(socket, map) {
     // and the map doesn't have focus anymore
     $("body").on('keydown', function(e){
         var event = e.originalEvent
-        if (event.keyCode === 27) {
+        if (event.keyCode === 27) { // Esc key
             if (editing_objects) {
                 window.draw_control._toolbars.edit.disable();
           	} else if (deleting_objects) {
                 window.draw_control._toolbars.edit.disable();
+          	} else {
+          	    window.sidebar.hide();
           	}
         } else if (event.key === 's') {
             if (editing_objects) {

@@ -87,13 +87,14 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     }
 };
 
+
 export function useWmsLayers() {
     /**
      * Get the wms layer list.
      */
     const getWmsLayerList = () => toValue(globalWmsLayerList);
 
-    const addWmsLayer = (layerDescr, layerUrl, layerName, legendUrl, layerAttr, projectName, settingtype, groupId) => {
+    const addWmsLayer = (layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
         /**
          * Add wms layer
          */
@@ -107,6 +108,7 @@ export function useWmsLayers() {
             setting_type: settingtype,
             project_name: projectName,
             legend_url: legendUrl,
+            min_zoom_level: minZoomLevel,
             parent_group_id: groupId,
         };
         socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
@@ -116,7 +118,7 @@ export function useWmsLayers() {
         });
     };
 
-    const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr) => {
+    const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
         removeLayerFromMapAndVisibleLayers(layerId);
         globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
@@ -126,7 +128,8 @@ export function useWmsLayers() {
                 url: layerUrl,
                 layer_name: layerName,
                 legend_url: legendUrl,
-                attribution: layerattr
+                attribution: layerattr,
+                min_zoom_level: minZoomLevel,
             }
         }, (allLayers) => {
             allLayers['layers'][layerId].visible = true;
@@ -136,14 +139,17 @@ export function useWmsLayers() {
     };
 
     const showWmsLayer = (layerId) => {
+        const wms_layer = globalWmsLayerList.value['layers'][layerId];
         if (!layerIsVisible(layerId)) {
-            globalWmsLayerList.value['layers'][layerId].layer_ref.addTo(map);
-            globalWmsLayerList.value['layers'][layerId].layer_ref.bringToFront();
-            if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
-                showWmsLegend(globalWmsLayerList.value['layers'][layerId].legend_url);
+            if (!wms_layer.min_zoom_level || (wms_layer.min_zoom_level && map.getZoom() >= wms_layer.min_zoom_level)) {
+                wms_layer.layer_ref.addTo(map);
+                wms_layer.layer_ref.bringToFront();
+                wms_layer.visible = true;
             }
-            globalWmsLayerList.value['layers'][layerId].visible = true;
-            addToVisibleLayerList(globalWmsLayerList.value['layers'][layerId], 0);
+            if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
+                showWmsLegend(wms_layer.legend_url);
+            }
+            addToVisibleLayerList(wms_layer, 0);
         }
     };
 
@@ -155,6 +161,12 @@ export function useWmsLayers() {
         socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalWmsLayerList);
         map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
         removeFromVisibleLayerList(layerId);
+    };
+
+    const clearWmsLayers = () => {
+        for (const [key, value] of Object.entries(globalWmsLayerList.value['layers'])) {
+            hideWmsLayer(key)
+        }
     };
 
     const addWmsLayerGroup = (parentId, setting_type, project_name) => {
@@ -218,6 +230,7 @@ export function useWmsLayers() {
     };
 
     return {
+        clearWmsLayers,
         getWmsLayerList,
         addWmsLayer,
         updateLayer,

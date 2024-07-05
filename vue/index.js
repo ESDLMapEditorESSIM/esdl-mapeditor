@@ -4,22 +4,23 @@
  * DOM.
  */
 import {createApp} from "vue";
-import ControlStrategy from './apps/ControlStrategy';
-import MarginalCostsEdit from "./apps/MarginalCostsEdit";
-import ObjectProperties from './apps/ObjectProperties';
-import EDRAssets from './apps/EDRAssets';
-import EnvironmentalProfiles from './apps/EnvironmentalProfiles';
-import AddEditWmsLayer from './apps/AddEditWmsLayer';
-import Carriers from './apps/Carriers.vue';
-import Sectors from './apps/Sectors.vue';
-import AboutBox from './apps/AboutBox';
-import ReleaseNotes from './apps/ReleaseNotes';
+import ControlStrategy from '@/apps/ControlStrategy.vue';
+import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
+import ObjectProperties from '@/apps/ObjectProperties.vue';
+import EDRAssets from '@/apps/EDRAssets.vue';
+import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
+import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import Carriers from '@/apps/Carriers.vue';
+import Sectors from '@/apps/Sectors.vue';
+import AboutBox from '@/apps/AboutBox.vue';
+import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
-import SearchAssets from './apps/SearchAssets';
-import AssetFeedback from './apps/AssetFeedback';
-import KPIDashboard from './apps/KPIDashboard';
-import AssetTableEditor from './apps/AssetTableEditor';
-import CustomIconsSettings from "./apps/CustomIconsSettings";
+import ModelContext from "@/apps/ModelContext.vue";
+import SearchAssets from '@/apps/SearchAssets.vue';
+import AssetFeedback from '@/apps/AssetFeedback.vue';
+import AssetTableEditor from '@/apps/AssetTableEditor.vue';
+import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
+import KPIDashboard from './apps/KPIDashboard.vue';
 import {
     createVueLControl,
     mountApp,
@@ -27,26 +28,29 @@ import {
     mountSidebarComponent,
     mountTooltipComponent,
 } from "./mounts";
-import AssetsToBeAddedToolbar from './components/toolbars/AssetsToBeAddedToolbar'
-import AssetDrawToolbar from './components/toolbars/AssetDrawToolbar'
-import AssetDrawToolbarEDRAssetsSettings from './components/toolbars/AssetDrawToolbarEDRAssetsSettings'
-import AssetDrawToolbarStandardAssetsSettings from './components/toolbars/AssetDrawToolbarStandardAssetsSettings'
-import ToggleShowAssetDrawToolbar from './components/toolbars/ToggleShowAssetDrawToolbar'
-import {useWorkflow} from "./composables/workflow";
-import Workflow from "./apps/Workflow";
-import ServicesToolbar from './components/toolbars/ServicesToolbar'
-import ToggleShowServicesToolbar from './components/toolbars/ToggleShowServicesToolbar'
-import {useObject} from './composables/ObjectID';
-import {useAssetFeedbackList} from './composables/assetFeedback';
-import {useTooltipInfo} from './composables/TooltipInfo';
-import AssetTooltip from './apps/AssetTooltip';
-import ActiveLongProcess from './components/progress/ActiveProcess'
-import SidePane from "./apps/SidePane"
+import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
+import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
+import AssetDrawToolbarEDRAssetsSettings from '@/components/toolbars/AssetDrawToolbarEDRAssetsSettings.vue'
+import AssetDrawToolbarStandardAssetsSettings from '@/components/toolbars/AssetDrawToolbarStandardAssetsSettings.vue'
+import ToggleShowAssetDrawToolbar from '@/components/toolbars/ToggleShowAssetDrawToolbar.vue'
+import {useWorkflow} from "@/composables/workflow";
+import Workflow from "@/apps/Workflow.vue";
+import ServicesToolbar from '@/components/toolbars/ServicesToolbar.vue'
+import ToggleShowServicesToolbar from '@/components/toolbars/ToggleShowServicesToolbar.vue'
+import {useObject} from '@/composables/ObjectID';
+import {useAssetFeedbackList} from '@/composables/assetFeedback';
+import {useTooltipInfo} from '@/composables/TooltipInfo';
+import AssetTooltip from '@/apps/AssetTooltip.vue';
+import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
+import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
-import AnnouceKPIsToolbar from "./components/toolbars/AnnouceKPIsToolbar";
-import ResidentialArea from "./apps/ResidentialArea";
+import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
+import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
+import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
+import ResidentialArea from "@/apps/ResidentialArea.vue";
+import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
@@ -97,11 +101,11 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.show_tooltip = (object_title, object_id) => {
+window.show_tooltip = (object_title, object_id, el_id) => {
     const { newTooltipObjectID, newTitle } = useTooltipInfo();
     newTooltipObjectID(object_id);
     newTitle(object_title);
-    mountTooltipComponent(AssetTooltip);
+    mountTooltipComponent(AssetTooltip, el_id);
 }
 
 window.search_assets_window = () => {
@@ -136,12 +140,15 @@ window.environmental_profiles = () => {
     mountSidebarComponent(EnvironmentalProfiles);
 }
 
+window.activate_admin_settings = () => {
+    mountApp(ActivityContextManagement, '#admin_dialog_window');
+}
+
 window.add_edit_wms_layer = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(AddEditWmsLayer)
 }
-
 
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
@@ -153,12 +160,15 @@ window.show_new_release_notes = () => {
    showNewReleaseNotes();
 }
 
+// mountApp(ModelContext, '#vue_model_context')
+
 createVueLControl(ServicesToolbar, {position: 'topleft'});
 createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
 
 createVueLControl(AssetDrawToolbar, {});
 createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
+createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
@@ -181,3 +191,9 @@ window.sectors_window = () => {
 }
 
 mountApp(ResidentialArea, '#vue_test_edr_residential_area')
+
+window.heat_transition_window = (area_id) => {
+    const { newObject } = useObject();
+    newObject(area_id);
+    mountSidebarComponent(HeatTransition);
+}

@@ -346,17 +346,9 @@ class BoundaryService:
                     if not add_service_area_info:
                         # If stations were requested but not the supply areas, add the stations to the main area
                         for st in stations:
-                            transformer = esdl.Transformer(id=str(uuid.uuid4()), name=st["station"])
-                            shp = Shape.parse_geojson_geometry(st["geom"])
-                            transformer.geometry = shp.get_esdl()
-                            transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
-                            transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
-
+                            transformer = self.create_esdl_station(st)
                             area.asset.append(transformer)
                             esh.add_object_to_dict(active_es_id, transformer, recursive=True)
-                            # esh.add_object_to_dict(active_es_id, transformer.port[0])
-                            # esh.add_object_to_dict(active_es_id, transformer.port[1])
-
 
             if add_service_area_info:
                 service_areas = self.get_service_area_from_service(
@@ -385,12 +377,7 @@ class BoundaryService:
                             if sar["station"] in stations_dict:
                                 station = stations_dict[sar["station"]]
 
-                                transformer = esdl.Transformer(id=str(uuid.uuid4()), name=station["station"])
-                                shp = Shape.parse_geojson_geometry(station["geom"])
-                                transformer.geometry = shp.get_esdl()
-                                transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
-                                transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
-
+                                transformer = self.create_esdl_station(station)
                                 service_area.asset.append(transformer)
                                 esh.add_object_to_dict(active_es_id, transformer, recursive=True)
                             else:
@@ -446,6 +433,18 @@ class BoundaryService:
         user_settings = self.get_user_settings(user)
         user_settings[name] = value
         self.set_user_settings(user, user_settings)
+
+    def create_esdl_station(self, station_info):
+        transformer = esdl.Transformer(id=str(uuid.uuid4()), name=station_info["station"])
+
+        # For now, only use the "demand" capacity
+        transformer.capacity = 1e6 * station_info["capaciteit_afname_mva"]
+        shp = Shape.parse_geojson_geometry(station_info["geom"])
+        transformer.geometry = shp.get_esdl()
+        transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
+        transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
+
+        return transformer
 
     def get_boundary_from_service(self, year, scope, id):
         """

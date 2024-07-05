@@ -116,6 +116,9 @@
           <tr><td>Marginal charge costs</td><td><FancyNumberEdit v-model:value="marginal_charge_costs" /></td></tr>
           <tr><td>Marginal discharge costs</td><td><FancyNumberEdit v-model:value="marginal_discharge_costs" /></td></tr>
         </table>
+        <span v-if="storage_strategy_feedback.length > 0" style="color:red">
+          {{ storage_strategy_feedback }}
+        </span>
       </a-space>
     </a-card>
 
@@ -179,9 +182,9 @@
 </template>
 
 <script>
-import FancyNumberEdit from "../components/forms/FancyNumberEdit" 
-import ProfileTableEdit from "../components/forms/ProfileTableEdit"
-import { useObject } from '../composables/ObjectID'
+import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue"
+import ProfileTableEdit from "@/components/forms/ProfileTableEdit.vue"
+import { useObject } from '@/composables/ObjectID'
 import { v4 as uuidv4 } from 'uuid';
 
 const defaultDbPoptions = [
@@ -239,7 +242,8 @@ export default {
       ], 
       pid_setpoint: 0,
       msg: "",
-      isLoading: true
+      isLoading: true,
+      storage_strategy_feedback: ""
     }
   },
   computed: {
@@ -336,6 +340,17 @@ export default {
       // console.log('Pressed save');
       const result = this.buildResultInfo();
       // console.log(result);
+      if (result.type === "StorageStrategy") {
+        let mcc = parseFloat(result.marginal_charge_costs);
+        let mdc = parseFloat(result.marginal_discharge_costs);
+        if (mcc >= mdc) {
+          this.storage_strategy_feedback = "The charging costs cannot be higher than the discharging costs! Please correct and press save again."
+          return false;
+        } else {
+          this.storage_strategy_feedback = ""
+        }
+      }
+
       window.socket.emit('DLA_set_cs', {'id': currentObjectID.value}, result);
       window.sidebar.hide();
     },

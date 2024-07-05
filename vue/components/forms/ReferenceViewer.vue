@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import TableEditor from './TableEditor'
+import TableEditor from './TableEditor.vue'
 // import { Modal } from 'ant-design-vue';
 export default {
   name: "ReferenceViewer",

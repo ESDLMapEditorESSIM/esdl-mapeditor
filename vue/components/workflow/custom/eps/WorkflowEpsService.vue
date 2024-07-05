@@ -22,11 +22,11 @@
 </template>
 
 <script setup="props">
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { genericErrorHandler } from "../../../../utils/errors.js";
 import { useWorkflow } from "../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "../../NextOrClose";
+import { default as NextOrClose } from "../../NextOrClose.vue";
 import { workflowGetJsonForm } from "../../utils/api.js";
 // eslint-disable-next-line no-unused-vars
 import { JsonForms } from "@jsonforms/vue";

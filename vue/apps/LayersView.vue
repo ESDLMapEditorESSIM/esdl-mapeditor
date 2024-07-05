@@ -42,8 +42,10 @@ import {useBaseLayers,} from "../composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
 import VisibleLayersView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "../composables/wmsLayers";
+import {useVisibleLayers} from "../composables/visibleLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
+const {layerIsVisible} = useVisibleLayers();
 const {
   getWmsLayerList,
   showWmsLayer,
@@ -63,6 +65,7 @@ const {
 const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
+const openedFolders = [];
 
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
@@ -122,7 +125,7 @@ const getChildrenOfGroup = (layerGroup) => {
 }
 
 const addTreeItem = (items, item, itemId, type, children) => {
-  const a_attr = {"class": item.active ? "bold" : "", title: item.description};
+  const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
 
   items.push({
     id: itemId,
@@ -132,7 +135,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": item.visible, opened: item.opened},
+    state: {"checked": layerIsVisible(itemId), opened: openedFolders.includes(itemId)},
     children: children,
   });
 }
@@ -300,6 +303,7 @@ class BaseLayerTreeSpec {
 // eslint-disable-next-line no-unused-vars
 const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new WmsLayerTreeSpec];
 
+// eslint-disable-next-line no-unused-vars
 const eventHandlersByName = {
   'create_node.jstree': function (e, data) {
     getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
@@ -307,6 +311,19 @@ const eventHandlersByName = {
         renameWmsLayerGroup(node.id, node.text);
       }
     });
+  },
+  'open_node.jstree': function (e, data) {
+    const id = data.node.id;
+    if (!openedFolders.includes(id)) {
+      openedFolders.push(id);
+    }
+  },
+  'close_node.jstree': function (e, data) {
+    const id = data.node.id;
+    const index = openedFolders.indexOf(id);
+    if (index > -1) {
+      openedFolders.splice(index, 1);
+    }
   },
 }
 
@@ -364,7 +381,7 @@ function getBaseLayersControlTreeData() {
     type: "wms_layer_folder",
     readonly: true,
     state: {
-      opened: false
+      opened: true
     },
     children: children,
     a_attr: {

@@ -42,6 +42,7 @@ from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from extensions.activity_context import ActivityContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
 from extensions.es_statistics import ESStatisticsService
@@ -83,13 +84,15 @@ from src.essim_validation import validate_ESSIM
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
+from src.roles import is_mapeditor_admin
 from src.shape import Shape
+from src.tno.locking import NamedLocker
 from src.user_logging import UserLogging
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
 from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
-from src.view_modes import ViewModes
+from src.model_contexts import ModelContexts
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
@@ -115,11 +118,13 @@ if settings.USE_GEVENT:
 # debugging with pycharm:
 #https://stackoverflow.com/questions/21257568/debugging-a-uwsgi-python-application-using-pycharm/25822477
 
+named_locker = NamedLocker()
+
 user_actions_logging = UserLogging()
 if settings.settings_storage_config["host"] is None or settings.settings_storage_config["host"] == "":
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
-settings_storage = SettingsStorage(database_uri='mongodb://' + settings.settings_storage_config["host"] + ':' + settings.settings_storage_config["port"])
+settings_storage = SettingsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
@@ -196,7 +201,7 @@ esdl_services = ESDLServices(app, socketio, settings_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
-ViewModes(app, socketio, settings_storage)
+ModelContexts(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
@@ -206,6 +211,7 @@ ESDL2Shapefile(app)
 custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
+ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 
 
@@ -351,20 +357,23 @@ def editor():
             edr_enabled, boundary_service_enabled, statistics_service_enabled,bag_service_enabled, ibis_service_enabled))
         logger.info("Feedback URL: {}".format(user_feedback_url))
 
-        return render_template('editor.html',async_mode=socketio.async_mode,
-                               role=role,
-                               store_enabled=store_enabled,
-                               esdl_drive_enabled=esdl_drive_enabled,
-                               edr_enabled=edr_enabled,
-                               essim_enabled=essim_enabled,
-                               boundary_service_enabled=boundary_service_enabled,
-                               statistics_service_enabled=statistics_service_enabled,
-                               bag_service_enabled=bag_service_enabled,
-                               ibis_service_enabled=ibis_service_enabled,
-                               user_feedback_url=user_feedback_url,
-                               debug=settings.FLASK_DEBUG,
-                               version=mapeditor_version
-                               )
+        return render_template(
+            'editor.html',
+            async_mode=socketio.async_mode,
+            role=role,
+            is_mapeditor_admin=is_mapeditor_admin(),
+            store_enabled=store_enabled,
+            esdl_drive_enabled=esdl_drive_enabled,
+            edr_enabled=edr_enabled,
+            essim_enabled=essim_enabled,
+            boundary_service_enabled=boundary_service_enabled,
+            statistics_service_enabled=statistics_service_enabled,
+            bag_service_enabled=bag_service_enabled,
+            ibis_service_enabled=ibis_service_enabled,
+            user_feedback_url=user_feedback_url,
+            debug=settings.FLASK_DEBUG,
+            version=mapeditor_version
+        )
     else:
         return render_template('index.html')
         # to enable working offline without IDM:
@@ -1532,7 +1541,7 @@ def get_first_last_of_line(line):
 
 @executor.job
 def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename, es_title, app_context, force_update_es_id, zoom)
+    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1860,8 +1869,8 @@ def process_command(message):
 
                         # The view mode influences if single or double ports are added
                         double_line_mode = False
-                        view_modes = ViewModes.get_instance()
-                        if view_modes.get_user_settings(user_email)['mode'] == 'CHESS':
+                        model_contexts = ModelContexts.get_instance()
+                        if model_contexts.get_user_settings(user_email)['mode'] == 'CHESS':
                             double_line_mode = True
 
                         # For producers, consumers (and storage) check if a port already exists (coming from the EDR)
@@ -1979,10 +1988,7 @@ def process_command(message):
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                esh.add_object_to_dict(es_edit.id, asset)
-                if hasattr(asset, 'port'):
-                    for added_port in asset.port:
-                        esh.add_object_to_dict(es_edit.id, added_port)
+                esh.add_object_to_dict(es_edit.id, asset, recursive=True)
                 set_handler(esh)
 
     if message['cmd'] == 'remove_object':
@@ -2056,6 +2062,11 @@ def process_command(message):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
+                        shape_dictionary = get_session('shape_dictionary')
+                        try:
+                            del shape_dictionary[area_id]  # delete area from shape dictionary
+                        except KeyError:
+                            pass
                         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
     if message['cmd'] == 'get_asset_ports':
@@ -2853,10 +2864,12 @@ def process_command(message):
         sim_descr = message['sim_description']
         sim_start_datetime = message['sim_start_datetime']
         sim_end_datetime = message['sim_end_datetime']
+        sim_timestep = message['sim_timestep']
         essim_kpis = message['essim_kpis']
         essim_loadflow = message['essim_loadflow']
         # Create the HTTP POST to start the simulation
-        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, essim_kpis, essim_loadflow):
+        if not essim.run_simulation(sim_descr, sim_start_datetime, sim_end_datetime, sim_timestep,
+                                    essim_kpis, essim_loadflow):
             emit('simulation_not_started')
 
     if message['cmd'] == 'validate_for_ESSIM':
@@ -3364,8 +3377,8 @@ def browser_initialize():
         return
     role = get_session('user-role')
 
-    view_modes = ViewModes.get_instance()
-    view_modes.initialize_user(user_email)
+    model_contexts = ModelContexts.get_instance()
+    model_contexts.initialize_user(user_email)
 
     me_settings = MapEditorSettings.get_instance()
     user_settings = me_settings.get_user_settings(user_email)
@@ -3411,4 +3424,4 @@ if __name__ == '__main__':
     logger.info("Starting ESDL MapEditor application")
 
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False, allow_unsafe_werkzeug=True)

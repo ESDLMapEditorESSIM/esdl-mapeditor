@@ -57,6 +57,19 @@
         });
     }
 
+    area_info_update(event, id) {
+        etm_interface_plugin.show_info(id);
+        socket.emit('etm_update_sankey_data', id, function(success) {
+            if (success) {
+                window.refresh_esdl();
+            }
+        });
+    }
+
+    area_heat_transition(event, id) {
+        heat_transition_window(id);
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
             etm_interface_plugin = new ETMInterface();
@@ -69,9 +82,27 @@
             if (layer_type === 'area') {
                 layer.options.contextmenuItems.push({
                     text: 'get ETM sankey info',
-                    icon: resource_uri + 'icons/Vesta.png',
+                    icon: resource_uri + 'icons/pie.png',
                     callback: function(e) {
                         etm_interface_plugin.area_info(e, id);
+                    }
+                });
+            }
+            if (layer_type === 'area') {
+                layer.options.contextmenuItems.push({
+                    text: 'update ETM sankey info',
+                    icon: resource_uri + 'icons/pie.png',
+                    callback: function(e) {
+                        etm_interface_plugin.area_info_update(e, id);
+                    }
+                });
+            }
+            if (layer_type === 'area') {
+                layer.options.contextmenuItems.push({
+                    text: 'Warmtetransitie',
+                    icon: resource_uri + 'images/HeatDemand.png',
+                    callback: function(e) {
+                        etm_interface_plugin.area_heat_transition(e, id);
                     }
                 });
             }

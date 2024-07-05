@@ -85,8 +85,8 @@
     <!-- Edwin: Load JQuery-ui after bootstrap to prevent errors with tooltip -->
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
-    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.15/jstree.min.js"></script>
+    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
     <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
@@ -205,7 +205,7 @@
     <script type="text/javascript" src="./utils/pico_rooftoppv_potential.js"></script>
     <script type="text/javascript" src="./utils/spatial_operations.js"></script>
     <script type="text/javascript" src="./utils/notes.js"></script>
-    <script type="text/javascript" src="./utils/view_modes.js"></script>
+    <script type="text/javascript" src="./utils/model_contexts.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
     <script type="text/javascript" src="./utils/select_asset.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
@@ -216,6 +216,8 @@
     <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
     <script type="text/javascript" src="./utils/table_editor.js"></script>
+    <script type="text/javascript" src="./utils/admin_dialog.js"></script>
+
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
@@ -258,7 +260,7 @@
         var deleting_objects = false;   // to indicate if objects are being deleted (to prevent on click)
         var editing_objects = false;    // to indicate if objects are being edited (to prevent on click)
 
-        var extensions = [];            // list of extensions
+        const extensions = [];            // list of extensions
         var resource_uri = '';          // make the resource_prefix accessible by extensions
 
         var services_enabled = {
@@ -411,9 +413,23 @@
         }
 
         function set_storage_strategy(asset_id) {
-            mcc = document.getElementById('marg_ch_costs').value;
-            mdc = document.getElementById('marg_disch_costs').value;
+            let mcc = document.getElementById('marg_ch_costs').value;
+            let mdc = document.getElementById('marg_disch_costs').value;
             socket.emit('command', {cmd: 'set_control_strategy', asset_id: asset_id, strategy: 'StorageStrategy', marg_ch_costs: mcc, marg_disch_costs: mdc});
+        }
+
+        function check_storage_costs() {
+            let mcc = document.getElementById('marg_ch_costs').value;
+            let mdc = document.getElementById('marg_disch_costs').value;
+
+            let mcc_float = parseFloat(mcc);
+            let mdc_float = parseFloat(mdc);
+
+            if (mcc_float < mdc_float) {
+                document.getElementById('set_storage_costs_button').disabled = false;
+            } else {
+                document.getElementById('set_storage_costs_button').disabled = true;
+            }
         }
 
         function storage_strategy_window(asset_id, mcc, mdc) {
@@ -422,14 +438,20 @@
             sidebar_ctr.innerHTML = '<h1>Storage Strategy:</h1>';
 
             table = '<table>';
-            table = table + '<tr><td width=180>Marginal charge costs</td>';
-            table = table + '<td><input type="text" width="60" id="marg_ch_costs" value="' + mcc + '"></td></tr>';
-            table = table + '<tr><td width=180>Marginal discharge costs</td>';
-            table = table + '<td><input type="text" width="60" id="marg_disch_costs" value="' + mdc + '"></td></tr>';
+            table = table + '<tr><td width=180>Marginal charge costs (lower value)</td>';
+            table = table + '<td><input type="text" width="60" id="marg_ch_costs" value="' + mcc + '" onchange="check_storage_costs()"></td></tr>';
+            table = table + '<tr><td width=180>Marginal discharge costs (higher value)</td>';
+            table = table + '<td><input type="text" width="60" id="marg_disch_costs" value="' + mdc + '" onchange="check_storage_costs()"></td></tr>';
             table += '</table>';
             sidebar_ctr.innerHTML += table;
 
-            sidebar_ctr.innerHTML += '<p><button onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
+            let button_html_str = '<p><button id="set_storage_costs_button" ';
+            if (mcc >= mdc) {
+                button_html_str += 'disabled ';
+            }
+            button_html_str += 'onclick="sidebar.hide();set_storage_strategy(\''+ asset_id + '\');">Set costs</button></p>';
+            sidebar_ctr.innerHTML += button_html_str;
+
             sidebar.show();
         }
 
@@ -674,6 +696,8 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
+                console.log("ESDL list")
+                console.log(esdl_list)
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -721,11 +745,11 @@
                 }
 
                 // make HTML titles possible in popup or tooltip when moving the mouse over an asset.
-                $('div[title]').tooltip({
-                    content: function() {
-                        return $(this).attr('title');
-                    }
-                });
+                //$('div[title]').tooltip({
+                //    content: function() {
+                //        return $(this).attr('title');
+                //    }
+                //});
 
                 if (list.length > 0 && options['zoom'] && !add_to_building) {
                     // var bounds = esdl_layer.getBounds();
@@ -781,7 +805,7 @@
                     if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
                     if (list[i][0] == 'point') {
-                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title});
+                        var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title, draggable: true});
 
                         marker.title = title;
                         marker.id = list[i][2];
@@ -1189,7 +1213,9 @@
                 if (layer instanceof L.Marker) {
                     set_marker_handlers(layer);
                 }
-                if (layer instanceof L.Polyline) {
+                if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                    // polygon is a subclass of polyline in Leaflet.
+                    console.log('update_asset', layer);
                     set_line_handlers(layer);
                     update_line_color(layer);
                 }
@@ -1461,6 +1487,9 @@
 
             <!-- Navbar -->
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                   <span class="navbar-toggler-icon"></span>
+                </button>
                 <div class="container">
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 
@@ -1624,6 +1653,9 @@
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
                                 </ul>
                             </li>
+                            {% if is_mapeditor_admin %}
+                            <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.toggle()" href="#">Admin</a></li>
+                            {% endif %}
                         </ul>
                     </div>
                 </div>
@@ -1646,6 +1678,7 @@
             </select>
 
             <select id="area_bld_select"></select>
+            <div id="vue_activity_context_selector" style="display: inline"></div>
         </div>
     </div>
 
@@ -1814,8 +1847,18 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    var table_editor = new TableEditorDialog(table_editor_dialog_options);
+    const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
+
+    let admin_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false
+    };
+    const admin_dialog = new AdminDialog(admin_dialog_options);
+    map.addControl(admin_dialog);
 
     let kpi_dashboard_dialog_options = {
         size: [ 1100, 700 ],
@@ -1839,9 +1882,6 @@
 
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
-<script>
-window.DEBUG = true;
-</script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>

@@ -163,7 +163,8 @@ class EDRClient:
             field_map = {
                 'value': 'id',
                 'label': 'title',
-                'description': 'description'
+                'description': 'description',
+                'tags': 'tags'
             }
         add_esdl = 'true' if include_esdl else 'false'
         edr_url = self.EDR_config['host'] + \

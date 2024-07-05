@@ -201,7 +201,7 @@
 </template>
 
 <script setup="props">
-import {computed, defineProps, ref} from "vue";
+import {computed, ref} from "vue";
 import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
 import {useEsdlLayers} from "../../../../composables/esdlLayers.js";

@@ -5,19 +5,21 @@
       <a-button type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
         Reload
       </a-button>
-      <a-table :columns="columns" 
-               :row-key="rowkey" 
-               :data-source="dataSource"
-               :pagination="pagination" 
-               :loading="isLoading" 
-               size="small" 
-               class="resulttable"                
-               style="font-size: 12px;"
+      <a-table
+        :columns="columns" 
+        :row-key="rowkey" 
+        :data-source="dataSource"
+        :pagination="pagination" 
+        :loading="isLoading" 
+        size="small" 
+        class="resulttable"                
+        style="font-size: 12px;"
       >
         <template #action="{ record }">
           <span>
             <li v-for="a in actions" :key="a.title">
-              <a href="#" @click="doAction(record[rowkey], a.next_step)">{{ a.title }}</a>
+              <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record[rowkey], a.next_step)">{{ a.title }}</a>
+              <div v-else style="color: lightgray">{{ a.title }}</div>
             </li>
           </span>
         </template>
@@ -75,7 +77,11 @@ Syntax for WorkflowTableQuery.
 					"actions": [                           // Defines the actions that can be done on the column
 						{
 							"title": "Load result",            // title of the action
-							"next_step": 2                     // when button is clicked, the workflow moves to this step (e.g. call ESDL Service).
+							"next_step": 2,                     // when button is clicked, the workflow moves to this step (e.g. call ESDL Service).
+              "enabled": {                       // defines rules to enable/disable this action based on another column value
+                "dataIndex": "status",           // check 'status' dataIndex column for specific values. If status === values[] then enable this action
+                "values": ["SUCCEEDED"]
+              }
 						},
 						{
 							"title": "Show log",
@@ -90,7 +96,7 @@ Syntax for WorkflowTableQuery.
 
 */
 
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { useWorkflow } from "../../composables/workflow.js";
 import { workflowGetData } from "./utils/api.js";
 
@@ -130,7 +136,7 @@ const formatDate = (row) => {
 // eslint-disable-next-line no-unused-vars
 const getTagColor = (text) => {
   let up = text.toUpperCase();
-  if (up === "FINISHED" || up === "SUCCESS" || up === "OK" || up === "READY") {
+  if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
   } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
     return "blue";
@@ -149,6 +155,21 @@ const doAction = (job_id, next_step) => {
   state[workflowStep.target_variable] = {};
   state[workflowStep.target_variable][rowkey.value] = job_id;
   goToStep(next_step);
+}
+
+const actionEnabled = (action, row) => {
+  if (action.enabled) {
+    //console.log("Action enabled: ", action, row);
+    if (action.enabled.dataIndex) {
+      let value = row[action.enabled.dataIndex];
+      if (action.enabled.values.includes(value)) {
+          return true;
+      } else {
+        return false;
+      }
+    }
+  }
+  return true;  // default enabled
 }
 
 const doGetData = async () => {
@@ -174,7 +195,10 @@ const doGetData = async () => {
             }
           }
           //column.sortOrder = 'descend'; -> moved to config
-        }
+        } 
+      } else { 
+        // add default sorter otherwise
+        column.sorter = (a, b) => ('' + a[column.dataIndex]).localeCompare(b[column.dataIndex]);  // '' forces a string comparison
       }
     });
     let hasActionColumn = source.columns.find(o => o.key === 'action');

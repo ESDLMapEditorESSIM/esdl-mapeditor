@@ -22,7 +22,7 @@
 </template>
 
 <script setup="props">
-import {defineProps, ref} from "vue";
+import {ref} from "vue";
 import {useWorkflow} from "../../../../composables/workflow.js";
 import {workflowGetJsonForm, workflowPostData} from "../../utils/api.js";
 
@@ -30,7 +30,7 @@ import {workflowGetJsonForm, workflowPostData} from "../../utils/api.js";
 import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css"; // eslint-disable-next-line no-unused-vars
 import Swal from "sweetalert2"; // eslint-disable-next-line no-unused-vars
-import {default as Spinner} from "../../../Spinner"; // eslint-disable-next-line no-unused-vars
+import {default as Spinner} from "../../../Spinner.vue"; // eslint-disable-next-line no-unused-vars
 import { JsonForms } from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
 const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });

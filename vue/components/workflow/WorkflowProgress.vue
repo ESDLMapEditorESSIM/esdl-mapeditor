@@ -6,11 +6,10 @@
 </template>
 
 <script setup="props">
-import {useWorkflow} from '../../composables/workflow';
-import {useLongProcessState} from '../../composables/longProcess';
-import {defineProps} from 'vue'
+import {useWorkflow} from '@/composables/workflow';
+import {useLongProcessState} from '@/composables/longProcess';
 // eslint-disable-next-line no-unused-vars
-import {default as NextOrClose} from "./NextOrClose";
+import {default as NextOrClose} from "./NextOrClose.vue";
 
 const {showActiveLongProcess, startLongProcess} = useLongProcessState();
 const {getParamsFromState} = useWorkflow();

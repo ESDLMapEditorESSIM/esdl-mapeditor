@@ -3,7 +3,7 @@ import { PubSubManager, MessageNames } from "../bridge.js";
 
 const esdlBuildings = ref({});
 
-PubSubManager.subscribe(MessageNames.ADD_FEATURE_TO_LAYER, (name, message) => {
+PubSubManager.subscribe(MessageNames.ADD_BUILDING_TO_LAYER, (name, message) => {
     esdlBuildings.value[message.id] = {feature: message.feature, layer: message.layer}
 })
 
@@ -14,8 +14,8 @@ export function useEsdlBuildings() {
      * @param {*} icon 
      * @param {*} onclick 
      */
-    const addContextMenuItem = (text, icon, onclick) => {
-        if (!hasContextMenuItem(text)) {
+    const addBuildingContextMenuItem = (text, icon, onclick) => {
+        if (!hasBuildingContextMenuItem(text)) {
             for (const [id, esdlBuilding] of Object.entries(esdlBuildings.value)) {
                 const layer = esdlBuilding.layer;
                 layer.options.contextmenuItems.push({
@@ -33,7 +33,7 @@ export function useEsdlBuildings() {
      * 
      * @param {*} text 
      */
-    const hasContextMenuItem = (text) => {
+    const hasBuildingContextMenuItem = (text) => {
         for (const [, esdlBuilding] of Object.entries(esdlBuildings.value)) {
             const layer = esdlBuilding.layer;
             const result = layer.options.contextmenuItems.filter(function(contextmenuItem) { 
@@ -47,7 +47,8 @@ export function useEsdlBuildings() {
      * Remove context menu items by text.
      * @param {*} text 
      */
-    const removeContextMenuItem = (text) => {
+    const removeBuildingContextMenuItem = (text) => {
+        console.log("Removing context menu items")
         for (const [, esdlBuilding] of Object.entries(esdlBuildings.value)) {
             const layer = esdlBuilding.layer;
             layer.options.contextmenuItems = layer.options.contextmenuItems.filter(function(contextmenuItem) { 
@@ -57,8 +58,8 @@ export function useEsdlBuildings() {
     }
 
     return {
-        addContextMenuItem,
+        addBuildingContextMenuItem,
         esdlBuildings,
-        removeContextMenuItem,
+        removeBuildingContextMenuItem,
     }
 }

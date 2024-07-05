@@ -155,7 +155,7 @@ class DataLayerAPI:
         def DLA_get_asset_toolbar_info():
             """
             Retrieves a list of assets that can be rendered in the AssetDrawToolbox. Elements in the list change when
-            view_mode changes.
+            model_context changes.
 
             :return: a dictionary with per ESDL capability a list of assets
             """
