@@ -17,11 +17,18 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
+from typing import Dict, Optional
+from dataclasses import asdict
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
 import src.log as log
 from src.roles import is_mapeditor_admin
+
+from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureRequestBody, 
+                                                                WmsLayerRequestInfo, 
+                                                                WmsLayerFeatureResp, 
+                                                                LayerFeaturePropsResp)
 
 logger = log.get_logger(__name__)
 
@@ -133,23 +140,17 @@ class WMSLayers:
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
         def _query_wms_layer_feature(params: dict) -> None:
-            layers = params['layers']
-            layers_features_props = []
-            for layer in layers:
-                props = self.query_wms_layer_feature_properties(layer['url'])                
-                layers_features_props.append({
-                    "name": layer['name'],
-                    "props": props if props is not None else None
-                })
-            resp = {
-                "ev_lat_lng": params['evLatLng'],
-                "layers_features_props": layers_features_props
-            }
-            emit('on_wms_layer_feature_resp', resp)
+            req = WmsLayerFeatureRequestBody(**params)
+            layers_features_props: list[LayerFeaturePropsResp] = []
+            for l in req.layers:
+                layer = WmsLayerRequestInfo(**l)
+                props = self.query_wms_layer_feature_properties(layer.url)
+                layers_features_props.append(LayerFeaturePropsResp(layer.name, props))
+            resp = WmsLayerFeatureResp(req.ev_lat_lng, layers_features_props)
+            emit('on_wms_layer_feature_resp', asdict(resp))
 
-    def query_wms_layer_feature_properties(self, url: str) -> dict | None:    
-        feature_props = None
-
+    def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
+        feature_props: Optional[Dict] = None
         try:
             resp = requests.get(url)
             if resp.status_code == 200:
@@ -160,7 +161,6 @@ class WMSLayers:
                     feature_props = {}
         except Exception as e:
             logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
-
         return feature_props
     
     def add_wms_layer_group(self, layer_group_id: str, layer_group: dict, parent_group_id: str = None,

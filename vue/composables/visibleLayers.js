@@ -81,15 +81,15 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
 const queryWmsLayersFeaturesOnClick = (event) => {
     const visibleLayers = useVisibleLayers().getVisibleLayerList();
     if (visibleLayers.length) {
-        const layersInfo = visibleLayers.map((layer) => {
+        const layersRequestInfo = visibleLayers.map((layer) => {
             const serviceUrl = layer.url;
             const layerName = layer.layer_name;
             const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
             return {name: layerName, url: getFeatureUrl}
         });
-        const queryObj = {
-            evLatLng: event.latlng,
-            layers: layersInfo
+        const requestBody = {
+            ev_lat_lng: event.latlng,
+            layers: layersRequestInfo
         }
         socket.emit('query_wms_layer_feature', queryObj);
     }
@@ -99,7 +99,7 @@ const queryWmsLayersFeaturesOnClick = (event) => {
  * Show the map popup of WMS layers features properties, 
  * when receiving the 'on_wms_layer_feature_resp' response object emitted from the backend.
  * 
- * @param {object} resp Response object with structure as {ev_lat_lng: event.latlng, layers_features_props: array[{name: str, props: object|null }]}
+ * @param {object} resp Response object with structure as {ev_lat_lng: event.latlng, layers_features_props: array[{name: str, feature_props: object|null }]}
  */
 const showWmsLayerFeaturePopup = (resp) => {
     if (resp.layers_features_props.length) {
@@ -117,7 +117,7 @@ const showWmsLayerFeaturePopup = (resp) => {
         // Updating the popup content
         resp.layers_features_props.forEach((l) => {
             const layerName = l.name;
-            const layerFeatureProps = l.props;
+            const layerFeatureProps = l.feature_props;
 
             // Layer name node
             const layerNameNode = document.createElement("p");
