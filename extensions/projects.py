@@ -109,10 +109,13 @@ def set_active_variant(message: SetActiveVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
     if variant:
-        pm.set_active_variant(variant)
+        needs_update = pm.set_active_variant(variant)
         es = pm.get_active_energy_system()
         set_session('active_es_id', es.id)
-        executor.submit(process_energy_system)
+        if needs_update:
+            executor.submit(process_energy_system, force_update_es_id=es.id)
+        else:
+            executor.submit(process_energy_system)
         emit_active_esdl_project()
         emit_update_undo_redo_stack(pm.active_tracker.stack)
     else:

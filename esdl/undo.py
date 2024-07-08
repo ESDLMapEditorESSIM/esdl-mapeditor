@@ -633,24 +633,24 @@ def updateResourceUUIDdict(notification: Notification):
             owner = notification.notifier
             resource: XMLResource = owner.eResource
             resource.uuid_dict[value] = owner
-            print(f"Updating UUID dict for {owner}.id={value}")
+            #print(f"Updating UUID dict for {owner}.id={value}")
     elif notification.kind == Kind.ADD:
         if isinstance(f, EReference) and f.containment and isinstance(value, EObject):
             # whole object is added: iterate though contents and add all ids
             if hasattr(value, 'id'):
                 value.eResource.uuid_dict[value.id] = value
-                print(f"|Updating UUID dict for {value}.id={value.id}")
+                #print(f"|Updating UUID dict for {value}.id={value.id}")
             for obj in value.eAllContents():
                 if hasattr(obj, 'id'):
                     obj.eResource.uuid_dict[obj.id] = obj
-                    print(f"|-Updating UUID dict for {obj}.id={obj.id}")
+                    #print(f"|-Updating UUID dict for {obj}.id={obj.id}")
 
     elif notification.kind == Kind.UNSET:
         if notification.old is not None and isinstance(f, EAttribute) and f.iD is True and f.name == 'id':
             owner = notification.notifier
             resource:XMLResource = owner.eResource
             save_delete_dict_key_with_warning(resource.uuid_dict, notification.old.id)
-            print(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
+            #print(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
 
     elif notification.kind == Kind.REMOVE:
         prev_values = notification.old
@@ -664,11 +664,11 @@ def updateResourceUUIDdict(notification: Notification):
                 return
             if hasattr(prev_values, 'id') and prev_values.id is not None:
                 save_delete_dict_key_with_warning(resource.uuid_dict, prev_values.id)
-                print(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
+                #print(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
             for obj in prev_values.eAllContents():
                 if hasattr(obj, 'id') and obj.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
-                    print(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
+                    #print(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
     elif notification.kind == Kind.REMOVE_MANY:
         prev_values = notification.old
         if isinstance(f, EReference) and f.containment and isinstance(prev_values, list) and len(prev_values) > 0:
@@ -682,11 +682,11 @@ def updateResourceUUIDdict(notification: Notification):
             for prev_value in prev_values:
                 if hasattr(prev_value, 'id') and prev_value.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, prev_value.id)
-                    print(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
+                    #print(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
                 for obj in prev_value.eAllContents():
                     if hasattr(obj, 'id') and obj.id is not None:
                         save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
-                        print(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
+                        #print(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
     else:
         print(f"Warning: updateResourceUUIDdict() unsupported notification {notification.kind}")
 
