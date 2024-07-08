@@ -54,6 +54,8 @@ const {
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
+  setWmsLayerGroupOpened,
+  setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
 } = useWmsLayers();
@@ -148,6 +150,20 @@ class LayerFolderTreeSpec {
   constructor() {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, true);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, false);
+      },
+      // 'open_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, true);
+      // },
+      // 'close_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, false);
+      // }
+    }
   }
 
   contextMenus(node, tree) {
@@ -309,7 +325,7 @@ const eventHandlersByName = {
       openedFolders.splice(index, 1);
     }
   },
-};
+}
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
