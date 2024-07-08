@@ -15,7 +15,7 @@
 import base64
 from typing import TypedDict
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
@@ -24,6 +24,7 @@ from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
+from src.tno.live_model_interface.api import send_project_manager
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
@@ -79,6 +80,7 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
+    send_project_manager(session['client_id'])
     emit_clear_frontend_esdls()
     emit_clear_ui()
     call_process_energy_system.submit()
