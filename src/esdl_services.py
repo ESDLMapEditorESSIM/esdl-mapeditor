@@ -459,7 +459,8 @@ class ESDLServices:
 
                             for asset_str in asset_str_list:
                                 asset = ESDLAsset.load_asset_from_string(asset_str)
-                                if area_shape:
+                                # Only assign a new location if the asset didn't already have a location
+                                if not asset.geometry and area_shape:
                                     # The asset gets a random location from the list of possible locations
                                     asset.geometry = choose_location(possible_locations).get_esdl()
 
