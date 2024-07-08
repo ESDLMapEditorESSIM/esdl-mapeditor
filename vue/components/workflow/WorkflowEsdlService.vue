@@ -31,6 +31,7 @@
 </template>
 
 <script setup="props">
+import {setattrd} from "../../utils/utils.js";
  // more info on service_results_div @see esdl_services.js
 
 import { useWorkflow } from "../../composables/workflow.js";
@@ -46,12 +47,18 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getParamsFromState, goToPreviousStep, goToFirstStep } = useWorkflow();
+const { getParamsFromState, goToPreviousStep, goToFirstStep, getState } = useWorkflow();
+const state = getState();
 const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
 
+// eslint-disable-next-line no-unused-vars
 const esdlWasLoaded = () => {
+  if (workflowStep.target_variable && workflowStep.target_variable_value) {
+    setattrd(state, workflowStep.target_variable, workflowStep.target_variable_value);
+  }
+
   goToFirstStep();
 }
 

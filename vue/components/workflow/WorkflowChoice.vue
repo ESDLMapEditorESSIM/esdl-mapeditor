@@ -5,11 +5,19 @@
       :key="option.name"
       class="choice-entry"
     >
+      <div
+        v-if="option.type === 'header'"
+        class="choice-header"
+      >
+        {{ option.name }}
+      </div>
       <a-button
+        v-else
         :type="option.type || 'primary'"
         block
         :disabled="isOptionDisabled(option)"
-        @click="goToStep(option.next_step)"
+        class="choice-button"
+        @click="optionClick(option)"
       >
         {{ option.name }}
       </a-button>
@@ -19,6 +27,7 @@
 </template>
 
 <script setup="props">
+import {setattrd} from "../../utils/utils.js";
 import {useWorkflow} from '../../composables/workflow';
 
 const props = defineProps({
@@ -30,24 +39,56 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getFromState, goToStep } = useWorkflow();
+const { getFromState, goToStep, getState } = useWorkflow();
+const state = getState();
 // eslint-disable-next-line no-unused-vars
 const options = props.workflowStep.options;
+
+const everyCondition = (conditions) => {
+  return conditions.every((condition) => Boolean(getFromState(condition)));
+}
+
+const someCondition = (conditions) => {
+  return conditions.some((condition) => Boolean(getFromState(condition)));
+}
 
 // eslint-disable-next-line no-unused-vars
 const isOptionDisabled = (option) => {
   if (option.disabled) {
     return true;
   }
-  if (option.disable_if_state) {
-    const stateField = getFromState(option.disable_if_state);
-    return Boolean(stateField);
+
+  const ifStateConditionsMet = (if_state) => {
+    if (typeof if_state === "object") {
+      if (!if_state.type || !if_state.conditions) {
+        throw new Error("Incorrect if_state structure");
+      }
+
+      if (if_state.type === "every") {
+        return everyCondition(if_state.conditions);
+      } else if (if_state.type === "some") {
+        return someCondition(if_state.conditions);
+      } else {
+        throw new Error("Invalid if_state type:", if_state);
+      }
+    }
+
+    return Boolean(getFromState(if_state));
   }
-  if (option.enable_if_state) {
-    const stateField = getFromState(option.enable_if_state);
-    return !stateField;
+
+  const shouldBeDisabled = option.disable_if_state ? ifStateConditionsMet(option.disable_if_state) : false;
+  const shouldBeEnabled = option.enable_if_state ? ifStateConditionsMet(option.enable_if_state) : true;
+
+  return shouldBeDisabled || !shouldBeEnabled;
+}
+
+// eslint-disable-next-line no-unused-vars
+const optionClick = (option) => {
+  if (props.workflowStep.target_variable && option.target_variable_value){
+    setattrd(state, props.workflowStep.target_variable, option.target_variable_value);
   }
-  return false;
+
+  goToStep(option.next_step);
 }
 
 </script>
@@ -56,8 +97,15 @@ const isOptionDisabled = (option) => {
 .choice-list .choice-entry {
   margin-bottom: 10px;
 }
+.choice-list .choice-entry .choice-button {
+  border-radius: 16px;
+}
 .choice-list .choice-entry p {
   margin-bottom: 0;
   color: #777;
+}
+.choice-list .choice-entry .choice-header {
+  text-align: center;
+  font-weight: bolder;
 }
 </style>

@@ -1,4 +1,4 @@
-version: "3.3"
+version: "3.8"
 
 services:
   mapeditor:
@@ -10,6 +10,12 @@ services:
       - mapeditor-net
     volumes:
       - ..:/usr/src/app
+    entrypoint: >
+      watchmedo auto-restart
+          --recursive
+          --pattern="*.py"
+          --directory="."
+          --
     command: ["python", "-u", "app.py"]
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
@@ -22,6 +28,7 @@ services:
     working_dir: /usr/src/app
     volumes:
       - ..:/usr/src/app
+    # command: ["tail", "-f", "/dev/null"]
     command: ["yarn", "run", "watch"]
     environment:
       - NODE_OPTIONS=--openssl-legacy-provider
@@ -29,5 +36,5 @@ services:
 
 networks:
   mapeditor-net:
-    external:
-      name: mapeditor-net
+    name: mapeditor-net
+    external: true
