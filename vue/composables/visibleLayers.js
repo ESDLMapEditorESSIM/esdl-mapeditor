@@ -41,9 +41,9 @@ let socket = null;
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
     socket = window.socket;
-    socket.on('on_wms_layer_feature_resp', (resp) => {
+    socket.on("on_wms_layer_feature_resp", (resp) => {
         showWmsLayerFeaturePopup(resp);
-    })
+    });
 })();
 
 /**
@@ -57,15 +57,15 @@ let socket = null;
  */
 const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) => {
     const url = wmsServiceUrl + 
-        'service=WMS&version=1.1.1&request=GetFeatureInfo&layers=' + layerName +
-        '&styles=&bbox=' + map.getBounds().toBBoxString() +
-        '&height=' + map.getSize().y + '&width=' + map.getSize().x +
-        '&query_layers=' + layerName +
-        '&info_format=application/json&srs=EPSG:4326' +
-        '&x=' + Math.round(map.latLngToContainerPoint(evLatLng).x) +
-        '&y=' + Math.round(map.latLngToContainerPoint(evLatLng).y);
+        "service=WMS&version=1.1.1&request=GetFeatureInfo&layers=" + layerName +
+        "&styles=&bbox=" + map.getBounds().toBBoxString() +
+        "&height=" + map.getSize().y + "&width=" + map.getSize().x +
+        "&query_layers=" + layerName +
+        "&info_format=application/json&srs=EPSG:4326" +
+        "&x=" + Math.round(map.latLngToContainerPoint(evLatLng).x) +
+        "&y=" + Math.round(map.latLngToContainerPoint(evLatLng).y);
     return url;
-}
+};
 
 /**
  * Based on the list of visible WMS layers and the mouse click event, 
@@ -85,15 +85,15 @@ const queryWmsLayersFeaturesOnClick = (event) => {
             const serviceUrl = layer.url;
             const layerName = layer.layer_name;
             const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
-            return {name: layerName, url: getFeatureUrl}
+            return {name: layerName, url: getFeatureUrl};
         });
         const requestBody = {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
-        }
-        socket.emit('query_wms_layer_feature', queryObj);
+        };
+        socket.emit("query_wms_layer_feature", requestBody);
     }
-}
+};
 
 /**
  * Show the map popup of WMS layers features properties, 
@@ -121,7 +121,7 @@ const showWmsLayerFeaturePopup = (resp) => {
 
             // Layer name node
             const layerNameNode = document.createElement("p");
-            layerNameNode.innerHTML = `${layerName}`
+            layerNameNode.innerHTML = `${layerName}`;
             layerNameNode.style.margin = "4px 0px";
             layerNameNode.style.fontWeight = 600;
             layerNameNode.style.fontSize = "1.2em";
@@ -147,9 +147,9 @@ const showWmsLayerFeaturePopup = (resp) => {
                 const propErrorNode = document.createElement("p");
                 propErrorNode.style.margin = "2px 0px";
                 propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
-                popupDiv.appendChild(propErrorNode)
+                popupDiv.appendChild(propErrorNode);
             }
-        })
+        });
         
         if (popupDiv.hasChildNodes()) {
             // Set the popup content and open it
@@ -157,9 +157,9 @@ const showWmsLayerFeaturePopup = (resp) => {
             map.openPopup(layersPopup);
         }
     }
-}
+};
 
-map.on('click', queryWmsLayersFeaturesOnClick);
+map.on("click", queryWmsLayersFeaturesOnClick);
 
 map.on('moveend', function () {
     for (const visibleLayer of globalVisibleLayerList.value) {
