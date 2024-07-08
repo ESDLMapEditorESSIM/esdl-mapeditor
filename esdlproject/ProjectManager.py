@@ -323,7 +323,7 @@ class ProjectManager:
                     return result
         return None
 
-    def set_active_variant(self, new_variant: Variant):
+    def set_active_variant(self, new_variant: Variant) -> bool:
         """
         Set the active variant. This will also generate a snapshot of the current active variant, if it is not already
         generated. If the new variant is a child of the current active variant, the snapshot will be used as a base for
@@ -332,8 +332,10 @@ class ProjectManager:
         snapshot.
 
         :param new_variant: the new active variant
+        :return: boolean indicating if the new_variant changed, during activation
+         (and requires e.g. gui updates)
         """
-
+        new_active_variant_changed = False
         if new_variant.snapshotRef is not None:
             # TODO: We need to handle the situation where changes were done in the parent. The snapshot should then be
             # regenerated, but the changes from the child should be maintained. This means that before switching, we
@@ -365,11 +367,7 @@ class ProjectManager:
                     self.remove_variant_snapshot(new_variant)  # delete previous variant
                     self.replay_parent_variant_changes(new_variant)
                     self.active_variant = new_variant
-                    if len(new_variant.change) > 0:
-                        # this variant has changes, replay these
-                        # TODO: Do we need this?
-                        #self.apply_variant_changes(new_variant, new_variant.snapshotRef, False)
-                        pass
+                    new_active_variant_changed = True
             self.active_variant = new_variant
 
         # TODO: I think this special case should not need special handling.
@@ -390,12 +388,12 @@ class ProjectManager:
             # New variant is selected and activated for the first time.
             print(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
             self.replay_parent_variant_changes(new_variant)
+            new_active_variant_changed = True
             self.active_variant = new_variant
 
         # Update the timestamp of the last activation of the variant.
         self.variant_activation_timestamps[new_variant.id] = datetime.now(timezone.utc)
-
-        # self.debug()
+        return new_active_variant_changed
 
     def get_active_variant(self) -> Variant | None:
         return self.active_variant

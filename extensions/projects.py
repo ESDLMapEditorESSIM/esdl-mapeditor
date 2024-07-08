@@ -15,7 +15,7 @@
 import base64
 from typing import TypedDict
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
@@ -24,6 +24,7 @@ from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
+from src.tno.live_model_interface.api import send_project_manager
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
@@ -79,6 +80,7 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
+    send_project_manager(session['client_id'])
     emit_clear_frontend_esdls()
     emit_clear_ui()
     call_process_energy_system.submit()
@@ -109,10 +111,13 @@ def set_active_variant(message: SetActiveVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
     if variant:
-        pm.set_active_variant(variant)
+        needs_update = pm.set_active_variant(variant)
         es = pm.get_active_energy_system()
         set_session('active_es_id', es.id)
-        executor.submit(process_energy_system)
+        if needs_update:
+            executor.submit(process_energy_system, force_update_es_id=es.id)
+        else:
+            executor.submit(process_energy_system)
         emit_active_esdl_project()
         emit_update_undo_redo_stack(pm.active_tracker.stack)
     else:
