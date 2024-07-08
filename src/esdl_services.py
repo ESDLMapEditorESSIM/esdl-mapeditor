@@ -489,6 +489,8 @@ class ESDLServices:
                                         "add_connections",
                                         {"es_id": active_es_id, "conn_list": conn_list},
                                     )
+                        if "feedback" in service["result"][0] and service["result"][0]["feedback"] is not None:
+                            emit("toast_message", service["result"][0]["feedback"])
                     except Exception as e:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None, None
