@@ -464,6 +464,14 @@ class ESDLServices:
                                     # The asset gets a random location from the list of possible locations
                                     asset.geometry = choose_location(possible_locations).get_esdl()
 
+                                # Assign a sector to the asset when configured in the service configuration
+                                if "sector_id" in service["result"][0]:
+                                    sector_id = service["result"][0]["sector_id"]
+                                    if sector_id:
+                                        sector = pm.get_by_id(active_es_id, sector_id)
+                                        if sector:
+                                            asset.sector = sector
+
                                 pm.add_object_to_dict(active_es_id, asset, recursive=True)
                                 ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
                                 asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
