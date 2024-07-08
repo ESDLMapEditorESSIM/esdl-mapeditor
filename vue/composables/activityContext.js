@@ -195,6 +195,7 @@ export function useActivityContext() {
      * added by the active activity context.
      */
     function clearActivityContext() {
+        console.debug("Clearing activity context")
         const activityContext = activeActivityContext.value;
         if (activityContext.wms_layers) {
             // Only clear if we added something.

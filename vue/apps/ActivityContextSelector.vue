@@ -31,26 +31,40 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import {useActivityContext} from '@/composables/activityContext';
 
-const {activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
+const {activeActivityContext, activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
 
 const selected_context = ref("");
 const activityContexts = ref([]);
+const $ = window.$;
+
+const initializeSelectmenu = () => {
+  $("#activity_context").selectmenu({
+    width: 350,
+    change: function (event, ui) {
+      handleChange({ target: { value: ui.item.value } });
+    }
+  });
+};
+
+const updateSelectmenuValue = async (value) => {
+  $("#activity_context").val(value).selectmenu("refresh");
+};
 
 onMounted(async () => {
-  activityContexts.value = await fetchActivityContexts()
-  const $ = window.$;
+  activityContexts.value = await fetchActivityContexts();
   if (activityContexts.value.length > 0) {
-    $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
-      handleChange({target: {value: $(this).val()}})
-    })
+    initializeSelectmenu();
   } else {
-    // We cannot easily do this in vue, because the above .selectmenu also hides the select. So that conflicts.
-    $("#activity_context").hide()
+    $("#activity_context").hide();
   }
-})
+});
+
+watch(() => activeActivityContext.value, (newValue) => {
+  updateSelectmenuValue(newValue?.activity_id || "");
+});
 
 const handleChange = (e) => {
   // Find the selected activity context.

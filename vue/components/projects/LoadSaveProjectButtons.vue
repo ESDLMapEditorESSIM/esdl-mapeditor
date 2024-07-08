@@ -23,10 +23,11 @@
 import {useESDLProjects} from "../../composables/esdlProjects";
 import {download_binary_file_from_base64_str_with_type} from "../../utils/files";
 import {useSocketIO} from "../../composables/socketio";
+import {useActivityContext} from "../../composables/activityContext";
 
 const {esdlProject} = useESDLProjects();
-
 const {socket} = useSocketIO();
+const {clearActivityContext} = useActivityContext();
 
 async function loadProjectFile(file) {
   const file_reader = new FileReader();
@@ -103,8 +104,8 @@ async function onNewProject() {
     try {
       socket.value.emit("new_esdl_project", {}, (responseProject) => {
         if (responseProject) {
-          //window.clear_esdl_layer_list(); // this is done in the backend
           esdlProject.value = responseProject;
+          clearActivityContext();
         }
       })
     } finally {
