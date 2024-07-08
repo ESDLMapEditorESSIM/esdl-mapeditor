@@ -111,8 +111,7 @@ const showWmsLayerFeaturePopup = (resp) => {
         }
         const popupDiv = document.createElement("div");
         popupDiv.setAttribute("id", popupDivId);
-        popupDiv.style.display = "flex";
-        popupDiv.style.flexDirection = "column";
+        popupDiv.classList.add("layer-feature-props-popup");
 
         // Updating the popup content
         resp.layers_features_props.forEach((l) => {
@@ -120,11 +119,8 @@ const showWmsLayerFeaturePopup = (resp) => {
             const layerFeatureProps = l.feature_props;
 
             // Layer name node
-            const layerNameNode = document.createElement("p");
+            const layerNameNode = document.createElement("h4");
             layerNameNode.innerHTML = `${layerName}`;
-            layerNameNode.style.margin = "4px 0px";
-            layerNameNode.style.fontWeight = 600;
-            layerNameNode.style.fontSize = "1.2em";
             popupDiv.appendChild(layerNameNode);
 
             if (layerFeatureProps !== null) {
@@ -132,7 +128,6 @@ const showWmsLayerFeaturePopup = (resp) => {
                     // Layer feature properties node
                     Object.keys(layerFeatureProps).forEach((pName) => {
                         const propNameNode = document.createElement("p");
-                        propNameNode.style.margin = "2px 0px";
                         const propValueNode = document.createElement("span");
                         propNameNode.innerHTML = `${pName}: `;
                         propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
@@ -145,7 +140,6 @@ const showWmsLayerFeaturePopup = (resp) => {
             } else {
                 console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature properties.`);
                 const propErrorNode = document.createElement("p");
-                propErrorNode.style.margin = "2px 0px";
                 propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
                 popupDiv.appendChild(propErrorNode);
             }
