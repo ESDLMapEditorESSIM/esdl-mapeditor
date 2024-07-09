@@ -75,6 +75,7 @@ class ApplicationContextExtension:
             live_model_interfaces = application_context.get("live_model_interfaces", [])
             for lmi in live_model_interfaces:
                 activate_live_model_interface(lmi["lmi_id"], client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", True)
 
             return {}, 200
 
@@ -94,6 +95,7 @@ class ApplicationContextExtension:
             live_model_interfaces = application_context.get("live_model_interfaces", [])
             for lmi in live_model_interfaces:
                 deactivate_live_model_interface(lmi["lmi_id"], client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", False)
 
             return {}, 200
 
@@ -121,6 +123,8 @@ class ApplicationContextExtension:
             client_id = session['client_id']
             if enabled:
                 activate_live_model_interface(lmi_id, client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", True)
             else:
                 deactivate_live_model_interface(lmi_id, client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", False)
             return {}, 200

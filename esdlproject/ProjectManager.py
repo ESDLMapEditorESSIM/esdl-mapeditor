@@ -45,7 +45,7 @@ def update_uuid_dict(eobject: EObject, recursive: bool = True):
     if resource == None:
         logger.error("Can't update uuid_dict for {eobject}, object not contained in a Resource")
         return
-    print(f"Rebuilding uuid_dict for {eobject.eResource}")
+    logger.debug(f"Rebuilding uuid_dict for {eobject.eResource}")
     if hasattr(eobject, 'id'):
         resource.uuid_dict[eobject.id] = eobject
     if recursive:
@@ -176,7 +176,7 @@ class ProjectManager:
         if listener_id in self.change_listeners:
             del self.change_listeners[listener_id]
         else:
-            print(f"Cannot remove change listener with id={listener_id}")
+            logger.warn(f"Cannot remove change listener with id={listener_id}")
 
     def change_handler(self, change: HighLevelChange):
         """
@@ -186,7 +186,7 @@ class ProjectManager:
         change HighLevelChange to send to the listeners
         """
         for listener_id, call_back_fun in self.change_listeners.items():
-            print(f"Change detected, informing {listener_id}")
+            logger.info(f"Change detected, informing {listener_id}")
             call_back_fun(change)
 
     def init_empty_project(self,
@@ -243,7 +243,7 @@ class ProjectManager:
         Retrieve the energy system from the currently active variant. If no variant is active, the first one is made active.
         """
         if self.active_variant is None:
-            print("get_active_energy_system: Warning: no active variant, selecting first in the first variant collection")
+            logger.warn("get_active_energy_system: Warning: no active variant, selecting first in the first variant collection")
             self.set_active_variant(self.project.variantCollection[0].variant)
         if self.active_variant.snapshotRef is None:
             self.get_variant_snapshot(self.active_variant)
@@ -261,7 +261,7 @@ class ProjectManager:
         if uri.normalize() in self.rset.resources:
             orig_uri = uri.plain
             uri.__init__(f"{uri.plain}_{str(uuid4())[:4]}")  # update uri
-            print(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
+            logger.debug(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
         try:
             es_resource: XMLResource = self.rset.create_resource(uri)
             es_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
@@ -272,7 +272,7 @@ class ProjectManager:
                 parse_info = es_resource.get_parse_information()
                 if len(parse_info) > 0:
                     # TODO: handle parse information to gui
-                    print(f"Resource {uri} contains parse information/errors: {parse_info}")
+                    logger.warn(f"Resource {uri} contains parse information/errors: {parse_info}")
             #self.validate(es=tmp_es)
             #self.esid_uri_dict[tmp_es.id] = uri.normalize()
             #return es_resource.contents[0], parse_info
@@ -341,7 +341,7 @@ class ProjectManager:
             # regenerated, but the changes from the child should be maintained. This means that before switching, we
             # need to make sure that any variant changes are persisted.
 
-            print("Variant snapshot already generated. Creating new one based on changes. (WIP)")
+            logger.info("Variant snapshot already generated. Creating new one based on changes. (WIP)")
 
             # Calculate the list of variants between the VariantCollection and this variant such that we can check
             # if there are changes there, newer than ours and apply them to the new snapshot
@@ -374,19 +374,19 @@ class ProjectManager:
         # elif get_parent_variant(new_variant) == self.active_variant:
         #     # current active variant is the parent, so we can continue with storing changes in this variant
         #     # without changing the current active ES, and only apply changes in this new active variant
-        #     print(
+        #     logger.debug(
         #         f"set_active_variant(): Continuing recording changes in new variant {new_variant.name}"
         #     )
         #     parent_variant = self.active_variant
         #     if len(parent_variant.change) > 0:
-        #         print(
+        #         logger.debug(
         #             f"set_active_variant(): Replaying variant {new_variant.name} @ {new_variant.eURIFragment()}"
         #         )
         #         self.apply_variant_changes(self.active_variant, new_variant.snapshotRef)
         #     self.active_variant = new_variant
         else:
             # New variant is selected and activated for the first time.
-            print(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
+            logger.info(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
             self.replay_parent_variant_changes(new_variant)
             new_active_variant_changed = True
             self.active_variant = new_variant
@@ -399,7 +399,7 @@ class ProjectManager:
         return self.active_variant
 
     def remove_variant_snapshot(self, variant):
-        print(f"Removing {variant.snapshotRef.eResource}")
+        logger.info(f"Removing {variant.snapshotRef.eResource}")
         self.rset.remove_resource(variant.snapshotRef.eResource)
         variant.snapshotRef = None
 
@@ -420,7 +420,7 @@ class ProjectManager:
         variant_snapshot = self.get_variant_snapshot(new_variant)
         # add changes to stack, clear stack
         for parent_variant in variant_path_list:
-            print(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
+            logger.info(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
             self.apply_variant_changes(parent_variant, variant_snapshot, False)
 
     def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
@@ -442,13 +442,13 @@ class ProjectManager:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
-                print(f"Apply variant change: High level change {high_level_change.label}")
+                logger.debug(f"Apply variant change: High level change {high_level_change.label}")
                 for change in high_level_change.change:
                     applyChange(change, resource)
                 if record_changes:
                     tracker.stack.stop_recording()
             else:
-                print(f"Fixme: ignoring DetailedChanges at this level")
+                logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 
     def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """"
@@ -514,7 +514,7 @@ class ProjectManager:
 
             snapshot_resource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
-            print(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
+            logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
             es = base_variant_resource.contents[0]
             es.name = variant.name # overwrite name of ES to match the variant name
@@ -538,11 +538,11 @@ class ProjectManager:
         """
         for subvariant in variant.variant:
             self._delete_variant_recursive(subvariant)
-        print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
+        logger.info(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
         if variant.snapshotRef:
             resource = variant.snapshotRef.eResource
             variant.snapshotRef = None
-            print(f"Removing snapshot of {variant.name} at {resource.uri}")
+            logger.debug(f"Removing snapshot of {variant.name} at {resource.uri}")
             self.rset.remove_resource(resource)
         parent = get_parent_variant(variant)
         parent.variant.remove(variant)
@@ -572,11 +572,11 @@ class ProjectManager:
         if variant.variant:
             for subvariant in variant.variant:
                 self._delete_variant_recursive(subvariant)
-        print(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
+        logger.info(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
 
         if variant in get_variant_path_list(self.active_variant):  # or get_variant_collection(variant) == variant:
             # todo reset active variant to other variant and check if there is at least 1 variant
-            print("Deleted variant was active variant. Please set a new active variant")
+            logger.warn("Deleted variant was active variant. Please set a new active variant")
             #self.active_variant = None
             self.set_active_variant(self.select_new_active_variant())
 
@@ -585,7 +585,7 @@ class ProjectManager:
             if variantCollection.energysystemRef:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
 
-                print(f"Removing VariantCollection energy system {variantCollection.name} from "
+                logger.info(f"Removing VariantCollection energy system {variantCollection.name} from "
                       f"{variantCollection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
                 self.rset.remove_resource(variantCollection.energysystemRef.eResource)
@@ -595,7 +595,7 @@ class ProjectManager:
             if variant.snapshotRef:
                 resource = variant.snapshotRef.eResource
                 variant.snapshotRef = None
-                print(f"Removing snapshot of {variant.name} at {resource.uri}")
+                logger.debug(f"Removing snapshot of {variant.name} at {resource.uri}")
                 self.rset.remove_resource(resource)
             parent = get_parent_variant(variant)
             if isinstance(parent, VariantCollection):
@@ -616,7 +616,7 @@ class ProjectManager:
         # first store the active ES in the active BV
 
         # todo add changes to current variant that are still on the stack
-        print("Saving project, assuming all changes on the stack are put in the active variant")
+        logger.info("Saving project, assuming all changes on the stack are put in the active variant")
 
         resources_dict = {}
 
@@ -679,7 +679,7 @@ class ProjectManager:
         self.change_tracker.trackers.clear()
 
         filename = uri.plain
-        print(f"Loading {filename}")
+        logger.info(f"Loading {filename}")
         self.project_resource = self.rset.create_resource(uri)
         self.project_resource.type = ProjectManagerResourceType.PROJECT
         self.project_resource.load()
@@ -842,9 +842,7 @@ class ProjectManager:
             try:
                 es.eResource.uuid_dict[eobject.id] = eobject
             except AttributeError as e:
-                print(f"Cant find energy system by ID: {es_id}, stacktrace: ")
-                for line in traceback.format_stack():
-                    print(line.strip())
+                logger.exception(f"Cant find energy system by ID: {es_id}")
                 self.debug()
 
     def remove_object_from_dict(self, es_id: str, eobject: EObject, recursive=False):
@@ -869,7 +867,7 @@ class ProjectManager:
         """
         es = self.get_energy_system_by_id(es_id)
         if es is None:
-            print(f'get_by_id() error es_id={es_id}, object_id={object_id}')
+            logger.debug(f'get_by_id() error es_id={es_id}, object_id={object_id}')
             self.debug()
             raise RuntimeError(f"Cannot find Energy System with id {es_id}")
         # es = self.get_active_energy_system()
@@ -918,27 +916,27 @@ class ProjectManager:
         return load_external_string(name, esdl_string)
 
     def debug(self):
-        print('ProjectManager debug:')
-        print('All resources: ', self.rset.resources)
+        logger.debug('ProjectManager debug:')
+        logger.debug('All resources: ', resources=self.rset.resources)
         for uri, resource in self.rset.resources.items():
             rs_type = resource.type.name if resource.type else None
             if resource.contents:
                 if isinstance(resource.contents[0], esdl.EnergySystem):
-                    print(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
+                    logger.debug(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
                 else:
-                    print(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
+                    logger.debug(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
             else:
-                print("No contents in resource")
+                logger.debug("No contents in resource")
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
             if vc.energysystemRef:
-                print(f"- {vc.name}: ref RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
+                logger.debug(f"- {vc.name}: ref RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
             elif vc.energysystem:
-                print(f"- {vc.name}: RS={vc.energysystem.eResource.uri} ({vc.energysystem.eResource.type.name}), ES={vc.energysystem}")
+                logger.debug(f"- {vc.name}: RS={vc.energysystem.eResource.uri} ({vc.energysystem.eResource.type.name}), ES={vc.energysystem}")
             rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
             rs_type = vc.variant.snapshotRef.eResource.type.name if vc.variant.snapshotRef else None
-            print(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")
+            logger.debug(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")
             x = vc.variant.variant
             depth = 2
             todo_list: List[Tuple[int, Variant]] = []
@@ -948,15 +946,15 @@ class ProjectManager:
                     indent = "\t" * d
                     rs_uri = v.snapshotRef.eResource.uri if v.snapshotRef else None
                     rs_type = v.snapshotRef.eResource.type.name if v.snapshotRef else None
-                    print(f"{indent}- {v.name}: RS={rs_uri} ({rs_type}), ES={v.snapshotRef}")
+                    logger.debug(f"{indent}- {v.name}: RS={rs_uri} ({rs_type}), ES={v.snapshotRef}")
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
-        print(self.to_debug_string())
-        #print("Current ESDL:")
-        #print(self.active_energy_system_to_string())
+        logger.debug(self.to_debug_string())
+        #logger.debug("Current ESDL:")
+        #logger.debug(self.active_energy_system_to_string())
             #for v in vc.variant.variant:
-            #    print(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
+            #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
 
 def resource_as_string(resource: Resource):
