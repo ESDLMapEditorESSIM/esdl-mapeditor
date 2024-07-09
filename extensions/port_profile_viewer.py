@@ -85,11 +85,17 @@ class PortProfileViewer:
                     else:
                         graph_name = "Multiple profiles (" + profile_type + ")"
 
+                    # Grafana datasources don't work anymore with host:443 as a configured host
+                    # needs to be https://host now
+                    if profile.port == 443:
+                        host = "https://" + profile.host
+                    else:
+                        host = profile.host + ':' + str(profile.port)
+
                     embed_url = create_panel_multiple(
                         graph_title=graph_name,
                         axis_title="",
-                        host='https://' + profile.host,  # TODO temp fix, probably not ok, discuss with Edwin
-                        # host=profile.host + ':' + str(profile.port),
+                        host=host,
                         database=profile.database,
                         dataset_info=dataset_info_list,
                         qau=profile.profileQuantityAndUnit,
@@ -149,10 +155,17 @@ class PortProfileViewer:
                                 "filters": p.filters
                             })
 
+                        # Grafana datasources don't work anymore with host:443 as a configured host
+                        # needs to be https://host now
+                        if profile.port == 443:
+                            host = "https://" + profile.host
+                        else:
+                            host = profile.host + ':' + str(profile.port)
+
                         embed_url = create_panel_multiple(
                             graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
                             axis_title="",
-                            host=profile.host + ':' + str(profile.port),
+                            host=host,
                             database=profile.database,
                             dataset_info=dataset_info_list,
                             qau=profile.profileQuantityAndUnit,
