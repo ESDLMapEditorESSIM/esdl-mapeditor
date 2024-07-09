@@ -37,12 +37,12 @@
 import {computed} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
-import {useSocketIO} from "../composables/socketio";
-import {useBaseLayers,} from "../composables/baseLayers";
+import {useSocketIO} from "@/composables/socketio";
+import {useBaseLayers,} from "@/composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
 import VisibleLayersView from "./VisibleLayersView.vue";
-import {useWmsLayers} from "../composables/wmsLayers";
-import {useVisibleLayers} from "../composables/visibleLayers";
+import {useWmsLayers} from "@/composables/wmsLayers";
+import {useVisibleLayers} from "@/composables/visibleLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerIsVisible} = useVisibleLayers();
@@ -77,7 +77,7 @@ const treeData = computed(() => {
     }
 
     return [
-      // getBaseLayersControlTreeData(),
+      getBaseLayersControlTreeData(),
       ...wmsGroupsJstreeData,
     ];
   } else {
@@ -125,8 +125,8 @@ const getChildrenOfGroup = (layerGroup) => {
 }
 
 const addTreeItem = (items, item, itemId, type, children) => {
-  const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
-
+  // const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
+  const a_attr = {"class": item.active ? "bold" : "", title: item.description};
   items.push({
     id: itemId,
     text: item.description,
@@ -157,12 +157,12 @@ class LayerFolderTreeSpec {
       'uncheck_node.jstree': function (e, data) {
         setVisibilityWmsLayerGroup(data.node.id, false);
       },
-      // 'open_node.jstree': function (e, data) {
-      //   setWmsLayerGroupOpened(data.node.id, true);
-      // },
-      // 'close_node.jstree': function (e, data) {
-      //   setWmsLayerGroupOpened(data.node.id, false);
-      // }
+      'open_node.jstree': function (e, data) {
+        setWmsLayerGroupOpened(data.node.id, true);
+      },
+      'close_node.jstree': function (e, data) {
+        setWmsLayerGroupOpened(data.node.id, false);
+      }
     }
   }
 
