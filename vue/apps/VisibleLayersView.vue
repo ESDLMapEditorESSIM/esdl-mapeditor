@@ -17,9 +17,10 @@
 <template>
   <a-card id="visible_layers_view">
     <h3>Visible WMS layers</h3>
-    <vue-js-tree v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-                 :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-                 :check-call-back="checkCallBack"
+    <vue-js-tree
+      v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+      :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+      :check-call-back="checkCallBack"
     />
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
@@ -36,7 +37,7 @@ import {useVisibleLayers} from "../composables/visibleLayers"
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {getVisibleLayerList, updateDisplayOrderVisibleLayers} = useVisibleLayers();
+const {getVisibleLayerList, updateDisplayOrderVisibleLayers, hideVisibleLayer, hideAllVisibleLayers} = useVisibleLayers();
 
 // eslint-disable-next-line no-unused-vars
 const treeId = "visible_layer_tree"
@@ -63,6 +64,25 @@ class MovableLayerTreeSpec {
     this.type = "visible_layer";
     this.icon = "fas fa-grip-lines";
     this.max_depth = 0;
+  }
+
+  contextMenus(node, tree) {
+    return {
+      'hide_layer': {
+        'label': 'Hide layer',
+        'icon': 'fas fa-minus',
+        'action': function () {
+          hideVisibleLayer(node.id);
+        }
+      },
+      'hide_all_layers': {
+        'label': 'Hide all layers',
+        'icon': 'fas fa-minus-square',
+        'action': function () {
+          hideAllVisibleLayers();
+        }
+      }
+    }
   }
 }
 

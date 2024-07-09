@@ -24,7 +24,8 @@ class SelectAssets {
     deselect_all_assets() {
         while (this.selected_assets.length) {
             let asset_id = this.selected_assets[0];
-            let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+            // find marker layers only
+            let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id, 'marker');
             if (asset_leaflet_obj === undefined) {
                 // make sure we don't end up in an endless loop...
                 this.selected_assets.splice(this.selected_assets.indexOf(asset_id), 1);
@@ -65,7 +66,7 @@ class SelectAssets {
 
         // only disable contect menu when more than 1 is selected
         if (this.selected_assets.length == 2) {
-            this.disable_context_menu_items(find_layer_by_id(active_layer_id, 'esdl_layer', this.selected_assets[0]))
+            this.disable_context_menu_items(find_layer_by_id(active_layer_id, 'esdl_layer', this.selected_assets[0], 'marker'))
             this.disable_context_menu_items(asset_leaflet_obj);
         } else if (this.selected_assets.length > 2) {
             this.disable_context_menu_items(asset_leaflet_obj);
@@ -81,7 +82,7 @@ class SelectAssets {
     }
 
     toggle_selected(asset_leaflet_obj) {
-        //console.log("asset was selected: ", asset_leaflet_obj.name, asset_leaflet_obj.selected);
+        //console.log("asset was selected: ", asset_leaflet_obj.name, asset_leaflet_obj.selected, asset_leaflet_obj);
         if (!asset_leaflet_obj.selected) {
             this.select_mode = true;
             asset_leaflet_obj.selected = true;
@@ -132,18 +133,20 @@ class SelectAssets {
     enable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if (option != '-')
+            if (option != '-') {
                 option['disabled'] = false;
+            }
         }
     }
 
     disable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if ((option != '-') && ((option.text != 'Delete') ||
-              // Buildings cannot be deleted yet in multi select mode
-              (asset_leaflet_obj.type == 'Building')))
+            if ((option != '-') && (option.text != 'Port profile viewer') && ((option.text != 'Delete') ||
+                    // Buildings cannot be deleted yet in multi select mode
+                    (asset_leaflet_obj.type == 'Building'))) {
                 option['disabled'] = true;
+            }
         }
     }
 
@@ -185,13 +188,16 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
                     select_assets.toggle_selected(esdl_object);
                 }
             } else {
-                if (contains) {
-                    if (bounds.contains(esdl_object.getLatLngs())) {
-                        select_assets.toggle_selected(esdl_object);
-                    }
-                } else {
-                    if (bounds.intersects(esdl_object.getLatLngs())) {
-                        select_assets.toggle_selected(esdl_object);
+                if (!esdl_object.marker) {
+                    // only select if this is not a polygon belonging to a marker (asset with polygon geometry)
+                    if (contains) {
+                        if (bounds.contains(esdl_object.getLatLngs())) {
+                                select_assets.toggle_selected(esdl_object);
+                        }
+                    } else {
+                        if (bounds.intersects(esdl_object.getLatLngs())) {
+                            select_assets.toggle_selected(esdl_object);
+                        }
                     }
                 }
             }

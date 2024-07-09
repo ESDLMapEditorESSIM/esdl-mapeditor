@@ -50,6 +50,7 @@ import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
 import ResidentialArea from "@/apps/ResidentialArea.vue";
+import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 
 // Vue.config.productionTip = false
@@ -100,11 +101,11 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.show_tooltip = (object_title, object_id) => {
+window.show_tooltip = (object_title, object_id, el_id) => {
     const { newTooltipObjectID, newTitle } = useTooltipInfo();
     newTooltipObjectID(object_id);
     newTitle(object_title);
-    mountTooltipComponent(AssetTooltip);
+    mountTooltipComponent(AssetTooltip, el_id);
 }
 
 window.search_assets_window = () => {
@@ -190,3 +191,9 @@ window.sectors_window = () => {
 }
 
 mountApp(ResidentialArea, '#vue_test_edr_residential_area')
+
+window.heat_transition_window = (area_id) => {
+    const { newObject } = useObject();
+    newObject(area_id);
+    mountSidebarComponent(HeatTransition);
+}

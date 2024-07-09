@@ -17,6 +17,8 @@ import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM.vue';
 import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate.vue';
 import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles.vue';
 import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
+import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1.vue';
+import {default as WorkflowFlexScanImportEPS} from './custom/flexscan/WorkflowFlexScanImportEPS.vue';
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -27,6 +29,8 @@ const components = {
   "dice-export-essim": DiceExportEssim,
   "dice-generate-profile-template": DiceGenerateProfileTemplate,
   "dice-upload-profiles": DiceUploadProfiles,
+  "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,
+  "flexscan-import-eps": WorkflowFlexScanImportEPS,
   "demo-custom": DemoCustomComponent,
 };
 const props = defineProps({

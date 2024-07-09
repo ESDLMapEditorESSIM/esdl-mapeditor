@@ -66,6 +66,10 @@
         });
     }
 
+    area_heat_transition(event, id) {
+        heat_transition_window(id);
+    }
+
     static create(event) {
         if (event.type === 'client_connected') {
             etm_interface_plugin = new ETMInterface();
@@ -90,6 +94,15 @@
                     icon: resource_uri + 'icons/pie.png',
                     callback: function(e) {
                         etm_interface_plugin.area_info_update(e, id);
+                    }
+                });
+            }
+            if (layer_type === 'area') {
+                layer.options.contextmenuItems.push({
+                    text: 'Warmtetransitie',
+                    icon: resource_uri + 'images/HeatDemand.png',
+                    callback: function(e) {
+                        etm_interface_plugin.area_heat_transition(e, id);
                     }
                 });
             }

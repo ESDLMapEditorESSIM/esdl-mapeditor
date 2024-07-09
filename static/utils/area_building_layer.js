@@ -26,7 +26,8 @@ var building_color_method = 'building type';
 var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
 
-var areaLegendChoice;       // will be initialized with the first KPI
+var areaLegendChoice;                // will be initialized with the first KPI
+var areaLegendChoiceBackup = null;   // to save setting while redrawing KPIs
 var buildingLegendChoice;
 
 var get_area_color;         // function to get color of an area
@@ -126,7 +127,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
             }
         }
 
-        // Handle Distributed KPIs here for now.
+        // Handle DistributionKPIs here for now.
         for (const kpi in dist_KPIs) {
             const KPI_value = dist_KPIs[kpi]["value"];
 
@@ -661,9 +662,6 @@ function resize_area_pi_charts() {
 }
 
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
-
-    console.log(area_data);
-
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
         group_name: group_name,
@@ -671,7 +669,6 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
-                console.log(layer);
                 let area_size = calculate_area_size(layer);
                 create_area_pie_chart(feature, area_size);
 
@@ -927,9 +924,19 @@ function create_area_array_or_range_legendClassesDiv(kpi) {
     }
 }
 
-function selectAreaKPI(selectObject) {
-    areaLegendChoice = selectObject.value;
-    kpi = area_KPIs[areaLegendChoice];
+function saveSelectedKPI() {
+    areaLegendChoiceBackup = areaLegendChoice;
+}
+
+function restoreSelectedKPI() {
+    areaLegendChoice = areaLegendChoiceBackup;
+    areaLegendChoiceBackup = null;
+}
+
+function selectAreaKPI(kpi_name) {
+    areaLegendChoice = kpi_name;
+    let kpi = area_KPIs[areaLegendChoice];
+    document.getElementById("areaLegendSelect").value = kpi_name;
 
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(kpi);
 
@@ -1024,7 +1031,7 @@ function createAreaLegendDiv() {
     legendTitleDiv.innerHTML += 'Area Legend';
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select style="z-index:1000;" onchange="selectAreaKPI(this);">';
+    var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
     for (akpi in area_KPIs) {
         selectText += '<option value="'+akpi+'">'+akpi+'</option>';
     }
@@ -1156,6 +1163,12 @@ function add_geojson_listener(socket, map) {
 
         // recreate top right layer control box, as areas in ESDL can influence area layer control (for grouped areas)
         add_layer_control();
+
+        // If KPIs were redrawn, also restore the earlier selected KPI
+        if (areaLegendChoiceBackup != null) {
+            restoreSelectedKPI()
+            selectAreaKPI(areaLegendChoice);
+        }
     });
 }
 

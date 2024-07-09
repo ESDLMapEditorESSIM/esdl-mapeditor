@@ -25,9 +25,40 @@ export function getattrd(obj, name) {
         return null;
     }
 }
+
+/**
+ * Set an attribute of an object by name. Supports dot-notation (so execution.id
+ * will set obj[execution][id] to the desired value effectively).
+ * @param {*} obj
+ * @param {*} name
+ * @param {*} value
+ */
+export function setattrd(obj, name, value) {
+    const splitted_name = name.split(".")
+    let currentObj = obj
+
+    try {
+        for (let i = 0; i < splitted_name.length - 1; i++) {
+            const n = splitted_name[i];
+            // Add new empty object if object for nested key does not exist yet
+            if (!currentObj[n] || typeof currentObj[n] !== "object") {
+                currentObj[n] = {}
+            }
+            currentObj = currentObj[n];
+        }
+        
+        // Merge new value with current value and/or existing values for this key
+        const lastKey = splitted_name[splitted_name.length - 1];
+        currentObj[lastKey] = {...currentObj[lastKey] ?? {}, ...value};
+    } catch {
+        console.log("error in setattrd");
+    }
+}
+
 export function isDebug() {
     return window.DEBUG;
 }
+
 export const unique = (a) => [...new Set(a)];
 export const uniqueBy = (x, f) => Object.values(x.reduce((a, b) => ((a[f(b)] = b), a), {}));
 export const intersection = (a, b) => a.filter((v) => b.includes(v));

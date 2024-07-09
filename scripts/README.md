@@ -43,7 +43,7 @@ Below a description of the need steps and possible options.
     - `MONGO_URL`: MongoDB url
 2. Run `get_file_paths.py`  
    This will result in a .csv file (`LIST_TO_IMPORT_FILE`) with a geospatial data file path per line.
-3. Optionally insert .sld file paths per layer for custom styling.  
+3. Optionally insert .sld file paths per layer for custom styling. Raster file colors will be autoscaled by default.  
    Optionally remove lines for layers that should not be loaded.
 4. Run `load_wms_layers.py`  
    This will load the geospatial files in postgis and geoserver, and the mapeditor.

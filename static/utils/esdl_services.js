@@ -259,8 +259,12 @@ function process_service_results(results) {
         }
     }
     if ('message' in results) {
-        service_results_div.innerHTML += `<p>${results["message"]}</p>`;
-        service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        if ($("#service_message").length) { // check if service_message exists already
+            $("#service_message").innerHTML = `${results["message"]}`;
+        } else {
+            service_results_div.innerHTML += `<p id="service_message">${results["message"]}</p>`;
+            service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
+        }
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
@@ -345,7 +349,7 @@ function show_service_settings(index, state=null) {
 
     let service = esdl_services_information[index];
     service_settings_div.innerHTML = '<h1>' + service['name'] + '</h1>';
-    service_settings_div.innerHTML += '<p>' + service['explanation'] + '</p>';
+    service_settings_div.innerHTML += '<p><i>' + service['explanation'] + '</i></p>';
 
     if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
         window.activate_service_workflow(index, service, state).then();

@@ -119,32 +119,37 @@ function update_asset_state(asset_id_or_list, new_state) {
         // if it's a joint, don't change appearance
         if (asset_leaflet_obj.type == 'Joint') continue;
 
-        if (asset_leaflet_obj instanceof L.Marker) {
-            let cll = asset_leaflet_obj.getElement().classList;
+        if (asset_leaflet_obj instanceof L.Marker || asset_leaflet_obj.marker) {
+            update_obj = asset_leaflet_obj;
+            if (asset_leaflet_obj.marker) {
+                // use the marker layer instead of the polygon layer for markers with polygon
+                update_obj = asset_leaflet_obj.marker;
+            }
+            // Could also be Asset with Polygon
+            let cll = update_obj.getElement().classList;
             // because old state is unknown, remove everything
             cll.remove('Optional');
-            cll.remove(asset_leaflet_obj.capability);
-            cll.remove(asset_leaflet_obj.capability + 'Disabled');
+            cll.remove(update_obj.capability);
+            cll.remove(update_obj.capability + 'Disabled');
 
-            // remove the disabled if applicable
-            let html = asset_leaflet_obj.getIcon().options.html;
-            html = html.replace('circle-img-disabled', 'circle-img');
+            // remove disabled class from icon if applicable
+            $(update_obj._icon).find('img').removeClass('circle-img-disabled')
 
             // add styling based on new state
-            if (new_state == 'ENABLED') cll.add(asset_leaflet_obj.capability);
+            if (new_state == 'ENABLED') cll.add(update_obj.capability);
             if (new_state == 'OPTIONAL') {
-                cll.add(asset_leaflet_obj.capability);
+                cll.add(update_obj.capability);
                 cll.add('Optional');
             }
             if (new_state == 'DISABLED') {
-                cll.add(asset_leaflet_obj.capability + 'Disabled');
-                html = html.replace('circle-img', 'circle-img-disabled');
+                cll.add(update_obj.capability + 'Disabled');
+                // add disabled class for icon to gray it out
+                $(update_obj._icon).find('img').addClass('circle-img-disabled')
             }
 
-            // assign DivIcon html again
-            asset_leaflet_obj.getIcon().options.html = html;
         }
-        if (asset_leaflet_obj instanceof L.Polyline) {
+        if (asset_leaflet_obj instanceof L.Polyline && !(asset_leaflet_obj instanceof L.Polygon) && !asset_leaflet_obj.marker) {
+            // don't update line color when this is asset with polygon
             // from assets.js
             asset_leaflet_obj.state = new_state.toLowerCase().charAt(0); // first letter is used to determine state
             update_line_color(asset_leaflet_obj);

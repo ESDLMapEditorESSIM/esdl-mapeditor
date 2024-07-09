@@ -30,24 +30,24 @@ from extensions.settings_storage import SettingsStorage
 import src.settings as settings
 import src.log as log
 from src.edr_client import EDRClient
-from src.process_es_area_bld import get_area_id_from_mapeditor_id
-
+from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL
 
 logger = log.get_logger(__name__)
 
 ETM_INTERFACE_SYSTEM_CONFIG = 'ETM_INTERFACE_SYSTEM_CONFIG'
 ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
-    'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
+    # 'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
+    'etm_base_url': 'https://beta.energytransitionmodel.com/api/v3',
     'etm_municipalities_file': 'data/ETM_municipalities.csv'
 }
 
 # Global profile information about clusters, so information can be retrieved once and reused between calls
 global_clusters = {
-    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw [POWER in %].edd", "profile_data": None},
-    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten [POWER in %].edd", "profile_data": None},
-    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie [POWER in %].edd", "profile_data": None},
-    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens [POWER in %].edd", "profile_data": None},
-    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit [POWER in %].edd", "profile_data": None},
+    "Landbouw": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Landbouw.edd", "profile_data": None},
+    "Utiliteiten": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Utiliteiten.edd", "profile_data": None},
+    "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie.edd", "profile_data": None},
+    "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens.edd", "profile_data": None},
+    "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit.edd", "profile_data": None},
 }
 
 
@@ -57,11 +57,13 @@ class ETMInterface:
         self.socketio = socket
         self.settings_storage = settings_storage
         self.etm_municipalities = dict()
+        self.municipalities_bld_info = dict()
 
         self.plugin_settings = self.get_settings()
         self.register()
 
         self.read_etm_municipalities()
+        self.read_gemeente_pand_info()
 
     def register(self):
         logger.info('Registering ETMInterface extension')
@@ -129,6 +131,10 @@ class ETMInterface:
             esh = get_handler()
             area = esh.get_by_id(active_es_id, area_id)
 
+            # Get profiles for all clusters from the EDR if not done already
+            emit("update-etm-query-log", f"Loading EDR cluster profiles...")
+            self.get_edr_profiles()
+
             emit("update-etm-query-log", f"Updating ETM Sankey data for {area.name} ({area.id})")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
                 area_with_scope_municipality_found = False
@@ -145,6 +151,38 @@ class ETMInterface:
                 self.update_kpis_for_area(area)
 
             return True
+
+        @self.socketio.on('etm_heat_transition_get_area_info', namespace='/esdl')
+        def etm_heat_transition_get_area_info(area_id):
+            # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
+            area_id = get_area_id_from_mapeditor_id(area_id)
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            area = esh.get_by_id(active_es_id, area_id)
+
+            # Get profiles for all clusters from the EDR if not done already
+            emit("update-etm-query-log", f"Loading EDR cluster profiles...")
+            self.get_edr_profiles()
+
+            if area_id in self.municipalities_bld_info:
+                info = self.municipalities_bld_info[area_id]
+                return {
+                    "name": area.name,
+                    "info": info
+                }
+            else:
+                return None
+
+        @self.socketio.on('etm_heat_transition_apply', namespace='/esdl')
+        def etm_heat_transition_apply(message):
+            # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
+            area_id = get_area_id_from_mapeditor_id(message["area_id"])
+            active_es_id = get_session('active_es_id')
+            esh = get_handler()
+            area = esh.get_by_id(active_es_id, area_id)
+
+            etm_sankey = ETMSankeyToESDL(None)
+            etm_sankey.apply_heat_transition(area, message["technology_info"])
 
     def get_settings(self):
         if self.settings_storage.has_system(ETM_INTERFACE_SYSTEM_CONFIG):
@@ -163,6 +201,16 @@ class ETMInterface:
                 self.etm_municipalities[row[0].split('_')[0]] = row[0]
 
         logger.debug(f"ETM plugin read {len(self.etm_municipalities)} municipalities from input file")
+
+    def read_gemeente_pand_info(self):
+        municipalities_bld_info_file = "data/gemeente_pand_info.csv"
+
+        with codecs.open(municipalities_bld_info_file, encoding='utf-8-sig') as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=',')
+            for row in reader:
+                self.municipalities_bld_info[row['gm_code']] = row
+
+        logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipalities from input file")
 
     def request_sankey_info_municipality(self, municipality_code):
         if municipality_code not in self.etm_municipalities:
@@ -328,6 +376,9 @@ class ETMSankeyToESDL:
             if "final_demand" in sect_info:
                 del sect_info["final_demand"]
 
+    ###################################################################################################################
+    #   functions to create the ESDL from the ETM Sankey data
+    ###################################################################################################################
     def create_qau(self, unit):
         return esdl.QuantityAndUnitType(
             id=str(uuid4()),
@@ -522,6 +573,9 @@ class ETMSankeyToESDL:
                     area.asset.append(demand)
                     self.find_carrier_network_and_connect(area, inport, conv_loss_carriers[0][0])
 
+    ###################################################################################################################
+    #   KPI calculations
+    ###################################################################################################################
     def add_energy_balance_kpi(self, area):
         local_production = 0
         local_consumption = 0
@@ -805,6 +859,10 @@ class ETMSankeyToESDL:
         self.add_import_per_carrier_kpi(area)
         self.add_electricity_demand_per_sector_and_cluster_kpi(area)
 
+    ###################################################################################################################
+    #   Functions to add relevant info to an esdl.Area
+    ###################################################################################################################
+
     def add_info_to_area(self, area):
         self.add_final_demands(area)
         self.add_production(area)
@@ -815,3 +873,46 @@ class ETMSankeyToESDL:
     def add_carriers_and_sectors(self, es):
         self.create_carriers(es)
         self.create_sectors(es)
+
+    ###################################################################################################################
+    #   Functions to calculate effects of the heat transition
+    ###################################################################################################################
+    def apply_heat_transition(self, area, technology_info):
+        # TODO: Deal with QaU, deal with "space heater" and "space heater combined", deal with tapwater
+        gas_demand_households_heating = None
+        for asset in area.asset:
+            if asset.name == "Final demand_Natural gas_Households space heating and hot water":
+                gas_demand_households_heating = asset
+                energy_natural_gas_profile_PJ = asset.port[0].profile[0].value
+                break
+
+        final_heating_demand_PJ = energy_natural_gas_profile_PJ / 0.9
+        final_heating_demand_heatpump_PJ =  final_heating_demand_PJ * technology_info[0]["percentage"] / 100
+        final_heating_demand_district_heating_PJ =  final_heating_demand_PJ * technology_info[1]["percentage"] / 100
+
+        electricity_demand_PJ = final_heating_demand_heatpump_PJ / 3.5           # COP = 3.5
+        steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ      # efficiency = 1
+
+        for asset in area.asset:
+            if asset.name == "Final demand_Electricity_Households space heating and hot water":
+                asset.port[0].profile[0].value += electricity_demand_PJ
+            if asset.name == "Final demand_Steam hot water_Households space heating and hot water":
+                asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+
+            # TODO: now it is assumed extra energy is imported
+            if asset.name == "Primary demand_Electricity_Import":
+                asset.port[0].profile[0].value += electricity_demand_PJ
+            if asset.name == "Primary demand_Steam hot water_Import":
+                asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+
+        gas_demand_households_heating.port[0].profile[0].value = 0.0
+
+        self.recalculate_kpis(area)
+
+        container = area
+        # container will become equal to the top-level area
+        while isinstance(container.eContainer(), esdl.Area):
+            container = container.eContainer()
+
+        # redraw all areas and KPIs, as KPIs have changed
+        find_boundaries_in_ESDL(container)

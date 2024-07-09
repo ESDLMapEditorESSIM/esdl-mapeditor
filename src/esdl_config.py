@@ -16,6 +16,8 @@ import os
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
+FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://flexscan:7200")
+FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
 
 esdl_config = {
     "control_strategies": [
@@ -362,7 +364,7 @@ esdl_config = {
         "eps": [
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
-                "name": "Business Park Workflow",
+                "name": "EIGEN Plan & Design Workflow",
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "resumable": True,
@@ -373,21 +375,73 @@ esdl_config = {
                         "description": "How would you like to proceed?",
                         "type": "choice",
                         "options": [
+                            # EPS PROJECT
+                            {
+                                "name": "EPS project",
+                                "type": "header",
+                            },
                             {
                                 "name": "Create a new EPS project",
-                                "next_step": 1,
                                 "type": "primary",
+                                "next_step": 1,
+                                "disable_if_state": "execution.success",
                             },
                             {
                                 "name": "Adjust EPS input",
-                                "next_step": 13,
                                 "type": "default",
+                                "next_step": 13,
+                                "disable_if_state": "execution.success",
                             },
-                            {"name": "Run EPS", "next_step": 4, "type": "primary"},
+                            {
+                                "name": "Run EPS", 
+                                "type": "primary",
+                                "next_step": 4,
+                                "disable_if_state": "execution.success",
+                            },
                             {
                                 "name": "Load EPS",
                                 "type": "primary",
                                 "next_step": 6,
+                                "disable_if_state": "execution.success",
+                            },
+                            {
+                                "name": "Explore EPS results",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 11,
+                            },
+                            # INFRASTRUCTURE
+                            {
+                                "name": "Infrastructure",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Configure Energy Infrastructure",
+                                "type": "default",
+                                "enable_if_state":  "execution.success",
+                                "next_step": 33,
+                            },
+                            # ENERGY PROFILES
+                            {
+                                "name": "Energy profiles",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Generate energy profiles template",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 20,
+                            },
+                            {
+                                "name": "Upload energy profiles template",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 21,
+                            },
+                            # ENERGY SAVING MEASURES
+                            {
+                                "name": "Energy saving measures",
+                                "type": "header",
                             },
                             {
                                 "name": "Select EPS measures",
@@ -396,29 +450,46 @@ esdl_config = {
                                 "next_step": 17,
                             },
                             {
-                                "name": "Explore EPS results",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 11,
-                            },
-                            {
-                                "name": "Generate profile template",
-                                "type": "default",
-                                "next_step": 20,
-                            },
-                            {
-                                "name": "Upload profiles",
-                                "type": "primary",
-                                "enable_if_state": "execution.success",
-                                "next_step": 21,
-                            },
-                            {
                                 "name": "Apply custom energy saving measures",
                                 "description": "beta",
                                 "type": "default",
                                 "enable_if_state": "execution.success",
-                                # "disabled": True,
                                 "next_step": 18,
+                            },
+                            # FLEX SCAN F1
+                            {
+                                "name": "Flex Scan phase 1 (F1)",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Import EPS results into Flex Scan",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "disable_if_state": "flexscanf1.imported",
+                                "next_step": 22,
+                            },
+                            {
+                                "name": "Load Flex Scan F1",
+                                "type": "primary",
+                                "enable_if_state": {
+                                    "type": "every",
+                                    "conditions": [
+                                        "execution.success",
+                                        # "flexscanf1.imported"  # TODO: or something like this that is dynamically obtained
+                                    ],
+                                },
+                                "next_step": 24,
+                            },
+                            {
+                                "name": "Explore Flex Scan F1 results",
+                                "type": "default",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "next_step": 26,
+                            },
+                            # ASSETS
+                            {
+                                "name": "Assets",
+                                "type": "header",
                             },
                             {
                                 "name": "Configure your own assets",
@@ -427,14 +498,67 @@ esdl_config = {
                                 "next_step": 7,
                             },
                             {
-                                "name": "Export ESSIM results",
-                                "next_step": 19,
+                                "name": "Select energy hub assets",
+                                "type": "default",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "next_step": 32,
+                            },
+                            # EHC
+                            {
+                                "name": "EHC",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Export to EHC",
                                 "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 27,
+                            },
+                            {
+                                "name": "Load EHC",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 28,
+                            },
+                            # FLEX SCAN F2
+                            {
+                                "name": "Flex Scan phase 2 (F2)",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Export to Flex Scan F2",
+                                "type": "primary",
+                                "enable_if_state": "flexscanf1.loaded",
+                                "next_step": 29,
+                            },
+                            {
+                                "name": "Load Flex Scan F2",
+                                "type": "primary",
+                                "enable_if_state": "flexscanf2.loaded",
+                                "next_step": 30,
+                            },
+                            # ESSIM
+                            {
+                                "name": "ESSIM",
+                                "type": "header",
                             },
                             {
                                 "name": "Aggregate ESDL buildings for ESSIM",
-                                "next_step": 12,
                                 "type": "dashed",
+                                "enable_if_state": "execution.success",
+                                "next_step": 12,
+                            },
+                            {
+                                "name": "Run ESSIM",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 31,
+                            },
+                            {
+                                "name": "Export results",
+                                "type": "primary",
+                                "enable_if_state": "essim.success",
+                                "next_step": 19,
                             },
                         ],
                     },
@@ -460,7 +584,7 @@ esdl_config = {
                             "label_fields": ["name"],
                             "value_field": "id",
                         },
-                        "target_variable": "project_id",
+                        "target_variable": "project",
                         "next_step": 3,
                     },
                     {
@@ -475,7 +599,6 @@ esdl_config = {
                             "response_params": {"name": "file_name"},
                         },
                         "success_text": "The newly uploaded file can be used to start a new EPS run.",
-                        "next_step": 0,
                     },
                     {
                         # 4
@@ -505,7 +628,7 @@ esdl_config = {
                             "user_response_spec": {
                                 "0": {"message": "Failed starting the EPS."},
                                 "200": {
-                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Inspect results'."
+                                    "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Resultaten' in the EPS Web environment."
                                 },
                                 "429": {
                                     "message": "It is currently busy on the server. We cannot start an EPS execution "
@@ -677,7 +800,7 @@ esdl_config = {
                             "label_fields": ["name"],
                             "value_field": "id",
                         },
-                        "target_variable": "file_name",
+                        "target_variable": "file",
                         "next_step": 16,
                     },
                     {
@@ -690,10 +813,9 @@ esdl_config = {
                             + "/api/projects/{project_id}/files/{file_name}",
                             "request_params": {
                                 "project_id": "project.id",
-                                "file_name": "file_name.id",
+                                "file_name": "file.id",
                             },
                         },
-                        "next_step": 0,
                     },
                     {
                         # 17
@@ -802,8 +924,221 @@ esdl_config = {
                         "type": "custom",
                         "component": "dice-upload-profiles",
                     },
+                    # {
+                    #     # TODO: for future reference, if we ever want to start / run flex scan f1 from mapeditor
+                    #     # 22
+                    #     "name": "Run Flex Scan F1",
+                    #     "description": "Please wait a moment while we run the Flex Scan phase 1",
+                    #     "type": "service",
+                    #     "state_params": {"execution_id": "execution.id"},
+                    #     "service": {
+                    #         "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca0",
+                    #         "name": "Run Flex Scan phase 1",
+                    #         "headers": {
+                    #             "Accept": "application/json",
+                    #             "User-Agent": "ESDL Mapeditor/0.1",
+                    #         },
+                    #         "url": f"{FLEX_BACKEND_HOST}/eps/<execution_id>/import",
+                    #         "auto": True,
+                    #         "clearLayers": False,
+                    #         "http_method": "post",
+                    #         "type": "json",
+                    #         "result": [
+                    #             {
+                    #                 "code": 200, 
+                    #                 "action": "show_message",
+                    #                 "message": "Flex Scan Phase 1 started",
+                    #             },
+                    #         ],
+                    #         "query_parameters": [
+                    #             {
+                    #                 "name": "Execution ID",
+                    #                 "parameter_name": "execution_id",
+                    #                 "location": "url",
+                    #             },
+                    #         ],
+                    #         "with_jwt_token": True,
+                    #     },
+                    #     "next_step": 23
+                    # },
+                    {
+                        # 22
+                        "name": "Import EPS data into Flex Scan",
+                        "description": "",
+                        "type": "custom",
+                        "component": "flexscan-import-eps",
+                        "custom_data": {
+                            "flex_frontend_host": FLEX_FRONTEND_HOST,
+                        },
+                    },
+                    {
+                        # 23
+                        # TODO: placeholder for when we might allow multiple flex scan runs for a single EPS based on scenario (e.g. EPS measures)
+                        "name": "Load Flex Scan F1 results",
+                        "description": "Load Flex Scan phase 1 results. If no results are shown, you must first import the EPS data and/or accept the phase 1 results (see previous step).",
+                        "label": "Choose Flex Scan F1 run",
+                        "type": "select-query",
+                        "multiple": False,
+                        "source": {
+                            "url": f"{FLEX_BACKEND_HOST}/executions/",
+                            "http_method": "get",
+                            "choices_attr": "",
+                            "label_fields": ["project_name", "phase1_completed_on"],
+                            "value_field": "id",
+                            "with_jwt_token": True
+                        },
+                        "target_variable": "flexscan",
+                        "next_step": 24
+                    },
+                    {
+                        # 24
+                        "name": "Select Flex Scan F1 year",
+                        "description": "Choose the year for which you want to load the Flex Scan Phase 1 results. N.B. make sure to select the correct ESDL layer you wish to use as base for the Flex Scan F1 results.",
+                        "type": "choice",
+                        "options": [
+                            {
+                                "name": "2020",
+                                "description": "",
+                                "next_step": 25,
+                                "target_variable_value": {
+                                    "year": 2020
+                                }
+                            },
+                            {
+                                "name": "2025",
+                                "description": "",
+                                "next_step": 25,
+                                "target_variable_value": {
+                                    "year": 2025
+                                }
+                            },
+                            {
+                                "name": "2030",
+                                "description": "",
+                                "next_step": 25,
+                                "target_variable_value": {
+                                    "year": 2030
+                                }
+                            },
+                        ],
+                        "target_variable": "flexscanf1",
+                    },
+                    {
+                        # 25
+                        "name": "Load Flex Scan F1",
+                        "type": "service",
+                        "state_params": {
+                            "execution_id": "execution.id",
+                            "year": "flexscanf1.year"
+                        },
+                        "service": {
+                            "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
+                            "name": "Load Flex Scan phase 1 results",
+                            "headers": {
+                                "Accept": "application/json",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                                "Content-Type": "application/json",
+                            },
+                            "url": f"{FLEX_BACKEND_HOST}/executions/<execution_id>/phase1/esdl/<year>",
+                            "auto": True,
+                            "clearLayers": False,
+                            "http_method": "post",
+                            "type": "send_esdl_json",
+                            "body": "base64_encoded",
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "query_parameters": [
+                                {
+                                    "name": "Execution ID",
+                                    "parameter_name": "execution_id",
+                                    "location": "url",
+                                },
+                                {
+                                    "name": "Flex Scan F1 year",
+                                    "parameter_name": "year",
+                                    "location": "url",
+                                }
+                            ],
+                            "with_jwt_token": True,
+                        },
+                        # "target_variable": "flexscanf1.year",  # when wanting to set loaded per year
+                        "target_variable": "flexscanf1",
+                        "target_variable_value": {
+                            "loaded": True
+                        },
+                    },
+                    {
+                        # 26
+                        # TODO: for now link to Flex Scan dashboard F1 results table, optionally later this table could be displayed in the map-editor or KPI layers could be added like for EPS
+                        "name": "Explore Flex Scan F1 results",
+                        "description": "",
+                        "type": "custom",
+                        "component": "flexscan-inspect-phase1",
+                        "custom_data": {
+                            "flex_frontend_host": FLEX_FRONTEND_HOST,
+                        },
+                    },
+                    {
+                        # 27
+                        # TODO: choose correct type and implement
+                        "name": "Export to EHC",
+                        "description": "",
+                        "type": "text",
+                        "text": "The currently active ESDL is being exported to the EHC...",
+                    },
+                    {
+                        # 28
+                        # TODO: choose correct type and implement
+                        "name": "Load EHC",
+                        "description": "",
+                        "type": "text",
+                        "text": "Work in progress...",
+                    },
+                    {
+                        # 29
+                        # TODO: choose correct type and implement
+                        "name": "Run/export for Flex Scan F2",
+                        "description": "",
+                        "type": "text",
+                        "text": "Work in progress...",
+                    },
+                    {
+                        # 30
+                        # TODO: choose correct type and implement
+                        "name": "Load Flex Scan F2",
+                        "description": "",
+                        "type": "text",
+                        "text": "Work in progress...",
+                    },
+                    {
+                        # 31
+                        # TODO: choose correct type and implement
+                        "name": "Run ESSIM",
+                        "description": "",
+                        "type": "text",
+                        "text": "An ESSIM run can be started via the ESSIM button on the left side of the ESDL Map Editor",
+                    },
+                    {
+                        # 32
+                        # TODO: choose correct type and implement
+                        "name": "Select energy hub assets",
+                        "description": "",
+                        "type": "text",
+                        "text": "Work in progress...",
+                    },
+                    {
+                        # 33
+                        # TODO: choose correct type and implement
+                        "name": "",
+                        "description": "",
+                        "type": "text",
+                        "text": """
+                            A basic theoretical configuration of the electricity and gas infrastructure has been generated by the EPS. 
+                            In this step, this configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set. 
+                            This can be done using the ESDL Map Editor functionalities.
+                        """,
+                    },
                 ],
-            }
-        ]
+            },
+        ],
     },
 }

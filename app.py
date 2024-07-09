@@ -71,6 +71,7 @@ from extensions.time_dimension import TimeDimension
 from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
+from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
@@ -187,6 +188,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
+DiceWorkflow(app, socketio, executor, settings_storage)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 edr_client = EDRClient(app, socketio, settings_storage)
@@ -2062,6 +2064,11 @@ def process_command(message):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
+                        shape_dictionary = get_session('shape_dictionary')
+                        try:
+                            del shape_dictionary[area_id]  # delete area from shape dictionary
+                        except KeyError:
+                            pass
                         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
     if message['cmd'] == 'get_asset_ports':

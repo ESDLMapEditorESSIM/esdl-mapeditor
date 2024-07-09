@@ -42,8 +42,10 @@ import {useBaseLayers,} from "../composables/baseLayers";
 // eslint-disable-next-line no-unused-vars
 import VisibleLayersView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "../composables/wmsLayers";
+import {useVisibleLayers} from "../composables/visibleLayers";
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
+const {layerIsVisible} = useVisibleLayers();
 const {
   getWmsLayerList,
   showWmsLayer,
@@ -52,6 +54,8 @@ const {
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
+  setWmsLayerGroupOpened,
+  setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
 } = useWmsLayers();
@@ -61,6 +65,7 @@ const {
 const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
+const openedFolders = [];
 
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
@@ -130,7 +135,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": item.visible, opened: false},
+    state: {"checked": layerIsVisible(itemId), opened: openedFolders.includes(itemId)},
     children: children,
   });
 }
@@ -145,6 +150,20 @@ class LayerFolderTreeSpec {
   constructor() {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
+    this.events = {
+      'check_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, true);
+      },
+      'uncheck_node.jstree': function (e, data) {
+        setVisibilityWmsLayerGroup(data.node.id, false);
+      },
+      // 'open_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, true);
+      // },
+      // 'close_node.jstree': function (e, data) {
+      //   setWmsLayerGroupOpened(data.node.id, false);
+      // }
+    }
   }
 
   contextMenus(node, tree) {
@@ -293,7 +312,20 @@ const eventHandlersByName = {
       }
     });
   },
-};
+  'open_node.jstree': function (e, data) {
+    const id = data.node.id;
+    if (!openedFolders.includes(id)) {
+      openedFolders.push(id);
+    }
+  },
+  'close_node.jstree': function (e, data) {
+    const id = data.node.id;
+    const index = openedFolders.indexOf(id);
+    if (index > -1) {
+      openedFolders.splice(index, 1);
+    }
+  },
+}
 
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
