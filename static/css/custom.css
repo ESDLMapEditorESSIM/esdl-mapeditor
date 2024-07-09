@@ -576,6 +576,23 @@ z-index for jstree context menu, sidebar has 2000
 }
 */
 
+/* Map layer feature properties popup */
+
+.layer-feature-props-popup {
+    display: flex;
+    flex-direction: column;
+}
+
+.layer-feature-props-popup > p {
+    margin: 2px 0;
+}
+
+.layer-feature-props-popup > h4 {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #000;
+    margin: 8px 0;
+}
 
 /*
     SmartMenu

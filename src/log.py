@@ -55,10 +55,13 @@ logging.config.dictConfig(
             }
         },
         "loggers": {
-            "": {"handlers": ["default"], "level": "INFO"},
+            "": {
+                "handlers": ["default"], 
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            },
             "src": {
                 "handlers": ["default"],
-                "level": "INFO" if FLASK_DEBUG else "DEBUG",
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
         },
