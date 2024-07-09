@@ -49,6 +49,7 @@ import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
 import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
+import "./composables/toasts.js";
 import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
