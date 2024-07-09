@@ -59,7 +59,7 @@ def load_wms_layer_postgis(
     file_path: str,
     table_name: str,
     overwrite: bool = False,
-):
+) -> None:
     # check if table already exists
     cursor.execute("select exists(select * from information_schema.tables where table_name=%s)", (table_name,))
     if overwrite or not cursor.fetchone()[0]:  # if overwrite or table does not exist
@@ -99,7 +99,7 @@ def load_wms_layer_geoserver(
     style_file_path: str = None,
     raster_transparency: float = 0.5,
     overwrite: bool = False,
-):
+) -> None:
     # check if layer already exists
     try:
         layer = geo.get_layer(layer_name, os.environ.get("GEOSERVER_WORKSPACE"))
@@ -111,8 +111,10 @@ def load_wms_layer_geoserver(
 
     if overwrite or not layer:  # if overwrite or layer does not exist
         if layer:  # delete already existing layer and style
-            if style_file_path:
+            try:  # delete style if exists
                 geo.delete_style(style_name=style_name, workspace=workspace)
+            except GeoserverException:
+                pass
             geo.delete_layer(layer_name=layer_name, workspace=workspace)
 
         if style_file_path:
@@ -171,7 +173,7 @@ def add_wms_layer(
     url: str,
     layer_name: str,
     legend_url: str,
-):
+) -> None:
     if setting_type == SettingType.SYSTEM:
         project_name = SettingType.SYSTEM.value
     layer = {
@@ -189,13 +191,13 @@ def add_wms_layer(
     parent_group["child_ids"].append(layer_uuid)
 
 
-def load_layers():
+def load_layers() -> None:
     cursor = connect_to_postgres(
         host=os.environ.get("POSTGRES_HOST"),
         port=int(os.environ.get("POSTGRES_PORT")),
         database=os.environ.get("POSTGRES_DB"),
         user=os.environ.get("POSTGRES_USER"),
-        password=os.environ.get("POSTGRES_PASSWORD")
+        password=os.environ.get("POSTGRES_PASSWORD"),
     )
 
     # connect to geoserver
@@ -286,51 +288,62 @@ def load_layers():
                 style_file_path = None
                 style_name = layer_name + "_style"
 
-            # load layer in postgis (only for non-raster files)
-            if not file_path.endswith(tuple(os.environ.get("RASTER_EXTENSIONS").replace(" ", "").split(","))):
-                load_wms_layer_postgis(
-                    cursor=cursor,
-                    postgres_host=os.environ.get("POSTGRES_HOST"),
-                    postgres_port=os.environ.get("POSTGRES_PORT"),
-                    postgres_user=os.environ.get("POSTGRES_USER"),
-                    postgres_password=os.environ.get("POSTGRES_PASSWORD"),
-                    postgres_db=os.environ.get("POSTGRES_DB"),
+            try:
+                # load layer in postgis (only for non-raster files)
+                if not file_path.endswith(tuple(os.environ.get("RASTER_EXTENSIONS").replace(" ", "").split(","))):
+                    load_wms_layer_postgis(
+                        cursor=cursor,
+                        postgres_host=os.environ.get("POSTGRES_HOST"),
+                        postgres_port=os.environ.get("POSTGRES_PORT"),
+                        postgres_user=os.environ.get("POSTGRES_USER"),
+                        postgres_password=os.environ.get("POSTGRES_PASSWORD"),
+                        postgres_db=os.environ.get("POSTGRES_DB"),
+                        file_path=file_path,
+                        table_name=layer_name,
+                        overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
+                    )
+
+                # load layer in geoserver
+                load_wms_layer_geoserver(
+                    geo=geo,
+                    workspace=os.environ.get("GEOSERVER_WORKSPACE"),
+                    store_name=os.environ.get("GEOSERVER_STORENAME"),
+                    raster_extensions=os.environ.get("RASTER_EXTENSIONS"),
+                    layer_name=layer_name,
                     file_path=file_path,
-                    table_name=layer_name,
+                    style_name=style_name,
+                    style_file_path=style_file_path,
+                    raster_transparency=float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY")),
                     overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
                 )
 
-            # load layer in geoserver
-            load_wms_layer_geoserver(
-                geo=geo,
-                workspace=os.environ.get("GEOSERVER_WORKSPACE"),
-                store_name=os.environ.get("GEOSERVER_STORENAME"),
-                raster_extensions=os.environ.get("RASTER_EXTENSIONS"),
-                layer_name=layer_name,
-                file_path=file_path,
-                style_name=style_name,
-                style_file_path=style_file_path,
-                raster_transparency=float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY")),
-                overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
-            )
-
-            # load folders and WMS layers into mongodb for mapeditor tree
-            parent_folder_uuid = base_folder_uuid
-            for folder_name in parent_folders:
-                parent_folder_uuid = add_wms_group(
-                    layer_groups, parent_folder_uuid, setting_type, os.environ.get("PROJECT_NAME"), folder_name
+                # load folders and WMS layers into mongodb for mapeditor tree
+                parent_folder_uuid = base_folder_uuid
+                for folder_name in parent_folders:
+                    parent_folder_uuid = add_wms_group(
+                        layer_groups, parent_folder_uuid, setting_type, os.environ.get("PROJECT_NAME"), folder_name
+                    )
+                add_wms_layer(
+                    wms_layers,
+                    layer_groups[parent_folder_uuid],
+                    setting_type,
+                    os.environ.get("PROJECT_NAME"),
+                    layer_name,
+                    f"{os.environ.get('GEOSERVER_URL')}/wms",
+                    layer_name,
+                    f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
+                    f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
                 )
-            add_wms_layer(
-                wms_layers,
-                layer_groups[parent_folder_uuid],
-                setting_type,
-                os.environ.get("PROJECT_NAME"),
-                layer_name,
-                f"{os.environ.get('GEOSERVER_URL')}/wms",
-                layer_name,
-                f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
-                f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
-            )
+            except Exception as e:
+                print(e)
+                if os.getenv("ABORT_ON_LAYER_ERROR").lower() in ("true", "1", "t"):
+                    raise IOError(
+                        f"ERROR loading {file_path}:"
+                        f" previous files have been loaded to postgis/geoserver,"
+                        f" nothing has been loaded into the mapeditor."
+                    )
+                else:
+                    print(f"ERROR loading {file_path}: this file is not loaded into the mapeditor.")
 
     settings_storage.set(setting_type, identifier, LAYERS_SETTING, wms_layers)
     settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
