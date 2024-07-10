@@ -42,7 +42,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.activity_context import ActivityContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
-#from extensions.data_manager.data_manager import DataManager
+from extensions.data_manager.data_manager import DataManager
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -213,19 +213,14 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
-#DataManager(app, socketio)
-
-
-#TODO: check secret key with itsdangerous error and testing and debug here
+DataManager(app, socketio)
 
 app.config.update({
     'TESTING': True,
     'DEBUG': True,
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
-    #'OIDC_REQUIRE_VERIFIED_EMAIL': False,  # No longer enforced in Flask-OIDC 2.2.0
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    # 'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'], # Space separated list of scopes in Flask-OIDC 2.2.0
     'OIDC_SCOPES': 'openid email profile groups microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
