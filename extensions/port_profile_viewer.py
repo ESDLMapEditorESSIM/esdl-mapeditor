@@ -87,10 +87,10 @@ class PortProfileViewer:
 
                     # Grafana datasources don't work anymore with host:443 as a configured host
                     # needs to be https://host now
-                    if profile.port == 443:
+                    if profile.port == 443 and not profile.host.startswith("https"):
                         host = "https://" + profile.host
                     else:
-                        host = profile.host + ':' + str(profile.port)
+                        host = profile.host + ':' + str(profile.port) if profile.port else profile.host
 
                     embed_url = create_panel_multiple(
                         graph_title=graph_name,
@@ -157,10 +157,10 @@ class PortProfileViewer:
 
                         # Grafana datasources don't work anymore with host:443 as a configured host
                         # needs to be https://host now
-                        if profile.port == 443:
+                        if profile.port == 443 and not profile.host.startswith("https"):
                             host = "https://" + profile.host
                         else:
-                            host = profile.host + ':' + str(profile.port)
+                            host = profile.host + ':' + str(profile.port) if profile.port else profile.host
 
                         embed_url = create_panel_multiple(
                             graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
