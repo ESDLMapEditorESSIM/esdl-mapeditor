@@ -203,6 +203,46 @@ export function useWmsLayers() {
         globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'] = isOpen;
     };
 
+    /**
+     * Given the nodeId string and the collection string Array, the function appends the nodeId into the collection
+     * if it belongs to a 'layer' type; Otherwise, it traverses to the children of the 'layer_groups' node 
+     * until no child node is found.
+     * 
+     * @param {string} nodeId jsTree node id
+     * @param {string[]} collection The array for collecting nodeId of the layer type.
+     */
+    const collectLayerNodes = (nodeId, collection) => {
+        if (nodeId in globalWmsLayerList.value['layers']) {
+            collection.push(nodeId);
+        } else {
+            for (const childId of globalWmsLayerList.value['layer_groups'][nodeId]['child_ids']) {
+                collectLayerNodes(childId, collection);
+            }
+        }
+    };
+
+    /**
+     * Returns the count of hidden layers within a node.
+     * 
+     * This function takes a node object and counts the number of layers within that node 
+     * which are hidden. A node can be a layer or a layer_group containing other layer_groups or layers. 
+     * 
+     * @param {Object} node jsTree node object
+     * @returns {number} The count of hidden layers within the given node.
+     */
+    const getNodeHiddenLayerCount = (node) => {
+        let hiddenLayerIds = [];
+        if (node.type.includes('folder')) {
+            const layerIds = [];
+            // node children element can be either layer Id or layer_group Id
+            node.children.forEach((nodeId) => {
+                collectLayerNodes(nodeId, layerIds);
+            });
+            hiddenLayerIds = layerIds.filter((layerId) => !globalWmsLayerList.value['layers'][layerId]['visible']);
+        }
+        return hiddenLayerIds.length;
+    };
+
     const setVisibilityWmsLayerGroup = (itemId, isVisible) => {
         if (itemId in globalWmsLayerList.value['layers']) { // for recursive call
             if (isVisible) {
@@ -241,6 +281,7 @@ export function useWmsLayers() {
         addWmsLayerGroup,
         removeWmsLayerGroup,
         setWmsLayerGroupOpened,
+        getNodeHiddenLayerCount,
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem

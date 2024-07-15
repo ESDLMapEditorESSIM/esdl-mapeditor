@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "@/composables/socketio";
@@ -43,6 +43,7 @@ import {useBaseLayers,} from "@/composables/baseLayers";
 import VisibleLayersView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
+import { notification } from 'ant-design-vue';
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerIsVisible} = useVisibleLayers();
@@ -55,6 +56,7 @@ const {
   renameWmsLayerGroup,
   removeWmsLayerGroup,
   setWmsLayerGroupOpened,
+  getNodeHiddenLayerCount,
   setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
@@ -66,6 +68,9 @@ const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
 const openedFolders = [];
+
+// Maximum layer count to be opened by the user at once
+const MaxLayerOpenCount = 10;
 
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
@@ -151,19 +156,60 @@ class LayerFolderTreeSpec {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
     this.events = {
-      'check_node.jstree': function (e, data) {
-        setVisibilityWmsLayerGroup(data.node.id, true);
+      'check_node.jstree': (e, data) => {
+        const hiddenLayerCount = getNodeHiddenLayerCount(data.node);
+        if (hiddenLayerCount <= MaxLayerOpenCount) {
+          setVisibilityWmsLayerGroup(data.node.id, true);
+        } else {
+          this.revertCheckNodeAction(data.node);
+          this.showWarningMsg(hiddenLayerCount, MaxLayerOpenCount);
+        }
       },
-      'uncheck_node.jstree': function (e, data) {
+      'uncheck_node.jstree': (e, data) => {
         setVisibilityWmsLayerGroup(data.node.id, false);
       },
-      'open_node.jstree': function (e, data) {
+      'open_node.jstree': (e, data) => {
         setWmsLayerGroupOpened(data.node.id, true);
       },
-      'close_node.jstree': function (e, data) {
+      'close_node.jstree': (e, data) => {
         setWmsLayerGroupOpened(data.node.id, false);
       }
-    }
+    };
+  }
+
+  /**
+   * Revert the check_node action, keeping the child nodes state unchanged.
+   * 
+   * @param {Object} node The node object to revert the action on.
+   */
+  revertCheckNodeAction(node) {
+    // Returns all the checked checkbox node ids of the jsTree regardless of whether it is a folder or a layer type.
+    const currentCheckboxState = getTree().get_state().checkbox;
+    // Gets an array of checked child nodes and excludes the current node.
+    const checkedChildNodes = currentCheckboxState.filter((nodeId) => nodeId !== node.id);
+    // Reverts check_node action and keeps the child nodes state unchanged.
+    // setTimeout to ensure it happens after the check_node event has been processed.
+    setTimeout(() => {
+      getTree().uncheck_node(node);
+      checkedChildNodes.forEach((nodeId) => {
+        getTree().check_node(nodeId);
+      });
+    }, 0);
+  }
+
+  /**
+   * Show a warning message when trying to open too many layers at once.
+   * 
+   * @param {number} hiddenLayerCount The number of hidden layers being opened.
+   * @param {number} maxLayerOpenCount The maximum number of layers can be opened at once.
+   */
+  showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
+    notification['warning']({
+      message: 'Warning',
+      description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, ` 
+                    + "please select and open the layer individually.",
+      placement: 'bottomLeft',
+    });
   }
 
   contextMenus(node, tree) {
@@ -210,7 +256,7 @@ class LayerFolderTreeSpec {
         },
         '_disabled': node.original.readonly || node.parents.length < 2, // do not delete root folders
       },
-    }
+    };
   }
 }
 
