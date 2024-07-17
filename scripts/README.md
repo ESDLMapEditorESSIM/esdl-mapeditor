@@ -1,8 +1,13 @@
-# Scripts
+# Prerequisites
 
-Install `requirements.txt` in this folder on top of the MapEditor requirements (these are not necessary for the
-MapEditor itself).  
-Copy the `.env.template` to `.env` and update the values.
+- Install `requirements.txt` in this folder on top of the MapEditor requirements (these are not necessary for the
+MapEditor itself). 
+  
+  Be noted that `GDAL` is the required dependency for using `geoserver-rest`. See documentation for GDAL installation: https://geoserver-rest.readthedocs.io/en/latest/installation.html#installation
+
+- Copy the `.env.template` to `.env` and update the values.
+
+- The targeted PostgreSQL database (specified by `POSTGRES_DB` in your `.env` file) should have `postgis` extension installed to store geospatial data as tables.
 
 ## Load geospatial data in geoserver and add as wms layers
 
