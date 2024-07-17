@@ -87,6 +87,65 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     }
 };
 
+/**
+ * Extracts and returns the base URL of the WMS service.
+ * 
+ * @param {string} inputUrl The input WMS URL (possibly with various query parameters)
+ * @returns {string|Error} The base URL of the WMS service if valid, otherwise an Error object.
+ */
+const getWmsServiceBaseUrl = (inputUrl) => {
+    try {
+        const url = new URL(inputUrl);
+        return `${url.origin}${url.pathname}`;
+    } catch (error) {
+        return new Error(`${error}`);
+    }
+};
+
+/**
+ * Parses a WMS GetCapabilities XML string and extracts layer information. 
+ * 
+ * It returns an array of layerInfo objects. Each layerInfo object contains the
+ * `name`, `title`, and `legendUrl` properties. If a layer does not have a
+ * legend URL, the `legendUrl` will be an empty string.
+ * 
+ * @param {string} xmlString The XML string of the WMS GetCapabilities document.
+ * @returns {Array<Object>} An array of layerInfo objects, each with `name`,
+ *                         `title`, and `legendUrl` properties.
+ */
+const parseXML = (xmlString) => {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+    const layers = xmlDoc.getElementsByTagName("Layer");
+    let layerOptions = [];
+    Array.from(layers).forEach((layer) => {
+        const layerName = layer.getElementsByTagName("Name")[0]?.textContent;
+        const layerTitle = layer.getElementsByTagName("Title")[0]?.textContent;
+        
+        // Extract legend URL
+        let legendUrl = null;
+        const styles = layer.getElementsByTagName("Style");
+        if (styles.length > 0) {
+            // NOTE: the current implementation default to use the first style
+            const legendURL = styles[0].getElementsByTagName("LegendURL");
+            if (legendURL.length > 0) {
+                const onlineResource = legendURL[0].getElementsByTagName("OnlineResource")[0];
+                legendUrl = onlineResource?.getAttribute("xlink:href");
+            }
+        }
+
+        // To avoid possible duplicates being added to the layerOptions
+        if (layerName && !layerOptions.map((l) => l.name).includes(layerName)) {
+            const layerInfo = {
+                name: layerName,
+                title: layerTitle,
+                legendUrl: legendUrl || "",
+            };
+            layerOptions.push(layerInfo);
+        }
+    });
+    return layerOptions;
+};
 
 export function useWmsLayers() {
     /**
@@ -94,12 +153,33 @@ export function useWmsLayers() {
      */
     const getWmsLayerList = () => toValue(globalWmsLayerList);
 
-    const addWmsLayer = (layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
-        /**
-         * Add wms layer
-         */
-        const layerId = window.uuidv4();
+    /**
+     * Fetches and returns the WMS GetCapabilities document as an array of layerInfo objects.
+     * 
+     * @param {string} wmsBaseUrl The base URL of the WMS service.
+     * @returns {Promise<Array<Object>>} A promise that resolves to an array of layerInfo objects.
+     * @throws {Error} Throws an error if the fetch operation fails or returns a non-OK status.
+     */
+    const getWmsGetCapabilities = async (wmsBaseUrl) => {
+        const url = `${wmsBaseUrl}?service=WMS&request=GetCapabilities`;
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            throw new Error(`[${resp.statusText}] Error fetching WMS GetCapabilities.`);
+        } else {
+            const wmsCapabilitiesXML = await resp.text();
+            const layerOptions = parseXML(wmsCapabilitiesXML);
+            return layerOptions;
+        }
+    };
 
+    /**
+     * Add a WMS layer
+     * 
+     * @returns {Promise<Object>} A promise of allLayers object ({layers: {}, layer_groups: {}}) that resolves if the layer is added successfully,
+     *                            or rejects with an error if the addition fails.
+     * @throws {Error} If the backend response indicates a failure to add the layer.
+     */
+    const addWmsLayer = async (layerId, layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
         const wmsLayer = {
             id: layerId,
             description: layerDescr,
@@ -111,10 +191,14 @@ export function useWmsLayers() {
             min_zoom_level: minZoomLevel,
             parent_group_id: groupId,
         };
-        socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
-            allLayers['layers'][layerId].visible = true;
-            updateGlobalWmsLayerList(allLayers, layerId);
-            showWmsLayer(layerId);
+        return new Promise((resolve, reject) => {
+            socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
+                if (allLayers) {
+                    resolve(allLayers);
+                } else {
+                    reject(new Error(`An unknown error occurred while adding the WMS layer ${layerName}.`));
+                }
+            });
         });
     };
 
@@ -243,7 +327,8 @@ export function useWmsLayers() {
         setWmsLayerGroupOpened,
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
-        copyWmsItem
+        copyWmsItem,
+        getWmsGetCapabilities,
     };
 }
 
@@ -295,4 +380,9 @@ const removeGroupChildrenFromMap = (layerGroupId) => {
             removeFromVisibleLayerList(childId);
         }
     }
+};
+
+export {
+    getWmsServiceBaseUrl,
+    updateGlobalWmsLayerList
 };
