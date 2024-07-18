@@ -392,21 +392,28 @@ class ESDLServices:
 
                     if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
                         influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id)
-                        first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
-                        fields_query = f'SHOW FIELD KEYS FROM "{first_carrier_id}"'
-                        results = influxdb_client.query(fields_query)
-                        fields = [
-                            result["fieldKey"] for result in results.get_points() if result["fieldType"] == "float"
-                        ]
-                        emit(
-                            "animation_esdl_data",
-                            {
-                                "es_id": es.id,
-                                "fields": fields,
-                                "service_short_name": service["result"][0]["service_short_name"],
-                                "calc_name": service_params["query_parameters"]["job_name"],
-                            },
-                        )
+                        try:
+                            first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
+                            fields_query = f'SHOW FIELD KEYS FROM "{first_carrier_id}"'
+                            results = influxdb_client.query(fields_query)
+                            fields = [
+                                result["fieldKey"] for result in results.get_points() if result["fieldType"] == "float"
+                            ]
+                            emit(
+                                "animation_esdl_data",
+                                {
+                                    "es_id": es.id,
+                                    "fields": fields,
+                                    "service_short_name": service["result"][0]["service_short_name"],
+                                    "calc_name": service_params["query_parameters"]["job_name"],
+                                },
+                            )
+                        except Exception as e:
+                            logger.error(e)
+                            return False, (
+                                f"\nCould not retrieve animation data, "
+                                f"problem querying InfluxDB on host: '{influxdb_client._host}'"
+                            )
 
                     return True, None
                 elif service["result"][0]["action"] == "print":
