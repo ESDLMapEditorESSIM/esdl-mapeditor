@@ -222,25 +222,20 @@ export function useWmsLayers() {
     };
 
     /**
-     * Returns the count of hidden layers within a node.
-     * 
-     * This function takes a node object and counts the number of layers within that node 
-     * which are hidden. A node can be a layer or a layer_group containing other layer_groups or layers. 
+     * Returns an array of descendant layer Ids within a node.
      * 
      * @param {Object} node jsTree node object
-     * @returns {number} The count of hidden layers within the given node.
+     * @returns {string[]} An array of layer Ids within the given node.
      */
-    const getNodeHiddenLayerCount = (node) => {
-        let hiddenLayerIds = [];
+    const getDescendantLayerNodeIds = (node) => {
+        const layerNodeIds = [];
         if (node.type.includes('folder')) {
-            const layerIds = [];
             // node children element can be either layer Id or layer_group Id
             node.children.forEach((nodeId) => {
-                collectLayerNodes(nodeId, layerIds);
+                collectLayerNodes(nodeId, layerNodeIds);
             });
-            hiddenLayerIds = layerIds.filter((layerId) => !globalWmsLayerList.value['layers'][layerId]['visible']);
         }
-        return hiddenLayerIds.length;
+        return layerNodeIds;
     };
 
     const setVisibilityWmsLayerGroup = (itemId, isVisible) => {
@@ -281,7 +276,7 @@ export function useWmsLayers() {
         addWmsLayerGroup,
         removeWmsLayerGroup,
         setWmsLayerGroupOpened,
-        getNodeHiddenLayerCount,
+        getDescendantLayerNodeIds,
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem

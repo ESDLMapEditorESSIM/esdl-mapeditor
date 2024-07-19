@@ -56,7 +56,7 @@ const {
   renameWmsLayerGroup,
   removeWmsLayerGroup,
   setWmsLayerGroupOpened,
-  getNodeHiddenLayerCount,
+  getDescendantLayerNodeIds,
   setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
@@ -157,12 +157,20 @@ class LayerFolderTreeSpec {
     this.icon = 'fas fa-layer-group';
     this.events = {
       'check_node.jstree': (e, data) => {
-        const hiddenLayerCount = getNodeHiddenLayerCount(data.node);
-        if (hiddenLayerCount <= MaxLayerOpenCount) {
-          setVisibilityWmsLayerGroup(data.node.id, true);
-        } else {
-          this.revertCheckNodeAction(data.node);
-          this.showWarningMsg(hiddenLayerCount, MaxLayerOpenCount);
+        // Hide any opened child layer from the partially opened folder.
+        if (this._getCheckedChildNodeIds(data.node).length) {
+          setTimeout(() => getTree().uncheck_node(data.node));
+        }
+        else {
+          const layerIds = getDescendantLayerNodeIds(data.node);
+          if (layerIds.length <= MaxLayerOpenCount) {
+            setVisibilityWmsLayerGroup(data.node.id, true);
+          } 
+          else {
+            // setTimeout to ensure it happens after the check_node event has been processed.
+            setTimeout(() => getTree().uncheck_node(data.node));
+            this._showWarningMsg(layerIds.length, MaxLayerOpenCount);
+          }
         }
       },
       'uncheck_node.jstree': (e, data) => {
@@ -178,23 +186,15 @@ class LayerFolderTreeSpec {
   }
 
   /**
-   * Revert the check_node action, keeping the child nodes state unchanged.
+   * Returns an array of child node Ids in checked state.
    * 
-   * @param {Object} node The node object to revert the action on.
+   * @param {Object} node jsTree node object
+   * @returns {string[]} An array of checked child node Ids.
    */
-  revertCheckNodeAction(node) {
-    // Returns all the checked checkbox node ids of the jsTree regardless of whether it is a folder or a layer type.
-    const currentCheckboxState = getTree().get_state().checkbox;
-    // Gets an array of checked child nodes and excludes the current node.
-    const checkedChildNodes = currentCheckboxState.filter((nodeId) => nodeId !== node.id);
-    // Reverts check_node action and keeps the child nodes state unchanged.
-    // setTimeout to ensure it happens after the check_node event has been processed.
-    setTimeout(() => {
-      getTree().uncheck_node(node);
-      checkedChildNodes.forEach((nodeId) => {
-        getTree().check_node(nodeId);
-      });
-    }, 0);
+  _getCheckedChildNodeIds(node) {
+    const children = getTree().get_node(node).children_d;
+    const checkedChildren = children.filter((childId) => getTree().is_checked(childId));
+    return checkedChildren;
   }
 
   /**
@@ -203,7 +203,7 @@ class LayerFolderTreeSpec {
    * @param {number} hiddenLayerCount The number of hidden layers being opened.
    * @param {number} maxLayerOpenCount The maximum number of layers can be opened at once.
    */
-  showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
+  _showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
     notification['warning']({
       message: 'Warning',
       description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, ` 
