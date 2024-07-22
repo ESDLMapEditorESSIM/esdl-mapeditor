@@ -207,7 +207,7 @@ class LayerFolderTreeSpec {
     notification['warning']({
       message: 'Warning',
       description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, ` 
-                    + "please select and open the layer individually.",
+                    + "please open layers individually.",
       placement: 'bottomLeft',
     });
   }
