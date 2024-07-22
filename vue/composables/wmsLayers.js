@@ -102,50 +102,6 @@ const getWmsServiceBaseUrl = (inputUrl) => {
     }
 };
 
-/**
- * Parses a WMS GetCapabilities XML string and extracts layer information. 
- * 
- * It returns an array of layerInfo objects. Each layerInfo object contains the
- * `name`, `title`, and `legendUrl` properties. If a layer does not have a
- * legend URL, the `legendUrl` will be an empty string.
- * 
- * @param {string} xmlString The XML string of the WMS GetCapabilities document.
- * @returns {Array<Object>} An array of layerInfo objects, each with `name`,
- *                         `title`, and `legendUrl` properties.
- */
-const parseXML = (xmlString) => {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-    const layers = xmlDoc.getElementsByTagName("Layer");
-    let layerOptions = [];
-    Array.from(layers).forEach((layer) => {
-        const layerName = layer.getElementsByTagName("Name")[0]?.textContent;
-        const layerTitle = layer.getElementsByTagName("Title")[0]?.textContent;
-        
-        // Extract legend URL
-        let legendUrl = null;
-        const styles = layer.getElementsByTagName("Style");
-        if (styles.length > 0) {
-            // NOTE: the current implementation default to use the first style
-            const legendURL = styles[0].getElementsByTagName("LegendURL");
-            if (legendURL.length > 0) {
-                const onlineResource = legendURL[0].getElementsByTagName("OnlineResource")[0];
-                legendUrl = onlineResource?.getAttribute("xlink:href");
-            }
-        }
-
-        // To avoid possible duplicates being added to the layerOptions
-        if (layerName && !layerOptions.map((l) => l.name).includes(layerName)) {
-            const layerInfo = {
-                name: layerName,
-                title: layerTitle,
-                legendUrl: legendUrl || "",
-            };
-            layerOptions.push(layerInfo);
-        }
-    });
-    return layerOptions;
-};
 
 export function useWmsLayers() {
     /**
@@ -154,22 +110,26 @@ export function useWmsLayers() {
     const getWmsLayerList = () => toValue(globalWmsLayerList);
 
     /**
-     * Fetches and returns the WMS GetCapabilities document as an array of layerInfo objects.
+     * Fetches and returns the WMS GetCapabilities response into a wmsGetCapabilitiesResp object, 
+     * which has a structure as {success: boolean, result: WmsServiceLayerInfo[] | string}.
      * 
      * @param {string} wmsBaseUrl The base URL of the WMS service.
-     * @returns {Promise<Array<Object>>} A promise that resolves to an array of layerInfo objects.
-     * @throws {Error} Throws an error if the fetch operation fails or returns a non-OK status.
+     * @returns {Promise<Object>} A promise that resolves to a wmsGetCapabilitiesResp object
+     * @throws {Error} Throws an error if the get_wms_getcapabilities call fails.
      */
     const getWmsGetCapabilities = async (wmsBaseUrl) => {
-        const url = `${wmsBaseUrl}?service=WMS&request=GetCapabilities`;
-        const resp = await fetch(url);
-        if (!resp.ok) {
-            throw new Error(`[${resp.statusText}] Error fetching WMS GetCapabilities.`);
-        } else {
-            const wmsCapabilitiesXML = await resp.text();
-            const layerOptions = parseXML(wmsCapabilitiesXML);
-            return layerOptions;
-        }
+        const params = {
+            url: `${wmsBaseUrl}?service=WMS&request=GetCapabilities`
+        };
+        return new Promise((resolve, reject) => {
+            socket.emit('get_wms_getcapabilities', params, (wmsGetCapabilitiesResp) => {
+                if (wmsGetCapabilitiesResp) {
+                    resolve(wmsGetCapabilitiesResp);
+                } else {
+                    reject(new Error(`An unknown error occurred while fetching WMS GetCapabilities ${wmsBaseUrl}.`));
+                }
+            });
+        });
     };
 
     /**

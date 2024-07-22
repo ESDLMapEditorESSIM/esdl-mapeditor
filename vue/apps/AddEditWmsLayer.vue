@@ -135,8 +135,8 @@ const initInputMsg = "";
 const urlInputStatus = ref(initInputStatus);
 const urlInputMsg = ref(initInputMsg);
 
-// When available layer options are returned from getWmsGetCapabilities()
-// It keeps the layerInfo objects (each with `name`, `title`, and `legendUrl` properties) in an array
+// When the getWmsGetCapabilities() call is successful, 
+// layerOptions will be updated to an array of WmsServiceLayerInfo object, each with `name`, `title`, and `legend_url` properties.
 const layerOptions = ref([]);
 // To keep user selected layer names in an array
 const selectedLayers = ref([]);
@@ -212,16 +212,20 @@ const onNextBtnClick = async() => {
     else {
       wmsBaseUrl.value = parsedUrl;
       try {
-        const layers = await getWmsGetCapabilities(wmsBaseUrl.value);
-        if (layers.length) {
-          // Navigate the user to select layers UI
+        const resp = await getWmsGetCapabilities(wmsBaseUrl.value);
+        if (resp.success) {
+          // Navigate the user to the layer selection UI
           addWmsLayerStep.value = stepOptions[1];
-          layerOptions.value = layers;
+          layerOptions.value = resp.result;
+        } else {
+          console.error(resp.result);
+          urlInputStatus.value = "error";
+          urlInputMsg.value = `${resp.result} Please check the provided URL and try again.`;
         }
       } catch (error) {
         console.error(error);
         urlInputStatus.value = "error";
-        urlInputMsg.value = `${error.message}. Please check the provided URL and try again.`;
+        urlInputMsg.value = `${error.message} Please check the provided URL and try again.`;
       }
     }
   }
@@ -237,7 +241,7 @@ const onAddToMapBtnClick = async () => {
   for (const layerName of selectedLayers.value) {
     const layerId = window.uuidv4();
     const layerUrl = wmsBaseUrl.value;
-    const layerLegendUrl = layerOptions.value.filter((l) => l.name === layerName)[0].legendUrl || "";
+    const layerLegendUrl = layerOptions.value.filter((l) => l.name === layerName)[0].legend_url || "";
     // Users can override the default values when "editing" the layer.
     const layerDescr = layerName; // Default layerDescr to be layerName
     const layerAttr = "";         // Default layerAttr to be an empty string
