@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
 import {useSocketIO} from "@/composables/socketio";
@@ -43,6 +43,7 @@ import {useBaseLayers,} from "@/composables/baseLayers";
 import VisibleLayersView from "./VisibleLayersView.vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
+import { notification } from 'ant-design-vue';
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerIsVisible} = useVisibleLayers();
@@ -55,6 +56,7 @@ const {
   renameWmsLayerGroup,
   removeWmsLayerGroup,
   setWmsLayerGroupOpened,
+  getDescendantLayerNodeIds,
   setVisibilityWmsLayerGroup,
   moveWmsItem,
   copyWmsItem
@@ -66,6 +68,9 @@ const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
 const openedFolders = [];
+
+// Maximum layer count to be opened by the user at once
+const MaxLayerOpenCount = 10;
 
 const getTree = () => $('#' + treeId).jstree(true);
 // eslint-disable-next-line no-unused-vars
@@ -151,19 +156,60 @@ class LayerFolderTreeSpec {
     this.type = "wms_layer_folder";
     this.icon = 'fas fa-layer-group';
     this.events = {
-      'check_node.jstree': function (e, data) {
-        setVisibilityWmsLayerGroup(data.node.id, true);
+      'check_node.jstree': (e, data) => {
+        // Hide any opened child layer from the partially opened folder.
+        if (this._getCheckedChildNodeIds(data.node).length) {
+          setTimeout(() => getTree().uncheck_node(data.node));
+        }
+        else {
+          const layerIds = getDescendantLayerNodeIds(data.node);
+          if (layerIds.length <= MaxLayerOpenCount) {
+            setVisibilityWmsLayerGroup(data.node.id, true);
+          } 
+          else {
+            // setTimeout to ensure it happens after the check_node event has been processed.
+            setTimeout(() => getTree().uncheck_node(data.node));
+            this._showWarningMsg(layerIds.length, MaxLayerOpenCount);
+          }
+        }
       },
-      'uncheck_node.jstree': function (e, data) {
+      'uncheck_node.jstree': (e, data) => {
         setVisibilityWmsLayerGroup(data.node.id, false);
       },
-      'open_node.jstree': function (e, data) {
+      'open_node.jstree': (e, data) => {
         setWmsLayerGroupOpened(data.node.id, true);
       },
-      'close_node.jstree': function (e, data) {
+      'close_node.jstree': (e, data) => {
         setWmsLayerGroupOpened(data.node.id, false);
       }
-    }
+    };
+  }
+
+  /**
+   * Returns an array of child node Ids in checked state.
+   * 
+   * @param {Object} node jsTree node object
+   * @returns {string[]} An array of checked child node Ids.
+   */
+  _getCheckedChildNodeIds(node) {
+    const children = getTree().get_node(node).children_d;
+    const checkedChildren = children.filter((childId) => getTree().is_checked(childId));
+    return checkedChildren;
+  }
+
+  /**
+   * Show a warning message when trying to open too many layers at once.
+   * 
+   * @param {number} hiddenLayerCount The number of hidden layers being opened.
+   * @param {number} maxLayerOpenCount The maximum number of layers can be opened at once.
+   */
+  _showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
+    notification['warning']({
+      message: 'Warning',
+      description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, ` 
+                    + "please open layers individually.",
+      placement: 'bottomLeft',
+    });
   }
 
   contextMenus(node, tree) {
@@ -210,7 +256,7 @@ class LayerFolderTreeSpec {
         },
         '_disabled': node.original.readonly || node.parents.length < 2, // do not delete root folders
       },
-    }
+    };
   }
 }
 
