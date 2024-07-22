@@ -42,7 +42,18 @@
           <p v-if="urlInputMsg.length" class="input-error-message">{{ urlInputMsg }}</p>
         </a-row>
         <a-row type="flex" justify="end" style="padding-top: 8px;">
-          <a-button type="primary" @click="onNextBtnClick">Next</a-button>
+          <a-button 
+            type="primary" 
+            :disabled="isFetchingWmsGetCapabilities" 
+            @click="onNextBtnClick"
+          >
+            <template v-if="isFetchingWmsGetCapabilities">
+              <a-spin />
+            </template>
+            <template v-else>
+              Next
+            </template>
+          </a-button>
         </a-row>
       </a-col>
       <!-- Step 2: Displaying available layer options -->
@@ -134,6 +145,7 @@ const initInputStatus = "";
 const initInputMsg = "";
 const urlInputStatus = ref(initInputStatus);
 const urlInputMsg = ref(initInputMsg);
+const isFetchingWmsGetCapabilities = ref(false);
 
 // When the getWmsGetCapabilities() call is successful, 
 // layerOptions will be updated to an array of WmsServiceLayerInfo object, each with `name`, `title`, and `legend_url` properties.
@@ -211,6 +223,7 @@ const onNextBtnClick = async() => {
     } 
     else {
       wmsBaseUrl.value = parsedUrl;
+      isFetchingWmsGetCapabilities.value = true;
       try {
         const resp = await getWmsGetCapabilities(wmsBaseUrl.value);
         if (resp.success) {
@@ -226,6 +239,8 @@ const onNextBtnClick = async() => {
         console.error(error);
         urlInputStatus.value = "error";
         urlInputMsg.value = `${error.message} Please check the provided URL and try again.`;
+      } finally {
+        isFetchingWmsGetCapabilities.value = false;
       }
     }
   }
