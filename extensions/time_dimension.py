@@ -35,8 +35,6 @@ logger = log.get_logger(__name__)
 # TIME_DIMENSION_SYSTEM_CONFIG = 'TIME_DIMENSION_SYSTEM_CONFIG'
 TIME_DIMENSION_USER_CONFIG = "TIME_DIMENSION_SERVICE_USER_CONFIG"
 
-LOAD_DURATION_FIELD_NAME = "allocationEnergy"
-
 default_colors = [
     "#ff0000",
     "#0000ff",
@@ -152,6 +150,7 @@ class TimeDimension:
         def request_load_duration_curve(info):
             asset_id = info["id"]
             active_es_id = get_session("active_es_id_animation")
+            timedimension_parameter = get_session("timedimension-parameter")
             esh = get_handler()
             asset = esh.get_by_id(active_es_id, asset_id)
             asset_name = asset.name
@@ -176,7 +175,7 @@ class TimeDimension:
             for m in measurements:
                 try:
                     query = (
-                        'SELECT "' + LOAD_DURATION_FIELD_NAME + '" FROM "' + m + "\" WHERE assetId='" + asset_id + "'"
+                        'SELECT "' + timedimension_parameter + '" FROM "' + m + "\" WHERE assetId='" + asset_id + "'"
                     )
                     logger.debug(query)
                     res = influxdb_client.query(query)
@@ -191,7 +190,7 @@ class TimeDimension:
 
             ldc_series = []
             for item in series:
-                ldc_series.append(item["allocationEnergy"])
+                ldc_series.append(item[timedimension_parameter])
             ldc_series.sort(reverse=True)
 
             ldc_series_decimate = []

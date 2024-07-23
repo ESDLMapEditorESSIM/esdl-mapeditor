@@ -259,8 +259,6 @@ def create_panel_multiple(graph_title, axis_title, dataset_info, qau, start_date
         payload["influx_queries"].append(influxdb_query)
 
     url = settings.panel_service_config["internal_url"] + "/graphs/"
-    print(f"URL: {url}")
-    print(f"PAYLOAD: {payload}")
     try:
         r = requests.post(url, json=payload)
         if r.status_code == 201:
