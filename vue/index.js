@@ -46,12 +46,12 @@ import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import './bridge.js';
 import Swal from "sweetalert2";
-import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
 import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
+import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
 
 // Vue.config.productionTip = false
 
@@ -182,7 +182,7 @@ window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');
 }
 
-createVueLControl(AnnouceKPIsToolbar, {
+createVueLControl(ResultVisualizationsToolbar, {
         position: 'bottomright',
     });
 

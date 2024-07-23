@@ -56,7 +56,6 @@ from extensions.essim_sensitivity import ESSIMSensitivity
 from extensions.etm_interface import ETMInterface
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
-from extensions.ielgas import IELGAS
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
@@ -196,7 +195,6 @@ profiles = Profiles(app, socketio, executor, settings_storage)
 ESDLDrive(app, socketio, executor)
 ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage)
-IELGAS(app, socketio, settings_storage)
 ETMInterface(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
 esdl_services = ESDLServices(app, socketio, settings_storage)

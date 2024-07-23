@@ -160,10 +160,9 @@
     <script type="text/javascript" src="./utils/building_map_handler.js"></script>
 
     <script type="text/javascript" src="./utils/boundary_service.js"></script>
-{% if 'ielgas' in role or 'opera' in role %}
+
     <script type="text/javascript" src="./utils/time_dimension.js"></script>
-    <script type="text/javascript" src="./utils/ielgas.js"></script>
-{% endif %}
+    <script type="text/javascript" src="./utils/L.Control.TDAssetsMonitorChart.js"></script>
 
     <script type="text/javascript" src="./utils/wms_layers.js"></script>
     <script type="text/javascript" src="./utils/shapefiles.js"></script>
@@ -236,7 +235,6 @@
         var dialog;
         var kpicharts = null;
         var ldc_control;            // load duration curve
-        var ielgas_chart;
 
         var user_info;              // to store information about the logged in user
         var user_settings;          // to store settings per user for ui behaviour
@@ -1576,14 +1574,14 @@
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>Load animation</a>
                                         <ul class="dropdown-menu">
 {% if 'ielgas' in role %}
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', []);"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', []);"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
 {% endif %}
 {% if 'opera' in role %}
                                             <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', []);"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
@@ -1692,7 +1690,7 @@
     <div id="loader"></div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
-    <div id="ielgascontrol"></div>
+    <div id="tdmonitorcontrol"></div>
     <div id="essim_kpis_control"></div>
     <div id="vuemodal"></div>
 
