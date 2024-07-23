@@ -203,6 +203,41 @@ export function useWmsLayers() {
         globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'] = isOpen;
     };
 
+    /**
+     * Given the nodeId string and the collection string Array, the function appends the nodeId into the collection
+     * if it belongs to a 'layer' type; Otherwise, it traverses to the children of the 'layer_groups' node 
+     * until no child node is found.
+     * 
+     * @param {string} nodeId jsTree node id
+     * @param {string[]} collection The array for collecting nodeId of the layer type.
+     */
+    const collectLayerNodes = (nodeId, collection) => {
+        if (nodeId in globalWmsLayerList.value['layers']) {
+            collection.push(nodeId);
+        } else {
+            for (const childId of globalWmsLayerList.value['layer_groups'][nodeId]['child_ids']) {
+                collectLayerNodes(childId, collection);
+            }
+        }
+    };
+
+    /**
+     * Returns an array of descendant layer Ids within a node.
+     * 
+     * @param {Object} node jsTree node object
+     * @returns {string[]} An array of layer Ids within the given node.
+     */
+    const getDescendantLayerNodeIds = (node) => {
+        const layerNodeIds = [];
+        if (node.type.includes('folder')) {
+            // node children element can be either layer Id or layer_group Id
+            node.children.forEach((nodeId) => {
+                collectLayerNodes(nodeId, layerNodeIds);
+            });
+        }
+        return layerNodeIds;
+    };
+
     const setVisibilityWmsLayerGroup = (itemId, isVisible) => {
         if (itemId in globalWmsLayerList.value['layers']) { // for recursive call
             if (isVisible) {
@@ -241,6 +276,7 @@ export function useWmsLayers() {
         addWmsLayerGroup,
         removeWmsLayerGroup,
         setWmsLayerGroupOpened,
+        getDescendantLayerNodeIds,
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem
