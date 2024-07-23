@@ -21,8 +21,10 @@ import {
     Form,
     Input,
     InputNumber,
+    List,
     Menu,
     Modal,
+    Popover,
     Radio,
     Row,
     Select,
@@ -74,8 +76,10 @@ export function mountApp(component, elementSelector) {
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
+    app.use(List);
     app.use(Menu);
     app.use(Modal);
+    app.use(Popover);
     app.use(Radio);
     app.use(Row);
     app.use(Select);

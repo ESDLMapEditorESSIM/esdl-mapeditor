@@ -57,7 +57,7 @@ let socket = null;
  */
 const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) => {
     const url = wmsServiceUrl + 
-        "service=WMS&version=1.1.1&request=GetFeatureInfo&layers=" + layerName +
+        "?service=WMS&version=1.1.1&request=GetFeatureInfo&layers=" + layerName +
         "&styles=&bbox=" + map.getBounds().toBBoxString() +
         "&height=" + map.getSize().y + "&width=" + map.getSize().x +
         "&query_layers=" + layerName +

@@ -17,8 +17,10 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from dataclasses import asdict
+
+from xml.etree import ElementTree as ET
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
@@ -28,7 +30,10 @@ from src.roles import is_mapeditor_admin
 from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureRequestBody, 
                                                                 WmsLayerRequestInfo, 
                                                                 WmsLayerFeatureResp, 
-                                                                LayerFeaturePropsResp)
+                                                                LayerFeaturePropsResp,
+                                                                WmsGetCapabilitiesRequestBody,
+                                                                WmsServiceLayerInfo,
+                                                                WmsGetCapabilitiesResp)
 
 logger = log.get_logger(__name__)
 
@@ -149,6 +154,12 @@ class WMSLayers:
             resp = WmsLayerFeatureResp(req.ev_lat_lng, layers_features_props)
             emit('on_wms_layer_feature_resp', asdict(resp))
 
+        @self.socketio.on('get_wms_getcapabilities', namespace='/esdl')
+        def _get_wms_getcapabilities(params: dict):
+            req = WmsGetCapabilitiesRequestBody(**params)
+            result = self.get_wms_getcapabilities(req.url)
+            return asdict(result)
+
     def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
         feature_props: Optional[Dict] = None
         try:
@@ -162,6 +173,70 @@ class WMSLayers:
         except Exception as e:
             logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
         return feature_props
+    
+    def get_wms_getcapabilities(self, url: str) -> WmsGetCapabilitiesResp:
+        try:
+            resp = requests.get(url, params={"service": "WMS", 
+                                             "request": "GetCapabilities"})
+            resp.raise_for_status()
+
+            content_type = resp.headers.get('Content-Type')
+            if 'xml' not in content_type:
+                raise Exception(f"Expected XML response, but received {content_type}")
+            
+            getcapabilities_xml = resp.text
+            layer_options = self.parse_getcapabilities_xml(getcapabilities_xml)
+            if len(layer_options):
+                return WmsGetCapabilitiesResp(True, layer_options)
+            else:
+                return WmsGetCapabilitiesResp(False, "No layer available.")
+        except Exception as e:
+            logger.warning(e)
+            return WmsGetCapabilitiesResp(False, f"{str(e)}.")
+        
+    def parse_getcapabilities_xml(self, xml_string: str) -> List[WmsServiceLayerInfo]:
+        """
+        Parses a WMS GetCapabilities XML string and extracts layer attributes.
+
+        It returns a list of WmsServiceLayerInfo data class. Each WmsServiceLayerInfo contains
+        'name', 'title', and 'legend_url' attributes. If a layer does not have a
+        legend URL, the 'legend_url' will be an empty string.
+
+        Args:
+            xml_string (str): The XML string of the WMS GetCapabilities document.
+
+        Returns:
+            list: A list of WmsServiceLayerInfo data class, each with 'name', 'title', and 'legend_url' attributes.
+        """
+        namespaces = {'wms': 'http://www.opengis.net/wms', 'xlink': 'http://www.w3.org/1999/xlink'}
+        root = ET.fromstring(xml_string)
+        layers = root.findall(".//wms:Layer", namespaces)
+        layer_options: List[WmsServiceLayerInfo] = []
+
+        for layer in layers:
+            layer_name_elem = layer.find("wms:Name", namespaces)
+            layer_title_elem = layer.find("wms:Title", namespaces)
+
+            if layer_name_elem is not None and layer_title_elem is not None:
+                layer_name = layer_name_elem.text
+                layer_title = layer_title_elem.text
+
+                # Extract legend URL
+                legend_url = ""
+                styles = layer.findall("wms:Style", namespaces)
+                if styles:
+                    # NOTE: the current implementation default to use the first style
+                    legend_url_elem = styles[0].find("wms:LegendURL", namespaces)
+                    if legend_url_elem is not None:
+                        online_resource = legend_url_elem.find("wms:OnlineResource", namespaces)
+                        if online_resource is not None:
+                            legend_url = online_resource.get(f"{{{namespaces['xlink']}}}href")
+
+                if layer_name is not None and not any(l.name == layer_name for l in layer_options):
+                    layer_info = WmsServiceLayerInfo(layer_name, layer_title, legend_url)
+                    layer_options.append(layer_info)
+                
+        return layer_options
     
     def add_wms_layer_group(self, layer_group_id: str, layer_group: dict, parent_group_id: str = None,
                             position: str = None):
