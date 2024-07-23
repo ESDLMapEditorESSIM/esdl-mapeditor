@@ -176,7 +176,8 @@ class WMSLayers:
     
     def get_wms_getcapabilities(self, url: str) -> WmsGetCapabilitiesResp:
         try:
-            resp = requests.get(url)
+            resp = requests.get(url, params={"service": "WMS", 
+                                             "request": "GetCapabilities"})
             resp.raise_for_status()
 
             content_type = resp.headers.get('Content-Type')

@@ -25,7 +25,7 @@
     </h1>
     <!-- Add WMS layer UI -->
     <div v-if="isNewLayer">
-      <!-- Step 1: An input field to specify WMS service URL -->
+      <!-- Step 1: An input field to specify WMS URL -->
       <a-col
         v-if="addWmsLayerStep === stepOptions[0]"
         :span="24"
@@ -35,24 +35,77 @@
             id="input-WmsUrl"
             v-model:value="wmsFormState.url"
             type="text"
-            placeholder="WMS service URL"
+            placeholder="WMS URL"
             :status="urlInputStatus"
             @change="resetUrlInputState"
           />
           <p v-if="urlInputMsg.length" class="input-error-message">{{ urlInputMsg }}</p>
         </a-row>
+        <a-row style="padding-top: 8px;">
+          <a-button 
+            style="color: #4096ff; border: 0px; box-shadow: none;"
+            @click="onAddParamsBtnClick"
+          >
+            + Add query parameter
+          </a-button>
+          <a-popover>
+            <template #content>
+              <p style="width: 250px;">
+                {{ "Optionally, add parameters that are specific to accessing this service. " + 
+                  "Parameter names and values should be defined on the service and are particular to that service." }}
+              </p>
+            </template>
+            <a-button type="text">
+              <template #icon>
+                <InfoCircleOutlined />
+              </template>
+            </a-button>
+          </a-popover>
+        </a-row>
+        <a-row 
+          v-if="wmsFormState.customParams"
+          style="padding-top: 8px; padding-left: 16px;"
+        >
+          <a-row 
+            v-for="paramId of Object.keys(wmsFormState.customParams)" 
+            :key="paramId"
+            style="padding-bottom: 8px;"
+          >
+            <a-space>
+              <a-col>
+                <a-input
+                  v-model:value="wmsFormState.customParams[paramId].key"
+                  type="text"
+                  placeholder="Parameter"
+                />
+              </a-col>
+              <a-col>
+                <a-input
+                  v-model:value="wmsFormState.customParams[paramId].value"
+                  type="text"
+                  placeholder="Value"
+                />
+              </a-col>
+              <a-button 
+                type="text"
+                danger
+                @click="() => onRemoveParamBtnClick(paramId)"
+              >
+                <template #icon>
+                  <DeleteOutlined />
+                </template>
+              </a-button>
+            </a-space>
+          </a-row>
+        </a-row>
         <a-row type="flex" justify="end" style="padding-top: 8px;">
           <a-button 
-            type="primary" 
-            :disabled="isFetchingWmsGetCapabilities" 
+            type="primary"
+            :loading="isFetchingWmsGetCapabilities"
+            :disabled="isFetchingWmsGetCapabilities"
             @click="onNextBtnClick"
           >
-            <template v-if="isFetchingWmsGetCapabilities">
-              <a-spin />
-            </template>
-            <template v-else>
-              Next
-            </template>
+            Next
           </a-button>
         </a-row>
       </a-col>
@@ -118,6 +171,7 @@
 
 <script setup>
 import {ref, onBeforeMount, reactive, toRaw} from "vue";
+import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons-vue';
 import {useObject} from "../composables/ObjectID";
 import {useWmsLayers} from "../composables/wmsLayers";
 import {camelCase} from "../utils/utils";
@@ -154,7 +208,7 @@ const layerOptions = ref([]);
 const selectedLayers = ref([]);
 
 const wmsBaseUrl = ref("");
-const wmsFormState = reactive({url: ""});
+const wmsFormState = reactive({url: "", customParams: {}});
 
 onBeforeMount(() => {
   if (currentObjectID.value.startsWith("__")) {
@@ -200,29 +254,52 @@ const onBackBtnClick = () => {
   addWmsLayerStep.value = stepOptions[0];
 };
 
+const onAddParamsBtnClick = () => {
+  const paramId = window.uuidv4();
+  const newParamObj = {
+    key: "",
+    value: ""
+  };
+  Object.assign(wmsFormState.customParams, { [paramId]: newParamObj });
+};
+
+const onRemoveParamBtnClick = (paramId) => {
+  delete wmsFormState.customParams[paramId];
+};
+
+
 /**
- * Handles the "Next" button click event to process the WMS service URL input.
+ * Handles the "Next" button click event to process the WMS URL input.
  * 
  * @returns {Promise<void>}
  */
 const onNextBtnClick = async() => {
-  const inputUrl = toRaw(wmsFormState).url;
+  const wmsFormInput = toRaw(wmsFormState);
   
   // Show an error message when the URL input field is empty
-  if (!inputUrl.length) {
+  if (!wmsFormInput.url.length) {
     urlInputStatus.value = "error";
-    urlInputMsg.value = "Please provide a WMS service URL before continuing.";
+    urlInputMsg.value = "Please provide a WMS URL before continuing.";
   }
   else {
     // Get the WMS service base URL from the user input URL (which can contain additional query parameters)
     // and show an error message if an invalid URL is found.
-    const parsedUrl = getWmsServiceBaseUrl(inputUrl);
-    if (parsedUrl instanceof Error) {
+    const serviceUrl = getWmsServiceBaseUrl(wmsFormInput.url);
+    if (serviceUrl instanceof Error) {
       urlInputStatus.value = "error";
-      urlInputMsg.value = `${parsedUrl.message}. Please check the URL before continuing.`;
+      urlInputMsg.value = `${serviceUrl.message}. Please check the URL before continuing.`;
     } 
     else {
-      wmsBaseUrl.value = parsedUrl;
+      const queryParams = [];
+      if (wmsFormInput.customParams) {
+        Object.values(wmsFormInput.customParams).forEach((param) => {
+          if (param.key && param.value) {
+            queryParams.push(`${param.key}=${param.value}`);
+          }
+        });
+      }
+      wmsBaseUrl.value = queryParams.length ? `${serviceUrl}?${queryParams.join("&")}` : serviceUrl;
+
       isFetchingWmsGetCapabilities.value = true;
       try {
         const resp = await getWmsGetCapabilities(wmsBaseUrl.value);

@@ -53,7 +53,7 @@ class WmsGetCapabilitiesRequestBody:
     The request body passed from the frontend to the backend for fetching WMS GetCapabilities.
     """
     url: str
-    """WMS GetCapabilities Url"""
+    """WMS service URL"""
 
 @dataclass
 class WmsServiceLayerInfo:

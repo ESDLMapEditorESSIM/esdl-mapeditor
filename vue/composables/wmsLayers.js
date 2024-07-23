@@ -114,12 +114,12 @@ export function useWmsLayers() {
      * which has a structure as {success: boolean, result: WmsServiceLayerInfo[] | string}.
      * 
      * @param {string} wmsBaseUrl The base URL of the WMS service.
-     * @returns {Promise<Object>} A promise that resolves to a wmsGetCapabilitiesResp object
+     * @returns {Promise<Object>} A promise that resolves to a wmsGetCapabilitiesResp object.
      * @throws {Error} Throws an error if the get_wms_getcapabilities call fails.
      */
     const getWmsGetCapabilities = async (wmsBaseUrl) => {
         const params = {
-            url: `${wmsBaseUrl}?service=WMS&request=GetCapabilities`
+            url: wmsBaseUrl
         };
         return new Promise((resolve, reject) => {
             socket.emit('get_wms_getcapabilities', params, (wmsGetCapabilitiesResp) => {
