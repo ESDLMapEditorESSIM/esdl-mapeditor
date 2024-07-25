@@ -72,7 +72,9 @@ initTabs(sidePaneTabs);
     &.side_pane_hidden {
       min-width: 0;
       max-width: 0;
+      padding: 0;
     }
+    padding: 8px;
     min-width: 200px;
     max-width: 500px;
     transition: max-width .2s ease-in;

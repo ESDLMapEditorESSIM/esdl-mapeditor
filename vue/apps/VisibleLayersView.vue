@@ -15,23 +15,29 @@
   -->
 
 <template>
-  <a-card id="visible_layers_view">
-    <h3>Visible WMS layers</h3>
-    <div v-if="treeData.length > 0">
-      <vue-js-tree
-        :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-        :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-        :check-call-back="checkCallBack"
-      />
-      <LayerOpacityPopover 
-        :layer-id="selectedLayerId" 
-        @close-popover="closeLayerOpacityPopover"
-      />
-    </div>
-    <div v-else>
+  <div id="visible_layers_view" style="padding-left: 8px;">
+    <a-row>
+      <h4>Visible WMS layers</h4>
+    </a-row>
+    <a-row v-if="treeData.length > 0">
+      <a-col :span="24">
+        <vue-js-tree
+          :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+          :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+          :check-call-back="checkCallBack"
+        />
+      </a-col>
+      <a-col>
+        <LayerOpacityPopover 
+          :layer-id="selectedLayerId" 
+          @close-popover="closeLayerOpacityPopover"
+        />
+      </a-col>
+    </a-row>
+    <a-row v-else>
       <p class="text-only">No map layers loaded.</p>
-    </div>
-  </a-card>
+    </a-row>
+  </div>
 </template>
 
 <script setup>

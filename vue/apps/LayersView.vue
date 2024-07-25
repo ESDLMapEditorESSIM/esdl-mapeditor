@@ -19,12 +19,14 @@
     <a-space
       v-if="treeData != null"
       direction="vertical"
+      style="width: 95%;"
     >
       <vue-js-tree
         :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
         :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
         :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
+      <a-divider style="margin: 8px;" />
       <VisibleLayersView />
     </a-space>
     <div v-else>
