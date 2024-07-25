@@ -17,11 +17,17 @@
 <template>
   <a-card id="visible_layers_view">
     <h3>Visible WMS layers</h3>
-    <vue-js-tree
-      v-if="treeData.length > 0" :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
-      :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-      :check-call-back="checkCallBack"
-    />
+    <div v-if="treeData.length > 0">
+      <vue-js-tree
+        :tree-id="treeId" :plugins="['contextmenu', 'types', 'dnd']"
+        :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
+        :check-call-back="checkCallBack"
+      />
+      <LayerOpacityPopover 
+        :layer-id="selectedLayerId" 
+        @close-popover="closeLayerOpacityPopover"
+      />
+    </div>
     <div v-else>
       <p class="text-only">No map layers loaded.</p>
     </div>
@@ -29,18 +35,19 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed, ref} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../components/jstree/VueJsTree";
+import LayerOpacityPopover from "../components/popover/LayerOpacityPopover.vue";
 import {useSocketIO} from "@/composables/socketio";
-import {useVisibleLayers} from "@/composables/visibleLayers"
+import {useVisibleLayers} from "@/composables/visibleLayers";
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
 const {getVisibleLayerList, updateDisplayOrderVisibleLayers, hideVisibleLayer, hideAllVisibleLayers} = useVisibleLayers();
 
 // eslint-disable-next-line no-unused-vars
-const treeId = "visible_layer_tree"
+const treeId = "visible_layer_tree";
 
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
@@ -59,6 +66,25 @@ const treeData = computed(() => {
   }
 });
 
+// Reference to the targeted layer when adjusting the layer opacity.
+const selectedLayerId = ref("");
+
+/**
+ * Open the LayerOpacityPopover component by setting the selectedLayerId value.
+ * 
+ * @param {object} node jsTree node
+ */
+const openLayerOpacityPopover = (node) => {
+  selectedLayerId.value = node.id;
+};
+
+/**
+ * Close the LayerOpacityPopover component by resetting selectedLayerId to an empty string.
+ */
+const closeLayerOpacityPopover = () => {
+  selectedLayerId.value = "";
+};
+
 class MovableLayerTreeSpec {
   constructor() {
     this.type = "visible_layer";
@@ -68,6 +94,13 @@ class MovableLayerTreeSpec {
 
   contextMenus(node, tree) {
     return {
+      'adjust_opacity': {
+        'label': 'Adjust layer opacity',
+        'icon': 'fa fa-sliders',
+        'action': function () {
+          openLayerOpacityPopover(node);
+        }
+      },
       'hide_layer': {
         'label': 'Hide layer',
         'icon': 'fas fa-minus',
@@ -82,7 +115,7 @@ class MovableLayerTreeSpec {
           hideAllVisibleLayers();
         }
       }
-    }
+    };
   }
 }
 

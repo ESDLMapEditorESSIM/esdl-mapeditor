@@ -230,6 +230,30 @@ export function useVisibleLayers() {
         )
     };
 
+    /**
+     * Returns the visible layer object from a given layer Id
+     * 
+     * @param {string} id Layer Id
+     * @returns {Object|undefined} The targeted visible layer object; If not found, undefined is returned
+     */
+    const getVisibleLayerById = (id) => {
+        const targetedLayer = globalVisibleLayerList.value.find(layer => layer.id === id);
+        return targetedLayer;
+    };
+
+    /**
+     * Adjusts the opacity of the visible layer.
+     * 
+     * @param {string} id Layer Id
+     * @param {number} opacity The desired layer opacity value between 0 and 1
+     */
+    const adjustVisibleLayerOpacity = (id, opacity) => {
+        const targetLayer = getVisibleLayerById(id);
+        if (targetLayer && 0 <= opacity <= 1) {
+            targetLayer.layer_ref.setOpacity(opacity);
+        }
+    };
+
     return {
         getVisibleLayerList,
         removeFromVisibleLayerList,
@@ -237,6 +261,8 @@ export function useVisibleLayers() {
         updateDisplayOrderVisibleLayers,
         layerIsVisible,
         hideVisibleLayer,
-        hideAllVisibleLayers
+        hideAllVisibleLayers,
+        getVisibleLayerById,
+        adjustVisibleLayerOpacity
     };
 }
