@@ -19,9 +19,9 @@
  *
  */
 import {ref, toValue} from "vue";
-import {useWmsLayers} from "./wmsLayers";
+import {useWmsLayers, updateGlobalWmsLayerList} from "./wmsLayers";
 
-const {getWmsLayerList} = useWmsLayers()
+const {getWmsLayerList} = useWmsLayers();
 const globalVisibleLayerList = ref([]);
 
 const map = window.map;
@@ -254,6 +254,27 @@ export function useVisibleLayers() {
         }
     };
 
+    /**
+     * Saves the layer opacity setting to the settings_storage.
+     * 
+     * @param {string} id Layer Id
+     */
+    const saveVisibleLayerOpacitySetting = (id) => {
+        const targetLayer = getVisibleLayerById(id);
+        if (targetLayer) {
+            const opacity = targetLayer.layer_ref.options.opacity;
+            if (id && opacity) {
+                const params = {layer_id: id, opacity: opacity};
+                // After the "save_wms_layer_opacity_setting" event, 
+                // calling updateGlobalWmsLayerList to ensure the latest layers settings are reflected in the app.
+                socket.emit("save_wms_layer_opacity_setting", params, updateGlobalWmsLayerList);
+            }
+            else {
+                console.error(`Error whiling saving WMS layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
+            }
+        }
+    };
+
     return {
         getVisibleLayerList,
         removeFromVisibleLayerList,
@@ -263,6 +284,7 @@ export function useVisibleLayers() {
         hideVisibleLayer,
         hideAllVisibleLayers,
         getVisibleLayerById,
-        adjustVisibleLayerOpacity
+        adjustVisibleLayerOpacity,
+        saveVisibleLayerOpacitySetting
     };
 }

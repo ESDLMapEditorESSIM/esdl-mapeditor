@@ -20,7 +20,8 @@
   import { useVisibleLayers } from "../../composables/visibleLayers";
   const { 
     getVisibleLayerById, 
-    adjustVisibleLayerOpacity 
+    adjustVisibleLayerOpacity,
+    saveVisibleLayerOpacitySetting,
   } = useVisibleLayers(); 
   
   const props = defineProps({
@@ -72,10 +73,11 @@
   };
   
   /**
-   * Close the layer opacity popover by emitting an event, 
-   * which resets the layerId to an empty string at the parent component.
+   * When triggered, it first saves the current layer opacity setting in the backend
+   * and closes the popover by emitting an event, which resets the layerId to an empty string at the parent component.
    */
   const closeLayerOpacityPopover = () => {
+    saveVisibleLayerOpacitySetting(props.layerId);
     emit("close-popover");
   };
   

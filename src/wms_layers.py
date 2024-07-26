@@ -33,7 +33,8 @@ from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureR
                                                                 LayerFeaturePropsResp,
                                                                 WmsGetCapabilitiesRequestBody,
                                                                 WmsServiceLayerInfo,
-                                                                WmsGetCapabilitiesResp)
+                                                                WmsGetCapabilitiesResp,
+                                                                WmsSaveOpacitySettingRequestBody)
 
 logger = log.get_logger(__name__)
 
@@ -159,6 +160,13 @@ class WMSLayers:
             req = WmsGetCapabilitiesRequestBody(**params)
             result = self.get_wms_getcapabilities(req.url)
             return asdict(result)
+        
+        @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
+        def _save_wms_layer_opacity_setting(params: dict):
+            req = WmsSaveOpacitySettingRequestBody(**params)
+            self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
+            return self.get_layers()
+
 
     def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
         feature_props: Optional[Dict] = None
@@ -358,6 +366,18 @@ class WMSLayers:
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
         self.add_child_to_layer_group(parent_group_id, layer_id, position)
+
+    def save_wms_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
+        layer = self.get_wms_layer(layer_id)
+        setting_type = SettingType(layer['setting_type'])
+        project_name = layer.get('project_name')
+        identifier = self._get_identifier(setting_type, project_name)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
+            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
+            layers[layer_id]['opacity'] = opacity
+            self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
+        else:
+            logger.error("Error whiling saving WMS layer opacity setting to the settings_storage.")
 
     def get_wms_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
