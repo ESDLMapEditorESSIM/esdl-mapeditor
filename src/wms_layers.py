@@ -17,7 +17,7 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
-from typing import Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union
 from dataclasses import asdict
 
 from xml.etree import ElementTree as ET
@@ -145,7 +145,11 @@ class WMSLayers:
             return self.get_layers()
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
-        def _query_wms_layer_feature(params: dict) -> None:
+        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> None:
+            """
+            Args:
+                params (Dict): A dict with structure as {ev_lat_lng: MouseEventLatLng, layers: List[WmsLayerRequestInfo]}
+            """
             req = WmsLayerFeatureRequestBody(**params)
             layers_features_props: list[LayerFeaturePropsResp] = []
             for l in req.layers:
@@ -156,13 +160,21 @@ class WMSLayers:
             emit('on_wms_layer_feature_resp', asdict(resp))
 
         @self.socketio.on('get_wms_getcapabilities', namespace='/esdl')
-        def _get_wms_getcapabilities(params: dict):
+        def _get_wms_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:
+            """
+            Args:
+                params (Dict): A dict with structure as {url: str}
+            """
             req = WmsGetCapabilitiesRequestBody(**params)
             result = self.get_wms_getcapabilities(req.url)
             return asdict(result)
         
         @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
         def _save_wms_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
+            """
+            Args:
+                params (Dict): A dict with structure as {layer_id: str, opacity: float}
+            """
             req = WmsSaveOpacitySettingRequestBody(**params)
             self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
             return self.get_layers()
