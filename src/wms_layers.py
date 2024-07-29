@@ -17,7 +17,7 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union
 from dataclasses import asdict
 
 from xml.etree import ElementTree as ET
@@ -162,7 +162,7 @@ class WMSLayers:
             return asdict(result)
         
         @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
-        def _save_wms_layer_opacity_setting(params: dict):
+        def _save_wms_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
             req = WmsSaveOpacitySettingRequestBody(**params)
             self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
             return self.get_layers()

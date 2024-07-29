@@ -2,10 +2,11 @@
   <!-- NICE TO HAVE: position the popover next to the target layer node -->
   <a-popover 
     v-if="layerOpacityPopover.isOpened"
-    v-model:open="layerOpacityPopover.isOpened"
+    v-model:visible="layerOpacityPopover.isOpened"
     :title="layerOpacityPopover.popoverTitle"
     trigger="click"
     placement="right"
+    @visible-change="closeLayerOpacityPopover"
   >
     <template #content>
       <SimpleSlider :input-value="layerOpacityPopover.layerOpacity" @on-slider-value-change="onLayerOpacityChange" />
@@ -14,10 +15,10 @@
   </a-popover>
 </template>
   
-  <script setup>
+<script setup>
   import { computed, defineProps } from "vue";
   import SimpleSlider from "../slider/SimpleSlider.vue";
-  import { useVisibleLayers } from "../../composables/visibleLayers";
+  import { useVisibleLayers } from "@/composables/visibleLayers";
   const { 
     getVisibleLayerById, 
     adjustVisibleLayerOpacity,
@@ -81,5 +82,5 @@
     emit("close-popover");
   };
   
-  </script>
+</script>
   
