@@ -569,16 +569,26 @@ function format_KPI_unit(unit) {
         return unit;
 }
 
-function create_area_pie_chart(ar, size) {
+/**
+ * 
+ * @param {Object} ar area feature object
+ * @param {number} size calculated area size used as pie chart radius reference
+ * @param {Object|null} ref_area_KPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
+ *                                    and used as a pie chart data template to ensure data structure consistency.
+ *                                    If not given, the pie chart is created based on the area feature dist_KPIs property.
+ */
+function create_area_dist_KPIs_pie_chart(ar, size, ref_area_KPIs) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
-        let keys = Object.keys(ar.properties.dist_KPIs);
-
+        const keys = Object.keys(ar.properties.dist_KPIs);
+        
         // create pieChartMarkers for all DistributionKPIs
         for (let j=0; j<keys.length; j++) {
-            let key = keys[j];
+            const key = keys[j];
+            const dist_KPI = ar.properties.dist_KPIs[key];
+            const unit = dist_KPI.unit;
 
             // Pie chart options.
-            var pieChartOptions = {
+            const pieChartOptions = {
                 radius: size / 4,
                 fillOpacity: 1.0,
                 opacity: 1.0,
@@ -591,26 +601,40 @@ function create_area_pie_chart(ar, size) {
                 stroke: null,
             };
 
-            let unit = ar.properties.dist_KPIs[key].unit;
-            for (let k=0; k<ar.properties.dist_KPIs[key].value.length; k++) {
-                let dist_kpi = ar.properties.dist_KPIs[key].value[k];
+            // An array of pie chart data item names
+            let chartDataItemNames = dist_KPI.value.map((ele) => ele.name);
+            // If ref_area_KPIs is given, use it for pie chart data item names
+            // to avoid possible pie chart data inconsistency among different area features.
+            if (ref_area_KPIs && ref_area_KPIs[key] &&
+                ref_area_KPIs[key].type === "distributionKPI" && 
+                ref_area_KPIs[key].names.length) 
+            {
+                chartDataItemNames = ref_area_KPIs[key].names;
+            }
 
-                pieChartOptions.data[dist_kpi["name"]] = dist_kpi["value"];
-                pieChartOptions.chartOptions[dist_kpi["name"]] = {
-                    fillColor: pie_chart_color_list[k],
+            chartDataItemNames.forEach((itemName, idx) => {
+                const dist_KPI_item = dist_KPI.value.find((item) => item.name === itemName);
+                // If no matching KPI item is found, 0 will be applied as data item value
+                const dist_KPI_item_name = dist_KPI_item ? dist_KPI_item.name : itemName;
+                const dist_KPI_item_value = dist_KPI_item ? dist_KPI_item.value : 0;
+            
+                pieChartOptions.data[dist_KPI_item_name] = dist_KPI_item_value;
+                pieChartOptions.chartOptions[dist_KPI_item_name] = {
+                    fillColor: pie_chart_color_list[idx],
                     minValue: 0,
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return value.toFixed(2) + " " + unit;
+                        return `${value.toFixed(2)} ${unit}`;
                     }
-                }
-            }
-            ar.properties.dist_KPIs[key].pieChartMarker = new L.PieChartMarker(
-                new L.LatLng(ar.properties.dist_KPIs[key].location[0], ar.properties.dist_KPIs[key].location[1]),
+                };
+            });
+
+            dist_KPI.pieChartMarker = new L.PieChartMarker(
+                new L.LatLng(dist_KPI.location[0], dist_KPI.location[1]),
                 pieChartOptions
             );
-            ar.properties.dist_KPIs[key].pieChartMarkerVisible = false;
+            dist_KPI.pieChartMarkerVisible = false;
         }
     }
 }
@@ -644,7 +668,7 @@ function resize_area_pi_charts() {
                     }
 
                     let area_size = calculate_area_size(layer);
-                    create_area_pie_chart(layer.feature, area_size);
+                    create_area_dist_KPIs_pie_chart(layer.feature, area_size, area_KPIs);
 
                     if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
                         let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
@@ -670,7 +694,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 feature.properties.get_area_color = get_area_range_colors;
 
                 let area_size = calculate_area_size(layer);
-                create_area_pie_chart(feature, area_size);
+                create_area_dist_KPIs_pie_chart(feature, area_size, area_KPIs);
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
