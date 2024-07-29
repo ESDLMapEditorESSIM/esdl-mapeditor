@@ -2,11 +2,11 @@
   <!-- NICE TO HAVE: position the popover next to the target layer node -->
   <a-popover 
     v-if="layerOpacityPopover.isOpened"
-    v-model:visible="layerOpacityPopover.isOpened"
+    v-model:open="layerOpacityPopover.isOpened"
     :title="layerOpacityPopover.popoverTitle"
     trigger="click"
     placement="right"
-    @visible-change="closeLayerOpacityPopover"
+    @open-change="closeLayerOpacityPopover"
   >
     <template #content>
       <SimpleSlider :input-value="layerOpacityPopover.layerOpacity" @on-slider-value-change="onLayerOpacityChange" />
