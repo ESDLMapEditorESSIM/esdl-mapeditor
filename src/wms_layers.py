@@ -17,7 +17,7 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
-from typing import Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from dataclasses import asdict
 
 from xml.etree import ElementTree as ET
@@ -33,7 +33,8 @@ from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureR
                                                                 LayerFeaturePropsResp,
                                                                 WmsGetCapabilitiesRequestBody,
                                                                 WmsServiceLayerInfo,
-                                                                WmsGetCapabilitiesResp)
+                                                                WmsGetCapabilitiesResp,
+                                                                WmsSaveOpacitySettingRequestBody)
 
 logger = log.get_logger(__name__)
 
@@ -144,7 +145,11 @@ class WMSLayers:
             return self.get_layers()
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
-        def _query_wms_layer_feature(params: dict) -> None:
+        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> None:
+            """
+            Args:
+                params (Dict): A dict with structure as {ev_lat_lng: MouseEventLatLng, layers: List[WmsLayerRequestInfo]}
+            """
             req = WmsLayerFeatureRequestBody(**params)
             layers_features_props: list[LayerFeaturePropsResp] = []
             for l in req.layers:
@@ -155,10 +160,25 @@ class WMSLayers:
             emit('on_wms_layer_feature_resp', asdict(resp))
 
         @self.socketio.on('get_wms_getcapabilities', namespace='/esdl')
-        def _get_wms_getcapabilities(params: dict):
+        def _get_wms_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:
+            """
+            Args:
+                params (Dict): A dict with structure as {url: str}
+            """
             req = WmsGetCapabilitiesRequestBody(**params)
             result = self.get_wms_getcapabilities(req.url)
             return asdict(result)
+        
+        @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
+        def _save_wms_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
+            """
+            Args:
+                params (Dict): A dict with structure as {layer_id: str, opacity: float}
+            """
+            req = WmsSaveOpacitySettingRequestBody(**params)
+            self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
+            return self.get_layers()
+
 
     def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
         feature_props: Optional[Dict] = None
@@ -358,6 +378,18 @@ class WMSLayers:
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
         self.add_child_to_layer_group(parent_group_id, layer_id, position)
+
+    def save_wms_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
+        layer = self.get_wms_layer(layer_id)
+        setting_type = SettingType(layer['setting_type'])
+        project_name = layer.get('project_name')
+        identifier = self._get_identifier(setting_type, project_name)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
+            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
+            layers[layer_id]['opacity'] = opacity
+            self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
+        else:
+            logger.error("Error whiling saving WMS layer opacity setting to the settings_storage.")
 
     def get_wms_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer

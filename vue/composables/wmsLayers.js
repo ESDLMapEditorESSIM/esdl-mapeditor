@@ -189,6 +189,9 @@ export function useWmsLayers() {
                 wms_layer.layer_ref.addTo(map);
                 wms_layer.layer_ref.bringToFront();
                 wms_layer.visible = true;
+                if (wms_layer.opacity !== undefined) {
+                    wms_layer.layer_ref.setOpacity(wms_layer.opacity);
+                }
             }
             if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
                 showWmsLegend(wms_layer.legend_url);

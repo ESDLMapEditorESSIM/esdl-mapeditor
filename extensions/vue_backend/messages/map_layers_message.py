@@ -76,3 +76,13 @@ class WmsGetCapabilitiesResp:
     """WMS GetCapabilities request is successful or not"""
     result: Union[List[WmsServiceLayerInfo], str]
     """If successful, a list of WmsServiceLayerInfo is returned; Otherwise, an error message is returned"""
+
+@dataclass
+class WmsSaveOpacitySettingRequestBody:
+    """
+    The request body passed from the frontend to the backend for keeping the layer opacity setting in the settings_storage.
+    """
+    layer_id: str
+    """Layer id"""
+    opacity: float
+    """Layer opacity"""
