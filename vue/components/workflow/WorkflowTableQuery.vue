@@ -17,10 +17,25 @@
       >
         <template #action="{ record }">
           <span>
-            <li v-for="a in actions" :key="a.title">
-              <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record, a.next_step)">{{ a.title }}</a>
-              <div v-else style="color: lightgray">{{ a.title }}</div>
-            </li>
+            <a-row :gutter="4">
+              <a-col v-for="a in actions" :key="a.title">
+                <div v-if="'icon' in a">
+                  <i
+                    v-if="actionEnabled(a, record)"
+                    :class="a.icon"
+                    class="pointer"
+                    @click="doAction(record, a)"
+                  />
+                  <i v-else :class="a.icon" class="disabled" />
+                </div>
+                <div v-else>
+                  <li>
+                    <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record, a)">{{ a.title }}</a>
+                    <div v-else class="disabled">{{ a.title }}</div>
+                  </li>
+                </div>
+              </a-col>
+            </a-row>
           </span>
         </template>
         <template #tags="{ record, column }">
@@ -96,8 +111,8 @@ Syntax for WorkflowTableQuery.
 
 */
 
-import {ref} from "vue";
-import {useWorkflow} from "../../composables/workflow.js";
+import {ref, watch} from "vue";
+import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api.js";
 
 const props = defineProps({
@@ -108,7 +123,12 @@ const props = defineProps({
   },
 });
 
-const workflowStep = props.workflowStep;
+let workflowStep = props.workflowStep;
+let workflowTrigger = props.workflowStep.workflowTrigger;
+// eslint-disable-next-line no-unused-vars
+watch(workflowTrigger, (currentValue, oldValue) => {
+  init();
+});
 
 const isLoading = ref(true);
 const form = {};
@@ -122,9 +142,7 @@ const additional_fields = ref(null);
 const actions = ref([]);
 const dataSource = ref([]);
 
-
-// eslint-disable-next-line no-unused-vars
-const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9})
+const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9});
 
 const formatDate = (row) => {
   if (row.text !== undefined && row.text != null) {
@@ -132,9 +150,8 @@ const formatDate = (row) => {
     return d.toLocaleString('nl-NL'); // return VNode
   }
   return row.text;
-}
+};
 
-// eslint-disable-next-line no-unused-vars
 const getTagColor = (text) => {
   let up = text.toUpperCase();
   if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
@@ -148,18 +165,37 @@ const getTagColor = (text) => {
   } else {
     return "black";
   }
-}
+};
 
-// eslint-disable-next-line no-unused-vars
-const doAction = (record, next_step) => {
-  console.log('Action selected: ', record[rowkey.value], next_step);
+const doAction = (record, action) => {
+  console.log('Action selected: ', record[rowkey.value], action);
   state[workflowStep.target_variable] = {};
   state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
   for (const field of additional_fields.value) {
-    state[workflowStep.target_variable][field] = record[field]
+    state[workflowStep.target_variable][field] = record[field];
   }
-  goToStep(next_step);
-}
+
+  isLoading.value = true;
+  if ("from_socket_emit" in action) {
+    let params = {};
+    if ("params" in action.from_socket_emit) {
+      params = action.from_socket_emit.params;
+    }
+    if ("record_params" in action.from_socket_emit) {
+      for (const [key, record_key] of Object.entries(action.from_socket_emit.record_params)) {
+        params[key] = record[record_key];
+      }
+    }
+    window.socket.emit(action.from_socket_emit.event, params, (res) => {
+      doGetData();
+    });
+  }
+  isLoading.value = false;
+
+  if ("next_step" in action) {
+    goToStep(action.next_step);
+  }
+};
 
 const actionEnabled = (action, row) => {
   if (action.enabled) {
@@ -170,22 +206,29 @@ const actionEnabled = (action, row) => {
     }
   }
   return true;  // default enabled
-}
+};
 
 const doGetData = async () => {
-  const request_params = getParamsFromState(workflowStep.source.request_params);
-  const data = await workflowGetData(workflowStep.source.url, request_params)
-  // if (data == null) {
-  //   alert("No data received.");
-  //   return;
-  // }
+  if ("url" in workflowStep.source) {
+    const data = await workflowGetData(workflowStep.source.url, getParamsFromState(workflowStep.source.request_params))
+    handleData(data);
+  } else if ("from_socket_emit" in workflowStep.source) {
+    const from_socket_emit = workflowStep.source.from_socket_emit;
+    window.socket.emit(from_socket_emit.event, from_socket_emit.params, (res) => {
+          handleData(res);
+        }
+    )
+  }
+};
+
+const handleData = (data) => {
   if (data != null) {
     const source = workflowStep.source;
     // process defined columns in workflow config
     // column syntax follows AntDV table column definition.
     source.columns.forEach((column) => {
       if (column.formatter) {  // special property for this component
-        if (column.formatter == 'formatDate') {
+        if (column.formatter === 'formatDate') {
           column.customRender = formatDate;
           column.sorter = (a, b) => {
             if (a[column.dataIndex] != null && a[column.dataIndex] !== "" && b[column.dataIndex] != null && b[column.dataIndex] !== "") {
@@ -219,9 +262,17 @@ const doGetData = async () => {
     dataSource.value = data;
   }
   isLoading.value = false;
-}
-doGetData();
+};
+
+const init = () => {
+  workflowStep = props.workflowStep;
+  workflowTrigger = props.workflowStep.workflowTrigger;
+  doGetData();
+};
+init();
+
 </script>
+
 <style scoped>
 .resulttable { /* does not work...*/
   font-size: 10px;
@@ -236,5 +287,13 @@ doGetData();
 
 .ant-tag {
   font-size: 9px !important;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.disabled {
+  color: lightgray;
 }
 </style>

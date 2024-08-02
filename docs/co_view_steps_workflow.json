@@ -1,0 +1,408 @@
+[
+  {
+    "id": "x12c4a2b-8eee-46f7-a225-87c5f85e645f",
+    "name": "Omotes",
+    "explanation": "Run, view and manage heat network simulations and optimizations",
+    "type": "vueworkflow",
+    "workflow": [
+      {
+        "name": "New optimization/simulation",
+        "type": "json-form2",
+        "data": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "run_name": {
+                "type": "string",
+                "minLength": 3,
+                "title": "Name"
+              }
+            },
+            "required": [
+              "run_name"
+            ]
+          }
+        },
+        "next_step": 0,
+        "auto_next_step": true,
+        "co_view_steps": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "name": "",
+        "description": "Please select the Omotes workflow type for the calculation.",
+        "type": "select-query",
+        "multiple": false,
+        "source": {
+          "url": "http://localhost:9200/workflow/",
+          "http_method": "get",
+          "label_fields": [
+            "description"
+          ],
+          "value_field": "id"
+        },
+        "target_variable": "chosen_workflow_type",
+        "next_step": 0,
+        "auto_next_step": true
+      },
+      {
+        "name": "",
+        "type": "json-form2",
+        "data": {
+          "from_state_variable": "chosen_workflow_type"
+        },
+        "target_variable": "input_params_dict",
+        "next_step": 0,
+        "auto_next_step": true
+      },
+      {
+        "name": "",
+        "description": "",
+        "type": "service",
+        "headers": {
+          "User-Agent": "ESDL Mapeditor/1.0",
+          "Content-Type": "application/json"
+        },
+        "state_params": {
+          "workflow_type": "chosen_workflow_type.id",
+          "input_params_dict": "input_params_dict",
+          "run_name": "run_name"
+        },
+        "service": {
+          "id": "74c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+          "description": "",
+          "name": "",
+          "button_label": "Run Omotes Calculation",
+          "headers": {
+            "User-Agent": "ESDL Mapeditor/1.0",
+            "Content-Type": "application/json"
+          },
+          "url": "http://localhost:9200/job/",
+          "http_method": "post",
+          "type": "send_esdl",
+          "send_email_in_post_body_parameter": "user_name",
+          "query_parameters": [
+            {
+              "name": "job_name",
+              "description": "Run and job name",
+              "parameter_name": "run_name",
+              "location": "body"
+            },
+            {
+              "name": "workflow_type",
+              "description": "Unique name of the workflow",
+              "parameter_name": "workflow_type",
+              "location": "body"
+            },
+            {
+              "name": "input_params_dict",
+              "description": "Input parameters (can be empty)",
+              "parameter_name": "input_params_dict",
+              "location": "body"
+            }
+          ],
+          "body": "json_text",
+          "body_config": {
+            "type": "json",
+            "parameters": [
+              {
+                "type": "esdl",
+                "encoding": "none",
+                "parameter": "input_esdl"
+              }
+            ]
+          },
+          "result": [
+            {
+              "code": 200,
+              "action": "save_model_run",
+              "model_name": "omotes",
+              "response_parameters": {
+                "job_id": "job_id"
+              }
+            }
+          ],
+          "with_jwt_token": false,
+          "state_params": true
+        },
+        "next_step": 0
+      },
+      {
+        "name": "Results overview",
+        "description": "",
+        "type": "table-query",
+        "source": {
+          "from_socket_emit": {
+            "event": "external_models_update_get_runs",
+            "params": {
+              "model_name": "omotes",
+              "get_result_url": "http://localhost:9200/job/<job_id>",
+              "result_save_params": {
+                "status": "status",
+                "progress_fraction": "progress_fraction",
+                "progress_message": "progress_message",
+                "stopped_at": "stopped_at",
+                "output_esdl": "output_esdl",
+                "logs": "logs"
+              },
+              "status_mapping": {
+                "SUBMITTED": [
+                  "REGISTERED",
+                  "ENQUEUED"
+                ],
+                "RUNNING": [
+                  "RUNNING"
+                ],
+                "SUCCEEDED": [
+                  "FINISHED",
+                  "SUCCEEDED"
+                ],
+                "CANCELLED": [
+                  "CANCELLED"
+                ],
+                "ERROR": [
+                  "TIMEOUT",
+                  "ERROR"
+                ]
+              },
+              "result_esdl_encoding": "utf8"
+            }
+          },
+          "columns": [
+            {
+              "dataIndex": "run_name",
+              "title": "Name",
+              "ellipsis": true
+            },
+            {
+              "dataIndex": "status",
+              "title": "Status",
+              "align": "center",
+              "slots": {
+                "customRender": "tags"
+              }
+            },
+            {
+              "dataIndex": "submitted_at",
+              "title": "Submitted at",
+              "formatter": "formatDate",
+              "defaultSortOrder": "descend"
+            }
+          ],
+          "actions": [
+            {
+              "title": "Load result",
+              "icon": "far fa-eye",
+              "next_step": 5,
+              "enabled": {
+                "dataIndex": "status",
+                "values": [
+                  "SUCCEEDED"
+                ]
+              }
+            },
+            {
+              "title": "View details",
+              "icon": "fas fa-info-circle",
+              "next_step": 6
+            },
+            {
+              "title": "Edit",
+              "icon": "far fa-edit",
+              "next_step": 7
+            },
+            {
+              "title": "Delete",
+              "icon": "far fa-trash-alt",
+              "from_socket_emit": {
+                "event": "external_models_delete_run",
+                "params": {
+                  "model_name": "omotes",
+                  "delete_result_url": "http://localhost:9200/job/<job_id>"
+                },
+                "record_params": {
+                  "run_id": "run_id",
+                  "job_id": "job_id"
+                }
+              }
+            }
+          ],
+          "value_field": "run_id",
+          "additional_fields": [
+            "run_name"
+          ]
+        },
+        "target_variable": "model_run",
+        "with_jwt_token": true,
+        "co_view_steps": [
+          0
+        ]
+      },
+      {
+        "name": "Load ESDL",
+        "description": "Loads the result in the ESDL MapEditor",
+        "type": "service",
+        "state_params": {
+          "run_id": "model_run.run_id",
+          "run_name": "model_run.run_name"
+        },
+        "service": {
+          "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+          "name": "Load ESDL results",
+          "description": "The results should have been loaded in the MapEditor",
+          "button_label": "Go back to results",
+          "auto": true,
+          "headers": {
+            "User-Agent": "ESDL Mapeditor/0.1",
+            "Content-Type": "application/xml"
+          },
+          "http_method": "get",
+          "type": "",
+          "body": "",
+          "result": [
+            {
+              "code": 200,
+              "action": "esdl",
+              "encoding": "base64_encoded",
+              "run_esdl_key": "output_esdl",
+              "model_name": "omotes",
+              "mode": "animation_possible"
+            }
+          ],
+          "with_jwt_token": true,
+          "state_params": true,
+          "next_step": 0
+        }
+      },
+      {
+        "name": "View model run details",
+        "type": "text",
+        "data": {
+          "from_socket_emit": {
+            "event": "external_models_get_run_text",
+            "params": {
+              "model_name": "omotes"
+            },
+            "state_params": {
+              "run_id": "model_run.run_id"
+            }
+          }
+        },
+        "next_step": 0
+      },
+      {
+        "name": "Edit model run",
+        "type": "json-form2",
+        "data": {
+          "from_socket_emit": {
+            "event": "external_models_get_run_jsonforms",
+            "params": {
+              "model_name": "omotes"
+            },
+            "state_params": {
+              "run_id": "model_run.run_id"
+            }
+          },
+          "to_socket_emit": {
+            "event": "external_models_save_run_jsonforms"
+          }
+        },
+        "button": "Save",
+        "next_step": 0
+      }
+    ]
+  },
+  {
+    "id": "64fb5727-119e-46a6-b1b3-7ac42dc3d639",
+    "name": "ESDL Dual Pipe Service",
+    "explanation": "This service converts a single pipe network into a dual pipe compounded network.",
+    "url": "http://esdl-dual-pipe-service:8080/duplicate",
+    "http_method": "post",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "type": "send_esdl",
+    "query_parameters": [],
+    "body": "",
+    "result": [
+      {
+        "code": 200,
+        "action": "esdl"
+      }
+    ],
+    "show_on_toolbar": true,
+    "icon": {
+      "filename": "Duplicate.png",
+      "type": "filename"
+    }
+  },
+  {
+    "id": "912c4a2b-8eee-46f7-a225-87c5f85e645f",
+    "name": "ESDL Validator",
+    "explanation": "This service allows you validate an ESDL against a certain schema",
+    "type": "vueworkflow",
+    "workflow": [
+      {
+        "name": "Select schema",
+        "description": "",
+        "type": "select-query",
+        "multiple": false,
+        "source": {
+          "url": "http://esdl-validator:5000/schema",
+          "http_method": "get",
+          "label_fields": [
+            "name"
+          ],
+          "value_field": "id"
+        },
+        "target_variable": "schema",
+        "next_step": 1
+      },
+      {
+        "name": "Schema validation",
+        "description": "",
+        "type": "service",
+        "state_params": {
+          "schemas": "schema.id"
+        },
+        "service": {
+          "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb27",
+          "name": "Validate ESDL against scehema",
+          "headers": {
+            "User-Agent": "ESDL Mapeditor/0.1",
+            "Content-Type": "application/xml;charset=UTF-8"
+          },
+          "url": "http://esdl-validator:5000/validationToMessages/",
+          "http_method": "post",
+          "type": "send_esdl",
+          "query_parameters": [
+            {
+              "name": "Schemas",
+              "description": "ID of the schema to validate this ESDL against",
+              "parameter_name": "schemas"
+            }
+          ],
+          "body": "",
+          "result": [
+            {
+              "code": 200,
+              "action": "asset_feedback"
+            }
+          ],
+          "with_jwt_token": false,
+          "state_params": true
+        },
+        "previous_step": 0
+      }
+    ],
+    "show_on_toolbar": true,
+    "icon": {
+      "filename": "Validator.png",
+      "type": "filename"
+    }
+  }
+]

@@ -1,34 +1,28 @@
 <template>
   <p v-if="isLoading">Loading...</p>
-
-  <div v-else>
+  <div v-else-if="jsonFromDataReceived">
     <json-forms
       :data="formData"
       :schema="schema"
       :uischema="uischema"
       :renderers="renderers"
       @change="onChange"
+      @error="console.log('ERROR')"
     />
 
-    <a-button type="primary" @click="onSubmit">{{ buttonText }}</a-button>
+    <a-button v-if="!autoNextStep" type="primary" @click="onSubmit">{{ buttonText }}</a-button>
   </div>
 </template>
 
 <script setup="props">
-import {defineProps, ref} from "vue";
-import {useWorkflow} from "../../composables/workflow.js";
-import {getJsonForm, postJsonForm} from "./utils/api.js";
-// eslint-disable-next-line no-unused-vars
-import { JsonForms } from "@jsonforms/vue";
+import {ref, watch} from "vue";
+import {useWorkflow} from "@/composables/workflow";
+import {getJsonForm, postJsonForm} from "./utils/api";
+import {JsonForms} from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
 import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
-// eslint-disable-next-line no-unused-vars
 import "@jsonforms/vue-vanilla/vanilla.css";
 
-// eslint-disable-next-line no-unused-vars
-const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });
-
-// eslint-disable-next-line no-unused-vars
 const renderers = Object.freeze([...vanillaRenderers]);
 
 const props = defineProps({
@@ -39,66 +33,124 @@ const props = defineProps({
   },
 });
 
-const workflowStep = props.workflowStep;
+let workflowStep = props.workflowStep;
+let workflowTrigger = props.workflowStep.workflowTrigger;
+
 // eslint-disable-next-line no-unused-vars
-const buttonText = workflowStep.button || "Submit";
+watch(workflowTrigger, (currentValue, oldValue) => {
+  init();
+});
+
+let buttonText = workflowStep.button || "Submit";
 
 const schema = ref({});
 // eslint-disable-next-line no-unused-vars
 const formData = ref({});
-const uischema = ref({});
-
-console.log(uischema.value);
+const uischema = ref(null);
 
 const dataToSubmit = {};
 const isLoading = ref(true);
+const jsonFromDataReceived = ref(false);
 
-const { goToNextStep, getState } = useWorkflow();
+const autoNextStep = ref(false);
 
-const doGetData = async () => {
-  const s = await getJsonForm(workflowStep.url)
-  schema.value = s.schema;
-  if ("uischema" in s) {
-    uischema.value = s.uischema;
+const {goToNextStep, getState, getFromState} = useWorkflow();
+
+const updateData = (jsonFormData) => {
+  const jsonFormDataConfig = workflowStep.data;
+
+  if (jsonFormData && "schema" in jsonFormData || "schema" in jsonFormDataConfig) {
+    jsonFromDataReceived.value = true;
+  } else {
+    jsonFromDataReceived.value = false;
+    isLoading.value = false;
+    return;
   }
-  if ("data" in s) {
-    formData.value = s.data;
+
+  // Optionally override schema/uischema/formData received from url/state/socket by json config
+  if ("schema" in jsonFormDataConfig) {
+    schema.value = jsonFormDataConfig.schema;
+  } else {
+    schema.value = jsonFormData.schema;
   }
+  if ("uischema" in jsonFormDataConfig) {
+    uischema.value = jsonFormDataConfig.uischema;
+  } else if (jsonFormData && "uischema" in jsonFormData) {
+    uischema.value = jsonFormData.uischema;
+  }
+  if ("formData" in jsonFormDataConfig) {
+    formData.value = jsonFormDataConfig.formData;
+  } else if (jsonFormData && "formData" in jsonFormData) {
+    formData.value = jsonFormData.formData;
+  }
+
   isLoading.value = false;
-}
-
-if (workflowStep.url) {
-  // Retrieve schema remotely.
-  doGetData();
-} else {
-  // Retrieve schema, uischema and possibly data from workflowStep.
-  schema.value = workflowStep.data.schema;
-  if ("uischema" in workflowStep.data) {
-    uischema.value = workflowStep.data.uischema;
-  }
-  if ("formData" in workflowStep.data) {
-    formData.value = workflowStep.data.formData;
-  }
-  isLoading.value = false;
-}
-
-// eslint-disable-next-line no-unused-vars
-const onChange = (event) => {
-  Object.assign(dataToSubmit, event.data)
 };
 
+const doGetData = async () => {
+  if (workflowStep.url) {
+    updateData(await getJsonForm(workflowStep.url));
+  } else if ("from_state_variable" in workflowStep.data) {
+    updateData(getState()[workflowStep.data.from_state_variable]);
+  } else if ("from_socket_emit" in workflowStep.data) {
+    const fromSocketEmit = workflowStep.data.from_socket_emit;
+    let params = {};
+    if ("params" in fromSocketEmit) {
+      params = fromSocketEmit.params;
+    }
+    if ("state_params" in fromSocketEmit) {
+      for (const [key, state_key] of Object.entries(fromSocketEmit.state_params)) {
+        params[key] = getFromState(state_key);
+      }
+    }
+    window.socket.emit(fromSocketEmit.event, params, (res) => {
+      updateData(res);
+    });
+  } else {
+    updateData(null);
+  }
+};
 
-// eslint-disable-next-line no-unused-vars
+const onChange = (event) => {
+  Object.assign(dataToSubmit, event.data);
+  if (autoNextStep.value) {
+    onSubmit();
+  }
+};
+
+const updateState = () => {
+  let dataSubmitFormatted = {};
+  if ("target_variable" in workflowStep) {
+    dataSubmitFormatted[workflowStep.target_variable] = jsonFromDataReceived.value ? dataToSubmit : {};
+  } else {
+    dataSubmitFormatted = jsonFromDataReceived.value ? dataToSubmit : {};
+  }
+  Object.assign(getState(), dataSubmitFormatted);
+  return dataSubmitFormatted
+};
+
+const init = () => {
+  workflowStep = props.workflowStep;
+  workflowTrigger = props.workflowStep.workflowTrigger;
+  if ("auto_next_step" in workflowStep) {
+    autoNextStep.value = workflowStep.auto_next_step;
+  } else {
+    autoNextStep.value = false;
+  }
+  buttonText = workflowStep.button || "Submit";
+  doGetData();
+  updateState();
+};
+init();
+
 const onSubmit = async () => {
-  // Add data to state.
-  const state = getState();
-  Object.assign(state, dataToSubmit);
+  const dataSubmitFormatted = updateState();
+
   if (workflowStep.url) {
     // POST data to remote URL.
     isLoading.value = true;
-
     try {
-      const response = await postJsonForm(workflowStep.url, dataToSubmit);
+      const response = await postJsonForm(workflowStep.url, dataSubmitFormatted);
       console.log(response);
       if (response != null && response.ok && workflowStep.auto) {
         goToNextStep();
@@ -106,6 +158,10 @@ const onSubmit = async () => {
     } finally {
       isLoading.value = false;
     }
+  } else if ("to_socket_emit" in workflowStep.data) {
+    window.socket.emit(workflowStep.data.to_socket_emit.event, dataSubmitFormatted, (res) => {
+      goToNextStep();
+    });
   } else {
     goToNextStep();
   }
@@ -113,10 +169,4 @@ const onSubmit = async () => {
 </script>
 
 <style scoped>
-.vertical-layout-item {
-  padding-bottom: 5px;
-}
-.array-list-label {
-  font-size: 1rem;
-}
 </style>

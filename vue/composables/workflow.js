@@ -1,8 +1,7 @@
 import {ref} from "vue";
-import {getattrd} from "../utils/utils";
+import {getattrd} from "@/utils/utils";
 import {v4 as uuidv4} from 'uuid';
-import {nextStepsSchemaValidator} from "../utils/workflowSchemas";
-import workflow from "../apps/Workflow.vue";
+import {nextStepsSchemaValidator} from "@/utils/workflowSchemas";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -27,15 +26,22 @@ export const WorkflowStepTypes = Object.freeze({
 
 // TODO: Move to different file
 function evaluateRule(rule, data) {
-    const { field, operator, value } = rule;
+    const {field, operator, value} = rule;
     switch (operator) {
-        case 'eq': return data[field] === value;
-        case 'neq': return data[field] !== value;
-        case 'gt': return data[field] > value;
-        case 'lt': return data[field] < value;
-        case 'gte': return data[field] >= value;
-        case 'lte': return data[field] <= value;
-        default: return false;
+        case 'eq':
+            return data[field] === value;
+        case 'neq':
+            return data[field] !== value;
+        case 'gt':
+            return data[field] > value;
+        case 'lt':
+            return data[field] < value;
+        case 'gte':
+            return data[field] >= value;
+        case 'lte':
+            return data[field] <= value;
+        default:
+            return false;
     }
 }
 
@@ -126,7 +132,7 @@ export function useWorkflow() {
                 const parsedWorkflow = response;
                 const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
                 workflowObj.uuid = parsedWorkflow.uuid;
-                workflowObj.workflowStep = parsedWorkflow.workflowStep;
+                workflowObj.activeWorkflowSteps = parsedWorkflow.workflowStep;
                 workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
                 workflowObj.state = parsedWorkflow.state;
                 workflowObj.name = parsedWorkflow.name;
@@ -145,7 +151,10 @@ export function useWorkflow() {
             localStorage.setItem(key, jsonWorkflow);
             if (uploadEsdls) {
                 window.show_loader();
-                window.socket.emit('/workflow/persist', {workflow_id: currentWorkflow.value.uuid, workflow_json: jsonWorkflow}, function (msg) {
+                window.socket.emit('/workflow/persist', {
+                    workflow_id: currentWorkflow.value.uuid,
+                    workflow_json: jsonWorkflow
+                }, function (msg) {
                     window.hide_loader();
                     currentWorkflow.value.setDrivePaths(msg.drive_paths);
                     loadSavedWorkflows();
@@ -156,7 +165,7 @@ export function useWorkflow() {
 
     const deletePersistedWorkflow = (uuid) => {
         window.show_loader();
-        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function(msg) {
+        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function (msg) {
             window.hide_loader();
             loadSavedWorkflows();
         });
@@ -244,7 +253,10 @@ export class Workflow {
         this.uuid = uuidv4();
         this.service_index = service_index;
         this.service = service;
-        this.workflowStep = service.workflow[0];
+
+        this.workflowTrigger = {"index": 0};  // for component watcher
+        this.setActiveWorkflowSteps(0);
+
         this.prevWorkflowSteps = [];
         if (!initialState) {
             initialState = {};
@@ -273,7 +285,7 @@ export class Workflow {
      */
     doNext(targetStepIdx = null) {
         if (targetStepIdx === null || targetStepIdx === undefined) {
-            const nextStepData = this.workflowStep.next_step;
+            const nextStepData = this.activeWorkflowSteps[0].next_step;
             if (nextStepData === undefined) {
                 // No next step. Go to the beginning.
                 while (this.hasPreviousStep()) {
@@ -305,8 +317,10 @@ export class Workflow {
             }
         }
         if (targetStepIdx >= 0) {
-            this.prevWorkflowSteps.push(this.workflowStep);
-            this.workflowStep = this.service.workflow[targetStepIdx];
+            if (targetStepIdx !== this.activeWorkflowIndex) {
+                this.prevWorkflowSteps.push(this.activeWorkflowSteps);
+            }
+            this.setActiveWorkflowSteps(targetStepIdx);
         }
     }
 
@@ -314,12 +328,29 @@ export class Workflow {
      * Go to the previous step.
      */
     doPrevious() {
-        this.workflowStep = this.prevWorkflowSteps.pop();
-        // this.stepIdx = this.workflowStep.previous_step;
-        // this.workflowStep = this.service.workflow[this.stepIdx];
+        this.activeWorkflowSteps = this.prevWorkflowSteps.pop();
     }
 
     hasPreviousStep() {
         return this.prevWorkflowSteps && this.prevWorkflowSteps.length > 0;
+    }
+
+    setActiveWorkflowSteps(targetStepIdx) {
+        this.workflowTrigger["index"] += 1;
+        this.activeWorkflowIndex = targetStepIdx;
+        this.activeWorkflowSteps = [this.service.workflow[targetStepIdx]];
+        if ("co_view_steps" in this.activeWorkflowSteps[0]) {
+            for (const stepIndex of this.activeWorkflowSteps[0].co_view_steps) {
+                if (stepIndex < targetStepIdx) {
+                    this.activeWorkflowSteps.unshift(this.service.workflow[stepIndex]);
+                } else {
+                    this.activeWorkflowSteps.push(this.service.workflow[stepIndex]);
+                }
+            }
+        }
+        // to update values in other 'co view steps' via 'watch'
+        for (const step of this.activeWorkflowSteps){
+            step.workflowTrigger = this.workflowTrigger;
+        }
     }
 }

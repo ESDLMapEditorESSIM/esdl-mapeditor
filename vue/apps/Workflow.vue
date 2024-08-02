@@ -20,7 +20,9 @@
         </a>
         <template #overlay>
           <a-menu>
-            <a-menu-item v-if="currentWorkflow.name" disabled><strong>Name: {{ currentWorkflow.name }}</strong></a-menu-item>
+            <a-menu-item v-if="currentWorkflow.name" disabled>
+              <strong>Name: {{ currentWorkflow.name }}</strong>
+            </a-menu-item>
             <a-menu-item key="setname" disabled>Set workflow name</a-menu-item>
             <a-menu-item key="save" @click="confirmPersistWorkflow">Save</a-menu-item>
             <a-sub-menu key="load" title="Load workflow">
@@ -52,119 +54,115 @@
       <a-breadcrumb
         separator=">"
       >
-        <a-breadcrumb-item v-for="prevStep in currentWorkflow.prevWorkflowSteps" :key="prevStep.id">{{ prevStep.name }}</a-breadcrumb-item>
+        <a-breadcrumb-item v-for="prevStep in currentWorkflow.prevWorkflowSteps" :key="prevStep.id">
+          {{ prevStep.name }}
+        </a-breadcrumb-item>
       </a-breadcrumb>
     </template>
 
     <hr>
 
     <h1>{{ currentWorkflow.service.name }}</h1>
-    <h3>{{ currentWorkflow.workflowStep.name }}</h3>
-    <p>{{ currentWorkflow.workflowStep.description }}</p>
+    <div v-for="(workflowStep, key) in currentWorkflow.activeWorkflowSteps" :key="key">
+      <br v-if="workflowStep.name">
+      <h3>{{ workflowStep.name }}</h3>
+      <p>{{ workflowStep.description }}</p>
 
-    <WorkflowChoice
-      v-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CHOICE"
-      :key="currentWorkflow.workflowStep.name"
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowSelectQuery
-      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
-      :key="currentWorkflow.workflowStep.name"
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowTableQuery
-      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"      
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowEsdlService
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.ESDL_SERVICE
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowDownloadFile
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.DOWNLOAD_FILE
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowUploadFile
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.UPLOAD_FILE
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowHttpPost
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.HTTP_POST
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowProgress
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.PROGRESS
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowText
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.TEXT
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowCustomComponent
-      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowCallJsFunction
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowJsonForm
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <WorkflowJsonForm2
-      v-else-if="
-        currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2
-      "
-      :workflow-step="currentWorkflow.workflowStep"
-    />
-    <p v-else>
-      Unknown workflow step: {{ currentWorkflow.workflowStep.type }}.
-      <br>
-      <a-button type="dashed" @click="goToFirstStep()"> Start over. </a-button>
-    </p>
+      <WorkflowChoice
+        v-if="workflowStep.type === WorkflowStepTypes.CHOICE"
+        :key="workflowStep.name"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowSelectQuery
+        v-else-if="workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowTableQuery
+        v-else-if="workflowStep.type === WorkflowStepTypes.TABLE_QUERY"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowEsdlService
+        v-else-if="workflowStep.type === WorkflowStepTypes.ESDL_SERVICE"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowDownloadFile
+        v-else-if="workflowStep.type === WorkflowStepTypes.DOWNLOAD_FILE"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowUploadFile
+        v-else-if="workflowStep.type === WorkflowStepTypes.UPLOAD_FILE"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowHttpPost
+        v-else-if="workflowStep.type === WorkflowStepTypes.HTTP_POST"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowProgress
+        v-else-if="workflowStep.type === WorkflowStepTypes.PROGRESS"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowText
+        v-else-if="workflowStep.type === WorkflowStepTypes.TEXT"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowCustomComponent
+        v-else-if="workflowStep.type === WorkflowStepTypes.CUSTOM"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowCallJsFunction
+        v-else-if="workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowJsonForm
+        v-else-if="workflowStep.type === WorkflowStepTypes.JSON_FORM"
+        :workflow-step="workflowStep"
+      />
+      <WorkflowJsonForm2
+        v-else-if="workflowStep.type === WorkflowStepTypes.JSON_FORM2"
+        :workflow-step="workflowStep"
+      />
+      <p v-else>
+        Unknown workflow step: {{ workflowStep.type }}.
+        <br>
+        <a-button type="dashed" @click="goToFirstStep()"> Start over.</a-button>
+      </p>
+    </div>
   </div>
 </template>
 
 <script setup>
-import {useWorkflow, WorkflowStepTypes} from "../composables/workflow";
-import {default as WorkflowChoice} from "../components/workflow/WorkflowChoice";
-import {default as WorkflowSelectQuery} from "../components/workflow/WorkflowSelectQuery";
-import {default as WorkflowTableQuery} from "../components/workflow/WorkflowTableQuery";
-import {default as WorkflowEsdlService} from "../components/workflow/WorkflowEsdlService";
-import {default as WorkflowDownloadFile} from "../components/workflow/WorkflowDownloadFile";
-import {default as WorkflowUploadFile} from "../components/workflow/WorkflowUploadFile";
-import {default as WorkflowHttpPost} from "../components/workflow/WorkflowHttpPost";
-import {default as WorkflowProgress} from "../components/workflow/WorkflowProgress";
-import {default as WorkflowText} from "../components/workflow/WorkflowText";
-import {default as WorkflowCustomComponent} from "../components/workflow/WorkflowCustomComponent";
-import {default as WorkflowJsonForm} from "../components/workflow/WorkflowJsonForm";
-import {default as WorkflowJsonForm2} from "../components/workflow/WorkflowJsonForm2";
-import {default as WorkflowCallJsFunction} from "../components/workflow/WorkflowCallJsFunction";
+import {useWorkflow, WorkflowStepTypes} from "@/composables/workflow";
+import {default as WorkflowChoice} from "@/components/workflow/WorkflowChoice";
+import {default as WorkflowSelectQuery} from "@/components/workflow/WorkflowSelectQuery";
+import {default as WorkflowTableQuery} from "@/components/workflow/WorkflowTableQuery";
+import {default as WorkflowEsdlService} from "@/components/workflow/WorkflowEsdlService";
+import {default as WorkflowDownloadFile} from "@/components/workflow/WorkflowDownloadFile";
+import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploadFile";
+import {default as WorkflowHttpPost} from "@/components/workflow/WorkflowHttpPost";
+import {default as WorkflowProgress} from "@/components/workflow/WorkflowProgress";
+import {default as WorkflowText} from "@/components/workflow/WorkflowText";
+import {default as WorkflowCustomComponent} from "@/components/workflow/WorkflowCustomComponent";
+import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm";
+import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";
+import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {MenuOutlined} from "@ant-design/icons-vue";
-import {MessageNames, PubSubManager} from "../bridge";
-import {useEsdlLayers} from "../composables/esdlLayers.js";
+import {MessageNames, PubSubManager} from "@/bridge";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 import {ref} from "vue";
 
-const { getActiveEsdlLayerId } = useEsdlLayers();
+const {getActiveEsdlLayerId} = useEsdlLayers();
 
-const { currentWorkflow, goToFirstStep, goToPreviousStep, persistWorkflow, savedWorkflows, loadSavedWorkflows, activatePersistedWorkflow, deletePersistedWorkflow, getState } = useWorkflow();
+const {
+  currentWorkflow,
+  goToFirstStep,
+  goToPreviousStep,
+  persistWorkflow,
+  savedWorkflows,
+  loadSavedWorkflows,
+  activatePersistedWorkflow,
+  deletePersistedWorkflow,
+  getState
+} = useWorkflow();
 
 const activeEnergySystemTitle = ref("Please select an energy system");
 const activeEnergySystemId = ref("");

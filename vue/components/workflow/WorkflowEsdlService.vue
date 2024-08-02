@@ -16,7 +16,7 @@
     <p v-if="workflowStep.service.description">
       {{ workflowStep.service.description }}
     </p>
-    <p v-else>
+    <p v-else-if="workflowStep.service.description!==''">
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
@@ -31,12 +31,11 @@
 </template>
 
 <script setup="props">
-import {setattrd} from "../../utils/utils.js";
+import {setattrd} from "@/utils/utils";
  // more info on service_results_div @see esdl_services.js
 
-import { useWorkflow } from "../../composables/workflow.js";
-import { useEsdlLayers } from "../../composables/esdlLayers.js";
-// eslint-disable-next-line no-unused-vars
+import { useWorkflow } from "@/composables/workflow";
+import { useEsdlLayers } from "@/composables/esdlLayers";
 
 const props = defineProps({
   workflowStep: {
@@ -53,7 +52,6 @@ const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
 
-// eslint-disable-next-line no-unused-vars
 const esdlWasLoaded = () => {
   if (workflowStep.target_variable && workflowStep.target_variable_value) {
     setattrd(state, workflowStep.target_variable, workflowStep.target_variable_value);
@@ -77,9 +75,9 @@ const loadEsdl = () => {
   params["service_id"] = workflowStep.service.id;
 
   if (workflowStep["state_params"]) {
-    params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
+    params["state_params"] = getParamsFromState(workflowStep["state_params"]);
   } else {
-    params["query_parameters"] = {};
+    params["state_params"] = {};
   }
 
   window.show_loader();

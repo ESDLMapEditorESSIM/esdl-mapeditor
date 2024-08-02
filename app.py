@@ -54,6 +54,7 @@ from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
 from extensions.etm_interface import ETMInterface
+from extensions.external_models_storage import ExternalModelsStorage
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
@@ -81,6 +82,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from src.external_models import ExternalModels
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -125,6 +127,7 @@ if settings.settings_storage_config["host"] is None or settings.settings_storage
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
 settings_storage = SettingsStorage(named_locker)
+models_storage = ExternalModelsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
@@ -174,6 +177,7 @@ executor = Executor(app)
 #extensions
 schedule_session_clean_up()
 wms_layers = WMSLayers(app, socketio, settings_storage)
+ExternalModels(app, socketio, models_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
@@ -197,7 +201,7 @@ ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage)
 ETMInterface(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
-esdl_services = ESDLServices(app, socketio, settings_storage)
+esdl_services = ESDLServices(app, socketio, settings_storage, models_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)

@@ -29,6 +29,7 @@ import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
+from extensions.external_models_storage import ExternalModelsStorage
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -43,10 +44,17 @@ ESDL_SERVICES_CONFIG = "ESDL_SERVICES_CONFIG"
 
 
 class ESDLServices:
-    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
+    def __init__(
+        self,
+        flask_app: Flask,
+        socket: SocketIO,
+        settings_storage: SettingsStorage,
+        models_storage: ExternalModelsStorage,
+    ):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
+        self.models_storage = models_storage
 
         self.register()
 
@@ -224,7 +232,9 @@ class ESDLServices:
         if service is None:
             return False, None
 
-        url = service["url"]
+        url = None
+        if "url" in service:
+            url = service["url"]
         headers = service["headers"]
         if service.get("with_jwt_token", False):
             jwt_token = get_session("jwt-token")
@@ -257,6 +267,8 @@ class ESDLServices:
                 esdlstr_bytes = esdlstr.encode("utf-8")
                 esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                 body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
+            elif service["body"] == "json_text":
+                body["energysystem"] = esdlstr
             else:
                 body = esdlstr
         elif service["type"] == "simulation":
@@ -306,18 +318,18 @@ class ESDLServices:
                                 body[param["parameter"]] = body_params[bp]
 
         # The parameter values that were communicated by the frontend
-        query_params = service_params["query_parameters"]
+        state_params = service_params["state_params"]
         # The parameter definition from the service config
         config_service_params = service.get("query_parameters", {})
-        if query_params:
+        if state_params:
             first_qp = True
             # Iterate over all given parameters (by the UI)
-            for key in query_params:
-                if query_params[key]:  # to filter empty lists for multi-selection parameters
+            for key in state_params:
+                if state_params[key]:  # to filter empty lists for multi-selection parameters
                     # Find the relevant service config for this parameter
                     for cfg_service_param in config_service_params:
                         if cfg_service_param["parameter_name"] == key:
-                            param = query_params[key]  # param now contains the communicated value (by the UI)
+                            param = state_params[key]  # param now contains the communicated value (by the UI)
                             # Is there any parameter formatting required...
                             if "formatter" in cfg_service_param:
                                 if (
@@ -341,7 +353,7 @@ class ESDLServices:
                                         param_value = (base64.b64encode(param.encode("utf-8"))).decode("utf-8")
                                     else:
                                         param_value = param
-                                    body[cfg_service_param["parameter_name"]] = param_value
+                                    body[cfg_service_param["name"]] = param_value
                             else:
                                 # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
                                 if first_qp:
@@ -352,40 +364,47 @@ class ESDLServices:
                                 first_qp = False
 
         try:
-            if service["http_method"] == "get":
-                r = requests.get(url, headers=headers)
-            elif service["http_method"] == "delete":
-                r = requests.delete(url, headers=headers)
-            elif service["http_method"] == "post":
-                if service["type"].endswith("json") or (
-                    "body_config" in service and service["body_config"]["type"] == "json"
-                ):
-                    kwargs = {"json": body}
+            r = None
+            model_run_data = None
+            if url:
+                if service["http_method"] == "get":
+                    r = requests.get(url, headers=headers)
+                elif service["http_method"] == "delete":
+                    r = requests.delete(url, headers=headers)
+                elif service["http_method"] == "post":
+                    if service["type"].endswith("json") or (
+                        "body_config" in service and service["body_config"]["type"] == "json"
+                    ):
+                        kwargs = {"json": body}
+                    else:
+                        kwargs = {"data": body}
+                    r = requests.post(url, headers=headers, **kwargs)
                 else:
-                    kwargs = {"data": body}
-                r = requests.post(url, headers=headers, **kwargs)
-            else:
-                # Should not happen, there should always be a method.
-                return False, None
+                    # Should not happen, there should always be a method.
+                    return False, None
+            else:  # get from external models database
+                model_run_data = self.models_storage.get_model_run(
+                    service["result"][0]["model_name"], state_params["run_id"]
+                )
 
-            if r.status_code == 200 or r.status_code == 201:
-                # print(r.text)
-
+            if model_run_data or r.status_code == 200 or r.status_code == 201:
                 if service["result"][0]["action"] == "esdl":
+                    if "run_esdl_key" in service["result"][0]:
+                        esdl_data = model_run_data[service["result"][0]["run_esdl_key"]]
+                    elif "json_field" in service["result"][0]:
+                        esdl_data = r.json()[service["result"][0]["json_field"]]
+                    else:
+                        esdl_data = r.text
+
                     if "encoding" in service["result"][0]:
                         if service["result"][0]["encoding"] == "url_encoded":
-                            esdl_response = urllib.parse.quote(r.text)
+                            esdl_response = urllib.parse.quote(esdl_data)
                         elif service["result"][0]["encoding"] == "base64_encoded":
-                            response_with_esdl = r.text
-                            if "json_field" in service["result"][0]:  # use specific json field in result
-                                response_with_esdl = r.json()[service["result"][0]["json_field"]]
-                            esdlstr_bytes = response_with_esdl.encode("utf-8")
+                            esdlstr_bytes = esdl_data.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                             esdl_response = esdlstr_base64_bytes.decode("utf-8")
                         else:
-                            esdl_response = r.text
-                    else:
-                        esdl_response = r.text
+                            esdl_response = esdl_data
 
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
@@ -399,13 +418,17 @@ class ESDLServices:
                             fields = [
                                 result["fieldKey"] for result in results.get_points() if result["fieldType"] == "float"
                             ]
+                            if "model_name" in service["result"][0]:
+                                model_name = service["result"][0]["model_name"]
+                            else:
+                                model_name = "Model"
                             emit(
                                 "animation_esdl_data",
                                 {
                                     "es_id": es.id,
                                     "fields": fields,
-                                    "service_short_name": service["result"][0]["service_short_name"],
-                                    "calc_name": service_params["query_parameters"]["job_name"],
+                                    "model_name": model_name,
+                                    "calc_name": state_params["run_name"],
                                 },
                             )
                         except Exception as e:
@@ -414,7 +437,6 @@ class ESDLServices:
                                 f"\nCould not retrieve animation data, "
                                 f"problem querying InfluxDB on host: '{influxdb_client._host}'"
                             )
-
                     return True, None
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text)
@@ -457,7 +479,6 @@ class ESDLServices:
                                 area_to_be_added_to = area
 
                             area_shape = None
-                            # TODO add similar mode and emit animation possible
                             if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
                                 # The assets that will be added must be placed on a grid within the area boundary
                                 shape_dictionary = get_session("shape_dictionary")
@@ -637,6 +658,24 @@ class ESDLServices:
                         message = html.escape(message)
                         message = message.replace("\n", "<br/>")
                     return True, {"message": message}
+                elif service["result"][0]["action"] == "save_model_run":
+                    esdlstr = esh.to_string(active_es_id)
+                    esdlstr_bytes = esdlstr.encode("utf-8")
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    esdlstr_base64 = esdlstr_base64_bytes.decode("utf-8")
+                    parameters = state_params.copy()
+                    if "response_parameters" in service["result"][0]:
+                        for key, response_key in service["result"][0]["response_parameters"].items():
+                            parameters[key] = r.json()[response_key]
+
+                    user = get_session("user-email")
+                    self.models_storage.add_model_run(
+                        service["result"][0]["model_name"], esdlstr_base64, parameters, user
+                    )
+                    return True, {
+                        "message": f"Run submitted: '{state_params['run_name']}'",
+                        "hide_button": True,
+                    }
             else:
                 logger.warning(
                     "Error running ESDL service - response " + str(r.status_code) + " with reason: " + str(r.reason)

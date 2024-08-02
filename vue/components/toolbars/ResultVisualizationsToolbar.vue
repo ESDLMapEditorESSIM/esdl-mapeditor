@@ -14,9 +14,9 @@
       </a-col>
     </a-row>
 
-    <a-row v-if="service_short_name!=null && calc_name!=null">
+    <a-row v-if="model_name!=null && calc_name!=null">
       <a-space direction="vertical" align="center">
-        <span>For '{{ service_short_name }}' result: '{{ calc_name }}'</span>
+        <span>For {{ model_name }} result: '{{ calc_name }}'</span>
       </a-space>
     </a-row>
     <br>
@@ -47,7 +47,7 @@
             Load animation
           </a-button>
         </a-space-compact>
-        <a-space v-else-if="service_short_name!=null && calc_name!=null">
+        <a-space v-else-if="model_name!=null && calc_name!=null">
           <span>No animation available</span>
         </a-space>
       </a-space>
@@ -64,7 +64,7 @@ const animation_possible = ref(false);
 const field_options = ref([]);
 const selected_field = ref("Choose field ...");
 const anim_esdl_id = ref(null);
-const service_short_name = ref(null);
+const model_name = ref(null);
 const calc_name = ref(null);
 
 onMounted(() => {
@@ -77,7 +77,7 @@ onMounted(() => {
         time_dimension.show_hide_animation_toolbar(false);
         animation_possible.value = false;
         anim_esdl_id.value = null;
-        service_short_name.value = null;
+        model_name.value = null;
         calc_name.value = null;
       }
       kpis_present.value = true;
@@ -95,7 +95,7 @@ onMounted(() => {
         )
       });
       anim_esdl_id.value = data['es_id'];
-      service_short_name.value = data['service_short_name'];
+      model_name.value = data['model_name'];
       calc_name.value = data['calc_name'];
     });
   });
@@ -116,7 +116,7 @@ const handleDismiss = () => {
   kpis_present.value = false;
   animation_possible.value = false;
   anim_esdl_id.value = null;
-  service_short_name.value = null;
+  model_name.value = null;
   calc_name.value = null;
 };
 const handleChange = (value) => {

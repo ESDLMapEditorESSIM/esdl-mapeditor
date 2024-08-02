@@ -4,16 +4,16 @@
     <a-form-item :label="workflowStep.label">
       <a-select v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue" />
     </a-form-item>
-    <a-form-item>
-      <a-button type="primary" @click="onSubmit"> Select </a-button>
+    <a-form-item v-if="!autoNextStep">
+      <a-button type="primary" @click="onSubmit"> Select</a-button>
     </a-form-item>
   </a-form>
 </template>
 
 <script setup="props">
 import {ref} from "vue";
-import {useWorkflow} from "../../composables/workflow.js";
-import {workflowGetData} from "./utils/api.js";
+import {useWorkflow} from "@/composables/workflow";
+import {workflowGetData} from "./utils/api";
 
 const props = defineProps({
   workflowStep: {
@@ -28,9 +28,13 @@ const workflowStep = props.workflowStep;
 const isLoading = ref(true);
 const options = ref([]);
 const form = ref({});
+const autoNextStep = ref(false);
+if ("auto_next_step" in workflowStep) {
+  autoNextStep.value = workflowStep.auto_next_step;
+}
 form[workflowStep.target_variable] = "";
 
-const { getParamsFromState, goToNextStep, getState } = useWorkflow();
+const {getParamsFromState, goToNextStep, getState} = useWorkflow();
 const state = getState();
 
 // Variable for indexing all choices by the value (which is rendered in HTML).
@@ -49,11 +53,14 @@ const onSubmit = () => {
 
 const selectValue = (value) => {
   form[workflowStep.target_variable] = value;
+  if (autoNextStep.value) {
+    onSubmit();
+  }
 }
 
 const doGetData = async () => {
   const request_params = getParamsFromState(workflowStep.source.request_params);
-  const data = await workflowGetData(workflowStep.source.url, request_params)
+  const data = await workflowGetData(workflowStep.source.url, request_params);
 
   if (data != null) {
     const source = workflowStep.source;
@@ -67,9 +74,7 @@ const doGetData = async () => {
 
     // Convert the choices to a list of options.
     options.value = choices.map((choice) => {
-      const label_list = source.label_fields
-          .map((label_field) => choice[label_field])
-          .filter((value) => value);
+      const label_list = source.label_fields.map((label_field) => choice[label_field]).filter((value) => value);
       const label = label_list.join(" - ");
       return {
         label: label,

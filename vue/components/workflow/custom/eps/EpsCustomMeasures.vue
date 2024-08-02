@@ -315,9 +315,9 @@ const onSubmit = async () => {
   }
   const params = {};
   params["service_id"] = workflowStep.service.id;
-  params["query_parameters"] = {};
+  params["state_params"] = {};
 
-  params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
+  params["state_params"]['building_ids'] = selectedBuildingIds.value;
 
   // Selection of heating type currently happens with a radio button. In the future we could support partials.
   if (heatingType.value === HeatingType.HEATPUMP) {
@@ -327,7 +327,7 @@ const onSubmit = async () => {
     formState.value.percentage_warmtevraag_gebouw_gas = 100;
     formState.value.percentage_warmtevraag_gebouw_elektriciteit = 0;
   }
-  params["query_parameters"]['measures_to_apply'] = formState.value;
+  params["state_params"]['measures_to_apply'] = formState.value;
 
   // Store the form entry values.
   // The structure:
