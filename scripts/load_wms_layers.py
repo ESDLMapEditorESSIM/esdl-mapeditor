@@ -323,8 +323,11 @@ def load_layers() -> None:
                         layer_groups, parent_folder_uuid, setting_type, os.environ.get("PROJECT_NAME"), folder_name
                     )
 
-                # default vector layer opacity to be 1.0
-                layer_opacity = float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY")) if is_raster_file else 1.0
+                if is_raster_file:
+                    layer_opacity = float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY"))
+                else:
+                    layer_opacity = float(os.environ.get("VECTOR_DEFAULT_TRANSPARENCY"))
+
                 add_wms_layer(
                     wms_layers,
                     layer_groups[parent_folder_uuid],

@@ -38,6 +38,7 @@ Below a description of the steps needed and possible options.
     - `ABORT_ON_LAYER_ERROR=false`: Abort when an error is encountered (previous postgis/geoserver loads are done but
       nothing will not be loaded in mapeditor)
     - `RASTER_DEFAULT_TRANSPARENCY`: Default transparency for raster files
+    - `VECTOR_DEFAULT_TRANSPARENCY`: Default transparency for vector files
     - `SETTING_TYPE`: Mapeditor setting type (`system` or `project`)
     - `PROJECT_NAME`: Mapeditor project name (only used when `SETTING_TYPE` is set to `project`)
     - `GEOSERVER_URL`: Geoserver url
