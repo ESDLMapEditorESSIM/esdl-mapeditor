@@ -590,21 +590,37 @@ function calcDistKPIItemsSum(distKPI) {
  * @param {number} kpiItemsSum The distribution KPI item values sum of the area feature.
  * @param {number} kpiSumMin The minimal KPI item values sum derived from area features of the same layer.
  * @param {number} kpiSumMax The maximum KPI item values sum derived from area features of the same layer.
+ * @param {number} [refZoomLevel=10] Reference zoom level for scaling. Default to 10.
  * @returns {number} Map zoom level responsive pie chart radius of the area feature.
  */
-function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax) {
-    // Define a reference zoom level to compute the relative zoom level difference
-    // to dynamically scale the pie chart radius at different zoom levels.
-    const refZoomLevel = 10;
+function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, refZoomLevel = 10) {
+    // Calculate the zoom scaling factor
     const zoomLevelDiff = (map.getZoom() - refZoomLevel);
-    const zoomScalingFactor = 2 ** zoomLevelDiff;
+    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
 
     // Define zoom level responsive pie chart min and max radius.
-    const rMin = 7 * zoomScalingFactor;
+    const baseRadius = 7;
+    const rMin = baseRadius * zoomScalingFactor;
     const rMax = rMin * 5;
 
-    // Take a logarithm to handle extreme KPI value ranges better.
-    const r = ((Math.log1p(kpiItemsSum) - Math.log1p(kpiSumMin)) * (rMax - rMin) / (Math.log1p(kpiSumMax) - Math.log1p(kpiSumMin))) + rMin;
+    // Input validation
+    if (kpiItemsSum < 0 || kpiSumMin < 0 || kpiSumMax < 0) {
+        throw new Error('KPI values must be non-negative');
+    }
+    // Special case: when kpiItemsSum == kpiSumMin == kpiSumMax and all > 0
+    // This occurs when the layer contains only one area feature.
+    if (kpiItemsSum === kpiSumMin && kpiItemsSum === kpiSumMax && kpiItemsSum > 0) {
+        const r = (rMax + rMin) / 2;
+        return r;
+    }
+    if (kpiSumMin >= kpiSumMax) {
+        throw new Error('kpiSumMin must be less than kpiSumMax');
+    }
+
+    // Calculate the pie chart radius using a logarithmic scale
+    const normalizedKpiValue = (Math.log1p(kpiItemsSum) - Math.log1p(kpiSumMin)) / 
+                               (Math.log1p(kpiSumMax) - Math.log1p(kpiSumMin));
+    const r = normalizedKpiValue * (rMax - rMin) + rMin;
     
     return r;
 }
@@ -619,7 +635,6 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax) {
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
  */
 function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange) {
-
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length) {
         const distKPIs = Object.keys(ar.properties.dist_KPIs);
 
@@ -628,17 +643,18 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange) 
             const distKPI = ar.properties.dist_KPIs[KPI];
             const unit = distKPI.unit;
 
+            let r = 0;
             const kpiItemsSum = calcDistKPIItemsSum(distKPI);
-            let r;
-            if (refDistKPIsRange[KPI] &&
-                refDistKPIsRange[KPI].min && refDistKPIsRange[KPI].max
-            ) {
-                const kpiSumMin = refDistKPIsRange[KPI].min;
-                const kpiSumMax = refDistKPIsRange[KPI].max;
-                r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax); 
-            } else {
-                r = kpiItemsSum;
-                console.warn(`Error computing relative pie chart radius. KPI value sum ${kpiItemsSum} will be applied instead.`);
+            if (kpiItemsSum > 0) {
+                if (refDistKPIsRange[KPI] &&
+                    refDistKPIsRange[KPI].min <= kpiItemsSum && kpiItemsSum <= refDistKPIsRange[KPI].max
+                ) {
+                    const kpiSumMin = refDistKPIsRange[KPI].min;
+                    const kpiSumMax = refDistKPIsRange[KPI].max;  
+                    r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax);
+                } else {
+                    console.error(`Error computing relative pie chart radius of KPI ${KPI} with kpiItemsSum: ${kpiItemsSum}`);
+                }
             }
 
             // Pie chart options.
