@@ -124,6 +124,7 @@ class Port_profile_viewer{
 
         socket.emit('port_profile_viewer_request_asset', asset_list, function(port_profile_list) {
             port_profile_viewer_plugin.asset_port_profile_list = port_profile_list;
+            console.log("port profile list", port_profile_list)
             port_profile_viewer_plugin.show_window();
         });
     }

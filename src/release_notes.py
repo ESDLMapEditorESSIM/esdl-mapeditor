@@ -26,6 +26,33 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "24.6.0",
+        "date": "2024-06-27T13:00:00Z",
+        "general_message": "On June 27th 2024, we've released the new ESDL MapEditor version 24.6.0. " +
+                           "See below for a list of new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Implement filtering on tags when searching EDR for assets",
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fix port profile viewer when no profiles are present",
+                    "Fix bug with adding assets to deleted Area",
+                    "Fixes for asset tooltips for assets with a polygon shape",
+                    "Fixes for handling assets with a polygon shape",
+                    "Fix for menus disappearing, while working on smaller screens",
+                    "Fix WMS layer groups automatically closing after selection of a layer",
+                    "Fix moving of Buildings",
+                    "Fix zooming and sizing of disabled assets"
+                ]
+            },
+        ]
+    },
+    {
         "version": "24.5.0",
         "date": "2024-05-23T13:00:00Z",
         "general_message": "On May 23rd 2024, we've released the new ESDL MapEditor version 24.5.0. " +

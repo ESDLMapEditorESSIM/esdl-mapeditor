@@ -120,10 +120,6 @@ statistics_settings_config = {
     "path": "/api/statistics/calculate"
 }
 
-ielgas_config = {
-    "host": os.environ.get('IELGAS_DATABASE_HOST', None)
-}
-
 heatnetwork_dispatcher_config = {
     "host": os.environ.get('DISPATCHER_HOST', 'http://localhost'),
     "port": os.environ.get('DISPATCHER_PORT', 9200)

@@ -23,7 +23,7 @@ from pyecore.ecore import EDate
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
 from extensions.settings_storage import SettingType, SettingsStorage
-from extensions.session_manager import get_session
+from extensions.session_manager import get_session, get_project_manager
 from extensions.panel_service import create_panel, get_panel_service_datasource
 from influxdb import InfluxDBClient
 import copy
@@ -40,9 +40,8 @@ from utils.utils import str2float
 
 logger = log.get_logger(__name__)
 
-
-PROFILES_LIST = 'PROFILES'                  # To store profiles
-PROFILES_SETTINGS = 'PROFILES_SETTINGS'     # To store information about profiles servers, ...
+PROFILES_LIST = 'PROFILES'  # To store profiles
+PROFILES_SETTINGS = 'PROFILES_SETTINGS'  # To store information about profiles servers, ...
 profiles = None
 
 
@@ -185,11 +184,11 @@ class Profiles:
                     size = message['size']
                     content = message['content']
                     pos = message['pos']
-                    #print(content)
+                    # print(content)
                     self.csv_files[uuid]['content'][pos:len(content)] = content
                     self.csv_files[uuid]['pos'] = pos + len(content)
                     if self.csv_files[uuid]['pos'] >= size:
-                        #print("Upload complete:", str(bytearray(self.csv_files[uuid]['content'])))
+                        # print("Upload complete:", str(bytearray(self.csv_files[uuid]['content'])))
 
                         ba = bytearray(self.csv_files[uuid]['content'])
                         csv = ba.decode(encoding='utf-8-sig')
@@ -197,7 +196,7 @@ class Profiles:
                                                  'success': True})
                         self.executor.submit(self.process_csv_file, name, uuid, csv)
                     else:
-                        #print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
+                        # print("Requesting next chunk", str(bytearray(self.csv_files[uuid]['content'])))
                         emit('csv_next_chunk', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos']})
 
         @self.socketio.on('get_profiles_settings', namespace='/esdl')
@@ -266,8 +265,8 @@ class Profiles:
 
                 if previous_datetime:
                     if previous_datetime == aware_dt:
-                        raise(Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
-                                        format(dt_string)))
+                        raise (Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
+                                         format(dt_string)))
                 previous_datetime = aware_dt
 
                 if not start_datetime:
@@ -299,7 +298,7 @@ class Profiles:
 
             available_databases = client.get_list_database()
             # if database not in client.get_list_database():
-            if not(any(db['name'] == database for db in available_databases)):
+            if not (any(db['name'] == database for db in available_databases)):
                 logger.debug('Database does not exist, creating a new one')
                 client.create_database(database)
             client.write_points(points=json_body, database=database, batch_size=100)
@@ -333,7 +332,7 @@ class Profiles:
                 # Create a dictionary with all relevant information about the new profile
                 profile = self.create_new_profile(
                     group=group,
-                    uiname=measurement+'_'+field,
+                    uiname=measurement + '_' + field,
                     multiplier=1,
                     database=database,
                     measurement=measurement,
@@ -365,11 +364,11 @@ class Profiles:
                 self.add_profile(str(uuid4()), profile)
 
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
-                                     'success': True})
+                                         'success': True})
         except Exception as e:
             logger.exception("Error processing CSV")
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
-                                     'success': False, 'error': str(e)})
+                                         'success': False, 'error': str(e)})
 
         # clean up
         del (self.csv_files[uuid])
@@ -402,7 +401,7 @@ class Profiles:
             # update profile dict
             profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
             print('Deleting profile {}'.format(profiles[profile_id]))
-            del(profiles[profile_id])
+            del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
@@ -478,7 +477,8 @@ class Profiles:
         if groups is not None:
             for group in groups:
                 identifier = self._get_identifier(SettingType.PROJECT, group)
-                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier, "name": "Project profiles for " + group, "readonly": False}
+                json = {"setting_type": SettingType.PROJECT.value, "project_name": identifier,
+                        "name": "Project profiles for " + group, "readonly": False}
                 project_list.append(json)
         return project_list
 
@@ -495,6 +495,33 @@ class Profiles:
         else:
             identifier = self._get_identifier(SettingType.USER)
             return SettingType.USER.value, identifier
+
+    def determine_database_credentials(self, host, port, database):
+        # Whenever the port profile viewer is called based on information (host / database) in the ESDL InfluxDB profile
+        # this functions tries to see if the credentials are stored in the profile server settings
+
+        # Example profile server configuration in MongoDB
+        #       {
+        #         "name": "Standard profiles server",
+        #         "host": "influxdb",
+        #         "port": "8086",
+        #         "username": "admin",
+        #         "password": "admin",
+        #         "database": "energy_profiles",
+        #         "ssl_enabled": false
+        #       }
+
+        with self.flask_app.app_context():
+            profiles_settings = self.get_profiles_settings()
+
+            for prof_server in profiles_settings['profiles_servers']:
+                if prof_server["host"] == host and prof_server["port"] == str(port):
+                    return {
+                        "username": prof_server["username"],
+                        "password": prof_server["password"]
+                    }
+
+        return None
 
     def get_EDR_profiles(self):
         return self.EDR_profiles_cache
@@ -531,7 +558,7 @@ class Profiles:
             for p in profile_list["item_list"]:
                 if not p["id"].startswith("/edr/Public/Profiles"):
                     continue
-                    
+
                 p.update({
                     "setting_type": "EDR",
                     "project_name": "",
@@ -581,7 +608,8 @@ class Profiles:
 
         return edr_profiles
 
-    def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime, end_datetime):
+    def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime,
+                           end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
             "setting_type": setting_type,
@@ -597,7 +625,7 @@ class Profiles:
             "embedUrl": None
         }
         return profile
-    
+
     def get_profiles_settings(self):
         profiles_settings = dict()
         if self.settings_storage.has_system(PROFILES_SETTINGS):
@@ -680,11 +708,109 @@ class Profiles:
 
         return esdl_profile
 
+    @staticmethod
+    def get_profiles_for_asset_type(es_id: str, asset_types: list[type(esdl.Asset)]) -> list:
+        """Build a list of all profiles of specific asset types in the ESDL file.
+        """
+        logger.info(es_id)
+        pm = get_project_manager()
+        energy_system = pm.get_energy_system_by_id(es_id)
+
+        instance = energy_system.instance[0]
+        profiles = []
+        if instance and instance.area:
+            for asset in instance.area.asset:
+                if isinstance(asset, tuple(asset_types)):
+                    for port in getattr(asset, 'port', []):
+                        for profile in getattr(port, 'profile', []):
+                            profiles.append(profile)
+                    for inner_asset in getattr(asset, 'asset', []):
+                        for port in getattr(inner_asset, 'port', []):
+                            for profile in getattr(port, 'profile', []):
+                                profiles.append(profile)
+
+        return profiles
+
+    @staticmethod
+    def get_profile_of_asset_with_field(asset: esdl.Asset, field: str) -> esdl.GenericProfile | None:
+        """Get the profile from an asset which matches a specified field.
+        """
+        for port in getattr(asset, 'port', []):
+            for profile in getattr(port, 'profile', []):
+                if profile.field == field:
+                    return profile
+        return None
+
+
+    @staticmethod
+    def connect_to_animation_profiles_database(es_id: str, database: str):
+        # get influxdb host and port from first pipe/cable
+        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(
+            es_id, [esdl.ElectricityCable, esdl.Pipe]
+        )
+        if not anim_profile_info_from_esdl:  # essim: profile info not in esdl
+            return InfluxDBClient(
+                host=settings.essim_config['ESSIM_database_server'],
+                port=settings.essim_config['ESSIM_database_port'],
+                database=database
+            )
+        elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
+            profile = anim_profile_info_from_esdl[0]
+            credentials = Profiles.get_instance().determine_database_credentials(
+                profile.host, profile.port, profile.database
+            )
+            if credentials:
+                influxdb_client = InfluxDBClient(
+                    host=profile.host,
+                    # host=profile.host,
+                    port=profile.port,
+                    database=database,
+                    username=credentials['username'],
+                    password=credentials['password']
+                )
+            else:
+                influxdb_client = InfluxDBClient(
+                    host=profile.host,
+                    port=profile.port,
+                    database=database
+                )
+
+            return influxdb_client
+        else:
+            logger.info("Not all profiles use same host, port, database")
+            return None
+
+    @staticmethod
+    def check_if_profiles_have_same_host_port_database(profile_list):
+        used_host = None
+        used_port = None
+        used_database = None
+
+        for p in profile_list:
+            if used_host and p.host != used_host:
+                return False
+            else:
+                used_host = p.host
+
+            if used_port and p.port != used_port:
+                return False
+            else:
+                used_port = p.port
+
+            if used_database and p.database != used_database:
+                return False
+            else:
+                used_database = p.database
+
+        return True
+
 
 default_profile_groups = {
     "groups": [
-        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal profiles", "readonly": False},
-        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value, "name": "Standard profiles", "readonly": True},
+        {"setting_type": SettingType.USER.value, "project_name": SettingType.USER.value, "name": "Personal profiles",
+         "readonly": False},
+        {"setting_type": SettingType.SYSTEM.value, "project_name": SettingType.SYSTEM.value,
+         "name": "Standard profiles", "readonly": True},
         {"setting_type": "EDR", "project_name": "EDR profiles", "name": "EDR profiles", "readonly": True}
     ]
 }

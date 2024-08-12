@@ -54,7 +54,10 @@ logging.config.dictConfig(
             },
         },
         "loggers": {
-            "": {"handlers": ["default"], "level": "INFO"},
+            "": {
+                "handlers": ["default"],
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            },
             "pika": {"handlers": ["default"], "level": "WARNING"},
             "src": {
                 "handlers": ["default"],

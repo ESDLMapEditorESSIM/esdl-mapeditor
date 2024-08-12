@@ -61,6 +61,7 @@ import ApplicationContextSelector from "@/apps/application-context/ApplicationCo
 import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
+import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
 
 // Vue.config.productionTip = false
 
@@ -210,7 +211,7 @@ window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');
 }
 
-createVueLControl(AnnouceKPIsToolbar, {
+createVueLControl(ResultVisualizationsToolbar, {
         position: 'bottomright',
     });
 

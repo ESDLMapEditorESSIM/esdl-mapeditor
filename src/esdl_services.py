@@ -29,12 +29,12 @@ import src.log as log
 from esdl import esdl
 from esdl.processing.string_uri import StringURI
 from esdl.undo_wrapper import undo_record_changes
+from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
-from esdl.processing import ESDLAsset, ESDLGeometry
+from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
-from src.tno.undoredo.types import serialize_command_stack
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -52,93 +52,93 @@ class ESDLServices:
         self.register()
 
     def register(self):
-        logger.info('Registering ESDLServices extension')
+        logger.info("Registering ESDLServices extension")
 
-        @self.socketio.on('get_esdl_services_list', namespace='/esdl')
+        @self.socketio.on("get_esdl_services_list", namespace="/esdl")
         def get_esdl_services_list():
             """
             Get the list of ESDL services for the current user.
             :return:
             """
-            user = get_session('user-email')
+            user = get_session("user-email")
             return self.get_user_settings(user)
 
-        @self.socketio.on('refresh_esdl_services_list', namespace='/esdl')
+        @self.socketio.on("refresh_esdl_services_list", namespace="/esdl")
         def refresh_esdl_services_list():
             """
             Refresh the list of ESDL services for the current user by sending the list to the browser.
             """
-            user = get_session('user-email')
-            role = get_session('user-role')
-            emit('esdl_services', self.get_user_services_list(user, role))
+            user = get_session("user-email")
+            role = get_session("user-role")
+            emit("esdl_services", self.get_user_services_list(user, role))
 
-        @self.socketio.on('store_esdl_services_list', namespace='/esdl')
+        @self.socketio.on("store_esdl_services_list", namespace="/esdl")
         def store_esdl_services_list(settings):
             """
             Store the ESDL services list for the current user.
             :param settings: The new settings to store.
             :return:
             """
-            user = get_session('user-email')
+            user = get_session("user-email")
             # TODO: check settings format before storing
             self.set_user_settings(user, settings)
 
             # Emit the new list to the browser such that the UI is updated
-            emit('esdl_services', settings)
+            emit("esdl_services", settings)
 
-        @self.socketio.on('restore_esdl_services_settings', namespace='/esdl')
+        @self.socketio.on("restore_esdl_services_settings", namespace="/esdl")
         def restore_esdl_services_settings():
             """
             Restore ESDL services to how they were before user modifications.
             :return:
             """
-            user = get_session('user-email')
+            user = get_session("user-email")
             settings = self.restore_settings(user)
 
             # Emit the new list to the browser such that the UI is updated
-            emit('esdl_services', settings)
+            emit("esdl_services", settings)
 
             return settings
 
-        @self.flask_app.route('/get_toolbar_services')
+        @self.flask_app.route("/get_toolbar_services")
         def get_toolbar_services():
             services_list = list()
 
-            user = get_session('user-email')
+            user = get_session("user-email")
             services = self.get_user_settings(user)
 
             for service in services:
-                if 'show_on_toolbar' in service:
-                    if service['show_on_toolbar']:
+                if "show_on_toolbar" in service:
+                    if service["show_on_toolbar"]:
                         svc = dict()
-                        svc['id'] = service['id']
-                        svc['name'] = service['name']
-                        svc['icon_url'] = '/icons/service.png'
-                        if service['icon']:
-                            if service['icon']['type'] == 'filename':
-                                svc['icon_url'] = '/icons/' + service['icon']['filename']
-                        services_list.append(svc);
-            return {'services_list': services_list}
+                        svc["id"] = service["id"]
+                        svc["name"] = service["name"]
+                        svc["icon_url"] = "/icons/service.png"
+                        if service["icon"]:
+                            if service["icon"]["type"] == "filename":
+                                svc["icon_url"] = "/icons/" + service["icon"]["filename"]
+                        services_list.append(svc)
+            return {"services_list": services_list}
 
-        @self.flask_app.route('/get_object_esdl/<object_id>')
+        @self.flask_app.route("/get_object_esdl/<object_id>")
         def get_object_esdl(object_id):
             pm = get_project_manager()
-            active_es_id = get_session('active_es_id')
+            active_es_id = get_session("active_es_id")
 
             obj = pm.get_by_id(active_es_id, object_id)
             if obj:
-                uri = StringURI('obj.esdl')
+                uri = StringURI("obj.esdl")
                 rset = ResourceSet()
                 resource = rset.create_resource(uri)
                 resource.append(obj.deepcopy())
                 resource.save()
-                obj_esdl_string =  uri.getvalue()
+                obj_esdl_string = uri.getvalue()
                 return {"esdl": obj_esdl_string}
 
             return None
 
     def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
-        """Get the user services from the settings storage. """
+        """Get the user services from the settings storage."""
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
             esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
         else:
@@ -147,7 +147,7 @@ class ESDLServices:
         return esdl_services_settings
 
     def get_role_based_services(self, roles: List[str]) -> List[Dict[str, Any]]:
-        """Get the services available for this user role from the config. """
+        """Get the services available for this user role from the config."""
         role_based_esdl_services: Dict[str, Any] = esdl_config.esdl_config["role_based_esdl_services"]
         selected_services = list()
         for role in roles:
@@ -169,7 +169,7 @@ class ESDLServices:
         """
         srvs_list = self.get_user_settings(user)
         # store the user services list in session for later use
-        set_session('services_list', srvs_list)
+        set_session("services_list", srvs_list)
 
         # Start with user services, remove those services that the user does not have the role for.
         final_services_list = copy.deepcopy(srvs_list)
@@ -206,19 +206,20 @@ class ESDLServices:
         # Find the currently active service.
         service = None
         # services_list = get_session('services_list')
-        user_email = get_session('user-email')
-        role = get_session('user-role')
+        user_email = get_session("user-email")
+        role = get_session("user-role")
         services_list = self.get_user_services_list(user_email, role)
         for config_service in services_list:
             if config_service["id"] == service_params["service_id"]:
                 service = config_service
                 break
             # If it's a workflow, look in its steps.
-            if "type" in config_service and config_service["type"] in ("workflow", "vueworkflow"):
+            if "type" in config_service and config_service["type"] in (
+                "workflow",
+                "vueworkflow",
+            ):
                 for step in config_service["workflow"]:
-                    if (
-                        step["type"] in ("service", "custom")
-                    ):
+                    if step["type"] in ("service", "custom"):
                         if "service" in step and step["service"]["id"] == service_params["service_id"]:
                             service = step["service"]
                             break
@@ -257,9 +258,9 @@ class ESDLServices:
                     body["energysystem"] = urllib.parse.quote(esdlstr)
                     # print(body)
                 elif service["body"] == "base64_encoded":
-                    esdlstr_bytes = esdlstr.encode('utf-8')
+                    esdlstr_bytes = esdlstr.encode("utf-8")
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                    body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
+                    body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
                 else:
                     body = esdlstr
             elif service["type"] == "simulation":
@@ -268,9 +269,9 @@ class ESDLServices:
                 if service["body"] == "url_encoded":
                     body["energysystem"] = urllib.parse.quote(esdlstr)
                 elif service["body"] == "base64_encoded":
-                    esdlstr_bytes = esdlstr.encode('utf-8')
+                    esdlstr_bytes = esdlstr.encode("utf-8")
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                    body["energysystem"] = esdlstr_base64_bytes.decode('utf-8')
+                    body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
                 else:
                     body = esdlstr
 
@@ -282,12 +283,12 @@ class ESDLServices:
                 if service["body_config"]["encoding"] == "url_encoded":
                     body = urllib.parse.quote(esdlstr)
                 if service["body_config"]["encoding"] == "base64_encoded":
-                    esdlstr_bytes = esdlstr.encode('utf-8')
+                    esdlstr_bytes = esdlstr.encode("utf-8")
                     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                    body = esdlstr_base64_bytes.decode('utf-8')
+                    body = esdlstr_base64_bytes.decode("utf-8")
             if service["body_config"]["type"] == "json":
-                body = {}
-                for param in service["body_config"]['parameters']:
+                # body = {}
+                for param in service["body_config"]["parameters"]:
                     if param["type"] == "esdl":
                         if "energysystem" in body:
                             del body["energysystem"]  # added earlier
@@ -297,9 +298,9 @@ class ESDLServices:
                         if param["encoding"] == "url_encoded":
                             body[param["parameter"]] = urllib.parse.quote(esdlstr)
                         if param["encoding"] == "base64_encoded":
-                            esdlstr_bytes = esdlstr.encode('utf-8')
+                            esdlstr_bytes = esdlstr.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                            body[param["parameter"]] = esdlstr_base64_bytes.decode('utf-8')
+                            body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
                     if param["type"] == "value":
                         body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
@@ -335,8 +336,10 @@ class ESDLServices:
                 if param:
                     # Is there any parameter formatting required...
                     if "formatter" in cfg_service_param:
-                        if "type" in cfg_service_param["formatter"] and \
-                                cfg_service_param["formatter"]["type"] == "datetime_formatter":
+                        if (
+                            "type" in cfg_service_param["formatter"]
+                            and cfg_service_param["formatter"]["type"] == "datetime_formatter"
+                        ):
                             parsed_datetime = parse_date(param)
                             param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
 
@@ -351,7 +354,7 @@ class ESDLServices:
                         elif cfg_service_param["location"] == "body" and isinstance(body, dict):
                             # Parameter is part of the body json
                             if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
-                                param_value = (base64.b64encode(param.encode('utf-8'))).decode('utf-8')
+                                param_value = (base64.b64encode(param.encode("utf-8"))).decode("utf-8")
                             else:
                                 param_value = param
                             body[
@@ -363,9 +366,7 @@ class ESDLServices:
                             url = url + "?"
                         else:
                             url = url + "&"
-                        url = (
-                            url + key + "=" + self.array2list(param)
-                        )
+                        url = url + key + "=" + self.array2list(param)
                         first_qp = False
 
         try:
@@ -374,7 +375,9 @@ class ESDLServices:
             elif service["http_method"] == "delete":
                 r = requests.delete(url, headers=headers)
             elif service["http_method"] == "post":
-                if service["type"].endswith("json") or ("body_config" in service and service["body_config"]["type"] == "json"):
+                if service["type"].endswith("json") or (
+                    "body_config" in service and service["body_config"]["type"] == "json"
+                ):
                     kwargs = {"json": body}
                 else:
                     kwargs = {"data": body}
@@ -392,11 +395,11 @@ class ESDLServices:
                             esdl_response = urllib.parse.quote(r.text)
                         elif service["result"][0]["encoding"] == "base64_encoded":
                             response_with_esdl = r.text
-                            if "json_field" in service['result'][0]:  # use specific json field in result
-                                response_with_esdl = r.json()[service['result'][0]['json_field']]
-                            esdlstr_bytes = response_with_esdl.encode('utf-8')
+                            if "json_field" in service["result"][0]:  # use specific json field in result
+                                response_with_esdl = r.json()[service["result"][0]["json_field"]]
+                            esdlstr_bytes = response_with_esdl.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
-                            esdl_response = esdlstr_base64_bytes.decode('utf-8')
+                            esdl_response = esdlstr_base64_bytes.decode("utf-8")
                         else:
                             esdl_response = r.text
                     else:
@@ -404,6 +407,31 @@ class ESDLServices:
 
                     variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
                     # TODO deal with parse_info?
+
+                    if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
+                        influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id)
+                        try:
+                            first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
+                            fields_query = f'SHOW FIELD KEYS FROM "{first_carrier_id}"'
+                            results = influxdb_client.query(fields_query)
+                            fields = [
+                                result["fieldKey"] for result in results.get_points() if result["fieldType"] == "float"
+                            ]
+                            emit(
+                                "animation_esdl_data",
+                                {
+                                    "es_id": es.id,
+                                    "fields": fields,
+                                    "service_short_name": service["result"][0]["service_short_name"],
+                                    "calc_name": service_params["query_parameters"]["job_name"],
+                                },
+                            )
+                        except Exception as e:
+                            logger.error(e)
+                            return False, (
+                                f"\nCould not retrieve animation data, "
+                                f"problem querying InfluxDB on host: '{influxdb_client._host}'"
+                            )
 
                     # TODO: Check if this is correct?!
                     return True, {}, pm.get_energy_system(variant)
@@ -432,14 +460,10 @@ class ESDLServices:
 
                     # If service returns an ESDL string that represents one asset, add it to the main area
                     if isinstance(add_assets_service_result, str):
-                        add_assets_to_area = {
-                            area.id: [add_assets_service_result]
-                        }
+                        add_assets_to_area = {area.id: [add_assets_service_result]}
                     # If service returns a list of ESDL strings, add them to main area
                     if isinstance(add_assets_service_result, list):
-                        add_assets_to_area = {
-                            area.id: add_assets_service_result
-                        }
+                        add_assets_to_area = {area.id: add_assets_service_result}
                     try:
                         # with undo_record_changes(service.get("name")):
                         for area_id, asset_str_list in add_assets_to_area.items():
@@ -449,13 +473,16 @@ class ESDLServices:
                                 area_to_be_added_to = area
 
                             area_shape = None
+                            # TODO add similar mode and emit animation possible
                             if "mode" in service["result"][0] and service["result"][0]["mode"] == "give_coordinates":
                                 # The assets that will be added must be placed on a grid within the area boundary
-                                shape_dictionary = get_session('shape_dictionary')
+                                shape_dictionary = get_session("shape_dictionary")
                                 if area_to_be_added_to.id in shape_dictionary:
                                     area_shape = shape_dictionary[area_to_be_added_to.id]
                                     # Calculate "enough" possible locations for assets inside the area
-                                    possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
+                                    possible_locations = calc_possible_locations_in_area(
+                                        area_shape, len(asset_str_list)
+                                    )
 
                             for asset_str in asset_str_list:
                                 asset = ESDLAsset.load_asset_from_string(asset_str)
@@ -514,11 +541,20 @@ class ESDLServices:
                             ESDLAsset.add_object_to_area(es_edit, potential, area.id)
                             # asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, potential)
 
-                            coords = ESDLGeometry.parse_esdl_subpolygon(potential.geometry.exterior,
-                                                                        False)  # [lon, lat]
+                            coords = ESDLGeometry.parse_esdl_subpolygon(
+                                potential.geometry.exterior, False
+                            )  # [lon, lat]
                             coords = ESDLGeometry.exchange_coordinates(coords)
-                            potentials_to_be_added.append(['polygon', 'potential', potential.name, potential.id,
-                                                           type(potential).__name__, coords])
+                            potentials_to_be_added.append(
+                                [
+                                    "polygon",
+                                    "potential",
+                                    potential.name,
+                                    potential.id,
+                                    type(potential).__name__,
+                                    coords,
+                                ]
+                            )
 
                         emit(
                             "add_esdl_objects",
@@ -537,7 +573,7 @@ class ESDLServices:
                     rset = ResourceSet()
 
                     profile_str = r.text
-                    uri = StringURI('profile.esdl', profile_str)
+                    uri = StringURI("profile.esdl", profile_str)
                     resource = rset.create_resource(uri)
                     resource.load()
                     profile = resource.contents[0]
@@ -546,7 +582,7 @@ class ESDLServices:
                         # hack for now, how to find the asset for which the service was called
                         b64_esdl = body["esdl"]
                         ascii_esdl_str = base64.b64decode(b64_esdl.encode("utf-8")).decode("utf-8")
-                        uri = StringURI('asset.esdl', ascii_esdl_str)
+                        uri = StringURI("asset.esdl", ascii_esdl_str)
                         resource = rset.create_resource(uri)
                         resource.load()
                         asset = resource.contents[0]
@@ -588,12 +624,27 @@ class ESDLServices:
                             pm.add_object_to_dict(active_es_id, note)
                             map_location = note.mapLocation
                             if map_location:
-                                coords = {'lng': map_location.lon, 'lat': map_location.lat}
-                                notes_list.append({'id': note.id, 'location': coords, 'title': note.title,
-                                                   'text': note.text, 'author': note.author})  # , 'date': n.date})
-                        emit('add_notes', {'es_id': active_es_id, 'notes_list': notes_list})
+                                coords = {
+                                    "lng": map_location.lon,
+                                    "lat": map_location.lat,
+                                }
+                                notes_list.append(
+                                    {
+                                        "id": note.id,
+                                        "location": coords,
+                                        "title": note.title,
+                                        "text": note.text,
+                                        "author": note.author,
+                                    }
+                                )  # , 'date': n.date})
+                        emit(
+                            "add_notes",
+                            {"es_id": active_es_id, "notes_list": notes_list},
+                        )
                     else:
-                        logger.error("Service with id "+service_params["service_id"]+" did not return a esdl.Notes object")
+                        logger.error(
+                            "Service with id " + service_params["service_id"] + " did not return a esdl.Notes object"
+                        )
                         return False, None, None
 
                     return True, {"send_message_to_UI_but_do_nothing": {}}, es
@@ -602,24 +653,20 @@ class ESDLServices:
 
                     asset_results_dict = dict()
                     for sr in service_results:
-                        asset_results_dict[sr['assetID']] = sr['messages']
-                    return True, {
-                        "asset_feedback": asset_results_dict
-                    }, es
+                        asset_results_dict[sr["assetID"]] = sr["messages"]
+                    return True, {"asset_feedback": asset_results_dict}, es
                 elif service["result"][0]["action"] == "show_message":
                     message = service["result"][0]["message"]
-                    if 'json_field' in service["result"][0]:
-                        message = r.json()[service["result"][0]['json_field']]
+                    if "json_field" in service["result"][0]:
+                        message = r.json()[service["result"][0]["json_field"]]
                         import html  # escape html entities in log file of NWN
+
                         message = html.escape(message)
                         message = message.replace("\n", "<br/>")
                     return True, {"message": message}, es
             else:
                 logger.warning(
-                    "Error running ESDL service - response "
-                    + str(r.status_code)
-                    + " with reason: "
-                    + str(r.reason)
+                    "Error running ESDL service - response " + str(r.status_code) + " with reason: " + str(r.reason)
                 )
                 logger.warning(r)
                 logger.warning(r.content)

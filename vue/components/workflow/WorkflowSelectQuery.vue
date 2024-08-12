@@ -54,10 +54,7 @@ const selectValue = (value) => {
 const doGetData = async () => {
   const request_params = getParamsFromState(workflowStep.source.request_params);
   const data = await workflowGetData(workflowStep.source.url, request_params)
-  // if (data == null) {
-  //   alert("No data received.");
-  //   return;
-  // }
+
   if (data != null) {
     const source = workflowStep.source;
     let choices = [];

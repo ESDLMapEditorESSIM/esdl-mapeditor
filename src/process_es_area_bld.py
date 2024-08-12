@@ -17,7 +17,7 @@ import random
 from sys import getsizeof
 from flask import session
 from flask_socketio import emit
-from shapely import Polygon, MultiPoint
+from shapely import MultiPoint
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
@@ -26,7 +26,7 @@ from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session
 from src.app import executor
 from extensions.mapeditor_settings import MapEditorSettings
-from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
+from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.log import get_logger
 from src.shape import Shape, ShapePoint
@@ -37,7 +37,6 @@ from utils.RDWGSConverter import RDWGSConverter
 import shapely
 import math
 import re
-from src.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -360,7 +359,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
                     area_id_number = ""
-                area_geojson_properties["id"] = area_id + area_id_number;
+                area_geojson_properties["id"] = area_id + area_id_number
 
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
@@ -986,7 +985,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                     area_name = title
                 if area_kpis['kpi_list']:   # Only emit KPI info when there are KPIs available
                     emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_info': area_kpis})
-                    emit('kpis_present', True)
+                    emit('kpis_present', {'es_id': es.id})
 
                 # measures can contain assets that still need to be added to the energysystem
                 assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)

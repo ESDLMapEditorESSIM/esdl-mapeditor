@@ -5,19 +5,20 @@
       <a-button type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
         Reload
       </a-button>
-      <a-table :columns="columns" 
-               :row-key="rowkey" 
-               :data-source="dataSource"
-               :pagination="pagination" 
-               :loading="isLoading" 
-               size="small" 
-               class="resulttable"                
-               style="font-size: 12px;"
+      <a-table
+        :columns="columns"
+        :row-key="rowkey"
+        :data-source="dataSource"
+        :pagination="pagination"
+        :loading="isLoading"
+        size="small"
+        class="resulttable"
+        style="font-size: 12px;"
       >
         <template #action="{ record }">
           <span>
             <li v-for="a in actions" :key="a.title">
-              <a v-if="actionEnabled(a, record[rowkey])" href="#" @click="doAction(record[rowkey], a.next_step)">{{ a.title }}</a>
+              <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record, a.next_step)">{{ a.title }}</a>
               <div v-else style="color: lightgray">{{ a.title }}</div>
             </li>
           </span>
@@ -95,9 +96,9 @@ Syntax for WorkflowTableQuery.
 
 */
 
-import { ref } from "vue";
-import { useWorkflow } from "../../composables/workflow.js";
-import { workflowGetData } from "./utils/api.js";
+import {ref} from "vue";
+import {useWorkflow} from "../../composables/workflow.js";
+import {workflowGetData} from "./utils/api.js";
 
 const props = defineProps({
   workflowStep: {
@@ -113,16 +114,17 @@ const isLoading = ref(true);
 const form = {};
 form[workflowStep.target_variable] = "";
 
-const { getParamsFromState, goToStep, getState } = useWorkflow();
+const {getParamsFromState, goToStep, getState} = useWorkflow();
 const state = getState();
 const columns = ref([]);
 const rowkey = ref("");
+const additional_fields = ref(null);
 const actions = ref([]);
 const dataSource = ref([]);
 
 
 // eslint-disable-next-line no-unused-vars
-const pagination = ref({ "position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9 })
+const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9})
 
 const formatDate = (row) => {
   if (row.text !== undefined && row.text != null) {
@@ -149,10 +151,13 @@ const getTagColor = (text) => {
 }
 
 // eslint-disable-next-line no-unused-vars
-const doAction = (job_id, next_step) => {
-  console.log('Action selected: ', job_id, next_step);  
+const doAction = (record, next_step) => {
+  console.log('Action selected: ', record[rowkey.value], next_step);
   state[workflowStep.target_variable] = {};
-  state[workflowStep.target_variable][rowkey.value] = job_id;
+  state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
+  for (const field of additional_fields.value) {
+    state[workflowStep.target_variable][field] = record[field]
+  }
   goToStep(next_step);
 }
 
@@ -161,11 +166,7 @@ const actionEnabled = (action, row) => {
     //console.log("Action enabled: ", action, row);
     if (action.enabled.dataIndex) {
       let value = row[action.enabled.dataIndex];
-      if (action.enabled.values.includes(value)) {
-          return true;
-      } else {
-        return false;
-      }
+      return !!action.enabled.values.includes(value);
     }
   }
   return true;  // default enabled
@@ -194,8 +195,8 @@ const doGetData = async () => {
             }
           }
           //column.sortOrder = 'descend'; -> moved to config
-        } 
-      } else { 
+        }
+      } else {
         // add default sorter otherwise
         column.sorter = (a, b) => ('' + a[column.dataIndex]).localeCompare(b[column.dataIndex]);  // '' forces a string comparison
       }
@@ -203,19 +204,19 @@ const doGetData = async () => {
     let hasActionColumn = source.columns.find(o => o.key === 'action');
     if (!hasActionColumn && source.actions) {
       source.columns.push(
-        {
-          'key': 'action',
-          'title': 'Action',
-          "slots": {
-            "customRender": "action",
-          }
-        });
+          {
+            'key': 'action',
+            'title': 'Action',
+            "slots": {
+              "customRender": "action",
+            }
+          });
     }
     actions.value = source.actions;
     columns.value = source.columns;
     rowkey.value = source.value_field; // "job_id"; // "record => record." + source.value_field
+    additional_fields.value = source.additional_fields;
     dataSource.value = data;
-
   }
   isLoading.value = false;
 }

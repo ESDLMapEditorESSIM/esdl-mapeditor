@@ -1,5 +1,3 @@
-version: "3.3"
-
 services:
   mapeditor:
     build:
@@ -37,5 +35,5 @@ services:
 
 networks:
   mapeditor-net:
-    external:
-      name: mapeditor-net
+    name: mapeditor-net
+    external: true
