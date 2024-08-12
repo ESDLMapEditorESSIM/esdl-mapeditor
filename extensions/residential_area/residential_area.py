@@ -390,4 +390,4 @@ class ResidentialArea:
                 ]
             }
         else:
-            return None
+            return {}
