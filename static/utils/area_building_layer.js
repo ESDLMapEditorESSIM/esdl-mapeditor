@@ -33,6 +33,8 @@ var buildingLegendChoice;
 var get_area_color;         // function to get color of an area
 var get_building_color = get_buildingYear_colors;     // function to get color of a building
 
+let areaMarkerResizeFactor = 1.0; // resize area map marker (pie chart) size based on the slider value
+
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
@@ -590,28 +592,32 @@ function calcDistKPIItemsSum(distKPI) {
  * @param {number} kpiItemsSum The distribution KPI item values sum of the area feature.
  * @param {number} kpiSumMin The minimal KPI item values sum derived from area features of the same layer.
  * @param {number} kpiSumMax The maximum KPI item values sum derived from area features of the same layer.
+ * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  * @param {number} [refZoomLevel=10] Reference zoom level for scaling. Default to 10.
  * @returns {number} Map zoom level responsive pie chart radius of the area feature.
  */
-function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, refZoomLevel = 10) {
-    // Calculate the zoom scaling factor
-    const zoomLevelDiff = (map.getZoom() - refZoomLevel);
-    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
-
-    // Define zoom level responsive pie chart min and max radius.
-    const baseRadius = 7;
-    const rMin = baseRadius * zoomScalingFactor;
-    const rMax = rMin * 5;
-
+function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0, refZoomLevel=10) {
     // Input validation
     if (kpiItemsSum < 0 || kpiSumMin < 0 || kpiSumMax < 0) {
         throw new Error('KPI values must be non-negative');
     }
+    if (resizeFactor < 0) {
+        throw new Error('resizeFactor must be non-negative');
+    }
+
+    // Calculate the zoom scaling factor
+    const zoomLevelDiff = (map.getZoom() - refZoomLevel);
+    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
+
+    // Define zoom level and resize factor responsive pie chart min and max radius.
+    const baseRadius = 7 * resizeFactor;
+    const rMin = baseRadius * zoomScalingFactor;
+    const rMax = rMin * 5;
+
     // Special case: when kpiItemsSum == kpiSumMin == kpiSumMax and all > 0
     // This occurs when the layer contains only one area feature.
     if (kpiItemsSum === kpiSumMin && kpiItemsSum === kpiSumMax && kpiItemsSum > 0) {
-        const r = (rMax + rMin) / 2;
-        return r;
+        return rMax;
     }
     if (kpiSumMin >= kpiSumMax) {
         throw new Error('kpiSumMin must be less than kpiSumMax');
@@ -633,8 +639,9 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, refZoomLevel = 10
  *                                    and used as a pie chart data template to ensure data structure consistency.
  *                                    If not given, the pie chart is created based on the area feature dist_KPIs property.
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
+ * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  */
-function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange) {
+function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length) {
         const distKPIs = Object.keys(ar.properties.dist_KPIs);
 
@@ -650,8 +657,8 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange) 
                     refDistKPIsRange[KPI].min <= kpiItemsSum && kpiItemsSum <= refDistKPIsRange[KPI].max
                 ) {
                     const kpiSumMin = refDistKPIsRange[KPI].min;
-                    const kpiSumMax = refDistKPIsRange[KPI].max;  
-                    r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax);
+                    const kpiSumMax = refDistKPIsRange[KPI].max;
+                    r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor);
                 } else {
                     console.error(`Error computing relative pie chart radius of KPI ${KPI} with kpiItemsSum: ${kpiItemsSum}`);
                 }
@@ -730,7 +737,7 @@ function resize_area_pi_charts() {
                         }
                     }
 
-                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange);
+                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange, areaMarkerResizeFactor);
 
                     if (areaLegendChoice in feature.properties.dist_KPIs) {
                         let kpi = feature.properties.dist_KPIs[areaLegendChoice];
@@ -1173,6 +1180,22 @@ function createAreaLegendDiv() {
 
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
+
+    const markerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-div', legendDiv);
+    markerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
+    
+    const slider = L.DomUtil.create('input', 'area-marker-resize-slider', markerResizeDiv);
+    slider.type = 'range';
+    slider.min = 0.0;
+    slider.max = 2.0;
+    slider.step = 0.1;
+    slider.value = 1.0;
+    L.DomEvent.disableClickPropagation(slider);
+    L.DomEvent.on(slider, 'input', (event) => {
+        areaMarkerResizeFactor = event.target.value;
+        resize_area_pi_charts();
+    });
+
     return legendDiv;
 }
 
