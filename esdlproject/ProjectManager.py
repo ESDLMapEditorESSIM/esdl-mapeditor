@@ -672,6 +672,14 @@ class ProjectManager:
         :param uri: the URI to load the project from
         :return: the project object
         """
+        # First check if the project is valid, so that we don't corrupt the project manager.
+        potential_project_resource: XMLResource = self.rset.create_resource(uri)
+        potential_project_resource.type = ProjectManagerResourceType.PROJECT
+        potential_project_resource.load()
+        potential_project = potential_project_resource.contents[0]
+        if not isinstance(potential_project, ESDLProject):
+            raise Exception("The project is not a valid ESDL project.")
+
         # clear current ResourceSet
         for r_uri, resource in dict(self.rset.resources).items():
             self.rset.remove_resource(resource)
@@ -680,9 +688,7 @@ class ProjectManager:
 
         filename = uri.plain
         logger.info(f"Loading {filename}")
-        self.project_resource = self.rset.create_resource(uri)
-        self.project_resource.type = ProjectManagerResourceType.PROJECT
-        self.project_resource.load()
+        self.project_resource = potential_project_resource
         self.project = self.project_resource.contents[0]
 
         # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))
@@ -694,19 +700,19 @@ class ProjectManager:
             self.init_empty_project()
 
         # load the base variant energy systems into resources and set the references
-        for variantCollection in self.project.variantCollection:
-            if variantCollection.energysystem:
-                variantCollection: VariantCollection = variantCollection
-                index = get_variant_collection_index(variantCollection)
+        for variant_collection in self.project.variantCollection:
+            if variant_collection.energysystem:
+                variant_collection: VariantCollection = variant_collection
+                index = get_variant_collection_index(variant_collection)
                 bv_uri = StringURI(uri=f"VariantCollection.{index}_{str(uuid4())[:4]}.esdl")
-                variantCollection_resource = self.rset.create_resource(bv_uri)
-                variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-                if not isinstance(variantCollection_resource, XMLResource):
+                variant_collection_resource = self.rset.create_resource(bv_uri)
+                variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+                if not isinstance(variant_collection_resource, XMLResource):
                     raise Exception("ESDL files are mapped to the wrong Resource type. Should be XMLResource.")
-                variantCollection_resource: XMLResource = variantCollection_resource
+                variant_collection_resource: XMLResource = variant_collection_resource
                 # self.base_variant_resources.insert(index, bv_resource)
-                variantCollection_resource.set_content(variantCollection.energysystem)
-                variantCollection.energysystemRef = variantCollection_resource.contents[0]
+                variant_collection_resource.set_content(variant_collection.energysystem)
+                variant_collection.energysystemRef = variant_collection_resource.contents[0]
 
         self.active_variant = None
         self.set_active_variant(self.project.variantCollection[0].variant)

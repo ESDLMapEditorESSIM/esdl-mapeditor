@@ -54,7 +54,6 @@ import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
 import {useUndoRedo} from "./composables/undoRedo";
-import AnnouceKPIsToolbar from "@/components/toolbars/AnnouceKPIsToolbar.vue";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
 import ApplicationContextSelector from "@/apps/application-context/ApplicationContextSelector.vue";
