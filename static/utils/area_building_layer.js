@@ -33,10 +33,13 @@ var buildingLegendChoice;
 var get_area_color;         // function to get color of an area
 var get_building_color = get_buildingYear_colors;     // function to get color of a building
 
+let areaMarkerResizeFactor = 1.0; // resize area map marker (pie chart) size based on the slider value
+
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
 let area_KPIs = {};
+let layersAreaFeaturesDistKPIsRange = {};
 let building_KPIs = {};
 const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
     '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
@@ -570,26 +573,100 @@ function format_KPI_unit(unit) {
 }
 
 /**
+ * Returns the sum of distribution KPI item values.
  * 
+ * @param {Object} distKPI The distribution KPI object of area feature.
+ * @returns {number} The sum of distribution KPI item values.
+ */
+function calcDistKPIItemsSum(distKPI) {
+    let sum = 0;
+    distKPI.value.map((ele) => ele.value).forEach((val) => sum += val);
+    return sum;
+}
+
+/**
+ * Given the distribution KPI item values sum of the area feature
+ * and the reference min/max KPI item values sum derived from area features of the same layer, 
+ * the function returns a map zoom level responsive pie chart radius of the area feature.
+ * 
+ * @param {number} kpiItemsSum The distribution KPI item values sum of the area feature.
+ * @param {number} kpiSumMin The minimal KPI item values sum derived from area features of the same layer.
+ * @param {number} kpiSumMax The maximum KPI item values sum derived from area features of the same layer.
+ * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
+ * @param {number} [refZoomLevel=10] Reference zoom level for scaling. Default to 10.
+ * @returns {number} Map zoom level responsive pie chart radius of the area feature.
+ */
+function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0, refZoomLevel=10) {
+    // Input validation
+    if (kpiItemsSum < 0 || kpiSumMin < 0 || kpiSumMax < 0) {
+        throw new Error('KPI values must be non-negative');
+    }
+    if (resizeFactor < 0) {
+        throw new Error('resizeFactor must be non-negative');
+    }
+
+    // Calculate the zoom scaling factor
+    const zoomLevelDiff = (map.getZoom() - refZoomLevel);
+    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
+
+    // Define zoom level and resize factor responsive pie chart min and max radius.
+    const baseRadius = 7 * resizeFactor;
+    const rMin = baseRadius * zoomScalingFactor;
+    const rMax = rMin * 5;
+
+    // Special case: when kpiItemsSum == kpiSumMin == kpiSumMax and all > 0
+    // This occurs when the layer contains only one area feature.
+    if (kpiItemsSum === kpiSumMin && kpiItemsSum === kpiSumMax && kpiItemsSum > 0) {
+        return rMax;
+    }
+    if (kpiSumMin >= kpiSumMax) {
+        throw new Error('kpiSumMin must be less than kpiSumMax');
+    }
+
+    // Calculate the pie chart radius using a logarithmic scale
+    const normalizedKpiValue = (Math.log1p(kpiItemsSum) - Math.log1p(kpiSumMin)) / 
+                               (Math.log1p(kpiSumMax) - Math.log1p(kpiSumMin));
+    const r = normalizedKpiValue * (rMax - rMin) + rMin;
+    
+    return r;
+}
+
+
+/**
+ *
  * @param {Object} ar area feature object
- * @param {number} size calculated area size used as pie chart radius reference
- * @param {Object|null} ref_area_KPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
+ * @param {Object|null} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
  *                                    and used as a pie chart data template to ensure data structure consistency.
  *                                    If not given, the pie chart is created based on the area feature dist_KPIs property.
+ * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
+ * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  */
-function create_area_dist_KPIs_pie_chart(ar, size, ref_area_KPIs) {
-    if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length != 0) {
-        const keys = Object.keys(ar.properties.dist_KPIs);
-        
+function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0) {
+    if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length) {
+        const distKPIs = Object.keys(ar.properties.dist_KPIs);
+
         // create pieChartMarkers for all DistributionKPIs
-        for (let j=0; j<keys.length; j++) {
-            const key = keys[j];
-            const dist_KPI = ar.properties.dist_KPIs[key];
-            const unit = dist_KPI.unit;
+        distKPIs.forEach((KPI) => {
+            const distKPI = ar.properties.dist_KPIs[KPI];
+            const unit = distKPI.unit;
+
+            let r = 0;
+            const kpiItemsSum = calcDistKPIItemsSum(distKPI);
+            if (kpiItemsSum > 0) {
+                if (refDistKPIsRange[KPI] &&
+                    refDistKPIsRange[KPI].min <= kpiItemsSum && kpiItemsSum <= refDistKPIsRange[KPI].max
+                ) {
+                    const kpiSumMin = refDistKPIsRange[KPI].min;
+                    const kpiSumMax = refDistKPIsRange[KPI].max;
+                    r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor);
+                } else {
+                    console.error(`Error computing relative pie chart radius of KPI ${KPI} with kpiItemsSum: ${kpiItemsSum}`);
+                }
+            }
 
             // Pie chart options.
             const pieChartOptions = {
-                radius: size / 4,
+                radius: r,
                 fillOpacity: 1.0,
                 opacity: 1.0,
                 data: {},
@@ -602,24 +679,24 @@ function create_area_dist_KPIs_pie_chart(ar, size, ref_area_KPIs) {
             };
 
             // An array of pie chart data item names
-            let chartDataItemNames = dist_KPI.value.map((ele) => ele.name);
-            // If ref_area_KPIs is given, use it for pie chart data item names
+            let chartDataItemNames = distKPI.value.map((ele) => ele.name);
+            // If refAreaDistKPIs is given, use it for pie chart data item names
             // to avoid possible pie chart data inconsistency among different area features.
-            if (ref_area_KPIs && ref_area_KPIs[key] &&
-                ref_area_KPIs[key].type === "distributionKPI" && 
-                ref_area_KPIs[key].names.length) 
+            if (refAreaDistKPIs && refAreaDistKPIs[KPI] &&
+                refAreaDistKPIs[KPI].type === "distributionKPI" && 
+                refAreaDistKPIs[KPI].names.length) 
             {
-                chartDataItemNames = ref_area_KPIs[key].names;
+                chartDataItemNames = refAreaDistKPIs[KPI].names;
             }
 
             chartDataItemNames.forEach((itemName, idx) => {
-                const dist_KPI_item = dist_KPI.value.find((item) => item.name === itemName);
+                const distKPIItem = distKPI.value.find((item) => item.name === itemName);
                 // If no matching KPI item is found, 0 will be applied as data item value
-                const dist_KPI_item_name = dist_KPI_item ? dist_KPI_item.name : itemName;
-                const dist_KPI_item_value = dist_KPI_item ? dist_KPI_item.value : 0;
+                const distKPIItemName = distKPIItem ? distKPIItem.name : itemName;
+                const distKPIItemValue = distKPIItem ? distKPIItem.value : 0;
             
-                pieChartOptions.data[dist_KPI_item_name] = dist_KPI_item_value;
-                pieChartOptions.chartOptions[dist_KPI_item_name] = {
+                pieChartOptions.data[distKPIItemName] = distKPIItemValue;
+                pieChartOptions.chartOptions[distKPIItemName] = {
                     fillColor: pie_chart_color_list[idx],
                     minValue: 0,
                     maxValue: 10,
@@ -630,49 +707,40 @@ function create_area_dist_KPIs_pie_chart(ar, size, ref_area_KPIs) {
                 };
             });
 
-            dist_KPI.pieChartMarker = new L.PieChartMarker(
-                new L.LatLng(dist_KPI.location[0], dist_KPI.location[1]),
+            distKPI.pieChartMarker = new L.PieChartMarker(
+                new L.LatLng(distKPI.location[0], distKPI.location[1]),
                 pieChartOptions
             );
-            dist_KPI.pieChartMarkerVisible = false;
-        }
+            distKPI.pieChartMarkerVisible = false;
+        });
     }
-}
-
-function calculate_area_size(layer) {
-    // calculate the size of the area, see https://oliverroick.net/writing/2015/leaflet-deflate.html
-    let bounds = layer.getBounds();
-    let zoom = map.getZoom();
-    let ne_px = map.project(bounds.getNorthEast(), zoom);
-    let sw_px = map.project(bounds.getSouthWest(), zoom);
-    let width = ne_px.x - sw_px.x;
-    let height = sw_px.y - ne_px.y;
-    let size = Math.min(width, height);
-    return size
 }
 
 function resize_area_pi_charts() {
     let area_layers = get_layers(active_layer_id, 'area_layer');
+
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {
+            const layerName = featuregroup_instance.options.group_name;
+            const distKPIsRange = layersAreaFeaturesDistKPIsRange[layerName];
+            
+            // Loop through layer features to create pie chart if applicable.
             featuregroup_instance.eachLayer(function(layer) {
-                // layer should now contain leaflet layers for each area
-                if ("dist_KPIs" in layer.feature.properties) {
-                    if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
+                const feature = layer.feature;
+                if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length) {
+                    if (areaLegendChoice in feature.properties.dist_KPIs) {
                         // if currently selected KPI is DistributionKPI, remove it from map
-                        let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
+                        let kpi = feature.properties.dist_KPIs[areaLegendChoice];
                         if (kpi.pieChartMarkerVisible) {   // don't add if it's already visible
                             kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
                             kpi.pieChartMarkerVisible = false;
                         }
                     }
 
-                    let area_size = calculate_area_size(layer);
-                    create_area_dist_KPIs_pie_chart(layer.feature, area_size, area_KPIs);
+                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange, areaMarkerResizeFactor);
 
-                    if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
-                        let kpi = layer.feature.properties.dist_KPIs[areaLegendChoice];
-
+                    if (areaLegendChoice in feature.properties.dist_KPIs) {
+                        let kpi = feature.properties.dist_KPIs[areaLegendChoice];
                         if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
                             kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
                             kpi.pieChartMarkerVisible = true;
@@ -685,7 +753,54 @@ function resize_area_pi_charts() {
     });
 }
 
+/**
+ * 
+ * @param {Object} layerFeatures An array of layer area features.
+ * @returns {Object} Distribution KPIs sum range (min/max) derived from the given array of features.
+ */
+function calcDistKPIsSumRangeFromFeatures (layerFeatures) {
+    const distKPIsKeys = [];
+    layerFeatures.forEach((f) => {
+        if (f.properties.dist_KPIs) {
+            Object.keys(f.properties.dist_KPIs).forEach((k) => {
+                if (!distKPIsKeys.includes(k)) {
+                    distKPIsKeys.push(k);
+                }
+            });
+        }
+    });
+
+    const distKPIsSumRange = {};
+    distKPIsKeys.forEach((KPI) => {
+        const featuresKPISums = [];
+        layerFeatures.forEach((f) => {
+            if (f.properties.dist_KPIs && f.properties.dist_KPIs[KPI]) {
+                const kpiSum = calcDistKPIItemsSum(f.properties.dist_KPIs[KPI]);
+                featuresKPISums.push(kpiSum);
+            }
+        });
+
+        if (featuresKPISums.length) {
+            const minKPISum = Math.min(...featuresKPISums);
+            const maxKPISum = Math.max(...featuresKPISums);
+            distKPIsSumRange[KPI] = {
+                min: minKPISum,
+                max: maxKPISum
+            };
+        } else {
+            distKPIsSumRange[KPI] = undefined;
+        }
+    });
+
+    return distKPIsSumRange;
+}
+
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
+    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart() 
+    // to compute relative pie chart radius for the area feature.
+    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
+    layersAreaFeaturesDistKPIsRange[group_name] = distKPIsRange;
+
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
         group_name: group_name,
@@ -693,8 +808,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
-                let area_size = calculate_area_size(layer);
-                create_area_dist_KPIs_pie_chart(feature, area_size, area_KPIs);
+                create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange);
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
@@ -1066,6 +1180,22 @@ function createAreaLegendDiv() {
 
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
+
+    const markerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-div', legendDiv);
+    markerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
+    
+    const slider = L.DomUtil.create('input', 'area-marker-resize-slider', markerResizeDiv);
+    slider.type = 'range';
+    slider.min = 0.0;
+    slider.max = 2.0;
+    slider.step = 0.1;
+    slider.value = 1.0;
+    L.DomEvent.disableClickPropagation(slider);
+    L.DomEvent.on(slider, 'input', (event) => {
+        areaMarkerResizeFactor = event.target.value;
+        resize_area_pi_charts();
+    });
+
     return legendDiv;
 }
 
