@@ -97,7 +97,6 @@ def load_wms_layer_geoserver(
     file_path: str,
     style_name: str,
     style_file_path: str = None,
-    raster_transparency: float = 0.5,
     overwrite: bool = False,
 ) -> None:
     # check if layer already exists
@@ -127,7 +126,6 @@ def load_wms_layer_geoserver(
                     style_name=style_name,
                     workspace=workspace,
                     color_ramp="nipy_spectral",
-                    opacity=1 - raster_transparency,
                 )
             geo.publish_style(
                 layer_name=layer_name,
@@ -173,6 +171,7 @@ def add_wms_layer(
     url: str,
     layer_name: str,
     legend_url: str,
+    layer_opacity: float,
 ) -> None:
     if setting_type == SettingType.SYSTEM:
         project_name = SettingType.SYSTEM.value
@@ -185,6 +184,7 @@ def add_wms_layer(
         "legend_url": legend_url,
         "layer_ref": None,
         "visible": False,
+        "opacity": layer_opacity
     }
     layer_uuid = str(uuid4())
     wms_layers[layer_uuid] = layer
@@ -290,7 +290,8 @@ def load_layers() -> None:
 
             try:
                 # load layer in postgis (only for non-raster files)
-                if not file_path.endswith(tuple(os.environ.get("RASTER_EXTENSIONS").replace(" ", "").split(","))):
+                is_raster_file = file_path.endswith(tuple(os.environ.get("RASTER_EXTENSIONS").replace(" ", "").split(",")))
+                if not is_raster_file:
                     load_wms_layer_postgis(
                         cursor=cursor,
                         postgres_host=os.environ.get("POSTGRES_HOST"),
@@ -302,7 +303,6 @@ def load_layers() -> None:
                         table_name=layer_name,
                         overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
                     )
-
                 # load layer in geoserver
                 load_wms_layer_geoserver(
                     geo=geo,
@@ -313,7 +313,6 @@ def load_layers() -> None:
                     file_path=file_path,
                     style_name=style_name,
                     style_file_path=style_file_path,
-                    raster_transparency=float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY")),
                     overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
                 )
 
@@ -323,6 +322,12 @@ def load_layers() -> None:
                     parent_folder_uuid = add_wms_group(
                         layer_groups, parent_folder_uuid, setting_type, os.environ.get("PROJECT_NAME"), folder_name
                     )
+
+                if is_raster_file:
+                    layer_opacity = float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY"))
+                else:
+                    layer_opacity = float(os.environ.get("VECTOR_DEFAULT_TRANSPARENCY"))
+
                 add_wms_layer(
                     wms_layers,
                     layer_groups[parent_folder_uuid],
@@ -333,6 +338,7 @@ def load_layers() -> None:
                     layer_name,
                     f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
                     f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
+                    layer_opacity
                 )
             except Exception as e:
                 print(e)
