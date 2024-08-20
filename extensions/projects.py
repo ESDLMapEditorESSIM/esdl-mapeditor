@@ -134,6 +134,7 @@ def create_base_variant():
     pm = get_project_manager()
     pm.add_new_variant_collection()
     emit_active_esdl_project()
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
 class DeleteBaseVariantRequest(TypedDict):
@@ -147,6 +148,7 @@ def delete_base_variant(message: DeleteBaseVariantRequest):
     if base_variant is not None:
         pm.delete_variant(base_variant)
         emit_active_esdl_project()
+        send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
 class RenameBaseVariantRequest(TypedDict):
@@ -162,18 +164,7 @@ def rename_project(message: RenameBaseVariantRequest):
     pm = get_project_manager()
     base_variant = pm.get_base_variant_by_id(message["id"])
     base_variant.name = message["name"]
-
-
-class CreateVariantRequest(TypedDict):
-    base_variant_id: str
-
-
-@socketio.on('create_variant', namespace='/esdl')
-def create_variant(message: CreateVariantRequest):
-    pm = get_project_manager()
-    base_variant = pm.get_base_variant_by_id(message['base_variant_id'])
-    create_new_variant(base_variant)
-    emit_active_esdl_project()
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
 class CreateChildVariantRequest(TypedDict):
@@ -185,8 +176,8 @@ def create_child_variant(message: CreateChildVariantRequest):
     pm = get_project_manager()
     parent_variant = pm.get_variant_by_id(message['parent_variant_id'])
     create_new_variant(parent_variant)
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
     emit_active_esdl_project()
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
 class DeleteVariantRequest(TypedDict):
@@ -201,6 +192,7 @@ def delete_base_variant(message: DeleteVariantRequest):
         pm.delete_variant(variant)
 
     emit_active_esdl_project()
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
 class RenameVariantRequest(TypedDict):
@@ -209,11 +201,11 @@ class RenameVariantRequest(TypedDict):
 
 
 @socketio.on("rename_variant", namespace="/esdl")
-def rename_project(message: RenameVariantRequest):
+def rename_variant(message: RenameVariantRequest):
     """
     Rename energy project.
     """
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
     variant.name = message["name"]
-
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])

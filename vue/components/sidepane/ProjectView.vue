@@ -198,44 +198,6 @@ class ProjectTreeSpec {
   }
 }
 
-// class BaseVariantTreeSpec {
-//   constructor() {
-//     this.type = "base_variant";
-//     this.icon = 'fas fa-bezier-curve';
-//   }
-
-//   contextMenus(node, tree) {
-//     return {
-//       'create': {
-//         'label': 'Create new Variant',
-//         'icon': 'fas fa-plus',
-//         'action': function () {
-//           const msg = {base_variant_id: node.original.baseVariantId};
-//           socket.value.emit("create_variant", msg);
-//         }
-//       },
-//       'rename': {
-//         'label': 'Rename Energy System',
-//         'icon': 'far fa-edit',
-//         'action': function () {
-//           tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
-//             if (isSuccessful && !isCancelled) {
-//               socket.value.emit("rename_base_variant", {id: node.original.baseVariantId, name: node.text});
-//             }
-//           });
-//         }
-//       },
-//       'delete': {
-//         'label': 'Remove Energy System',
-//         'icon': 'fa fa-trash-o',
-//         'action': function () {
-//           socket.value.emit("delete_base_variant", {id: node.original.baseVariantId});
-//         }
-//       },
-//     }
-//   }
-// }
-
 class VariantTreeSpec {
   constructor() {
     this.type = "variant";
