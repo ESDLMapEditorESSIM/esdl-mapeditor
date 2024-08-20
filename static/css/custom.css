@@ -421,6 +421,11 @@ h6 {
     opacity: 0.7;
 }
 
+.area-marker-resize-div {
+    display: flex;
+    padding-top: 6px;
+}
+
 /*
     Loader
 */
