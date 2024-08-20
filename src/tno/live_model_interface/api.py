@@ -13,7 +13,7 @@ LAST_PM_REFRESH_SENT: datetime | None = None
 """The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
-def send_new_esdl():
+def send_new_esdl_to_lmi():
     """
     Send "new ESDL" message to the live model interface.
     :return:
@@ -38,13 +38,15 @@ def send_new_esdl():
     send_rabbitmq_message(message, "events.esdl.new")
 
 
-def send_project_manager(only_send_client_id: str | None = None):
+def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
     """
     Send project managers for all users, or only for the provided users.
+
+    :param only_send_for_client_id: If provided, only send the project manager for this client id.
     """
     global LAST_PM_REFRESH_SENT
     for client_id, session_data in managed_sessions.items():
-        if only_send_client_id is not None and client_id != only_send_client_id:
+        if only_send_for_client_id is not None and client_id != only_send_for_client_id:
             continue
         pm: ProjectManager | None = session_data.get(PM_KEY)
         if pm is None:

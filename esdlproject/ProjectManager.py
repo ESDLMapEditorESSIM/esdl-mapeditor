@@ -341,7 +341,7 @@ class ProjectManager:
             # regenerated, but the changes from the child should be maintained. This means that before switching, we
             # need to make sure that any variant changes are persisted.
 
-            logger.info("Variant snapshot already generated. Creating new one based on changes. (WIP)")
+            logger.info("Variant snapshot already generated. We will check if we need a new one based on parent changes")
 
             # Calculate the list of variants between the VariantCollection and this variant such that we can check
             # if there are changes there, newer than ours and apply them to the new snapshot
@@ -650,7 +650,8 @@ class ProjectManager:
             variantCollection.energysystem = None
             variantCollection.energysystemRef = collection_resource.contents[0]
         for variant in all_variants:
-            variant.snapshotRef = variant_snapshot_refs[variant.id]
+            if variant.id in variant_snapshot_refs:
+                variant.snapshotRef = variant_snapshot_refs[variant.id]
 
         resources_dict = None
         return project_as_string

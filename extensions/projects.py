@@ -24,7 +24,7 @@ from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
-from src.tno.live_model_interface.api import send_project_manager
+from src.tno.live_model_interface.api import send_project_manager_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
@@ -80,7 +80,7 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
-    send_project_manager(session['client_id'])
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
     emit_clear_frontend_esdls()
     emit_clear_ui()
     call_process_energy_system.submit()
@@ -108,6 +108,11 @@ class SetActiveVariantRequest(TypedDict):
 
 @socketio.on('set_active_variant', namespace='/esdl')
 def set_active_variant(message: SetActiveVariantRequest):
+    """
+    Set the active variant for this user. Triggers a process_energy_system invocation.
+
+    :param message: Message containing the ID of the variant to activate.
+    """
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
     if variant:
@@ -180,6 +185,7 @@ def create_child_variant(message: CreateChildVariantRequest):
     pm = get_project_manager()
     parent_variant = pm.get_variant_by_id(message['parent_variant_id'])
     create_new_variant(parent_variant)
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
     emit_active_esdl_project()
 
 

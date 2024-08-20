@@ -16,6 +16,9 @@ from typing import List, Optional, Union
 from uuid import uuid4
 
 from esdlproject import VariantCollection, Variant
+from src import log
+
+logger = log.get_logger(__name__)
 
 
 def get_parent_variant(variant: Variant) -> Union[VariantCollection, Variant]:
@@ -37,9 +40,10 @@ def create_new_variant(parent_variant: Union[VariantCollection, Variant], varian
 
     :param parent_variant: VariantCollection or variant to create the new variant under.
     :param variant_name: Name of the new variant.
+    :param variant_id: Optionally the ID of the new variant.
     :return: The new variant.
     """
-    print("Create new variant", parent_variant)
+    logger.info("Create new variant", parent_variant=parent_variant, variant_name=variant_name, variant_id=variant_id)
     if isinstance(parent_variant, VariantCollection):
         parent_variant = parent_variant.variant  #
     if variant_name is None:

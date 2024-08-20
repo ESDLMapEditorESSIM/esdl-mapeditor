@@ -27,9 +27,8 @@ def emit_active_esdl_project():
     """
     pm = get_project_manager()
     project_data = serialize_esdl_project(pm, pm.project)
-    print("Active project data", project_data)
+    logger.info("Active project data", project_data=project_data)
     emit('update_active_esdl_project', project_data, namespace="/esdl")
-
 
 
 def emit_clear_ui():

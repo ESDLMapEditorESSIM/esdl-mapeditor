@@ -34,7 +34,7 @@ from pyecore.ecore import EDate
 
 from esdlproject import Variant
 from extensions.application_context import ApplicationContextExtension
-from src.tno.live_model_interface.api import send_new_esdl, send_project_manager
+from src.tno.live_model_interface.api import send_new_esdl_to_lmi, send_project_manager_to_lmi
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.live_model_interface.results_listener import start_rmq_thread
 from src.tno.projects.emits import emit_active_esdl_project
@@ -3193,7 +3193,7 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        send_new_esdl()
+        send_new_esdl_to_lmi()
 
     # 02-2024: is not used anymore, siee esdl_file_io
     # if message['cmd'] == 'load_esdl_from_file':
@@ -3367,7 +3367,10 @@ def initialize_app():
         # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in Project Manager - Edwin and Ewoud discuss!!")
 
-    send_project_manager()
+    try:
+        send_project_manager_to_lmi()
+    except Exception:
+        logger.exception("Exception sending project manager to LMI")
     es_info_list = {}
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
