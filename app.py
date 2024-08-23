@@ -3367,8 +3367,9 @@ def initialize_app():
         # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in Project Manager - Edwin and Ewoud discuss!!")
 
+    client_id = session['client_id']
     try:
-        send_project_manager_to_lmi()
+        send_project_manager_to_lmi(only_send_for_client_id=client_id)
     except Exception:
         logger.exception("Exception sending project manager to LMI")
     es_info_list = {}

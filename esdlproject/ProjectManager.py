@@ -117,9 +117,10 @@ class ProjectManager:
     change_tracker: Final[ChangeTracker]
     # The currently selected variant to which changes should be applied.
     active_variant: Variant | None
-    change_listeners = dict()
+    # List of listeners that are informed of changes to the project.
+    change_listeners = None
     # Key is variant ID, value is the timestamp of the last activation of the variant.
-    variant_activation_timestamps: dict[str, datetime] = dict()
+    variant_activation_timestamps: dict[str, datetime] = None
 
     lock = threading.Lock()
 
@@ -133,6 +134,8 @@ class ProjectManager:
         If using uri to load a project, use StringURI(uri, text) to load a text string
         """
         patch_esdl()
+        self.change_listeners = dict()
+        self.variant_activation_timestamps = dict()
         self.rset = ResourceSet()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
@@ -369,21 +372,6 @@ class ProjectManager:
                     self.active_variant = new_variant
                     new_active_variant_changed = True
             self.active_variant = new_variant
-
-        # TODO: I think this special case should not need special handling.
-        # elif get_parent_variant(new_variant) == self.active_variant:
-        #     # current active variant is the parent, so we can continue with storing changes in this variant
-        #     # without changing the current active ES, and only apply changes in this new active variant
-        #     logger.debug(
-        #         f"set_active_variant(): Continuing recording changes in new variant {new_variant.name}"
-        #     )
-        #     parent_variant = self.active_variant
-        #     if len(parent_variant.change) > 0:
-        #         logger.debug(
-        #             f"set_active_variant(): Replaying variant {new_variant.name} @ {new_variant.eURIFragment()}"
-        #         )
-        #         self.apply_variant_changes(self.active_variant, new_variant.snapshotRef)
-        #     self.active_variant = new_variant
         else:
             # New variant is selected and activated for the first time.
             logger.info(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
@@ -404,10 +392,12 @@ class ProjectManager:
         variant.snapshotRef = None
 
     def replay_parent_variant_changes(self, new_variant):
-        # find base Variant energy system and set that as active variant
-        # 0: store current es as active snapshot for current active es
-        # 1: load base variant
-        # 2: replay changes in this variant
+        """
+        Find base Variant energy system and set that as active variant
+        0: store current es as active snapshot for current active es
+        1: load base variant
+        2: replay changes in this variant
+        """
         collection = get_variant_collection(new_variant)
         # base_variant_resource = get_base_variant_resource(base_variant)
         # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())

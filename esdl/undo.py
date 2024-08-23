@@ -759,6 +759,7 @@ class ChangeTracker:
         the change tracker data structure that is created for this.
 
         """
+        logger.info("Creating new tracker for variant change", variant_name=variant.name, resource=resource)
         if eobj:
             resource = eobj.eResource
         elif resource:
