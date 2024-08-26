@@ -116,17 +116,17 @@ const doAction = (record, action) => {
   }
 
   isLoading.value = true;
-  if ("from_socket_emit" in action) {
+  if ("from_socket" in action) {
     let params = {};
-    if ("params" in action.from_socket_emit) {
-      params = action.from_socket_emit.params;
+    if ("params" in action.from_socket) {
+      params = action.from_socket.params;
     }
-    if ("record_params" in action.from_socket_emit) {
-      for (const [key, record_key] of Object.entries(action.from_socket_emit.record_params)) {
+    if ("record_params" in action.from_socket) {
+      for (const [key, record_key] of Object.entries(action.from_socket.record_params)) {
         params[key] = record[record_key];
       }
     }
-    window.socket.emit(action.from_socket_emit.event, params, (res) => {
+    window.socket.emit(action.from_socket.event, params, (res) => {
       doGetData();
     });
   }
@@ -152,9 +152,9 @@ const doGetData = async () => {
   if ("url" in workflowStep.source) {
     const data = await workflowGetData(workflowStep.source.url, getParamsFromState(workflowStep.source.request_params))
     handleData(data);
-  } else if ("from_socket_emit" in workflowStep.source) {
-    const from_socket_emit = workflowStep.source.from_socket_emit;
-    window.socket.emit(from_socket_emit.event, from_socket_emit.params, (res) => {
+  } else if ("from_socket" in workflowStep.source) {
+    const from_socket = workflowStep.source.from_socket;
+    window.socket.emit(from_socket.event, from_socket.params, (res) => {
           handleData(res);
         }
     )

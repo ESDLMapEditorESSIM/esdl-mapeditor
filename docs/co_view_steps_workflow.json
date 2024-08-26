@@ -169,7 +169,7 @@
         "description": "",
         "type": "table-query",
         "source": {
-          "from_socket_emit": {
+          "from_socket": {
             "event": "external_models_check_and_get_runs",
             "params": {
               "external_model_name": "omotes"
@@ -221,7 +221,7 @@
             {
               "title": "Delete",
               "icon": "far fa-trash-alt",
-              "from_socket_emit": {
+              "from_socket": {
                 "event": "external_models_delete_run",
                 "params": {
                   "external_model_name": "omotes",
@@ -278,7 +278,7 @@
         "name": "View model run details",
         "type": "text",
         "data": {
-          "from_socket_emit": {
+          "from_socket": {
             "event": "external_models_get_run_text",
             "params": {
               "external_model_name": "omotes"
@@ -294,7 +294,7 @@
         "name": "Edit model run",
         "type": "json-form2",
         "data": {
-          "from_socket_emit": {
+          "from_socket": {
             "event": "external_models_get_run_jsonforms",
             "params": {
               "external_model_name": "omotes"
@@ -303,7 +303,7 @@
               "run_id": "model_run.run_id"
             }
           },
-          "to_socket_emit": {
+          "to_socket": {
             "event": "external_models_update_run"
           }
         },

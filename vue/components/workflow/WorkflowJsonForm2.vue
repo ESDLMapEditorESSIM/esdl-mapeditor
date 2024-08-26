@@ -92,18 +92,18 @@ const doGetData = async () => {
     updateData(await getJsonForm(workflowStep.url));
   } else if ("from_state_variable" in workflowStep.data) {
     updateData(getState()[workflowStep.data.from_state_variable]);
-  } else if ("from_socket_emit" in workflowStep.data) {
-    const fromSocketEmit = workflowStep.data.from_socket_emit;
+  } else if ("from_socket" in workflowStep.data) {
+    const fromSocket = workflowStep.data.from_socket;
     let params = {};
-    if ("params" in fromSocketEmit) {
-      params = fromSocketEmit.params;
+    if ("params" in fromSocket) {
+      params = fromSocket.params;
     }
-    if ("state_params" in fromSocketEmit) {
-      for (const [key, state_key] of Object.entries(fromSocketEmit.state_params)) {
+    if ("state_params" in fromSocket) {
+      for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
         params[key] = getFromState(state_key);
       }
     }
-    window.socket.emit(fromSocketEmit.event, params, (res) => {
+    window.socket.emit(fromSocket.event, params, (res) => {
       updateData(res);
     });
   } else {
@@ -161,8 +161,8 @@ const onSubmit = async () => {
     } finally {
       isLoading.value = false;
     }
-  } else if ("to_socket_emit" in workflowStep.data) {
-    window.socket.emit(workflowStep.data.to_socket_emit.event, dataSubmitFormatted, (res) => {
+  } else if ("to_socket" in workflowStep.data) {
+    window.socket.emit(workflowStep.data.to_socket.event, dataSubmitFormatted, (res) => {
       goToNextStep();
     });
   } else {
