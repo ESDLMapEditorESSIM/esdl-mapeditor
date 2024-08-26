@@ -38,7 +38,7 @@
         "type": "select-query",
         "multiple": false,
         "source": {
-          "url": "http://localhost:9200/workflow/",
+          "url": "http://omotes-rest:9200/workflow/",
           "http_method": "get",
           "label_fields": [
             "description"
@@ -81,7 +81,7 @@
             "User-Agent": "ESDL Mapeditor/1.0",
             "Content-Type": "application/json"
           },
-          "url": "http://localhost:9200/job/",
+          "url": "http://omotes-rest:9200/job/",
           "http_method": "post",
           "type": "send_esdl",
           "send_email_in_post_body_parameter": "user_name",
@@ -111,7 +111,7 @@
             "parameters": [
               {
                 "type": "esdl",
-                "encoding": "none",
+                "encoding": "base64_encoded",
                 "parameter": "input_esdl"
               }
             ]
@@ -120,9 +120,42 @@
             {
               "code": 200,
               "action": "save_model_run",
-              "model_name": "omotes",
-              "response_parameters": {
-                "job_id": "job_id"
+              "external_model_name": "omotes",
+              "external_model_id_response_param": "job_id",
+              "run_name_state_param": "run_name",
+              "get_result_config": {
+                "url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>",
+                "esdl_encoding": "base64_encoded",
+                "status_param": "status",
+                "output_esdl_param": "output_esdl",
+                "logs_param": "logs",
+                "save_additional_params": {
+                  "progress_fraction": "progress_fraction",
+                  "progress_message": "progress_message",
+                  "registered_at": "stopped_at",
+                  "running_at": "stopped_at",
+                  "stopped_at": "stopped_at"
+                },
+                "status_mapping": {
+                  "SUBMITTED": [
+                    "REGISTERED",
+                    "ENQUEUED"
+                  ],
+                  "RUNNING": [
+                    "RUNNING"
+                  ],
+                  "SUCCEEDED": [
+                    "FINISHED",
+                    "SUCCEEDED"
+                  ],
+                  "CANCELLED": [
+                    "CANCELLED"
+                  ],
+                  "ERROR": [
+                    "TIMEOUT",
+                    "ERROR"
+                  ]
+                }
               }
             }
           ],
@@ -137,39 +170,9 @@
         "type": "table-query",
         "source": {
           "from_socket_emit": {
-            "event": "external_models_update_get_runs",
+            "event": "external_models_check_and_get_runs",
             "params": {
-              "model_name": "omotes",
-              "get_result_url": "http://localhost:9200/job/<job_id>",
-              "result_save_params": {
-                "status": "status",
-                "progress_fraction": "progress_fraction",
-                "progress_message": "progress_message",
-                "stopped_at": "stopped_at",
-                "output_esdl": "output_esdl",
-                "logs": "logs"
-              },
-              "status_mapping": {
-                "SUBMITTED": [
-                  "REGISTERED",
-                  "ENQUEUED"
-                ],
-                "RUNNING": [
-                  "RUNNING"
-                ],
-                "SUCCEEDED": [
-                  "FINISHED",
-                  "SUCCEEDED"
-                ],
-                "CANCELLED": [
-                  "CANCELLED"
-                ],
-                "ERROR": [
-                  "TIMEOUT",
-                  "ERROR"
-                ]
-              },
-              "result_esdl_encoding": "utf8"
+              "external_model_name": "omotes"
             }
           },
           "columns": [
@@ -187,8 +190,8 @@
               }
             },
             {
-              "dataIndex": "submitted_at",
-              "title": "Submitted at",
+              "dataIndex": "submitted_to_external_model",
+              "title": "Submitted",
               "formatter": "formatDate",
               "defaultSortOrder": "descend"
             }
@@ -221,12 +224,11 @@
               "from_socket_emit": {
                 "event": "external_models_delete_run",
                 "params": {
-                  "model_name": "omotes",
-                  "delete_result_url": "http://localhost:9200/job/<job_id>"
+                  "external_model_name": "omotes",
+                  "delete_result_url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>"
                 },
                 "record_params": {
-                  "run_id": "run_id",
-                  "job_id": "job_id"
+                  "run_id": "run_id"
                 }
               }
             }
@@ -256,20 +258,14 @@
           "description": "The results should have been loaded in the MapEditor",
           "button_label": "Go back to results",
           "auto": true,
-          "headers": {
-            "User-Agent": "ESDL Mapeditor/0.1",
-            "Content-Type": "application/xml"
-          },
-          "http_method": "get",
           "type": "",
-          "body": "",
+          "external_model": "omotes",
           "result": [
             {
               "code": 200,
               "action": "esdl",
-              "encoding": "base64_encoded",
               "run_esdl_key": "output_esdl",
-              "model_name": "omotes",
+              "model_short_name": "omotes",
               "mode": "animation_possible"
             }
           ],
@@ -285,7 +281,7 @@
           "from_socket_emit": {
             "event": "external_models_get_run_text",
             "params": {
-              "model_name": "omotes"
+              "external_model_name": "omotes"
             },
             "state_params": {
               "run_id": "model_run.run_id"
@@ -301,14 +297,14 @@
           "from_socket_emit": {
             "event": "external_models_get_run_jsonforms",
             "params": {
-              "model_name": "omotes"
+              "external_model_name": "omotes"
             },
             "state_params": {
               "run_id": "model_run.run_id"
             }
           },
           "to_socket_emit": {
-            "event": "external_models_save_run_jsonforms"
+            "event": "external_models_update_run"
           }
         },
         "button": "Save",
