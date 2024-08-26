@@ -16,7 +16,7 @@
 
 <script setup="props">
 import {ref, watch} from "vue";
-import {useWorkflow} from "@/composables/workflow";
+import {useWorkflow, RESET_WORKFLOW} from "@/composables/workflow";
 import {getJsonForm, postJsonForm} from "./utils/api";
 import {JsonForms} from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
@@ -38,7 +38,7 @@ let workflowTrigger = props.workflowStep.workflowTrigger;
 
 // eslint-disable-next-line no-unused-vars
 watch(workflowTrigger, (currentValue, oldValue) => {
-  init();
+  init(currentValue[RESET_WORKFLOW]);
 });
 
 let buttonText = workflowStep.button || "Submit";
@@ -67,7 +67,7 @@ const updateData = (jsonFormData) => {
     return;
   }
 
-  // Optionally override schema/uischema/formData received from url/state/socket by json config
+  // Optionally override schema/uischema received from url/state/socket by json config
   if ("schema" in jsonFormDataConfig) {
     schema.value = jsonFormDataConfig.schema;
   } else {
@@ -77,13 +77,13 @@ const updateData = (jsonFormData) => {
     uischema.value = jsonFormDataConfig.uischema;
   } else if (jsonFormData && "uischema" in jsonFormData) {
     uischema.value = jsonFormData.uischema;
-  }
-  if ("formData" in jsonFormDataConfig) {
-    formData.value = jsonFormDataConfig.formData;
-  } else if (jsonFormData && "formData" in jsonFormData) {
-    formData.value = jsonFormData.formData;
+  } else {
+    uischema.value = null;
   }
 
+  if (jsonFormData && "formData" in jsonFormData) {
+    formData.value = jsonFormData.formData;
+  }
   isLoading.value = false;
 };
 
@@ -129,7 +129,10 @@ const updateState = () => {
   return dataSubmitFormatted
 };
 
-const init = () => {
+const init = (reset) => {
+  if (reset) {
+    formData.value = {};
+  }
   workflowStep = props.workflowStep;
   workflowTrigger = props.workflowStep.workflowTrigger;
   if ("auto_next_step" in workflowStep) {

@@ -3,6 +3,7 @@ import {getattrd} from "@/utils/utils";
 import {v4 as uuidv4} from 'uuid';
 import {nextStepsSchemaValidator} from "@/utils/workflowSchemas";
 
+
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
     SELECT_QUERY: 'select-query',
@@ -64,6 +65,8 @@ function evaluateConditions(conditions, data) {
 export const currentWorkflow = ref(null);
 // Saved workflows that the user can load.
 export const savedWorkflows = ref([]);
+
+export const RESET_WORKFLOW = "reset_workflow";
 
 export function useWorkflow() {
     /**
@@ -242,6 +245,7 @@ export function useWorkflow() {
         persistWorkflow,
         deletePersistedWorkflow,
         savedWorkflows,
+        RESET_WORKFLOW,
         loadSavedWorkflows,
         activatePersistedWorkflow,
     }
@@ -329,6 +333,13 @@ export class Workflow {
      */
     doPrevious() {
         this.activeWorkflowSteps = this.prevWorkflowSteps.pop();
+        this.workflowTrigger["index"] += 1;
+        // to avoid infinite loop with auto_next_step
+        this.workflowTrigger[RESET_WORKFLOW] = true;
+        // to update values in other 'co view steps' via 'watch'
+        for (const step of this.activeWorkflowSteps) {
+            step.workflowTrigger = this.workflowTrigger;
+        }
     }
 
     hasPreviousStep() {
@@ -337,6 +348,8 @@ export class Workflow {
 
     setActiveWorkflowSteps(targetStepIdx) {
         this.workflowTrigger["index"] += 1;
+        // to avoid infinite loop with auto_next_step
+        this.workflowTrigger[RESET_WORKFLOW] = this.activeWorkflowIndex !== targetStepIdx;
         this.activeWorkflowIndex = targetStepIdx;
         this.activeWorkflowSteps = [this.service.workflow[targetStepIdx]];
         if ("co_view_steps" in this.activeWorkflowSteps[0]) {
@@ -349,7 +362,7 @@ export class Workflow {
             }
         }
         // to update values in other 'co view steps' via 'watch'
-        for (const step of this.activeWorkflowSteps){
+        for (const step of this.activeWorkflowSteps) {
             step.workflowTrigger = this.workflowTrigger;
         }
     }

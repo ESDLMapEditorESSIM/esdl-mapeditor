@@ -13,6 +13,7 @@
 #      TNO
 import base64
 import re
+from datetime import datetime
 
 import requests
 from flask import Flask
@@ -35,96 +36,149 @@ class ExternalModels:
     def register(self):
         logger.info("Registering ExternalModels")
 
-        @self.socketio.on("external_models_update_get_runs", namespace="/esdl")
-        def external_models_update_get_runs(model_run_info) -> list:
-            logger.info(f"external_models_update_get_runs: {model_run_info}")
-            model_name = model_run_info["model_name"]
-            result_save_params = model_run_info["result_save_params"]
-            status_mapping = model_run_info["status_mapping"]
-            get_result_url = model_run_info["get_result_url"]
-            result_esdl_encoding = model_run_info["result_esdl_encoding"]
+        @self.socketio.on("external_models_check_and_get_runs", namespace="/esdl")
+        def external_models_check_and_get_runs(model_run_info) -> list:
+            """
+            Check if updated progress or new results are available and get runs for external model.
+
+            :param model_run_info: external model data.
+            """
+            logger.info(f"external_models_check_and_get_runs: {model_run_info}")
+            model_name = model_run_info["external_model_name"]
 
             user = get_session("user-email")
             user_projects = get_session("user-group")
             model_runs = self.em_storage.get_model_runs_for_current_user(model_name, user, user_projects)
 
-            replace_args = re.findall(r"<.*?>", get_result_url)
-            for i_run, model_run_data in enumerate(model_runs):
-                if RunStatus(model_run_data["status"]) in [RunStatus.SUBMITTED, RunStatus.RUNNING]:
-                    url = get_result_url
-                    for replace_arg in replace_args:
-                        url = url.replace(replace_arg, model_run_data[replace_arg[1:-1]])
+            for i_run, stored_run_data in enumerate(model_runs):
+                if RunStatus(stored_run_data["status"]) in [RunStatus.SUBMITTED, RunStatus.RUNNING]:
+                    url = parse_url_parameters(stored_run_data["get_result_config"]["url"], stored_run_data)
+
+                    get_result_config = stored_run_data["get_result_config"]
+                    result_esdl_encoding = get_result_config.get("esdl_encoding")
+                    result_status_param = get_result_config.get("status_param")
+                    result_output_esdl_param = get_result_config.get("output_esdl_param")
+                    result_logs_param = get_result_config.get("logs_param")
+                    result_save_params = get_result_config.get("save_additional_params")
+                    status_mapping = get_result_config.get("status_mapping")
+
                     try:
                         resp = requests.get(url)
                         if resp.status_code == 200:
-                            run_data = resp.json()
-                            updated_values = {}
+                            new_run_data = resp.json()
+                            updated_values = dict(model_specific_output=dict())
                             for doc_key, data_key in result_save_params.items():
-                                updated_values[doc_key] = run_data[data_key]
+                                updated_values["model_specific_output"][doc_key] = new_run_data[data_key]
                             # map external model status to mapeditor status
-                            if "status" in updated_values:
-                                run_status = updated_values["status"]
+                            if result_status_param:
+                                run_status = new_run_data[result_status_param]
                                 for status, model_status_values in status_mapping.items():
                                     if run_status in model_status_values:
                                         updated_values["status"] = status
                                         break
-                            if "output_esdl" in updated_values and result_esdl_encoding == "utf8":
-                                output_esdl = updated_values["output_esdl"]
-                                esdlstr_bytes = output_esdl.encode("utf-8")
-                                esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                                updated_values["output_esdl"] = esdlstr_base64_bytes.decode("utf-8")
+                            if (
+                                result_output_esdl_param
+                                and result_output_esdl_param in new_run_data
+                                and new_run_data[result_output_esdl_param]
+                            ):
+                                if result_esdl_encoding == "utf_8":
+                                    output_esdl = new_run_data[result_output_esdl_param]
+                                elif result_esdl_encoding == "base64_encoded":
+                                    esdlstr_bytes = new_run_data[result_output_esdl_param].encode("utf-8")
+                                    esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
+                                    output_esdl = esdlstr_base64_bytes.decode("utf-8")
+                                else:
+                                    raise NotImplementedError(
+                                        f"Result ESDL encoding '{result_esdl_encoding}' is not supported"
+                                    )
+
+                                updated_values["output_esdl"] = output_esdl
+
+                            if result_logs_param:
+                                updated_values["logs"] = new_run_data[result_logs_param]
+
+                            updated_values["last_update_from_external_model"] = datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            )
                             model_runs[i_run] = self.em_storage.update_model_run(
-                                model_name, model_run_data["run_id"], updated_values
+                                model_name, stored_run_data["run_id"], updated_values
                             )
                     except Exception as e:
                         logger.warning(f"Error while getting external model run results: {str(e)}")
             return model_runs
 
-        @self.socketio.on("external_models_delete_run", namespace="/esdl")
-        def external_models_delete_run(model_run_info):
-            logger.info(f"external_models_delete_run: {model_run_info}")
+        @self.socketio.on("external_models_update_run", namespace="/esdl")
+        def external_models_update_run(model_run_info) -> None:
+            """
+            Update Model run data.
+
+            :param model_run_info: external model data.
+            """
+            logger.info(f"external_models_update_run: {model_run_info}")
             model_name = model_run_info["model_name"]
             run_id = model_run_info["run_id"]
+            self.em_storage.update_model_run(model_name, run_id, model_run_info)
 
-            model_run_data = self.em_storage.delete_model_run(model_name, run_id)
+        @self.socketio.on("external_models_delete_run", namespace="/esdl")
+        def external_models_delete_run(model_run_info) -> dict:
+            """
+            Delete Model run data.
+
+            :param model_run_info: external model data.
+            :return: Message with deleted run info.
+            """
+            logger.info(f"external_models_delete_run: {model_run_info}")
+            model_name = model_run_info["external_model_name"]
+            run_id = model_run_info["run_id"]
+
+            deleted_run_data = self.em_storage.delete_model_run(model_name, run_id)
 
             if "delete_result_url" in model_run_info:
-                delete_result_url = model_run_info["delete_result_url"]
-                replace_args = re.findall(r"<.*?>", delete_result_url)
-                url = delete_result_url
-                for replace_arg in replace_args:
-                    url = url.replace(replace_arg, model_run_data[replace_arg[1:-1]])
+                url = parse_url_parameters(model_run_info["delete_result_url"], deleted_run_data)
                 try:
                     requests.delete(url)
                 except Exception as e:
                     logger.warning(f"Error while deleting external model run results: {str(e)}")
-            return {"message": f"{model_name} run '{model_run_data['run_name']}' deleted ok."}
+            return {"message": f"{model_name} run '{deleted_run_data['run_name']}' deleted ok."}
 
         @self.socketio.on("external_models_get_run_text", namespace="/esdl")
         def external_models_get_run_text(model_run_info):
+            """
+            Get model run details as text omitting certain parameters which are too long or not relevant.
+
+            :param model_run_info: external model data.
+            :return: Run details as text.
+            """
             logger.info(f"external_models_get_run_text: {model_run_info}")
-            model_name = model_run_info["model_name"]
+            model_name = model_run_info["external_model_name"]
             run_id = model_run_info["run_id"]
             model_run_data = self.em_storage.get_model_run(model_name, run_id)
 
             text = f"<b>{model_name}</b> run details for: <b>{model_run_data['run_name']}</b><br>"
 
             top_keys = ["model_name", "run_name", "status", "user", "projects", "run_id"]
-            omit_keys = ["input_esdl", "output_esdl"]
+            omit_keys = ["input_esdl", "output_esdl", "get_result_config"]
 
             for key in top_keys:
-                text += f"<br>{key}: <b>{model_run_data[key]}</b>"
+                text += f"<br>{key}: <b>{pretty_print(model_run_data[key], '&emsp;')}</b>"
             for key, value in model_run_data.items():
                 if key not in top_keys + omit_keys + ["logs"]:
-                    text += f"<br>{key}: <b>{value}</b>"
-            text += f"<br>logs:<br>{model_run_data['logs']}"
+                    text += f"<br>{key}: <b>{pretty_print(value, '&emsp;')}</b>"
+            logs = model_run_data["logs"].replace("\n", "<br>")
+            text += f"<br><br>logs:<br>{logs}<br>"
 
             return text
 
         @self.socketio.on("external_models_get_run_jsonforms", namespace="/esdl")
-        def external_models_get_run_jsonforms(model_run_info):
+        def external_models_get_run_jsonforms(model_run_info) -> dict:
+            """
+            Get run data as jsonforms with the run name and projects as editable, and some other details as readonly.
+
+            :param model_run_info: external model data.
+            :return: Run details as jsonforms dictionary.
+            """
             logger.info(f"external_models_get_run_jsonforms: {model_run_info}")
-            model_name = model_run_info["model_name"]
+            model_name = model_run_info["external_model_name"]
             run_id = model_run_info["run_id"]
             model_run_data = self.em_storage.get_model_run(model_name, run_id)
 
@@ -161,9 +215,43 @@ class ExternalModels:
                 uischema=dict(type="VerticalLayout", elements=ui_elements),
             )
 
-        @self.socketio.on("external_models_save_run_jsonforms", namespace="/esdl")
-        def external_models_save_run_jsonforms(model_run_info):
-            logger.info(f"external_models_save_run_jsonforms: {model_run_info}")
-            model_name = model_run_info["model_name"]
-            run_id = model_run_info["run_id"]
-            self.em_storage.update_model_run(model_name, run_id, model_run_info)
+
+def parse_url_parameters(url: str, data: dict) -> str:
+    """
+    Parse URL parameters present in string (surrounded by `<>`).
+
+    :param url: URL string to be parsed.
+    :param data: Key-values used for the parsing.
+    :return: Parsed URL string.
+    """
+    # put values for args in url surrounded by '< >'
+    replace_args = re.findall(r"<.*?>", url)
+    for replace_arg in replace_args:
+        url = url.replace(replace_arg, data[replace_arg[1:-1].lower()])
+    return url
+
+
+def pretty_print(item_to_print: object, indent: str = "") -> str:
+    """
+    Pretty print for display in html.
+
+    :param item_to_print: Item to be printed, can be dict, list or string.
+    :param indent: Indent before each line.
+    :return: Pretty printed text
+    """
+    if not item_to_print:
+        return "none"
+    elif isinstance(item_to_print, dict):
+        pretty = ""
+        for k, v in item_to_print.items():
+            pretty += f"<br>{indent}{k}: "
+            if isinstance(v, dict) or isinstance(v, list):
+                pretty += pretty_print(v, f"{indent}&emsp;")
+            else:
+                pretty += str(v)
+        return pretty
+    elif isinstance(item_to_print, list):
+        v = [str(item) for item in item_to_print]
+        return ", ".join(v)
+    else:
+        return str(item_to_print)

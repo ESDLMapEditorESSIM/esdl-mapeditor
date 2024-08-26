@@ -24,6 +24,8 @@
                     v-if="actionEnabled(a, record)"
                     :class="a.icon"
                     class="pointer"
+                    :title="a.title"
+                    @mouseleave="hide_jquery_ui_popup"
                     @click="doAction(record, a)"
                   />
                   <i v-else :class="a.icon" class="disabled" />
@@ -43,73 +45,10 @@
         </template>
       </a-table>
     </a-form-item>
-    <!-- <a-form-item>
-      <a-button type="primary" @click="onSubmit"> Select </a-button>
-    </a-form-item> -->
   </a-form>
 </template>
 
 <script setup="props">
-
-
-/*
-This Workflow step shows a table from a REST query and allows you to specify actions (next workflow steps) based on what the user selects in the action column
-
-Syntax for WorkflowTableQuery.
-
-"workflow": [
-			{
-				"name": "Results overview",
-				"description": "",
-				"type": "table-query",
-				"source": {
-					"url": "http://localhost:9200/job/",
-					"http_method": "get",
-          "request_params": {"username": "session.email"},  // add extra request params. session.* are handled in the backend
-					"columns": [                           //  columns is based on antdv 2.0 column syntax.
-						{
-							"dataIndex": "job_name",           // dataIndex is required, links to the attribute in the REST result json
-							"title": "Name",                   // also required, used as column title
-							"key": "job_name",                 // give this column a specific key. Not required currently
-							"ellipsis": true                   // see AntDV: longer text gets abbreviated with ...
-						},
-						{
-							"dataIndex": "status",
-							"title": "Status",
-							"key": "status",
-							"slots": {                        // use a specific template to render this column. Two are currently supported: tags and actions (for action column)
-								"customRender": "tags"
-							}
-						},
-						{
-							"dataIndex": "stopped_at",
-							"title": "Finished at",
-							"key": "stopped_at",
-							"formatter": "formatDate",          // special attribute for this component: formatter links to a javascript function in this class
-              "sortOrder": "descend"             // formatDate also contains sorting of column
-						}
-					],
-					"actions": [                           // Defines the actions that can be done on the column
-						{
-							"title": "Load result",            // title of the action
-							"next_step": 2,                     // when button is clicked, the workflow moves to this step (e.g. call ESDL Service).
-              "enabled": {                       // defines rules to enable/disable this action based on another column value
-                "dataIndex": "status",           // check 'status' dataIndex column for specific values. If status === values[] then enable this action
-                "values": ["SUCCEEDED"]
-              }
-						},
-						{
-							"title": "Show log",
-							"next_step": 3
-						}
-					],
-					"value_field": "job_id"               // the uniqe key to identify each row, and is stored in the state (using target_variable)
-				},
-				"target_variable": "job",
-				"next_step": 1                         // default next step (not used)
-			},
-
-*/
 
 import {ref, watch} from "vue";
 import {useWorkflow} from "@/composables/workflow";
@@ -168,6 +107,7 @@ const getTagColor = (text) => {
 };
 
 const doAction = (record, action) => {
+  hide_jquery_ui_popup();
   console.log('Action selected: ', record[rowkey.value], action);
   state[workflowStep.target_variable] = {};
   state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
@@ -270,6 +210,10 @@ const init = () => {
   doGetData();
 };
 init();
+
+const hide_jquery_ui_popup = () => {
+  window.jquery(".ui-tooltip-content").parents('div').remove();
+}
 
 </script>
 
