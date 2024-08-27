@@ -118,11 +118,11 @@ class ProjectManager:
     # The currently selected variant to which changes should be applied.
     active_variant: Variant | None
     # List of listeners that are informed of changes to the project.
-    change_listeners = None
+    change_listeners: dict[str, callable]
     # Key is variant ID, value is the timestamp of the last activation of the variant.
-    variant_activation_timestamps: dict[str, datetime] = None
+    variant_activation_timestamps: dict[str, datetime]
 
-    lock = threading.Lock()
+    lock: threading.Lock
 
     # base_variant_resources: Final[list[XMLResource]]
 
@@ -136,6 +136,7 @@ class ProjectManager:
         patch_esdl()
         self.change_listeners = dict()
         self.variant_activation_timestamps = dict()
+        self.lock = threading.Lock()
         self.rset = ResourceSet()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
