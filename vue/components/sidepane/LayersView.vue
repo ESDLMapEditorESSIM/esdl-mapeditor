@@ -39,15 +39,16 @@
 import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "@/components/jstree/VueJsTree";
-import {useSocketIO} from "@/composables/socketio";
 import {useBaseLayers,} from "@/composables/baseLayers";
 import VisibleLayersView from "@/apps/VisibleLayersView.vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import { notification } from 'ant-design-vue';
+import {useSocketIO} from "@/composables/socketio";
+const {socket} = useSocketIO();
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
-const {layerIsVisible} = useVisibleLayers();
+const {layerIsVisible} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
   showWmsLayer,
@@ -65,7 +66,6 @@ const {
 
 
 // eslint-disable-next-line no-unused-vars
-const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
 const openedFolders = [];

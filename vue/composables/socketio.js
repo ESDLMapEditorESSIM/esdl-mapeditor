@@ -31,7 +31,17 @@ PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => 
 
 
 export function useSocketIO() {
+    function subscribe(event, callback) {
+        // Wait for socket to be defined and subscribe.
+        (async () => { // wait for socket to be defined
+            while (socket.value === undefined || socket.value === null) await new Promise(resolve => setTimeout(resolve, 10));
+            console.debug("Subscribing to", event);
+            socket.value.on(event, callback);
+        })();
+    }
+
     return {
+        subscribe,
         socket
     };
 }

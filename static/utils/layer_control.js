@@ -166,7 +166,6 @@ function add_layer_control() {
                     for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
                         if (tree.is_checked(child)) {
-                            console.log(child);
                             show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
                         }
                     }
@@ -397,8 +396,6 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}},
             { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
         ];
-
-        console.log('updating esdl_layer_control_tree_data() for es_id: '+ key);
 
         let esdl_layer = {
             id: key,

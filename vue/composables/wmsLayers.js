@@ -18,7 +18,7 @@
  * A composable for managing items currently visible.
  *
  */
-import {ref, toValue} from "vue";
+import {computed, ref, toValue} from "vue";
 import {useVisibleLayers} from "./visibleLayers";
 
 const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
@@ -30,7 +30,9 @@ const treeId = "layer_tree";
 const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 
+// The list of all WMS layers available for the user.
 const globalWmsLayerList = ref(null);
+
 // retrieve wms layers info
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
@@ -38,6 +40,11 @@ const globalWmsLayerList = ref(null);
     socket.on('wms_layer_list', updateGlobalWmsLayerList);
 })();
 
+/**
+ * Updates the global WMS layer list with the provided list of layers.
+ * @param wmsLayerList
+ * @param visibleId
+ */
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     if (globalWmsLayerList.value !== null) {
         for (const layerId in globalWmsLayerList.value['layers']) {
@@ -164,7 +171,7 @@ export function useWmsLayers() {
     };
 
     const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
-        removeLayerFromMapAndVisibleLayers(layerId);
+        hideWmsLayer(layerId);
         globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
             id: layerId,
@@ -312,6 +319,7 @@ export function useWmsLayers() {
         }, updateGlobalWmsLayerList);
     };
 
+
     return {
         clearWmsLayers,
         getWmsLayerList,
@@ -325,7 +333,7 @@ export function useWmsLayers() {
         removeWmsLayerGroup,
         setWmsLayerGroupOpened,
         getDescendantLayerNodeIds,
-        setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
+        setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem,
         getWmsGetCapabilities,

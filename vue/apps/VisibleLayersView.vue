@@ -46,27 +46,65 @@ import {computed, ref} from 'vue';
 import VueJsTree from "../components/jstree/VueJsTree";
 import LayerOpacityPopover from "../components/popover/LayerOpacityPopover.vue";
 import {useSocketIO} from "@/composables/socketio";
-import {useVisibleLayers} from "@/composables/visibleLayers";
+import {useVisibleLayers, VisibleLayerType} from "@/composables/visibleLayers";
 
 // eslint-disable-next-line no-unused-vars
 const {socket} = useSocketIO();
-const {getVisibleLayerList, updateDisplayOrderVisibleLayers, hideVisibleLayer, hideAllVisibleLayers} = useVisibleLayers();
+const {
+  getVisibleLayerList,
+  updateDisplayOrderVisibleLayers,
+  getLayerType,
+  hideVisibleLayer,
+  hideAllVisibleLayers,
+  hideRelatedVisibleLayers,
+  showVisibleLayer
+} = useVisibleLayers(window.map, socket);
 
 // eslint-disable-next-line no-unused-vars
 const treeId = "visible_layer_tree";
 
+const esdlLayerNameMap = {
+    "esdl_layer": "Assets",
+    "area_layer": "Area",
+    "bld_layer": "Buildings",
+    "connection_layer": "Connections",
+    "kpi_layer": "KPIs",
+    "notes_layer": "Notes",
+    "pot_layer": "Potentials",
+    "sim_layer": "Simulation results",
+};
+
+// Function to convert input to desired string
+const getEsdlLayerName = (input) => {
+    return esdlLayerNameMap[input] || 'Unknown Layer';
+}
+
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
   if (getVisibleLayerList()) {
-    let visibleLayersJsreeData = [];
+    let visibleLayersJstreeData = [];
     for (const visibleLayer of getVisibleLayerList()) {
-      visibleLayersJsreeData.push({
-        id: visibleLayer.id,
-        text: visibleLayer.description,
-        type: "visible_layer",
-      });
+      if (getLayerType(visibleLayer) === VisibleLayerType.WMS) {
+        // WMS Layer.
+        visibleLayersJstreeData.push({
+          id: visibleLayer.id,
+          text: visibleLayer.description,
+          type: "visible_layer",
+        });
+      } else if (getLayerType(visibleLayer) === VisibleLayerType.ESDL) {
+        // ESDL Layer.
+        const esdlLayerName = getEsdlLayerName(visibleLayer.layer_type);
+        visibleLayersJstreeData.push({
+          id: visibleLayer.id,
+          text: visibleLayer.es.title + " - " + esdlLayerName,
+          type: "visible_esdl_layer",
+          es_id: visibleLayer.es.id,
+        });
+      } else {
+        console.error("Unknown layer type", visibleLayer);
+      }
     }
-    return visibleLayersJsreeData;
+    return visibleLayersJstreeData;
   } else {
     return null;
   }
@@ -91,7 +129,7 @@ const closeLayerOpacityPopover = () => {
   selectedLayerId.value = "";
 };
 
-class MovableLayerTreeSpec {
+class MovableWmsLayerTreeSpec {
   constructor() {
     this.type = "visible_layer";
     this.icon = "fas fa-grip-lines";
@@ -114,6 +152,14 @@ class MovableLayerTreeSpec {
           hideVisibleLayer(node.id);
         }
       },
+      'hide_all_wms_layers': {
+        'label': 'Hide all WMS layers',
+        'icon': 'fas fa-minus-square',
+        'action': function () {
+          hideRelatedVisibleLayers();
+        }
+      },
+      // TODO: This should be a separate button in the UI, plus a show all.
       'hide_all_layers': {
         'label': 'Hide all layers',
         'icon': 'fas fa-minus-square',
@@ -125,13 +171,47 @@ class MovableLayerTreeSpec {
   }
 }
 
+class MovableEsdlLayerTreeSpec {
+  constructor() {
+    this.type = "visible_esdl_layer";
+    this.icon = "fas fa-grip-lines";
+    this.max_depth = 0;
+  }
+
+  contextMenus(node, tree) {
+    return {
+      'hide_layer': {
+        'label': 'Hide layer',
+        'icon': 'fas fa-eye-slash',
+        'action': function () {
+          hideVisibleLayer(node.id);
+        }
+      },
+      'show_layer': {
+        'label': 'Show layer',
+        'icon': 'fas fa-eye',
+        'action': function () {
+          showVisibleLayer(node.id);
+        }
+      },
+      'hide_all_layers_of_esdl': {
+        'label': 'Hide all layers of this ESDL',
+        'icon': 'fas fa-minus-square',
+        'action': function () {
+          hideRelatedVisibleLayers(node.id);
+        }
+      }
+    };
+  }
+}
+
 // eslint-disable-next-line no-unused-vars
-const treeTypeSpecs = [new MovableLayerTreeSpec()];
+const treeTypeSpecs = [new MovableEsdlLayerTreeSpec(), new MovableWmsLayerTreeSpec()];
 
 // eslint-disable-next-line no-unused-vars
 const eventHandlersByName = {
   'move_node.jstree': function (e, data) {
-    updateDisplayOrderVisibleLayers(data.node.id, data.node.position);
+    updateDisplayOrderVisibleLayers(data.node.id, data.position);
   },
   'hover_node.jstree': function (e, data, treeElement) {
     treeElement.attr("title", data.node.text);
@@ -141,7 +221,7 @@ const eventHandlersByName = {
 // eslint-disable-next-line no-unused-vars
 const checkCallBack = (operation, node, node_parent, node_position, more) => {
   if (operation === 'move_node') {
-    if (node.type !== 'visible_layer') {
+    if (node.type !== 'visible_layer' && node.type !== 'visible_esdl_layer') {
       return false;
     }
   } else if (operation === 'copy_node') {

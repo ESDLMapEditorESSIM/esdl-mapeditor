@@ -699,8 +699,6 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
-                console.log("ESDL list")
-                console.log(esdl_list)
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -713,7 +711,6 @@
                 update_title(esdl_list[active_layer_id].title);
                 // set_selected_layer(active_layer_id);
                 window.hide_loader();
-                console.log('ESDL list', esdl_list);
             });
 
             // ------------------------------------------------------------------------------------------------------------

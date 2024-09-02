@@ -20,9 +20,16 @@
  */
 import {ref, toValue} from "vue";
 import {useWmsLayers, updateGlobalWmsLayerList} from "./wmsLayers";
+import {useEsdlLayers} from "./esdlLayers";
+import {useSocketIO} from "./socketio";
+const {subscribe} = useSocketIO();
 
 const {getWmsLayerList} = useWmsLayers();
-const globalVisibleLayerList = ref([]);
+const {enabledEsdlIdList, hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayers();
+
+
+// List of visible layers. Contains wms layers as well as energy systems.
+const visibleLayerList = ref([]);
 
 const map = window.map;
 const layerTreeId = "layer_tree";
@@ -37,14 +44,15 @@ const layersPopup = L.popup({
     maxHeight: 400
 });
 
-let socket = null;
-(async () => { // wait for socket to be defined
-    while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
-    socket = window.socket;
-    socket.on("on_wms_layer_feature_resp", (resp) => {
-        showWmsLayerFeaturePopup(resp);
-    });
-})();
+export const VisibleLayerType = Object.freeze({
+  WMS: 'WMS',
+  ESDL: 'ESDL',
+  UNKNOWN: 'Unknown'
+});
+
+subscribe("on_wms_layer_feature_resp", (resp) => {
+    showWmsLayerFeaturePopup(resp);
+});
 
 /**
  * Constructs and returns a WMS layer GetFeatureInfo URL 
@@ -155,10 +163,13 @@ const showWmsLayerFeaturePopup = (resp) => {
 
 map.on("click", queryWmsLayersFeaturesOnClick);
 
+// When the map is moved, check if the WMS layer should be visible. This handler is outside the composable, because it
+// needs to be registered only once, and it meant to manage global behavior that should be consistent across the entire
+// application.
 map.on('moveend', function () {
-    for (const visibleLayer of globalVisibleLayerList.value) {
+    for (const visibleLayer of visibleLayerList.value) {
         const wms_layer = getWmsLayerList()['layers'][visibleLayer.id];
-        if (wms_layer.min_zoom_level) {
+        if (wms_layer && wms_layer.min_zoom_level) {
             if (map.getZoom() >= wms_layer.min_zoom_level) {
                 if (!map.hasLayer(wms_layer.layer_ref)) {
                     wms_layer.layer_ref.addTo(map);
@@ -172,46 +183,75 @@ map.on('moveend', function () {
     }
 })
 
-export function useVisibleLayers() {
+
+export function useVisibleLayers(map, socket) {
+    const {getWmsLayerList} = useWmsLayers();
+
     /**
-     * Get list of visible layers. This is a list of dictionaries with 'text' and 'type' entries.
+     * Get list of visible layers. This is a list of objects, that are either wms layers or energy systems.
      */
-    const getVisibleLayerList = () => toValue(globalVisibleLayerList);
+    const getVisibleLayerList = () => toValue(visibleLayerList);
 
     /**
      * Remove visible layer by ID.
      */
     const removeFromVisibleLayerList = (id) => {
-        const layerToRemove = globalVisibleLayerList.value.find(
+        const layerToRemove = visibleLayerList.value.find(
             layer => layer.id === id
         );
         if (layerToRemove !== undefined) {
-            globalVisibleLayerList.value.splice(globalVisibleLayerList.value.indexOf(layerToRemove), 1);
+            visibleLayerList.value.splice(visibleLayerList.value.indexOf(layerToRemove), 1);
         }
         return layerToRemove;
     };
 
     /**
-     * Add visible layer to the list
+     * Add visible layer to the list.
      */
     const addToVisibleLayerList = (layer, index) => {
-        globalVisibleLayerList.value.splice(index, 0, layer);
+        // Check if a layer with this ID already exists in the list. If so, give a warning and do not add it.
+        if (visibleLayerList.value.find(l => l.id === layer.id)) {
+            console.warn(`Layer with ID ${layer.id} is already in the visible layer list. Not adding it again.`);
+            return;
+        }
+        visibleLayerList.value.splice(index, 0, layer);
+    };
+
+    const getLayerType = (layer) => {
+        const wmsLayers = getWmsLayerList()['layers'];
+        if (layer.id in wmsLayers) {
+            return VisibleLayerType.WMS;
+        } else if (enabledEsdlIdList.value.includes(layer.es_id)) {
+            return VisibleLayerType.ESDL;
+        } else {
+            return VisibleLayerType.UNKNOWN;
+        }
     };
 
     /**
      * Update the display order of the visible layers
      */
     const updateDisplayOrderVisibleLayers = (id, newPosition) => {
-        const movedlayer = removeFromVisibleLayerList(id);
-        addToVisibleLayerList(movedlayer, newPosition);
+        const movedLayer = removeFromVisibleLayerList(id);
+        addToVisibleLayerList(movedLayer, newPosition);
+        console.log(`Moved layer ${id} to position ${newPosition}`);
 
-        globalVisibleLayerList.value.slice().reverse().forEach(
-            layer => getWmsLayerList()['layers'][layer.id].layer_ref.bringToFront()
+        visibleLayerList.value.slice().reverse().forEach(
+            layer => {
+                const layerType = getLayerType(layer);
+                if (layerType === VisibleLayerType.WMS) {
+                    getWmsLayerList()['layers'][layer.id].layer_ref.bringToFront();
+                } else if (layerType === VisibleLayerType.ESDL) {
+                    layer.layer_ref.bringToFront();
+                } else {
+                    console.error(`Unknown layer type: ${layerType}`);
+                }
+            }
         )
     };
 
     const layerIsVisible = (layerId) => {
-        for (const visibleLayer of globalVisibleLayerList.value) {
+        for (const visibleLayer of visibleLayerList.value) {
             if (visibleLayer.id === layerId) {
                 return true;
             }
@@ -219,16 +259,73 @@ export function useVisibleLayers() {
         return false;
     };
 
+    /**
+     * Hides a visible layer from the map.
+     * @param layerId
+     */
     const hideVisibleLayer = (layerId) => {
-        // hide via tree action to also update parent folders three-state
-        getLayerTree().uncheck_node(layerId);
+        const layerToHide = visibleLayerList.value.find(
+            layer => layer.id === layerId
+        );
+        const layerType = getLayerType(layerToHide);
+        if (layerType === VisibleLayerType.WMS) {
+            // hide via tree action to also update parent folders three-state
+            // TODO: Should we really remove it completely?
+            getLayerTree().uncheck_node(layerId);
+        } else if (layerType === VisibleLayerType.ESDL) {
+            hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.layer_type);
+        } else {
+            console.error(`Unknown layer type: ${layerType}`);
+        }
     };
 
     const hideAllVisibleLayers = () => {
-         globalVisibleLayerList.value.slice().reverse().forEach(
+         visibleLayerList.value.slice().reverse().forEach(
             layer => hideVisibleLayer(layer.id)
         )
     };
+
+    const getVisibleLayersOfType = (layerType) => {
+        return visibleLayerList.value.filter(
+            layer => getLayerType(layer) === layerType
+        );
+    }
+
+    /**
+     * Hides all layers related to the given layer. The exact behaviour depends on the layer type.
+     * @param es_id
+     */
+    const hideRelatedVisibleLayers = (layerId) => {
+        const layerToHide = visibleLayerList.value.find(
+            layer => layer.id === layerId
+        );
+        const layerType = getLayerType(layerToHide);
+        if (layerType === VisibleLayerType.WMS) {
+            // Find all WMS layers and hide them.
+            const wmsLayers = getVisibleLayersOfType(VisibleLayerType.WMS);
+            wmsLayers.forEach(layer => hideVisibleLayer(layer.id));
+        } else if (layerType === VisibleLayerType.ESDL) {
+            // Find all layers with matching es_id and hide them.
+            const layersToHide = visibleLayerList.value.filter(
+                layer => layer.es_id === layerToHide.es_id
+            );
+            layersToHide.forEach(layer => hideVisibleLayer(layer.id));
+        } else {
+            console.error(`Unknown layer type: ${layerType}`);
+        }
+    };
+
+    const showVisibleLayer = (layerId) => {
+        const layerToShow = visibleLayerList.value.find(
+            layer => layer.id === layerId
+        );
+        const layerType = getLayerType(layerToShow);
+        if (layerType === VisibleLayerType.ESDL) {
+            showEsdlLayerOnMap(layerToShow.es_id, layerToShow.layer_type);
+        } else {
+            console.error(`Unknown layer type: ${layerType}`);
+        }
+    }
 
     /**
      * Returns the visible layer object from a given layer Id
@@ -237,7 +334,7 @@ export function useVisibleLayers() {
      * @returns {Object|undefined} The targeted visible layer object; If not found, undefined is returned
      */
     const getVisibleLayerById = (id) => {
-        const targetedLayer = globalVisibleLayerList.value.find(layer => layer.id === id);
+        const targetedLayer = visibleLayerList.value.find(layer => layer.id === id);
         return targetedLayer;
     };
 
@@ -280,9 +377,12 @@ export function useVisibleLayers() {
         removeFromVisibleLayerList,
         addToVisibleLayerList,
         updateDisplayOrderVisibleLayers,
+        getLayerType,
         layerIsVisible,
         hideVisibleLayer,
         hideAllVisibleLayers,
+        hideRelatedVisibleLayers,
+        showVisibleLayer,
         getVisibleLayerById,
         adjustVisibleLayerOpacity,
         saveVisibleLayerOpacitySetting
