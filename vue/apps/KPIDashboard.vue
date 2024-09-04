@@ -63,7 +63,7 @@
         <a-select-opt-group
           v-for="(optGroup, id) in kpiScopeOptions"
           :key="id"
-          :label="optGroup.label"
+          :label="formatSelectorOptGroupLabel(optGroup.label)"
         >
           <a-select-option
             v-for="(option, index) in optGroup.options"
@@ -200,7 +200,7 @@ getDashboardList();
 /**
  * Handler to call when the user selects a different KPI scope from the Selector component.
  * 
- * @param {string} value User selected option value.
+ * @param {string} value User selected option value. Be noted that the value has been formatted as {edId}-{option label}.
  */
 const onSelectKPIScope = (value) => {
   // Apply reverse search to return the corresponding ESId, and KPI Scope from the user selected value.
@@ -216,6 +216,15 @@ const onSelectKPIScope = (value) => {
   updateDashboard(associatedESId, selectedKPIScopeObj.label);
 };
 
+/**
+ * The utility function formats the displayed label of the selector option group.
+ * 
+ * @param {string} esId Energy system id.
+ * @returns {string} Formatted selector option group label.
+ */
+const formatSelectorOptGroupLabel = (esId) => {
+  return `${window.get_es_title(esId)} [${esId}]`;
+};
 
 /**
  * Update dashboard contents according to the given esId and kpiScope.
