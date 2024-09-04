@@ -52,6 +52,30 @@
       </a-space>
     </a-col>
   </a-row>
+  <div v-if="kpiScopeOptions.length">
+    <a-row>
+      <a-select
+        v-model:value="selectedKPIScope"
+        placeholder="Please select a KPI scope"
+        style="width: 50%"
+        @change="onSelectKPIScope"
+      >
+        <a-select-opt-group
+          v-for="(optGroup, id) in kpiScopeOptions"
+          :key="id"
+          :label="optGroup.label"
+        >
+          <a-select-option
+            v-for="(option, index) in optGroup.options"
+            :key="index"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </a-select-option>
+        </a-select-opt-group>
+      </a-select>
+    </a-row>
+  </div>
   <div
     v-if="layout.length"
   >
@@ -138,6 +162,30 @@ const dashboard_config = {
   layout: ref([]),     // this is the information stored as settings in the database
 };
 
+const esKPIs = window.get_all_kpi_info();
+const esIds = Object.keys(esKPIs);
+
+// Create the option group object for the UI Selector component.
+const initSelectorOptions = esIds.map((esId) => (
+  {
+    label: esId,
+    options: Object.keys(esKPIs[esId]).map((scope) => 
+      // Prefix value with esId to differentiate scope (in case the different ES has the same scope name).
+      ({value: `${esId}-${scope}`, label: scope}))
+  }
+));
+// Initialize the first option of the first ES as the selected one.
+const initSelectedKPIScope = initSelectorOptions[0].options[0];
+
+// Used by the Selector component
+const kpiScopeOptions = ref(initSelectorOptions);
+const selectedKPIScope = ref(initSelectedKPIScope);
+
+
+const initESId = esIds[0];
+// Initialize dashboard contents based on the first ES and first KPI scope.
+updateDashboard(initESId, initSelectedKPIScope.label);
+
 const getDashboardList = async () => {
   const response = await fetch("kpi_dashboards");
   if (response.ok) {
@@ -149,10 +197,42 @@ const getDashboardList = async () => {
 };
 getDashboardList();
 
-const getAllKPIData = () => {
-  let all_kpi_data = window.get_all_kpi_info();
-  let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
-  console.log(kpi_data);
+/**
+ * Handler to call when the user selects a different KPI scope from the Selector component.
+ * 
+ * @param {string} value User selected option value.
+ */
+const onSelectKPIScope = (value) => {
+  // Apply reverse search to return the corresponding ESId, and KPI Scope from the user selected value.
+  const selectedOptionGroup = kpiScopeOptions.value.filter((optGroup) => (
+    optGroup.options.map((opt) => (opt.value)).includes(value)
+  ))[0];
+  const associatedESId = selectedOptionGroup.label;
+  const selectedKPIScopeObj = selectedOptionGroup.options.filter(
+    (opt) => (opt.value === value))[0];
+
+  selectedKPIScope.value = selectedKPIScopeObj;
+
+  updateDashboard(associatedESId, selectedKPIScopeObj.label);
+};
+
+
+/**
+ * Update dashboard contents according to the given esId and kpiScope.
+ * 
+ * @param {string} esId Energy system Id.
+ * @param {string} kpiScope KPI scope of the associated energy system.
+ */
+function updateDashboard(esId, kpiScope) {
+  console.debug(`Updating KPI dashboard for ES: ${esId} and scope: ${kpiScope}`);
+  
+  // Reset layout reference.
+  layout.value = [];
+  dashboard_config.layout.value = [];
+
+  const scopeKPIs = esKPIs[esId][kpiScope];
+  const esScopeKPIs = {[esId]: scopeKPIs};
+  const kpi_data = window.kpis.preprocess_all_kpis(esScopeKPIs);
 
   let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
   for (let kpi_name in kpi_data) {
@@ -192,8 +272,7 @@ const getAllKPIData = () => {
     new_panel_id = new_panel_id + 1;
   }
   dashboard_config.layout.value = [...layout.value];
-};
-getAllKPIData();
+}
 
 const findNewPanelId = () => {
   new_panel_id = 0;

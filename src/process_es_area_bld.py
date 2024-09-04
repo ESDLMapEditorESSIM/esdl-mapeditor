@@ -19,6 +19,7 @@ from sys import getsizeof
 from flask import session
 from flask_socketio import emit
 from shapely import MultiPoint
+from typing import Dict
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
@@ -956,22 +957,32 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
                 emit('set_active_layer_id', es.id)
 
-                area = es.instance[0].area
-                find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+                es_instance: esdl.Instance = es.instance[0]
+                top_area: esdl.Area = es_instance.area
+                find_boundaries_in_ESDL(top_area)       # also adds coordinates to assets if possible
                 carrier_list = ESDLEnergySystem.get_carrier_list(es)
                 emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
                 sector_list = ESDLEnergySystem.get_sector_list(es)
                 if sector_list:
                     emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-                # KPIs that are connected to top-level area are visualized in a KPI dialog
+                # Collecting area KPIs
                 print('- Processing KPIs')
-                area_kpis = ESDLEnergySystem.process_area_KPIs(area)
-                area_name = area.name
-                if not area_name:
-                    area_name = title
-                if area_kpis['kpi_list']:   # Only emit KPI info when there are KPIs available
-                    emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_info': area_kpis})
+                es_area_kpis = {}
+                for content in es_instance.eAllContents():
+                    if isinstance(content, esdl.Area):
+                        area = content
+                        area_name = area.name
+                        if area.KPIs:
+                            area_kpis = ESDLEnergySystem.process_area_KPIs(area)
+                            # Only updating es_area_kpis object if list of kpi_list is not empty.
+                            if len(area_kpis['kpi_list']):
+                                es_area_kpis[area_name] = area_kpis
+
+                displayed_area_name = top_area.name if top_area.name else title
+                # Only emit KPI info when there are area KPIs available
+                if len(es_area_kpis) > 0:
+                    emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
                     emit('kpis_present', {'es_id': es.id})
 
                 # measures can contain assets that still need to be added to the energysystem
