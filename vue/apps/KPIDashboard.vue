@@ -52,7 +52,7 @@
       </a-space>
     </a-col>
   </a-row>
-  <div v-if="kpiScopeOptions.length">
+  <div v-if="selectorOptionsKpiScope.length">
     <a-row>
       <a-select
         v-model:value="selectedKPIScope"
@@ -61,13 +61,13 @@
         @change="onSelectKPIScope"
       >
         <a-select-opt-group
-          v-for="(optGroup, id) in kpiScopeOptions"
-          :key="id"
+          v-for="optGroup in selectorOptionsKpiScope"
+          :key="optGroup.label"
           :label="formatSelectorOptGroupLabel(optGroup.label)"
         >
           <a-select-option
-            v-for="(option, index) in optGroup.options"
-            :key="index"
+            v-for="option in optGroup.options"
+            :key="option.value"
             :value="option.value"
           >
             {{ option.label }}
@@ -165,8 +165,8 @@ const dashboard_config = {
 const esKPIs = window.get_all_kpi_info();
 const esIds = Object.keys(esKPIs);
 
-// Create the option group object for the UI Selector component.
-const initSelectorOptions = esIds.map((esId) => (
+// Create the option group array for the UI Selector component.
+const selectorOptionsKpiScope = esIds.map((esId) => (
   {
     label: esId,
     options: Object.keys(esKPIs[esId]).map((scope) => 
@@ -174,13 +174,10 @@ const initSelectorOptions = esIds.map((esId) => (
       ({value: `${esId}-${scope}`, label: scope}))
   }
 ));
+
 // Initialize the first option of the first ES as the selected one.
-const initSelectedKPIScope = initSelectorOptions[0].options[0];
-
-// Used by the Selector component
-const kpiScopeOptions = ref(initSelectorOptions);
+const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
 const selectedKPIScope = ref(initSelectedKPIScope);
-
 
 const initESId = esIds[0];
 // Initialize dashboard contents based on the first ES and first KPI scope.
@@ -204,7 +201,7 @@ getDashboardList();
  */
 const onSelectKPIScope = (value) => {
   // Apply reverse search to return the corresponding ESId, and KPI Scope from the user selected value.
-  const selectedOptionGroup = kpiScopeOptions.value.filter((optGroup) => (
+  const selectedOptionGroup = selectorOptionsKpiScope.filter((optGroup) => (
     optGroup.options.map((opt) => (opt.value)).includes(value)
   ))[0];
   const associatedESId = selectedOptionGroup.label;
