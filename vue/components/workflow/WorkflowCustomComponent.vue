@@ -19,6 +19,7 @@ import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles.vu
 import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1.vue';
 import {default as WorkflowFlexScanImportEPS} from './custom/flexscan/WorkflowFlexScanImportEPS.vue';
+import {default as EpsInitEnergyHub} from "@/components/workflow/custom/eps/EpsInitEnergyHub.vue";
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -26,6 +27,7 @@ const components = {
   "eps-create-project": EpsCreateProject,
   "eps-select-measures": EpsSelectMeasures,
   "eps-custom-measures": EpsCustomMeasures,
+  "eps-init-energy-hub": EpsInitEnergyHub,
   "dice-export-essim": DiceExportEssim,
   "dice-generate-profile-template": DiceGenerateProfileTemplate,
   "dice-upload-profiles": DiceUploadProfiles,

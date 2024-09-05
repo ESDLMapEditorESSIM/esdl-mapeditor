@@ -560,6 +560,16 @@ esdl_config = {
                                 "enable_if_state": "essim.success",
                                 "next_step": 19,
                             },
+                            # TEST
+                            {
+                                "name": "TEST",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Energy Hub",
+                                "type": "dashed",
+                                "next_step": 34,
+                            },
                         ],
                     },
                     {
@@ -1136,6 +1146,13 @@ esdl_config = {
                             In this step, this configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set. 
                             This can be done using the ESDL Map Editor functionalities.
                         """,
+                    },
+                    {
+                        # 34
+                        "name": "Energy Hub",
+                        "description": "Select which buildings will be part of the energy hub.",
+                        "type": "custom",
+                        "component": "eps-init-energy-hub",
                     },
                 ],
             },

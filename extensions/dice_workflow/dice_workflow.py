@@ -20,16 +20,18 @@ import base64
 from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_executor import Executor
+from flask_executor.executor import ExecutorJob
 from flask_socketio import SocketIO
 from influxdb import InfluxDBClient
 import io
 import os
 import requests
 import tempfile
-from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
+from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast, Callable
 import zipfile
 
 from esdl import esdl
+from extensions.dice_workflow.energy_hubs import generate_energy_hub
 from extensions.dice_workflow.export_bc import export_business_case
 from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.essim import (
@@ -64,7 +66,7 @@ class DiceESSIMExport(TypedDict):
     end_date: Optional[str]
     failed_msg: Optional[str]
     finished: bool
-    file_paths: Optional[Dict[str, str]]
+    file_paths: Optional[dict[str, str]]
 
 
 class DiceWorkflow:
@@ -78,11 +80,13 @@ class DiceWorkflow:
         socket: SocketIO,
         executor: Executor,
         settings_storage: SettingsStorage,
+        call_process_energy_system: ExecutorJob,
     ):
         self.flask_app = flask_app
         self.socketio = socket
         self.executor = executor
         self.settings_storage = settings_storage
+        self.call_process_energy_system = call_process_energy_system
         self.register()
 
     def register(self):
@@ -90,16 +94,16 @@ class DiceWorkflow:
 
         @self.flask_app.route("/dice_workflow/get_buildings")
         def get_buildings():
-            buildings: List[esdl.GenericBuilding] = _get_buildings_in_active_es()
-            building_dicts: List[Dict] = []
+            buildings: list[esdl.GenericBuilding] = _get_buildings_in_active_es()
+            building_dicts: list[dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
-                kpis_value_dict: Dict[str, Union[int, float, str]] = {}
+                kpis_value_dict: dict[str, Union[int, float, str]] = {}
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
                 energy_assets_type_dict = _building_energy_assets_to_type_dict(building)
-                heatpumps: List[esdl.HeatPump] = cast(
-                    List[esdl.HeatPump], energy_assets_type_dict.get("HeatPump")
+                heatpumps: list[esdl.HeatPump] = cast(
+                    list[esdl.HeatPump], energy_assets_type_dict.get("HeatPump")
                 )
                 if heatpumps:
                     heatpump_efficiency = heatpumps[0].COP
@@ -196,6 +200,19 @@ class DiceWorkflow:
                 ),
                 200,
             )
+
+        @self.socketio.on('create_esdl_with_energy_hub', namespace='/esdl')
+        def create_esdl_with_energy_hub(message):
+            building_ids = message["building_ids"]
+            esh = get_handler()
+            active_es_id = get_session("active_es_id")
+            es = esh.get_energy_system(es_id=active_es_id)
+            es_string = esh.to_string(es_id=active_es_id)
+            new_es, parse_info = esh.load_from_string(es_string, name=es.name, new_id=str(uuid4()))
+            generate_energy_hub(new_es, building_ids)
+            esh.add_object_to_dict(new_es.id, new_es, recursive=True)
+            self.call_process_energy_system.submit(esh, force_update_es_id=active_es_id, zoom=False)
+            return jsonify({}), 200
 
         @self.flask_app.route("/dice_workflow/export_essim", methods=["GET", "POST"])
         def export_essim():
@@ -463,3 +480,4 @@ def _download_profiles_result(process_id: str) -> Tuple[bytes, str]:
     parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
     filename = os.path.basename(parsed_header["filename"])
     return r.content, filename
+

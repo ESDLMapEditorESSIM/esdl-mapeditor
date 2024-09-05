@@ -141,7 +141,7 @@ class EnergySystemHandler:
         self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
         return tmp_resource.contents[0], parse_info
 
-    def load_from_string(self, esdl_string, name='from_string'):
+    def load_from_string(self, esdl_string, name='from_string', new_id=None):
         """
         Loads an energy system from a string and adds it to a *new* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
@@ -154,6 +154,8 @@ class EnergySystemHandler:
         try:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
+            if new_id:
+                self.energy_system.id = new_id
             parse_info = []
             if isinstance(self.resource, XMLResource):
                 parse_info = self.resource.get_parse_information()

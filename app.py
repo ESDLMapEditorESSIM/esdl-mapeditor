@@ -172,6 +172,11 @@ Session(app)
 
 executor = Executor(app)
 
+@executor.job
+def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
+
+
 #extensions
 schedule_session_clean_up()
 wms_layers = WMSLayers(app, socketio, settings_storage)
@@ -188,7 +193,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
-DiceWorkflow(app, socketio, executor, settings_storage)
+DiceWorkflow(app, socketio, executor, settings_storage, call_process_energy_system)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 edr_client = EDRClient(app, socketio, settings_storage)
@@ -1539,11 +1544,6 @@ def get_first_last_of_line(line):
 
     last = (point.lat, point.lon)
     return first, last
-
-
-@executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

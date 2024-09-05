@@ -201,14 +201,14 @@
 </template>
 
 <script setup="props">
-import {computed, ref} from "vue";
+import {computed, onUnmounted, ref} from "vue";
 import {doGet} from "../../../../utils/api";
 import {useWorkflow} from "../../../../composables/workflow";
 import {useEsdlLayers} from "../../../../composables/esdlLayers.js";
 import {MessageNames, PubSubManager} from "../../../../bridge";
 
 const { getActiveEsdlLayerId } = useEsdlLayers();
-const { getState, goToPreviousStep } = useWorkflow();
+const { getState } = useWorkflow();
 
 const props = defineProps({
   workflowStep: {
@@ -425,9 +425,10 @@ const onSelectBuilding = async (newSelectedBuildingIds) => {
   }
 }
 
-PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+const subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
   doGetData();
 });
+onUnmounted(() => PubSubManager.unsubscribe(subscriptionId));
 </script>
 
 <style scoped>

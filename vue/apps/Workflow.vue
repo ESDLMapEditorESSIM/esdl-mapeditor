@@ -161,6 +161,7 @@ import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {useEsdlLayers} from "../composables/esdlLayers.js";
 import {ref} from "vue";
+import EpsInitEnergyHub from "@/components/workflow/custom/eps/EpsInitEnergyHub.vue";
 
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
