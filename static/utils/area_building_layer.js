@@ -1089,10 +1089,8 @@ function selectAreaKPI(kpi_name) {
             featuregroup_instance.eachLayer(function (layer) {
                 if (Object.keys(layer.feature.properties.KPIs).length > 0) {
                     if (areaLegendChoice in layer.feature.properties.KPIs) {
-                        layer.setStyle({
-                            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
-                            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
-                        });
+                        const areaStyle = style_area(layer.feature);
+                        layer.setStyle(areaStyle);
                     } else {
                         layer.setStyle({
                             fillColor: "blue",
