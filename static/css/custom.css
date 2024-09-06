@@ -419,7 +419,7 @@ h6 {
     opacity: 0.7;
 }
 
-.area-marker-resize-div {
+.area-marker-resize-container {
     display: flex;
     padding-top: 6px;
 }

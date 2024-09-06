@@ -33,6 +33,9 @@ var buildingLegendChoice;
 var get_area_color;         // function to get color of an area
 var get_building_color = get_buildingYear_colors;     // function to get color of a building
 
+// HTML element ids for indexing
+const areaLegendDivId = 'area-legend-div';
+const areaMarkerResizeDivId = 'area-marker-resize-div';
 let areaMarkerResizeFactor = 1.0; // resize area map marker (pie chart) size based on the slider value
 
 // ------------------------------------------------------------------------------------------------------------
@@ -816,6 +819,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
+                    // Create and show areaMarkerResize element when DistributionKPI is presented.
+                    createAreaMarkerResizeDiv();
                 }
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
@@ -1118,8 +1123,10 @@ function selectAreaKPI(kpi_name) {
                                 }
                             }
                         }
+                        // Create and show areaMarkerResize element when DistributionKPI is selected.
+                        createAreaMarkerResizeDiv();
                     } else {
-                        // A non DistributionKPI was selected, hide pieCharts if the previous KPI was a DistributionKPI
+                        // A non DistributionKPI was selected, hide pieCharts and areaMarkerResize element if the previous KPI was a DistributionKPI
                         for (let key in layer.feature.properties.dist_KPIs) {
                             let kpi = layer.feature.properties.dist_KPIs[key];
                             if (kpi.pieChartMarkerVisible) {
@@ -1127,6 +1134,7 @@ function selectAreaKPI(kpi_name) {
                                 kpi.pieChartMarkerVisible = false;
                             }
                         }
+                        removeExistingAreaMarkerResizeDiv();
                     }
                 }
             });
@@ -1164,6 +1172,7 @@ function createBuildingLegendDiv() {
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Area Legend';
@@ -1181,22 +1190,42 @@ function createAreaLegendDiv() {
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
 
-    const markerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-div', legendDiv);
-    markerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
-    
-    const slider = L.DomUtil.create('input', 'area-marker-resize-slider', markerResizeDiv);
-    slider.type = 'range';
-    slider.min = 0.0;
-    slider.max = 2.0;
-    slider.step = 0.1;
-    slider.value = 1.0;
-    L.DomEvent.disableClickPropagation(slider);
-    L.DomEvent.on(slider, 'input', (event) => {
-        areaMarkerResizeFactor = event.target.value;
-        resize_area_pi_charts();
-    });
-
     return legendDiv;
+}
+
+/**
+ * Removes the existing areaMarkerResize element.
+ */
+function removeExistingAreaMarkerResizeDiv() {
+    const areaMarkerResizeDiv = L.DomUtil.get(areaMarkerResizeDivId);
+    if (areaMarkerResizeDiv) {
+        L.DomUtil.remove(areaMarkerResizeDiv);
+    }
+}
+
+/**
+ * Creates an areaMarkerResize element if it does not exist.
+ */
+function createAreaMarkerResizeDiv() {
+    if (!L.DomUtil.get(areaMarkerResizeDivId)) {
+        const areaLegendDiv = L.DomUtil.get(areaLegendDivId);
+        // Create and append the resize element to areaLegendDiv
+        const areaMarkerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-container', areaLegendDiv);
+        areaMarkerResizeDiv.id = areaMarkerResizeDivId;
+        areaMarkerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
+        
+        const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
+        slider.type = 'range';
+        slider.min = 0.05;
+        slider.max = 2.0;
+        slider.step = 0.1;
+        slider.value = 1.0;
+        L.DomEvent.disableClickPropagation(slider);
+        L.DomEvent.on(slider, 'input', (event) => {
+            areaMarkerResizeFactor = event.target.value;
+            resize_area_pi_charts();
+        });
+    }
 }
 
 function removeBuildingLegend() {
@@ -1219,7 +1248,7 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
     if (!jQuery.isEmptyObject(area_KPIs)) {
         areaLegend = L.control({position: 'bottomright'});
         areaLegend.onAdd = function (map) {
-                return createAreaLegendDiv();
+            return createAreaLegendDiv();
         };
         areaLegend.addTo(map);
     }
