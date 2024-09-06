@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import base64
 #  This work is based on original code developed and copyrighted by TNO 2020.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
@@ -20,18 +19,18 @@ import urllib
 import uuid
 import traceback
 from datetime import datetime
-from pprint import pprint
 from warnings import warn
 
-import jwt
 import requests
 import structlog.contextvars
-from flask import Flask, Response, redirect, render_template, request, send_from_directory, session
+from authlib.integrations.flask_client import FlaskOAuth2App
+from authlib.jose import jwt, JsonWebKey
+from flask import Flask, Response, redirect, render_template, request, send_from_directory, session, url_for, g
 from flask_executor import Executor
 from flask_oidc import OpenIDConnect
+from flask_oidc.model import User
 from flask_session import Session
 from flask_socketio import SocketIO, emit
-from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
 import src.esdl_config as esdl_config
@@ -45,6 +44,7 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.activity_context import ActivityContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
+#from extensions.data_manager.data_manager import DataManager
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -57,6 +57,7 @@ from extensions.etm_interface import ETMInterface
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
+from extensions.open_id_integration import OpenIDIntegration
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from src.edr_client import EDRClient
@@ -213,6 +214,7 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
+#DataManager(app, socketio)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -221,16 +223,18 @@ app.config.update({
     'TESTING': True,
     'DEBUG': True,
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
-    'OIDC_REQUIRE_VERIFIED_EMAIL': False,
+    #'OIDC_REQUIRE_VERIFIED_EMAIL': False,  # No longer enforced in Flask-OIDC 2.2.0
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'],
+    # 'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'], # Space separated list of scopes in Flask-OIDC 2.2.0
+    'OIDC_SCOPES': 'openid email profile groups microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
 
 try:
-    oidc = OpenIDConnect(app)
+    oidc = OpenIDConnect(app, prefix="/oidc")
+    openid = OpenIDIntegration(oidc)
 except Exception as e:
     logger.exception("Something went wrong when connecting to Keycloak")
     import sys
@@ -298,47 +302,43 @@ def test_authentication():
 @app.route('/editor')
 @oidc.require_login
 def editor():
-    #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
-    #set_session('client_id', session['client_id'])
     logger.info('client_id is set to %s' % session['client_id'])
-    if oidc.user_loggedin:
-        if session['client_id'] == None:
+    #print("Flask-OIDC User info:",openid.get_userinfo(session))
+    #print("Flask-OIDC auth_profile:", session["oidc_auth_profile"])
+    # print("Session OIDC Auth token", session.get("oidc_auth_token"))
+
+    if openid.user_loggedin:
+        if session['client_id'] is None:
             warn('WARNING: No client_id in session!!')
 
-        whole_token = oidc.get_access_token()
-        logger.debug(f"whole_token: {whole_token}")
-        if whole_token:
-            try:
-                jwt_tkn = jwt.decode(whole_token, algorithms='RS256', verify=False)
-                pprint(jwt_tkn)
-            except Exception as e:
-                logger.exception(f"error in decoding token: {str(e)}")
-        # if role in access_token['resource_access'][client]['roles']:
-
-        user_email = oidc.user_getfield('email')
-
+        access_token_b64 = openid.get_access_token()
+        user_email = openid.get_email() # oidc.user_getfield('email')
         logger.info("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
         user_actions_logging.store_logging(user_email, "login", "", "", "", {})
 
-        userinfo = oidc.user_getinfo(['role'])
-        role = []
-        if 'role' in userinfo:
-            role = userinfo['role'].split(',')
+        role = []  # role as set as attribute in user profile (used by edwin to turn on/off features for users
+        if 'role' in openid.get_user_profile():
+            role = openid.get_user_profile().get('role').split(',')
 
         # find roles in for the mapeditor client
         mapeditor_role = []
         client = oidc.client_secrets.get('client_id')
-        resource_access = oidc.user_getfield('resource_access')
-        if resource_access is not None and client in resource_access:
-            if 'roles' in resource_access[client]:
-                mapeditor_role = resource_access[client]['roles']
-        set_session('user-group', oidc.user_getfield('user_group'))
+        # resource access is not in user profile, but is in oidc_aut_token.userinfo
+        resource_access = openid.get_parsed_jwt().get('resource_access')
+        if resource_access is not None :
+            if client in resource_access:
+                if 'roles' in resource_access[client]:
+                    # mapeditor_role is a keycloak role of the esdl-mapeditor client,
+                    # 'mapeditor-admin' gives you admin rights in this app
+                    mapeditor_role = resource_access[client]['roles']
+        logger.debug(f"User has following mapeditor role(s): {mapeditor_role}")
+        set_session('user-group', openid.get_user_profile().get('user_group'))
         set_session('user-role', role)
         set_session('user-email', user_email)
         set_session('user-mapeditor-role', mapeditor_role)
-        set_session('jwt-token', whole_token)
+        set_session('jwt-token', access_token_b64)
 
-        user_fullname = oidc.user_getfield('name')
+        user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
         esdl_store_enabled = not(settings.esdl_store_config["hostname"] is None or settings.esdl_store_config["hostname"] == "")
@@ -354,7 +354,7 @@ def editor():
         user_feedback_url = settings.user_feedback_url_config["url"] if hasattr(settings, "user_feedback_url_config") else None
 
         logger.info("store:{} drive:{} edr:{} bound:{} stat:{} bag:{} ibis:{}".format(store_enabled, esdl_drive_enabled,
-            edr_enabled, boundary_service_enabled, statistics_service_enabled,bag_service_enabled, ibis_service_enabled))
+            edr_enabled, boundary_service_enabled, statistics_service_enabled, bag_service_enabled, ibis_service_enabled))
         logger.info("Feedback URL: {}".format(user_feedback_url))
 
         return render_template(
@@ -385,73 +385,70 @@ def editor():
 
 """
 Checks the OpenID connect session status
-And refreshes if necessary?
+And refreshes if necessary
 """
 @app.route('/auth_status')
 #@oidc.require_login
 def auth_status():
-    from flask import g
-    #logger.debug("Global token: {}".format(g.oidc_id_token))
-    status: Response = oidc.authenticate_or_redirect()
-    if status is None:
-        if oidc.user_loggedin:
-            curr_token = get_session('jwt-token')
-            if oidc.get_access_token() is not None:
-                if curr_token is not None and curr_token == oidc.get_access_token():
-                    return {'valid': True, 'reason': "Unchanged"}
-                else:
-                    logger.info("Refreshed access token for {}".format(oidc.user_getfield('email')))
-                    set_session('jwt-token', oidc.get_access_token())
-                    return {'valid': True, 'reason': "Refreshed"}
+    if openid.user_loggedin:
+        user: User = openid.get_user()
+        curr_token = get_session('jwt-token')
+        if openid.get_access_token() is not None:
+            if curr_token is not None and curr_token == openid.get_access_token():
+                return {'valid': True, 'reason': "Unchanged"}
             else:
-                # this is the case when we restarted the app, but the browser still has a valid cookie and
-                # seems still authorized, while the token has not been refreshed or is accessible via oidc.
-                #if g.oidc_id_token is not None:
-                    # update oidc with session info
-                    #oidc.credentials_store[g.oidc_id_token['sub']] = g.oidc_id_token
-                    #logger.debug("Setting cookie access token ", oidc.get_access_token())
-                    #set_session('jwt-token', oidc.get_access_token())
-                    #return {'valid': True, 'reason': "Updated token"}
-                g.oidc_id_token = None
-                oidc.logout()
-                status: Response = oidc.redirect_to_auth_server('/editor')
-                uri = status.headers["Location"]
-                return {'valid': False, 'reason': "Token expired or not available", 'redirect_uri': uri}
+                logger.info("Refreshed access token for {}".format(user.profile.get('email')))
+                set_session('jwt-token', openid.get_access_token())
+                return {'valid': True, 'reason': "Refreshed"}
         else:
-            oidc.logout()
-            return {'valid': False, 'reason': "Not logged in"}
+            return {'valid': False,
+                    'reason': "Token expired or not available",
+                    'redirect_uri': url_for("oidc_auth.logout", next='/editor')}
     else:
-        status: Response = oidc.redirect_to_auth_server('/editor') # get redirect for /editor, not /auth_status
-        uri = status.headers["Location"]
-        return {'valid': False, 'reason': "Authentication required", 'redirect_uri': uri}
-        # return status  # returns a redirect, but that is consumed by the browser because of a 302 status
+        # signal browser to reload the page to login.
+        return {'valid': False, 'reason': "Not logged in", 'redirect_uri': url_for("oidc_auth.logout", next='/editor')}
 
 
+#logout endpoint is provided by  Flask-Oidc under /oidc/logout, this resets cookies and so on
 @app.route('/logout')
 def logout():
     """Performs local logout by removing the session cookie. and does a logout at the IDM"""
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
+    oidc_auth_token = openid.get_full_oauth_token()
+    # print("Flask-OIDC User:", user)
+    # print("Flask-OIDC auth_profile:", session.get("oidc_auth_profile"))
+    # print("Session OIDC Auth token", session.get("oidc_auth_token"))
+
     # retrieve the ID token to inform keycloak with the correct information to logout
     # otherwise you will get a popup that requests if you want to log out
-    from flask import g
-    creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
-    creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
-    id_token_hint = creds.id_token_jwt
-    oidc.logout()
-    #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
+    id_token_hint = None
+    if oidc_auth_token:
+        id_token_hint = openid.get_id_token()
     # keycloak <17 logout:
-
     new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
     if not new_keycloak:
-        return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+        #return redirect(oidc.client_secrets.get('issuer') + '/protocol/openid-connect/logout?redirect_uri=' + request.host_url)
+        return redirect(url_for("oidc_auth.logout",
+                        next=oidc.client_secrets.get('issuer') +
+                        '/protocol/openid-connect/logout?redirect_uri=' +
+                        request.host_url))
     else:
         # For Keycloak 17+ it uses the offical OpenID Connect RP-Initiated Logout
-        return redirect(oidc.client_secrets.get('issuer') +
-                        '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
-                        '&client_id=' + oidc.client_secrets.get('client_id') +
-                        '&id_token_hint=' + id_token_hint)
+
+        # return redirect(oidc.client_secrets.get('issuer') +
+        #                 '/protocol/openid-connect/logout?post_logout_redirect_uri=' + request.host_url +
+        #                 '&client_id=' + oidc.client_secrets.get('client_id') +
+        #                 '&id_token_hint=' + oidc_auth_token['id_token'])
+        url = oidc.client_secrets.get('issuer') \
+              + '/protocol/openid-connect/logout?post_logout_redirect_uri=' \
+              + request.host_url \
+              + '&client_id=' + oidc.client_secrets.get('client_id')
+        if id_token_hint: # when restarting this is not available
+            url = url + '&id_token_hint=' + id_token_hint
+        return redirect(url_for("oidc_auth.logout", next=url))
+
 
 
 # Cant find out why send_file does not work in uWSGI with threading.
