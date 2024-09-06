@@ -103,6 +103,7 @@ const onSubmit = async () => {
     "building_ids": selectedBuildingIds.value,
   };
   window.socket.emit("create_esdl_with_energy_hub", payload);
+  window.show_loader();
 }
 
 /**

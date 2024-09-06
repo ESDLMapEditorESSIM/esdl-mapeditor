@@ -208,7 +208,8 @@ class DiceWorkflow:
             active_es_id = get_session("active_es_id")
             es = esh.get_energy_system(es_id=active_es_id)
             es_string = esh.to_string(es_id=active_es_id)
-            new_es, parse_info = esh.load_from_string(es_string, name=es.name, new_id=str(uuid4()))
+            new_es, parse_info = esh.load_from_string(es_string, name=f"{es.name} - Energy Hub", new_id=str(uuid4()))
+            new_es.name = f"{es.name} - Energy Hub"
             generate_energy_hub(new_es, building_ids)
             esh.add_object_to_dict(new_es.id, new_es, recursive=True)
             self.call_process_energy_system.submit(esh, force_update_es_id=active_es_id, zoom=False)
