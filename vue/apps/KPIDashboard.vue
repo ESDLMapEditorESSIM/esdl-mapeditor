@@ -81,7 +81,7 @@
   >
     <grid-layout
       :key="dashboard_config.id.value"
-      v-model:layout="layout"
+      :layout="layout"
       :col-num="12"
       :row-height="30"
       is-draggable

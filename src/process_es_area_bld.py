@@ -972,12 +972,12 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 for content in es_instance.eAllContents():
                     if isinstance(content, esdl.Area):
                         area = content
-                        area_name = area.name
                         if area.KPIs:
                             area_kpis = ESDLEnergySystem.process_area_KPIs(area)
                             # Only updating es_area_kpis object if list of kpi_list is not empty.
                             if len(area_kpis['kpi_list']):
-                                es_area_kpis[area_name] = area_kpis
+                                area_key = area.name if area.name else area.id
+                                es_area_kpis[area_key] = area_kpis
 
                 displayed_area_name = top_area.name if top_area.name else title
                 # Only emit KPI info when there are area KPIs available
@@ -993,7 +993,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
                 # add_missing_coordinates(area)
                 print('- Processing area')
-                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, top_area, 0)
                 print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
                 notes_list = get_notes_list(es)
 
