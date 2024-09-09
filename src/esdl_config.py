@@ -562,7 +562,7 @@ esdl_config = {
                             },
                             # TEST
                             {
-                                "name": "TEST",
+                                "name": "BETA TEST",
                                 "type": "header",
                             },
                             {
