@@ -55,16 +55,16 @@ subscribe("on_wms_layer_feature_resp", (resp) => {
 });
 
 /**
- * Constructs and returns a WMS layer GetFeatureInfo URL 
+ * Constructs and returns a WMS layer GetFeatureInfo URL
  * based on the mouse click event location (LatLng)
- * 
+ *
  * @param {string} wmsServiceUrl WMS service URL
  * @param {string} layerName Query layer name
  * @param {object} evLatLng Geographical LatLng property of the mouse click event
  * @returns {string} WMS GetFeatureInfo URL of the event location
  */
 const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) => {
-    const url = wmsServiceUrl + 
+    const url = wmsServiceUrl +
         "?service=WMS&version=1.1.1&request=GetFeatureInfo&layers=" + layerName +
         "&styles=&bbox=" + map.getBounds().toBBoxString() +
         "&height=" + map.getSize().y + "&width=" + map.getSize().x +
@@ -76,14 +76,14 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
 };
 
 /**
- * Based on the list of visible WMS layers and the mouse click event, 
+ * Based on the list of visible WMS layers and the mouse click event,
  * constructs a query object and sends it to the backend to fetch layers features information.
- * 
+ *
  * To avoid possible CORS errors, the layer feature fetching is executed by the backend.
- * 
- * NOTE: This only works for the WMS layer at the moment. 
+ *
+ * NOTE: This only works for the WMS layer at the moment.
  * TODO: Extend this to other layer types when applicable.
- * 
+ *
  * @param {object} event Mouse click event
  */
 const queryWmsLayersFeaturesOnClick = (event) => {
@@ -104,9 +104,9 @@ const queryWmsLayersFeaturesOnClick = (event) => {
 };
 
 /**
- * Show the map popup of WMS layers features properties, 
+ * Show the map popup of WMS layers features properties,
  * when receiving the 'on_wms_layer_feature_resp' response object emitted from the backend.
- * 
+ *
  * @param {object} resp Response object with structure as {ev_lat_lng: event.latlng, layers_features_props: array[{name: str, feature_props: object|null }]}
  */
 const showWmsLayerFeaturePopup = (resp) => {
@@ -152,7 +152,7 @@ const showWmsLayerFeaturePopup = (resp) => {
                 popupDiv.appendChild(propErrorNode);
             }
         });
-        
+
         if (popupDiv.hasChildNodes()) {
             // Set the popup content and open it
             layersPopup.setLatLng(resp.ev_lat_lng).setContent(popupDiv);
@@ -214,6 +214,7 @@ export function useVisibleLayers(map, socket) {
             console.warn(`Layer with ID ${layer.id} is already in the visible layer list. Not adding it again.`);
             return;
         }
+        layer.visible = true;
         visibleLayerList.value.splice(index, 0, layer);
     };
 
@@ -267,6 +268,7 @@ export function useVisibleLayers(map, socket) {
         const layerToHide = visibleLayerList.value.find(
             layer => layer.id === layerId
         );
+        layerToHide.visible = false;
         const layerType = getLayerType(layerToHide);
         if (layerType === VisibleLayerType.WMS) {
             // hide via tree action to also update parent folders three-state
@@ -319,6 +321,7 @@ export function useVisibleLayers(map, socket) {
         const layerToShow = visibleLayerList.value.find(
             layer => layer.id === layerId
         );
+        layerToShow.visible = true;
         const layerType = getLayerType(layerToShow);
         if (layerType === VisibleLayerType.ESDL) {
             showEsdlLayerOnMap(layerToShow.es_id, layerToShow.layer_type);
@@ -329,7 +332,7 @@ export function useVisibleLayers(map, socket) {
 
     /**
      * Returns the visible layer object from a given layer Id
-     * 
+     *
      * @param {string} id Layer Id
      * @returns {Object|undefined} The targeted visible layer object; If not found, undefined is returned
      */
@@ -340,7 +343,7 @@ export function useVisibleLayers(map, socket) {
 
     /**
      * Adjusts the opacity of the visible layer.
-     * 
+     *
      * @param {string} id Layer Id
      * @param {number} opacity The desired layer opacity value between 0 and 1
      */
@@ -353,7 +356,7 @@ export function useVisibleLayers(map, socket) {
 
     /**
      * Saves the layer opacity setting to the settings_storage.
-     * 
+     *
      * @param {string} id Layer Id
      */
     const saveVisibleLayerOpacitySetting = (id) => {
@@ -362,7 +365,7 @@ export function useVisibleLayers(map, socket) {
             const opacity = targetLayer.layer_ref.options.opacity;
             if (id && opacity) {
                 const params = {layer_id: id, opacity: opacity};
-                // After the "save_wms_layer_opacity_setting" event, 
+                // After the "save_wms_layer_opacity_setting" event,
                 // calling updateGlobalWmsLayerList to ensure the latest layers settings are reflected in the app.
                 socket.emit("save_wms_layer_opacity_setting", params, updateGlobalWmsLayerList);
             }
