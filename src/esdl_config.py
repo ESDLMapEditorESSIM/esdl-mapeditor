@@ -568,6 +568,7 @@ esdl_config = {
                             {
                                 "name": "Energy Hub",
                                 "type": "dashed",
+                                "enable_if_state": "execution.success",
                                 "next_step": 34,
                             },
                         ],
