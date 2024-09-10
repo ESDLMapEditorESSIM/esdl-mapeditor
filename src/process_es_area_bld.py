@@ -12,9 +12,12 @@
 #  Manager:
 #      TNO
 
+import math
 import random
-
+import re
 from sys import getsizeof
+
+import shapely
 from flask import session
 from flask_socketio import emit
 from shapely import MultiPoint
@@ -22,21 +25,18 @@ from shapely import MultiPoint
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
+from esdlproject.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
+from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session
 from src.app import executor
-from extensions.mapeditor_settings import MapEditorSettings
+from src.assets_to_be_added import AssetsToBeAdded
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.log import get_logger
 from src.shape import Shape, ShapePoint
-from src.assets_to_be_added import AssetsToBeAdded
-from esdlproject.ProjectManager import ProjectManager
 from src.tno.projects.emits import emit_active_esdl_project
 from utils.RDWGSConverter import RDWGSConverter
-import shapely
-import math
-import re
 
 logger = get_logger(__name__)
 
@@ -189,6 +189,8 @@ def calc_possible_locations_in_area(shape, num_assets_in_area):
     bbox = shape.shape.bounds   # returns (minx, miny, maxx, maxy)
     rect_pol = shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])
     shape_area = shape.shape.area
+    if shape_area == 0.0:
+        return []
     bbox_area = rect_pol.area
     # Use 2 as a scaling factor (for the fact that the polygon will not align with the chosen grid
     bbox_num_points = 2 * round(num_assets_in_area * bbox_area / shape_area)
@@ -948,12 +950,12 @@ def process_energy_system(force_update_es_id=None, zoom=True):
         pm = get_project_manager()
         es_info_list = get_session("es_info_list")
 
-        asset_list = []
-        building_list = []
-        area_bld_list = []
-        conn_list = []
 
         for es in pm.get_energy_systems():
+            asset_list = []
+            building_list = []
+            area_bld_list = []
+            conn_list = []
             if not isinstance(es, esdl.EnergySystem):
                 raise RuntimeError(f"Energy system is not of type esdl.EnergySystem! es={es}")
 

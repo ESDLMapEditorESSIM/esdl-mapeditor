@@ -286,8 +286,10 @@
         //
         // ------------------------------------------------------------------------------------------------------------
         function update_title(title) {
-            title_div = document.getElementById('es_title');
+            let title_div = document.getElementById('es_title');
             title_div.innerHTML = '<b>' + title + '<b>';
+            let mapeditor = document.title.split("-")[0]
+            document.title = mapeditor + " - " + title;
         }
 
         function show_loader() {

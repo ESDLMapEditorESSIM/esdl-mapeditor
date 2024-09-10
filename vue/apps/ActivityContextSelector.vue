@@ -39,6 +39,7 @@ const {activeActivityContext, activateActivityContext, clearActivityContext, fet
 const selected_context = ref("");
 const activityContexts = ref([]);
 const $ = window.$;
+const init = false;
 
 const initializeSelectmenu = () => {
   $("#activity_context").selectmenu({
@@ -47,6 +48,8 @@ const initializeSelectmenu = () => {
       handleChange({ target: { value: ui.item.value } });
     }
   });
+  console.log("initialized activity context select menu");
+  this.init = true;
 };
 
 const updateSelectmenuValue = async (value) => {
@@ -63,7 +66,7 @@ onMounted(async () => {
 });
 
 watch(() => activeActivityContext.value, (newValue) => {
-  updateSelectmenuValue(newValue?.activity_id || "");
+  if (init) updateSelectmenuValue(newValue?.activity_id || "");
 });
 
 const handleChange = (e) => {

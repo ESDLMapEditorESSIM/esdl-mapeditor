@@ -17,12 +17,12 @@ from typing import TypedDict
 
 from flask import Blueprint, jsonify, request, session
 
+import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
-import src.log as log
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
@@ -52,11 +52,14 @@ def load_esdl_project():
     """
     base64_file = request.json['base64_file']
     file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
-    filename = request.json['filename']
+    filename:str = request.json['filename']
     pm = get_project_manager()
-    uri = StringURI(filename + '.project', file_content)
-    pm.load(uri)
+    if not filename.endswith(".project"):
+        filename = filename + ".project"
+    uri = StringURI(filename, file_content)
     set_session("es_info_list", {})
+    pm.load(uri)
+
     return jsonify(serialize_esdl_project(pm, pm.project))
 
 
