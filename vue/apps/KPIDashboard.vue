@@ -89,6 +89,7 @@
       vertical-compact
       responsive
       use-css-transforms
+      @breakpoint-changed="onBreakpointChanged"
     >
       <grid-item
         v-for="item in layout"
@@ -152,6 +153,9 @@ import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
 
 const dashboards_info = ref([]);
 const layout = ref([]);     // this is the information used (and changed!) in the vue components
+
+// Change in breakpoint will update layout accordingly.
+const currentBreakpoint = ref("lg");
 
 var new_panel_id = 0;  // to store the id that new panels should use
 
@@ -224,6 +228,71 @@ const formatSelectorOptGroupLabel = (esId) => {
 };
 
 /**
+ * Calculate the grid item layout according to the current breakpoint.
+ * 
+ * @param {string} breakpoint The current breakpoint.
+ * @param {number} itemNr Grid item number used for positing the grid item in the dashboard.
+ */
+function calGridItemLayout(breakpoint, itemNr) {
+  // Vue Grid Layout library has the default number of columns for each breakpoint defined. 
+  // Apply the default cols per breakpoint below.
+  // https://jbaysolutions.github.io/vue-grid-layout/guide/properties.html#gridlayout
+  let cols = 12;
+  // Dynamically adjust colNum according to the current breakpoint.
+  let colNum = 3;
+  switch (breakpoint) {
+    case 'lg':
+      cols = 12;
+      colNum = 3;
+      break;
+    case 'md':
+      cols = 10;
+      colNum = 2;
+      break;
+    case 'sm':
+      cols = 6;
+      colNum = 2;
+      break;
+    case 'xs':
+      cols = 4;
+      colNum = 1;
+      break;
+    case 'xxs':
+      cols = 2;
+      colNum = 1;
+      break;
+  }
+  const w = cols / colNum;
+  const h = 5;
+  const x = (itemNr % colNum) * w;
+  const y = Math.floor(itemNr / colNum) * h;
+  return [x, y, w, h];
+}
+
+/**
+ * Updates the currentBreakpoint value and recalculates the grid layout accordingly.
+ * 
+ * @param {string} breakpoint The current breakpoint.
+ */
+ const onBreakpointChanged = (breakpoint) => {
+  currentBreakpoint.value = breakpoint;
+
+  // Recalculate layout due to breakpoint change.
+  const newLayout = layout.value.map((item, itemNr) => {
+    const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, itemNr);
+    return {
+      ...item,
+      x: x,
+      y: y,
+      w: w,
+      h: h
+    };
+  });
+  layout.value = [...newLayout];
+  dashboard_config.layout.value = [...newLayout];
+};
+
+/**
  * Update dashboard contents according to the given esId and kpiScope.
  * 
  * @param {string} esId Energy system Id.
@@ -243,12 +312,13 @@ function updateDashboard(esId, kpiScope) {
   let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
   for (let kpi_name in kpi_data) {
     let kpi_info = kpi_data[kpi_name];
+    const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, kpi_nr);
     if (kpi_info[0]['type'] == 'Sankey') {
       layout.value.push({
-        x: (kpi_nr % 3) * 3,
-        y: Math.floor(kpi_nr / 3) * 5,
-        w: 3,
-        h: 5,
+        x: x,
+        y: y,
+        w: w,
+        h: h,
         i: new_panel_id,
         type: 'sankeypanel',
         options: {
@@ -256,24 +326,24 @@ function updateDashboard(esId, kpiScope) {
           'data': kpi_info[0]['flows'],
         },
       });
-    } else {
-        let chart_options = window.createChartOptions(kpi_info);
-        chart_options.title = kpi_name;
-        // console.log(chart_options);
+    } 
+    else {
+      let chart_options = window.createChartOptions(kpi_info);
+      chart_options.title = kpi_name;
+      // console.log(chart_options);
 
-        layout.value.push({
-          x: (kpi_nr % 3) * 3,
-          y: Math.floor(kpi_nr / 3) * 5,
-          w: 3,
-          h: 5,
-          i: new_panel_id,
-          type: 'charttable',
-          options: chart_options,
-          kpi_name: kpi_name,
-          kpi_type: kpi_info.type
-        });
+      layout.value.push({
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        i: new_panel_id,
+        type: 'charttable',
+        options: chart_options,
+        kpi_name: kpi_name,
+        kpi_type: kpi_info.type
+      });
     }
-
     kpi_nr = kpi_nr + 1;
     new_panel_id = new_panel_id + 1;
   }
