@@ -208,7 +208,13 @@ function boundary_info_window() {
             table = table + '<td><input type="checkbox" id="service_area_dso" checked></td></tr>';
             table = table + '<tr><td width=180>Add DSO stations</td>';
             table = table + '<td><input type="checkbox" id="station_dso" checked></td></tr>';
-            table = table + '</table>';
+            table = table + '<tr><td width=180>Use capacity data for</td>';
+            table = table + '<td><select id="use_capacity_data_for"">';
+            table = table + '<option value="0">current situation (Feb 2023)</option>';
+            table = table + '<option value="3">+3 years</option>';
+            table = table + '<option value="5">+5 years</option>';
+            table = table + '<option value="10">+10 years</option>';
+            table = table + '</select></td></tr></table>';
         }
 
         sidebar_ctr.innerHTML += table;
@@ -249,9 +255,11 @@ function get_boundary_info(obj) {
 
     let add_service_area_info = false;
     let add_station_info = false;
+    let use_capacity_data_for = 0;
     if (check_role('service_area_service')) {
         add_service_area_info = document.getElementById('service_area_dso').checked;
         add_station_info = document.getElementById('station_dso').checked;
+        use_capacity_data_for = document.getElementById('use_capacity_data_for').value;
     }
 
     show_loader();
@@ -259,7 +267,7 @@ function get_boundary_info(obj) {
         subscope_enabled: subscope_enabled, add_toparea: add_toparea, subscope: subscope,
         select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
         add_boundary_to_ESDL: add_boundary_to_ESDL, add_service_area_info: add_service_area_info,
-        add_station_info: add_station_info
+        add_station_info: add_station_info, use_capacity_data_for: use_capacity_data_for
     }, function(res) {
         if (res) {
             window.refresh_esdl();
