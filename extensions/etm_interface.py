@@ -335,11 +335,15 @@ class ETMSankeyToESDL:
             "Hydrogen": {"id": "etm_carrier_h2", "name": "Hydrogen", "carrier": None},
             "Liquid hydrogen": {"id": "etm_carrier_liquid_h2", "name": "Liquid hydrogen", "carrier": None},
             "LOHC": {"id": "etm_carrier_lohc", "name": "LOHC", "carrier": None},
+            "Methanol": {"id": "etm_carrier_methanol", "name": "Methanol", "carrier": None},
             "Natural gas": {"id": "etm_carrier_natural_gas", "name": "Natural gas", "carrier": None},
+            "Non-biogenic waste": {"id": "etm_carrier_non_biogenic_waste", "name": "Non-biogenic waste", "carrier": None},
+            "Not defined": {"id": "etm_carrier_not_defined", "name": "Not defined", "carrier": None},
             "Oil": {"id": "etm_carrier_oil", "name": "Oil", "carrier": None},
             "Solar thermal": {"id": "etm_carrier_solar_thermal", "name": "Solar thermal", "carrier": None},
             "Steam hot water": {"id": "etm_carrier_shw", "name": "Steam hot water", "carrier": None},
-            "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None}
+            "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None},
+            "Waste mix": {"id": "etm_carrier_waste_mix", "name": "Waste mix", "carrier": None}
         }
 
         self.asset_to_carrier_mapping = {
