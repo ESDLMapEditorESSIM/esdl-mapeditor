@@ -165,7 +165,6 @@ class ETMInterface:
             area = pm.get_by_id(active_es_id, area_id)
 
             # Get profiles for all clusters from the EDR if not done already
-            emit("update-etm-query-log", f"Loading EDR cluster profiles...")
             self.get_edr_profiles()
 
             if area_id in self.municipalities_bld_info:
