@@ -9,7 +9,7 @@
     {{ options.text }}
   </div>
 
-  <a-modal v-model:visible="text_settings_visible" title="Edit text" width="750px" @ok="handleOk">
+  <a-modal v-model:open="text_settings_visible" title="Edit text" width="750px" @ok="handleOk">
     <a-row>
       <a-col :span="4">
         <span>Title:</span>
@@ -43,7 +43,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmit(['updateTextSettings']);
+const emit = defineEmits(['updateTextSettings']);
 
 // eslint-disable-next-line no-unused-vars
 const showTextSettings = () => {

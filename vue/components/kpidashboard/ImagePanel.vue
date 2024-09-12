@@ -11,7 +11,7 @@
     class="panel_image"
   >
 
-  <a-modal v-model:visible="image_settings_visible" title="Edit image" width="750px" @ok="handleOk">
+  <a-modal v-model:open="image_settings_visible" title="Edit image" width="750px" @ok="handleOk">
     <a-row>
       <a-col :span="4">
         <span>Title:</span>
@@ -46,7 +46,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmit(['updateImageSettings']);
+const emit = defineEmits(['updateImageSettings']);
 
 // eslint-disable-next-line no-unused-vars
 const showImageSettings = () => {
