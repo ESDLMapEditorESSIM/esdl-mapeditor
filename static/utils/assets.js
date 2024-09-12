@@ -196,7 +196,7 @@ function delete_asset(clicked_asset) {
         for (let i in asset.ports) {
             let from_id = asset.ports[i].id;
             for (let j in asset.ports[i].conn_to) {
-                remove_single_connection(from_id, asset.ports[i].conn_to[j], asset.esid)
+                remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.esid)
             }
         }
 
@@ -399,7 +399,7 @@ function set_marker_handlers(marker) {
             for (let i in marker.ports) {
                 let from_id = marker.ports[i].id;
                 for (let j in marker.ports[i].conn_to) {
-                    remove_single_connection(from_id, marker.ports[i].conn_to[j], marker.esid)
+                    remove_single_connection(from_id, marker.ports[i].conn_to[j].id, marker.esid)
                 }
             }
             socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
@@ -511,7 +511,7 @@ function set_line_handlers(line) {
             for (let i in line.ports) {
                 let from_id = line.ports[i].id;
                 for (let j in line.ports[i].conn_to) {
-                    remove_single_connection(from_id, line.ports[i].conn_to[j], line.esid)
+                    remove_single_connection(from_id, line.ports[i].conn_to[j].id, line.esid)
                 }
             }
 

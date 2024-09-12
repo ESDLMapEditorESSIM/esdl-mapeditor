@@ -24,11 +24,17 @@ from esdl import esdl
 # Update ports of assets in the GUI
 ###################################
 
+
+class ConnectedTo(TypedDict):
+    id: str  # port id
+    a_name: str  # asset name
+
+
 class PortMessage(TypedDict):
     name: str
     id: str
     type: str
-    conn_to: List[str]
+    conn_to: List[ConnectedTo]
     carrier: str
     exposed: NotRequired[bool]  # remove field if not needed
 
@@ -81,7 +87,9 @@ def create_asset_port_message(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset) 
         exposed_ports = exposed_port_asset.port
     port_list: List[PortMessage] = []
     for p in asset.port:
-        port_list.append(create_port_message(p, exposed_port=(p in exposed_ports)))
+        port_list.append(
+            create_port_message(p, exposed_port=(isinstance(asset, esdl.ExposedPortsAsset) or (p in exposed_ports)))
+        )
     return port_list
 
 
@@ -97,9 +105,10 @@ def create_port_message(p: esdl.InPort | esdl.OutPort, exposed_port: bool = Fals
         name=p.name,
         id=p.id,
         type=type(p).__name__,
-        conn_to=[pt.id for pt in p.connectedTo],
+        conn_to=[ConnectedTo(id=pt.id, a_name=pt.energyasset.name if pt.energyasset else None) for pt in p.connectedTo],
+        # conn_to_name=[pt.energyasset.name for pt in p.connectedTo],
         carrier=p.carrier.id if p.carrier else None,
     )
     if exposed_port:  # add only if port is exposed (smaller message size)
-        p_message['exposed'] = exposed_port
+        p_message["exposed"] = exposed_port
     return p_message

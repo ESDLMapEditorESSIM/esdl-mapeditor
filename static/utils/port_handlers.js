@@ -106,6 +106,11 @@ function set_marker_port_handlers(marker) {
                     }
                 }
 
+                if (ports[p].exposed) {
+                    class_name = class_name + " " + "Exposed"
+                    port_name = port_name + " {exposed}"
+                }
+
                 let divicon = L.divIcon({
                     className: class_name,
                     iconSize: null
@@ -129,9 +134,8 @@ function set_marker_port_handlers(marker) {
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
-                        //console.log('contextmenu', e.target._map.contextmenu);
-                        //console.log('contextmenu', e.target._map.contextmenu.isVisible());
                         if (!e.target._map.contextmenu.isVisible()) {
+                            // if context menu visible, don't hide marker
                             setTimeout(function() {
                                 layer.port_parent.active = false;
                                 if (!layer.parent.mouseactive) {
@@ -162,12 +166,12 @@ function set_marker_port_handlers(marker) {
                     for (let cn=0; cn<ports[p].conn_to.length;cn++) {
                         port_marker.options.contextmenuItems.push({
                             icon: 'icons/Delete.png',
-                            text: 'Delete connection to ' + ports[p].conn_to[cn],
+                            text: 'Delete connection to ' + ports[p].conn_to[cn].a_name,
                             //context: map,
                             callback: function(e) { 
                                 console.log("Callback delete connection", e); 
                                 socket.emit('command', {'cmd': 'remove_connection_portids',
-                                    'from_port_id': ports[p].id, 'to_port_id': ports[p].conn_to[cn],
+                                    'from_port_id': ports[p].id, 'to_port_id': ports[p].conn_to[cn].id,
                                     'building_id': bld_edit_id});
                                     // building_id defines if the building editor is open or not.
                                 
@@ -256,8 +260,8 @@ function set_marker_port_handlers(marker) {
 
 function highlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
-        let conn_id = port.id + port.conn_to[i];
-        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn_id = port.id + port.conn_to[i].id;
+        let conn_rev_id = port.conn_to[i].id + port.id;
         let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
             conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);
@@ -273,8 +277,8 @@ function highlight_connection(port) {
 
 function unhighlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
-        let conn_id = port.id + port.conn_to[i];
-        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn_id = port.id + port.conn_to[i].id;
+        let conn_rev_id = port.conn_to[i].id + port.id;
         let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
             conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);

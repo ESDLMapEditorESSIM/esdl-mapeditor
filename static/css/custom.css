@@ -331,6 +331,11 @@ h6 {
     border: 3px solid black;
 }
 
+.Exposed {
+    border-style: double;
+}
+
+
 .notselectedline {
     opacity: 0.65;
 }
