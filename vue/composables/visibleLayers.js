@@ -18,7 +18,7 @@
  * A composable for managing items currently visible.
  *
  */
-import {ref, toValue} from "vue";
+import {ref, toValue, watch} from "vue";
 import {useWmsLayers, updateGlobalWmsLayerList} from "./wmsLayers";
 import {useEsdlLayers} from "./esdlLayers";
 import {useSocketIO} from "./socketio";
@@ -30,6 +30,64 @@ const {enabledEsdlIdList, hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLay
 
 // List of visible layers. Contains wms layers as well as energy systems.
 const visibleLayerList = ref([]);
+
+// Group structure for visible layers
+const visibleLayerGroups = ref([]); // Groups of related visible layers
+
+function getLayerType(layer) {
+    const wmsLayers = getWmsLayerList()['layers'];
+    if (layer.id in wmsLayers) {
+        return VisibleLayerType.WMS;
+    } else if (enabledEsdlIdList.value.includes(layer.es_id)) {
+        return VisibleLayerType.ESDL;
+    } else {
+        return VisibleLayerType.UNKNOWN;
+    }
+}
+
+/**
+ * Groups layers by their es_id (for ESDL layers) or other group identifier.
+ * This function ensures that related layers are grouped together.
+ */
+const groupVisibleLayers = () => {
+    console.log("Grouping visible layers");
+    const grouped = {};
+
+    visibleLayerList.value.forEach((layer) => {
+        const layerType = getLayerType(layer);
+        if (layerType === VisibleLayerType.ESDL) {
+            // Group all layers with the same es_id
+            console.log(layer)
+            const groupId = layer.es_id;
+            if (!grouped[groupId]) {
+                grouped[groupId] = {
+                    id: groupId,
+                    type: 'group',
+                    item: layer.es,
+                    description: layer.es.title,
+                    layers: [],
+                    visible: true, // Group visibility can toggle all layers
+                };
+            }
+            grouped[groupId].layers.push(layer);
+        } else {
+            // WMS layers are not grouped, add them individually
+            if (!grouped[layer.id]) {
+                grouped[layer.id] = layer;
+            }
+        }
+    });
+    console.log("Grouped layers", grouped);
+
+    // Convert grouped object into an array of groups
+    visibleLayerGroups.value = Object.values(grouped);
+};
+
+
+// Call groupVisibleLayers whenever the visible layers are updated
+watch(visibleLayerList, () => {
+    groupVisibleLayers();
+}, { deep: true });
 
 const map = window.map;
 const layerTreeId = "layer_tree";
@@ -45,9 +103,9 @@ const layersPopup = L.popup({
 });
 
 export const VisibleLayerType = Object.freeze({
-  WMS: 'WMS',
-  ESDL: 'ESDL',
-  UNKNOWN: 'Unknown'
+    WMS: 'WMS',
+    ESDL: 'ESDL',
+    UNKNOWN: 'Unknown'
 });
 
 subscribe("on_wms_layer_feature_resp", (resp) => {
@@ -218,16 +276,6 @@ export function useVisibleLayers(map, socket) {
         visibleLayerList.value.splice(index, 0, layer);
     };
 
-    const getLayerType = (layer) => {
-        const wmsLayers = getWmsLayerList()['layers'];
-        if (layer.id in wmsLayers) {
-            return VisibleLayerType.WMS;
-        } else if (enabledEsdlIdList.value.includes(layer.es_id)) {
-            return VisibleLayerType.ESDL;
-        } else {
-            return VisibleLayerType.UNKNOWN;
-        }
-    };
 
     /**
      * Update the display order of the visible layers
@@ -282,7 +330,7 @@ export function useVisibleLayers(map, socket) {
     };
 
     const hideAllVisibleLayers = () => {
-         visibleLayerList.value.slice().reverse().forEach(
+        visibleLayerList.value.slice().reverse().forEach(
             layer => hideVisibleLayer(layer.id)
         )
     };
@@ -375,6 +423,30 @@ export function useVisibleLayers(map, socket) {
         }
     };
 
+    /**
+     * Get the list of visible layer groups. This includes grouped layers for ESDL.
+     */
+    const getVisibleLayerGroups = () => {
+        return visibleLayerGroups.value;
+    };
+
+    /**
+     * Show or hide an entire group of layers by its group id.
+     */
+    const toggleGroupVisibility = (groupId) => {
+        const group = visibleLayerGroups.value.find((group) => group.id === groupId);
+        if (group) {
+            group.visible = !group.visible;
+            group.layers.forEach((layer) => {
+                if (group.visible) {
+                    showVisibleLayer(layer.id);
+                } else {
+                    hideVisibleLayer(layer.id);
+                }
+            });
+        }
+    };
+
     return {
         getVisibleLayerList,
         removeFromVisibleLayerList,
@@ -388,6 +460,8 @@ export function useVisibleLayers(map, socket) {
         showVisibleLayer,
         getVisibleLayerById,
         adjustVisibleLayerOpacity,
-        saveVisibleLayerOpacitySetting
+        saveVisibleLayerOpacitySetting,
+        getVisibleLayerGroups,
+        toggleGroupVisibility,
     };
 }
