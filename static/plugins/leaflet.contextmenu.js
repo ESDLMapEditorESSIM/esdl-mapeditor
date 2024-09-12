@@ -541,22 +541,27 @@ L.Mixin.ContextMenu = {
                 this._items.push(this._map.contextmenu.insertItem(itemOptions, itemOptions.index));
             }
 
-            this._map.once('contextmenu.hide', this._hideContextMenu, this);
+            this._map.once('contextmenu.hide', this._hideContextMenu(this._map), this);
 
             this._map.contextmenu.showAt(pt, data);
         }
     },
 
-    _hideContextMenu: function () {
-        var i, l;
+    _hideContextMenu: function (m) {
+        // patch to make sure a local map reference is still available
+        // when layer is deleted while context menu open
+        // @see https://github.com/aratcliffe/Leaflet.contextmenu/issues/129
+        return function() {
+            var i, l;
 
-        for (i = 0, l = this._items.length; i < l; i++) {
-            this._map.contextmenu.removeItem(this._items[i]);
-        }
-        this._items.length = 0;
+            for (i = 0, l = this._items.length; i < l; i++) {
+                m.contextmenu.removeItem(this._items[i]);
+            }
+            this._items.length = 0;
 
-        if (!this.options.contextmenuInheritItems) {
-            this._map.contextmenu.showAllItems();
+            if (!this.options.contextmenuInheritItems) {
+                m.contextmenu.showAllItems();
+            }
         }
     }
 };

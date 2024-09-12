@@ -19,6 +19,7 @@ import urllib
 import uuid
 import traceback
 from datetime import datetime
+from venv import create
 from warnings import warn
 
 import requests
@@ -82,6 +83,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from src.incremental_ui import create_update_asset_message, create_port_message, create_asset_port_message
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -687,7 +689,6 @@ def send_alert(message):
     emit('alert', message, namespace='/esdl')
 
 
-# FIXME: pyecore
 def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
     active_es_id = get_session('active_es_id')
     esh = get_handler()
@@ -716,15 +717,12 @@ def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_
                                     conn_to_same_port_asset = get_asset_from_port_id(esh, active_es_id, conn_to_same_port.id)
                                     if not conn_to_same_port_asset.id in processed_assets:
                                         _set_carrier_for_connected_transport_assets(conn_to_same_port_asset.id, carrier_id, processed_assets)
-                        conn_asset_port_list.append({'name': conn_asset_port.name, 'id': conn_asset_port.id,
-                            'type': type(conn_asset_port).__name__, 'conn_to': [pt.id for pt in conn_asset_port.connectedTo],
-                            'carrier': conn_asset_port.carrier.id if conn_asset_port.carrier else None})
+                        conn_asset_port_list.append(create_port_message(conn_asset_port))
                     # also update the ports of the 'leaf' asset (recursion stops here)
-                    emit('update_asset', {'asset_id': conn_asset.id, 'ports': conn_asset_port_list})
-        port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                          'conn_to': [pt.id for pt in p.connectedTo], 'carrier': p.carrier.id if p.carrier else None})
+                    emit('update_asset', create_update_asset_message(conn_asset, conn_asset_port_list))
+        port_list.append(create_port_message(p))
     # update the asset ports in the gui, if the carrier has changed.
-    emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+    emit('update_asset', create_update_asset_message(asset, port_list))
 
 
 def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
@@ -1085,8 +1083,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         carrier_id = carrier.id if carrier is not None else None
         for p in new_cond1.port:
             p.carrier = carrier
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                              'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+            port_list.append(create_port_message(p))
         state = asset_state_to_ui(new_cond1)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond1, 'line')
         add_spatial_attributes(new_cond1, tooltip_asset_attrs)
@@ -1099,8 +1096,7 @@ def split_conductor(conductor, location, mode, conductor_container):
 
         for p in new_cond2.port:
             p.carrier = carrier
-            port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                              'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+            port_list.append(create_port_message(p))
         state = asset_state_to_ui(new_cond2)
         tooltip_asset_attrs = get_tooltip_asset_attrs(new_cond2, 'line')
         add_spatial_attributes(new_cond2, tooltip_asset_attrs)
@@ -1159,8 +1155,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             port_list = []
             for p in joint.port:
                 p.carrier = carrier
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                  'conn_to': [p.id for p in p.connectedTo], 'carrier': carrier_id})
+                port_list.append(create_port_message(p))
             capability_type = ESDLAsset.get_asset_capability_type(joint)
             state = asset_state_to_ui(joint)
             tooltip_asset_attrs = get_tooltip_asset_attrs(joint, 'marker')
@@ -1820,12 +1815,8 @@ def process_command(message):
 
                                 # update ports of from_port asset
                                 from_asset = start_port.eContainer()
-                                port_list = []
-                                for p in from_asset.port:
-                                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                                      'conn_to': [pt.id for pt in p.connectedTo],
-                                                      'carrier': p.carrier.id if p.carrier else None})
-                                emit('update_asset', {'asset_id': from_asset.id, 'ports': port_list})
+                                emit('update_asset', create_update_asset_message(from_asset))
+
 
                             if end_port:
                                 conn_message = {'from-port-id': from_port2.id,
@@ -1841,12 +1832,7 @@ def process_command(message):
 
                                 # update ports of from_port asset
                                 to_asset = end_port.eContainer()
-                                port_list = []
-                                for p in to_asset.port:
-                                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                                      'conn_to': [pt.id for pt in p.connectedTo],
-                                                      'carrier': p.carrier.id if p.carrier else None})
-                                emit('update_asset', {'asset_id': to_asset.id, 'ports': port_list})
+                                emit('update_asset', create_update_asset_message(to_asset))
 
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
@@ -1923,14 +1909,7 @@ def process_command(message):
 
                 # TODO: check / solve cable as Point issue?
                 if not isinstance(asset, esdl.AbstractBuilding):
-                    port_list = []
-                    ports = asset.port
-                    for p in ports:
-                        connTo_ids = list(o.id for o in p.connectedTo)
-                        carrier_id = p.carrier.id if p.carrier else None
-                        port_list.append(
-                            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': connTo_ids,
-                             'carrier': carrier_id})
+                    port_list = create_asset_port_message(asset)
 
                 # Collect extra attributes that might be required to draw specific icons, ...
                 extra_attributes = dict()
@@ -1942,8 +1921,6 @@ def process_command(message):
                                                            [shape['coordinates']['lat'], shape['coordinates']['lng']],
                                                            False, {}, extra_attributes])
                     elif isinstance(geometry, esdl.Polygon):
-                        coords = ESDLGeometry.parse_esdl_subpolygon(asset.geometry.exterior, False)  # [lon, lat]
-                        coords = ESDLGeometry.exchange_coordinates(coords)                           # --> [lat, lon]
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                         buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
                                                            boundary["coordinates"], False, {}, extra_attributes])
@@ -2066,15 +2043,13 @@ def process_command(message):
                             pass
                         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
 
-    if message['cmd'] == 'get_asset_ports':
-        asset_id = message['id']
-        port_list = []
-        if asset_id:
-            asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
-            ports = asset.port
-            for p in ports:
-                port_list.append({'id': p.id, 'type': type(p).__name__})
-            emit('portlist', port_list)
+    # TODO: for removal next time we see this...
+    # if message['cmd'] == 'get_asset_ports':
+    #     asset_id = message['id']
+    #     if asset_id:
+    #         asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
+    #         port_list = create_asset_port_message(asset)
+    #         emit('portlist', port_list)
 
     if message['cmd'] == 'connect_ports':
         port1_id = message['port1id']
@@ -2106,7 +2081,7 @@ def process_command(message):
                 send_alert('Cannot connect ports of the same type. One should be an InPort and one should be an OutPort')
             else:
                 connect_ports(port1, port2)
-
+                # TODO Handle asset.containingAsset for compoundAssets
                 add_to_building = False
                 if asset1.containingBuilding:
                     asset1_bld_id = asset1.containingBuilding.id
@@ -2170,57 +2145,52 @@ def process_command(message):
                 emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message], "add_to_building": add_to_building})
 
                 # update ports of assets that are connected
-
-                port_list = []
-                for p in asset1.port:
-                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                      'conn_to': [pt.id for pt in p.connectedTo],
-                                      'carrier': p.carrier.id if p.carrier else None})
-                emit('update_asset', {'asset_id': asset1.id, 'ports': port_list})
-                port_list = []
-                for p in asset2.port:
-                    port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__,
-                                      'conn_to': [pt.id for pt in p.connectedTo],
-                                      'carrier': p.carrier.id if p.carrier else None})
-                emit('update_asset', {'asset_id': asset2.id, 'ports': port_list})
-
+                to_update_assets = [asset1, asset2]
+                # assets is in a building/compound asset, so update also the containingBuilding
+                if asset1.containingBuilding or asset1.containingAsset:
+                    to_update_assets.append(asset1.containingBuilding or asset1.containingAsset)
+                if asset2.containingBuilding or asset2.containingAsset:
+                    to_update_assets.append(asset2.containingBuilding or asset2.containingAsset)
+                for asset in to_update_assets:
+                    emit('update_asset', create_update_asset_message(asset))
         else:
             send_alert('Serious error connecting ports')
 
-    if message['cmd'] == 'get_object_info':
-        object_id = message['id']
-        asspot = message['asspot']
-        area = es_edit.instance[0].area
-        connected_to_info = []
-        ctrl_strategy = None
+    # TODO: remove commented code as it is obsolete and replaced by objectproperties window code
+    # if message['cmd'] == 'get_object_info':
+    #     object_id = message['id']
+    #     asspot = message['asspot']
+    #     area = es_edit.instance[0].area
+    #     connected_to_info = []
+    #     ctrl_strategy = None
 
-        if asspot == 'asset':
-            # asset = ESDLAsset.find_asset(area, object_id)
-            asset = esh.get_by_id(es_edit.id, object_id)
-            logger.debug('Get info for asset ' + asset.id)
-            attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
-            name = asset.name
-            if isinstance(asset, esdl.EnergyAsset):
-                connected_to_info = get_connected_to_info(asset)
-                if asset.controlStrategy:
-                    ctrl_strategy = asset.controlStrategy.name
-                else:
-                    ctrl_strategy = None
-                asset_class = 'EnergyAsset'
-            else:
-                asset_class = 'AbstractBuilding'
-            asset_doc = asset.__doc__
-        else:
-            pot = esh.get_by_id(es_edit.id, object_id)
-            logger.debug('Get info for potential ' + pot.id)
-            attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
-            name = pot.name
-            connected_to_info = []
-            ctrl_strategy = None
-            asset_doc = pot.__doc__
+    #     if asspot == 'asset':
+    #         # asset = ESDLAsset.find_asset(area, object_id)
+    #         asset = esh.get_by_id(es_edit.id, object_id)
+    #         logger.debug('Get info for asset ' + asset.id)
+    #         attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
+    #         name = asset.name
+    #         if isinstance(asset, esdl.EnergyAsset):
+    #             connected_to_info = get_connected_to_info(asset)
+    #             if asset.controlStrategy:
+    #                 ctrl_strategy = asset.controlStrategy.name
+    #             else:
+    #                 ctrl_strategy = None
+    #             asset_class = 'EnergyAsset'
+    #         else:
+    #             asset_class = 'AbstractBuilding'
+    #         asset_doc = asset.__doc__
+    #     else:
+    #         pot = esh.get_by_id(es_edit.id, object_id)
+    #         logger.debug('Get info for potential ' + pot.id)
+    #         attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
+    #         name = pot.name
+    #         connected_to_info = []
+    #         ctrl_strategy = None
+    #         asset_doc = pot.__doc__
 
-        if name is None: name = ''
-        emit('asset_info', {'id': object_id, 'name': name, 'class': asset_class, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'ctrl_strategy': ctrl_strategy, 'asset_doc': asset_doc})
+    #     if name is None: name = ''
+    #     emit('asset_info', {'id': object_id, 'name': name, 'class': asset_class, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'ctrl_strategy': ctrl_strategy, 'asset_doc': asset_doc})
 
     if message['cmd'] == 'get_conductor_info':
         asset_id = message['id']
@@ -2321,7 +2291,7 @@ def process_command(message):
                 assets = [esh.get_by_id(active_es_id, asset_id)]
 
         for asset in assets:
-            logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
+            logger.debug('Set param "'+ param_name + '" for class ' + asset.eClass.name + ' to value '+ str(param_value))
 
             try:
                 attribute = asset.eClass.findEStructuralFeature(param_name)
@@ -2585,29 +2555,30 @@ def process_command(message):
             else:
                 asset.port.append(port)
             esh.add_object_to_dict(active_es_id, port)
-            port_list = []
-            for p in asset.port:
-                port_list.append(
-                    {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [p.id for p in p.connectedTo]})
-            emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+            emit('update_asset', create_update_asset_message(asset))
 
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
-        asset = get_asset_from_port_id(esh, active_es_id, pid)
-        ports = asset.port
+        port:esdl.Port = esh.get_by_id(active_es_id, pid)
+        esh.remove_object_from_dict(active_es_id, port, recursive=True)
+        port.delete()
+        emit('update_asset', create_update_asset_message(port.energyasset))
 
-        port_list = []
-        for p in set(ports):
-            if p.id == pid:
-                esh.remove_object_from_dict(active_es_id, p, recursive=True)
-                ports.remove(p) # remove from list
-                p.delete()  # delete from esdl (e.g. if other ports refer to this port, they will be updated)
-                            # question is why is this necessary in pyecore and isn't this done automatically
-                            # as p is not contained anymore and you get dangling references.
-            else:
-                carrier_id = p.carrier.id if p.carrier else None
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
-        emit('update_asset', {'asset_id': asset.id, 'ports': port_list})
+        # asset = get_asset_from_port_id(esh, active_es_id, pid)
+        # ports = asset.port
+        #
+        # port_list = []
+        # for p in set(ports):
+        #     if p.id == pid:
+        #         esh.remove_object_from_dict(active_es_id, p, recursive=True)
+        #         ports.remove(p) # remove from list
+        #         p.delete()  # delete from esdl (e.g. if other ports refer to this port, they will be updated)
+        #                     # question is why is this necessary in pyecore and isn't this done automatically
+        #                     # as p is not contained anymore and you get dangling references.
+        #     else:
+        #         carrier_id = p.carrier.id if p.carrier else None
+        #         port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': [pt.id for pt in p.connectedTo], 'carrier': carrier_id})
+        # emit('update_asset', create_update_asset_message(asset, port_list))
 
     if message['cmd'] == 'remove_connection_portids': # user clicked remove connection by right-clicking on connection
         building_id = message['building_id'] if 'building_id' in message else None
@@ -3077,6 +3048,21 @@ def process_command(message):
         print('refresh_esdl')
         esh = get_handler()
         call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in separate thread
+
+    if message['cmd'] == 'expose_port':
+        port_id = message['port_id']
+        building_id = message['building_id']
+        port: esdl.Port = esh.get_by_id(active_es_id, port_id)
+        exposed_port_asset: esdl.ExposedPortsAsset = esh.get_by_id(active_es_id, building_id)
+        if port in exposed_port_asset.port:
+            exposed_port_asset.port.remove(port)
+        else:
+            exposed_port_asset.port.append(port)
+
+        # update building icon on the main map
+        emit('update_asset', create_update_asset_message(exposed_port_asset))
+        # update asset on building map
+        emit('update_asset', create_update_asset_message(port.energyasset))
 
     set_handler(esh)
     session.modified = True

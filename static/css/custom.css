@@ -368,6 +368,16 @@ h6 {
 #asset_menu-menu .ui-selectmenu-optgroup {
     font-size: 1.2em !important;
 }
+/*
+    Building editor Asset menu
+*/
+#bld_asset_menu-menu .ui-menu-item {
+    margin-left: 0.5em;
+}
+
+#bld_asset_menu-menu .ui-selectmenu-optgroup {
+    font-size: 1.2em !important;
+}
 
 /* Fix max-height in all jquery-ui drop down menus to 600px*/
 .ui-selectmenu-menu .ui-menu {

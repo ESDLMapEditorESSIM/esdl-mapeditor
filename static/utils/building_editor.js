@@ -52,6 +52,7 @@ function open_building_editor(dialog, building_info) {
     ].join('');
 
     dialog.setContent(contents);
+    dialog.setTitle("Building Editor - " + building_info['building_list'][0][1]);
     // document.getElementById('building-info').innerHTML = 'Test';
 
     if (bld_map && bld_map.remove) {
