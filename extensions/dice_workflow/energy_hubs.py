@@ -35,19 +35,19 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     logger.info(f"Found {len(buildings)} buildings to connect to the ElectricityNetwork")
 
     # Find the inport and outport of the ElectricityNetwork
-    enet_inport: esdl.InPort | None = None
-    enet_outport: esdl.OutPort | None = None
+    enetwork_inport: esdl.InPort | None = None
+    enetwork_outport: esdl.OutPort | None = None
     for port in enetwork.port:
         if isinstance(port, esdl.InPort):
-            enet_inport = port
+            enetwork_inport = port
         if isinstance(port, esdl.OutPort):
-            enet_outport = port
+            enetwork_outport = port
 
-    if enet_inport is None or enet_outport is None:
+    if enetwork_inport is None or enetwork_outport is None:
         logger.warning("No inport or outport found in ElectricityNetwork")
         return None
 
-    carrier: esdl.EnergyCarrier = enet_inport.carrier
+    carrier: esdl.EnergyCarrier = enetwork_inport.carrier
     carrier_emission_unit = carrier.emissionUnit
     carrier_energy_content_unit = carrier.energyContentUnit
 
@@ -76,6 +76,21 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
         ),
     )
     esi.carriers.carrier.append(carrier_internal)
+
+    # Create an internal ElectricityNetwork
+    enetwork_internal = esdl.ElectricityNetwork(
+        id=str(uuid.uuid4()),
+        name="Elektriciteitsnetwerk intern",
+    )
+    enetwork_internal_inport = esdl.InPort(
+        id=str(uuid.uuid4()), name="In", carrier=carrier_internal
+    )
+    enetwork_internal_outport = esdl.OutPort(
+        id=str(uuid.uuid4()), name="Out", carrier=carrier_internal
+    )
+    enetwork_internal.port.append(enetwork_internal_inport)
+    enetwork_internal.port.append(enetwork_internal_outport)
+    es.instance[0].area.asset.append(enetwork_internal)
 
     # Create two GenericConversion assets, one for levering and one for teruglevering.
     terug_conv = esdl.GenericConversion(
@@ -109,8 +124,10 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     es_instance.area.asset.append(levering_conv)
 
     # Create InPorts and OutPorts for the GenericConversions.
-    # So for teruglevering, the inport is connected to the buildings, the outport to the electricity network.
-    # For levering, the inport is connected to the electricity network, the outport to the buildings.
+    # So for teruglevering, the inport is connected to the energy hub buildings through an internal network, the outport
+    # to the electricity network.
+    # For levering, the inport is connected to the electricity network, the outport to the energy hub buildings through
+    # the internal network.
     terug_conv_inport = esdl.InPort(id=str(uuid.uuid4()), carrier=carrier_internal)
     terug_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier)
     terug_conv.port.append(terug_conv_inport)
@@ -127,13 +144,15 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     dbd.outPort = levering_conv_outport
 
     # Connect the InPorts and OutPorts of the GenericConversions to the InPort and OutPort of the ElectricityNetwork
-    terug_conv_outport.connectedTo.append(enet_inport)
-    levering_conv_inport.connectedTo.append(enet_outport)
+    terug_conv_outport.connectedTo.append(enetwork_inport)
+    levering_conv_inport.connectedTo.append(enetwork_outport)
 
-    # Create a new InPort and OutPort for the levering_conv and terug_conv
+    # Connect the InPort and Outports of the GenericConversions to the InPort and OutPort of the internal ElectricityNetwork
+    terug_conv_inport.connectedTo.append(enetwork_internal_outport)
+    levering_conv_outport.connectedTo.append(enetwork_internal_inport)
 
     # For every building, find its EConnection. Then disconnect its inport from the ElectricityNetwork,
-    # And connect it to both the levering_conv outport and the terug_conv inport.
+    # And connect it to internal ElectricityNetwork.
     # Also, for all assets and their ports, switch to the internal carrier.
     for building in buildings:
         assets = building.eAllContents()
@@ -169,14 +188,9 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
             return None
 
         # Disconnect the inport from the ElectricityNetwork
-        enet_outport.connectedTo.remove(econn_inport)
+        enetwork_outport.connectedTo.remove(econn_inport)
 
-        # Connect the inport to the levering_conv outport
-        levering_conv.port.append(levering_conv_outport)
-        econn_inport.connectedTo.append(levering_conv_outport)
-
-        # Connect the outport to the terug_conv inport
-        terug_conv.port.append(terug_conv_inport)
-        econn_outport.connectedTo.append(terug_conv_inport)
+        # Connect the inport to the internal ElectricityNetwork
+        econn_inport.connectedTo.append(enetwork_internal_outport)
 
     return es
