@@ -26,6 +26,7 @@
 Support functions for managing EObjects
 """
 from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
+from pyecore.innerutils import InternalSet
 from pyecore.valuecontainer import ECollection
 import logging
 
@@ -128,7 +129,7 @@ def deepcopy(self, memo=None):
                                 logger.warning(f'Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                 copy_value = orig_value
                             v.eSet(ref.name, copy_value)
-    copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+    copy._isset = InternalSet(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
     return copy
 
     # show deleted object from memory

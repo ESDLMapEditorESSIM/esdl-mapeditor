@@ -19,6 +19,8 @@ import urllib
 import uuid
 import traceback
 from datetime import datetime
+from typing import List
+
 from venv import create
 from warnings import warn
 
@@ -83,7 +85,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
-from src.incremental_ui import create_update_asset_message, create_port_message, create_asset_port_message
+from src.incremental_ui import create_update_asset_message, create_port_message, create_asset_port_message, PortMessage
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -689,48 +691,78 @@ def send_alert(message):
     emit('alert', message, namespace='/esdl')
 
 
-def _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets):
-    active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
-    processed_assets.append(asset_id)
-
-    port_list = []
-
+def _set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset, carrier: esdl.Carrier,
+                                                processed_assets: List[str]):
+    """
+    Set carrier on all ports of a single asset as starting point, recursively
+    :param asset: Asset to set carrier on
+    :param carrier: Carrier to set
+    :param processed_assets: list of asset ids that are already processed
+    """
+    processed_assets.append(asset.id)
     for p in asset.port:
-        p.carrier = esh.get_by_id(active_es_id, carrier_id) #FIXME pyecore
-        conn_to = p.connectedTo
-        if conn_to:
-            for conn_port in conn_to:
-                conn_asset = get_asset_from_port_id(esh, active_es_id, conn_port.id)
-                if isinstance(conn_asset, esdl.Transport) and not isinstance(conn_asset, esdl.HeatExchange) \
-                        and not isinstance(conn_asset, esdl.Transformer):
-                    if conn_asset.id not in processed_assets:
-                        _set_carrier_for_connected_transport_assets(conn_asset.id, carrier_id, processed_assets)
-                else:
-                    conn_asset_port_list = []
-                    for conn_asset_port in conn_asset.port:
-                        if conn_asset_port.id == conn_port.id:
-                            conn_asset_port.carrier = p.carrier
-                            for conn_to_same_port in conn_asset_port.connectedTo:
-                                if conn_to_same_port.id is not p.id: # don't traverse back to the original port
-                                    conn_to_same_port_asset = get_asset_from_port_id(esh, active_es_id, conn_to_same_port.id)
-                                    if not conn_to_same_port_asset.id in processed_assets:
-                                        _set_carrier_for_connected_transport_assets(conn_to_same_port_asset.id, carrier_id, processed_assets)
-                        conn_asset_port_list.append(create_port_message(conn_asset_port))
-                    # also update the ports of the 'leaf' asset (recursion stops here)
-                    emit('update_asset', create_update_asset_message(conn_asset, conn_asset_port_list))
-        port_list.append(create_port_message(p))
+        set_carrier_for_connected_transport_assets_by_port(p, carrier, processed_assets)
     # update the asset ports in the gui, if the carrier has changed.
-    emit('update_asset', create_update_asset_message(asset, port_list))
+    emit('update_asset', create_update_asset_message(asset))
 
 
-def set_carrier_for_connected_transport_assets(asset_id, carrier_id):
+def set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset, carrier: esdl.Carrier):
+    """
+    Set carrier for an asset, recursively using all connected ports and transport assets.
+    :param asset:
+    :param carrier:
+    """
     processed_assets = []  # List of asset_id's that are processed
-    _set_carrier_for_connected_transport_assets(asset_id, carrier_id, processed_assets)
+    _set_carrier_for_connected_transport_assets(asset, carrier, processed_assets)
     # logger.debug(processed_assets)
 
 
+def set_carrier_for_connected_transport_assets_by_port(
+        port: esdl.InPort | esdl.OutPort,
+        carrier: esdl.Carrier,
+        processed_assets: List[str] = None) -> PortMessage:
+    """
+    Set port carrier recursively. Similar to set_carrier_for_connected_transport_assets() but starts at a
+    single port instead of an asset. This allows you to also set carriers on HeatExchangers and other multi-port
+    assets
+    :param port: The port to start from setting carriers recursively
+    :param carrier: The carrier to set
+    :param processed_assets: List of asset IDs that have been seen and don't need to be processed anymore.
+        Used in recursive calls.
+    :return: A port message that is used in the update_asset message to the frontend.
+
+    Note: Make sure to update the full asset if the asset has more than one port and not only a single port as
+        the ui replaces the ports with the ports send from the backend.
+    """
+    if not processed_assets:
+        processed_assets  = []
+    processed_assets.append(port.energyasset.id)
+    port.carrier = carrier  # set carrier
+    conn_to = port.connectedTo
+    if conn_to:
+        for conn_port in conn_to:
+            conn_asset: esdl.EnergyAsset = conn_port.energyasset
+            if ((isinstance(conn_asset, esdl.Transport) and
+                    not isinstance(conn_asset, esdl.HeatExchange) and
+                    not isinstance(conn_asset, esdl.Transformer)) and
+                    conn_asset.id not in processed_assets):
+                _set_carrier_for_connected_transport_assets(conn_asset, carrier, processed_assets)
+            else:
+                conn_asset_port_list = []
+                for conn_asset_port in conn_asset.port:
+                    if conn_asset_port.id == conn_port.id:
+                        conn_asset_port.carrier = port.carrier
+                        for conn_to_same_port in conn_asset_port.connectedTo:
+                            if conn_to_same_port.id is not port.id:  # don't traverse back to the original port
+                                conn_to_same_port_asset: esdl.EnergyAsset = conn_to_same_port.energyasset
+                                if not conn_to_same_port_asset.id in processed_assets:
+                                    _set_carrier_for_connected_transport_assets(conn_to_same_port_asset, carrier,
+                                                                                processed_assets)
+                    conn_asset_port_list.append(create_port_message(conn_asset_port))
+                # also update the ports of the 'leaf' asset (recursion stops here)
+                emit('update_asset', create_update_asset_message(conn_asset, conn_asset_port_list))
+    return create_port_message(port)
+    #port_list.append(create_port_message(port))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -869,6 +901,7 @@ def remove_ab_from_area_bld_list(ab_id, ab_list):
 def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
+    # TODO deal with assets in buildings and assets in compound assets (issue #165)
     ass_id = asset.id
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
@@ -2662,17 +2695,28 @@ def process_command(message):
             emit('add_connections', {'es_id': es_edit.id, 'conn_list': new_list, 'add_to_building': False})
 
     if message['cmd'] == 'set_carrier':
+        # one of asset_id or port_id is required to set the carrier
         asset_id = message['asset_id']
+        port_id = message['port_id']
         carrier_id = message['carrier_id']
-        area = es_edit.instance[0].area
+        carrier: esdl.Carrier = esh.get_by_id(active_es_id, carrier_id)
+
+        print(f"set_carrier {asset_id}, {port_id}, {carrier_id}")
 
         if asset_id:
-            asset = ESDLAsset.find_asset(area, asset_id)
+            asset = esh.get_by_id(active_es_id, asset_id)
             num_ports = len(asset.port)
             if isinstance(asset, esdl.Transport) or num_ports == 1:
-                set_carrier_for_connected_transport_assets(asset_id, carrier_id)
+                set_carrier_for_connected_transport_assets(asset, carrier)
             else:
-                send_alert("Error: Can only start setting carriers from transport assets or assets with only one port")
+                send_alert("Error: Can only start setting carriers from transport assets or assets with only one port."
+                           "\nUse right-click on the port of an asset to set specific port carriers.")
+        elif port_id:
+            port: esdl.InPort | esdl.OutPort = esh.get_by_id(active_es_id, port_id)
+            set_carrier_for_connected_transport_assets_by_port(port, carrier)
+            # as the set_carrier...by_port() returns a port list, do an update
+            # of the port to the gui with the new carrier
+            emit('update_asset', create_update_asset_message(port.energyasset))
 
         update_carrier_conn_list()
 

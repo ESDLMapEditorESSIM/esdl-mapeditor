@@ -106,7 +106,6 @@ def create_port_message(p: esdl.InPort | esdl.OutPort, exposed_port: bool = Fals
         id=p.id,
         type=type(p).__name__,
         conn_to=[ConnectedTo(id=pt.id, a_name=pt.energyasset.name if pt.energyasset else None) for pt in p.connectedTo],
-        # conn_to_name=[pt.energyasset.name for pt in p.connectedTo],
         carrier=p.carrier.id if p.carrier else None,
     )
     if exposed_port:  # add only if port is exposed (smaller message size)

@@ -256,7 +256,7 @@ function set_marker_handlers(marker) {
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
-                    select_carrier_menu(asset_id);
+                    select_carrier_menu(asset_id, "");
                 }
             });
             marker.options.contextmenuItems.push({
@@ -483,7 +483,7 @@ function set_line_handlers(line) {
         text: 'Set carrier',
         icon: 'icons/SetCarrier.png',
         callback: function(e) {
-            select_carrier_menu(line_id);
+            select_carrier_menu(line_id, "");
         }
     });
 
@@ -816,6 +816,7 @@ function update_line_color(line_layer) {
     debug_layer = line_layer;
     var line_color = colors[line_layer.type];
     let port_list = line_layer.ports;
+    let carrier_info_mapping = get_carrier_info_mapping(line_layer.esid);
     if (port_list) { // find line color based on carrier if available
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];

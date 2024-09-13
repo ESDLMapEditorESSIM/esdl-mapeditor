@@ -169,7 +169,6 @@ function set_marker_port_handlers(marker) {
                             text: 'Delete connection to ' + ports[p].conn_to[cn].a_name,
                             //context: map,
                             callback: function(e) { 
-                                console.log("Callback delete connection", e); 
                                 socket.emit('command', {'cmd': 'remove_connection_portids',
                                     'from_port_id': ports[p].id, 'to_port_id': ports[p].conn_to[cn].id,
                                     'building_id': bld_edit_id});
@@ -189,8 +188,17 @@ function set_marker_port_handlers(marker) {
                     
                         // add set carrier, set profile?
                     }
+                    port_marker.options.contextmenuItems.push({
+                        text: 'Set carrier...',
+                        icon: 'icons/SetCarrier.png',
+                        callback: function (e) {
+                            // don't send asset id, only port_id to allow 
+                            // setting carrier on assets with multiple ports
+                            select_carrier_menu("", ports[p].id);
+                        },
+                        hideOnSelect: true
+                    });
                     if (bld_edit_id) { // in building editor
-                        console.log("Update menu")
                         let menu_text = 'Expose port';
                         if (ports[p].exposed) {
                             menu_text = 'Unexpose port';
