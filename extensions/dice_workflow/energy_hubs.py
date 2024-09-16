@@ -95,13 +95,13 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     # Create two GenericConversion assets, one for levering and one for teruglevering.
     terug_conv = esdl.GenericConversion(
         id=str(uuid.uuid4()),
-        name="Teruglevering Connection",
+        name="Teruglevering Energy Hub",
         efficiency=1.0,
         power=1000000.0,
     )
     dbs = esdl.DrivenBySupply(
         id=str(uuid.uuid4()),
-        name="DbD voor teruglevering energy hub",
+        name="DbD voor teruglevering Energy Hub",
         energyAsset=terug_conv,
     )
     es.services.service.append(dbs)
@@ -109,7 +109,7 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
 
     levering_conv = esdl.GenericConversion(
         id=str(uuid.uuid4()),
-        name="Levering Connection",
+        name="Levering Energy Hub",
         efficiency=1.0,
         power=1000000.0,
     )
@@ -138,6 +138,10 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     levering_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier_internal)
     levering_conv.port.append(levering_conv_inport)
     levering_conv.port.append(levering_conv_outport)
+    levering_conv_ci = esdl.CostInformation()
+    levering_conv_ci.marginalCosts = esdl.SingleValue(id=str(uuid.uuid4()), value=0.9)
+    levering_conv.costInformation = levering_conv_ci
+
     dbd.outPort = levering_conv_outport
 
     dbs.inPort = terug_conv_inport
