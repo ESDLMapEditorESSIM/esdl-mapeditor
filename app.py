@@ -23,6 +23,8 @@ from warnings import warn
 
 import requests
 import structlog.contextvars
+from authlib.integrations.flask_client import FlaskOAuth2App
+from authlib.jose import jwt, JsonWebKey
 from flask import Flask, Response, redirect, render_template, request, send_from_directory, session, url_for, g
 from flask_executor import Executor
 from flask_oidc import OpenIDConnect
@@ -56,6 +58,7 @@ from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.ielgas import IELGAS
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
+from extensions.open_id_integration import OpenIDIntegration
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from src.edr_client import EDRClient
@@ -228,6 +231,7 @@ app.config.update({
 
 try:
     oidc = OpenIDConnect(app, prefix="/oidc")
+    openid = OpenIDIntegration(oidc)
 except Exception as e:
     logger.exception("Something went wrong when connecting to Keycloak")
     import sys
@@ -295,44 +299,43 @@ def test_authentication():
 @app.route('/editor')
 @oidc.require_login
 def editor():
-    #session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME']) # get cookie id
-    #set_session('client_id', session['client_id'])
     logger.info('client_id is set to %s' % session['client_id'])
-    # print("Flask-OIDC User:", g.oidc_user)
-    # print("Flask-OIDC auth_profile:", session["oidc_auth_profile"])
+    #print("Flask-OIDC User info:",openid.get_userinfo(session))
+    #print("Flask-OIDC auth_profile:", session["oidc_auth_profile"])
     # print("Session OIDC Auth token", session.get("oidc_auth_token"))
 
-    if oidc.user_loggedin:
+    if openid.user_loggedin:
         if session['client_id'] is None:
             warn('WARNING: No client_id in session!!')
 
-        access_token_b64 = oidc.get_access_token()
-        user: User = g.oidc_user
-        oidc_auth_token = session.get("oidc_auth_token")
-        user_email = user.profile.get('email')  # oidc.user_getfield('email')
+        access_token_b64 = openid.get_access_token()
+        user_email = openid.get_email() # oidc.user_getfield('email')
         logger.info("************* USER LOGIN (" + user_email + ") at " + str(datetime.now()))
         user_actions_logging.store_logging(user_email, "login", "", "", "", {})
 
-        role = []
-        if 'role' in user.profile:
-            role = user.profile.get('role').split(',')
+        role = []  # role as set as attribute in user profile (used by edwin to turn on/off features for users
+        if 'role' in openid.get_user_profile():
+            role = openid.get_user_profile().get('role').split(',')
 
         # find roles in for the mapeditor client
         mapeditor_role = []
         client = oidc.client_secrets.get('client_id')
         # resource access is not in user profile, but is in oidc_aut_token.userinfo
-        resource_access = oidc_auth_token['userinfo']['resource_access']
-        if resource_access is not None and client in resource_access:
-            if 'roles' in resource_access[client]:
-                mapeditor_role = resource_access[client]['roles']
+        resource_access = openid.get_parsed_jwt().get('resource_access')
+        if resource_access is not None :
+            if client in resource_access:
+                if 'roles' in resource_access[client]:
+                    # mapeditor_role is a keycloak role of the esdl-mapeditor client,
+                    # 'mapeditor-admin' gives you admin rights in this app
+                    mapeditor_role = resource_access[client]['roles']
         logger.debug(f"User has following mapeditor role(s): {mapeditor_role}")
-        set_session('user-group', user.profile.get('user_group'))
+        set_session('user-group', openid.get_user_profile().get('user_group'))
         set_session('user-role', role)
         set_session('user-email', user_email)
         set_session('user-mapeditor-role', mapeditor_role)
         set_session('jwt-token', access_token_b64)
 
-        user_fullname = user.profile.get('name')
+        user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
         esdl_store_enabled = not(settings.esdl_store_config["hostname"] is None or settings.esdl_store_config["hostname"] == "")
@@ -384,15 +387,15 @@ And refreshes if necessary
 @app.route('/auth_status')
 #@oidc.require_login
 def auth_status():
-    if oidc.user_loggedin:
-        user: User = g.oidc_user
+    if openid.user_loggedin:
+        user: User = openid.get_user()
         curr_token = get_session('jwt-token')
-        if oidc.get_access_token() is not None:
-            if curr_token is not None and curr_token == oidc.get_access_token():
+        if openid.get_access_token() is not None:
+            if curr_token is not None and curr_token == openid.get_access_token():
                 return {'valid': True, 'reason': "Unchanged"}
             else:
                 logger.info("Refreshed access token for {}".format(user.profile.get('email')))
-                set_session('jwt-token', oidc.get_access_token())
+                set_session('jwt-token', openid.get_access_token())
                 return {'valid': True, 'reason': "Refreshed"}
         else:
             return {'valid': False,
@@ -410,7 +413,7 @@ def logout():
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
-    oidc_auth_token = session.get("oidc_auth_token")
+    oidc_auth_token = openid.get_full_oauth_token()
     # print("Flask-OIDC User:", user)
     # print("Flask-OIDC auth_profile:", session.get("oidc_auth_profile"))
     # print("Session OIDC Auth token", session.get("oidc_auth_token"))
@@ -419,7 +422,7 @@ def logout():
     # otherwise you will get a popup that requests if you want to log out
     id_token_hint = None
     if oidc_auth_token:
-        id_token_hint = oidc_auth_token.get('id_token')
+        id_token_hint = openid.get_id_token()
     # keycloak <17 logout:
     new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
     if not new_keycloak:

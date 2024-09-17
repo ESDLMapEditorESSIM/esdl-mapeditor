@@ -1,6 +1,6 @@
 Flask==3.0.3
 Flask-Executor==1.0.0
-Flask-SocketIO==5.3.6
+Flask-SocketIO==5.3.7
 Flask-Session==0.8.0
 flask-oidc==2.2.0
 #werkzeug==2.3.6
@@ -29,7 +29,7 @@ colorama
 structlog
 
 # Development
-watchdog==3.0.0
+watchdog==5.0.2
 pip-tools
 
 
