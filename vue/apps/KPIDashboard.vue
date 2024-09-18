@@ -178,14 +178,23 @@ const selectorOptionsKpiScope = esIds.map((esId) => (
       ({value: `${esId}-${scope}`, label: scope}))
   }
 ));
+const selectedKPIScope = ref({});
 
-// Initialize the first option of the first ES as the selected one.
-const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
-const selectedKPIScope = ref(initSelectedKPIScope);
+/**
+ * Initialize dashboard contents based on the first ES and the first KPI scope.
+ */
+const initDashboard = () => {
+  const initESId = selectorOptionsKpiScope[0].label;
+  const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
+  selectedKPIScope.value = initSelectedKPIScope;
 
-const initESId = esIds[0];
-// Initialize dashboard contents based on the first ES and first KPI scope.
-updateDashboard(initESId, initSelectedKPIScope.label);
+  updateDashboard(initESId, initSelectedKPIScope.label);
+};
+
+if (Object.keys(esKPIs).length) {
+  console.info("Initializing dashboard contents");
+  initDashboard();
+}
 
 const getDashboardList = async () => {
   const response = await fetch("kpi_dashboards");
