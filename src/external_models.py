@@ -71,7 +71,7 @@ class ExternalModels:
                                 updated_values["model_specific_output"][doc_key] = new_run_data[data_key]
                             # map external model status to mapeditor status
                             if result_status_param:
-                                run_status = new_run_data[result_status_param]
+                                run_status = get_nested_dict_value(new_run_data, result_status_param)
                                 for status, model_status_values in status_mapping.items():
                                     if run_status in model_status_values:
                                         updated_values["status"] = status
@@ -95,7 +95,7 @@ class ExternalModels:
                                 updated_values["output_esdl"] = output_esdl
 
                             if result_logs_param:
-                                updated_values["logs"] = new_run_data[result_logs_param]
+                                updated_values["logs"] = get_nested_dict_value(new_run_data, result_logs_param)
 
                             updated_values["last_update_from_external_model"] = datetime.now().strftime(
                                 "%Y-%m-%d %H:%M:%S"
@@ -164,8 +164,9 @@ class ExternalModels:
             for key, value in model_run_data.items():
                 if key not in top_keys + omit_keys + ["logs"]:
                     text += f"<br>{key}: <b>{pretty_print(value, '&emsp;')}</b>"
-            logs = model_run_data["logs"].replace("\n", "<br>")
-            text += f"<br><br>logs:<br>{logs}<br>"
+            if "logs" in model_run_data:
+                logs = model_run_data["logs"].replace("\n", "<br>")
+                text += f"<br><br>logs:<br>{logs}<br>"
 
             return text
 
@@ -214,6 +215,22 @@ class ExternalModels:
                 formData=form_data,
                 uischema=dict(type="VerticalLayout", elements=ui_elements),
             )
+
+
+def get_nested_dict_value(dictionary: dict, nested_key: str):
+    """
+    Get dictionary value from nested key in which consists of subsequent keys separated by a dot.
+
+    :param dictionary: dictionary to get value from.
+    :param nested_key: nested key which consists of subsequent keys separated by a dot.
+    :return: dictionary value of the nested key .
+    """
+    if "." not in nested_key:
+        return dictionary[nested_key]
+    else:
+        top_key = nested_key.split(".", 1)[0]
+        new_key = nested_key.split(".", 1)[1]
+        return get_nested_dict_value(dictionary[top_key], new_key)
 
 
 def parse_url_parameters(url: str, data: dict) -> str:

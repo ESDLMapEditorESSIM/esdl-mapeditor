@@ -1,6 +1,6 @@
 <template>
   <div
-    v-show="kpis_present || animation_possible"
+    v-show="kpis_present || animation_possible || external_link_description"
     class="my-control leaflet-result-visualizations-toolbar"
   >
     <a-row type="flex" justify="space-between">
@@ -26,20 +26,26 @@
           <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
             Show KPI dashboard
           </a-button>
-          <span v-else>No KPI's available</span>
         </a-space>
-
+        <a-space>
+          <a-button
+            v-if="external_link_description" size="small" type="primary"
+            @click="handleShowExternalLink"
+          >
+            {{ external_link_description }}
+          </a-button>
+        </a-space>
         <a-space-compact v-if="animation_possible" block size="small">
           <a-select
             ref="select"
-            v-model:value="selected_field"
+            v-model:value="anim_selected_field"
             style="width: 150px"
-            :options="field_options"
+            :options="anim_field_options"
             @focus="focus"
             @change="handleChange"
           />
           <a-button
-            :disabled="selected_field === 'Choose field ...'"
+            :disabled="anim_selected_field === 'Choose field ...'"
             size="small"
             type="primary"
             @click="handleLoadAnimation"
@@ -61,11 +67,15 @@ import {CloseOutlined} from '@ant-design/icons-vue';
 
 const kpis_present = ref(false);
 const animation_possible = ref(false);
-const field_options = ref([]);
-const selected_field = ref("Choose field ...");
+const anim_field_options = ref([]);
+const anim_selected_field = ref("Choose field ...");
 const anim_esdl_id = ref(null);
+const anim_filter_tag_name = ref(null);
+const anim_filter_tag_value = ref(null);
 const model_name = ref(null);
 const calc_name = ref(null);
+const external_link_description = ref(null);
+const external_link_url = ref(null);
 
 onMounted(() => {
   window.addEventListener('load', () => {
@@ -77,6 +87,8 @@ onMounted(() => {
         time_dimension.show_hide_animation_toolbar(false);
         animation_possible.value = false;
         anim_esdl_id.value = null;
+        anim_filter_tag_name.value = null;
+        anim_filter_tag_value.value = null;
         model_name.value = null;
         calc_name.value = null;
       }
@@ -85,9 +97,9 @@ onMounted(() => {
     window.socket.on('animation_esdl_data', function (data) {
       console.log('animation_possible, esdl id: ', data['es_id']);
       animation_possible.value = true;
-      field_options.value = [];
+      anim_field_options.value = [];
       data['fields'].forEach((field) => {
-        field_options.value.push(
+        anim_field_options.value.push(
             {
               value: field,
               label: field,
@@ -97,6 +109,13 @@ onMounted(() => {
       anim_esdl_id.value = data['es_id'];
       model_name.value = data['model_name'];
       calc_name.value = data['calc_name'];
+      anim_filter_tag_name.value = data["filter_tag_name"];
+      anim_filter_tag_value.value = data["filter_tag_value"];
+    });
+    window.socket.on('results_external_link', function (data) {
+      console.log('results_external_link:', data);
+      external_link_description.value = data["description"]
+      external_link_url.value = data["url"]
     });
   });
 });
@@ -104,11 +123,15 @@ onMounted(() => {
 const handleShowDashboard = () => {
   window.kpi_dashboard.open();
 };
+const handleShowExternalLink = () => {
+  window.open(external_link_url.value, '_blank');
+};
 const handleLoadAnimation = () => {
-  console.log("Results animation");
+  console.log("Results animation", anim_filter_tag_value.value);
   // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun, use for essim
-
-  time_dimension.initialize(anim_esdl_id.value, null, [], selected_field.value);
+  time_dimension.initialize(
+      anim_esdl_id.value, anim_filter_tag_name.value, anim_filter_tag_value.value, [], anim_selected_field.value
+  );
 };
 const handleDismiss = () => {
   time_dimension.removeGeoJSONLayers();
@@ -121,7 +144,7 @@ const handleDismiss = () => {
 };
 const handleChange = (value) => {
   console.log(`selected: ${value}`);
-  selected_field.value = value;
+  anim_selected_field.value = value;
 };
 
 </script>

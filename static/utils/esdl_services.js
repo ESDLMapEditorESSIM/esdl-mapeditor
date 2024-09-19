@@ -26,7 +26,7 @@ function set_esdl_services_information(info) {
 /**
  * Actually execute the querying of an ESDL service.
  * @param {*} service
- * @param {*} state_params: The optional parameters the function should use to fill query p arameters with.
+ * @param {*} state_params : The optional parameters the function should use to fill query p arameters with.
  */
 function query_esdl_service(service, state_params) {
     let params = {};

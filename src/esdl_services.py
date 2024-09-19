@@ -34,6 +34,7 @@ from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
+from src.external_models import get_nested_dict_value
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
 from utils.datetime_utils import parse_date
 
@@ -309,6 +310,8 @@ class ESDLServices:
                             esdlstr_bytes = esdlstr.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                             body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
+                    if param["type"] == "esdl_id":
+                        body[param["parameter"]] = active_es_id
                     if param["type"] == "value":
                         body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
@@ -321,47 +324,51 @@ class ESDLServices:
         state_params = service_params["state_params"]
         # The parameter definition from the service config
         config_service_params = service.get("query_parameters", {})
-        if state_params:
-            first_qp = True
-            # Iterate over all given parameters (by the UI)
-            for key in state_params:
-                if state_params[key]:  # to filter empty lists for multi-selection parameters
-                    # Find the relevant service config for this parameter
-                    for cfg_service_param in config_service_params:
+
+        first_qp = True
+        for cfg_service_param in config_service_params:
+            param = None
+            if "value" in cfg_service_param:  # get value direct from service json config
+                param = cfg_service_param["value"]
+            elif state_params:  # find state parameter value
+                for key in state_params:
+                    if state_params[key]:  # to filter empty lists for multi-selection parameters
                         if cfg_service_param["parameter_name"] == key:
                             param = state_params[key]  # param now contains the communicated value (by the UI)
-                            # Is there any parameter formatting required...
-                            if "formatter" in cfg_service_param:
-                                if (
-                                    "type" in cfg_service_param["formatter"]
-                                    and cfg_service_param["formatter"]["type"] == "datetime_formatter"
-                                ):
-                                    parsed_datetime = parse_date(param)
-                                    param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
 
-                            # Find out what to do with this parameter
-                            if "location" in cfg_service_param:
-                                if cfg_service_param["location"] == "url":
-                                    # Parameter is part of the URL path: e.g. /query/area/<area_id>/sub_area/...
-                                    url = url.replace(
-                                        "<" + cfg_service_param["parameter_name"] + ">",
-                                        str(param),
-                                    )
-                                elif cfg_service_param["location"] == "body" and isinstance(body, dict):
-                                    # Parameter is part of the body json
-                                    if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
-                                        param_value = (base64.b64encode(param.encode("utf-8"))).decode("utf-8")
-                                    else:
-                                        param_value = param
-                                    body[cfg_service_param["name"]] = param_value
-                            else:
-                                # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
-                                if first_qp:
-                                    url = url + "?"
-                                else:
-                                    url = url + "&"
-                                url = url + key + "=" + str(self.array2list(param))
-                                first_qp = False
+            if param:
+                # Is there any parameter formatting required...
+                if "formatter" in cfg_service_param:
+                    if (
+                        "type" in cfg_service_param["formatter"]
+                        and cfg_service_param["formatter"]["type"] == "datetime_formatter"
+                    ):
+                        parsed_datetime = parse_date(param)
+                        param = parsed_datetime.strftime(cfg_service_param["formatter"]["format"])
+
+                # Find out what to do with this parameter
+                if "location" in cfg_service_param:
+                    if cfg_service_param["location"] == "url":
+                        # Parameter is part of the URL path: e.g. /query/area/<area_id>/sub_area/...
+                        url = url.replace(
+                            "<" + cfg_service_param["parameter_name"] + ">",
+                            str(param),
+                        )
+                    elif cfg_service_param["location"] == "body" and isinstance(body, dict):
+                        # Parameter is part of the body json
+                        if "encoding" in cfg_service_param and cfg_service_param["encoding"] == "base64":
+                            param_value = (base64.b64encode(param.encode("utf-8"))).decode("utf-8")
+                        else:
+                            param_value = param
+                        body[cfg_service_param["name"]] = param_value
+                else:
+                    # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
+                    if first_qp:
+                        url = url + "?"
+                    else:
+                        url = url + "&"
+                    url = url + cfg_service_param["parameter_name"] + "=" + str(self.array2list(param))
+                    first_qp = False
 
         try:
             url_reponse = None
@@ -407,10 +414,13 @@ class ESDLServices:
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
 
-                    if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
+                    if "animation" in service["result"][0]:
                         influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id)
                         try:
-                            first_carrier_id = ESDLEnergySystem.get_carrier_list(es)[0]["id"]
+                            query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
+                            collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
+                            first_carrier_id = collections_with_asset_id.keys()[0][0]
+
                             fields_query = f'SHOW FIELD KEYS FROM "{first_carrier_id}"'
                             results = influxdb_client.query(fields_query)
                             fields = [
@@ -420,6 +430,16 @@ class ESDLServices:
                                 model_short_name = service["result"][0]["model_short_name"]
                             else:
                                 model_short_name = "Model"
+                            filter_tag_name = None
+                            filter_tag_value = None
+                            if "filter_on_tag" in service["result"][0]["animation"]:
+                                model_run_data = self.models_storage.get_model_run(
+                                    service["external_model"], state_params["run_id"]
+                                )
+                                filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
+                                filter_tag_value = get_nested_dict_value(
+                                    model_run_data, service["result"][0]["animation"]["filter_on_tag"]["database_key"]
+                                )
                             emit(
                                 "animation_esdl_data",
                                 {
@@ -427,6 +447,8 @@ class ESDLServices:
                                     "fields": fields,
                                     "model_name": model_short_name,
                                     "calc_name": state_params["run_name"],
+                                    "filter_tag_name": filter_tag_name,
+                                    "filter_tag_value": filter_tag_value,
                                 },
                             )
                         except Exception as e:
@@ -435,6 +457,20 @@ class ESDLServices:
                                 f"\nCould not retrieve animation data, "
                                 f"problem querying InfluxDB on host: '{influxdb_client._host}'"
                             )
+                    if "external_link" in service["result"][0]:
+                        model_run_data = self.models_storage.get_model_run(
+                            service["external_model"], state_params["run_id"]
+                        )
+                        external_link_url = get_nested_dict_value(
+                            model_run_data, service["result"][0]["external_link"]["database_key"]
+                        )
+                        emit(
+                            "results_external_link",
+                            {
+                                "description": service["result"][0]["external_link"]["description"],
+                                "url": external_link_url,
+                            },
+                        )
                     return True, None
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(input_data)

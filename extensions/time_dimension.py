@@ -95,10 +95,15 @@ class TimeDimension:
             with self.flask_app.app_context():
                 database = info["database"]
                 animation_column_name = info["animation_column_name"]
-                simulation_id = info["simulation_id"]
+
+                filter_tag_name = info["filter_tag_name"]
+                filter_tag_value = info["filter_tag_value"]
                 networks = info["networks"]
 
-                set_session("timedimension-simulation-id", simulation_id)
+                if filter_tag_name:
+                    set_session("timedimension_filter_tag", {"name": filter_tag_name, "value": filter_tag_value})
+                else:
+                    set_session("timedimension_filter_tag", None)
                 set_session("timedimension-parameter", animation_column_name)
 
                 set_session("td_monitor_ids", [])
@@ -317,12 +322,12 @@ class TimeDimension:
     # This function retrieves all timestamps for a measurement.
     def get_all_times_from_simulation(self):
         networks_list = get_session("timedimension-networks-list")
-        simulation_id = get_session("timedimension-simulation-id")
+        filter_tag = get_session("timedimension_filter_tag")
         try:
             influxdb_client = get_session("influxdb_connection")
             query = "SELECT * FROM " + ",".join(networks_list)
-            if simulation_id:
-                query += ' WHERE "simulationRun" = \'' + simulation_id + "'"
+            if filter_tag:
+                query += ' WHERE "' + filter_tag["name"] + "\" = '" + filter_tag["value"] + "'"
             sim_results = influxdb_client.query(query)
 
             time_list = list()
@@ -343,7 +348,7 @@ class TimeDimension:
             logger.error("error with query: ", str(e))
 
     def get_windowed_simulation_data(self, start, end):
-        simulation_id = get_session("timedimension-simulation-id")
+        filter_tag = get_session("timedimension_filter_tag")
 
         # Functie get_windowed_simulation_data doet niets met self.time_list, dus denk niet dat aanroep hier nodig is?
         # self.get_all_times_from_simulation()
@@ -397,8 +402,8 @@ class TimeDimension:
                 + influxdb_enddate
                 + "'"
             )
-            if simulation_id:
-                query += ' AND "simulationRun" = \'' + simulation_id + "'"
+            if filter_tag:
+                query += ' AND "' + filter_tag["name"] + "\" = '" + filter_tag["value"] + "'"
             query += ")"
 
             sim_results = influxdb_client.query(query)
