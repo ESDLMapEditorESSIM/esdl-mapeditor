@@ -26,11 +26,11 @@ class KPIs {
             console.log("KPIs plugin: kpis SocketIO call");
             console.log(data);
 
-            const esId = data['es_id'];
+            const es_id = data['es_id'];
             // kpi_info: {'area_name': {'kpis_description': ..., 'kpi_list': ...}, ...}
-            const esKPIs = data['kpi_info'];
+            const kpi_info = data['kpi_info'];
             // Store or replace the kpi info for this energy system
-            set_kpi_info(esId, esKPIs);
+            set_kpi_info(es_id, kpi_info);
 
             // Don't show the old small KPI dialog anymore by default.
             // There is an ResultVisualizationsToolbar control, that allows to open the bigger dashboard.
