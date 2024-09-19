@@ -1,5 +1,5 @@
 <template>
-  <div v-show="trace.length" id="plot-container" ref="plotContainer" />
+  <div v-show="trace.length" :id="plotId" ref="plotDiv" class="plot-div" />
   <div v-show="trace.length === 0" class="no-data">Not configured</div>
 </template>
 
@@ -7,38 +7,32 @@
 import { defineProps, ref, onMounted, watch } from "vue";
 import Plotly from "plotly.js-dist";
 
-const plotContainer = ref(null);
-
 const props = defineProps({
+  title: {
+    type: String,
+    default: "Undefined plot title"
+  },
   trace: {
     type: Array,
     default: function () {
       return [];
     }
   },
-  // TODO: rename?
   onResize: {
     type: Number,
     default: 0
   }
 });
 
-const config = { 
-  responsive: true, 
-  maintainAspectRatio: true,
-  automargin: true,
-  toImageButtonOptions: {
-    format: 'png', // one of png, svg, jpeg, webp
-    height: 500,
-    width: 900,
-    scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
-  }
-};
+const plotDiv = ref(null);
+const plotIsMounted = ref(false);
+
+const plotId = `plot-${props.title}`;
 
 const layout = {
   responsive: true,
   autosize: true,
-  margin: {l: 25, t: 5, r: 25, b: 25},
+  margin: {l: 25, t: 20, r: 25, b: 25},
   yaxis: {
     automargin: true
   },
@@ -47,57 +41,83 @@ const layout = {
   }
 };
 
+const config = { 
+  toImageButtonOptions: {
+    format: 'png', // one of png, svg, jpeg, webp
+    filename: props.title,
+    height: 500,
+    width: 900,
+    scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
+  }
+};
+
+/**
+ * Creates a new plot in the plotDiv container.
+ */
 const createPlot = () => {
-  Plotly.newPlot(plotContainer.value, props.trace, layout, config);
+  Plotly.newPlot(plotDiv.value, props.trace, layout, config);
 };
 
-const resizePlot = () => {
-  Plotly.react(plotContainer.value, props.trace, layout, config);
-};
-
-// TODO: doc.
+/**
+ * Initializes the plot and updates plotIsMounted state.
+ */
 onMounted(() => {
-  setTimeout(() => {
-    createPlot();
-  }, 10);
+  createPlot();
+  plotIsMounted.value = true;
 });
 
-// TODO: doc.
+/**
+ * Listens to the trace prop state update (e.g. switching between plot types) 
+ * and triggers createPlot().
+ */
 watch(
   () => props.trace,
   () => {
-    createPlot();
+    if (plotIsMounted.value) {
+      createPlot();
+    }
   }
 );
 
-// TODO: doc.
+/**
+ * Triggers Plotly react method to update the existing plot using the new plot parent container height.
+ */
+ const resizePlot = () => {
+  if (plotIsMounted.value) {
+    const newPlotContainerHeight = document.getElementById(plotId).parentElement.offsetHeight;
+    layout.height = newPlotContainerHeight;
+    Plotly.react(plotDiv.value, props.trace, layout, config);
+  }
+};
+
+/**
+ * Listens to the onResize prop state update and triggers resizePlot().
+ */
 watch(
   () => props.onResize,
-  () => {
-    resizePlot();
-  }
+  () => resizePlot()
 );
+
 </script>
 
 <style>
-#plot-container {
+.plot-div {
   width: 100%;
-  /* TODO: */
-  height: 250px;
 }
 
 .no-data {
-    height: 100%;
-    display: flex;
-    flex-grow: auto;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 20pt;
-    color: grey;
-    font-style: italic;
-    border: solid 3px lightgrey;
-    border-radius: .5rem;
-    margin: 1rem;
+  width: 100%;
+  height: 90%;
+  display: flex;
+  flex-grow: auto;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 20pt;
+  color: grey;
+  font-style: italic;
+  border: solid 3px lightgrey;
+  border-radius: .5rem;
+  margin: 1rem;
 }
 </style>

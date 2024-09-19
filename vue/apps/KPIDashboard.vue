@@ -42,9 +42,9 @@
                 <a-menu-item key="Title">
                   Add Title panel
                 </a-menu-item>
-<!--                <a-menu-item key="Sankey">-->
-<!--                  Add Sankey panel-->
-<!--                </a-menu-item>-->
+                <!-- <a-menu-item key="Sankey">
+                  Add Sankey panel
+                </a-menu-item> -->
               </a-menu>
             </template>
           </a-dropdown>
@@ -91,6 +91,9 @@
       use-css-transforms
       @breakpoint-changed="onBreakpointChanged"
     >
+      <!-- drag-ignore-from is required to avoid dragging the grid item 
+       when the user is interacting with the PlotPanel Plot.
+       https://jbaysolutions.github.io/vue-grid-layout/guide/04-allow-ignore.html -->
       <grid-item
         v-for="item in layout"
         :key="item.i"
@@ -99,15 +102,17 @@
         :w="item.w"
         :h="item.h"
         :i="item.i"
+        drag-ignore-from=".no-drag"
       >
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
-        <KPIChartOrTable
+        <!-- TODO: remove when Ploty becomes stable -->
+        <!-- <KPIChartOrTable
           v-if="item.type == 'charttable'"
           :key="item.kpi_type"
           :chart-options-prop="item.options"
           :kpi-name="item.kpi_name"
           :kpi-type="item.kpi_type"
-        />
+        /> -->
         <TextPanel
           v-if="item.type == 'textpanel'"
           :options="item.options"
@@ -120,10 +125,19 @@
           v-if="item.type == 'titlepanel'"
           :options="item.options"
         />
-<!--        <SankeyPanel-->
-<!--          v-if="item.type == 'sankeypanel'"-->
-<!--          :options="item.options"-->
-<!--        />-->
+        <!-- <SankeyPanel
+          v-if="item.type == 'sankeypanel'"
+          :options="item.options"
+        /> -->
+        <PlotPanel
+          v-if="item.type == 'charttable'"
+          :options="item.options"
+          :panel-dimension="{
+            x: item.x, 
+            y: item.y, 
+            w: item.w, 
+            h: item.h}"
+        />
       </grid-item>
     </grid-layout>
   </div>
@@ -150,6 +164,7 @@ import SankeyPanel from '../components/kpidashboard/SankeyPanel.vue'
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 // eslint-disable-next-line no-unused-vars
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
+import PlotPanel from "../components/kpidashboard/PlotPanel.vue";
 
 const dashboards_info = ref([]);
 const layout = ref([]);     // this is the information used (and changed!) in the vue components
@@ -263,7 +278,7 @@ function calGridItemLayout(breakpoint, itemNr) {
       break;
   }
   const w = cols / colNum;
-  const h = 5;
+  const h = 8;
   const x = (itemNr % colNum) * w;
   const y = Math.floor(itemNr / colNum) * h;
   return [x, y, w, h];

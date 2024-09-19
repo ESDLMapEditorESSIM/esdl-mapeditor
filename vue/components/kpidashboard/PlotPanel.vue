@@ -1,0 +1,216 @@
+<template>
+  <div style="width: 100%; height: 100%;">
+    <a-row class="panel-header vue-draggable-handle">
+      <h5 class="panel-title">{{ plot.title }}</h5>
+      <a-button 
+        type="text"
+        @click="onPlotTypeBtnClick"
+      >
+        <template #icon>
+          <component :is="plotTypeIcon" class="panel-header-icon-btn" />
+        </template>
+      </a-button>
+      <!-- TODO -->
+      <!-- <a-button 
+        type="text" 
+      >
+        <template #icon>
+          <CloseOutlined class="panel-header-icon-btn" />
+        </template>
+      </a-button> -->
+    </a-row>
+    <a-row class="panel-plot-container no-drag">
+      <Plot
+        :title="plot.title"
+        :trace="plot.trace"
+        :on-resize="resizeEventCounter"
+      />
+    </a-row>
+  </div>
+</template>
+  
+<script setup>
+import { defineProps, ref, computed, watch } from "vue";
+import Plot from "./Plot.vue";
+import { PieChartOutlined, BarChartOutlined, TableOutlined, CloseOutlined } from "@ant-design/icons-vue";
+
+
+const plotTypes = ["bar", "pie", "table"];
+
+// Initialize the plot panel with the bar chart type.
+const plotType = ref(plotTypes[0]);
+const plotTypeIcon = ref(PieChartOutlined);
+
+const props = defineProps({
+  // config of the graph with structure as
+  // {title: string, type: string, options: Object, data: Object}
+  options: {
+    type: Object,
+    default: function () {
+      return {};
+    }
+  },
+  panelDimension: {
+    type: Object,
+    default: function () {
+      return {};
+    }
+  },
+});
+
+const resizeEventCounter = ref(0);
+
+/**
+ * Listens to the panelDimension prop state update
+ * and triggers the child Plot component to resize the chart.
+ */
+watch(
+  () => props.panelDimension,
+  () => {
+    resizeEventCounter.value += 1;
+  }
+);
+
+/**
+ * Handles the click event for the plot type button.
+ */
+const onPlotTypeBtnClick = () => {
+  switch (plotType.value) {
+    default:
+    case "bar":
+      plotType.value = "pie";
+      plotTypeIcon.value = TableOutlined;
+      break;
+    case "pie":
+      plotType.value = "table";
+      plotTypeIcon.value = BarChartOutlined;
+      break;
+    case "table":
+      plotType.value = "bar";
+      plotTypeIcon.value = PieChartOutlined;
+      break;
+  }
+};
+
+/**
+ * Create a Plot properties object required by the Plot component.
+ * 
+ * @param {string} plotType Plot type.
+ * @param {string} title Plot title.
+ * @param {Object} data Plot data object.
+ * @returns {Object} Plot properties object required by the Plot component.
+ */
+const createPlotProps = (plotType, title, data) => {
+  let trace = [];
+  switch (plotType) {
+    default:
+    case "bar":
+      trace = createBarChartTrace(data);
+      break;
+    case "pie":
+      trace = createPieChartTrace(data);
+      break;
+    case "table":
+      trace = createTableTrace(data);
+      break;
+  }
+
+  return {
+    title: title,
+    trace: trace,
+  };
+};
+
+const plot = computed(() => {
+  if (Object.keys(props.options).length && 
+      props.options.title && 
+      Object.keys(props.options.data).length) {
+    return createPlotProps(plotType.value, props.options.title, props.options.data);
+  } else {
+    console.error("Error while creating a plot, default setting will be applied.");
+    return {
+      title: "Undefined plot title",
+      trace: []
+    };
+  }
+});
+
+// NOTE: The functions below only support creating a single data-trace at the moment.
+const createBarChartTrace = (data) => {
+  return [{
+    type: "bar",
+    name: data.datasets[0].label,
+    x: data.labels,
+    y: data.datasets[0].data
+  }];
+};
+
+// TODO: consistent chart data colors
+const createPieChartTrace = (data) => {
+  return [{
+    type: "pie",
+    name: data.datasets[0].label,
+    labels: data.labels,
+    values: data.datasets[0].data
+  }];
+};
+
+const createTableTrace = (data) => {
+  const headerValues = [["<b>Parameter</b>"], ["<b>Value</b>"]];
+  const cellValues = [data.labels, data.datasets[0].data.map((d) => [d])];
+
+  return [{
+    type: "table",
+    header: {
+      values: headerValues,
+      align: "left",
+      fill: {color: "#fafafa"},
+      line: {width: 0.5, color: "#c4c4c4"},
+      font: {size: 14, color: "black"}
+    },
+    cells: {
+      values: cellValues,
+      align: "left",
+      height: 25,
+      line: {width: 0.5, color: "#c4c4c4"},
+      font: {size: 14, color: "black"}
+    }
+  }];
+};
+
+</script>
+
+<style>
+.panel-header {
+  margin: 0;
+  height: 35px;
+  width: 100%;
+  border-bottom: 1px solid #002484;
+  flex-direction: row;
+  background-color: #002484;
+  border-radius: 0.3rem 0.3rem 0 0;
+}
+
+.panel-header:hover {
+  background-color: #002eaa;
+}
+
+.panel-plot-container {
+  /* height of the plot container = 100% - panel-header height (35px) */
+  height: calc(100% - 35px);
+}
+
+.panel-header-icon-btn {
+  color: white;
+}
+
+.panel-title {
+  font-size: 1.1em;
+  width: 70%;
+  margin: 0;
+  padding: 0.5rem;
+  color: white;
+  font-weight: bolder;
+  flex-grow: 1;
+}
+</style>
