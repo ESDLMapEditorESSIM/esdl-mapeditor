@@ -11,7 +11,7 @@
           <component :is="plotTypeIcon" />
         </template>
       </a-button>
-      <!-- TODO -->
+      <!-- TODO: implement the same close button in other dashboard panels (e.g. text, image, etc.)  -->
       <!-- <a-button 
         type="text" 
       >
@@ -33,8 +33,7 @@
 <script setup>
 import { defineProps, ref, computed, watch } from "vue";
 import Plot from "./Plot.vue";
-import { PieChartOutlined, BarChartOutlined, TableOutlined, CloseOutlined } from "@ant-design/icons-vue";
-
+import { PieChartOutlined, BarChartOutlined, TableOutlined } from "@ant-design/icons-vue";
 
 const plotTypes = ["bar", "pie", "table"];
 
@@ -136,7 +135,8 @@ const plot = computed(() => {
   }
 });
 
-// NOTE: The functions below only support creating a single data-trace at the moment.
+// NOTE: The three create{PlotType}Trace functions below 
+// only support creating a single data-trace at the moment.
 const createBarChartTrace = (data) => {
   return [{
     type: "bar",

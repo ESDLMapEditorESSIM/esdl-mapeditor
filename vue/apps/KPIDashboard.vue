@@ -105,14 +105,6 @@
         drag-ignore-from=".no-drag"
       >
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
-        <!-- TODO: remove when Ploty becomes stable -->
-        <!-- <KPIChartOrTable
-          v-if="item.type == 'charttable'"
-          :key="item.kpi_type"
-          :chart-options-prop="item.options"
-          :kpi-name="item.kpi_name"
-          :kpi-type="item.kpi_type"
-        /> -->
         <TextPanel
           v-if="item.type == 'textpanel'"
           :options="item.options"
@@ -150,8 +142,6 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
-// eslint-disable-next-line no-unused-vars
-import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
 // eslint-disable-next-line no-unused-vars
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
 // eslint-disable-next-line no-unused-vars
@@ -207,7 +197,7 @@ const initDashboard = () => {
 };
 
 if (Object.keys(esKPIs).length) {
-  console.info("Initializing dashboard contents");
+  console.info("Initializing KPI dashboard contents");
   initDashboard();
 }
 
@@ -663,10 +653,6 @@ const handleAddPanel = (e) => {
   width: 100%;
 }
 
-.vue-grid-item .no-drag {
-  height: 100%;
-  width: 100%;
-}
 
 .vue-grid-item .minMax {
   font-size: 12px;
