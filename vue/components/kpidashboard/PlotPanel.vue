@@ -4,10 +4,11 @@
       <h5 class="panel-title">{{ plot.title }}</h5>
       <a-button 
         type="text"
+        class="panel-header-icon-btn"
         @click="onPlotTypeBtnClick"
       >
         <template #icon>
-          <component :is="plotTypeIcon" class="panel-header-icon-btn" />
+          <component :is="plotTypeIcon" />
         </template>
       </a-button>
       <!-- TODO -->
@@ -145,13 +146,24 @@ const createBarChartTrace = (data) => {
   }];
 };
 
-// TODO: consistent chart data colors
 const createPieChartTrace = (data) => {
+  // Copied and pasted from area_building_layer.js
+  // TODO: Read color config from a single file.
+  const pieChartColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
+                          '#ff7f00','#cab2d6', '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
+
   return [{
     type: "pie",
     name: data.datasets[0].label,
     labels: data.labels,
-    values: data.datasets[0].data
+    values: data.datasets[0].data,
+    automargin: true,
+    sort: false,
+    direction: "clockwise",
+    marker: {
+      colors: pieChartColors
+    },
+    opacity: 0.9
   }];
 };
 
@@ -185,14 +197,12 @@ const createTableTrace = (data) => {
   margin: 0;
   height: 35px;
   width: 100%;
-  border-bottom: 1px solid #002484;
   flex-direction: row;
-  background-color: #002484;
-  border-radius: 0.3rem 0.3rem 0 0;
+  background-color: #f1f1f196;
 }
 
 .panel-header:hover {
-  background-color: #002eaa;
+  background-color: #f5f5f5e8;
 }
 
 .panel-plot-container {
@@ -201,7 +211,8 @@ const createTableTrace = (data) => {
 }
 
 .panel-header-icon-btn {
-  color: white;
+  right: 5px;
+  color: #363636;
 }
 
 .panel-title {
@@ -209,7 +220,7 @@ const createTableTrace = (data) => {
   width: 70%;
   margin: 0;
   padding: 0.5rem;
-  color: white;
+  color: #363636;
   font-weight: bolder;
   flex-grow: 1;
 }

@@ -709,6 +709,7 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
                         return `${value.toFixed(2)} ${unit}`;
                     }
                 };
+                pieChartOptions.rotation = -90;
             });
 
             distKPI.pieChartMarker = new L.PieChartMarker(
