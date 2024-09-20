@@ -1,10 +1,10 @@
 <template>
-  <div v-show="trace.length" :id="plotId" ref="plotDiv" class="plot-div" />
-  <div v-show="trace.length === 0" class="no-data">Not configured</div>
+  <div v-if="trace.length" :id="plotId" ref="plotDiv" class="plot-div" />
+  <div v-else class="no-data">Not configured</div>
 </template>
 
 <script setup>
-import { defineProps, ref, onMounted, watch } from "vue";
+import { defineProps, ref, onMounted, onUnmounted, watch } from "vue";
 import Plotly from "plotly.js-dist";
 
 const props = defineProps({
@@ -97,6 +97,24 @@ watch(
   () => props.onResize,
   () => resizePlot()
 );
+
+/**
+ * Reset to the default state when onUnmounted.
+ */
+onUnmounted(() => {
+  plotDiv.value = null;
+  plotIsMounted.value = false;
+});
+
+// Listens to the kpiDashboardIsClosed event emitted from KPIDashboard.js
+// to ensure the Plotly plot is cleaned up after the kpi_dashboard_window div closed 
+// instead of only becoming invisible (default behavior of the Leaflet Control Dialog).
+$(document).on('kpiDashboardIsClosed', (_, data) => {
+  if (data && plotIsMounted.value) {
+    Plotly.purge(document.getElementById(plotId));
+    plotIsMounted.value = false;
+  }
+});
 
 </script>
 
