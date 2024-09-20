@@ -693,6 +693,9 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
                 chartDataItemNames = refAreaDistKPIs[KPI].names;
             }
 
+            // Sort data item names in alphabetical order
+            chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
+
             chartDataItemNames.forEach((itemName, idx) => {
                 const distKPIItem = distKPI.value.find((item) => item.name === itemName);
                 // If no matching KPI item is found, 0 will be applied as data item value

@@ -93,6 +93,33 @@ const onPlotTypeBtnClick = () => {
 };
 
 /**
+ * Sorts data object alphabetically by data.labels and returns a new data object.
+ * 
+ * @param {Object} data Plot data object.
+ * @returns {Object} Sorted plot data object.
+ */
+const sortDataAlphabetically = (data) => {
+  const combined = data.labels.map((label, index) => (
+    {
+      label: label,
+      data: data.datasets.map(d => d.data[index])
+    }
+  ));
+
+  // Sort the combined array alphabetically by label
+  combined.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+
+  // Deepy copy data object
+  const sortedData = JSON.parse(JSON.stringify(data));
+  sortedData.labels = combined.map(item => item.label);
+  sortedData.datasets.forEach((dataset, dIndex) => {
+    dataset.data = combined.map(item => item.data[dIndex]);
+  });
+
+  return sortedData;
+};
+
+/**
  * Create a Plot properties object required by the Plot component.
  * 
  * @param {string} plotType Plot type.
@@ -101,17 +128,19 @@ const onPlotTypeBtnClick = () => {
  * @returns {Object} Plot properties object required by the Plot component.
  */
 const createPlotProps = (plotType, title, data) => {
+  const sortedData = sortDataAlphabetically(data);
+
   let trace = [];
   switch (plotType) {
     default:
     case "bar":
-      trace = createBarChartTrace(data);
+      trace = createBarChartTrace(sortedData);
       break;
     case "pie":
-      trace = createPieChartTrace(data);
+      trace = createPieChartTrace(sortedData);
       break;
     case "table":
-      trace = createTableTrace(data);
+      trace = createTableTrace(sortedData);
       break;
   }
 
