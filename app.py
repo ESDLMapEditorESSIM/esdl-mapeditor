@@ -36,7 +36,7 @@ from pyecore.ecore import EDate
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler
+from esdl.esdl_handler import EnergySystemHandler, EnergySystemWithSameIdExists
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLEcore import instantiate_type
@@ -2990,54 +2990,27 @@ def process_file_command(message):
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
 
-    if message['cmd'] == 'load_esdl_from_file':
-        file_content = message['file_content']
-        filename = message['filename']
-        esh = EnergySystemHandler()
-
-        try:
-            result, parse_info = esh.load_from_string(esdl_string=file_content, name=filename)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-        except Exception as e:
-            logger.exception(f"Error opening {filename}")
-            send_alert("Error opening {}. Exception is: {}".format(filename, e))
-            emit('clear_ui')
-            return
-
-        es = esh.get_energy_system()
-        set_handler(esh)
-        es_info_list = {}
-        set_session("es_info_list", es_info_list)
-        emit('clear_ui')
-        emit('clear_esdl_layer_list')
-        call_process_energy_system.submit(esh, filename) # run in seperate thread
-        #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
-        #thread.start()
-
-        del_session('store_item_metadata')
-        emit('store_item_metadata', {})
-        set_session('active_es_id', es.id)
-        set_session('es_filename', filename)
-
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']
         filename = message['filename']
         esh = get_handler()
 
         try:
-            imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-            call_process_energy_system.submit(esh, filename)  # run in seperate thread
-            set_session('active_es_id', imported_es.id)
-            set_session('es_filename', filename)
+            try:
+                imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
+                                                              overwrite_existing=False)
+
+                if len(parse_info) > 0:
+                    info = ''
+                    for line in parse_info:
+                        info += line + "\n"
+                    send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+                call_process_energy_system.submit(esh, filename)  # run in seperate thread
+                set_session('active_es_id', imported_es.id)
+                set_session('es_filename', filename)
+            except EnergySystemWithSameIdExists:
+                send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
+                           'EnergySystem first and then try to import again')
         except Exception as e:
             logger.error("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
