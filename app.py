@@ -272,8 +272,7 @@ def before_request():
 
 @app.route('/')
 def index():
-    store_enabled = settings.esdl_store_config or settings.mondaine_hub_config
-    return render_template('index.html', store_enabled=store_enabled)
+    return render_template('index.html')
 
 
 """
@@ -341,9 +340,6 @@ def editor():
         user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
-        esdl_store_enabled = not(settings.esdl_store_config["hostname"] is None or settings.esdl_store_config["hostname"] == "")
-        mondaine_hub_enabled = not(settings.mondaine_hub_config["hostname"] is None or settings.mondaine_hub_config["hostname"] == "")
-        store_enabled = esdl_store_enabled or mondaine_hub_enabled
         esdl_drive_enabled = not(settings.esdl_drive_config["hostname"] is None or settings.esdl_drive_config["hostname"] == "")
         edr_enabled = not(settings.edr_config["host"] is None or settings.edr_config["host"] == "")
         essim_enabled = not(settings.essim_config["ESSIM_host"] is None or settings.essim_config["ESSIM_host"] == "")
@@ -353,7 +349,7 @@ def editor():
         ibis_service_enabled = not(settings.ibis_config["host"] is None or settings.ibis_config["host"] == "")
         user_feedback_url = settings.user_feedback_url_config["url"] if hasattr(settings, "user_feedback_url_config") else None
 
-        logger.info("store:{} drive:{} edr:{} bound:{} stat:{} bag:{} ibis:{}".format(store_enabled, esdl_drive_enabled,
+        logger.info("drive:{} edr:{} bound:{} stat:{} bag:{} ibis:{}".format(esdl_drive_enabled,
             edr_enabled, boundary_service_enabled, statistics_service_enabled, bag_service_enabled, ibis_service_enabled))
         logger.info("Feedback URL: {}".format(user_feedback_url))
 
@@ -362,7 +358,6 @@ def editor():
             async_mode=socketio.async_mode,
             role=role,
             is_mapeditor_admin=is_mapeditor_admin(),
-            store_enabled=store_enabled,
             esdl_drive_enabled=esdl_drive_enabled,
             edr_enabled=edr_enabled,
             essim_enabled=essim_enabled,
@@ -450,7 +445,6 @@ def logout():
         return redirect(url_for("oidc_auth.logout", next=url))
 
 
-
 # Cant find out why send_file does not work in uWSGI with threading.
 # Now we send manually the ESDL as string, which is (probably) not efficient.
 # This still works with a 1.6 MB file... Not sure if this scales any further...
@@ -493,7 +487,6 @@ def download_esdl():
         return "Error sending ESDL file, due to {}".format(e)
 
 
-
 @app.route('/<path:path>')
 def serve_static(path):
     # logger.debug('in serve_static(): '+ path)
@@ -524,151 +517,6 @@ def serve_static(path):
 #         logger.error(e)
 #         send_alert('Error accessing EDR API')
 #         abort(500, 'Error accessing EDR API')
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-#  File I/O and ESDL Store API calls
-# ---------------------------------------------------------------------------------------------------------------------
-if settings.esdl_store_config is not None and settings.esdl_store_config != "":
-    default_store_url = settings.esdl_store_config['hostname'] + '/store/'
-else:
-    default_store_url = None
-if settings.mondaine_hub_config is not None and settings.mondaine_hub_config != "":
-    mondaine_hub_url = settings.mondaine_hub_config['hostname'] + '/store/'
-else:
-    mondaine_hub_url = None
-
-
-def create_ESDL_store_item(id, esh, title, description, email):
-    role = get_session('user-role')
-    if 'mondaine' in role:
-        store_url = mondaine_hub_url
-    else:
-        store_url = default_store_url
-
-    if store_url:
-        esdlstr = esh.to_string()
-        try:
-            payload = {'id': id, 'title': title, 'description': description, 'email':email, 'esdl': esdlstr}
-            requests.post(store_url, data=payload)
-        except Exception as e:
-            send_alert('Error accessing ESDL store:' + str(e))
-
-
-def load_ESDL_EnergySystem(store_id):
-    store_item = load_store_item(store_id)
-    if store_item:
-        esdlstr = store_item['esdl']
-
-        del store_item['esdl']
-        set_session('store_item_metadata', store_item)
-        emit('store_item_metadata', store_item)
-
-        try:
-            esh = get_handler()
-            es, parse_info = esh.load_from_string(esdl_string=esdlstr, name=store_item['title'])
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
-            return esh
-        except Exception as e:
-            send_alert('Error interpreting ESDL file from store: ' + str(e))
-            return None
-    else:
-        return None
-
-
-def import_ESDL_EnergySystem(store_id):
-    store_item = load_store_item(store_id)
-    if store_item:
-        esdlstr = store_item['esdl']
-
-        del store_item['esdl']
-        set_session('store_item_metadata', store_item)
-        emit('store_item_metadata', store_item)
-
-        try:
-            esh = get_handler()
-            imported_es, parse_info = esh.add_from_string(esdl_string=esdlstr, name=store_item['title'])
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(store_item['title'], info))
-            return imported_es
-        except Exception as e:
-            send_alert('Error interpreting ESDL file from store: ' + str(e))
-            return None
-    else:
-        return None
-
-
-def load_store_item(store_id):
-    role = get_session('user-role')
-    if 'mondaine' in role:
-        store_url = mondaine_hub_url
-    else:
-        store_url = default_store_url
-
-    if store_url:
-        url = store_url + store_id + '?format=xml'
-        try:
-            r = requests.get(url)
-        except Exception as e:
-            send_alert('Error accessing ESDL store:' + str(e))
-            return None
-
-        if r.status_code == 200:
-            result = json.loads(r.text)
-            if len(result) > 0:
-                return result
-            else:
-                return None
-        else:
-            logger.error('Accessing store return status: '+str(r.status_code))
-            send_alert('Error accessing ESDL store:' + str(r))
-            return None
-    else:
-        return None
-
-
-def update_store_item(store_id, title, descr, email, tags, esh):
-    role = get_session('user-role')
-    if 'mondaine' in role:
-        store_url = mondaine_hub_url
-    else:
-        store_url = default_store_url
-
-    if store_url:
-        esdlstr = esh.to_string()
-
-        payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
-        try:
-            requests.put(store_url + store_id, data=payload)
-        except Exception as e:
-            send_alert('Error saving ESDL file to store: ' + str(e))
-
-
-def create_new_store_item(store_id, title, descr, email, tags, esh):
-    role = get_session('user-role')
-    if 'mondaine' in role:
-        store_url = mondaine_hub_url
-    else:
-        store_url = default_store_url
-
-    if store_url:
-        esdlstr = esh.to_string()
-
-        payload = {'id': store_id, 'title': title, 'description': descr, 'email': email, 'tags': tags, 'esdl': esdlstr}
-        try:
-            r = requests.post(store_url, data=payload)
-        except Exception as e:
-            send_alert('Error saving ESDL file to store: ' + str(e))
-
-        if r.status_code != 201:
-            send_alert('Error saving ESDL file to store. Error code: ' + str(r.status_code))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3193,81 +3041,6 @@ def process_file_command(message):
         except Exception as e:
             logger.error("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
-
-    if message['cmd'] == 'get_list_from_store':
-        role = get_session('user-role')
-        if 'mondaine' in role:
-            store_url = mondaine_hub_url + 'tagged?tag=map&take=1000'
-        else:
-            store_url = default_store_url+ 'tagged?tag=map&take=1000'
-
-        try:
-            result = requests.get(store_url)
-        except Exception as e:
-            logger.error('Error accessing ESDL store' + str(e))
-            send_alert('Error accessing ESDL store' + str(e))
-            return
-
-        data = result.json()
-        store_list = []
-        for store_item in data:
-            store_list.append({'id': store_item['id'], 'title': store_item['title']})
-
-        sorted_store_list = sorted(store_list, key=lambda x: x['title'], reverse=False)
-
-        emit('store_list', sorted_store_list)
-
-    if message['cmd'] == 'load_esdl_from_store':
-        store_id = message['id']
-
-        esh = load_ESDL_EnergySystem(store_id)
-        if esh:
-            es = esh.get_energy_system()
-            if es.name:
-                title = 'Store name: ' + es.name + ', store id: ' + store_id
-            else:
-                title = 'Store id: ' + store_id
-
-            set_session('active_es_id', es.id)
-            set_session('es_filename', title)  # TODO: separate filename and title
-            es_info_list = {}
-            set_session("es_info_list", es_info_list)
-            emit('clear_ui')
-            emit('clear_esdl_layer_list')
-            call_process_energy_system.submit(esh, None, title)
-        else:
-            send_alert('Error loading ESDL file with id {} from store'.format(store_id))
-
-    if message['cmd'] == 'import_esdl_from_store':
-        store_id = message['id']
-
-        imported_es = import_ESDL_EnergySystem(store_id)
-        if imported_es:
-            if imported_es.name:
-                title = 'Store name: ' + imported_es.name + ', store id: ' + store_id
-            else:
-                title = 'Store id: ' + store_id
-
-            esh = get_handler()
-            call_process_energy_system.submit(esh, None, title)  # run in seperate thread
-            set_session('active_es_id', imported_es.id)
-            set_session('es_filename', title)
-
-    if message['cmd'] == 'store_esdl':
-        title = message['store_title']
-        descr = message['store_descr']
-        email = message['store_email']
-
-        tags = ['map']
-
-        esh = get_handler()
-        store_item_metadata = get_session('store_item_metadata')
-        if store_item_metadata:
-            store_id = store_item_metadata['id']
-            update_store_item(store_id, title, descr, email, tags, esh)
-        else:
-            store_id = get_session('active_es_id')
-            create_new_store_item(store_id, title, descr, email, tags, esh)
 
     # Do not store file_content in logging database
     if 'file_content' in message:
