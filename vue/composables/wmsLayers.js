@@ -87,6 +87,21 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     }
 };
 
+/**
+ * Extracts and returns the base URL of the WMS service.
+ * 
+ * @param {string} inputUrl The input WMS URL (possibly with various query parameters)
+ * @returns {string|Error} The base URL of the WMS service if valid, otherwise an Error object.
+ */
+const getWmsServiceBaseUrl = (inputUrl) => {
+    try {
+        const url = new URL(inputUrl);
+        return `${url.origin}${url.pathname}`;
+    } catch (error) {
+        return new Error(`${error}`);
+    }
+};
+
 
 export function useWmsLayers() {
     /**
@@ -94,12 +109,37 @@ export function useWmsLayers() {
      */
     const getWmsLayerList = () => toValue(globalWmsLayerList);
 
-    const addWmsLayer = (layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
-        /**
-         * Add wms layer
-         */
-        const layerId = window.uuidv4();
+    /**
+     * Fetches and returns the WMS GetCapabilities response into a wmsGetCapabilitiesResp object, 
+     * which has a structure as {success: boolean, result: WmsServiceLayerInfo[] | string}.
+     * 
+     * @param {string} wmsBaseUrl The base URL of the WMS service.
+     * @returns {Promise<Object>} A promise that resolves to a wmsGetCapabilitiesResp object.
+     * @throws {Error} Throws an error if the get_wms_getcapabilities call fails.
+     */
+    const getWmsGetCapabilities = async (wmsBaseUrl) => {
+        const params = {
+            url: wmsBaseUrl
+        };
+        return new Promise((resolve, reject) => {
+            socket.emit('get_wms_getcapabilities', params, (wmsGetCapabilitiesResp) => {
+                if (wmsGetCapabilitiesResp) {
+                    resolve(wmsGetCapabilitiesResp);
+                } else {
+                    reject(new Error(`An unknown error occurred while fetching WMS GetCapabilities ${wmsBaseUrl}.`));
+                }
+            });
+        });
+    };
 
+    /**
+     * Add a WMS layer
+     * 
+     * @returns {Promise<Object>} A promise of allLayers object ({layers: {}, layer_groups: {}}) that resolves if the layer is added successfully,
+     *                            or rejects with an error if the addition fails.
+     * @throws {Error} If the backend response indicates a failure to add the layer.
+     */
+    const addWmsLayer = async (layerId, layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
         const wmsLayer = {
             id: layerId,
             description: layerDescr,
@@ -111,10 +151,14 @@ export function useWmsLayers() {
             min_zoom_level: minZoomLevel,
             parent_group_id: groupId,
         };
-        socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
-            allLayers['layers'][layerId].visible = true;
-            updateGlobalWmsLayerList(allLayers, layerId);
-            showWmsLayer(layerId);
+        return new Promise((resolve, reject) => {
+            socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
+                if (allLayers) {
+                    resolve(allLayers);
+                } else {
+                    reject(new Error(`An unknown error occurred while adding the WMS layer ${layerName}.`));
+                }
+            });
         });
     };
 
@@ -145,6 +189,9 @@ export function useWmsLayers() {
                 wms_layer.layer_ref.addTo(map);
                 wms_layer.layer_ref.bringToFront();
                 wms_layer.visible = true;
+                if (wms_layer.opacity !== undefined) {
+                    wms_layer.layer_ref.setOpacity(wms_layer.opacity);
+                }
             }
             if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
                 showWmsLegend(wms_layer.legend_url);
@@ -279,7 +326,8 @@ export function useWmsLayers() {
         getDescendantLayerNodeIds,
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
-        copyWmsItem
+        copyWmsItem,
+        getWmsGetCapabilities,
     };
 }
 
@@ -331,4 +379,9 @@ const removeGroupChildrenFromMap = (layerGroupId) => {
             removeFromVisibleLayerList(childId);
         }
     }
+};
+
+export {
+    getWmsServiceBaseUrl,
+    updateGlobalWmsLayerList
 };

@@ -21,11 +21,14 @@ import {
     Form,
     Input,
     InputNumber,
+    List,
     Menu,
     Modal,
+    Popover,
     Radio,
     Row,
     Select,
+    Slider,
     Space,
     Spin,
     Switch,
@@ -74,11 +77,14 @@ export function mountApp(component, elementSelector) {
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
+    app.use(List);
     app.use(Menu);
     app.use(Modal);
+    app.use(Popover);
     app.use(Radio);
     app.use(Row);
     app.use(Select);
+    app.use(Slider);
     app.use(Space);
     app.use(Spin);
     app.use(Switch);

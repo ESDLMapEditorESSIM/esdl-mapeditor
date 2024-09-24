@@ -366,7 +366,7 @@ class ESSIM:
                                 esdlstr_urlenc = result['esdlContents']
                                 esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
-                            res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                            res_es, parse_info = esh.load_external_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                     except Exception as e:
                         # print('Exception: ')
                         # print(e)
