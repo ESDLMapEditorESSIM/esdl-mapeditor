@@ -415,7 +415,13 @@ class ESDLServices:
                     # TODO deal with parse_info?
 
                     if "animation" in service["result"][0]:
-                        influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id)
+                        influxdb_host_override = None
+                        if "influxdb_host_override" in service["result"][0]["animation"]:
+                            influxdb_host_override = service["result"][0]["animation"]["influxdb_host_override"]
+                        influxdb_client = Profiles.connect_to_animation_profiles_database(
+                            es.id, es.id, influxdb_host_override
+                        )
+
                         try:
                             query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
                             collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
@@ -447,6 +453,7 @@ class ESDLServices:
                                     "calc_name": state_params["run_name"],
                                     "filter_tag_name": filter_tag_name,
                                     "filter_tag_value": filter_tag_value,
+                                    "influxdb_host_override": influxdb_host_override,
                                 },
                             )
                         except Exception as e:
@@ -465,6 +472,7 @@ class ESDLServices:
                             {
                                 "description": service["result"][0]["external_link"]["description"],
                                 "url": external_link_url,
+                                "es_id": es.id,
                             },
                         )
                     return True, None

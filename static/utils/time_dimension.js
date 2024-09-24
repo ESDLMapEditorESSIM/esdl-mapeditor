@@ -196,7 +196,7 @@ class TimeDimension {
         });
     }
 
-    initialize(database, filter_tag_name, filter_tag_value, networks = [], animation_column_name) {
+    initialize(database, filter_tag_name, filter_tag_value, networks = [], animation_column_name, influxdb_host_override = null) {
         time_dimension.removeGeoJSONLayers();
         show_loader();
         socket.emit('timedimension_initialize', {
@@ -204,7 +204,8 @@ class TimeDimension {
             filter_tag_name: filter_tag_name,
             filter_tag_value: filter_tag_value,
             networks: networks,
-            animation_column_name: animation_column_name
+            animation_column_name: animation_column_name,
+            influxdb_host_override: influxdb_host_override
         }, function (result) {
             if (result) {
                 var time_list = result;

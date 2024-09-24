@@ -743,7 +743,7 @@ class Profiles:
 
 
     @staticmethod
-    def connect_to_animation_profiles_database(es_id: str, database: str):
+    def connect_to_animation_profiles_database(es_id: str, database: str, host_override: str = None):
         # get influxdb host and port from first pipe/cable
         anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(
             es_id, [esdl.ElectricityCable, esdl.Pipe]
@@ -756,13 +756,15 @@ class Profiles:
             )
         elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
             profile = anim_profile_info_from_esdl[0]
+            influxdb_host = profile.host
+            if host_override:
+                influxdb_host = host_override
             credentials = Profiles.get_instance().determine_database_credentials(
-                profile.host, profile.port, profile.database
+                influxdb_host, profile.port, profile.database
             )
             if credentials:
                 influxdb_client = InfluxDBClient(
-                    host=profile.host,
-                    # host=profile.host,
+                    host=influxdb_host,
                     port=profile.port,
                     database=database,
                     username=credentials['username'],
@@ -770,7 +772,7 @@ class Profiles:
                 )
             else:
                 influxdb_client = InfluxDBClient(
-                    host=profile.host,
+                    host=influxdb_host,
                     port=profile.port,
                     database=database
                 )

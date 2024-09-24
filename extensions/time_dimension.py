@@ -111,7 +111,10 @@ class TimeDimension:
                 active_es_id = get_session("active_es_id")
                 set_session("active_es_id_animation", active_es_id)
                 set_session(
-                    "influxdb_connection", Profiles.connect_to_animation_profiles_database(active_es_id, database)
+                    "influxdb_connection",
+                    Profiles.connect_to_animation_profiles_database(
+                        active_es_id, database, info["influxdb_host_override"]
+                    ),
                 )
 
                 self.preprocess_data(networks)
@@ -461,7 +464,7 @@ class TimeDimension:
                     else:
                         unit = ""
 
-                    if abs(item[simulation_parameter]) > 1e-2:
+                    if item[simulation_parameter] and abs(item[simulation_parameter]) > 1e-2:
                         for coordinates in coordinates_segments:
                             feature_list.append(
                                 self.generate_timed_geojson_for_line(
