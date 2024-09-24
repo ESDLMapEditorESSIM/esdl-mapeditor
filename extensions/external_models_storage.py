@@ -21,6 +21,7 @@ from pymongo.database import Database
 import src.log as log
 from enum import Enum
 
+from src.settings import settings_storage_config
 from src.tno.mongo.core import mongo_client
 from src.tno.locking import NamedLocker
 
@@ -54,10 +55,11 @@ class ExternalModelsStorage:
     requires transactional guarantees.
     """
 
-    def __init__(self, named_locker: NamedLocker, database_uri: str = None, database: str = "esdl_external_models"):
+    def __init__(self, named_locker: NamedLocker, database_uri: str = None):
         logger.info("Setting up UserSettings with mongoDB")
         self.named_locker = named_locker
-        self.database = database
+        self.database = settings_storage_config["database"]
+        self.collection_name = settings_storage_config["external_models_collection"]
         try:
             # Either use the shared client, or create a specific client.
             if database_uri is None:
@@ -66,7 +68,8 @@ class ExternalModelsStorage:
             else:
                 logger.info("Connecting with specified Mongo database", database_uri=database_uri)
                 self.client = pymongo.MongoClient(database_uri)
-            self.db: Database = self.client[database]  # esdl_mapeditor_settings
+            db: Database = self.client[self.database]  # esdl_mapeditor_settings
+            self.collection = db[self.collection_name]
         except Exception as e:
             raise RuntimeError("Can't connect to MongoDB for UserSettings" + str(e)) from e
 
@@ -103,56 +106,71 @@ class ExternalModelsStorage:
         }
         if VALUE_UNSET in doc.keys():
             raise RuntimeError(f"Cannot save model run, unset required values: {doc.keys()}")
-        with self.named_locker.lock(model_name):
-            self.db[model_name].insert_one(doc)
+        with self.named_locker.lock(self.collection_name):
+            self.collection.insert_one(doc)
 
-    def get_model_run(self, model_name: str, run_id: str) -> dict:
+    def get_model_run(self, run_id: str) -> dict:
         """
         Get all data for a model run.
 
-        :param model_name: The name of the external model.
         :param run_id: The MapEditor run ID of the external model run.
         :return: External model run data
         """
-        with self.named_locker.lock(model_name):
-            model_run = self.db[model_name].find_one({"run_id": run_id}, projection={"_id": False})
+        with self.named_locker.lock(self.collection_name):
+            model_run = self.collection.find_one({"run_id": run_id}, projection={"_id": False})
         return model_run
 
-    def delete_model_run(self, model_name: str, run_id: str) -> dict:
+    def delete_model_run(self, run_id: str) -> dict:
         """
         Delete a model run from the database.
 
-        :param model_name: The name of the external model.
         :param run_id: The MapEditor run ID of the external model run.
         :return: Deleted model run data
         """
-        with self.named_locker.lock(model_name):
-            deleted_model_data = self.db[model_name].find_one_and_delete({"run_id": run_id}, projection={"_id": False})
+        with self.named_locker.lock(self.collection_name):
+            deleted_model_data = self.collection.find_one_and_delete({"run_id": run_id}, projection={"_id": False})
         return deleted_model_data
 
-    def get_model_runs_for_current_user(self, model_name: str, user_name: str, user_projects: list[str]) -> list:
+    def get_model_runs_for_current_user(self, user_name: str, user_projects: list[str], model_name: str = None) -> list:
         """
         Get all model runs for a user, including all runs for the supplied projects.
 
-        :param model_name: The name of the external model.
         :param user_name: The name of the user.
         :param user_projects: List of projects for which run will be extracted as well.
+        :param model_name: The name of the external model.
         :return: Deleted model run data
         """
-        with self.named_locker.lock(model_name):
-            myquery = {"$or": [{"user": user_name}, {"projects": {"$elemMatch": {"$in": user_projects}}}]}
-            models_cursor = self.db[model_name].find(myquery, projection={"_id": False})
+        with self.named_locker.lock(self.collection_name):
+            if model_name:
+                myquery = {
+                    "$and": [
+                        {"model_name": model_name},
+                        {
+                            "$or": [
+                                {"user": user_name},
+                                {"projects": {"$elemMatch": {"$in": user_projects}}},
+                            ]
+                        },
+                    ]
+                }
+            else:
+                myquery = {
+                    "$or": [
+                        {"user": user_name},
+                        {"projects": {"$elemMatch": {"$in": user_projects}}},
+                    ]
+                }
+            models_cursor = self.collection.find(myquery, projection={"_id": False})
         return list(models_cursor)
 
-    def update_model_run(self, model_name: str, run_id: str, updated_values: dict):
+    def update_model_run(self, run_id: str, updated_values: dict):
         """
         Update a model run in the database.
 
-        :param model_name: The name of the external model.
         :param run_id: The MapEditor run ID of the external model run.
         :param updated_values: Key-values which will be updated.
         """
-        return self.db[model_name].find_one_and_update(
+        return self.collection.find_one_and_update(
             {"run_id": run_id},
             {"$set": updated_values},
             projection={"_id": False},

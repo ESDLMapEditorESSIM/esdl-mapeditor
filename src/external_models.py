@@ -48,7 +48,7 @@ class ExternalModels:
 
             user = get_session("user-email")
             user_projects = get_session("user-group")
-            model_runs = self.em_storage.get_model_runs_for_current_user(model_name, user, user_projects)
+            model_runs = self.em_storage.get_model_runs_for_current_user(user, user_projects, model_name)
 
             for i_run, stored_run_data in enumerate(model_runs):
                 if RunStatus(stored_run_data["status"]) in [RunStatus.SUBMITTED, RunStatus.RUNNING]:
@@ -101,7 +101,7 @@ class ExternalModels:
                                 "%Y-%m-%d %H:%M:%S"
                             )
                             model_runs[i_run] = self.em_storage.update_model_run(
-                                model_name, stored_run_data["run_id"], updated_values
+                                stored_run_data["run_id"], updated_values
                             )
                     except Exception as e:
                         logger.warning(f"Error while getting external model run results: {str(e)}")
@@ -115,9 +115,8 @@ class ExternalModels:
             :param model_run_info: external model data.
             """
             logger.info(f"external_models_update_run: {model_run_info}")
-            model_name = model_run_info["model_name"]
             run_id = model_run_info["run_id"]
-            self.em_storage.update_model_run(model_name, run_id, model_run_info)
+            self.em_storage.update_model_run(run_id, model_run_info)
 
         @self.socketio.on("external_models_delete_run", namespace="/esdl")
         def external_models_delete_run(model_run_info) -> dict:
@@ -128,10 +127,9 @@ class ExternalModels:
             :return: Message with deleted run info.
             """
             logger.info(f"external_models_delete_run: {model_run_info}")
-            model_name = model_run_info["external_model_name"]
             run_id = model_run_info["run_id"]
 
-            deleted_run_data = self.em_storage.delete_model_run(model_name, run_id)
+            deleted_run_data = self.em_storage.delete_model_run(run_id)
 
             if "delete_result_url" in model_run_info:
                 url = parse_url_parameters(model_run_info["delete_result_url"], deleted_run_data)
@@ -139,7 +137,7 @@ class ExternalModels:
                     requests.delete(url)
                 except Exception as e:
                     logger.warning(f"Error while deleting external model run results: {str(e)}")
-            return {"message": f"{model_name} run '{deleted_run_data['run_name']}' deleted ok."}
+            return {"message": f"{deleted_run_data['model_name']} run '{deleted_run_data['run_name']}' deleted ok."}
 
         @self.socketio.on("external_models_get_run_text", namespace="/esdl")
         def external_models_get_run_text(model_run_info):
@@ -150,11 +148,10 @@ class ExternalModels:
             :return: Run details as text.
             """
             logger.info(f"external_models_get_run_text: {model_run_info}")
-            model_name = model_run_info["external_model_name"]
             run_id = model_run_info["run_id"]
-            model_run_data = self.em_storage.get_model_run(model_name, run_id)
+            model_run_data = self.em_storage.get_model_run(run_id)
 
-            text = f"<b>{model_name}</b> run details for: <b>{model_run_data['run_name']}</b><br>"
+            text = f"<b>{model_run_data['model_name']}</b> run details for: <b>{model_run_data['run_name']}</b><br>"
 
             top_keys = ["model_name", "run_name", "status", "user", "projects", "run_id"]
             omit_keys = ["input_esdl", "output_esdl", "get_result_config"]
@@ -179,9 +176,8 @@ class ExternalModels:
             :return: Run details as jsonforms dictionary.
             """
             logger.info(f"external_models_get_run_jsonforms: {model_run_info}")
-            model_name = model_run_info["external_model_name"]
             run_id = model_run_info["run_id"]
-            model_run_data = self.em_storage.get_model_run(model_name, run_id)
+            model_run_data = self.em_storage.get_model_run(run_id)
 
             user_projects = get_session("user-group")
             properties = {}

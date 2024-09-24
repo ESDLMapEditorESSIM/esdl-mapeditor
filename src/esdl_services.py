@@ -391,7 +391,7 @@ class ESDLServices:
                     return False, None
                 input_data = url_reponse.text
             elif "external_model" in service:  # get from external models database
-                input_data = self.models_storage.get_model_run(service["external_model"], state_params["run_id"])
+                input_data = self.models_storage.get_model_run(state_params["run_id"])
 
             if not url or url_reponse.status_code == 200 or url_reponse.status_code == 201:
                 if service["result"][0]["action"] == "esdl":
@@ -433,9 +433,7 @@ class ESDLServices:
                             filter_tag_name = None
                             filter_tag_value = None
                             if "filter_on_tag" in service["result"][0]["animation"]:
-                                model_run_data = self.models_storage.get_model_run(
-                                    service["external_model"], state_params["run_id"]
-                                )
+                                model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                                 filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
                                 filter_tag_value = get_nested_dict_value(
                                     model_run_data, service["result"][0]["animation"]["filter_on_tag"]["database_key"]
@@ -458,9 +456,7 @@ class ESDLServices:
                                 f"problem querying InfluxDB on host: '{influxdb_client._host}'"
                             )
                     if "external_link" in service["result"][0]:
-                        model_run_data = self.models_storage.get_model_run(
-                            service["external_model"], state_params["run_id"]
-                        )
+                        model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                         external_link_url = get_nested_dict_value(
                             model_run_data, service["result"][0]["external_link"]["database_key"]
                         )

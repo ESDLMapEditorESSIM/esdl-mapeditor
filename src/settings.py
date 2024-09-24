@@ -35,7 +35,8 @@ USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
     "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
-    "database": "esdl_mapeditor_settings"
+    "database": "esdl_mapeditor_settings",
+    "external_models_collection": "external_model_runs"
 }
 
 user_logging_config = {
