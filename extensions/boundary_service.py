@@ -454,6 +454,22 @@ class BoundaryService:
         transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
         transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
 
+        # Add capacity afname and invoeding as constraints
+        rc = esdl.RangedConstraint(id=str(uuid.uuid4()), name="capaciteit_afname_mva", attributeReference="power", range=
+                                   esdl.Range(maxValue=float(station_info["capaciteit_afname_mva"]),
+                                                    profileQuantityAndUnit=esdl.QuantityAndUnitType(
+                                                        physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                        multiplier=esdl.MultiplierEnum.MEGA,
+                                                        unit=esdl.UnitEnum.WATT)))
+        transformer.constraint.append(rc)
+        rc = esdl.RangedConstraint(id=str(uuid.uuid4()), name="totale_capaciteit_invoeding_mva", attributeReference="power",
+                                   range=esdl.Range(maxValue=float(station_info["totale_capaciteit_invoeding_mva"]),
+                                                    profileQuantityAndUnit=esdl.QuantityAndUnitType(
+                                                        physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                        multiplier=esdl.MultiplierEnum.MEGA,
+                                                        unit=esdl.UnitEnum.WATT)))
+        transformer.constraint.append(rc)
+
         return transformer
 
     def get_boundary_from_service(self, year, scope, id):
