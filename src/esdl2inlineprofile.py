@@ -48,12 +48,6 @@ class ESDL2InlineProfile:
             es_converted_resource.append(es_converted)
             es_converted_resource.save(uri)
 
-            # file_obj = uri.get_stream()
-            # response = make_response(file_obj.read())
-            # response.headers.set('Content-Type', 'application/esdl+xml')
-            # response.headers.set('Content-Disposition', 'attachment', filename='%s.esdl' % es_converted.name)
-            # return response
-
             content = uri.getvalue()
             headers = dict()
             headers['Content-Disposition'] = 'attachment; filename="{}"'.format(es_converted.name)
