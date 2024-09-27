@@ -36,3 +36,4 @@ pip-tools
 # DataManager
 Flask-SQLAlchemy
 sqlalchemy
+sqlalchemy_utils
