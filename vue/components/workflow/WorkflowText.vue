@@ -35,13 +35,13 @@ const handleData = (data) => {
 const doGetData = () => {
   if ("from_socket" in workflowStep.data) {
     const fromSocket = workflowStep.data.from_socket;
-    let params = fromSocket.params;
+    let params = "params" in fromSocket ? fromSocket.params : {};
     if ("state_params" in fromSocket) {
       for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
         params[key] = getFromState(state_key);
       }
     }
-    window.socket.emit(fromSocket.event, fromSocket.params, (res) => {
+    window.socket.emit(fromSocket.event, params, (res) => {
       handleData(res);
     });
   } else {

@@ -33,6 +33,24 @@ logger = log.get_logger(__name__)
 
 VALUE_UNSET = "<<Should be set>>"
 
+# items in an external model run doc
+USER = "user"
+PROJECTS = "projects"
+MODEL_NAME = "model_name"
+MODEL_JOB_ID = "model_job_id"
+RUN_ID = "run_id"
+RUN_NAME = "run_name"
+INPUT_ESDL = "input_esdl"
+OUTPUT_ESDL = "output_esdl"
+STATUS = "status"
+PROGRESS_FRACTION = "progress_fraction"
+PROGRESS_MESSAGE = "progress_message"
+LOGS = "logs"
+SUBMITTED_TO_EXTERNAL_MODEL_AT = "submitted_to_external_model_at"
+LAST_UPDATED_TO_EXTERNAL_MODEL_AT = "last_updated_from_external_model_at"
+MODEL_SPECIFIC_INPUT = "model_specific_input"
+MODEL_SPECIFIC_OUTPUT = "model_specific_output"
+
 
 class RunStatus(Enum):
     """Possible Run status."""
@@ -42,6 +60,7 @@ class RunStatus(Enum):
     SUCCEEDED = "SUCCEEDED"
     CANCELLED = "CANCELLED"
     ERROR = "ERROR"
+    INPUT_NEEDED = "INPUT_NEEDED"
 
 
 class ExternalModelsStorage:
@@ -81,8 +100,7 @@ class ExternalModelsStorage:
         input_esdl: str,
         run_input_data: dict,
         user_name: str,
-        get_result_config: dict,
-    ) -> None:
+    ) -> str:
         """
         Add an external model run to the database, a run ID will be created.
 
@@ -95,19 +113,19 @@ class ExternalModelsStorage:
         :param get_result_config: Information on how to check the job status and obtain the results.
         """
         doc = get_default_model_run_values() | {
-            "user": user_name,
-            "model_name": model_name,
-            "model_job_id": model_job_id,
-            "run_name": run_name,
-            "input_esdl": input_esdl,
-            "get_result_config": get_result_config,
-            "model_specific_input": run_input_data,
-            "model_specific_output": None,
+            USER: user_name,
+            MODEL_NAME: model_name,
+            MODEL_JOB_ID: model_job_id,
+            RUN_NAME: run_name,
+            INPUT_ESDL: input_esdl,
+            MODEL_SPECIFIC_INPUT: run_input_data,
+            MODEL_SPECIFIC_OUTPUT: None,
         }
         if VALUE_UNSET in doc.keys():
             raise RuntimeError(f"Cannot save model run, unset required values: {doc.keys()}")
         with self.named_locker.lock(self.collection_name):
             self.collection.insert_one(doc)
+        return doc[RUN_ID]
 
     def get_model_run(self, run_id: str) -> dict:
         """
@@ -117,7 +135,7 @@ class ExternalModelsStorage:
         :return: External model run data
         """
         with self.named_locker.lock(self.collection_name):
-            model_run = self.collection.find_one({"run_id": run_id}, projection={"_id": False})
+            model_run = self.collection.find_one({RUN_ID: run_id}, projection={"_id": False})
         return model_run
 
     def delete_model_run(self, run_id: str) -> dict:
@@ -128,7 +146,7 @@ class ExternalModelsStorage:
         :return: Deleted model run data
         """
         with self.named_locker.lock(self.collection_name):
-            deleted_model_data = self.collection.find_one_and_delete({"run_id": run_id}, projection={"_id": False})
+            deleted_model_data = self.collection.find_one_and_delete({RUN_ID: run_id}, projection={"_id": False})
         return deleted_model_data
 
     def get_model_runs_for_current_user(self, user_name: str, user_projects: list[str], model_name: str = None) -> list:
@@ -144,11 +162,11 @@ class ExternalModelsStorage:
             if model_name:
                 myquery = {
                     "$and": [
-                        {"model_name": model_name},
+                        {MODEL_NAME: model_name},
                         {
                             "$or": [
-                                {"user": user_name},
-                                {"projects": {"$elemMatch": {"$in": user_projects}}},
+                                {USER: user_name},
+                                {PROJECTS: {"$elemMatch": {"$in": user_projects}}},
                             ]
                         },
                     ]
@@ -156,8 +174,8 @@ class ExternalModelsStorage:
             else:
                 myquery = {
                     "$or": [
-                        {"user": user_name},
-                        {"projects": {"$elemMatch": {"$in": user_projects}}},
+                        {USER: user_name},
+                        {PROJECTS: {"$elemMatch": {"$in": user_projects}}},
                     ]
                 }
             models_cursor = self.collection.find(myquery, projection={"_id": False})
@@ -171,7 +189,7 @@ class ExternalModelsStorage:
         :param updated_values: Key-values which will be updated.
         """
         return self.collection.find_one_and_update(
-            {"run_id": run_id},
+            {RUN_ID: run_id},
             {"$set": updated_values},
             projection={"_id": False},
             upsert=False,
@@ -193,16 +211,16 @@ def get_default_model_run_values() -> dict:
 
     :return: Default new run values.
     """
-    return dict(
-        user=VALUE_UNSET,
-        projects=[],
-        model_name=VALUE_UNSET,
-        model_job_id=VALUE_UNSET,
-        run_id=str(uuid.uuid4()),
-        run_name=VALUE_UNSET,
-        input_esdl=VALUE_UNSET,
-        status=RunStatus.SUBMITTED.value,
-        progress_fraction=0,
-        submitted_to_external_model=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        last_update_from_external_model=None,
-    )
+    return {
+        USER: VALUE_UNSET,
+        PROJECTS: [],
+        MODEL_NAME: VALUE_UNSET,
+        MODEL_JOB_ID: VALUE_UNSET,
+        RUN_ID: str(uuid.uuid4()),
+        RUN_NAME: VALUE_UNSET,
+        INPUT_ESDL: VALUE_UNSET,
+        STATUS: RunStatus.SUBMITTED.value,
+        PROGRESS_FRACTION: 0,
+        SUBMITTED_TO_EXTERNAL_MODEL_AT: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        LAST_UPDATED_TO_EXTERNAL_MODEL_AT: None,
+    }

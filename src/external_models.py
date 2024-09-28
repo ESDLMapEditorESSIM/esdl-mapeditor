@@ -19,7 +19,8 @@ import requests
 from flask import Flask
 from flask_socketio import SocketIO
 
-from extensions.external_models_storage import ExternalModelsStorage, RunStatus
+from extensions.external_models_storage import ExternalModelsStorage, RunStatus, MODEL_NAME, RUN_NAME, STATUS, USER, \
+    PROJECTS, RUN_ID, INPUT_ESDL, OUTPUT_ESDL, LOGS, SUBMITTED_TO_EXTERNAL_MODEL_AT
 import src.log as log
 from extensions.session_manager import get_session
 
@@ -36,75 +37,20 @@ class ExternalModels:
     def register(self):
         logger.info("Registering ExternalModels")
 
-        @self.socketio.on("external_models_check_and_get_runs", namespace="/esdl")
-        def external_models_check_and_get_runs(model_run_info) -> list:
+        @self.socketio.on("get_external_model_runs_for_user", namespace="/esdl")
+        def get_external_model_runs_for_user(model_run_info) -> list:
             """
             Check if updated progress or new results are available and get runs for external model.
 
             :param model_run_info: external model data.
             """
-            logger.info(f"external_models_check_and_get_runs: {model_run_info}")
+            logger.info(f"get_external_model_runs_for_user: {model_run_info}")
             model_name = model_run_info["external_model_name"]
 
             user = get_session("user-email")
             user_projects = get_session("user-group")
             model_runs = self.em_storage.get_model_runs_for_current_user(user, user_projects, model_name)
 
-            for i_run, stored_run_data in enumerate(model_runs):
-                if RunStatus(stored_run_data["status"]) in [RunStatus.SUBMITTED, RunStatus.RUNNING]:
-                    url = parse_url_parameters(stored_run_data["get_result_config"]["url"], stored_run_data)
-
-                    get_result_config = stored_run_data["get_result_config"]
-                    result_esdl_encoding = get_result_config.get("esdl_encoding")
-                    result_status_param = get_result_config.get("status_param")
-                    result_output_esdl_param = get_result_config.get("output_esdl_param")
-                    result_logs_param = get_result_config.get("logs_param")
-                    result_save_params = get_result_config.get("save_additional_params")
-                    status_mapping = get_result_config.get("status_mapping")
-
-                    try:
-                        resp = requests.get(url)
-                        if resp.status_code == 200:
-                            new_run_data = resp.json()
-                            updated_values = dict(model_specific_output=dict())
-                            for doc_key, data_key in result_save_params.items():
-                                updated_values["model_specific_output"][doc_key] = new_run_data[data_key]
-                            # map external model status to mapeditor status
-                            if result_status_param:
-                                run_status = get_nested_dict_value(new_run_data, result_status_param)
-                                for status, model_status_values in status_mapping.items():
-                                    if run_status in model_status_values:
-                                        updated_values["status"] = status
-                                        break
-                            if (
-                                result_output_esdl_param
-                                and result_output_esdl_param in new_run_data
-                                and new_run_data[result_output_esdl_param]
-                            ):
-                                if result_esdl_encoding == "utf_8":
-                                    output_esdl = new_run_data[result_output_esdl_param]
-                                elif result_esdl_encoding == "base64_encoded":
-                                    esdlstr_bytes = new_run_data[result_output_esdl_param].encode("utf-8")
-                                    esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
-                                    output_esdl = esdlstr_base64_bytes.decode("utf-8")
-                                else:
-                                    raise NotImplementedError(
-                                        f"Result ESDL encoding '{result_esdl_encoding}' is not supported"
-                                    )
-
-                                updated_values["output_esdl"] = output_esdl
-
-                            if result_logs_param:
-                                updated_values["logs"] = get_nested_dict_value(new_run_data, result_logs_param)
-
-                            updated_values["last_update_from_external_model"] = datetime.now().strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            )
-                            model_runs[i_run] = self.em_storage.update_model_run(
-                                stored_run_data["run_id"], updated_values
-                            )
-                    except Exception as e:
-                        logger.warning(f"Error while getting external model run results: {str(e)}")
             return model_runs
 
         @self.socketio.on("external_models_update_run", namespace="/esdl")
@@ -115,7 +61,7 @@ class ExternalModels:
             :param model_run_info: external model data.
             """
             logger.info(f"external_models_update_run: {model_run_info}")
-            run_id = model_run_info["run_id"]
+            run_id = model_run_info[RUN_ID]
             self.em_storage.update_model_run(run_id, model_run_info)
 
         @self.socketio.on("external_models_delete_run", namespace="/esdl")
@@ -127,7 +73,7 @@ class ExternalModels:
             :return: Message with deleted run info.
             """
             logger.info(f"external_models_delete_run: {model_run_info}")
-            run_id = model_run_info["run_id"]
+            run_id = model_run_info[RUN_ID]
 
             deleted_run_data = self.em_storage.delete_model_run(run_id)
 
@@ -137,7 +83,7 @@ class ExternalModels:
                     requests.delete(url)
                 except Exception as e:
                     logger.warning(f"Error while deleting external model run results: {str(e)}")
-            return {"message": f"{deleted_run_data['model_name']} run '{deleted_run_data['run_name']}' deleted ok."}
+            return {"message": f"{deleted_run_data[MODEL_NAME]} run '{deleted_run_data[RUN_NAME]}' deleted ok."}
 
         @self.socketio.on("external_models_get_run_text", namespace="/esdl")
         def external_models_get_run_text(model_run_info):
@@ -148,21 +94,21 @@ class ExternalModels:
             :return: Run details as text.
             """
             logger.info(f"external_models_get_run_text: {model_run_info}")
-            run_id = model_run_info["run_id"]
+            run_id = model_run_info[RUN_ID]
             model_run_data = self.em_storage.get_model_run(run_id)
 
-            text = f"<b>{model_run_data['model_name']}</b> run details for: <b>{model_run_data['run_name']}</b><br>"
+            text = f"<b>{model_run_data[MODEL_NAME]}</b> run details for: <b>{model_run_data[RUN_NAME]}</b><br>"
 
-            top_keys = ["model_name", "run_name", "status", "user", "projects", "run_id"]
-            omit_keys = ["input_esdl", "output_esdl", "get_result_config"]
+            top_keys = [MODEL_NAME, RUN_NAME, STATUS, USER, PROJECTS, RUN_ID]
+            omit_keys = [INPUT_ESDL, OUTPUT_ESDL]
 
             for key in top_keys:
                 text += f"<br>{key}: <b>{pretty_print(model_run_data[key], '&emsp;')}</b>"
             for key, value in model_run_data.items():
-                if key not in top_keys + omit_keys + ["logs"]:
+                if key not in top_keys + omit_keys + [LOGS]:
                     text += f"<br>{key}: <b>{pretty_print(value, '&emsp;')}</b>"
-            if "logs" in model_run_data:
-                logs = model_run_data["logs"].replace("\n", "<br>")
+            if LOGS in model_run_data:
+                logs = model_run_data[LOGS].replace("\n", "<br>")
                 text += f"<br><br>logs:<br>{logs}<br>"
 
             return text
@@ -176,7 +122,7 @@ class ExternalModels:
             :return: Run details as jsonforms dictionary.
             """
             logger.info(f"external_models_get_run_jsonforms: {model_run_info}")
-            run_id = model_run_info["run_id"]
+            run_id = model_run_info[RUN_ID]
             model_run_data = self.em_storage.get_model_run(run_id)
 
             user_projects = get_session("user-group")
@@ -185,18 +131,18 @@ class ExternalModels:
             form_data = {}
             ui_elements = []
 
-            properties["run_name"] = dict(type="string", minLength=3, title="name")
-            required.append("run_name")
-            form_data["run_name"] = model_run_data["run_name"]
-            ui_elements.append(dict(type="Control", scope="#/properties/run_name"))
+            properties[RUN_NAME] = dict(type="string", minLength=3, title="name")
+            required.append(RUN_NAME)
+            form_data[RUN_NAME] = model_run_data[RUN_NAME]
+            ui_elements.append(dict(type="Control", scope=f"#/properties/{RUN_NAME}"))
 
-            properties["projects"] = dict(
-                type="array", title="Projects", uniqueItems=True, items=dict(type="string", enum=user_projects)
+            properties[PROJECTS] = dict(
+                type="array", title="projects", uniqueItems=True, items=dict(type="string", enum=user_projects)
             )
-            form_data["projects"] = model_run_data["projects"]
-            ui_elements.append(dict(type="Control", scope="#/properties/projects"))
+            form_data[PROJECTS] = model_run_data[PROJECTS]
+            ui_elements.append(dict(type="Control", scope=f"#/properties/{PROJECTS}"))
 
-            info_keys = ["model_name", "user", "status", "run_id", "submitted_at"]
+            info_keys = [MODEL_NAME, USER, STATUS, RUN_ID, SUBMITTED_TO_EXTERNAL_MODEL_AT]
             for key, value in model_run_data.items():
                 if key in info_keys:
                     properties[key] = dict(type="string", readOnly=True)
@@ -215,18 +161,24 @@ class ExternalModels:
 
 def get_nested_dict_value(dictionary: dict, nested_key: str):
     """
-    Get dictionary value from nested key in which consists of subsequent keys separated by a dot.
+    Get dictionary value from a nested key, which consists of subsequent keys separated by a dot.
 
     :param dictionary: dictionary to get value from.
     :param nested_key: nested key which consists of subsequent keys separated by a dot.
     :return: dictionary value of the nested key .
     """
     if "." not in nested_key:
-        return dictionary[nested_key]
+        if nested_key in dictionary:
+            return dictionary[nested_key]
+        else:
+            return None
     else:
         top_key = nested_key.split(".", 1)[0]
         new_key = nested_key.split(".", 1)[1]
-        return get_nested_dict_value(dictionary[top_key], new_key)
+        if top_key in dictionary:
+            return get_nested_dict_value(dictionary[top_key], new_key)
+        else:
+            return None
 
 
 def parse_url_parameters(url: str, data: dict) -> str:

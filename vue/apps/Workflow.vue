@@ -105,6 +105,10 @@
         v-else-if="workflowStep.type === WorkflowStepTypes.TEXT"
         :workflow-step="workflowStep"
       />
+      <WorkflowExternalModelMonitor
+        v-else-if="workflowStep.type === WorkflowStepTypes.EXTERNAL_MODEL_MONITOR"
+        :workflow-step="workflowStep"
+      />
       <WorkflowCustomComponent
         v-else-if="workflowStep.type === WorkflowStepTypes.CUSTOM"
         :workflow-step="workflowStep"
@@ -141,6 +145,7 @@ import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploa
 import {default as WorkflowHttpPost} from "@/components/workflow/WorkflowHttpPost";
 import {default as WorkflowProgress} from "@/components/workflow/WorkflowProgress";
 import {default as WorkflowText} from "@/components/workflow/WorkflowText";
+import {default as WorkflowExternalModelMonitor} from "@/components/workflow/WorkflowExternalModelMonitor.vue";
 import {default as WorkflowCustomComponent} from "@/components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm";
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";

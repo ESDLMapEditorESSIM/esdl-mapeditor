@@ -84,6 +84,7 @@ from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.external_models import ExternalModels
+from extensions.external_models_service import ExternalModelsService
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -219,6 +220,7 @@ TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 #DataManager(app, socketio)
+ExternalModelsService(app, socketio, executor, models_storage, esdl_services)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here
@@ -3161,6 +3163,11 @@ def default_error_handler(e):
     logger.error('Socket IO message: {}'.format(request.event["message"]))  # "my error event"
     logger.error('Socket IO arguments: {}'.format(request.event["args"]))
     traceback.print_exc()
+
+
+# with app.app_context():
+#     # start external model service
+#     start_external_models_service_thread(app)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

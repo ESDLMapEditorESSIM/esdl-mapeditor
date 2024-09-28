@@ -2,7 +2,7 @@
   <p v-if="isLoading">Loading data ...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-button type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
+      <a-button v-if="!autoRefresh" type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
         Reload
       </a-button>
       <a-table
@@ -50,7 +50,7 @@
 
 <script setup="props">
 
-import {ref, watch} from "vue";
+import {ref, watch, onUnmounted, onMounted} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api.js";
 
@@ -70,6 +70,7 @@ watch(workflowTrigger, (currentValue, oldValue) => {
 });
 
 const isLoading = ref(true);
+const autoRefresh = ref(true);
 const form = {};
 form[workflowStep.target_variable] = "";
 
@@ -116,17 +117,14 @@ const doAction = (record, action) => {
   }
 
   isLoading.value = true;
-  if ("from_socket" in action) {
-    let params = {};
-    if ("params" in action.from_socket) {
-      params = action.from_socket.params;
-    }
-    if ("record_params" in action.from_socket) {
-      for (const [key, record_key] of Object.entries(action.from_socket.record_params)) {
+  if ("to_socket" in action) {
+    let params = "params" in action.to_socket ? action.to_socket.params : {};
+    if ("record_params" in action.to_socket) {
+      for (const [key, record_key] of Object.entries(action.to_socket.record_params)) {
         params[key] = record[record_key];
       }
     }
-    window.socket.emit(action.from_socket.event, params, (res) => {
+    window.socket.emit(action.to_socket.event, params, (res) => {
       doGetData();
     });
   }
@@ -149,6 +147,7 @@ const actionEnabled = (action, row) => {
 };
 
 const doGetData = async () => {
+  console.log("DOGETDATA", workflowStep.source)
   if ("url" in workflowStep.source) {
     const data = await workflowGetData(workflowStep.source.url, getParamsFromState(workflowStep.source.request_params))
     handleData(data);
@@ -204,16 +203,46 @@ const handleData = (data) => {
   isLoading.value = false;
 };
 
+onMounted(() => {
+  init();
+  // if (autoRefresh.value) {
+  //   console.log("REFR INT ID INIT", refreshIntervalId)
+  //   clearInterval(refreshIntervalId);
+  //   // start_refresh_loop(1000 * workflowStep.source["refresh_interval_seconds"]);
+  // }
+
+  console.log("Registering socket io bindings for WorkflowTableQuery")
+  window.socket.on('run_ems_step', function (data) {
+    console.log('run_ems_step:', data);
+
+  });
+});
+
+onUnmounted(() => {
+  console.log("REFR INT ID UM", refreshIntervalId)
+  clearInterval(refreshIntervalId);
+});
+
+let refreshIntervalId;
+const start_refresh_loop = (interval_seconds) => {
+  console.log("REFRESH")
+  if (refreshIntervalId == null) {
+    refreshIntervalId = setInterval(doGetData, interval_seconds);
+    console.log("REFR INT ID SET", refreshIntervalId)
+  }
+};
+
 const init = () => {
   workflowStep = props.workflowStep;
+  autoRefresh.value = "refresh_interval_seconds" in workflowStep.source;
   workflowTrigger = props.workflowStep.workflowTrigger;
   doGetData();
 };
-init();
+
 
 const hide_jquery_ui_popup = () => {
   window.jquery(".ui-tooltip-content").parents('div').remove();
-}
+};
 
 </script>
 

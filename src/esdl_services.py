@@ -706,17 +706,18 @@ class ESDLServices:
 
                     user = get_session("user-email")
 
-                    self.models_storage.add_model_run(
+                    run_id = self.models_storage.add_model_run(
                         model_name=service["result"][0]["external_model_name"],
                         model_job_id=model_job_id,
                         run_name=run_name,
                         input_esdl=esdl_str,
                         run_input_data=parameters,
                         user_name=user,
-                        get_result_config=service["result"][0]["get_result_config"],
                     )
                     return True, {
                         "message": f"Run submitted: '{state_params['run_name']}'",
+                        "run_id": run_id,
+                        "model_job_id": model_job_id,
                         "hide_button": True,
                     }
             else:

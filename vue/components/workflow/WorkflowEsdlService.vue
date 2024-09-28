@@ -10,7 +10,7 @@
     <a-button v-if="workflowStep.service.button_label" type="primary" @click="goToPreviousStep()">
       {{ workflowStep.service.button_label }}
     </a-button>
-    <a-button v-else type="primary" @click="esdlWasLoaded()"> ESDL was loaded </a-button>
+    <a-button v-else type="primary" @click="esdlWasLoaded()"> ESDL was loaded</a-button>
   </div>
   <div v-else>
     <p v-if="workflowStep.service.description">
@@ -21,7 +21,7 @@
       and load the results.
     </p>
     <a-button v-if="!workflowStep.service.auto" type="primary" @click="clearLayersAndLoadEsdl">
-      <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }} </div>
+      <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }}</div>
       <div v-else>
         Run ESDL service
       </div>
@@ -32,10 +32,9 @@
 
 <script setup="props">
 import {setattrd} from "@/utils/utils";
- // more info on service_results_div @see esdl_services.js
 
-import { useWorkflow } from "@/composables/workflow";
-import { useEsdlLayers } from "@/composables/esdlLayers";
+import {useWorkflow} from "@/composables/workflow";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 
 const props = defineProps({
   workflowStep: {
@@ -46,9 +45,9 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getParamsFromState, goToPreviousStep, goToFirstStep, getState } = useWorkflow();
+const {getParamsFromState, goToPreviousStep, goToFirstStep, getState} = useWorkflow();
 const state = getState();
-const { clearEsdlLayers } = useEsdlLayers()
+const {clearEsdlLayers} = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
 
@@ -81,7 +80,15 @@ const loadEsdl = () => {
   }
 
   window.show_loader();
-  window.socket.emit("command", { cmd: "query_esdl_service", params: params });
+
+  if (workflowStep["next_step_external_models_service"]) {
+    params["main_service_id"] = workflowStep.main_service_id;
+    params["next_step_external_models_service"] = workflowStep.next_step_external_models_service;
+    window.socket.emit("ems_initialize_sequence", params);
+    window.hide_loader();
+  } else {
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params});
+  }
 };
 
 if (workflowStep.service.auto) {

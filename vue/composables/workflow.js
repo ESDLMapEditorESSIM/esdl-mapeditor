@@ -21,6 +21,7 @@ export const WorkflowStepTypes = Object.freeze({
     CALL_JS_FUNCTION: 'call_js_function',
     PROGRESS: 'progress',
     TEXT: 'text',
+    EXTERNAL_MODEL_MONITOR: 'external-model-monitor',
     // Custom component.
     CUSTOM: 'custom',
 });
@@ -319,12 +320,22 @@ export class Workflow {
                 // Step with a single next step.
                 targetStepIdx = nextStepData;
             }
+        } else if (typeof targetStepIdx === "string") {
+            targetStepIdx = this.getStepIdxFromReference(targetStepIdx);
         }
         if (targetStepIdx >= 0) {
             if (targetStepIdx !== this.activeWorkflowIndex) {
                 this.prevWorkflowSteps.push(this.activeWorkflowSteps);
             }
             this.setActiveWorkflowSteps(targetStepIdx);
+        }
+    }
+
+    getStepIdxFromReference(stepReference) {
+        for (const [index, step] of this.service.workflow.entries()) {
+            if ("reference" in step && step.reference === stepReference) {
+                return index;
+            }
         }
     }
 
@@ -351,13 +362,16 @@ export class Workflow {
         // to avoid infinite loop with auto_next_step
         this.workflowTrigger[RESET_WORKFLOW] = this.activeWorkflowIndex !== targetStepIdx;
         this.activeWorkflowIndex = targetStepIdx;
-        this.activeWorkflowSteps = [this.service.workflow[targetStepIdx]];
+        this.activeWorkflowSteps = [this.add_main_service_id(this.service.workflow[targetStepIdx])];
         if ("co_view_steps" in this.activeWorkflowSteps[0]) {
-            for (const stepIndex of this.activeWorkflowSteps[0].co_view_steps) {
+            for (let stepIndex of this.activeWorkflowSteps[0].co_view_steps) {
+                if (typeof stepIndex === "string") {
+                    stepIndex = this.getStepIdxFromReference(stepIndex);
+                }
                 if (stepIndex < targetStepIdx) {
-                    this.activeWorkflowSteps.unshift(this.service.workflow[stepIndex]);
+                    this.activeWorkflowSteps.unshift(this.add_main_service_id(this.service.workflow[stepIndex]));
                 } else {
-                    this.activeWorkflowSteps.push(this.service.workflow[stepIndex]);
+                    this.activeWorkflowSteps.push(this.add_main_service_id(this.service.workflow[stepIndex]));
                 }
             }
         }
@@ -365,5 +379,10 @@ export class Workflow {
         for (const step of this.activeWorkflowSteps) {
             step.workflowTrigger = this.workflowTrigger;
         }
+    }
+
+    add_main_service_id(step) {
+        step["main_service_id"] = this.service.id;
+        return step;
     }
 }

@@ -20,7 +20,7 @@ import {useWorkflow, RESET_WORKFLOW} from "@/composables/workflow";
 import {getJsonForm, postJsonForm} from "./utils/api";
 import {JsonForms} from "@jsonforms/vue";
 // eslint-disable-next-line no-unused-vars
-import {defaultStyles, mergeStyles, vanillaRenderers,} from "@jsonforms/vue-vanilla";
+import {vanillaRenderers,} from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
 
 const renderers = Object.freeze([...vanillaRenderers]);
@@ -94,10 +94,8 @@ const doGetData = async () => {
     updateData(getState()[workflowStep.data.from_state_variable]);
   } else if ("from_socket" in workflowStep.data) {
     const fromSocket = workflowStep.data.from_socket;
-    let params = {};
-    if ("params" in fromSocket) {
-      params = fromSocket.params;
-    }
+
+    let params = "params" in fromSocket ? fromSocket.params : {};
     if ("state_params" in fromSocket) {
       for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
         params[key] = getFromState(state_key);
@@ -162,7 +160,7 @@ const onSubmit = async () => {
       isLoading.value = false;
     }
   } else if ("to_socket" in workflowStep.data) {
-    window.socket.emit(workflowStep.data.to_socket.event, dataSubmitFormatted, (res) => {
+    window.socket.emit(workflowStep.data.to_socket.event, dataSubmitFormatted, () => {
       goToNextStep();
     });
   } else {
