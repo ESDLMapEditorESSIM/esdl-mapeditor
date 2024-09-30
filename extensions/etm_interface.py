@@ -351,7 +351,11 @@ class ETMSankeyToESDL:
 
         self.asset_to_carrier_mapping = {
             "ElectricityDemand": "Electricity",
-            "PVInstallation": "Electricity"
+            "PVInstallation": "Electricity",
+            "PVPark": "Electricity",
+            "EVChargingStation": "Electricity",
+            "WindTurbine": "Electricity",
+            "WindPark": "Electricity"
         }
         self.asset_to_sector_mapping = {
             "ElectricityDemand": {
@@ -746,8 +750,16 @@ class ETMSankeyToESDL:
             if isinstance(asset, esdl.Import):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
-                    this_carrier = asset.port[0].carrier
-                    self.carriers[this_carrier.name]["import"] += value
+                    try:
+                        this_carrier_name = asset.port[0].carrier.name
+                    except:
+                        if asset.eClass.name in self.asset_to_carrier_mapping:
+                            this_carrier_name = self.asset_to_carrier_mapping[asset.eClass.name]
+                        else:
+                            this_carrier_name = None
+
+                    if this_carrier_name:
+                        self.carriers[this_carrier_name]["import"] += value
 
         kpi_name = "Import per carrier [PJ]"
 
@@ -781,9 +793,9 @@ class ETMSankeyToESDL:
             elif isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
-                    sector = self.guess_sector_name(asset)
-                    if sector:
-                        cluster = self.sectors[sector]["cluster"]
+                    sector_name = self.guess_sector_name(asset)
+                    if sector_name:
+                        cluster = self.sectors[sector_name]["cluster"]
                         cluster_totals[cluster] += value
 
         kpi_name = "Clustered final demand [PJ]"
