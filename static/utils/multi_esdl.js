@@ -59,11 +59,18 @@ function select_active_layer_old() {
 }
 
 function select_active_layer(active_esdl_layer) {
+    if (!(active_esdl_layer in esdl_list)) {
+        console.log("Ignoring select active layer, as layers are not loaded yet in the frond-end");
+        return;
+    }
+    console.log("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
     draw_control = add_draw_control(draw_control, map);         // connect draw control to new active layer
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
+    update_area_legend();
+    update_building_legend();
     let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
     if (Object.keys(bounds).length !== 0) {
         map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
@@ -176,7 +183,12 @@ function create_new_esdl_layer(es_id, title) {
         sector_list: null,
         carrier_list: null,
         area_bld_list: null,
-        kpi_info: null
+        kpi_info: null,
+        area_kpi_list: null,
+        area_legend_choice: null,
+        area_dist_kpis_ranges: {},
+        building_kpi_list: null,
+        building_legend_choice: null
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -343,6 +355,46 @@ function set_sector_list(es_id, sector_list) {
 
 function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
+}
+
+function set_area_kpi_list(es_id, kpi_list) {
+    esdl_list[es_id].area_kpi_list = kpi_list;
+}
+
+function get_area_kpi_list(es_id) {
+    return esdl_list[es_id].area_kpi_list;
+}
+
+function set_area_dist_kpis_ranges(es_id, area_dist_kpis_ranges) {
+    esdl_list[es_id].area_dist_kpis_ranges = area_dist_kpis_ranges;
+}
+
+function get_area_dist_kpis_ranges(es_id) {
+    return esdl_list[es_id].area_dist_kpis_ranges;
+}
+
+function set_area_legend_choice(es_id, legend_choice) {
+    esdl_list[es_id].area_legend_choice = legend_choice;
+}
+
+function get_area_legend_choice(es_id) {
+    return esdl_list[es_id].area_legend_choice;
+}
+
+function set_building_kpi_list(es_id, kpi_list) {
+    esdl_list[es_id].building_kpi_list = kpi_list;
+}
+
+function get_building_kpi_list(es_id) {
+    return esdl_list[es_id].building_kpi_list;
+}
+
+function set_building_legend_choice(es_id, legend_choice) {
+    esdl_list[es_id].building_legend_choice = legend_choice;
+}
+
+function get_building_legend_choice(es_id) {
+    return esdl_list[es_id].building_legend_choice;
 }
 
 function get_carrier_style_class_name(carrier_mapping) {

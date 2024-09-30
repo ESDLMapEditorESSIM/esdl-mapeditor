@@ -17,6 +17,9 @@ const {socket} = useSocketIO();
 function setEsdlProject(responseProject) {
     console.log("Setting ESDL Project:", responseProject);
     esdlProject.value = responseProject;
+
+    // TODO: Fix syncing left and right layer actions
+    window.select_active_layer(responseProject.active_variant_id);
 }
 
 watchEffect(() => {
