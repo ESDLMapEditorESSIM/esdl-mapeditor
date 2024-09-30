@@ -1,9 +1,8 @@
 import unittest
 
-from esdl import esdl, GenericProducer, InPort, OutPort, GenericConsumer, HeatCommodity
-from esdl.processing.string_uri import StringURI
-from esdlproject.ChangeSerializer import deepcopy_eobject_change
-from esdlproject.ProjectManager import ProjectManager, resource_as_string
+from esdl import esdl
+from esdlproject import Variant
+from esdlproject.ProjectManager import ProjectManager
 from esdlproject.variant_api import create_new_variant, get_parent_variant
 from tests.test_utils import find_asset_in_es
 
@@ -136,6 +135,93 @@ class TestProjectManager(unittest.TestCase):
         id = v112.id
         v = pm.get_variant_by_id(id)
         self.assertTrue(v.id == id)
+
+
+
+    def test_propagate_changes_to_variants(self):
+        Variant.__repr__ = lambda x: f"Variant(name={x.name}, id={x.id})"
+        pm = ProjectManager()
+        main_variant = pm.active_variant
+        main_variant.name = "Main variant"
+        variant_2024 = create_new_variant(main_variant, variant_name="2024")
+        variant_2030 = create_new_variant(main_variant, variant_name="2030")
+        variant_2050 = create_new_variant(variant_2030, variant_name="2050")
+
+        es_main = pm.get_energy_system(main_variant)
+
+        stack_main = pm.get_undo_redo_stack(es_main)
+        stack_main.start_recording(label="Add PVP from main")
+        pv = esdl.PVPark(name="PVpark1 from main")
+        es_main.instance[0].area.asset.append(pv)
+        stack_main.stop_recording()
+
+        self.assertEqual(len(es_main.instance[0].area.asset), 1)
+        self.assertEqual(es_main.instance[0].area.asset[0].name, "PVpark1 from main")
+
+        pm.debug()
+
+        print(pm.change_tracker.trackers)
+
+        ####
+
+        pm.set_active_variant(variant_2024)
+        es_2024 = pm.get_energy_system(variant_2024)
+
+        stack_2024 = pm.get_undo_redo_stack(es_2024)
+        stack_2024.start_recording(label="Add WT for 2024")
+        wt = esdl.WindTurbine(name="WT1 for 2024")
+        es_2024.instance[0].area.asset.append(wt)
+        stack_2024.stop_recording()
+
+        self.assertEqual(len(es_2024.instance[0].area.asset), 2)
+        self.assertEqual(es_2024.instance[0].area.asset[0].name, "PVpark1 from main")
+        self.assertEqual(es_2024.instance[0].area.asset[1].name, "WT1 for 2024")
+
+        print("Current 2024 ES:")
+        print(pm.energy_system_to_string(es_2024.id))
+
+        #####
+        pm.set_active_variant(variant_2030)
+        es_2030 = pm.get_energy_system(variant_2030)
+
+        stack_2030 = pm.get_undo_redo_stack(es_2030)
+        stack_2030.start_recording(label="Add Bat for 2030")
+        bat = esdl.Battery(name="BT1 for 2030")
+        es_2030.instance[0].area.asset.append(bat)
+        stack_2030.stop_recording()
+
+        self.assertEqual(len(es_2030.instance[0].area.asset), 2)
+        self.assertEqual(es_2030.instance[0].area.asset[0].name, "PVpark1 from main")
+        self.assertEqual(es_2030.instance[0].area.asset[1].name, "BT1 for 2030")
+
+
+        print("Current 2030 ES:")
+        print(pm.energy_system_to_string(es_2030.id))
+
+        pm.set_active_variant(variant_2024)
+        print("Current 2024 ES:")
+        print(pm.energy_system_to_string(es_2024.id))
+
+        pm.set_active_variant(main_variant)
+        # add something to main and see how it propagates
+        stack_main.start_recording(label="Add PVP2 from main")
+        pv = esdl.PVPark(name="PVpark2 from main")
+        es_main.instance[0].area.asset.append(pv)
+        stack_main.stop_recording()
+
+        pm.set_active_variant(variant_2030)  # enable active variant, to update changes in parent
+
+        print("Current 2030 ES:")
+        print(pm.energy_system_to_string(es_2030.id))
+        es_2030 = pm.get_energy_system(variant_2030)   # refresh reference to es_2030, as snapshot has been regenerated
+        self.assertEqual(len(es_2030.instance[0].area.asset), 3)
+        self.assertEqual(es_2030.instance[0].area.asset[0].name, "PVpark1 from main")
+        self.assertEqual(es_2030.instance[0].area.asset[1].name, "PVpark2 from main")
+        self.assertEqual(es_2030.instance[0].area.asset[2].name, "BT1 for 2030")
+
+        pm.set_active_variant(variant_2024)
+
+        pm.debug()
 
 
 if __name__ == '__main__':

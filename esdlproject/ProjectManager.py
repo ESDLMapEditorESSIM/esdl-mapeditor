@@ -1,5 +1,4 @@
 import threading
-import traceback
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
@@ -8,6 +7,7 @@ from uuid import uuid4
 from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI, Resource
 
+import src.log as log
 from esdl import EnergySystem, esdl
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
@@ -17,8 +17,6 @@ from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
-
-import src.log as log
 
 logger = log.get_logger(__name__)
 
@@ -207,10 +205,11 @@ class ProjectManager:
         for key, value in dict(self.rset.resources).items():
             del self.rset.resources[key]
         self.change_tracker.reset()  # reset changetracker
-        #self.change_listeners.clear() # reset listeners
+        self.variant_activation_timestamps = {}
+        # TODO check if this is necessary, i dont think so: self.change_listeners.clear() # reset listeners
+
         self.project_resource = self.rset.create_resource(StringURI("Untitled ESDL project.project"))  # type: ignore
         self.project_resource.type = ProjectManagerResourceType.PROJECT
-        # self.active_resource = self.rset.create_resource(StringURI("active.esdl"))  # type: ignore
         self.project = ESDLProject(name="Untitled ESDL Project")
         self.project_resource.append(self.project)
         variantCollection = self.add_new_variant_collection(es_name, es_description, instance_name, top_area_name)
@@ -368,8 +367,8 @@ class ProjectManager:
                         parent_variant=parent_variant.name, variant=new_variant.name
                     )
 
-                    self.remove_variant_snapshot(new_variant)  # delete previous variant
-                    self.replay_parent_variant_changes(new_variant)
+                    self.remove_variant_snapshot(new_variant)  # delete previous variant snapshot
+                    self.replay_parent_variant_changes(new_variant)  # generate new snapshot based on parent changes
                     self.active_variant = new_variant
                     new_active_variant_changed = True
             self.active_variant = new_variant
@@ -389,6 +388,9 @@ class ProjectManager:
 
     def remove_variant_snapshot(self, variant):
         logger.info(f"Removing {variant.snapshotRef.eResource}")
+        tracker = self.change_tracker.get_tracker(resource=variant.snapshotRef.eResource)
+        if tracker is not None:
+            self.change_tracker.delete(tracker=tracker)
         self.rset.remove_resource(variant.snapshotRef.eResource)
         variant.snapshotRef = None
 
@@ -412,6 +414,8 @@ class ProjectManager:
         # add changes to stack, clear stack
         for parent_variant in variant_path_list:
             logger.info(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
+            # TODO: order of changes is based on order in the tree, instead of time, so first get all changes and sort them
+            # according to time.
             self.apply_variant_changes(parent_variant, variant_snapshot, False)
 
     def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
@@ -520,6 +524,13 @@ class ProjectManager:
                 del snapshot_resource.uuid_dict[es.id]  # remove energy system id, as that gets updated
             except KeyError:
                 pass
+            # make sure there is a change tracker for this snapshot
+            try:
+                tracker = self.change_tracker.get_tracker(eobj=variant.snapshotRef)
+                if tracker is None:
+                    self.change_tracker.new_tracker(variant=variant, eobj=variant.snapshotRef)
+            except ValueError:
+                self.change_tracker.new_tracker(variant=variant, eobj=variant.snapshotRef)
             return variant.snapshotRef
 
     def _delete_variant_recursive(self, variant: Variant):
@@ -664,6 +675,15 @@ class ProjectManager:
         :param uri: the URI to load the project from
         :return: the project object
         """
+
+        # clear current ResourceSet and trackers
+        for r_uri, resource in dict(self.rset.resources).items():
+            self.rset.remove_resource(resource)
+        # self.base_variant_resources.clear()
+        print("clean rset", self.rset.resources)
+        self.change_tracker.trackers.clear()
+        self.variant_activation_timestamps = {}
+
         # First check if the project is valid, so that we don't corrupt the project manager.
         potential_project_resource: XMLResource = self.rset.create_resource(uri)
         potential_project_resource.type = ProjectManagerResourceType.PROJECT
@@ -671,12 +691,6 @@ class ProjectManager:
         potential_project = potential_project_resource.contents[0]
         if not isinstance(potential_project, ESDLProject):
             raise Exception("The project is not a valid ESDL project.")
-
-        # clear current ResourceSet
-        for r_uri, resource in dict(self.rset.resources).items():
-            self.rset.remove_resource(resource)
-        # self.base_variant_resources.clear()
-        self.change_tracker.trackers.clear()
 
         filename = uri.plain
         logger.info(f"Loading {filename}")

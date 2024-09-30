@@ -11,24 +11,20 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from collections import UserList
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional, Any, List
 
+from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
 from pyecore.notification import EObserver, Notification, Kind
-from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute, EClass
 from pyecore.resources import Resource
-from pyecore.commands import Command, AbstractCommand
 
-from dataclasses import dataclass
-
+import esdlproject.esdlproject as ep
+import src.log as log
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo_pyecore_patch import patch_notification_system
-import esdlproject.esdlproject as ep
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
-
-import src.log as log
 from esdlproject.change_handler import undoChange, applyChange
 
 patch_notification_system()  # patch pyecores notification system, so notification are always send
@@ -42,13 +38,14 @@ class UndoRedoCommandStack:
     Use -1 to create an unlimited stack.
     change_handler is a callback function that receives a HighLevelChange when a new change is generated
     """
+
     def __init__(self, variant: ep.Variant, resource: XMLResource, max_stack_length: int = -1, change_handler=None):
         # The actual changes. Right now it is a list of pyEcore commands.
         self.variant = variant
-        self.resource = resource   # target resource to apply and undo changes to
+        self.resource = resource  # target resource to apply and undo changes to
         self.stack = variant.change
         # The location in the stack where the last currently active change is stored.
-        self.stack_index = len(self.stack) - 1  #-1
+        self.stack_index = len(self.stack) - 1  # -1
         self._recording = False
         self._combine_multiple_changes = True
         self._hlc: ep.HighLevelChange | None = None
@@ -148,8 +145,8 @@ class UndoRedoCommandStack:
             self.push(self._hlc)
 
             # Notify listeners in ProjectManger of this change
-            logger.debug('undo.py stop recording: self._hlc:', _hlc=self._hlc)
-            logger.debug('undo.py stop recording: self.top:', top=self.top)
+            logger.debug("undo.py stop recording: self._hlc:", _hlc=self._hlc)
+            logger.debug("undo.py stop recording: self.top:", top=self.top)
             if self.change_handler and call_change_handler:
                 logger.debug("Propagating changes to change handler")
                 self.change_handler(self.top)
@@ -178,7 +175,7 @@ class UndoRedoCommandStack:
         """
 
         if not self._recording:
-            logger.debug('Undo-redo: Ignoring change NOT RECORDING', abstract_change=abstract_change)
+            logger.debug("Undo-redo: Ignoring change NOT RECORDING", abstract_change=abstract_change)
             return
 
         if self._combine_multiple_changes:
@@ -190,14 +187,13 @@ class UndoRedoCommandStack:
             #         logger.debug('Ignore 2nd connectedTo', abstract_change)
             #         # todo add check if notifier is same as old
             #         return  # ignore 2nd controlStrategy/energyAsset bi-directional relation
-                # elif commands[-1].feature.name == 'controlStrategy' and self._compound[-1].feature.name == 'energyAsset' and \
-                #     commands[-1].owner == self._compound[-1].value:
-                #     logger.debug('Ignore ControlStrategy bi-directional relation')
+            # elif commands[-1].feature.name == 'controlStrategy' and self._compound[-1].feature.name == 'energyAsset' and \
+            #     commands[-1].owner == self._compound[-1].value:
+            #     logger.debug('Ignore ControlStrategy bi-directional relation')
             # only adding multiple commands to the compound
             logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
             self._hlc.change.append(abstract_change)
             return
-
 
         # for command in abstract_change:
         #     if not isinstance(command, LabelledAction):
@@ -209,11 +205,14 @@ class UndoRedoCommandStack:
         #             raise ValueError('Cannot execute command {}'.format(command))
 
         if len(self.stack) > self.stack_index:
-            logger.debug(f"TODO: overwrite stack because undo before and now overwrite of new change")
+            logger.debug(f"TESTING: overwrite stack because undo before and now overwrite of new change")
+            while len(self.stack) > self.stack_index + 1:
+                pop = self.stack.pop()  # remove changes after the stack index, because they are obsolete now
+                logger.debug(f"Popped {pop} from the stack, as it is obsolete")
 
         index = self.stack_index + 1
         self.stack.insert(index, abstract_change)
-        #self.stack[index] = abstract_change
+        # self.stack[index] = abstract_change
         self.stack_index = index
         self.last_changed = datetime.now()
         logger.debug(f"Pushed {abstract_change} to the stack")
@@ -232,10 +231,9 @@ class UndoRedoCommandStack:
             logger.debug("Cannot redo while recording combined commands")
             return
 
-
-        #self.next_top.redo()
+        # self.next_top.redo()
         if self.can_redo():
-            logger.debug('Redo', next_top=self.next_top)
+            logger.debug("Redo", next_top=self.next_top)
             with self.pause_recording():
                 if isinstance(self.next_top, ep.HighLevelChange):
                     for change in self.next_top.change:
@@ -258,8 +256,8 @@ class UndoRedoCommandStack:
         with self.pause_recording():
             abstract_change = self.top
             self.last_changed = datetime.now()
-            logger.debug('Undo', abstract_change=abstract_change)
-            #if self.top.can_undo:
+            logger.debug("Undo", abstract_change=abstract_change)
+            # if self.top.can_undo:
             if self.can_undo():
                 # self.top.undo()
                 if isinstance(self.top, ep.HighLevelChange):
@@ -279,8 +277,8 @@ class UndoRedoCommandStack:
             self._hlc.label = new_label
 
     def __repr__(self):
-        changes = '\n'.join([f"- {s}" for s in self.stack])
-        return f'<Stack len={len(self)}, index={self.stack_index}, change=\n{ changes }\n>'
+        changes = "\n".join([f"- {s}" for s in self.stack])
+        return f"<Stack len={len(self)}, index={self.stack_index}, change=\n{ changes }\n>"
 
 
 # def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
@@ -423,6 +421,7 @@ class UndoRedoCommandStack:
 
 post_process_list: List[Notification] = []
 
+
 def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notification):
     """
     Handles a notification from the pyEcore framework and creates a change for the UndoRedoCommandStack.
@@ -434,22 +433,25 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     """
 
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
-        logger.debug('=== convertNotificationToChange ====== !!! No eResource for', notification=notification)
+        logger.debug("=== convertNotificationToChange ====== !!! No eResource for", notification=notification)
         return
     if not stack.is_recording():  # ignore all notifications when not recording
-        #logger.debug('Ignoring ', notification)
+        # logger.debug('Ignoring ', notification)
         return
 
     if notification.old is None and notification.new is None:
-        #logger.debug('\ -- Ignoring (change=None)', notification)
+        # logger.debug('\ -- Ignoring (change=None)', notification)
         return
 
-    if (notification.kind == Kind.SET or notification.kind == Kind.UNSET) and \
-            isinstance(notification.feature, EReference) and notification.feature.eOpposite and \
-            notification.feature.eOpposite.containment:
+    if (
+        (notification.kind == Kind.SET or notification.kind == Kind.UNSET)
+        and isinstance(notification.feature, EReference)
+        and notification.feature.eOpposite
+        and notification.feature.eOpposite.containment
+    ):
         # bi-directional references generate 2 notifications, we can ignore the opposite that is not a containment relation
         # SET and UNSET operations (e.g. asset.area and port.energyasset)
-        #logger.debug("  \ -- Ignoring opposite setters for", f.name)
+        # logger.debug("  \ -- Ignoring opposite setters for", f.name)
         return
 
     change = None
@@ -464,13 +466,17 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         with stack.pause_recording():
             try:
                 value, value_x_refs = deepcopy_eobject_change(notification.new) if notification.new else (None, [])
-                previous_value, prev_value_x_refs = deepcopy_eobject_change(notification.old) if notification.old else (None, [])
+                previous_value, prev_value_x_refs = (
+                    deepcopy_eobject_change(notification.old) if notification.old else (None, [])
+                )
             except KeyError:
                 # object already removed from tree, ignore
                 logger.debug("\\ object alread removed from tree, ignore...")
                 return
 
-    logger.debug(f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} =============================")
+    logger.debug(
+        f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} ============================="
+    )
     if notification.kind == Kind.SET or notification.kind == Kind.UNSET:
         # f: EStructuralFeature = notification.feature
         # if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
@@ -481,17 +487,27 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         if isinstance(notification.feature, EReference):
             if notification.feature.containment:
                 if isinstance(previous_value, EObject):
-                    change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
-                                    objectValue=value, previousObjectValue=previous_value)
+                    change = ep.Set(
+                        ownerFragment=owner_fragment,
+                        feature=feature_name,
+                        objectValue=value,
+                        previousObjectValue=previous_value,
+                    )
                 else:
-                    change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
-                                    objectValue=value, previousValue=previous_value)
+                    change = ep.Set(
+                        ownerFragment=owner_fragment,
+                        feature=feature_name,
+                        objectValue=value,
+                        previousValue=previous_value,
+                    )
             else:
                 previous_value = notification.old.eURIFragment() if notification.old else None
-                change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
-                                objectFragment=notification.new.eURIFragment()
-                                if notification.kind == Kind.SET else None,
-                                previousValue=previous_value)
+                change = ep.Set(
+                    ownerFragment=owner_fragment,
+                    feature=feature_name,
+                    objectFragment=notification.new.eURIFragment() if notification.kind == Kind.SET else None,
+                    previousValue=previous_value,
+                )
         else:  # EAttribute
             previous_value = None
             if notification.new is None:
@@ -500,16 +516,24 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 string_value = notification.feature.eType.to_string(notification.new)
             if notification.old:
                 previous_value = notification.feature.eType.to_string(notification.old)
-            change = ep.Set(ownerFragment=owner_fragment, feature=feature_name,
-                            stringValue=string_value, previousValue=previous_value)
+            change = ep.Set(
+                ownerFragment=owner_fragment,
+                feature=feature_name,
+                stringValue=string_value,
+                previousValue=previous_value,
+            )
 
-    elif notification.kind == Kind.ADD: # add an item to a collection
+    elif notification.kind == Kind.ADD:  # add an item to a collection
         owner_fragment = notification.notifier.eURIFragment()
         # only .new is available
         if notification.feature.containment:
-            change = ep.Add(ownerFragment=owner_fragment, feature=feature_name, objectValue=value,
-                            objectFragment=notification.new.eURIFragment())
-            #change.objectValue_xrefs.extend(value_x_refs)
+            change = ep.Add(
+                ownerFragment=owner_fragment,
+                feature=feature_name,
+                objectValue=value,
+                objectFragment=notification.new.eURIFragment(),
+            )
+            # change.objectValue_xrefs.extend(value_x_refs)
         else:
             # this is a cross-reference
             if notification.new.eResource is None:
@@ -517,8 +541,9 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 if notification not in post_process_list:
                     post_process_list.append(notification)
             else:
-                change = ep.Add(ownerFragment=owner_fragment, feature=feature_name,
-                                objectFragment=notification.new.eURIFragment())
+                change = ep.Add(
+                    ownerFragment=owner_fragment, feature=feature_name, objectFragment=notification.new.eURIFragment()
+                )
                 value_x_refs = []  # don't need to include cross references here as this is the cross reference
 
     elif notification.kind == Kind.REMOVE:  # remove eobject from collection, only .old is available as previous value
@@ -547,25 +572,30 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             #
             # check if old_uri_fragment is valid, as sometimes an event comes too late and
             # old uri_fragment is "/" instead of the correct one.
-            #logger.debug(f"!!!!!!!!!!!!!!! missing container information, should be handled previously..., {f.eType.eClass} <-> {notification.notifier.eResource.resolve(old_uri_fragment).eClass}")
+            # logger.debug(f"!!!!!!!!!!!!!!! missing container information, should be handled previously..., {f.eType.eClass} <-> {notification.notifier.eResource.resolve(old_uri_fragment).eClass}")
             return
         # else:
         #     pass
 
         if notification.feature.containment:
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
-                change = ep.Delete(ownerFragment=owner_fragment, feature=feature_name, objectValue=previous_value,
-                                   objectFragment=old_uri_fragment)
+                change = ep.Delete(
+                    ownerFragment=owner_fragment,
+                    feature=feature_name,
+                    objectValue=previous_value,
+                    objectFragment=old_uri_fragment,
+                )
         else:  # remove a reference
-            change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name,
-                               objectFragment=old_uri_fragment)
+            change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name, objectFragment=old_uri_fragment)
             # TODO check if this is true:
             # if we remove a reference, we don't need to do a deepcopy and
             # we don't need to add x-refs
             prev_value_x_refs = []
             value_x_refs = []
 
-    elif notification.kind == Kind.REMOVE_MANY:  # remove eobject from collection, only .old is available as previous value
+    elif (
+        notification.kind == Kind.REMOVE_MANY
+    ):  # remove eobject from collection, only .old is available as previous value
         f = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             # bi-directional references generate 2 notifications, we can ignore the opposite
@@ -575,37 +605,43 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
                 for obj in notification.old:
                     copy, xrefs = deepcopy_eobject_change(value)
-                    change = ep.Delete(ownerFragment=owner_fragment, feature=feature_name, objectValue=copy,
-                                       objectFragment=obj.eURIFragment())
+                    change = ep.Delete(
+                        ownerFragment=owner_fragment,
+                        feature=feature_name,
+                        objectValue=copy,
+                        objectFragment=obj.eURIFragment(),
+                    )
                     change.previousValue_xrefs.extend(filterDoubleConnectedTo(xrefs))
                     # manually add multiple changes to the stack
                     stack.push(change)
                     change = None
         else:  # remove a reference
             for obj in notification.old:
-                change = ep.Remove(ownerFragment=owner_fragment, feature=feature_name,
-                                   objectFragment=obj.eURIFragment())
+                change = ep.Remove(
+                    ownerFragment=owner_fragment, feature=feature_name, objectFragment=obj.eURIFragment()
+                )
                 stack.push(change)
                 change = None
     else:
         logger.debug("Not converted notification: ", notification=notification)
 
-
-
     # add possible xrefs from a deepcopy
     if change:
         if len(value_x_refs) > 0:
             cleaned_change_list = filterDoubleConnectedTo(value_x_refs)
-            logger.debug(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-                  f"(removed {len(value_x_refs) - len(cleaned_change_list)} duplicates)")
+            logger.debug(
+                f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+                f"(removed {len(value_x_refs) - len(cleaned_change_list)} duplicates)"
+            )
             change.objectValue_xrefs.extend(cleaned_change_list)
         if len(prev_value_x_refs) > 0:
             cleaned_change_list = filterDoubleConnectedTo(prev_value_x_refs)
-            logger.debug(f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-                  f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)")
+            logger.debug(
+                f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+                f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)"
+            )
             change.previousValue_xrefs.extend(cleaned_change_list)
         stack.push(change)
-
 
     if len(post_process_list) > 0:
         if notification not in post_process_list:
@@ -628,7 +664,7 @@ def updateResourceUUIDdict(notification: Notification):
     f: EStructuralFeature = notification.feature
     value = notification.new
     if notification.kind == Kind.SET:
-        if isinstance(f, EAttribute) and f.iD is True and f.name == 'id':
+        if isinstance(f, EAttribute) and f.iD is True and f.name == "id":
             owner = notification.notifier
             resource: XMLResource = owner.eResource
             resource.uuid_dict[value] = owner
@@ -636,18 +672,18 @@ def updateResourceUUIDdict(notification: Notification):
     elif notification.kind == Kind.ADD:
         if isinstance(f, EReference) and f.containment and isinstance(value, EObject):
             # whole object is added: iterate though contents and add all ids
-            if hasattr(value, 'id'):
+            if hasattr(value, "id"):
                 value.eResource.uuid_dict[value.id] = value
                 logger.debug(f"|Updating UUID dict for {value}.id={value.id}")
             for obj in value.eAllContents():
-                if hasattr(obj, 'id'):
+                if hasattr(obj, "id"):
                     obj.eResource.uuid_dict[obj.id] = obj
                     logger.debug(f"|-Updating UUID dict for {obj}.id={obj.id}")
 
     elif notification.kind == Kind.UNSET:
-        if notification.old is not None and isinstance(f, EAttribute) and f.iD is True and f.name == 'id':
+        if notification.old is not None and isinstance(f, EAttribute) and f.iD is True and f.name == "id":
             owner = notification.notifier
-            resource:XMLResource = owner.eResource
+            resource: XMLResource = owner.eResource
             save_delete_dict_key_with_warning(resource.uuid_dict, notification.old.id)
             logger.debug(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
 
@@ -661,11 +697,11 @@ def updateResourceUUIDdict(notification: Notification):
             if not resource:
                 logger.debug(f"Can't update uuid_dict as no resource available: {notification}")
                 return
-            if hasattr(prev_values, 'id') and prev_values.id is not None:
+            if hasattr(prev_values, "id") and prev_values.id is not None:
                 save_delete_dict_key_with_warning(resource.uuid_dict, prev_values.id)
                 logger.debug(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
             for obj in prev_values.eAllContents():
-                if hasattr(obj, 'id') and obj.id is not None:
+                if hasattr(obj, "id") and obj.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
                     logger.debug(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
     elif notification.kind == Kind.REMOVE_MANY:
@@ -679,11 +715,11 @@ def updateResourceUUIDdict(notification: Notification):
                 logger.debug(f"Can't update uuid_dict as no resource available: {notification}")
                 return
             for prev_value in prev_values:
-                if hasattr(prev_value, 'id') and prev_value.id is not None:
+                if hasattr(prev_value, "id") and prev_value.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, prev_value.id)
                     logger.debug(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
                 for obj in prev_value.eAllContents():
-                    if hasattr(obj, 'id') and obj.id is not None:
+                    if hasattr(obj, "id") and obj.id is not None:
                         save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
                         logger.debug(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
     else:
@@ -726,9 +762,12 @@ class Tracker:
     stack: UndoRedoCommandStack
     observer: ResourceObserver
 
+    def __repr__(self):
+        return f"Tracker(resource={self.resource.uri.plain}, stack={self.stack}, observer={self.observer})"
+
 
 class ChangeTracker:
-    def __init__(self, change_handler = None):
+    def __init__(self, change_handler=None):
         """
 
         Parameters
@@ -759,7 +798,7 @@ class ChangeTracker:
         the change tracker data structure that is created for this.
 
         """
-        logger.info("Creating new tracker for variant change", variant_name=variant.name, resource=resource)
+        logger.info("Creating new ChangeTracker for variant ", variant_name=variant.name, resource=resource, eobj=eobj)
         if eobj:
             resource = eobj.eResource
         elif resource:
@@ -786,7 +825,7 @@ class ChangeTracker:
         if resource is None and eobj is not None:
             resource = eobj.eResource
         if resource is None:
-            raise Exception("Can't find stack for the resource of {} (of type {})".format(eobj, eobj.eClass.name))
+            raise ValueError("Can't find stack for the resource of {} (of type {})".format(eobj, eobj.eClass.name))
         for t in self.trackers:
             if t.resource == resource:
                 return t
@@ -805,17 +844,26 @@ class ChangeTracker:
             return tracker.stack
         raise ValueError("Can't find stack belonging to resource {} and object {}".format(resource.uri.plain, eobj))
 
-    def delete(self, stack):
+    def delete(self, stack:UndoRedoCommandStack = None, resource:XMLResource = None, tracker:Tracker = None):
         """
-        Deletes this stack and removes the listening of changes of this resource
+        Deletes this tracker and removes the listening of changes of this resource
+        Use or `stack` or `resource` or `tracker` as parameter
         """
-        for t in self.trackers:
+        if tracker:
+            logger.debug(f"Removing tracker {tracker}")
+            self.trackers.remove(tracker)
+            return
+
+        for t in list(self.trackers):
             t: Tracker = t
-            if t.stack is stack:
+            if (stack is not None and t.stack is stack) or (resource is not None and t.resource is resource):
+                logger.debug(f"Removing tracker {t}")
                 del t.stack
                 t.resource.listeners.remove(t.observer)
                 del t.observer
-                #del t.resource # needed?
+                del t.resource # needed?
+                self.trackers.remove(t)
+
 
     def reset(self):
         """
@@ -823,7 +871,7 @@ class ChangeTracker:
         -------
         """
         for t in list(self.trackers):
-            t:Tracker
+            t: Tracker
             # make sure all references to stack items are removed.
             t.stack.stack.clear()
             t.resource = None

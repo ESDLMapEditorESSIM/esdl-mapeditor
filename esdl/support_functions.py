@@ -16,9 +16,10 @@
 """
 Support functions for managing EObjects
 """
+import logging
+
 from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature, EProxy
 from pyecore.valuecontainer import ECollection
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def deepcopy(self, memo=None):
             eclass: EClass = k.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EReference):
-                    logger.debug("deepcopy: processing x-reference {}".format(x.name))
+                    #logger.debug("deepcopy: processing x-reference {}".format(x.name))
                     ref: EReference = x
                     orig_value: EStructuralFeature = k.eGet(ref)
                     if orig_value is None:
@@ -110,7 +111,7 @@ def deepcopy(self, memo=None):
                                     copy_ref_value = memo[orig_ref_value]
                                 except KeyError:
                                     fragment = orig_ref_value.eURIFragment()
-                                    logger.debug("deepcopy {}: processing x-reference {}: {}".format(self, x.name, fragment))
+                                    #logger.debug("deepcopy {}: processing x-reference {}: {}".format(self, x.name, fragment))
                                     logger.warning(f'Cannot find reference of type {orig_ref_value.eClass.name} for reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                     copy_ref_value = orig_ref_value
                                 eAbstractSet.append(copy_ref_value)
@@ -126,97 +127,97 @@ def deepcopy(self, memo=None):
     return copy
 
 
-def serialized_deepcopy(self, memo=None, resource=None):
-
-    """
-    Deep copying an EObject.
-    Does not work yet for copying references from other resources than this one.
-    """
-    if not resource:
-        resource = self.eResource
-    # logger.debug("deepcopy: processing {}".format(self))
-    first_call = False
-    if memo is None:
-        memo = dict()
-        first_call = True
-    if self in memo:
-        return memo[self]
-
-    copy: EObject = self.clone()
-    # logger.debug("Shallow copy: {}".format(copy))
-    eclass: EClass = self.eClass
-    for x in eclass.eAllStructuralFeatures():
-        if isinstance(x, EReference):
-            # logger.debug("deepcopy: processing reference {}".format(x.name))
-            ref: EReference = x
-            value = self.eGet(ref)
-            if value is None:
-                continue
-            if ref.containment:
-                if ref.many and isinstance(value, ECollection):
-                    # clone all containment elements
-                    eAbstractSet: ECollection = copy.eGet(ref.name)
-                    for ref_value in value:
-                        duplicate = ref_value.serialized_deepcopy(memo, resource)
-                        eAbstractSet.append(duplicate)
-                else:
-                    copy.eSet(ref.name, value.serialized_deepcopy(memo, resource))
-            # else:
-            #    # no containment relation, but a reference
-            #    # this can only be done after a full copy
-            #    pass
-    # now copy should a full copy, but without cross references
-
-    memo[self] = copy
-
-    if first_call:
-        # logger.debug("copying references")
-        for k, v in memo.items():
-            eclass: EClass = k.eClass
-            for x in eclass.eAllStructuralFeatures():
-                if isinstance(x, EReference):
-                    logger.debug("serialized deepcopy: processing x-reference {}".format(x.name))
-                    ref: EReference = x
-                    orig_value = k.eGet(ref)
-                    if orig_value is None:
-                        continue
-                    if not ref.containment:
-                        opposite = ref.eOpposite
-                        if opposite and opposite.containment:
-                            # do not handle eOpposite relations, they are handled automatically in pyEcore
-                            continue
-                        if x.many:
-                            eAbstractSet = v.eGet(ref.name)
-                            for orig_ref_value in orig_value:
-                                try:
-                                    copy_ref_value = memo[orig_ref_value]
-                                except KeyError:
-                                    fragment = orig_ref_value.eURIFragment()
-                                    logger.debug(
-                                        "serialized deepcopy {}: processing x-reference {}: {}".format(self, x.name, fragment))
-                                    print(
-                                        f'[W] Cannot find reference of type {orig_ref_value.eClass.name} for reference {k.eClass.name}.{ref.name} in deepcopy memo, using fragment {fragment}')
-                                    if fragment.startswith("//@baseVariant"):
-                                        copy_ref_value = orig_ref_value
-                                    else:
-                                        copy_ref_value = EProxy(path=fragment, resource=resource)
-
-                                eAbstractSet.append(copy_ref_value)
-                        else:
-                            try:
-                                copy_value = memo[orig_value]
-                            except KeyError:
-                                fragment = orig_value.eURIFragment()
-                                print(
-                                    f'[W] Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using fragment {fragment}')
-                                if fragment.startswith("//@baseVariant"):
-                                    copy_value = orig_value
-                                else:
-                                    copy_value = EProxy(path=fragment, resource=resource)
-                            v.eSet(ref.name, copy_value)
-
-    # copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
-    return copy
+# def serialized_deepcopy(self, memo=None, resource=None):
+#
+#     """
+#     Deep copying an EObject.
+#     Does not work yet for copying references from other resources than this one.
+#     """
+#     if not resource:
+#         resource = self.eResource
+#     # logger.debug("deepcopy: processing {}".format(self))
+#     first_call = False
+#     if memo is None:
+#         memo = dict()
+#         first_call = True
+#     if self in memo:
+#         return memo[self]
+#
+#     copy: EObject = self.clone()
+#     # logger.debug("Shallow copy: {}".format(copy))
+#     eclass: EClass = self.eClass
+#     for x in eclass.eAllStructuralFeatures():
+#         if isinstance(x, EReference):
+#             # logger.debug("deepcopy: processing reference {}".format(x.name))
+#             ref: EReference = x
+#             value = self.eGet(ref)
+#             if value is None:
+#                 continue
+#             if ref.containment:
+#                 if ref.many and isinstance(value, ECollection):
+#                     # clone all containment elements
+#                     eAbstractSet: ECollection = copy.eGet(ref.name)
+#                     for ref_value in value:
+#                         duplicate = ref_value.serialized_deepcopy(memo, resource)
+#                         eAbstractSet.append(duplicate)
+#                 else:
+#                     copy.eSet(ref.name, value.serialized_deepcopy(memo, resource))
+#             # else:
+#             #    # no containment relation, but a reference
+#             #    # this can only be done after a full copy
+#             #    pass
+#     # now copy should a full copy, but without cross references
+#
+#     memo[self] = copy
+#
+#     if first_call:
+#         # logger.debug("copying references")
+#         for k, v in memo.items():
+#             eclass: EClass = k.eClass
+#             for x in eclass.eAllStructuralFeatures():
+#                 if isinstance(x, EReference):
+#                     logger.debug("serialized deepcopy: processing x-reference {}".format(x.name))
+#                     ref: EReference = x
+#                     orig_value = k.eGet(ref)
+#                     if orig_value is None:
+#                         continue
+#                     if not ref.containment:
+#                         opposite = ref.eOpposite
+#                         if opposite and opposite.containment:
+#                             # do not handle eOpposite relations, they are handled automatically in pyEcore
+#                             continue
+#                         if x.many:
+#                             eAbstractSet = v.eGet(ref.name)
+#                             for orig_ref_value in orig_value:
+#                                 try:
+#                                     copy_ref_value = memo[orig_ref_value]
+#                                 except KeyError:
+#                                     fragment = orig_ref_value.eURIFragment()
+#                                     logger.debug(
+#                                         "serialized deepcopy {}: processing x-reference {}: {}".format(self, x.name, fragment))
+#                                     print(
+#                                         f'[W] Cannot find reference of type {orig_ref_value.eClass.name} for reference {k.eClass.name}.{ref.name} in deepcopy memo, using fragment {fragment}')
+#                                     if fragment.startswith("//@baseVariant"):
+#                                         copy_ref_value = orig_ref_value
+#                                     else:
+#                                         copy_ref_value = EProxy(path=fragment, resource=resource)
+#
+#                                 eAbstractSet.append(copy_ref_value)
+#                         else:
+#                             try:
+#                                 copy_value = memo[orig_value]
+#                             except KeyError:
+#                                 fragment = orig_value.eURIFragment()
+#                                 print(
+#                                     f'[W] Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using fragment {fragment}')
+#                                 if fragment.startswith("//@baseVariant"):
+#                                     copy_value = orig_value
+#                                 else:
+#                                     copy_value = EProxy(path=fragment, resource=resource)
+#                             v.eSet(ref.name, copy_value)
+#
+#     # copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+#     return copy
 
     # show deleted object from memory
     # setattr(EObject, '__del__', lambda x: print('Deleted {}'.format(x.eClass.name)))

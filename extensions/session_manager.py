@@ -11,18 +11,17 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import uuid
-
-from flask import session
-from datetime import datetime, timezone
-import threading
-import time
-
-import src.log as log
 import glob
 import os
+import threading
+import time
+import uuid
+from datetime import datetime, timezone
 
-from esdl.resources.json import JsonResource, JsonOptions
+from flask import session
+
+import src.log as log
+from esdl.resources.json import JsonOptions
 from esdlproject import HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage
@@ -30,11 +29,11 @@ from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
-ESH_KEY = 'esh'
-PM_KEY = 'pm'
-LAST_ACCESSED_KEY = 'last-accessed'
-SESSION_TIMEOUT = 60*60*24  # 1 day
-CLEANUP_INTERVAL = 60*60  # every hour
+ESH_KEY = "esh"
+PM_KEY = "pm"
+LAST_ACCESSED_KEY = "last-accessed"
+SESSION_TIMEOUT = 60 * 60 * 24  # 1 day
+CLEANUP_INTERVAL = 60 * 60  # every hour
 
 
 # def get_handler() -> EnergySystemHandler:
@@ -64,6 +63,7 @@ CLEANUP_INTERVAL = 60*60  # every hour
 #     logger.debug('Set ESH client_id={}'.format(client_id))
 #     set_session(ESH_KEY, esh)
 
+
 def on_change_recorded(change: HighLevelChange):
     """
     This function is called when a change is recorded on the UndoRedoCommandStack by adding this function
@@ -79,9 +79,9 @@ def on_change_recorded(change: HighLevelChange):
 
     """
     pm = get_project_manager()
-    pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
+    # pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
-    #options = {'encoder': DateTimeEncoder, 'indent': 2}
+    # options = {'encoder': DateTimeEncoder, 'indent': 2}
     options = {JsonOptions.INDENT: 2}
     hlc_string = eobject_to_string(change, ESDLFormat.JSON, options=options)
     logger.debug(f"Sending HighLevelChange: {hlc_string}")
@@ -94,8 +94,8 @@ def on_change_recorded(change: HighLevelChange):
     # resource.save(options=options)
     # hlc_string = uri.getvalue()
 
-    user_email = get_session('user-email')
-    client_id = session['client_id']
+    user_email = get_session("user-email")
+    client_id = session["client_id"]
     message = HighLevelChangeMessage(
         id=str(uuid.uuid4()),
         timestamp=datetime.now(timezone.utc),
@@ -113,19 +113,19 @@ def get_project_manager() -> ProjectManager:
     Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
     """
     global managed_sessions
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            logger.debug('Retrieve pm client_id={}'.format(client_id))
+            logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
-            logger.warning('No Project Manager in session. Returning empty project manager')
+            logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
             pm.add_change_listener("session_manager", on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
-        logger.warning('Session has timed-out. Returning empty project manager')
+        logger.warning("Session has timed-out. Returning empty project manager")
         pm = ProjectManager()
         pm.add_change_listener("session_manager", on_change_recorded)
         set_project_manager(pm)
@@ -140,31 +140,31 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            logger.debug('Retrieve pm client_id={}'.format(client_id))
+            logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
-            logger.warning('No Project Manager in session. Returning empty project manager')
+            logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
             pm.add_change_listener("session_manager", on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
-        logger.warning('Session has timed-out, no client_id available. ')
+        logger.warning("Session has timed-out, no client_id available. ")
         raise KeyError("Session has timed-out, no client_id available. ")
-        #pm = ProjectManager()
-        #pm.add_change_listener("session_manager", on_change_recorded)
-        #set_project_manager(pm)
-        #return pm
+        # pm = ProjectManager()
+        # pm.add_change_listener("session_manager", on_change_recorded)
+        # set_project_manager(pm)
+        # return pm
 
 
 def set_project_manager(pm: ProjectManager):
     global managed_sessions
-    client_id = session['client_id']
-    logger.debug('Set PM client_id={}'.format(client_id))
+    client_id = session["client_id"]
+    logger.debug("Set PM client_id={}".format(client_id))
     set_session(PM_KEY, pm)
 
 
 def valid_session():
-    if 'client_id' in session:
+    if "client_id" in session:
         return True
     return False
 
@@ -177,10 +177,10 @@ def set_session(key, value):
     :return:
     """
     global managed_sessions
-    if 'client_id' not in session:
-        logger.warning('No client_id for the session is available, cannot set value for key {}'.format(key))
+    if "client_id" not in session:
+        logger.warning("No client_id for the session is available, cannot set value for key {}".format(key))
         return
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
@@ -194,12 +194,12 @@ def get_session(key=None):
     :return:
     """
     global managed_sessions
-    if 'client_id' not in session:
-        logger.warning('No client id for the session is available, cannot return value for key {}'.format(key))
+    if "client_id" not in session:
+        logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
         return None
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
-        logger.warning('No client id in the managed_sessions is available, cannot return value for key {}'.format(key))
+        logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
         return None
     else:
         if key is None:
@@ -218,9 +218,9 @@ def del_session(key):
     :return:
     """
     global managed_sessions
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
-        logger.warning('No client id for the session is available, cannot return value for key {}'.format(key))
+        logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
         return None
     else:
         if key in managed_sessions[client_id]:
@@ -229,21 +229,21 @@ def del_session(key):
 
 def clean_up_sessions():
     global managed_sessions
-    logger.debug('Current Thread %s' % threading.currentThread().getName())
-    logger.info('Clean up sessions: current number of sessions: {}'.format(len(managed_sessions)))
+    logger.debug("Current Thread %s" % threading.currentThread().getName())
+    logger.info("Clean up sessions: current number of sessions: {}".format(len(managed_sessions)))
     for key in list(managed_sessions.keys()):  # make a copy of the keys in the list
         last_accessed = managed_sessions[key][LAST_ACCESSED_KEY]
         now = datetime.now()
         difference = (now - last_accessed).total_seconds()
         if difference > SESSION_TIMEOUT:
-            logger.info('Cleaning up session with client_id={}'.format(key))
+            logger.info("Cleaning up session with client_id={}".format(key))
             del managed_sessions[key]
 
 
 def schedule_session_clean_up():
     logger.info("Scheduling session clean-up thread every {} seconds".format(CLEANUP_INTERVAL))
     global managed_sessions
-    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name='Session-Cleanup-Thread')
+    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name="Session-Cleanup-Thread")
     clean_thread.start()
 
 
@@ -273,7 +273,7 @@ def set_session_for_esid(es_id, key, value):
 
 
 def delete_sessions_on_disk(path: str):
-    print('Cleaning up old sessions on disk...')
-    files = glob.glob(path + '/*')
+    print("Cleaning up old sessions on disk...")
+    files = glob.glob(path + "/*")
     for f in files:
         os.remove(f)

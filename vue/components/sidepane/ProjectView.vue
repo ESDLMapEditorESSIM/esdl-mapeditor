@@ -315,15 +315,14 @@ function get_base_layers_control_tree_data() {
 }
 
 function hideOtherVariantsInTree(node) {
-  // filter out variants (and not high level changes or others)
-  let parents = [];
-  for (const id of node.parents) {
-    let node_data = getTree().get_node(id);
-    if (node_data && node_data.type === 'variant') {
-      parents.push(id);
+  let checked_nodes = getTree().get_checked(true);
+  for(const checked_node of checked_nodes) {
+    if (checked_node.type === 'variant' && checked_node.id !== node.id) {
+      getTree().uncheck_node(checked_node.id);
+      hideEsdlLayerFromMap(checked_node.id);  
     }
   }
-  
+
   let children = [];
   for (const id of node.children) {
     let node_data = getTree().get_node(id);

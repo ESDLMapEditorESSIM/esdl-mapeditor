@@ -50,6 +50,8 @@ global_clusters = {
     "Industrie": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Industrie.edd", "profile_data": None},
     "Huishoudens": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Huishoudens.edd", "profile_data": None},
     "Mobiliteit": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Mobiliteit.edd", "profile_data": None},
+    "Wind": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Wind.edd", "profile_data": None},
+    "Zon": {"profile_ref": "/edr/Public/Profiles/Ruimte voor Energie/RvE_profiles_test - Zon.edd", "profile_data": None},
 }
 
 
@@ -165,7 +167,6 @@ class ETMInterface:
             area = pm.get_by_id(active_es_id, area_id)
 
             # Get profiles for all clusters from the EDR if not done already
-            emit("update-etm-query-log", f"Loading EDR cluster profiles...")
             self.get_edr_profiles()
 
             if area_id in self.municipalities_bld_info:
@@ -319,11 +320,13 @@ class ETMSankeyToESDL:
                 "Solar thermal": esdl.SolarCollector
             }}
         }
+
+        # Check: not sure if all clusters will be used. For now only Wind and Zon
         self.local_production_assets = {
-            "WindTurbine": {},
-            "PVInstallation": {},
-            "GeothermalSource": {},
-            "SolarCollector": {}
+            "WindTurbine": {"total": 0.0, "cluster": "Wind", "carrier": "Electricity"},
+            "PVInstallation": {"total": 0.0, "cluster": "Zon", "carrier": "Electricity"},
+            "GeothermalSource": {"total": 0.0, "cluster": "Warmte"},
+            "SolarCollector": {"total": 0.0, "cluster": "Warmte"},
         }
 
         self.carriers = {
@@ -335,16 +338,24 @@ class ETMSankeyToESDL:
             "Hydrogen": {"id": "etm_carrier_h2", "name": "Hydrogen", "carrier": None},
             "Liquid hydrogen": {"id": "etm_carrier_liquid_h2", "name": "Liquid hydrogen", "carrier": None},
             "LOHC": {"id": "etm_carrier_lohc", "name": "LOHC", "carrier": None},
+            "Methanol": {"id": "etm_carrier_methanol", "name": "Methanol", "carrier": None},
             "Natural gas": {"id": "etm_carrier_natural_gas", "name": "Natural gas", "carrier": None},
+            "Non-biogenic waste": {"id": "etm_carrier_non_biogenic_waste", "name": "Non-biogenic waste", "carrier": None},
+            "Not defined": {"id": "etm_carrier_not_defined", "name": "Not defined", "carrier": None},
             "Oil": {"id": "etm_carrier_oil", "name": "Oil", "carrier": None},
             "Solar thermal": {"id": "etm_carrier_solar_thermal", "name": "Solar thermal", "carrier": None},
             "Steam hot water": {"id": "etm_carrier_shw", "name": "Steam hot water", "carrier": None},
-            "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None}
+            "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None},
+            "Waste mix": {"id": "etm_carrier_waste_mix", "name": "Waste mix", "carrier": None}
         }
 
         self.asset_to_carrier_mapping = {
             "ElectricityDemand": "Electricity",
-            "PVInstallation": "Electricity"
+            "PVInstallation": "Electricity",
+            "PVPark": "Electricity",
+            "EVChargingStation": "Electricity",
+            "WindTurbine": "Electricity",
+            "WindPark": "Electricity"
         }
         self.asset_to_sector_mapping = {
             "ElectricityDemand": {
@@ -739,8 +750,16 @@ class ETMSankeyToESDL:
             if isinstance(asset, esdl.Import):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
-                    this_carrier = asset.port[0].carrier
-                    self.carriers[this_carrier.name]["import"] += value
+                    try:
+                        this_carrier_name = asset.port[0].carrier.name
+                    except:
+                        if asset.eClass.name in self.asset_to_carrier_mapping:
+                            this_carrier_name = self.asset_to_carrier_mapping[asset.eClass.name]
+                        else:
+                            this_carrier_name = None
+
+                    if this_carrier_name:
+                        self.carriers[this_carrier_name]["import"] += value
 
         kpi_name = "Import per carrier [PJ]"
 
@@ -774,9 +793,9 @@ class ETMSankeyToESDL:
             elif isinstance(asset, esdl.Consumer) and not isinstance(asset, esdl.Export) and not isinstance(asset, esdl.Losses):
                 value = self.get_profile_value_in_PJ(asset)
                 if value:
-                    sector = self.guess_sector_name(asset)
-                    if sector:
-                        cluster = self.sectors[sector]["cluster"]
+                    sector_name = self.guess_sector_name(asset)
+                    if sector_name:
+                        cluster = self.sectors[sector_name]["cluster"]
                         cluster_totals[cluster] += value
 
         kpi_name = "Clustered final demand [PJ]"
@@ -914,38 +933,107 @@ class ETMSankeyToESDL:
 
         area.KPIs.kpi.append(kpi)
 
-        self.calculate_power_based_on_energy(area, electricity_demand_per_cluster)
+        return electricity_demand_per_cluster
 
-    def calculate_power_based_on_energy(self, area, electricity_demand_per_cluster):
-        # Create hourly energy profiles for all clusters
-        energy_profiles = dict()
+    def add_electricity_production_kpi(self, area):
+        electricity_production_per_cluster = dict()
+
+        for asset in area.eAllContents():
+            electricity_production_asset = False
+            asset_class_name = asset.eClass.name
+            if asset_class_name in self.local_production_assets:
+                value = self.get_profile_value_in_PJ(asset)
+                if value:
+                    if (asset.port[0].carrier and asset.port[0].carrier.name == "Electricity") or \
+                        ("carrier" in self.local_production_assets[asset_class_name] and
+                         self.local_production_assets[asset_class_name]["carrier"] == "Electricity"):
+                        electricity_production_asset = True
+
+            if electricity_production_asset:
+                cluster_name = self.local_production_assets[asset_class_name]["cluster"]
+
+                if cluster_name in electricity_production_per_cluster:
+                    electricity_production_per_cluster[cluster_name] += value
+                else:
+                    electricity_production_per_cluster[cluster_name] = value
+
+        kpi_name = "Electricity production per cluster [PJ]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = esdl.QuantityAndUnitType(
+            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+            multiplier=esdl.MultiplierEnum.PETA,
+            unit=esdl.UnitEnum.JOULE
+        )
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for cluster_name, cluster_total in electricity_production_per_cluster.items():
+            if abs(electricity_production_per_cluster[cluster_name]) > 1e-6:
+                distr_item = esdl.StringItem(label=cluster_name, value=cluster_total)
+                kpi.distribution.stringItem.append(distr_item)
+
+        area.KPIs.kpi.append(kpi)
+
+        return electricity_production_per_cluster
+
+    def calculate_power_based_on_energy(self, area, electricity_demand_per_cluster, electricity_production_per_cluster):
+        # Create hourly energy demand profiles for all clusters
+        energy_demand_profiles = dict()
         for cluster_name, cluster_total in electricity_demand_per_cluster.items():
             if abs(electricity_demand_per_cluster[cluster_name]) > 1e-6:
                 if cluster_name in global_clusters:
-                    energy_profiles[cluster_name] = \
+                    energy_demand_profiles[cluster_name] = \
                         [electricity_demand_per_cluster[cluster_name] * x
                          for x in global_clusters[cluster_name]["profile_data"]]
 
-        # Calculate the max energy values over the year
-        peak_energy_per_hour = dict()
-        sum_vector = np.zeros(len(energy_profiles[list(energy_profiles.keys())[0]]))
-        for cluster_name, energy_values in energy_profiles.items():
+        # Calculate the max demand energy values over the year
+        peak_demand_energy_per_hour = dict()
+        sum_vector = np.zeros(len(energy_demand_profiles[list(energy_demand_profiles.keys())[0]]))
+        for cluster_name, energy_values in energy_demand_profiles.items():
             this_cluster_values = np.array(energy_values)
             sum_vector += this_cluster_values
-            peak_energy_per_hour[cluster_name] = this_cluster_values.max()
+            peak_demand_energy_per_hour[cluster_name] = this_cluster_values.max()
 
-        peak_energy_per_hour["Total"] = sum_vector.max()
+        peak_demand_energy_per_hour["Total"] = sum_vector.max()
 
-        # Add KPI with peak power value
-        kpi_name = "Peak power per cluster [MW]"
+        # Create hourly energy production profiles for all clusters
+        energy_production_profiles = dict()
+        for cluster_name, cluster_total in electricity_production_per_cluster.items():
+            if abs(electricity_production_per_cluster[cluster_name]) > 1e-6:
+                if cluster_name in global_clusters:
+                    energy_production_profiles[cluster_name] = \
+                        [electricity_production_per_cluster[cluster_name] * x
+                         for x in global_clusters[cluster_name]["profile_data"]]
+
+        # Calculate the max production energy values over the year
+        peak_production_energy_per_hour = dict()
+        if energy_production_profiles:
+            sum_vector = np.zeros(len(energy_production_profiles[list(energy_production_profiles.keys())[0]]))
+            for cluster_name, energy_values in energy_production_profiles.items():
+                this_cluster_values = np.array(energy_values)
+                sum_vector += this_cluster_values
+                peak_production_energy_per_hour[cluster_name] = this_cluster_values.max()
+
+            peak_production_energy_per_hour["Total"] = sum_vector.max()
+
+        # Add KPI with peak demand power value
+        kpi_name = "Peak demand power per cluster [MW]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
         kpi.quantityAndUnit = build_qau_from_unit_string("MW")
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
-        for cluster_name, peak_energy in peak_energy_per_hour.items():
+        for cluster_name, peak_energy in peak_demand_energy_per_hour.items():
             power = peak_energy / 3600 * 1e9
             distr_item = esdl.StringItem(label=cluster_name, value=float(power))
             kpi.distribution.stringItem.append(distr_item)
+        area.KPIs.kpi.append(kpi)
 
+        # Add KPI with peak production power value
+        kpi_name = "Peak production power per cluster [MW]"
+        kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
+        kpi.quantityAndUnit = build_qau_from_unit_string("MW")
+        kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
+        for cluster_name, peak_energy in peak_production_energy_per_hour.items():
+            power = peak_energy / 3600 * 1e9
+            distr_item = esdl.StringItem(label=cluster_name, value=float(power))
+            kpi.distribution.stringItem.append(distr_item)
         area.KPIs.kpi.append(kpi)
 
     def recalculate_kpis(self, area):
@@ -961,7 +1049,10 @@ class ETMSankeyToESDL:
         self.add_final_demand_per_sector_kpi(area)
         self.add_final_demand_per_carrier_kpi(area)
         self.add_import_per_carrier_kpi(area)
-        self.add_electricity_demand_per_sector_and_cluster_kpi(area)
+
+        electricity_demand_per_cluster = self.add_electricity_demand_per_sector_and_cluster_kpi(area)
+        electricity_production_per_cluster = self.add_electricity_production_kpi(area)
+        self.calculate_power_based_on_energy(area, electricity_demand_per_cluster, electricity_production_per_cluster)
 
     def replace_all_subarea_kpis(self, area):
         print(f"Handling {area.name}")

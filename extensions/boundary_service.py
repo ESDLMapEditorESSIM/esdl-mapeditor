@@ -191,6 +191,7 @@ class BoundaryService:
             add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
             add_service_area_info = info["add_service_area_info"]
             add_station_info = info["add_station_info"]
+            use_capacity_data_for = info["use_capacity_data_for"]
 
             if not is_valid_boundary_id(identifier):
                 send_alert("Not a valid identifier. Try identifiers like PV27 (Noord-Holland) or GM0060 (Ameland)")
@@ -339,7 +340,10 @@ class BoundaryService:
 
             if add_station_info:
                 stations = self.get_station_from_service(
-                    esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+                    use_capacity_data_for,
+                    esdl.AreaScopeEnum.from_string(str.upper(scope)),
+                    str.upper(identifier)
+                )
                 if stations:
                     print(f"BoundaryService: stations: {stations}")
                     stations_dict = {}
@@ -450,6 +454,22 @@ class BoundaryService:
         transformer.port.append(esdl.InPort(id=str(uuid.uuid4()), name="In"))
         transformer.port.append(esdl.OutPort(id=str(uuid.uuid4()), name="Out"))
 
+        # Add capacity afname and invoeding as constraints
+        rc = esdl.RangedConstraint(id=str(uuid.uuid4()), name="capaciteit_afname_mva", attributeReference="power", range=
+                                   esdl.Range(maxValue=float(station_info["capaciteit_afname_mva"]),
+                                                    profileQuantityAndUnit=esdl.QuantityAndUnitType(
+                                                        physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                        multiplier=esdl.MultiplierEnum.MEGA,
+                                                        unit=esdl.UnitEnum.WATT)))
+        transformer.constraint.append(rc)
+        rc = esdl.RangedConstraint(id=str(uuid.uuid4()), name="totale_capaciteit_invoeding_mva", attributeReference="power",
+                                   range=esdl.Range(maxValue=float(station_info["totale_capaciteit_invoeding_mva"]),
+                                                    profileQuantityAndUnit=esdl.QuantityAndUnitType(
+                                                        physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                        multiplier=esdl.MultiplierEnum.MEGA,
+                                                        unit=esdl.UnitEnum.WATT)))
+        transformer.constraint.append(rc)
+
         return transformer
 
     def get_boundary_from_service(self, year, scope, id):
@@ -525,8 +545,9 @@ class BoundaryService:
         else:
             return None
 
-    def get_station_from_service(self, scope, scope_id):
+    def get_station_from_service(self, delta_year, scope, scope_id):
         """
+         :param delta_year: delta of the year for which the data must be obtained (can be 0 (current), 3, 5, or 10)
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
          :param id: the identifier of the 'scope'
          :return: list of stations in the indicated 'scope'
@@ -536,7 +557,7 @@ class BoundaryService:
 
             try:
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                      settings.boundaries_config["path_service_areas"] + '/station/' + \
+                      settings.boundaries_config["path_service_areas"] + '/station/' + str(delta_year) + '/' + \
                       boundary_service_mapping[scope.name] + '/' + scope_id
                 r = requests.get(url)
                 if len(r.text) > 0:
