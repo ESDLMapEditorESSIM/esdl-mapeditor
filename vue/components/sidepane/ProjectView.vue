@@ -48,7 +48,7 @@ const {
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject} = useESDLProjects();
 const {socket} = useSocketIO();
-const {disableEsdl, enableEsdl, enabledEsdlIdList, esdlList} = useEsdlLayers();
+const {disableEsdl, enableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap, esdlList} = useEsdlLayers();
 
 const treeId = "project_tree"
 const $ = window.$;
@@ -319,26 +319,9 @@ function hideOtherVariantsInTree(node) {
   for(const checked_node of checked_nodes) {
     if (checked_node.type === 'variant' && checked_node.id !== node.id) {
       getTree().uncheck_node(checked_node.id);
-      hideEsdlLayerFromMap(checked_node.id);  
+      hideEsdlLayerFromMap(checked_node.id);
     }
   }
-
-  let children = [];
-  for (const id of node.children) {
-    let node_data = getTree().get_node(id);
-    if (node_data && node_data.type === 'variant') {
-      children.push(id);
-    }
-  }
-  
-  for(const es_id of children) {
-    getTree().uncheck_node(es_id);
-    disableEsdl(es_id);
-  }
-  for(const es_id of parents) {
-    getTree().uncheck_node(es_id);
-    disableEsdl(es_id);
-  }  
 }
 
 function selectOnlyOneBaseLayer(node) {

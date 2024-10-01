@@ -50,14 +50,17 @@ function getLayerType(layer) {
  * This function ensures that related layers are grouped together.
  */
 const groupVisibleLayers = () => {
-    console.log("Grouping visible layers");
     const grouped = {};
+
+    // Create a map of current group order
+    const currentGroupOrder = visibleLayerGroups.value.reduce((acc, group, index) => {
+        acc[group.id] = index;
+        return acc;
+    }, {});
 
     visibleLayerList.value.forEach((layer) => {
         const layerType = getLayerType(layer);
         if (layerType === VisibleLayerType.ESDL) {
-            // Group all layers with the same es_id
-            console.log(layer)
             const groupId = layer.es_id;
             if (!grouped[groupId]) {
                 grouped[groupId] = {
@@ -66,21 +69,21 @@ const groupVisibleLayers = () => {
                     item: layer.es,
                     description: layer.es.title,
                     layers: [],
-                    visible: true, // Group visibility can toggle all layers
+                    visible: true,
                 };
             }
             grouped[groupId].layers.push(layer);
         } else {
-            // WMS layers are not grouped, add them individually
             if (!grouped[layer.id]) {
                 grouped[layer.id] = layer;
             }
         }
     });
-    console.log("Grouped layers", grouped);
 
-    // Convert grouped object into an array of groups
-    visibleLayerGroups.value = Object.values(grouped);
+    // Convert grouped object into an array of groups and sort by current order
+    visibleLayerGroups.value = Object.values(grouped).sort((a, b) => {
+        return (currentGroupOrder[a.id] ?? Infinity) - (currentGroupOrder[b.id] ?? Infinity);
+    });
 };
 
 
@@ -267,6 +270,7 @@ export function useVisibleLayers(map, socket) {
      * Add visible layer to the list.
      */
     const addToVisibleLayerList = (layer, index) => {
+        console.log("Adding layer to visible layer list", layer);
         // Check if a layer with this ID already exists in the list. If so, give a warning and do not add it.
         if (visibleLayerList.value.find(l => l.id === layer.id)) {
             console.warn(`Layer with ID ${layer.id} is already in the visible layer list. Not adding it again.`);
@@ -298,6 +302,13 @@ export function useVisibleLayers(map, socket) {
             }
         )
     };
+
+    function updateGroupOrder(newOrder) {
+        const reorderedGroups = newOrder.map(groupId => {
+            return visibleLayerGroups.value.find(group => group.id === groupId);
+        });
+        visibleLayerGroups.value = reorderedGroups;
+    }
 
     const layerIsVisible = (layerId) => {
         for (const visibleLayer of visibleLayerList.value) {
@@ -452,6 +463,7 @@ export function useVisibleLayers(map, socket) {
         removeFromVisibleLayerList,
         addToVisibleLayerList,
         updateDisplayOrderVisibleLayers,
+        updateGroupOrder,
         getLayerType,
         layerIsVisible,
         hideVisibleLayer,

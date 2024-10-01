@@ -30,40 +30,34 @@
             <!-- Group Item -->
             <div v-for="group in layerGroups" :key="group.id" class="layer-group-item">
               <!-- Group Header with Collapse Toggle, Visibility, and Hamburger Menu -->
-              <div class="group-header">
-                <div class="group-info">
-                  <i class="fas" :class="group.collapsed ? 'fa-chevron-right' : 'fa-chevron-down'" @click="toggleCollapse(group)" />
-                  <div class="group-visibility-toggle" @click="toggleGroupVisibility(group.id)">
-                    <i :class="group.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
-                  </div>
+              <div class="group-header" @click="toggleExpanded(group)">
+                <div class="layer-info">
                   <span>{{ group.description }}</span>
-                </div>
-                <!-- Group Hamburger Menu -->
-                <div class="group-actions">
-                  <i class="fas fa-bars" @click="toggleActionMenu(group.id)" />
-                  <div v-if="activeMenu === group.id" class="action-menu">
-                    <ul>
-                      <li @click="hideAllLayersInGroup(group.id)">Hide All Layers</li>
-                      <li @click="removeGroup(group.id)">Remove Group</li>
-                    </ul>
+                  <div class="layer-info-right">
+                    <div class="group-visibility-toggle" @click="toggleGroupVisibility(group.id)">
+                      <i :class="group.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
+                    </div>
+                    <i class="fas" :class="isGroupExpanded(group.id) ? 'fa-chevron-down' : 'fa-chevron-right'" />
                   </div>
                 </div>
               </div>
 
               <!-- Individual Layers in Group -->
-              <draggable v-if="!group.collapsed" v-model="group.layers" group="layers" @end="onEndDragLayer(group.id)">
+              <draggable v-if="isGroupExpanded(group.id)" v-model="group.layers" group="layers" @end="onEndDragLayer(group.id)">
                 <div v-for="layer in group.layers" :key="layer.id" class="layer-item">
                   <div class="layer-info">
-                    <div class="visibility-toggle" @click="toggleLayerVisibility(layer)">
-                      <i :class="layer.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
-                    </div>
                     <span class="layer-text">{{ getLayerDescription(layer) }}</span>
-                    <div class="layer-actions">
-                      <i class="fas fa-bars" @click="toggleActionMenu(layer.id)" />
-                      <div v-if="activeMenu === layer.id" class="action-menu">
-                        <ul>
-                          <li @click="removeLayer(layer.id)">Remove Layer</li>
-                        </ul>
+                    <div class="layer-info-right">
+                      <div class="visibility-toggle" @click.stop="toggleLayerVisibility(layer)">
+                        <i :class="layer.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
+                      </div>
+                      <div class="layer-actions">
+                        <i class="fas fa-bars" @click="toggleActionMenu(layer.id)" />
+                        <div v-if="activeMenu === layer.id" class="action-menu">
+                          <ul>
+                            <li @click="removeLayer(layer.id)">Remove Layer</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -99,8 +93,11 @@ const {
   showVisibleLayer,
   hideAllVisibleLayers,
   getLayerType,
+    updateGroupOrder,
+    updateDisplayOrderVisibleLayers,
 } = useVisibleLayers();
 
+const expandedGroups = ref([]);
 
 const esdlLayerNameMap = {
   "esdl_layer": "Assets",
@@ -116,11 +113,18 @@ const esdlLayerNameMap = {
 const selectedLayerId = ref('');
 const activeMenu = ref('');
 
+/**
+ * Computes the visible layer groups.
+ * @returns {Array} List of visible layer groups.
+ */
 const layerGroups = computed(() => {
   return getVisibleLayerGroups();
 });
 
-// Toggle visibility of an individual layer
+/**
+ * Toggles the visibility of an individual layer.
+ * @param {Object} layer - The layer object to toggle visibility.
+ */
 const toggleLayerVisibility = (layer) => {
   if (layer.visible) {
     hideVisibleLayer(layer.id);
@@ -129,65 +133,89 @@ const toggleLayerVisibility = (layer) => {
   }
 };
 
-// Remove a layer
+/**
+ * Removes a layer by its ID.
+ * @param {string} id - The ID of the layer to be removed.
+ */
 const removeLayer = (id) => {
   hideVisibleLayer(id);
 };
 
-// Handle drag and drop for groups
+/**
+ * Handles drag-and-drop reordering for groups.
+ * @param {Object} evt - The event object from the drag-and-drop action.
+ */
 const onEndDrag = (evt) => {
-  const movedGroup = layerGroups.value[evt.newIndex];
-  // Logic to handle drag-and-drop reordering for groups
+  console.log(layerGroups.value)
+  console.log(evt)
+  const newOrder = layerGroups.value.map(group => group.id);
+  console.log(newOrder);
+  // updateGroupOrder(group, evt.newIndex);
 };
 
-// Handle drag and drop for layers within a group
+/**
+ * Handles drag-and-drop reordering for layers within a group.
+ * @param {string} groupId - The ID of the group that contains the layers.
+ * @returns {Function} A function to handle the drag-and-drop event for layers.
+ */
 const onEndDragLayer = (groupId) => (evt) => {
   const movedLayer = layerGroups.value.find((group) => group.id === groupId).layers[evt.newIndex];
+  updateDisplayOrderVisibleLayers()
   // Logic to handle drag-and-drop reordering for layers within a group
 };
 
-// Close opacity popover
+/**
+ * Closes the layer opacity popover.
+ */
 const closeLayerOpacityPopover = () => {
   selectedLayerId.value = '';
 };
 
-// Hide all visible layers
+/**
+ * Hides all visible layers.
+ */
 const hideAllLayers = () => {
   hideAllVisibleLayers();
 };
 
-// Hide all layers in a specific group
-const hideAllLayersInGroup = (groupId) => {
-  const group = layerGroups.value.find((g) => g.id === groupId);
-  if (group) {
-    group.layers.forEach((layer) => hideVisibleLayer(layer.id));
-  }
-};
-
-// Remove a group
-const removeGroup = (groupId) => {
-  const group = layerGroups.value.find((g) => g.id === groupId);
-  if (group) {
-    group.layers.forEach((layer) => hideVisibleLayer(layer.id));
-  }
-};
-
-// Toggle the action menu (hamburger menu)
+/**
+ * Toggles the visibility of the action menu (hamburger menu).
+ * @param {string} id - The ID of the layer for which the action menu is toggled.
+ */
 const toggleActionMenu = (id) => {
   activeMenu.value = activeMenu.value === id ? '' : id;
 };
 
-// Toggle the collapse state of a group
-const toggleCollapse = (group) => {
-  group.collapsed = !group.collapsed;
+/**
+ * Toggles the expanded state of a group.
+ * @param {Object} group - The group object to toggle expansion.
+ */
+const toggleExpanded = (group) => {
+  expandedGroups.value = expandedGroups.value.includes(group.id)
+      ? expandedGroups.value.filter((id) => id !== group.id)
+      : [...expandedGroups.value, group.id];
 };
 
+/**
+ * Checks if a group is expanded.
+ * @param {string} groupId - The ID of the group to check.
+ * @returns {boolean} True if the group is expanded, false otherwise.
+ */
+const isGroupExpanded = (groupId) => {
+  return expandedGroups.value.includes(groupId);
+};
+
+/**
+ * Returns a description for the given visible layer based on its type.
+ * @param {Object} visibleLayer - The layer object.
+ * @returns {string} The description of the layer.
+ */
 const getLayerDescription = (visibleLayer) => {
   if (getLayerType(visibleLayer) === VisibleLayerType.WMS) {
     return visibleLayer.description;
   } else if (getLayerType(visibleLayer) === VisibleLayerType.ESDL) {
     const esdlLayerName = esdlLayerNameMap[visibleLayer.layer_type] || 'Unknown Layer';
-    return visibleLayer.es.title + ' - ' + esdlLayerName;
+    return esdlLayerName;
   } else {
     console.error("Unknown layer type", visibleLayer);
     return "Unknown Layer";
@@ -211,6 +239,12 @@ const getLayerDescription = (visibleLayer) => {
   padding: 8px;
   border-bottom: 1px solid #ddd;
   font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.group-header:hover {
+  background-color: #d8d8d8;
 }
 
 .layer-item {
@@ -229,9 +263,17 @@ const getLayerDescription = (visibleLayer) => {
   cursor: pointer;
 }
 
-.group-info {
+.layer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.layer-info-right {
   display: flex;
   align-items: center;
+  margin-left: auto;
 }
 
 .group-actions, .layer-actions {
@@ -275,4 +317,4 @@ const getLayerDescription = (visibleLayer) => {
 .hide-all-btn:hover {
   background-color: #ddd;
 }
-</style>
+</style

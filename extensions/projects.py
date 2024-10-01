@@ -211,4 +211,5 @@ def rename_variant(message: RenameVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
     variant.name = message["name"]
+    variant.snapshotRef.name = message["name"]
     send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
