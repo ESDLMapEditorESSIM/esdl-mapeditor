@@ -223,7 +223,6 @@ app.config.update({
     'TESTING': True,
     'DEBUG': True,
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
-    'OIDC_REQUIRE_VERIFIED_EMAIL': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
     'OIDC_SCOPES': ['openid', 'email', 'profile', 'groups', 'microprofile-jwt'],
