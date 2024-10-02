@@ -7,8 +7,8 @@ from pyecore.resources import ResourceSet
 
 from esdl.esdl_handler import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
-from esdl.esdl import Building, EnergySystemInformation, Port, OutPort, InPort, EnergySystem, InfluxDBProfile, \
-    TimeSeriesProfile, ProfileReference, GenericProfile
+from esdl.esdl import EnergySystemInformation, Port, OutPort, InPort, EnergySystem, InfluxDBProfile, \
+    TimeSeriesProfile, ProfileReference, GenericProfile, Asset
 from extensions.profiles import Profiles
 from extensions.session_manager import get_session, get_handler
 import src.log as log
@@ -31,9 +31,12 @@ class ESDL2InlineProfile:
             es = esh.get_energy_system(es_id=active_es_id)
 
             # Create copy of energy system so we do not convert the original
-            es_copy = copy.deepcopy(es)
+            # TODO: I don't know why copy.deepcopy(es) does not work. Maybe it works in a later version of pyesdl?
+            # es_copy = copy.deepcopy(es)
+            es_string = esh.to_string(es_id=active_es_id)
+            es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
             es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
-            es_copy.id = str(uuid4())
+            # es_copy.id = str(uuid4())
 
             with self.flask_app.app_context():
                 profiles_settings = Profiles.get_instance().get_profiles_settings()
@@ -57,7 +60,7 @@ class ESDL2InlineProfile:
     @staticmethod
     def convert_esdl_profiles(
         es: EnergySystem,
-        profiles_settings: Dict[str, object],
+        profiles_settings: dict[str, object],
     ) -> EnergySystem:
         esi: EnergySystemInformation = es.energySystemInformation
 
@@ -65,50 +68,42 @@ class ESDL2InlineProfile:
         # TODO: for some reason not all global (InfluxDBProfile) profiles are found and thus not removed
         logger.info("Removing InfluxDBProfiles from global profiles")
         global_profiles = esi.profiles.profile
-        for profile in global_profiles:
-            logger.debug(f"Checking profile '{profile.name}' with type '{type(profile)}'")
-            if isinstance(profile, InfluxDBProfile):
-                logger.debug(f"Removing InfluxDBProfile '{profile.name}' from global profiles")
-                esi.profiles.profile.remove(profile)
+        influxdb_profiles = [profile for profile in global_profiles if isinstance(profile, InfluxDBProfile)]
+        for profile in influxdb_profiles:
+            logger.debug(f"Removing InfluxDBProfile '{profile.name}' from global profiles")
+            esi.profiles.profile.remove(profile)
 
-        handled_profiles: Dict[str, TimeSeriesProfile] = {}
+        handled_profiles: dict[str, TimeSeriesProfile] = {}
 
         # Convert profiles for each port in each asset in each building
-        for building in es.instance[0].area.asset:
-            if not isinstance(building, Building):
-                continue
-
-            logger.info(f"Converting profiles for building '{building.name}'")
-
-            for asset in building.asset:
-                logger.debug(f"Converting profiles for asset '{asset.name}'")
-
-                in_port: Optional[InPort] = next((
-                    port
-                    for port
-                    in asset.port
-                    if isinstance(port, InPort) and port.name == "In"
-                ), None)
-
-                if in_port is not None:
-                    ESDL2InlineProfile.convert_profile_for_port(esi, in_port, handled_profiles, profiles_settings)
-
-                out_port: Optional[OutPort] = next((
-                    port
-                    for port
-                    in asset.port
-                    if isinstance(port, OutPort) and port.name == "Out"
-                ), None)
-
-                if out_port is not None:
-                    ESDL2InlineProfile.convert_profile_for_port(esi, out_port, handled_profiles, profiles_settings)
-
-            # TODO: other ports in building?
-
-        # TODO: convert profiles for assets not in building?
-
+        for asset in es.instance[0].area.asset:
+            ESDL2InlineProfile.convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
         logger.info("Finished converting ESDL to in-line profiles")
         return es
+
+    @staticmethod
+    def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_profiles: dict[str, TimeSeriesProfile], profiles_settings: dict[str, object]):
+        """
+        Convert profiles for all ports in the asset. Recursively convert profiles for all sub-assets.
+        """
+        ilog = logger.bind(asset_id=asset.id, asset_name=asset.name)
+        ilog.debug("Converting profiles for asset")
+
+        if hasattr(asset, 'port'):
+            ilog.debug("Converting profiles for ports")
+            in_ports = [port for port in asset.port if isinstance(port, InPort)]
+
+            for in_port in in_ports:
+                ESDL2InlineProfile.convert_profile_for_port(esi, in_port, handled_profiles, profiles_settings)
+
+            out_ports = [port for port in asset.port if isinstance(port, OutPort)]
+            for out_port in out_ports:
+                ESDL2InlineProfile.convert_profile_for_port(esi, out_port, handled_profiles, profiles_settings)
+
+        if hasattr(asset, 'asset'):
+            ilog.debug("Recursively converting profiles for sub-assets", asset_id=asset.id, asset_name=asset.name)
+            for asset in asset.asset:
+                ESDL2InlineProfile.convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
 
     @staticmethod
     def convert_profile_for_port(
@@ -122,9 +117,9 @@ class ESDL2InlineProfile:
             if prof.name not in handled_profiles:
                 influxdb_settings = None
                 for prof_server in profiles_settings["profiles_servers"]:
-                    if prof_server["host"] in prof.host and prof_server["port"] == str(prof.port):
+                    if ((prof_server["host"] == "localhost" and prof.host == "http://influxdb") or prof_server["host"] in prof.host) and prof_server["port"] == str(prof.port):
                         influxdb_settings = ConnectionSettings(
-                            host=prof.host,
+                            host=prof_server["host"],
                             port=prof.port,
                             database=prof.database,
                             username=prof_server["username"],
