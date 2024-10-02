@@ -92,12 +92,45 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     enetwork_internal.port.append(enetwork_internal_outport)
     es.instance[0].area.asset.append(enetwork_internal)
 
+    # Create ElectricityCables for levering and teruglevering.
+    electr_cable_teruglevering = esdl.ElectricityCable(
+        id=str(uuid.uuid4()), name="Teruglevering Energy Hub", capacity=1e12
+    )
+    ect_inport = esdl.InPort(
+        id=str(uuid.uuid4()),
+        name="In",
+        carrier=carrier_internal,
+        connectedTo=[enetwork_internal_outport],
+    )
+    ect_outport = esdl.OutPort(
+        id=str(uuid.uuid4()), name="Out", carrier=carrier_internal,
+    )
+    electr_cable_teruglevering.port.append(ect_inport)
+    electr_cable_teruglevering.port.append(ect_outport)
+    es.instance[0].area.asset.append(electr_cable_teruglevering)
+
+    electr_cable_levering = esdl.ElectricityCable(
+        id=str(uuid.uuid4()), name="Levering Energy Hub", capacity=1e12
+    )
+    ecl_inport = esdl.InPort(
+        id=str(uuid.uuid4()), name="In", carrier=carrier_internal
+    )
+    ecl_outport = esdl.OutPort(
+        id=str(uuid.uuid4()),
+        name="Out",
+        carrier=carrier_internal,
+        connectedTo = [enetwork_internal_inport],
+    )
+    electr_cable_levering.port.append(ecl_inport)
+    electr_cable_levering.port.append(ecl_outport)
+    es.instance[0].area.asset.append(electr_cable_levering)
+
     # Create two GenericConversion assets, one for levering and one for teruglevering.
     terug_conv = esdl.GenericConversion(
         id=str(uuid.uuid4()),
         name="Teruglevering Energy Hub",
         efficiency=1.0,
-        power=1000000.0,
+        power=1e12,
     )
     dbs = esdl.DrivenBySupply(
         id=str(uuid.uuid4()),
@@ -111,7 +144,7 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
         id=str(uuid.uuid4()),
         name="Levering Energy Hub",
         efficiency=1.0,
-        power=1000000.0,
+        power=1e12,
     )
     dbd = esdl.DrivenByDemand(
         id=str(uuid.uuid4()),
@@ -128,14 +161,14 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
     # to the electricity network.
     # For levering, the inport is connected to the electricity network, the outport to the energy hub buildings through
     # the internal network.
-    terug_conv_inport = esdl.InPort(id=str(uuid.uuid4()), carrier=carrier_internal)
-    terug_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier)
+    terug_conv_inport = esdl.InPort(id=str(uuid.uuid4()), carrier=carrier_internal, connectedTo=[ect_outport])
+    terug_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier, connectedTo=[enetwork_inport])
     terug_conv.port.append(terug_conv_inport)
     terug_conv.port.append(terug_conv_outport)
     dbs.inPort = terug_conv_inport
 
-    levering_conv_inport = esdl.InPort(id=str(uuid.uuid4()), carrier=carrier)
-    levering_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier_internal)
+    levering_conv_inport = esdl.InPort(id=str(uuid.uuid4()), carrier=carrier, connectedTo=[enetwork_outport])
+    levering_conv_outport = esdl.OutPort(id=str(uuid.uuid4()), carrier=carrier_internal, connectedTo=[ecl_inport])
     levering_conv.port.append(levering_conv_inport)
     levering_conv.port.append(levering_conv_outport)
     levering_conv_ci = esdl.CostInformation()
@@ -146,14 +179,6 @@ def generate_energy_hub(es: esdl.EnergySystem, building_ids: list[str]) -> esdl.
 
     dbs.inPort = terug_conv_inport
     dbd.outPort = levering_conv_outport
-
-    # Connect the InPorts and OutPorts of the GenericConversions to the InPort and OutPort of the ElectricityNetwork
-    terug_conv_outport.connectedTo.append(enetwork_inport)
-    levering_conv_inport.connectedTo.append(enetwork_outport)
-
-    # Connect the InPort and Outports of the GenericConversions to the InPort and OutPort of the internal ElectricityNetwork
-    terug_conv_inport.connectedTo.append(enetwork_internal_outport)
-    levering_conv_outport.connectedTo.append(enetwork_internal_inport)
 
     # For every building, find its EConnection. Then disconnect its inport from the ElectricityNetwork,
     # And connect it to internal ElectricityNetwork.
