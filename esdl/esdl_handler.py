@@ -28,6 +28,10 @@ from esdl import support_functions
 logger = log.get_logger(__name__)
 
 
+class EnergySystemWithSameIdExists(Exception):
+    """Exception raised if an energy system with same id already exists."""
+
+
 class EnergySystemHandler:
 
     def __init__(self, energy_system=None):
@@ -157,7 +161,7 @@ class EnergySystemHandler:
             parse_info = []
             if isinstance(self.resource, XMLResource):
                 parse_info = self.resource.get_parse_information()
-            self.validate()
+            self.validate(es=self.energy_system)
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
             # set to False, otherwise all the ids are added again after loading, is not smart and is slow
             # is only here to make sure the id of the energy system is also in the uuid_dict
@@ -215,7 +219,7 @@ class EnergySystemHandler:
                     raise EnergySystemWithSameIdExists("An EnergySystem with this ID already exists in the ResourceSet")
             else:
                 # If the EnergySystem is not known yet, add it to the resourceSet
-                return self._add_from_string_to_rset(name, esdl_string), parse_info
+                return self._add_from_string_to_rset(name, esdl_string)
         else:
             # If parsing failed, return None with the parsing info
             return es, parse_info
@@ -354,9 +358,7 @@ class EnergySystemHandler:
             es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
-    def validate(self, es=None):
-        if es is None and self.energy_system is not None:
-            es = self.energy_system
+    def validate(self, es):
         if es is not None:
             if es.id is None:
                 es.id = str(uuid4())
@@ -449,25 +451,6 @@ class EnergySystemHandler:
         self.add_object_to_dict(es_id, area)
 
         return self.energy_system
-
-    # Support for Pickling when serializing the energy system in a session
-    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask.
-    # Internally Flask Sessions use Pickle to serialize a data structure by means of its __dict__. This does not work.
-    # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
-    def __getstate__(self):
-        state = dict()
-        #print('Serialize rset {}'.format(self.rset.resources))
-        print('Serializing EnergySystem...', end ="")
-        state['energySystem'] = self.to_string()
-        print('done')
-        return state
-
-    def __setstate__(self, state):
-        self.__init__()
-        #print('Deserialize rset {}'.format(self.rset.resources))
-        print('Deserializing EnergySystem...', end="")
-        self.load_from_string(state['energySystem'])
-        print('done')
 
 
     def update_version(self, es_id) -> str:

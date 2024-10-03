@@ -22,9 +22,11 @@ let auth_status = function() {
             console.log('Session status:', session);
             setTimeout(auth_status, 60000);
             if (!session.valid) {
-                const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to go to the login page.");
+                const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to reload the page");
                 if (answer) {
-                    window.location = session.redirect_uri
+                    show_loader();
+                    console.log('Redirecting to: ', session.redirect_uri);
+                    window.location.reload();
                 }
             }
         })
@@ -33,4 +35,4 @@ let auth_status = function() {
             setTimeout(auth_status, 60000);
         });
 };
-auth_status();
+//auth_status(); @see app.py where this check is implemented

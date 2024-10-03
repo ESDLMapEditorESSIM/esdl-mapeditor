@@ -33,7 +33,12 @@ var buildingLegendChoice;
 var get_area_color;         // function to get color of an area
 var get_building_color = get_buildingYear_colors;     // function to get color of a building
 
-let areaMarkerResizeFactor = 1.0; // resize area map marker (pie chart) size based on the slider value
+// HTML element ids for indexing
+const areaLegendDivId = 'area-legend-div';
+const areaMarkerResizeDivId = 'area-marker-resize-div';
+let areaMarkerResizeSliderVal = 1.0; // resize map area marker (pie chart) size based on the slider value
+
+let initMapZoomLevel; // initial map zoom level used by calcPieChartRadius() to scale pie chart size
 
 // ------------------------------------------------------------------------------------------------------------
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
@@ -593,10 +598,9 @@ function calcDistKPIItemsSum(distKPI) {
  * @param {number} kpiSumMin The minimal KPI item values sum derived from area features of the same layer.
  * @param {number} kpiSumMax The maximum KPI item values sum derived from area features of the same layer.
  * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
- * @param {number} [refZoomLevel=10] Reference zoom level for scaling. Default to 10.
  * @returns {number} Map zoom level responsive pie chart radius of the area feature.
  */
-function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0, refZoomLevel=10) {
+function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0) {
     // Input validation
     if (kpiItemsSum < 0 || kpiSumMin < 0 || kpiSumMax < 0) {
         throw new Error('KPI values must be non-negative');
@@ -606,11 +610,11 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0,
     }
 
     // Calculate the zoom scaling factor
-    const zoomLevelDiff = (map.getZoom() - refZoomLevel);
+    const zoomLevelDiff = (map.getZoom() - initMapZoomLevel);
     const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
 
     // Define zoom level and resize factor responsive pie chart min and max radius.
-    const baseRadius = 7 * resizeFactor;
+    const baseRadius = 1 * resizeFactor;
     const rMin = baseRadius * zoomScalingFactor;
     const rMax = rMin * 5;
 
@@ -737,7 +741,7 @@ function resize_area_pi_charts() {
                         }
                     }
 
-                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange, areaMarkerResizeFactor);
+                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange, areaMarkerResizeSliderVal);
 
                     if (areaLegendChoice in feature.properties.dist_KPIs) {
                         let kpi = feature.properties.dist_KPIs[areaLegendChoice];
@@ -800,6 +804,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
     // to compute relative pie chart radius for the area feature.
     const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
     layersAreaFeaturesDistKPIsRange[group_name] = distKPIsRange;
+    // Reset to default slider value when adding a new layer
+    areaMarkerResizeSliderVal = 1.0;
 
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
@@ -816,6 +822,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
+                    // Create and show areaMarkerResize element when DistributionKPI is presented.
+                    createAreaMarkerResizeDiv(areaMarkerResizeSliderVal);
                 }
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
@@ -1084,10 +1092,8 @@ function selectAreaKPI(kpi_name) {
             featuregroup_instance.eachLayer(function (layer) {
                 if (Object.keys(layer.feature.properties.KPIs).length > 0) {
                     if (areaLegendChoice in layer.feature.properties.KPIs) {
-                        layer.setStyle({
-                            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
-                            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
-                        });
+                        const areaStyle = style_area(layer.feature);
+                        layer.setStyle(areaStyle);
                     } else {
                         layer.setStyle({
                             fillColor: "blue",
@@ -1118,8 +1124,10 @@ function selectAreaKPI(kpi_name) {
                                 }
                             }
                         }
+                        // Create and show areaMarkerResize element when DistributionKPI is selected.
+                        createAreaMarkerResizeDiv(areaMarkerResizeSliderVal);
                     } else {
-                        // A non DistributionKPI was selected, hide pieCharts if the previous KPI was a DistributionKPI
+                        // A non DistributionKPI was selected, hide pieCharts and areaMarkerResize element if the previous KPI was a DistributionKPI
                         for (let key in layer.feature.properties.dist_KPIs) {
                             let kpi = layer.feature.properties.dist_KPIs[key];
                             if (kpi.pieChartMarkerVisible) {
@@ -1127,6 +1135,7 @@ function selectAreaKPI(kpi_name) {
                                 kpi.pieChartMarkerVisible = false;
                             }
                         }
+                        removeExistingAreaMarkerResizeDiv();
                     }
                 }
             });
@@ -1164,6 +1173,7 @@ function createBuildingLegendDiv() {
 
 function createAreaLegendDiv() {
     var legendDiv = L.DomUtil.create('div', 'info legend');
+    legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Area Legend';
@@ -1181,22 +1191,44 @@ function createAreaLegendDiv() {
     first_kpi_name = Object.keys(area_KPIs)[0];
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
 
-    const markerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-div', legendDiv);
-    markerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
-    
-    const slider = L.DomUtil.create('input', 'area-marker-resize-slider', markerResizeDiv);
-    slider.type = 'range';
-    slider.min = 0.0;
-    slider.max = 2.0;
-    slider.step = 0.1;
-    slider.value = 1.0;
-    L.DomEvent.disableClickPropagation(slider);
-    L.DomEvent.on(slider, 'input', (event) => {
-        areaMarkerResizeFactor = event.target.value;
-        resize_area_pi_charts();
-    });
-
     return legendDiv;
+}
+
+/**
+ * Removes the existing areaMarkerResize element.
+ */
+function removeExistingAreaMarkerResizeDiv() {
+    const areaMarkerResizeDiv = L.DomUtil.get(areaMarkerResizeDivId);
+    if (areaMarkerResizeDiv) {
+        L.DomUtil.remove(areaMarkerResizeDiv);
+    }
+}
+
+/**
+ * Creates an areaMarkerResize element if it does not exist.
+ * 
+ * @param {number} sliderValue slider value
+ */
+function createAreaMarkerResizeDiv(sliderValue) {
+    if (!L.DomUtil.get(areaMarkerResizeDivId)) {
+        const areaLegendDiv = L.DomUtil.get(areaLegendDivId);
+        // Create and append the resize element to areaLegendDiv
+        const areaMarkerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-container', areaLegendDiv);
+        areaMarkerResizeDiv.id = areaMarkerResizeDivId;
+        areaMarkerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
+        
+        const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
+        slider.type = 'range';
+        slider.min = 0.05;
+        slider.max = 2.0;
+        slider.step = 0.05;
+        slider.value = sliderValue;
+        L.DomEvent.disableClickPropagation(slider);
+        L.DomEvent.on(slider, 'input', (event) => {
+            areaMarkerResizeSliderVal = event.target.value;
+            resize_area_pi_charts();
+        });
+    }
 }
 
 function removeBuildingLegend() {
@@ -1219,7 +1251,7 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
     if (!jQuery.isEmptyObject(area_KPIs)) {
         areaLegend = L.control({position: 'bottomright'});
         areaLegend.onAdd = function (map) {
-                return createAreaLegendDiv();
+            return createAreaLegendDiv();
         };
         areaLegend.addTo(map);
     }
@@ -1295,6 +1327,7 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 }
 
 function add_geojson_listener(socket, map) {
+    initMapZoomLevel = map.getZoom();
     socket.on('geojson', function(message) {
         let layer = message['layer'];
         hide_loader();

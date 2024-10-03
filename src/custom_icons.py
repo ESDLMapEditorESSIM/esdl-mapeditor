@@ -40,6 +40,8 @@ class CustomIcons:
         @self.flask_app.route('/custom_icons')
         def get_custom_icon_info():
             user = get_session('user-email')
+            if user is None:
+                return {'icons_list': []}
             settings = self.get_user_settings(user)
             icons_list = list()
 

@@ -45,27 +45,6 @@ function click_new_ESDL_button(obj) {
         instance_name: new_instance_name, top_area_name: new_top_area_name});
 }
 
-function open_ESDL(event) {
-    // getting a hold of the file reference
-    var file = event.target.files[0];
-
-    // setting up the reader
-    var reader = new FileReader();
-    reader.readAsText(file); // this is reading as data url
-
-    // here we tell the reader what to do when it's done reading...
-    reader.onload = readerEvent => {
-        var content = readerEvent.target.result; // this is the content!
-        socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
-    }
-
-    // clear file input so that one could load the same file the next time
-    $('.inputFile')[0].value = "";
-
-    // show loader
-    show_loader();
-}
-
 function import_ESDL(event) {
     // getting a hold of the file reference
     var file = event.target.files[0];
@@ -81,36 +60,6 @@ function import_ESDL(event) {
     }
 
     // show loader
-    show_loader();
-}
-
-function send_cmd_load_ESDL() {
-    socket.emit('file_command', {cmd: 'get_list_from_store'});
-}
-
-function send_cmd_import_ESDL() {
-    socket.emit('file_command', {cmd: 'get_list_from_store'});
-}
-
-function click_load_ESDL_button(obj) {
-    let select = document.getElementById('load_es_selection');
-    let es_id = select.options[select.selectedIndex].value;
-    // let es_title = select.options[select.selectedIndex].innerHTML;
-    // console.log(es_id);
-
-    // title_div = document.getElementById('es_title');
-    // title_div.innerHTML = '<h1>' + es_title + '</h1>';
-
-    socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
-
-    // show loader
-    show_loader();
-}
-
-function click_import_ESDL_button(obj) {
-    let select = document.getElementById('load_es_selection');
-    let es_id = select.options[select.selectedIndex].value;
-    socket.emit('file_command', {cmd: 'import_esdl_from_store', id: es_id})
     show_loader();
 }
 
