@@ -348,8 +348,8 @@ class EnergySystemHandler:
             logger.debug(f'Removing energy system {my_uri}, with es id {es_id}')
             del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
-            logger.debug('Resources in RSet: ', self.rset.resources)
-            logger.debug('esid_uri_dict', self.esid_uri_dict)
+            # logger.debug('Resources in RSet: ', self.rset.resources)
+            # logger.debug('esid_uri_dict', self.esid_uri_dict)
 
     def get_energy_systems(self):
         es_list = []

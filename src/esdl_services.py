@@ -414,7 +414,6 @@ class ESDLServices:
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
 
-                    print(f"ESID: '{es.id}'")
                     if "animation" in service["result"][0]:
                         influxdb_host_override = None
                         if "influxdb_host_override" in service["result"][0]["animation"]:
