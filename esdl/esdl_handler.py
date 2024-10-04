@@ -213,6 +213,9 @@ class EnergySystemHandler:
                     uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
                     resource = self.rset.create_resource(uri)
                     resource.contents.append(es)
+                    self.esid_uri_dict[es.id] = uri.normalize()
+                    self.add_object_to_dict(es.id, es, True)
+
                     return es, parse_info
                 else:
                     # If overwrite_existing is false, raise an Exception that can be handled by the calling function
@@ -342,11 +345,11 @@ class EnergySystemHandler:
             return
         else:
             my_uri = self.esid_uri_dict[es_id]
-            print(f'Removing energy system {my_uri}, with es id {es_id}')
+            logger.debug(f'Removing energy system {my_uri}, with es id {es_id}')
             del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
-            print('Resources in RSet: ', self.rset.resources)
-            print('esid_uri_dict', self.esid_uri_dict)
+            logger.debug('Resources in RSet: ', self.rset.resources)
+            logger.debug('esid_uri_dict', self.esid_uri_dict)
 
     def get_energy_systems(self):
         es_list = []
