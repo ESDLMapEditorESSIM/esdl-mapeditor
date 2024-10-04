@@ -100,7 +100,7 @@ class ExternalModelsStorage:
         input_esdl: str,
         run_input_data: dict,
         user_name: str,
-    ) -> str:
+    ) -> dict:
         """
         Add an external model run to the database, a run ID will be created.
 
@@ -110,7 +110,7 @@ class ExternalModelsStorage:
         :param input_esdl: The input ESDL as a string.
         :param run_input_data: Additional input data (next to the input ESDL).
         :param user_name: The name of the user.
-        :param get_result_config: Information on how to check the job status and obtain the results.
+        :return: the inserted new model data.
         """
         doc = get_default_model_run_values() | {
             USER: user_name,
@@ -125,14 +125,15 @@ class ExternalModelsStorage:
             raise RuntimeError(f"Cannot save model run, unset required values: {doc.keys()}")
         with self.named_locker.lock(self.collection_name):
             self.collection.insert_one(doc)
-        return doc[RUN_ID]
+        del doc["_id"]
+        return doc
 
     def get_model_run(self, run_id: str) -> dict:
         """
         Get all data for a model run.
 
         :param run_id: The MapEditor run ID of the external model run.
-        :return: External model run data
+        :return: External model run data.
         """
         with self.named_locker.lock(self.collection_name):
             model_run = self.collection.find_one({RUN_ID: run_id}, projection={"_id": False})
@@ -143,7 +144,7 @@ class ExternalModelsStorage:
         Delete a model run from the database.
 
         :param run_id: The MapEditor run ID of the external model run.
-        :return: Deleted model run data
+        :return: Deleted model run data.
         """
         with self.named_locker.lock(self.collection_name):
             deleted_model_data = self.collection.find_one_and_delete({RUN_ID: run_id}, projection={"_id": False})
@@ -156,7 +157,7 @@ class ExternalModelsStorage:
         :param user_name: The name of the user.
         :param user_projects: List of projects for which run will be extracted as well.
         :param model_name: The name of the external model.
-        :return: Deleted model run data
+        :return: list of model run data objects.
         """
         with self.named_locker.lock(self.collection_name):
             if model_name:
@@ -181,12 +182,13 @@ class ExternalModelsStorage:
             models_cursor = self.collection.find(myquery, projection={"_id": False})
         return list(models_cursor)
 
-    def update_model_run(self, run_id: str, updated_values: dict):
+    def update_model_run(self, run_id: str, updated_values: dict) -> dict:
         """
         Update a model run in the database.
 
         :param run_id: The MapEditor run ID of the external model run.
         :param updated_values: Key-values which will be updated.
+        :return: the updated model data.
         """
         return self.collection.find_one_and_update(
             {RUN_ID: run_id},

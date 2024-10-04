@@ -25,6 +25,7 @@ import {
     Menu,
     Modal,
     Popover,
+    Progress,
     Radio,
     Row,
     Select,
@@ -81,6 +82,7 @@ export function mountApp(component, elementSelector) {
     app.use(Menu);
     app.use(Modal);
     app.use(Popover);
+    app.use(Progress);
     app.use(Radio);
     app.use(Row);
     app.use(Select);

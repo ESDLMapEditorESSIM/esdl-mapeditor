@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable vue/no-v-html -->
   <p v-html="text" />
   <a-button v-if="showButton" type="primary" @click="goToNextStep">{{ buttonText }}</a-button>
 </template>

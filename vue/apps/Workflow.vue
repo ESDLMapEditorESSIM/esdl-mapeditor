@@ -1,4 +1,4 @@
-<template>
+n <template>
   <div v-if="currentWorkflow" id="app">
     <div style="display: inline-block">
       <template v-if="currentWorkflow.hasPreviousStep()">
@@ -105,8 +105,8 @@
         v-else-if="workflowStep.type === WorkflowStepTypes.TEXT"
         :workflow-step="workflowStep"
       />
-      <WorkflowExternalModelMonitor
-        v-else-if="workflowStep.type === WorkflowStepTypes.EXTERNAL_MODEL_MONITOR"
+      <WorkflowEngineMonitor
+        v-else-if="workflowStep.type === WorkflowStepTypes.ENGINE_MONITOR"
         :workflow-step="workflowStep"
       />
       <WorkflowCustomComponent
@@ -145,7 +145,7 @@ import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploa
 import {default as WorkflowHttpPost} from "@/components/workflow/WorkflowHttpPost";
 import {default as WorkflowProgress} from "@/components/workflow/WorkflowProgress";
 import {default as WorkflowText} from "@/components/workflow/WorkflowText";
-import {default as WorkflowExternalModelMonitor} from "@/components/workflow/WorkflowExternalModelMonitor.vue";
+import {default as WorkflowEngineMonitor} from "@/components/workflow/WorkflowEngineMonitor.vue";
 import {default as WorkflowCustomComponent} from "@/components/workflow/WorkflowCustomComponent";
 import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm";
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";

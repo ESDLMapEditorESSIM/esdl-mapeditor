@@ -45,7 +45,7 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const {getParamsFromState, goToPreviousStep, goToFirstStep, getState} = useWorkflow();
+const {getParamsFromState, goToPreviousStep, goToFirstStep, getState, goToStep} = useWorkflow();
 const state = getState();
 const {clearEsdlLayers} = useEsdlLayers()
 
@@ -81,13 +81,23 @@ const loadEsdl = () => {
 
   window.show_loader();
 
-  if (workflowStep["next_step_external_models_service"]) {
+  if (workflowStep["workflow_engine_trigger"]) {
+    params["type"] = "esdl_service"
     params["main_service_id"] = workflowStep.main_service_id;
-    params["next_step_external_models_service"] = workflowStep.next_step_external_models_service;
-    window.socket.emit("ems_initialize_sequence", params);
-    window.hide_loader();
+
+    params["run_name_key"] = workflowStep.workflow_engine_run_name;
+    params["workflow_engine_next_step"] = workflowStep.workflow_engine_next_step;
+
+    window.socket.emit("wfe_initialize_sequence", params, (sequenceId) => {
+      Object.assign(getState(), {"wfeSequenceId": sequenceId});
+
+      goToStep(workflowStep["next_step"]);
+      window.hide_loader();
+    });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params});
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
+      goToStep(workflowStep["next_step"]);
+    });
   }
 };
 

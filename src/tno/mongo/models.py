@@ -1,7 +1,6 @@
-import json
 from dataclasses import dataclass
 
-from bson import ObjectId, json_util
+from bson import json_util
 
 
 @dataclass

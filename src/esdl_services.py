@@ -28,14 +28,14 @@ import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
-from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
-from extensions.external_models_storage import ExternalModelsStorage
+from esdl.processing import ESDLAsset, ESDLGeometry
+from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
-from src.external_models import get_nested_dict_value
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
+from src.tno.shared.util import get_nested_dict_value
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -371,13 +371,13 @@ class ESDLServices:
                     first_qp = False
 
         try:
-            url_reponse = None
+            url_response = None
             input_data = None
             if url:
                 if service["http_method"] == "get":
-                    url_reponse = requests.get(url, headers=headers)
+                    url_response = requests.get(url, headers=headers)
                 elif service["http_method"] == "delete":
-                    url_reponse = requests.delete(url, headers=headers)
+                    url_response = requests.delete(url, headers=headers)
                 elif service["http_method"] == "post":
                     if service["type"].endswith("json") or (
                         "body_config" in service and service["body_config"]["type"] == "json"
@@ -385,20 +385,20 @@ class ESDLServices:
                         kwargs = {"json": body}
                     else:
                         kwargs = {"data": body}
-                    url_reponse = requests.post(url, headers=headers, **kwargs)
+                    url_response = requests.post(url, headers=headers, **kwargs)
                 else:
                     # Should not happen, there should always be a method.
                     return False, None
-                input_data = url_reponse.text
+                input_data = url_response.text
             elif "external_model" in service:  # get from external models database
                 input_data = self.models_storage.get_model_run(state_params["run_id"])
 
-            if not url or url_reponse.status_code == 200 or url_reponse.status_code == 201:
+            if not url or url_response.status_code == 200 or url_response.status_code == 201:
                 if service["result"][0]["action"] == "esdl":
                     if "run_esdl_key" in service["result"][0]:
                         esdl_data = input_data[service["result"][0]["run_esdl_key"]]
                     elif "json_field" in service["result"][0]:
-                        esdl_data = url_reponse.json()[service["result"][0]["json_field"]]
+                        esdl_data = url_response.json()[service["result"][0]["json_field"]]
                     else:
                         esdl_data = input_data
 
@@ -414,6 +414,7 @@ class ESDLServices:
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
                     # TODO deal with parse_info?
 
+                    print(f"ESID: '{es.id}'")
                     if "animation" in service["result"][0]:
                         influxdb_host_override = None
                         if "influxdb_host_override" in service["result"][0]["animation"]:
@@ -690,7 +691,7 @@ class ESDLServices:
                 elif service["result"][0]["action"] == "show_message":
                     message = service["result"][0]["message"]
                     if "json_field" in service["result"][0]:
-                        message = url_reponse.json()[service["result"][0]["json_field"]]
+                        message = url_response.json()[service["result"][0]["json_field"]]
                         import html  # escape html entities in log file of NWN
 
                         message = html.escape(message)
@@ -698,7 +699,7 @@ class ESDLServices:
                     return True, {"message": message}
                 elif service["result"][0]["action"] == "save_model_run":
                     esdl_str = esh.to_string(active_es_id)
-                    model_job_id = url_reponse.json()[service["result"][0]["external_model_id_response_param"]]
+                    model_job_id = url_response.json()[service["result"][0]["external_model_id_response_param"]]
 
                     parameters = state_params.copy()
                     run_name = parameters[service["result"][0]["run_name_state_param"]]
@@ -706,7 +707,7 @@ class ESDLServices:
 
                     user = get_session("user-email")
 
-                    run_id = self.models_storage.add_model_run(
+                    model_run_doc = self.models_storage.add_model_run(
                         model_name=service["result"][0]["external_model_name"],
                         model_job_id=model_job_id,
                         run_name=run_name,
@@ -716,17 +717,17 @@ class ESDLServices:
                     )
                     return True, {
                         "message": f"Run submitted: '{state_params['run_name']}'",
-                        "run_id": run_id,
+                        "model_run_doc": model_run_doc,
                         "model_job_id": model_job_id,
                         "hide_button": True,
                     }
             else:
-                if url_reponse:
+                if url_response:
                     logger.warning(
                         "Error running ESDL service - response "
-                        + str(url_reponse.status_code)
+                        + str(url_response.status_code)
                         + " with reason: "
-                        + str(url_reponse.reason)
+                        + str(url_response.reason)
                     )
                 else:
                     logger.warning("Error running ESDL service ", input_data)

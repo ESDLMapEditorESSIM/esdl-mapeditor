@@ -54,7 +54,8 @@ from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
 from extensions.etm_interface import ETMInterface
-from extensions.external_models_storage import ExternalModelsStorage
+from extensions.external_models.external_models import ExternalModels
+from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
@@ -83,8 +84,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
-from src.external_models import ExternalModels
-from extensions.external_models_service import ExternalModelsService
+from extensions.workflow_engine import WorkflowEngine
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -179,7 +179,6 @@ executor = Executor(app)
 #extensions
 schedule_session_clean_up()
 wms_layers = WMSLayers(app, socketio, settings_storage)
-ExternalModels(app, socketio, models_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
 ESDLBrowser(app, socketio, esdl_doc)
@@ -219,8 +218,9 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
-#DataManager(app, socketio)
-ExternalModelsService(app, socketio, executor, models_storage, esdl_services)
+# DataManager(app, socketio)
+ExternalModels(app, socketio, models_storage)
+WorkflowEngine(app, socketio, models_storage, esdl_services)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here

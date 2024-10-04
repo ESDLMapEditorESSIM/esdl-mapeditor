@@ -162,3 +162,36 @@ def delete_sessions_on_disk(path: str):
     files = glob.glob(path + '/*')
     for f in files:
         os.remove(f)
+
+
+def get_all_session_ids_for_all_users() -> dict:
+    socketio_sid_list = dict()
+    for client_id in managed_sessions:
+        session_info = managed_sessions[client_id]
+        if "user-email" in session_info and "socketio_sid" in session_info:
+            user_email = session_info["user-email"]
+            socketio_sid = session_info["socketio_sid"]
+
+            if user_email in socketio_sid_list:
+                socketio_sid_list[user_email].append(socketio_sid)
+            else:
+                socketio_sid_list[user_email] = [socketio_sid]
+        else:
+            print(
+                "user-email or socketio_sid missing in managed session info. Could be the session from the sending application."
+            )
+
+    return socketio_sid_list
+
+
+def get_all_session_ids_for_user(user_email: str) -> list:
+    sid_list = []
+    for client_id in managed_sessions:
+        session_info = managed_sessions[client_id]
+        if "user-email" in session_info and "socketio_sid" in session_info:
+            if user_email == session_info["user-email"]:
+                sid_list.append(session_info["socketio_sid"])
+    if len(sid_list) == 0:
+        print(f"No sessions found for user-email '{user_email}'.")
+
+    return sid_list

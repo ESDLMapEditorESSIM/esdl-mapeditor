@@ -21,7 +21,7 @@ export const WorkflowStepTypes = Object.freeze({
     CALL_JS_FUNCTION: 'call_js_function',
     PROGRESS: 'progress',
     TEXT: 'text',
-    EXTERNAL_MODEL_MONITOR: 'external-model-monitor',
+    ENGINE_MONITOR: 'workflow-engine-monitor',
     // Custom component.
     CUSTOM: 'custom',
 });
@@ -320,7 +320,9 @@ export class Workflow {
                 // Step with a single next step.
                 targetStepIdx = nextStepData;
             }
-        } else if (typeof targetStepIdx === "string") {
+        }
+
+        if (typeof targetStepIdx === "string") {
             targetStepIdx = this.getStepIdxFromReference(targetStepIdx);
         }
         if (targetStepIdx >= 0) {
