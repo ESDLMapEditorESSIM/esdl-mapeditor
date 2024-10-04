@@ -584,6 +584,10 @@
                 auth_status(true); // Check immediately if we have an autorized session
             });
 
+            socket.on('hide_loader', function() {
+               hide_loader();
+            });
+
             socket.on('user_info', function(ui) {
                 user_info = ui;
             });

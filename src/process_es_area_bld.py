@@ -933,6 +933,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
         if force_update_es_id == "all":
             emit('clear_esdl_layer_list')
 
+        # If an energy system is processed, the loader is hidden by the frontend code that receives the info about
+        # the ESDL. If no energy system is processed, we need to hide the loader.
+        at_least_one_energy_system_processed = False
+
         for es in es_list:
             asset_list = []
             building_list = []
@@ -947,6 +951,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 es.id = str(uuid.uuid4())
 
             if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
+                at_least_one_energy_system_processed = True
                 print("- Processing energysystem with id {}".format(es.id))
                 name = es.name
                 if not name:
@@ -1020,6 +1025,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                     set_session('active_es_id', es.id)
             else:
                 print("- Energysystem with id {} already processed".format(es.id))
+
+        if not at_least_one_energy_system_processed:
+            logger.debug("No energysystem was processed at all. Hiding the loader")
+            emit('hide_loader');
 
         set_handler(esh)
         # emit('set_active_layer_id', main_es.id)
