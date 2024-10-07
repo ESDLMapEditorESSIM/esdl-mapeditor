@@ -16,6 +16,7 @@ import os
 EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
+ESDL_COST_SERVICE_HOST = os.getenv("ESDL_COST_SERVICE_HOST", "http://mapeditor-cost-service:4004")
 FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://flexscan:7200")
 FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
 
