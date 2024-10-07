@@ -184,7 +184,55 @@ class EnergySystemHandler:
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
-    def add_from_string(self, name, esdl_string):
+    def add_from_string(self, name: str, esdl_string: str, overwrite_existing: bool = True, new_id = None) -> (esdl.EnergySystem, []):
+        """
+        Loads an energy system from a string and adds it to the *existing* resourceSet if it doesn't exist yet.
+        If the energy system id is already known, the behavior depends on the overwrite_existing parameter. If its
+        value is True, the old energy system is replaced with the new energy system. If its value is False, an exception
+        is raised, that must be handled by the calling function.
+
+        :param name: The name that is used in URI (name + "_" + str(uuid4()) + ".esdl")
+        :param esdl_string: The string that contains the ESDL (XML)
+        :param overwrite_existing: Indicates if the energy system must be overwritten if it already exists (default True)
+
+        :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
+        """
+        es, parse_info = self.load_external_string(esdl_string)
+        # If the EnergySystem was successfully parsed from the esdl_string
+        if es:
+            # If the EnergySystem ID is already known in the esid_uri_dict
+            if es.id in self.esid_uri_dict:
+                # If overwrite_existing is set to True
+                if overwrite_existing:
+                    # Remove the existing EnergySystem with this ID
+                    self.remove_energy_system(es.id)
+
+                    # Add the already processed EnergySystem (es) to a new resource in the existing resourceSet
+                    uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
+                    resource = self.rset.create_resource(uri)
+                    resource.contents.append(es)
+                    return es, parse_info
+                else:
+                    if new_id:
+                        es.id = new_id
+                        uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
+                        resource = self.rset.create_resource(uri)
+                        resource.contents.append(es)
+                        self.validate(es=es)
+                        self.esid_uri_dict[es.id] = uri.normalize()
+                        self.add_object_to_dict(es.id, es, True)
+                        return es, parse_info
+                    else:
+                        # If overwrite_existing is false, raise an Exception that can be handled by the calling function
+                        raise Exception("An EnergySystem with this ID already exists in the ResourceSet")
+            else:
+                # If the EnergySystem is not known yet, add it to the resourceSet
+                return self._add_from_string_to_rset(name, esdl_string)
+        else:
+            # If parsing failed, return None with the parsing info
+            return es, parse_info
+
+    def _add_from_string_to_rset(self, name, esdl_string):
         """Loads an energy system from a string and adds it to the *existing* resourceSet
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
