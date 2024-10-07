@@ -216,8 +216,8 @@ class TestProjectManager(unittest.TestCase):
         es_2030 = pm.get_energy_system(variant_2030)   # refresh reference to es_2030, as snapshot has been regenerated
         self.assertEqual(len(es_2030.instance[0].area.asset), 3)
         self.assertEqual(es_2030.instance[0].area.asset[0].name, "PVpark1 from main")
-        self.assertEqual(es_2030.instance[0].area.asset[1].name, "PVpark2 from main")
-        self.assertEqual(es_2030.instance[0].area.asset[2].name, "BT1 for 2030")
+        self.assertEqual(es_2030.instance[0].area.asset[1].name, "BT1 for 2030")
+        self.assertEqual(es_2030.instance[0].area.asset[2].name, "PVpark2 from main")
 
         pm.set_active_variant(variant_2024)
 

@@ -105,6 +105,7 @@ def rename_project(message: RenameEsdlProjectRequest):
     pm.project.name = message["name"]
 
 
+
 class SetActiveVariantRequest(TypedDict):
     id: str
 
@@ -162,7 +163,7 @@ class RenameBaseVariantRequest(TypedDict):
 @socketio.on("rename_base_variant", namespace="/esdl")
 def rename_project(message: RenameBaseVariantRequest):
     """
-    Load energy project from file.
+    Rename variant
     """
     pm = get_project_manager()
     base_variant = pm.get_base_variant_by_id(message["id"])
@@ -211,4 +212,6 @@ def rename_variant(message: RenameVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
     variant.name = message["name"]
+    if variant.snapshotRef:
+        variant.snapshotRef.name = f'{pm.project.name} - {variant.name}'
     send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])

@@ -12,17 +12,17 @@
 #  Manager:
 #      TNO
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from flask import Flask, request
-from flask_socketio import SocketIO, emit
 from flask_executor import Executor
+from flask_socketio import SocketIO, emit
 
+import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from extensions.session_manager import set_session, get_project_manager
-import src.log as log
 from src.process_es_area_bld import process_energy_system
 from src.tno.projects.emits import emit_active_esdl_project
 
@@ -85,13 +85,15 @@ class ESDLFileIO:
         for vc in list(pm.project.variantCollection):
             variants: List[Variant] = []
             pm.get_variant_list(vc.variant, variants)
+            variants.reverse()  # go from tail to root
             for v in variants:
                 es = pm.get_variant_snapshot(v)
-                stack = pm.get_undo_redo_stack(es)
-                if stack.last_changed > datetime.min:
-                    # warn for unsaved changes
-                    self.send_alert(f"{v.name} contains unsaved changes")
-                    return
+                if es is not None: # no snapshot yet available
+                    stack = pm.get_undo_redo_stack(es)
+                    if stack.last_changed > datetime.min.replace(tzinfo=timezone.utc):
+                        # warn for unsaved changes
+                        self.send_alert(f"{v.name} contains unsaved changes")
+                        return
 
                 pm.delete_variant(v)
             #pm.delete_variant(vc)

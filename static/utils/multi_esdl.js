@@ -71,10 +71,11 @@ function select_active_layer(active_esdl_layer) {
     update_title(esdl_list[active_layer_id].title);
     update_area_legend();
     update_building_legend();
-    let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
-    if (Object.keys(bounds).length !== 0) {
-        map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
-    }
+    // Do not fly to bounds when switching between variants
+    //let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
+    //if (Object.keys(bounds).length !== 0) {
+    //    map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
+    //}
     window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', {active_layer_id: active_layer_id});
 }
 

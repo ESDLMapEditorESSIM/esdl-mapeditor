@@ -1,4 +1,7 @@
+import linecache
+import os
 import threading
+import tracemalloc
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
@@ -14,7 +17,7 @@ from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack
-from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection
+from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 
@@ -187,6 +190,10 @@ class ProjectManager:
         ----------
         change HighLevelChange to send to the listeners
         """
+        if change is None:
+            logger.error("ERROR: Change is none in change_handler()")
+            return
+
         for listener_id, call_back_fun in self.change_listeners.items():
             logger.info(f"Change detected, informing {listener_id}")
             call_back_fun(change)
@@ -230,7 +237,7 @@ class ProjectManager:
         count = len(self.project.variantCollection) + 1
         new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
         self.project.variantCollection.append(new_collection)
-        variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now())
+        variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
         variantCollection_resource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
@@ -252,7 +259,7 @@ class ProjectManager:
             self.get_variant_snapshot(self.active_variant)
         return self.active_variant.snapshotRef  # return reference to current resource with active energy system
 
-    def add_energy_system(self, uri: StringURI) -> Tuple[Variant, List[str]]:
+    def add_energy_system(self, uri: URI) -> Tuple[Variant, List[str]]:
         """
         Loads an external energy system as a base variant and create a new Variant for capturing future changes
 
@@ -288,7 +295,7 @@ class ProjectManager:
         self.project.variantCollection.append(variantCollection)
         variantCollection.energysystemRef = es  # link variantCollection to the loaded EnergySystem
         # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
-        es_variant = Variant(name=f"{es.name}", id=str(uuid4()), lastChanged=datetime.now())
+        es_variant = Variant(name=f"{es.name}", id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
         variantCollection.variant = es_variant
         snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
         #self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
@@ -356,6 +363,13 @@ class ProjectManager:
                 # Find the latest change in the parent with the highest changedAt.
                 parent_variant_changes = [change for change in parent_variant.change if change.changedAt is not None]
                 parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant_changes]) if parent_variant_changes else None
+                # check undo/redo stack, if there something changed
+                stack_latest_change: datetime = datetime.min.replace(tzinfo=timezone.utc)  # F##! Python with aware/naive datetime objects
+                if parent_variant.snapshotRef:
+                    tracker = self.change_tracker.get_tracker(parent_variant.snapshotRef)
+                    if tracker:
+                        stack_latest_change = tracker.stack.last_changed
+                parent_latest_change = max(parent_latest_change, stack_latest_change) if parent_latest_change else None
                 # Get the timestamp of the last activation of the variant.
                 variant_last_activated_at = self.variant_activation_timestamps.get(new_variant.id, None)
                 # Only recreate the snapshot if 1) the variant was never activated, or 2) the parent has changes that
@@ -394,7 +408,7 @@ class ProjectManager:
         self.rset.remove_resource(variant.snapshotRef.eResource)
         variant.snapshotRef = None
 
-    def replay_parent_variant_changes(self, new_variant):
+    def replay_parent_variant_changes(self, new_variant: Variant):
         """
         Find base Variant energy system and set that as active variant
         0: store current es as active snapshot for current active es
@@ -410,30 +424,38 @@ class ProjectManager:
         variant_path_list = get_variant_path_list(new_variant)
         variant_path_list.reverse()
         # Ensure we have a snapshot.
-        variant_snapshot = self.get_variant_snapshot(new_variant)
-        # add changes to stack, clear stack
+        #variant_snapshot = self.get_variant_snapshot(new_variant)
+
+        changes_list = []
         for parent_variant in variant_path_list:
-            logger.info(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
-            # TODO: order of changes is based on order in the tree, instead of time, so first get all changes and sort them
-            # according to time.
-            self.apply_variant_changes(parent_variant, variant_snapshot, False)
+            stack_index = len(parent_variant.change)  # current undo/redo stack index_pointer
+            if parent_variant.snapshotRef:
+                tracker = self.change_tracker.get_tracker(eobj=parent_variant.snapshotRef)
+                if tracker:
+                    stack_index = tracker.stack.stack_index
+                    print(f"Using stack_index for {parent_variant.name}:", stack_index)
+            changes_list.extend(parent_variant.change[:stack_index+1])
+        # sort list
+        changes_list.sort(key=lambda k: k.changedAt)
+        print(changes_list)
+        self.apply_changes_to_variant(changes_list, new_variant, False)
 
-    def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
-        """
-        Apply all changes from the given variant to the given resource. The resource should represent an energy system
-        which is consequently updated to contain all changes from the variant.
 
-        Using the record_changes boolean, we can immediately record the changes to the tracker stack.
 
-        :param variant: the variant to apply
-        :param es: the energy system to apply the changes to
-        :param record_changes: whether to record the changes to the tracker stack
-        """
+        # for parent_variant in variant_path_list:
+        #     logger.info(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
+        #     # TODO: order of changes is based on order in the tree, instead of time, so first get all changes and sort them
+        #     # according to time.
+        #     self.apply_variant_changes(parent_variant, variant_snapshot, False)
+
+
+    def apply_changes_to_variant(self, change_list: List[AbstractChange], target_variant: Variant, record_changes: bool):
+        es = self.get_variant_snapshot(target_variant)
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
         if tracker is None:
-            tracker = self.change_tracker.new_tracker(variant=variant, resource=resource)
-        for high_level_change in variant.change:
+            tracker = self.change_tracker.new_tracker(target_variant, eobj=es, resource=resource)
+        for high_level_change in change_list:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
@@ -444,6 +466,33 @@ class ProjectManager:
                     tracker.stack.stop_recording()
             else:
                 logger.warn(f"Fixme: ignoring DetailedChanges at this level")
+
+    # def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
+    #     """
+    #     Apply all changes from the given variant to the given resource. The resource should represent an energy system
+    #     which is consequently updated to contain all changes from the variant.
+    #
+    #     Using the record_changes boolean, we can immediately record the changes to the tracker stack.
+    #
+    #     :param variant: the variant to apply
+    #     :param es: the energy system to apply the changes to
+    #     :param record_changes: whether to record the changes to the tracker stack
+    #     """
+    #     resource = es.eResource
+    #     tracker = self.change_tracker.get_tracker(resource=resource)
+    #     if tracker is None:
+    #         tracker = self.change_tracker.new_tracker(variant=variant, resource=resource)
+    #     for high_level_change in variant.change:
+    #         if isinstance(high_level_change, HighLevelChange):
+    #             if record_changes:
+    #                 tracker.stack.start_recording(label=high_level_change.label)
+    #             logger.debug(f"Apply variant change: High level change {high_level_change.label}")
+    #             for change in high_level_change.change:
+    #                 applyChange(change, resource)
+    #             if record_changes:
+    #                 tracker.stack.stop_recording()
+    #         else:
+    #             logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 
     def get_energy_systems(self) -> List[esdl.EnergySystem]:
         """"
@@ -518,7 +567,8 @@ class ProjectManager:
             variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
             variant.snapshotRef.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
 
-            snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
+            #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
+            update_uuid_dict(snapshot_resource.contents[0])
             snapshot_resource.uuid_dict[variant.snapshotRef.id] = variant.snapshotRef
             try:
                 del snapshot_resource.uuid_dict[es.id]  # remove energy system id, as that gets updated
@@ -571,7 +621,7 @@ class ProjectManager:
         Delete a variant and all its subvariants. This will also delete the snapshot of the variant.
         :param variant: the variant to delete
         """
-        if variant.variant:
+        if isinstance(variant, Variant) and variant.variant:
             for subvariant in variant.variant:
                 self._delete_variant_recursive(subvariant)
         logger.info(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
@@ -895,10 +945,12 @@ class ProjectManager:
             update_uuid_dict(es)
             try:
                 found = resource.uuid_dict[object_id]
-                logger.warn(f"Found: {found} for {object_id} after rebuild in {es.eResource}")
+                logger.debug(f"Found: {found} for {object_id} after rebuild in {es.eResource}")
                 return found
             except KeyError as e:
+                #traceback.print_exc()
                 self.debug()
+                breakpoint()
                 raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
                                "after rebuilding uuid_dict.".format(object_id, es.id)) from e
 
@@ -928,6 +980,11 @@ class ProjectManager:
         return load_external_string(name, esdl_string)
 
     def debug(self):
+        #if settings.FLASK_DEBUG:
+        #    print("Creating memory snapshot")
+        #    snapshot = tracemalloc.take_snapshot()
+        #    print("Memory snapshot ready")
+        #    display_mem_usage(snapshot)
         logger.debug('ProjectManager debug:')
         logger.debug('All resources: ', resources=self.rset.resources)
         for uri, resource in self.rset.resources.items():
@@ -1032,6 +1089,7 @@ def get_variant_collection(variant: Union[VariantCollection, Variant]) -> Varian
     elif variant.variantCollection is not None:
         return get_variant_collection(variant.variantCollection)
     else:
+        logger.error(f"Can't find variantCollection for variant {variant}")
         return None
 
 
@@ -1046,4 +1104,34 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     # index = self.get_base_variant_index(base_variant)
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
+
+
+def display_mem_usage(snapshot, key_type = 'lineno', limit = 10):
+    # from https://stackoverflow.com/questions/552744/how-do-i-profile-memory-usage-in-python
+    print("Creating memory stats...")
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    print("Create statistics")
+    top_stats = snapshot.statistics(key_type)
+
+    print("Memory stats: Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        print("#%s: %s:%s: %.1f KiB"
+        %(index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+    print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
+
 

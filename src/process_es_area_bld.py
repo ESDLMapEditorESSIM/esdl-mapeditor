@@ -996,7 +996,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
 
                 # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
                 # add_missing_coordinates(area)
-                print('- Processing area')
+                print(f'- Processing area, zoom={zoom}')
                 process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
                 print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
                 notes_list = get_notes_list(es)

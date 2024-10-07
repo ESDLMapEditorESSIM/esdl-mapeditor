@@ -292,6 +292,10 @@
             document.title = mapeditor + " - " + title;
         }
 
+        function debug() {
+            socket.emit('command', {cmd: 'debug'});
+        }
+
         function show_loader() {
             document.getElementById("loader").style.display = "block";
         }
@@ -1659,6 +1663,7 @@
                                     <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
+                                    <li><a class="dropdown-item" href="#" onclick="debug()"><div class="menu-icon ui-icon ui-icon-alert" id="debug_menu">&nbsp;</div>Debug</a></li>
                                 </ul>
                             </li>
                             {% if is_mapeditor_admin %}

@@ -24,12 +24,15 @@ import esdlproject.esdlproject as ep
 import src.log as log
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo_pyecore_patch import patch_notification_system
+from esdlproject import HighLevelChange
 from esdlproject.ChangeSerializer import deepcopy_eobject_change, filterDoubleConnectedTo
 from esdlproject.change_handler import undoChange, applyChange
 
 patch_notification_system()  # patch pyecores notification system, so notification are always send
 
 logger = log.get_logger(__name__)
+
+
 
 
 class UndoRedoCommandStack:
@@ -50,7 +53,7 @@ class UndoRedoCommandStack:
         self._combine_multiple_changes = True
         self._hlc: ep.HighLevelChange | None = None
         self.max_stack_length = max_stack_length
-        self.last_changed: datetime = datetime.min
+        self.last_changed: datetime = datetime.min.replace(tzinfo=timezone.utc)
         self.change_handler = change_handler
 
     @property
@@ -138,10 +141,11 @@ class UndoRedoCommandStack:
         self._combine_multiple_changes = False
         if self._hlc is not None and len(self._hlc.change) > 0:
             # filter out eOpposite relations that are double (e.g. connectedTo)
-            filtered = filterDoubleConnectedTo(self._hlc.change)
+            filtered, _ = filterDoubleConnectedTo(self._hlc.change)
             if len(filtered) != len(self._hlc.change):
                 logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
             self._hlc.change = filtered
+            post_process_high_level_change(self._hlc)
             self.push(self._hlc)
 
             # Notify listeners in ProjectManger of this change
@@ -205,7 +209,6 @@ class UndoRedoCommandStack:
         #             raise ValueError('Cannot execute command {}'.format(command))
 
         if len(self.stack) > self.stack_index:
-            logger.debug(f"TESTING: overwrite stack because undo before and now overwrite of new change")
             while len(self.stack) > self.stack_index + 1:
                 pop = self.stack.pop()  # remove changes after the stack index, because they are obsolete now
                 logger.debug(f"Popped {pop} from the stack, as it is obsolete")
@@ -214,7 +217,7 @@ class UndoRedoCommandStack:
         self.stack.insert(index, abstract_change)
         # self.stack[index] = abstract_change
         self.stack_index = index
-        self.last_changed = datetime.now()
+        self.last_changed = datetime.now(timezone.utc)
         logger.debug(f"Pushed {abstract_change} to the stack")
 
         # make sure the stack length is not larger than its max length
@@ -240,6 +243,7 @@ class UndoRedoCommandStack:
                         applyChange(change, self.resource)
                 else:
                     applyChange(self.next_top, self.resource)
+                self.last_changed = datetime.now(timezone.utc)
             self.stack_index += 1
         else:
             logger.debug("Cannot Redo")
@@ -255,7 +259,7 @@ class UndoRedoCommandStack:
         # Suppress generated notification for undo
         with self.pause_recording():
             abstract_change = self.top
-            self.last_changed = datetime.now()
+            self.last_changed = datetime.now(timezone.utc)
             logger.debug("Undo", abstract_change=abstract_change)
             # if self.top.can_undo:
             if self.can_undo():
@@ -279,6 +283,32 @@ class UndoRedoCommandStack:
     def __repr__(self):
         changes = "\n".join([f"- {s}" for s in self.stack])
         return f"<Stack len={len(self)}, index={self.stack_index}, change=\n{ changes }\n>"
+
+
+def post_process_high_level_change(high_level_change: HighLevelChange):
+    """
+    This function filters out possible double connectedTo relations in the list of subchanges
+    *and* the list of xrefs. These might be double because when deepcopying xrefs are also stored, but the notification
+    system might also emmited them already.
+    Parameters
+    ----------
+    high_level_change - the High Level change to postprocess
+
+    Returns nothing, it updates in place
+    -------
+
+    """
+    check_list = []
+    for change in high_level_change.change:
+        if change.feature == 'connectedTo':
+            check_list.append(change)
+        for xref_change in change.objectValue_xrefs:
+            if xref_change.feature == 'connectedTo':
+                check_list.append(xref_change)
+    filtered, doubles = filterDoubleConnectedTo(check_list)
+    logger.debug(f"Filter doubles: removed {doubles}")
+    for change in doubles:
+        change.delete()  # this works because of ecore! :-)
 
 
 # def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
@@ -611,7 +641,8 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                         objectValue=copy,
                         objectFragment=obj.eURIFragment(),
                     )
-                    change.previousValue_xrefs.extend(filterDoubleConnectedTo(xrefs))
+                    filtered,_ = filterDoubleConnectedTo(xrefs)
+                    change.previousValue_xrefs.extend(filtered)
                     # manually add multiple changes to the stack
                     stack.push(change)
                     change = None
@@ -628,14 +659,18 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     # add possible xrefs from a deepcopy
     if change:
         if len(value_x_refs) > 0:
-            cleaned_change_list = filterDoubleConnectedTo(value_x_refs)
+            total_list = []
+            total_list.extend(change.objectValue_xrefs)
+            total_list.extend(value_x_refs)
+            cleaned_change_list, _ = filterDoubleConnectedTo(total_list)
             logger.debug(
                 f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-                f"(removed {len(value_x_refs) - len(cleaned_change_list)} duplicates)"
+                f"(removed {len(total_list) - len(cleaned_change_list)} duplicates)"
             )
+            change.objectValue_xrefs.clear()
             change.objectValue_xrefs.extend(cleaned_change_list)
         if len(prev_value_x_refs) > 0:
-            cleaned_change_list = filterDoubleConnectedTo(prev_value_x_refs)
+            cleaned_change_list, _ = filterDoubleConnectedTo(prev_value_x_refs)
             logger.debug(
                 f"------ Adding cross-references of size {len(cleaned_change_list)}, "
                 f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)"
@@ -664,28 +699,28 @@ def updateResourceUUIDdict(notification: Notification):
     f: EStructuralFeature = notification.feature
     value = notification.new
     if notification.kind == Kind.SET:
-        if isinstance(f, EAttribute) and f.iD is True and f.name == "id":
+        if isinstance(f, EAttribute) and f.name == "id":
             owner = notification.notifier
             resource: XMLResource = owner.eResource
             resource.uuid_dict[value] = owner
-            logger.debug(f"Updating UUID dict for {owner}.id={value}")
+            #logger.debug(f"Updating UUID dict for {owner}.id={value}")
     elif notification.kind == Kind.ADD:
         if isinstance(f, EReference) and f.containment and isinstance(value, EObject):
             # whole object is added: iterate though contents and add all ids
             if hasattr(value, "id"):
                 value.eResource.uuid_dict[value.id] = value
-                logger.debug(f"|Updating UUID dict for {value}.id={value.id}")
+                #logger.debug(f"|Updating UUID dict for {value}.id={value.id}")
             for obj in value.eAllContents():
                 if hasattr(obj, "id"):
                     obj.eResource.uuid_dict[obj.id] = obj
-                    logger.debug(f"|-Updating UUID dict for {obj}.id={obj.id}")
+                    #logger.debug(f"|-Updating UUID dict for {obj}.id={obj.id}")
 
     elif notification.kind == Kind.UNSET:
-        if notification.old is not None and isinstance(f, EAttribute) and f.iD is True and f.name == "id":
+        if notification.old is not None and isinstance(f, EAttribute) and f.name == "id":
             owner = notification.notifier
             resource: XMLResource = owner.eResource
             save_delete_dict_key_with_warning(resource.uuid_dict, notification.old.id)
-            logger.debug(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
+            #logger.debug(f"Updating UUID dict, remove {owner}.id={notification.old.id}")
 
     elif notification.kind == Kind.REMOVE:
         prev_values = notification.old
@@ -695,15 +730,15 @@ def updateResourceUUIDdict(notification: Notification):
             if not resource:
                 resource = notification.notifier.eResource
             if not resource:
-                logger.debug(f"Can't update uuid_dict as no resource available: {notification}")
+                logger.warning(f"Can't update uuid_dict as no resource available: {notification}")
                 return
             if hasattr(prev_values, "id") and prev_values.id is not None:
                 save_delete_dict_key_with_warning(resource.uuid_dict, prev_values.id)
-                logger.debug(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
+                #logger.debug(f"|Updating UUID dict, remove {prev_values}.id={prev_values.id}")
             for obj in prev_values.eAllContents():
                 if hasattr(obj, "id") and obj.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
-                    logger.debug(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
+                    #logger.debug(f"|-Updating UUID dict, remove {obj}.id={obj.id}")
     elif notification.kind == Kind.REMOVE_MANY:
         prev_values = notification.old
         if isinstance(f, EReference) and f.containment and isinstance(prev_values, list) and len(prev_values) > 0:
@@ -712,24 +747,26 @@ def updateResourceUUIDdict(notification: Notification):
             if not resource:
                 resource = notification.notifier.eResource
             if not resource:
-                logger.debug(f"Can't update uuid_dict as no resource available: {notification}")
+                logger.warning(f"Can't update uuid_dict as no resource available: {notification}")
                 return
             for prev_value in prev_values:
                 if hasattr(prev_value, "id") and prev_value.id is not None:
                     save_delete_dict_key_with_warning(resource.uuid_dict, prev_value.id)
-                    logger.debug(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
+                    #logger.debug(f"|Updating UUID dict, remove_many {prev_value}.id={prev_value.id}")
                 for obj in prev_value.eAllContents():
                     if hasattr(obj, "id") and obj.id is not None:
                         save_delete_dict_key_with_warning(resource.uuid_dict, obj.id)
-                        logger.debug(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
+                        #logger.debug(f"|\\-Updating UUID dict, remove_many {obj}.id={obj.id}")
     else:
-        logger.debug(f"Warning: updateResourceUUIDdict() unsupported notification {notification.kind}")
+        logger.warning(f"Warning: updateResourceUUIDdict() unsupported notification {notification.kind}")
 
 
 def save_delete_dict_key_with_warning(d: dict, key: Any):
     try:
         del d[key]
     except NameError:
+        logger.warn(f"IGNORE: AutoUpdateUUID work in progress: updateResourceUUIDdict(): can't delete {key} from {d}")
+    except KeyError:
         logger.warn(f"IGNORE: AutoUpdateUUID work in progress: updateResourceUUIDdict(): can't delete {key} from {d}")
 
 

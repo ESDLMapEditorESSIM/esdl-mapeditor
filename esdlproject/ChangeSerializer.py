@@ -1,11 +1,10 @@
+import logging
 from typing import List, Tuple
 
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection
 
 from esdlproject import AbstractChange, Add, Set, DetailedChange, Remove
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -79,15 +78,16 @@ def deepcopy_eobject_change(eobject: EObject,
                             fragment = orig_value.eURIFragment()
                             change = Set(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                             changeList.append(change)
-    changeList = filterDoubleConnectedTo(changeList)
+    changeList,_ = filterDoubleConnectedTo(changeList)
     return copy, changeList
 
 
-def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedChange]:
+def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> (List[DetailedChange], List[DetailedChange]):
     """
     Filter out double ConnectedTo relations in a list of DetailedChanges
     """
     connected_to_list = []
+    doubles = []
     return_list = list(change_list)
 
     # find possible duplicates
@@ -103,9 +103,11 @@ def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> List[DetailedC
                 # change2 is double
                 #print(f'DoubleConnectedTo: {i} remove {j}: {change2.ownerFragment} <-> {change2.objectFragment}')
                 connected_to_list.remove((jndex, change2))
+                doubles.append(change2)
                 return_list.remove(change2)
             elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
                 #print(f'DoubleConnectedTo: {i} remove {j} {change2.ownerFragment} <-> {change2.objectFragment}')
                 connected_to_list.remove((jndex, change2))
+                doubles.append(change2)
                 return_list.remove(change2)
-    return return_list
+    return return_list, doubles
