@@ -503,6 +503,23 @@ esdl_config = {
                                 "enable_if_state": "flexscanf1.loaded",
                                 "next_step": 32,
                             },
+                            # Cost information
+                            {
+                                "name": "Cost information",
+                                "type": "header",
+                            },
+                            {
+                                "name": "Generate cost information template",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 35,
+                            },
+                            {
+                                "name": "Upload cost information template",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 36,
+                            },
                             # EHC
                             {
                                 "name": "EHC",
@@ -1154,6 +1171,20 @@ esdl_config = {
                         "description": "Select which buildings will be part of the energy hub.",
                         "type": "custom",
                         "component": "eps-init-energy-hub",
+                    },
+                    {
+                        # 35
+                        "name": "Generate cost information template",
+                        "description": "",
+                        "type": "custom",
+                        "component": "cost-information-generate-template",
+                    },
+                    {
+                        # 36
+                        "name": "Upload cost information template",
+                        "description": "",
+                        "type": "custom",
+                        "component": "cost-information-upload-template",
                     },
                 ],
             },

@@ -20,6 +20,8 @@ import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1.vue';
 import {default as WorkflowFlexScanImportEPS} from './custom/flexscan/WorkflowFlexScanImportEPS.vue';
 import {default as EpsInitEnergyHub} from "@/components/workflow/custom/eps/EpsInitEnergyHub.vue";
+import {default as CostInformationGenerateTemplate} from './custom/cost-information/CostInformationGenerateTemplate.vue';
+import {default as CostInformationUploadTemplate} from './custom/cost-information/CostInformationUploadTemplate.vue';
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -34,6 +36,8 @@ const components = {
   "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,
   "flexscan-import-eps": WorkflowFlexScanImportEPS,
   "demo-custom": DemoCustomComponent,
+  "cost-information-generate-template": CostInformationGenerateTemplate,
+  "cost-information-upload-template": CostInformationUploadTemplate,
 };
 const props = defineProps({
   workflowStep: {
