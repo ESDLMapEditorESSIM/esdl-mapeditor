@@ -2935,7 +2935,7 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result = esdl_services.call_esdl_service(params)
+        esdl_service_ok, esdl_service_result, backend_action = esdl_services.call_esdl_service(params)
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
@@ -2950,8 +2950,15 @@ def query_esdl_services(params):
         if isinstance(esdl_service_result, str):
             message += ': ' + esdl_service_result
         send_alert(message)
+
+    # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
+    force_update_es_id = None
+    if backend_action:
+        if "force_update_es_id" in backend_action:
+            force_update_es_id = backend_action["force_update_es_id"]
+
     # logger.debug('processing energy system')
-    call_process_energy_system.submit(esh)
+    call_process_energy_system.submit(esh, force_update_es_id=force_update_es_id)
 
 
 @socketio.on('set_active_es_id', namespace='/esdl')
