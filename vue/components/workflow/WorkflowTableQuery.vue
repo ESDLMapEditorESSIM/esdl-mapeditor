@@ -227,7 +227,7 @@ const init = () => {
   }
   doGetData();
 
-  console.log("Registering socket io bindings for WorkflowTableQuery");
+  // console.log("Registering socket io bindings for WorkflowTableQuery");
   window.socket.off('wfe_update_model_run');
   window.socket.on('wfe_update_model_run', updateRow);
 };

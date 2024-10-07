@@ -139,7 +139,9 @@ const handleChange = (value) => {
 };
 
 const setEsdlId = (new_esdl_id) => {
+  console.log("SET_ESDL", new_esdl_id, esdl_id.value, kpis_present.value)
   if (new_esdl_id !== esdl_id.value) {  // remove data info if new ESDL
+    console.log("CLEAR DATA")
     clearData();
     esdl_id.value = new_esdl_id;
   }

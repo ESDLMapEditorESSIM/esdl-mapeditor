@@ -220,7 +220,7 @@ class WorkflowEngine:
         self.register()
 
     def register(self):
-        logger.info("Registering WorkflowEngine extension")
+        # logger.info("Registering WorkflowEngine extension")
 
         @self.socketio.on("wfe_initialize_sequence", namespace="/esdl")
         def wfe_initialize_sequence(init_data) -> str | None:
