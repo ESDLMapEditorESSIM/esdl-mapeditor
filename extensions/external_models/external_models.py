@@ -17,7 +17,7 @@ from extensions.external_models.external_models_storage import (
     LOGS,
     SUBMITTED_TO_EXTERNAL_MODEL_AT,
 )
-from src.tno.shared.util import pretty_print_html, parse_url_string_with_parameters
+from src.tno.shared.util import pretty_print_html, parse_string_with_parameters
 
 logger = log.get_logger(__name__)
 
@@ -28,18 +28,18 @@ class ExternalModels:
         flask_app: Flask,
         socket: SocketIO,
         external_models_storage: ExternalModelsStorage,
-    ):
+    ) -> None:
         self.flask_app = flask_app
         self.socketio = socket
         self.external_models_storage = external_models_storage
 
         self.register()
 
-    def register(self):
+    def register(self) -> None:
         logger.info("Registering ExternalModelsService extension")
 
         @self.socketio.on("get_external_model_runs_for_user", namespace="/esdl")
-        def get_external_model_runs_for_user(model_run_info) -> list:
+        def get_external_model_runs_for_user(model_run_info: dict) -> list:
             """
             Check if updated progress or new results are available and get runs for external model.
 
@@ -55,7 +55,7 @@ class ExternalModels:
             return model_runs
 
         @self.socketio.on("external_models_update_run", namespace="/esdl")
-        def external_models_update_run(model_run_info) -> None:
+        def external_models_update_run(model_run_info: dict) -> None:
             """
             Update Model run data.
 
@@ -66,7 +66,7 @@ class ExternalModels:
             self.external_models_storage.update_model_run(run_id, model_run_info)
 
         @self.socketio.on("external_models_delete_run", namespace="/esdl")
-        def external_models_delete_run(model_run_info) -> dict:
+        def external_models_delete_run(model_run_info: dict) -> dict:
             """
             Delete Model run data.
 
@@ -80,7 +80,7 @@ class ExternalModels:
 
             delete_result_url = model_run_info.get("delete_result_url")
             if deleted_run_data:
-                url = parse_url_string_with_parameters(delete_result_url, deleted_run_data)
+                url = parse_string_with_parameters(delete_result_url, deleted_run_data)
                 try:
                     requests.delete(url)
                 except Exception as e:
@@ -88,7 +88,7 @@ class ExternalModels:
             return {"message": f"{deleted_run_data[MODEL_NAME]} run '{deleted_run_data[RUN_NAME]}' deleted ok."}
 
         @self.socketio.on("external_models_get_run_text", namespace="/esdl")
-        def external_models_get_run_text(model_run_info):
+        def external_models_get_run_text(model_run_info: dict):
             """
             Get model run details as text omitting certain parameters which are too long or not relevant.
 
@@ -116,7 +116,7 @@ class ExternalModels:
             return text
 
         @self.socketio.on("external_models_get_run_jsonforms", namespace="/esdl")
-        def external_models_get_run_jsonforms(model_run_info) -> dict:
+        def external_models_get_run_jsonforms(model_run_info: dict) -> dict:
             """
             Get run data as jsonforms with the run name and projects as editable, and some other details as readonly.
 
@@ -159,5 +159,3 @@ class ExternalModels:
                 formData=form_data,
                 uischema=dict(type="VerticalLayout", elements=ui_elements),
             )
-
-

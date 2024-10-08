@@ -7,8 +7,8 @@ import {nextStepsSchemaValidator} from "@/utils/workflowSchemas";
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
     SELECT_QUERY: 'select-query',
-    TABLE_QUERY: 'table-query',
     MULTI_SELECT_QUERY: 'multi-select-query',
+    TABLE_QUERY: 'table-query',
     // TODO: Rename?
     ESDL_SERVICE: 'service',
     JSON_FORM: 'json-form',

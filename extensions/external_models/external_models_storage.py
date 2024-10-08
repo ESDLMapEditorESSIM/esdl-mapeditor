@@ -53,7 +53,7 @@ MODEL_SPECIFIC_OUTPUT = "model_specific_output"
 
 
 class RunStatus(Enum):
-    """Possible Run status."""
+    """Run status options."""
 
     SUBMITTED = "SUBMITTED"
     RUNNING = "RUNNING"
@@ -74,7 +74,7 @@ class ExternalModelsStorage:
     requires transactional guarantees.
     """
 
-    def __init__(self, named_locker: NamedLocker, database_uri: str = None):
+    def __init__(self, named_locker: NamedLocker, database_uri: str = None) -> None:
         logger.info("Setting up UserSettings with mongoDB")
         self.named_locker = named_locker
         self.database = settings_storage_config["database"]

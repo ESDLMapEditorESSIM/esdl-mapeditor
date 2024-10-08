@@ -3174,11 +3174,6 @@ def default_error_handler(e):
     traceback.print_exc()
 
 
-# with app.app_context():
-#     # start external model service
-#     start_external_models_service_thread(app)
-
-
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------

@@ -10,10 +10,12 @@ import {onMounted} from "vue";
 
 onMounted(() => {
   console.log("Registering socket io bindings for ToastNotifications");
-  setTimeout(function () {
+
+  window.addEventListener('load', () => {
+    // run after everything is in-place
     window.socket.on('toast_notification', showNotification);
     // TODO send 'toast_notification_service_ready' to backend after which backed up messages can be received
-  }, 2000);
+  });
 });
 
 const showNotification = (data) => {

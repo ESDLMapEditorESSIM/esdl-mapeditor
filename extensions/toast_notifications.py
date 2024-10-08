@@ -11,7 +11,7 @@ logger = log.get_logger(__name__)
 
 
 class NotificationType(str, Enum):
-    """Available AntDV Notification types."""
+    """AntDV Notification type options."""
 
     INFO = "info"
     SUCCESS = "success"
@@ -20,7 +20,7 @@ class NotificationType(str, Enum):
 
 
 class NotificationPlacement(str, Enum):
-    """Possible AntDV Notification placement."""
+    """AntDV Notification placement options."""
 
     TOP = "top"
     TOP_LEFT = "topLeft"
@@ -32,6 +32,8 @@ class NotificationPlacement(str, Enum):
 
 @dataclass
 class ToastNotification:
+    """AntDV notification configuration."""
+
     title: str
     description: str = ""
     type: NotificationType = NotificationType.INFO
@@ -47,20 +49,18 @@ class ToastNotifications:
         self,
         flask_app: Flask,
         socket: SocketIO,
-    ):
+    ) -> None:
         self.flask_app = flask_app
         self.socketio = socket
-
         self.register()
 
-    def register(self):
+    def register(self) -> None:
         logger.info("Registering ToastNotifications extension")
 
         @self.socketio.on("toast_notifications_service_ready", namespace="/esdl")
         def toast_notifications_service_ready() -> None:
             """
             When front-end toast notification component is ready, send backed-up notifications.
-
             """
             logger.info(f"toast_notifications_service_ready, sending backed-up notifications if present.")
 
@@ -68,16 +68,22 @@ class ToastNotifications:
             # user = get_session("user-email")
             # user_projects = get_session("user-group")
             # model_runs = self.external_models_storage.get_model_runs_for_current_user(user, user_projects, model_name)
-            #
-            # return None
 
     @staticmethod
     def send(toast_notification: ToastNotification):
+        """Send notification to active client."""
         emit("toast_notification", toast_notification.as_dict())
 
     def send_from_outside_request_context(
         self, user_email: str, toast_notification: ToastNotification, resend_if_user_offline: bool = False
-    ):
+    ) -> None:
+        """
+        Send notification to all connected clients for a specific user, if available.
+
+        :param user_email: Email address of the user.
+        :param toast_notification: ToastNotification instance.
+        :param resend_if_user_offline: If the user is offline, whether to resend this notification upon login.
+        """
         connected_user_client_ids = get_all_session_ids_for_user(user_email)
         if len(connected_user_client_ids) > 0:
             for client_id in connected_user_client_ids:

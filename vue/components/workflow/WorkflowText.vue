@@ -18,8 +18,7 @@ const props = defineProps({
 
 let workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
-// eslint-disable-next-line no-unused-vars
-watch(workflowTrigger, (currentValue, oldValue) => {
+watch(workflowTrigger, () => {
   init();
 });
 

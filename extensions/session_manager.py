@@ -23,58 +23,62 @@ import os, glob
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
-ESH_KEY = 'esh'
-LAST_ACCESSED_KEY = 'last-accessed'
-SESSION_TIMEOUT = 60*60*24  # 1 day
-CLEANUP_INTERVAL = 60*60  # every hour
+ESH_KEY = "esh"
+LAST_ACCESSED_KEY = "last-accessed"
+SESSION_TIMEOUT = 60 * 60 * 24  # 1 day
+CLEANUP_INTERVAL = 60 * 60  # every hour
 
 
 def get_handler() -> EnergySystemHandler:
     global managed_sessions
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id in managed_sessions:
         if ESH_KEY in managed_sessions[client_id]:
             esh = managed_sessions[client_id][ESH_KEY]
-            logger.debug('Retrieve ESH client_id={}'.format(client_id))
+            logger.debug("Retrieve ESH client_id={}".format(client_id))
         else:
-            logger.warning('No EnergySystemHandler in session. Returning empty energy system')
+            logger.warning("No EnergySystemHandler in session. Returning empty energy system")
             esh = EnergySystemHandler()
-            esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
+            esh.create_empty_energy_system(
+                "Untitled EnergySystem", "", "Untitled Instance", "Untitled Area", esdlVersion=esdl_doc.esdlVersion
+            )
             set_handler(esh)
         return esh
     else:
-        logger.warning('Session has timed-out. Returning empty energy system')
+        logger.warning("Session has timed-out. Returning empty energy system")
         esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
+        esh.create_empty_energy_system(
+            "Untitled EnergySystem", "", "Untitled Instance", "Untitled Area", esdlVersion=esdl_doc.esdlVersion
+        )
         set_handler(esh)
         return esh
 
 
 def set_handler(esh):
     global managed_sessions
-    client_id = session['client_id']
-    logger.debug('Set ESH client_id={}'.format(client_id))
+    client_id = session["client_id"]
+    logger.debug("Set ESH client_id={}".format(client_id))
     set_session(ESH_KEY, esh)
 
 
 def valid_session():
-    if 'client_id' in session:
+    if "client_id" in session:
         return True
     return False
 
 
 def set_session(key, value):
     global managed_sessions
-    #logger.debug('Current Thread %s' % threading.currentThread().getName())
-    if 'client_id' not in session:
-        logger.warning('No client_id for the session is available, cannot set value for key {}'.format(key))
+    # logger.debug('Current Thread %s' % threading.currentThread().getName())
+    if "client_id" not in session:
+        logger.warning("No client_id for the session is available, cannot set value for key {}".format(key))
         return
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[client_id][key] = value
-    #logger.debug(managed_sessions)
+    # logger.debug(managed_sessions)
 
 
 def get_session(key=None):
@@ -84,12 +88,12 @@ def get_session(key=None):
     :return:
     """
     global managed_sessions
-    if 'client_id' not in session:
-        logger.warning('No client id for the session is available, cannot return value for key {}'.format(key))
+    if "client_id" not in session:
+        logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
         return None
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
-        logger.warning('No client id in the managed_sessions is available, cannot return value for key {}'.format(key))
+        logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
         return None
     else:
         if key is None:
@@ -103,9 +107,9 @@ def get_session(key=None):
 
 def del_session(key):
     global managed_sessions
-    client_id = session['client_id']
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
-        logger.warning('No client id for the session is available, cannot return value for key {}'.format(key))
+        logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
         return None
     else:
         if key in managed_sessions[client_id]:
@@ -114,21 +118,21 @@ def del_session(key):
 
 def clean_up_sessions():
     global managed_sessions
-    logger.debug('Current Thread %s' % threading.currentThread().getName())
-    logger.info('Clean up sessions: current number of sessions: {}'.format(len(managed_sessions)))
+    logger.debug("Current Thread %s" % threading.currentThread().getName())
+    logger.info("Clean up sessions: current number of sessions: {}".format(len(managed_sessions)))
     for key in list(managed_sessions.keys()):  # make a copy of the keys in the list
         last_accessed = managed_sessions[key][LAST_ACCESSED_KEY]
         now = datetime.now()
         difference = (now - last_accessed).total_seconds()
         if difference > SESSION_TIMEOUT:
-            logger.info('Cleaning up session with client_id={}'.format(key))
+            logger.info("Cleaning up session with client_id={}".format(key))
             del managed_sessions[key]
 
 
 def schedule_session_clean_up():
     logger.info("Scheduling session clean-up thread every {} seconds".format(CLEANUP_INTERVAL))
     global managed_sessions
-    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name='Session-Cleanup-Thread')
+    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name="Session-Cleanup-Thread")
     clean_thread.start()
 
 
@@ -158,13 +162,14 @@ def set_session_for_esid(es_id, key, value):
 
 
 def delete_sessions_on_disk(path: str):
-    print('Cleaning up old sessions on disk...')
-    files = glob.glob(path + '/*')
+    logger.info("Cleaning up old sessions on disk...")
+    files = glob.glob(path + "/*")
     for f in files:
         os.remove(f)
 
 
 def get_all_session_ids_for_all_users() -> dict:
+    """Get a list of all active session IDs per user in a dict."""
     socketio_sid_list = dict()
     for client_id in managed_sessions:
         session_info = managed_sessions[client_id]
@@ -177,7 +182,7 @@ def get_all_session_ids_for_all_users() -> dict:
             else:
                 socketio_sid_list[user_email] = [socketio_sid]
         else:
-            print(
+            logger.info(
                 "user-email or socketio_sid missing in managed session info. Could be the session from the sending application."
             )
 
@@ -185,6 +190,7 @@ def get_all_session_ids_for_all_users() -> dict:
 
 
 def get_all_session_ids_for_user(user_email: str) -> list:
+    """Get a list of all active session IDs for a specific user."""
     sid_list = []
     for client_id in managed_sessions:
         session_info = managed_sessions[client_id]
@@ -192,6 +198,6 @@ def get_all_session_ids_for_user(user_email: str) -> list:
             if user_email == session_info["user-email"]:
                 sid_list.append(session_info["socketio_sid"])
     if len(sid_list) == 0:
-        print(f"No sessions found for user-email '{user_email}'.")
+        logger.info(f"No sessions found for user-email '{user_email}'.")
 
     return sid_list

@@ -86,7 +86,7 @@ onMounted(() => {
       kpis_present.value = true;
     });
     window.socket.on('animation_esdl_data', function (data) {
-      console.log('animation_possible, esdl id: ', data['es_id']);
+      console.log('animation_esdl_data, esdl id: ', data['es_id']);
       setEsdlId(data['es_id']);
       animation_possible.value = true;
       anim_field_options.value = [];
@@ -123,7 +123,6 @@ const handleShowExternalLink = () => {
 
 const handleLoadAnimation = () => {
   console.log("Results animation", anim_filter_tag_value.value);
-  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun, use for essim
   time_dimension.initialize(
       esdl_id.value, anim_filter_tag_name.value, anim_filter_tag_value.value, [], anim_selected_field.value, anim_influxdb_host_override.value
   );

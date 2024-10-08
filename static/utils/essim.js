@@ -435,7 +435,7 @@ function poll_simulation_progress() {
     $.ajax({
         url: ESSIM_simulation_URL_prefix + 'simulation_progress',
         success: function(data){
-            console.log("ESS PROG", ESSIM_simulation_URL_prefix + 'simulation_progress',  data);
+            console.log("ESS PROG", ESSIM_simulation_URL_prefix + 'simulation_progress', data);
             if (data["status"] == "ERROR") {
                 let description = data["description"];
                 let more_info = data["moreInfo"];

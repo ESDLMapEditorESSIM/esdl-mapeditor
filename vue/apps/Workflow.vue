@@ -1,4 +1,4 @@
-n <template>
+<template>
   <div v-if="currentWorkflow" id="app">
     <div style="display: inline-block">
       <template v-if="currentWorkflow.hasPreviousStep()">

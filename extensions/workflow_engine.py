@@ -16,13 +16,12 @@ import base64
 import threading
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
-
-from flask import Flask
-from flask_socketio import SocketIO, emit
-
 import time
 import requests
 import uuid
+
+from flask import Flask
+from flask_socketio import SocketIO, emit
 
 from extensions.toast_notifications import ToastNotification, NotificationType, ToastNotifications
 from extensions.external_models.external_models_storage import (
@@ -32,9 +31,8 @@ from extensions.external_models.external_models_storage import (
     LAST_UPDATED_TO_EXTERNAL_MODEL_AT,
     PROGRESS_FRACTION,
     MODEL_SPECIFIC_OUTPUT,
-    RunStatus,
 )
-from src.tno.shared.util import get_nested_dict_value, parse_url_string_with_parameters
+from src.tno.shared.util import get_nested_dict_value, parse_string_with_parameters
 from extensions.session_manager import get_session, get_all_session_ids_for_user
 from src.esdl_services import ESDLServices
 import src.log as log
@@ -47,7 +45,22 @@ DEFAULT_MAXIMUM_WAIT_SECONDS = 3600
 
 
 @dataclass
+class StepProgress:
+    """Workflow Engine Step Progress data."""
+
+    name: str
+    status: str
+    progress_fraction: float
+    message: str | None = None
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
 class SequenceData:
+    """Workflow Engine Sequence data."""
+
     id: str
     run_name: str
     user_email: str
@@ -60,17 +73,6 @@ class SequenceData:
         return asdict(self)
 
 
-@dataclass
-class StepProgress:
-    name: str
-    status: str
-    progress_fraction: float
-    message: str | None = None
-
-    def as_dict(self) -> dict:
-        return asdict(self)
-
-
 class WorkflowStep:
     def __init__(
         self,
@@ -78,7 +80,7 @@ class WorkflowStep:
         sequence_data: SequenceData,
         step_config,
         models_storage: ExternalModelsStorage,
-    ):
+    ) -> None:
         self.socketio = socketio
         self.sequence_data = sequence_data
         self.step_config = step_config
@@ -86,13 +88,12 @@ class WorkflowStep:
 
     def run(self) -> bool:
         """
-        Run workflow step
+        Run workflow step.
 
         :return: True if completed successfully
         """
         step_progress = StepProgress(name=self.step_config.get("monitor_name"), status="STARTED", progress_fraction=0)
         self.sequence_data.steps_progress.append(step_progress)
-        # self.sequence_data.steps_progress.append(step_progress)
 
         retry_interval_seconds = self.step_config.get("retry_interval_seconds")
         if not retry_interval_seconds:
@@ -106,7 +107,8 @@ class WorkflowStep:
             updated_values = dict(model_specific_output=dict())
             if "queries" in self.step_config:
                 for query_config in self.step_config["queries"]:
-                    self.update_values_from_query(updated_values, query_config)
+                    if not self.update_values_from_query(updated_values, query_config):
+                        return False
 
             if updated_values[STATUS] is None:
                 return False
@@ -170,7 +172,7 @@ class WorkflowStep:
                 return False
 
     def update_values_from_query(self, updated_values: dict, query_config: dict):
-        url = parse_url_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
+        url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
         try:
             resp = requests.get(url)
 
@@ -186,11 +188,15 @@ class WorkflowStep:
                         updated_values[MODEL_SPECIFIC_OUTPUT][key] = self.parse_response_key(
                             key, resp_value, query_config
                         )
+                return True
+            else:
+                logger.error(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
         except Exception as e:
-            logger.warning(f"Error while getting external model run results: {str(e)}")
+            logger.error(f"Error while getting external model run results: {str(e)}")
+            return False
 
     @staticmethod
-    def parse_response_key(key, value, query_config):
+    def parse_response_key(key, value, query_config) -> any:
         if key == STATUS:
             for status, model_status_values in query_config["status_mapping"].items():
                 if value in model_status_values:
@@ -226,7 +232,7 @@ class WorkflowEngine:
         external_models_storage: ExternalModelsStorage,
         esdl_services: ESDLServices,
         toast_notifications: ToastNotifications,
-    ):
+    ) -> None:
         self.flask_app = flask_app
         self.socketio = socket
         self.external_models_storage = external_models_storage
@@ -235,8 +241,8 @@ class WorkflowEngine:
 
         self.register()
 
-    def register(self):
-        # logger.info("Registering WorkflowEngine extension")
+    def register(self) -> None:
+        logger.info("Registering WorkflowEngine extension")
 
         @self.socketio.on("wfe_initialize_sequence", namespace="/esdl")
         def wfe_initialize_sequence(init_data) -> str | None:
@@ -307,10 +313,9 @@ class WorkflowEngine:
                     type=NotificationType.INFO,
                 )
             )
-
             return sequence_id
 
-    def run_sequence(self, sequence_data: SequenceData, first_step):
+    def run_sequence(self, sequence_data: SequenceData, first_step) -> None:
         logger.info(f"Running workflow sequence for run '{sequence_data.run_name}")
 
         next_step = first_step
@@ -325,7 +330,7 @@ class WorkflowEngine:
                 models_storage=self.external_models_storage,
             )
             run_succeeded = step.run()
-            logger.info(f"Workflow engine step '{step_config['reference']}' finished for run '{sequence_data.run_name}")
+            logger.info(f"Workflow engine step '{next_step}' finished for run '{sequence_data.run_name}")
             if run_succeeded and "workflow_engine_next_step" in step_config:
                 next_step = step_config["workflow_engine_next_step"]
             else:
@@ -336,10 +341,10 @@ class WorkflowEngine:
             f"Workflow engine sequence finished for run '{sequence_data.run_name}' with status '{run_succeeded}'"
         )
         if run_succeeded:
-            title= f"Run '{sequence_data.run_name}' succeeded."
+            title = f"Run '{sequence_data.run_name}' succeeded."
             notification_type = NotificationType.SUCCESS
         else:
-            title= f"Run '{sequence_data.run_name}' failed."
+            title = f"Run '{sequence_data.run_name}' failed."
             notification_type = NotificationType.ERROR
         self.toast_notifications.send_from_outside_request_context(
             user_email=sequence_data.user_email,
@@ -352,7 +357,8 @@ class WorkflowEngine:
         )
 
     @staticmethod
-    def get_workflow_step_config(service_config, step_identifier):
+    def get_workflow_step_config(service_config: dict, step_identifier: str | int) -> dict:
+        """Get workflow step config from service config from step_identifier as reference (string) or index (int)."""
         if isinstance(step_identifier, str):
             for step_index, step in enumerate(service_config["workflow"]):
                 if step["reference"] == step_identifier:

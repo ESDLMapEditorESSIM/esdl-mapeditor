@@ -1,13 +1,13 @@
 import re
 
 
-def get_nested_dict_value(dictionary: dict, nested_key: str):
+def get_nested_dict_value(dictionary: dict, nested_key: str) -> any:
     """
     Get dictionary value from a nested key, which consists of subsequent keys separated by a dot.
 
     :param dictionary: dictionary to get value from.
     :param nested_key: nested key which consists of subsequent keys separated by a dot.
-    :return: dictionary value of the nested key .
+    :return: dictionary value of the nested key.
     """
     if "." not in nested_key:
         if nested_key in dictionary:
@@ -23,24 +23,23 @@ def get_nested_dict_value(dictionary: dict, nested_key: str):
             return None
 
 
-def parse_url_string_with_parameters(url: str, params_dict: dict) -> str:
+def parse_string_with_parameters(string: str, params_dict: dict) -> str:
     """
-    Parse URL parameters present in string (surrounded by `<>`).
+    Parse parameters, surrounded by `<>`, present in string.
 
-    :param url: URL string to be parsed.
+    :param string: string to be parsed.
     :param params_dict: Key-values used for the parsing.
-    :return: Parsed URL string.
+    :return: Parsed string.
     """
-    # put values for args in url surrounded by '< >'
-    replace_args = re.findall(r"<.*?>", url)
+    replace_args = re.findall(r"<.*?>", string)
     for replace_arg in replace_args:
-        url = url.replace(replace_arg, params_dict[replace_arg[1:-1].lower()])
-    return url
+        string = string.replace(replace_arg, params_dict[replace_arg[1:-1].lower()])
+    return string
 
 
 def pretty_print_html(item_to_print: object, indent: str = "") -> str:
     """
-    Pretty print for display in html.
+    Pretty print dict, list or string, for display in html.
 
     :param item_to_print: Item to be printed, can be dict, list or string.
     :param indent: Indent before each line.
@@ -58,7 +57,7 @@ def pretty_print_html(item_to_print: object, indent: str = "") -> str:
                 pretty += str(v)
         return pretty
     elif isinstance(item_to_print, list):
-        v = [str(item) for item in item_to_print]
+        v = [pretty_print_html(item) for item in item_to_print]
         return ", ".join(v)
     else:
         return str(item_to_print)

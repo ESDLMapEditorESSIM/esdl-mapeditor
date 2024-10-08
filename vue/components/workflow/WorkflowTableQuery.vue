@@ -109,7 +109,7 @@ const getTagColor = (text) => {
 
 const doAction = (record, action) => {
   hide_jquery_ui_popup();
-  console.log('Action selected: ', record[rowkey.value], action);
+  // console.log('Action selected: ', record[rowkey.value], action);
   state[workflowStep.target_variable] = {};
   state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
   for (const field of additional_fields.value) {
@@ -209,7 +209,6 @@ const init = async () => {
   if ("show_reload_button" in props.workflowStep) {
     showReloadButton.value = props.workflowStep["show_reload_button"];
   }
-
   window.socket.off('wfe_update_model_run');
   window.socket.on('wfe_update_model_run', (run_data) => {
     const modelRunData = dataSource.value.find(i => i["run_id"] === run_data["run_id"]);
@@ -224,6 +223,7 @@ const init = async () => {
 };
 init();
 
+// to prevent stuck popup
 const hide_jquery_ui_popup = () => {
   window.jquery(".ui-tooltip-content").parents('div').remove();
 };

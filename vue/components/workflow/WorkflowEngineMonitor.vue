@@ -28,7 +28,6 @@ const runName = ref(null);
 const stepsProgress = ref();
 
 let workflowTrigger = props.workflowStep.workflowTrigger;
-// eslint-disable-next-line no-unused-vars
 watch(workflowTrigger, () => {
   init();
 });
