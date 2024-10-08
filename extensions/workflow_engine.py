@@ -24,6 +24,7 @@ import time
 import requests
 import uuid
 
+from extensions.toast_notifications import ToastNotification, NotificationType, ToastNotifications
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     STATUS,
@@ -31,6 +32,7 @@ from extensions.external_models.external_models_storage import (
     LAST_UPDATED_TO_EXTERNAL_MODEL_AT,
     PROGRESS_FRACTION,
     MODEL_SPECIFIC_OUTPUT,
+    RunStatus,
 )
 from src.tno.shared.util import get_nested_dict_value, parse_url_string_with_parameters
 from extensions.session_manager import get_session, get_all_session_ids_for_user
@@ -83,6 +85,11 @@ class WorkflowStep:
         self.models_storage = models_storage
 
     def run(self) -> bool:
+        """
+        Run workflow step
+
+        :return: True if completed successfully
+        """
         step_progress = StepProgress(name=self.step_config.get("monitor_name"), status="STARTED", progress_fraction=0)
         self.sequence_data.steps_progress.append(step_progress)
         # self.sequence_data.steps_progress.append(step_progress)
@@ -100,6 +107,7 @@ class WorkflowStep:
             if "queries" in self.step_config:
                 for query_config in self.step_config["queries"]:
                     self.update_values_from_query(updated_values, query_config)
+
             if updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -108,10 +116,9 @@ class WorkflowStep:
             updated_model_run = self.models_storage.update_model_run(self.sequence_data.run_id, updated_values)
 
             if updated_model_run:
+                # emit to frontend
                 step_progress.status = updated_model_run[STATUS]
                 step_progress.progress_fraction = updated_model_run[PROGRESS_FRACTION]
-
-                # send to frontend
                 connected_user_client_ids = get_all_session_ids_for_user(self.sequence_data.user_email)
                 if len(connected_user_client_ids) > 0:
                     for client_id in connected_user_client_ids:
@@ -123,6 +130,7 @@ class WorkflowStep:
                                 "steps_progress": [pr.as_dict() for pr in self.sequence_data.steps_progress],
                             },
                             namespace="/esdl",
+                            room=client_id,
                         )
                         self.socketio.emit(
                             "wfe_update_model_run",
@@ -133,12 +141,18 @@ class WorkflowStep:
 
                 # check if workflow step finished
                 completed_statuses = self.step_config.get("completed_statuses")
-                if not completed_statuses or updated_values[STATUS] in completed_statuses:
+                if not completed_statuses or updated_values[STATUS] in completed_statuses["success"]:
                     logger.info(
-                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' completed:"
+                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' succeeded:"
                         f" sequence '{self.sequence_data.run_id}'."
                     )
                     return True
+                elif updated_values[STATUS] in completed_statuses["error"]:
+                    logger.info(
+                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
+                        f" with status'{updated_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                    )
+                    return False
                 elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
                     logger.error(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated: maximum wait"
@@ -211,11 +225,13 @@ class WorkflowEngine:
         socket: SocketIO,
         external_models_storage: ExternalModelsStorage,
         esdl_services: ESDLServices,
+        toast_notifications: ToastNotifications,
     ):
         self.flask_app = flask_app
         self.socketio = socket
         self.external_models_storage = external_models_storage
         self.esdl_services = esdl_services
+        self.toast_notifications = toast_notifications
 
         self.register()
 
@@ -252,17 +268,25 @@ class WorkflowEngine:
 
             # run initial workflow step inside request context to enable for instance selected ESDL loading
             if init_data["type"] == "esdl_service":
-                esdl_service_ok, esdl_service_result = self.esdl_services.call_esdl_service(init_data)
+                esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
                 if esdl_service_ok:
                     emit(
                         "wfe_update_model_run",
                         esdl_service_result["model_run_doc"],
                         namespace="/esdl",
                     )
+
                     sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
                     sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
                 else:
                     logger.error(f"Error running esdl service with data: '{init_data}")
+                    self.toast_notifications.send(
+                        ToastNotification(
+                            title=f"An error occurred during run '{run_name}'.",
+                            description="The external service could not be started",
+                            type=NotificationType.ERROR,
+                        )
+                    )
                     return None
             else:
                 logger.error(f"Type '{init_data['type']}' not implemented for the workflow engine.")
@@ -276,12 +300,21 @@ class WorkflowEngine:
                 t.daemon = True
                 t.start()
 
+            self.toast_notifications.send(
+                ToastNotification(
+                    title=f"Run '{run_name}' started.",
+                    description="",
+                    type=NotificationType.INFO,
+                )
+            )
+
             return sequence_id
 
     def run_sequence(self, sequence_data: SequenceData, first_step):
         logger.info(f"Running workflow sequence for run '{sequence_data.run_name}")
 
         next_step = first_step
+        run_succeeded = False
         while next_step:
             step_config = self.get_workflow_step_config(sequence_data.main_service_config, next_step)
             logger.info(f"Running workflow engine step '{step_config['reference']}' for run '{sequence_data.run_name}")
@@ -297,12 +330,31 @@ class WorkflowEngine:
                 next_step = step_config["workflow_engine_next_step"]
             else:
                 next_step = None
-        logger.info(f"External Models sequence finished for run '{sequence_data.run_name}")
+
+        # finish workflow sequence
+        logger.info(
+            f"Workflow engine sequence finished for run '{sequence_data.run_name}' with status '{run_succeeded}'"
+        )
+        if run_succeeded:
+            title= f"Run '{sequence_data.run_name}' succeeded."
+            notification_type = NotificationType.SUCCESS
+        else:
+            title= f"Run '{sequence_data.run_name}' failed."
+            notification_type = NotificationType.ERROR
+        self.toast_notifications.send_from_outside_request_context(
+            user_email=sequence_data.user_email,
+            toast_notification=ToastNotification(
+                title=title,
+                description="",
+                type=notification_type,
+            ),
+            resend_if_user_offline=True,
+        )
 
     @staticmethod
-    def get_workflow_step_config(service_config, identifier):
-        if isinstance(identifier, str):
+    def get_workflow_step_config(service_config, step_identifier):
+        if isinstance(step_identifier, str):
             for step_index, step in enumerate(service_config["workflow"]):
-                if step["reference"] == identifier:
+                if step["reference"] == step_identifier:
                     return step
-        return service_config["workflow"][identifier]
+        return service_config["workflow"][step_identifier]

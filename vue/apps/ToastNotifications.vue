@@ -3,34 +3,45 @@
 </template>
 
 <script setup>
-import { notification } from 'ant-design-vue';
+import {notification, Button} from 'ant-design-vue';
+import {h} from 'vue';
+
 import {onMounted} from "vue";
 
 onMounted(() => {
-  notification.open({
-        message: 'Notification Title',
-        description:
-          'This is the content of the notification. This is the content of the notification. This is the content of the notification.',
-        onClick: () => {
-          console.log('Notification Clicked!');
-        },
-     });
+  console.log("Registering socket io bindings for ToastNotifications");
+  setTimeout(function () {
+    window.socket.on('toast_notification', showNotification);
+    // TODO send 'toast_notification_service_ready' to backend after which backed up messages can be received
+  }, 2000);
 });
+
+const showNotification = (data) => {
+  // TODO implement button with a way to link activate Vue workflow step? Or other view?
+  // const key = `open${Date.now()}`;
+  notification[data["type"]]({
+    message: data["title"],
+    description: data["description"],
+    placement: data["placement"],
+    duration: data["close_after_seconds"],
+    // btn: () =>
+    //     h(
+    //         Button,
+    //         {
+    //           type: 'primary',
+    //           size: 'small',
+    //           onClick: () => notification.close(key),
+    //         },
+    //         {default: () => 'Confirm'},
+    //     ),
+    // key,
+    onClick: () => {
+      console.log('Notification Clicked!');
+    },
+  });
+};
 
 </script>
 
 <style>
-.leaflet-result-visualizations-toolbar {
-  padding: 5px;
-  z-index: 2000;
-  background: white;
-
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
-  border-radius: 5px;
-}
-
-.leaflet-result-visualizations-toolbar p {
-  margin-bottom: 0;
-}
-
 </style>

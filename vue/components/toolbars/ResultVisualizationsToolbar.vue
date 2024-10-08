@@ -139,9 +139,7 @@ const handleChange = (value) => {
 };
 
 const setEsdlId = (new_esdl_id) => {
-  console.log("SET_ESDL", new_esdl_id, esdl_id.value, kpis_present.value)
   if (new_esdl_id !== esdl_id.value) {  // remove data info if new ESDL
-    console.log("CLEAR DATA")
     clearData();
     esdl_id.value = new_esdl_id;
   }
@@ -152,6 +150,7 @@ const clearData = () => {
   time_dimension.show_hide_animation_toolbar(false);
   kpis_present.value = false;
   animation_possible.value = false;
+  anim_selected_field.value = "Choose field ...";
   anim_filter_tag_name.value = null;
   anim_filter_tag_value.value = null;
   anim_influxdb_host_override.value = null;

@@ -50,7 +50,7 @@
 
 <script setup="props">
 
-import {ref, watch, onMounted} from "vue";
+import {ref, watch} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api.js";
 
@@ -158,6 +158,7 @@ const doGetData = async () => {
     );
   }
 };
+doGetData();
 
 const handleData = (data) => {
   if (data != null) {
@@ -202,35 +203,26 @@ const handleData = (data) => {
   isLoading.value = false;
 };
 
-onMounted(() => {
-  init();
-
-
-});
-
-const updateRow = (run_data) => {
-  const modelRunData = dataSource.value.find(i => i["run_id"] === run_data["run_id"]);
-  if (modelRunData === undefined) {
-    dataSource.value.push(run_data);
-  } else {
-    for (const [key, value] of Object.entries(run_data)) {
-      modelRunData[key] = value;
-    }
-  }
-}
-
-const init = () => {
+const init = async () => {
   workflowStep = props.workflowStep;
   workflowTrigger = props.workflowStep.workflowTrigger;
   if ("show_reload_button" in props.workflowStep) {
     showReloadButton.value = props.workflowStep["show_reload_button"];
   }
-  doGetData();
 
-  // console.log("Registering socket io bindings for WorkflowTableQuery");
   window.socket.off('wfe_update_model_run');
-  window.socket.on('wfe_update_model_run', updateRow);
+  window.socket.on('wfe_update_model_run', (run_data) => {
+    const modelRunData = dataSource.value.find(i => i["run_id"] === run_data["run_id"]);
+    if (modelRunData === undefined) {
+      dataSource.value.push(run_data);
+    } else {
+      for (const [key, value] of Object.entries(run_data)) {
+        modelRunData[key] = value;
+      }
+    }
+  });
 };
+init();
 
 const hide_jquery_ui_popup = () => {
   window.jquery(".ui-tooltip-content").parents('div').remove();

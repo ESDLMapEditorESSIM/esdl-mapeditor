@@ -29,7 +29,7 @@ const stepsProgress = ref();
 
 let workflowTrigger = props.workflowStep.workflowTrigger;
 // eslint-disable-next-line no-unused-vars
-watch(workflowTrigger, (currentValue, oldValue) => {
+watch(workflowTrigger, () => {
   init();
 });
 
@@ -44,7 +44,7 @@ const doGetData = () => {
   wfeSequenceId = getState().wfeSequenceId;
 };
 
-const getProgressStatus = (stepProgress) =>{
+const getProgressStatus = (stepProgress) => {
   if (["SUBMITTED", "RUNNING"].includes(stepProgress["status"])) {
     return "normal";
   } else if (["SUCCEEDED", "INPUT_NEEDED"].includes(stepProgress["status"])) {
@@ -54,8 +54,8 @@ const getProgressStatus = (stepProgress) =>{
   }
 };
 
-const getProgressPercent = (stepProgress) =>{
-  if (stepProgress["status"]=== "SUCCEEDED") {
+const getProgressPercent = (stepProgress) => {
+  if (stepProgress["status"] === "SUCCEEDED") {
     return 100;
   }
   const progress_fraction = stepProgress["progress_fraction"];
@@ -64,13 +64,6 @@ const getProgressPercent = (stepProgress) =>{
   }
 };
 
-const updateValues = (data) =>{
-  if (wfeSequenceId === data["wfe_sequence_id"]) {
-      runName.value = data["run_name"];
-      stepsProgress.value = data["steps_progress"];
-    }
-}
-
 const init = () => {
   workflowStep = props.workflowStep;
   workflowTrigger = props.workflowStep.workflowTrigger;
@@ -78,9 +71,14 @@ const init = () => {
   showButton = !!("showButton" in workflowStep && workflowStep.showButton);
   doGetData();
 
-  console.log("Registering socket io bindings for WorkflowEngineMonitor");
+  // console.log("Registering socket io bindings for WorkflowEngineMonitor");
   window.socket.off('wfe_sequence_progress');
-  window.socket.on('wfe_sequence_progress', updateValues);
+  window.socket.on('wfe_sequence_progress', (data) => {
+    if (wfeSequenceId === data["wfe_sequence_id"]) {
+      runName.value = data["run_name"];
+      stepsProgress.value = data["steps_progress"];
+    }
+  });
 };
 init();
 </script>

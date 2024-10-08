@@ -361,26 +361,27 @@ export class Workflow {
 
     setActiveWorkflowSteps(targetStepIdx) {
         this.workflowTrigger["index"] += 1;
-        // to avoid infinite loop with auto_next_step
+        // to avoid infinite loop with auto_next_step: don't reset when staying on the same steps
         this.workflowTrigger[RESET_WORKFLOW] = this.activeWorkflowIndex !== targetStepIdx;
         this.activeWorkflowIndex = targetStepIdx;
-        this.activeWorkflowSteps = [this.add_main_service_id(this.service.workflow[targetStepIdx])];
-        if ("co_view_steps" in this.activeWorkflowSteps[0]) {
-            for (let stepIndex of this.activeWorkflowSteps[0].co_view_steps) {
+        const currentSteps = [this.add_main_service_id(this.service.workflow[targetStepIdx])];
+        if ("co_view_steps" in currentSteps[0]) {
+            for (let stepIndex of currentSteps[0].co_view_steps) {
                 if (typeof stepIndex === "string") {
                     stepIndex = this.getStepIdxFromReference(stepIndex);
                 }
                 if (stepIndex < targetStepIdx) {
-                    this.activeWorkflowSteps.unshift(this.add_main_service_id(this.service.workflow[stepIndex]));
+                    currentSteps.unshift(this.add_main_service_id(this.service.workflow[stepIndex]));
                 } else {
-                    this.activeWorkflowSteps.push(this.add_main_service_id(this.service.workflow[stepIndex]));
+                    currentSteps.push(this.add_main_service_id(this.service.workflow[stepIndex]));
                 }
             }
         }
         // to update values in other 'co view steps' via 'watch'
-        for (const step of this.activeWorkflowSteps) {
+        for (const step of currentSteps) {
             step.workflowTrigger = this.workflowTrigger;
         }
+        this.activeWorkflowSteps = currentSteps;
     }
 
     add_main_service_id(step) {

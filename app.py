@@ -62,6 +62,7 @@ from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettin
 from extensions.open_id_integration import OpenIDIntegration
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
+from extensions.toast_notifications import ToastNotifications
 from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
@@ -178,6 +179,7 @@ executor = Executor(app)
 
 #extensions
 schedule_session_clean_up()
+toast_notifications = ToastNotifications(app, socketio)
 wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
@@ -220,7 +222,7 @@ ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 # DataManager(app, socketio)
 ExternalModels(app, socketio, models_storage)
-WorkflowEngine(app, socketio, models_storage, esdl_services)
+WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
 
 
 #TODO: check secret key with itsdangerous error and testing and debug here

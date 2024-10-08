@@ -722,7 +722,7 @@ class ESDLServices:
                         "hide_button": True,
                     }, None
             else:
-                if url_response:
+                if url_response is not None:
                     logger.warning(
                         "Error running ESDL service - response "
                         + str(url_response.status_code)
