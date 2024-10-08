@@ -27,7 +27,7 @@ import io
 import os
 import requests
 import tempfile
-from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast, Callable
+from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
 import zipfile
 
 from esdl import esdl
