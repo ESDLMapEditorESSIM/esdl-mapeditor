@@ -1171,6 +1171,26 @@ esdl_config = {
                         "description": "Select which buildings will be part of the energy hub.",
                         "type": "custom",
                         "component": "eps-init-energy-hub",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b16",
+                            "name": "EPS Energy Hub",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": f"{EPS_WEB_HOST}/api/energy_hubs/",
+                            "http_method": "post",
+                            "type": "send_esdl_json",
+                            "body": "base64_encoded",
+                            "query_parameters": [
+                                {
+                                    "parameter_name": "building_ids",
+                                    "location": "body",
+                                },
+                            ],
+                            "result": [{"code": 200, "action": "esdl"}],
+                            "with_jwt_token": True,
+                        }
                     },
                     {
                         # 35

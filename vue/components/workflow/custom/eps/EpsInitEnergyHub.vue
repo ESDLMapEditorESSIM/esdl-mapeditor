@@ -99,10 +99,12 @@ doGetData();
 const workflowStep = props.workflowStep;
 
 const onSubmit = async () => {
-  const payload = {
-    "building_ids": selectedBuildingIds.value,
-  };
-  window.socket.emit("create_esdl_with_energy_hub", payload);
+  const params = {};
+  params["service_id"] = workflowStep.service.id;
+  params["query_parameters"] = {};
+  params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
+
+  window.socket.emit("command", { cmd: "query_esdl_service", params: params });
   window.show_loader();
 }
 
