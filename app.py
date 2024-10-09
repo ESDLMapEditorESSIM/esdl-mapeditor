@@ -1199,7 +1199,7 @@ def update_coordinates(message):
     coords = message['coordinates']
 
     object = pm.get_by_id(active_es_id, obj_id)
-
+    object_container = object.eContainer()
 
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
@@ -1227,17 +1227,19 @@ def update_coordinates(message):
         for a in asset_list:
             if a[3] == obj_id:
                 a[5] = [coords['lat'], coords['lng']]
-                break # ready searching
+                break  # ready searching
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
             update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
-        #TODO Ewoud: move asset to other area if it is moved in it, but first handle assets in buildings/compound assets
-        #area_id = find_area_location_based(pm, active_es_id, object.geometry)
-        #area = pm.get_by_id(active_es_id, area_id)
-        #if area:
-        #    area.asset.append(object)  # is a move operation: moves this object to another area
+        # Only potentially move an asset to a different Area if it was originally contained in an Area
+        # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
+        if isinstance(object_container, esdl.Area):
+            area_id = find_area_location_based(pm, active_es_id, object)
+            area = pm.get_by_id(active_es_id, area_id)
+            if area and area != object_container:
+               area.asset.append(object)  # is a move operation: moves this object to another area
 
         undo_redo.stop_recording()
 
