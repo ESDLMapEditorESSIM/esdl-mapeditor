@@ -831,10 +831,23 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
-def find_area_location_based(pm: ProjectManager, active_es_id, geometry):
+def find_area_location_based(pm: ProjectManager, active_es_id, object):
+    """
+    Finds the area (parent) of an object, based on the location of the object and the geometries (polygon shapes) of the
+    ESDL areas
+
+    :param pm: ProjectManager
+    :param active_es_id: ID of the current active EnergySystem
+    :param object: Can be a reference to an ESDL object with a geometry attribute, or a reference to an esdl.Geometry itself
+    :return: area ID
+    """
     shape_dictionary = get_session('shape_dictionary')
 
-    obj_geometry_shape = Shape.create(geometry)
+    if isinstance(object, esdl.Geometry):
+        obj_geometry_shape = Shape.create(object)
+    else:
+        obj_geometry_shape = Shape.create(object.geometry)
+
     areas_that_contain_obj = list()
 
     for key in shape_dictionary.keys():
@@ -853,13 +866,40 @@ def find_area_location_based(pm: ProjectManager, active_es_id, geometry):
         lowest_area_id = None
         for ar_id in areas_that_contain_obj:
             area = pm.get_by_id(active_es_id, ar_id)
+            area_scope = None
             area_level = 1
             while isinstance(area.eContainer(), esdl.Area):
                 area_level += 1
+                if isinstance(area.eContainer(), esdl.Area) and area.eContainer().logicalGroup:
+                    # The parent area has logicalGroup set to True, so the area itself has a scope of a certain type
+                    # (either a DSO service area or a CBS area)
+                    area_scope = area.scope
                 area = area.eContainer()
-            if area_level > lowest_level:
-                lowest_level = area_level
-                lowest_area_id = ar_id
+
+            if area_scope and not isinstance(object, esdl.Geometry):
+                # If the area was in a "logicalGroup" (DSO service are or CBS area) and the function was called with
+                # an ESDL asset as object (and not a geometry), move transport assets to other DSO service areas and
+                # other assets to CBS areas
+                if isinstance(object, esdl.Transport):
+                    if area_scope == esdl.AreaScopeEnum.SERVICE_AREA:
+                        if area_level > lowest_level:
+                            lowest_level = area_level
+                            lowest_area_id = ar_id
+                elif isinstance(object, esdl.Asset):
+                    # Can be Buildings or EnergyAssets (but not Transport)
+                    if area_scope != esdl.AreaScopeEnum.SERVICE_AREA:
+                        if area_level > lowest_level:
+                            lowest_level = area_level
+                            lowest_area_id = ar_id
+                else:
+                    logger.error(f"Unhandled case! Function 'find_area_location_based' was called with object of type {type(object)}")
+            else:
+                # if there is no area_scope OR the object is of type esdl.Geometry (in cases of drawing a new asset)
+                # just find the lowest level area and don't look at the area scope (as we cannot judge if it's a
+                # Transport asset or not)
+                if area_level > lowest_level:
+                    lowest_level = area_level
+                    lowest_area_id = ar_id
 
         return lowest_area_id
 
