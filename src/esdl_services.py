@@ -34,7 +34,7 @@ from extensions.session_manager import get_project_manager, get_session, set_ses
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
-from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
+from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -499,8 +499,12 @@ class ESDLServices:
                                         if sector:
                                             asset.sector = sector
 
+                                if "mode" in service["result"][0] and service["result"][0]["mode"] == "location_based_addition_to_area":
+                                    area_to_be_added_to_id = find_area_location_based(pm, active_es_id, asset.geometry)
+                                else:
+                                    area_to_be_added_to_id = area_to_be_added_to.id
                                 pm.add_object_to_dict(active_es_id, asset, recursive=True)
-                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
+                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to_id)
                                 asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
                                 if asset_ui:
                                     emit(
