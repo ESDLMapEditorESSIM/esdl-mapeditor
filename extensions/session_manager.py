@@ -84,7 +84,7 @@ def on_change_recorded(change: HighLevelChange):
     # options = {'encoder': DateTimeEncoder, 'indent': 2}
     options = {JsonOptions.INDENT: 2}
     hlc_string = eobject_to_string(change, ESDLFormat.JSON, options=options)
-    #logger.debug(f"Sending HighLevelChange: {hlc_string}")
+    logger.debug(f"Sending HighLevelChange: {hlc_string[:500]}")
 
     # uri = StringURI("high_level_change.json")
     # resource = pm.rset.create_resource(uri)
@@ -117,7 +117,7 @@ def get_project_manager() -> ProjectManager:
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            logger.debug("Retrieve pm client_id={}".format(client_id))
+            #logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
@@ -140,7 +140,7 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            logger.debug("Retrieve pm client_id={}".format(client_id))
+            #logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
@@ -187,11 +187,14 @@ def set_session(key, value):
     managed_sessions[client_id][key] = value
 
 
-def get_session(key=None):
+def get_session(key=None, default_value=None):
     """
     Return memory-based session variable
     :param key: key to retrieve a value for. If key is None, it will return the whole session for this client
-    :return:
+    :param default_value: default value of the variable if key is not found. This value is stored in the session with
+           this key.
+    :return: the whole session object if key=None, the value for key if available, default_value if specified, or none
+           if key cannot be found
     """
     global managed_sessions
     if "client_id" not in session:
@@ -208,7 +211,11 @@ def get_session(key=None):
             try:
                 return managed_sessions[client_id][key]
             except:
-                return None
+                if default_value:
+                    managed_sessions[key] = default_value
+                    return default_value
+                else:
+                    return None
 
 
 def del_session(key):
