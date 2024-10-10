@@ -952,8 +952,8 @@ class ProjectManager:
                 return found
             except KeyError as e:
                 #traceback.print_exc()
-                self.debug()
-                breakpoint()
+                #self.debug()
+                #breakpoint()
                 raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
                                "after rebuilding uuid_dict.".format(object_id, es.id)) from e
 

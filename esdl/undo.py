@@ -149,8 +149,8 @@ class UndoRedoCommandStack:
             self.push(self._hlc)
 
             # Notify listeners in ProjectManger of this change
-            logger.debug("undo.py stop recording: self._hlc:", _hlc=self._hlc)
-            logger.debug("undo.py stop recording: self.top:", top=self.top)
+            #logger.debug("undo.py stop recording: self._hlc:", _hlc=self._hlc)
+            #logger.debug("undo.py stop recording: self.top:", top=self.top)
             if self.change_handler and call_change_handler:
                 logger.debug("Propagating changes to change handler")
                 self.change_handler(self.top)

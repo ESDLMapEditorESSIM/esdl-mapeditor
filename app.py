@@ -1237,11 +1237,11 @@ def update_coordinates(message):
 
         # Only potentially move an asset to a different Area if it was originally contained in an Area
         # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
-        # if isinstance(object_container, esdl.Area):
-        #     area_id = find_area_location_based(pm, active_es_id, object)
-        #     area = pm.get_by_id(active_es_id, area_id)
-        #     if area and area != object_container:
-        #        area.asset.append(object)  # is a move operation: moves this object to another area
+        if isinstance(object_container, esdl.Area):
+            area_id = find_area_location_based(pm, active_es_id, object)
+            area = pm.get_by_id(active_es_id, area_id)
+            if area and area != object_container:
+               area.asset.append(object)  # is a move operation: moves this object to another area
 
         undo_redo.stop_recording()
 
