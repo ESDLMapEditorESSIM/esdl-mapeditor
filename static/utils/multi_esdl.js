@@ -440,7 +440,7 @@ function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
 
     let carrier_info_mapping = {};
-    carrier_info_mapping[0] = {color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[0] = {color: '#404040', name: 'No carrier specified'}
     carrier_info_mapping[1] = {color: '#FF0000', name: 'Conflicting carriers specified'}
 
     for (let i = 0; i < carrier_list.length; i++) {
