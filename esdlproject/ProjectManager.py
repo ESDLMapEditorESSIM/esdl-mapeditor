@@ -260,12 +260,14 @@ class ProjectManager:
             self.get_variant_snapshot(self.active_variant)
         return self.active_variant.snapshotRef  # return reference to current resource with active energy system
 
-    def add_energy_system(self, uri: URI) -> Tuple[Variant, List[str]]:
+    def add_energy_system(self, uri: URI, variant_id:str = None) -> Tuple[Variant, List[str]]:
         """
         Loads an external energy system as a base variant and create a new Variant for capturing future changes
 
         :param uri: a StringURI with a unique uri and the esdl as string
            e.g. StringURI('my_energy_system.esdl', esdl_string)
+        :param variant_id: the id the variant should have (e.g. when syncing variants between different models), default
+            None.
 
         :return: Tuple of [the newly created variant, parse information from reading the input)
         """
@@ -296,7 +298,9 @@ class ProjectManager:
         self.project.variantCollection.append(variantCollection)
         variantCollection.energysystemRef = es  # link variantCollection to the loaded EnergySystem
         # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
-        es_variant = Variant(name=f"{es.name}", id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
+        if not variant_id:
+            variant_id = str(uuid4())
+        es_variant = Variant(name=f"{es.name}", id=variant_id, lastChanged=datetime.now(timezone.utc))
         variantCollection.variant = es_variant
         snapshot_es = self.get_variant_snapshot(es_variant)  # create snapshot for this new variant
         #self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
@@ -562,12 +566,12 @@ class ProjectManager:
             es = base_variant_resource.contents[0]
             es.name = variant.name # overwrite name of ES to match the variant name
 
-            snapshot_resource.append(es.deepcopy())
+            snapshot_resource.append(es.deepcopy(uuid_dict=snapshot_resource.uuid_dict))
             variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
             variant.snapshotRef.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
 
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
-            update_uuid_dict(snapshot_resource.contents[0])
+            #update_uuid_dict(snapshot_resource.contents[0])
             snapshot_resource.uuid_dict[variant.snapshotRef.id] = variant.snapshotRef
             try:
                 del snapshot_resource.uuid_dict[es.id]  # remove energy system id, as that gets updated

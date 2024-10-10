@@ -24,6 +24,7 @@ from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from extensions.session_manager import set_session, get_project_manager
 from src.process_es_area_bld import process_energy_system
+from src.tno.live_model_interface.api import send_new_esdl_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)
@@ -44,6 +45,7 @@ class ESDLFileIO:
             #with self.flask_app.request_context():
             # first remove active variants
             self.clear_current_loaded_variants()
+            # TODO send clear loaded variants message to LMI
             # len(request.values) seems to be a multiple of 2
             for i in range(int(len(request.values)/2)):
                 base64_file_contents = request.values.get(f'file_info[{i}][file]')
@@ -105,6 +107,7 @@ class ESDLFileIO:
             uri = StringURI(filename, file)
             variant, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
             pm.set_active_variant(variant)
+            send_new_esdl_to_lmi()
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:

@@ -5,8 +5,9 @@ from datetime import datetime, timezone
 from flask import session
 
 from esdlproject.ProjectManager import ProjectManager
-from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY, set_session
-from src.tno.live_model_interface.shared.message_types import NewESDLMessage, ProjectManagerMessage, ActivateDeactivateLmiMessage
+from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
+from src.tno.live_model_interface.shared.message_types import NewESDLMessage, ProjectManagerMessage, \
+    ActivateDeactivateLmiMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
 LAST_PM_REFRESH_SENT: datetime | None = None
@@ -19,7 +20,7 @@ def send_new_esdl_to_lmi():
     :return:
     """
     pm = get_project_manager()
-
+    active_variant = pm.get_active_variant()
     esdlstr = pm.active_energy_system_to_string()
     esdlstr_bytes = esdlstr.encode('utf-8')
     esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
@@ -32,7 +33,8 @@ def send_new_esdl_to_lmi():
         timestamp=datetime.now(timezone.utc),
         user_email=user_email,
         client_id=client_id,
-        b64_esdl=esdlstr_base64_str
+        b64_esdl=esdlstr_base64_str,
+        variant_id=active_variant.id
     )
 
     send_rabbitmq_message(message, "events.esdl.new")

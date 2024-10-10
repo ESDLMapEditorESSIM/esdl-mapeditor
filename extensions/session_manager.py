@@ -236,7 +236,7 @@ def del_session(key):
 
 def clean_up_sessions():
     global managed_sessions
-    logger.debug("Current Thread %s" % threading.currentThread().getName())
+    logger.debug("Current Thread %s" % threading.current_thread().name)
     logger.info("Clean up sessions: current number of sessions: {}".format(len(managed_sessions)))
     for key in list(managed_sessions.keys()):  # make a copy of the keys in the list
         last_accessed = managed_sessions[key][LAST_ACCESSED_KEY]

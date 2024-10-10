@@ -40,6 +40,7 @@ class WindPotentialResultMessage(LmiMessage):
 
 class NewESDLMessage(LmiMessage):
     b64_esdl: str
+    variant_id: str
 
 
 class ProjectManagerMessage(LmiMessage):

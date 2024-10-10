@@ -3262,9 +3262,10 @@ def process_file_command(message):
                     info += line + "\n"
                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
             emit_active_esdl_project()
-            call_process_energy_system.submit()  # run in seperate thread
+            call_process_energy_system.submit()  # run in separate thread
             # TODO: This seems unused.
             set_session('es_filename', filename)
+            send_new_esdl_to_lmi()
         except Exception as e:
             logger.exception("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
