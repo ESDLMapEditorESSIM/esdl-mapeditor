@@ -1225,21 +1225,23 @@ def update_coordinates(message):
         # update coordinates in asset_list
         asset_list = get_session_for_esid(active_es_id, 'asset_list')
         for a in asset_list:
+            # TODO: Handle buildings
             if a[3] == obj_id:
                 a[5] = [coords['lat'], coords['lng']]
                 break  # ready searching
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
+            # TODO: Handle buildings
             update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
         # Only potentially move an asset to a different Area if it was originally contained in an Area
         # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
-        if isinstance(object_container, esdl.Area):
-            area_id = find_area_location_based(pm, active_es_id, object)
-            area = pm.get_by_id(active_es_id, area_id)
-            if area and area != object_container:
-               area.asset.append(object)  # is a move operation: moves this object to another area
+        # if isinstance(object_container, esdl.Area):
+        #     area_id = find_area_location_based(pm, active_es_id, object)
+        #     area = pm.get_by_id(active_es_id, area_id)
+        #     if area and area != object_container:
+        #        area.asset.append(object)  # is a move operation: moves this object to another area
 
         undo_redo.stop_recording()
 

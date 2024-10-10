@@ -33,6 +33,7 @@ from extensions.settings_storage import SettingsStorage
 import src.log as log
 from src.edr_client import EDRClient
 from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL
+from utils.utils import timed
 
 logger = log.get_logger(__name__)
 
@@ -217,6 +218,7 @@ class ETMInterface:
 
         logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipalities from input file")
 
+    @timed
     def request_sankey_info_municipality(self, municipality_code):
         if municipality_code not in self.etm_municipalities:
             return None
@@ -252,6 +254,7 @@ class ETMInterface:
                 logger.error(f"Response code: {response.status_code}")
                 return None
 
+    @timed
     def process_data_and_add_to_area(self, pm, active_es_id, area, etm_sankey_data):
         es = pm.get_active_energy_system()
 
