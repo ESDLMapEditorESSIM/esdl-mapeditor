@@ -1,12 +1,12 @@
-import logging
 from typing import List, Tuple
 
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection
 
 from esdlproject import AbstractChange, Add, Set, DetailedChange, Remove
+from src import log
 
-logger = logging.getLogger(__name__)
+logger = log.get_logger(__name__)
 
 
 def deepcopy_eobject_change(eobject: EObject,
@@ -58,7 +58,7 @@ def deepcopy_eobject_change(eobject: EObject,
             eclass: EClass = k.eClass
             for x in eclass.eAllStructuralFeatures():
                 if isinstance(x, EReference):
-                    logger.debug("deepcopy with Changes: processing x-reference {}".format(x.name))
+                    #logger.debug("deepcopy with Changes: processing x-reference {}".format(x.name))
                     ref: EReference = x
                     orig_value = k.eGet(ref)
                     if orig_value is None:
@@ -73,7 +73,7 @@ def deepcopy_eobject_change(eobject: EObject,
                                 fragment = orig_ref_value.eURIFragment()
                                 change = Add(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                                 changeList.append(change)
-                                logger.debug("deepcopy change{}: processing x-reference {}: {}".format(eobject, x.name, fragment))
+                                #logger.debug("deepcopy change{}: processing x-reference {}: {}".format(eobject, x.name, fragment))
                         else:
                             fragment = orig_value.eURIFragment()
                             change = Set(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)

@@ -306,7 +306,8 @@ def post_process_high_level_change(high_level_change: HighLevelChange):
             if xref_change.feature == 'connectedTo':
                 check_list.append(xref_change)
     filtered, doubles = filterDoubleConnectedTo(check_list)
-    logger.debug(f"Filter doubles: removed {doubles}")
+    if len(doubles) > 0:
+        logger.debug(f"Filter doubles: removed {doubles}")
     for change in doubles:
         change.delete()  # this works because of ecore! :-)
 

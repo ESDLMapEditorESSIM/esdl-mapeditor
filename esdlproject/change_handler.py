@@ -190,7 +190,8 @@ def undoChange(change, resource: XMLResource):
                 logger.debug(f'Removing {current_value} from {owner.eClass.name}.{change.feature}')
                 abstractList.remove(current_value)
             except KeyError as e:
-                breakpoint()
+                logger.error("Can't delete from list")
+                #breakpoint()
         elif change.stringValue:
             owner: EObject = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
