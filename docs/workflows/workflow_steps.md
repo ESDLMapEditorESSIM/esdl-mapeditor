@@ -87,7 +87,6 @@ Example config using `from_socket`:
   "type": "table-query",
   "show_reload_button": false,
   "source": {
-    "refresh_interval_seconds": 2,
     "from_socket": {
       "event": "get_external_model_runs_for_user",
       "params": {
@@ -442,7 +441,7 @@ This step allows the user to call a JavaScript function. The function is defined
 
 ## `text`
 
-A text component. The text is defined in the `text` field of the step.
+A text display component.
 
 Example config:
 ```json
@@ -463,9 +462,10 @@ Example config:
 ```
 
 ## `workflow-engine-monitor`
-Passive workflow components that follows the progress of a workflow engine sequence.
-This component specifies the steps to be done by the workflow engine. The workflow engine will run this step if
-indicated by `workflow_engine_next_step`, regardless of whether it is displayed.
+
+Workflow component that specifies a workflow engine step, reached by `workflow_engine_next_step`.
+It can also be displayed in the frontend by `next_step` to follow the progress of a workflow engine sequence.
+The workflow engine will run this step regardless of whether it is displayed.
 
 Example config:
 ```json
@@ -473,7 +473,7 @@ Example config:
   "reference": "retrieve_run_progress_results",
   "monitor_name": "Running Essim Calculation...", // Name to be displayed in the workflow monitor 
   "type": "workflow-engine-monitor",
-  "queries": [ // queries to be executed by the workflow engine
+  "queries": [ // queries to be executed by the workflow engine, other actions to be added.
     {
       "url": "http://localhost:8112/essim/simulation/<MODEL_JOB_ID>",
       "response_mapping": { // mapping to standard 'external_model_run' mongodb doc keys such as `status`, see `extensions/external_models/external_models_storage.py`
@@ -486,7 +486,7 @@ Example config:
         "dashboardURL": "dashboardURL"
       },
       "esdl_encoding": "base64_encoded",
-      "status_mapping": { // mapping to standard 'external_models` statusses
+      "status_mapping": { // mapping to standard 'mapeditor external_models` statusses
         "SUBMITTED": [
           "CREATED"
         ],
@@ -506,17 +506,19 @@ Example config:
       }
     }
   ],
-  "completed_statuses": { // determine whether the query polling can stop with `success` (continue sequence) or `error` (terminate sequence) state
-    "success": [
+  // determine whether the query(ies) polling can stop with `success` (continue sequence) or `error` (abort sequence) state
+  // can be omitted in which case the query will be run only once
+  "completed_statuses": {
+    "success": [  // if success the workflow engine will continue with the next step
       "SUCCEEDED"
     ],
-    "error": [
+    "error": [  // if error the workflow engine sequence will be aborted
       "CANCELLED",
       "ERROR"
     ]
   },
   "retry_interval_seconds": 2, // query polling interval
-  "maximum_wait_seconds": 3600 // maximum polling duration
+  "maximum_wait_seconds": 3600 // maximum duration after which the calculation will be aborted
 }
 ```
 

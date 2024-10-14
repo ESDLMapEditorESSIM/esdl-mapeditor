@@ -179,7 +179,6 @@
         "type": "table-query",
         "show_reload_button": false,
         "source": {
-          "refresh_interval_seconds": 2,
           "from_socket": {
             "event": "get_external_model_runs_for_user",
             "params": {
@@ -519,7 +518,6 @@
         "type": "table-query",
         "show_reload_button": false,
         "source": {
-          "refresh_interval_seconds": 2,
           "from_socket": {
             "event": "get_external_model_runs_for_user",
             "params": {
