@@ -871,11 +871,29 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
     ass_id = asset.id
-    for c in conn_list:
-        if c['from-asset-id'] == ass_id:
-            c['from-asset-coord'] = (lat, lon)
-        if c['to-asset-id'] == ass_id:
-            c['to-asset-coord'] = (lat, lon)
+
+    if isinstance(asset, esdl.AbstractBuilding):
+        # Asset that has moved is a building, so check connection list for assets that are inside a building
+        pm = get_project_manager()
+
+        for c in conn_list:
+            # check if one of the asset is inside a building
+            from_asset_id = c['from-asset-id']
+            from_asset = pm.get_by_id(active_es_id, from_asset_id)
+            if from_asset.containingBuilding and from_asset.containingBuilding == asset:
+                c['from-asset-coord'] = (lat, lon)
+
+            to_asset_id = c['to-asset-id']
+            to_asset = pm.get_by_id(active_es_id, to_asset_id)
+            if to_asset.containingBuilding and to_asset.containingBuilding == asset:
+                c['to-asset-coord'] = (lat, lon)
+    else:
+        # Asset that has moved is not a building
+        for c in conn_list:
+            if c['from-asset-id'] == ass_id:
+                c['from-asset-coord'] = (lat, lon)
+            if c['to-asset-id'] == ass_id:
+                c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')   # clear current active layer connections
     add_to_building = False
@@ -1223,16 +1241,26 @@ def update_coordinates(message):
         # that is given as a parameter.
 
         # update coordinates in asset_list
+        found_asset = False
+
+        # First try to find the asset in the asset_list (asset could be a building)
         asset_list = get_session_for_esid(active_es_id, 'asset_list')
         for a in asset_list:
-            # TODO: Handle buildings
             if a[3] == obj_id:
                 a[5] = [coords['lat'], coords['lng']]
+                found_asset = True
                 break  # ready searching
+
+        if not found_asset:
+            # Then try to find the asset in the building_list and update if so
+            building_list = get_session_for_esid(active_es_id, 'building_list')
+            for b in building_list:
+                if b[2] == obj_id:
+                    b[4] = [coords['lat'], coords['lng']]
+                    break  # ready searching
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
-            # TODO: Handle buildings
             update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
         # Only potentially move an asset to a different Area if it was originally contained in an Area

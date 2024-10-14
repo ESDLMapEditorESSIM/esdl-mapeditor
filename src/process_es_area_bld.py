@@ -1061,6 +1061,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
 
                     set_session_for_esid(es.id, 'conn_list', conn_list)
                     set_session_for_esid(es.id, 'asset_list', asset_list)
+                    set_session_for_esid(es.id, 'building_list', building_list)
                     set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
 
                     es_info_list[es.id] = {

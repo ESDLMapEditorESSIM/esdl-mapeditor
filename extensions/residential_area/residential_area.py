@@ -27,7 +27,7 @@ from pyecore.resources import ResourceSet, URI
 import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset
-from extensions.session_manager import set_session, get_project_manager, get_session
+from extensions.session_manager import set_session, get_project_manager, get_session, get_session_for_esid
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
 from src.esdl_helper import energy_asset_to_ui
@@ -159,6 +159,9 @@ class ResidentialArea:
                         buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
                                                            [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
                                                            False, {}, extra_attributes])
+                        building_list = get_session_for_esid(active_es_id, 'building_list')
+                        building_list.extend(buildings_to_be_added_list)
+
                         emit(
                             'add_building_objects',
                             {
