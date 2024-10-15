@@ -72,6 +72,7 @@ from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
 from extensions.dice_workflow.dice_workflow import DiceWorkflow
+from extensions.dice_workflow.cost_information import CostInformation
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
@@ -195,6 +196,7 @@ ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
 DiceWorkflow(app, socketio, executor, settings_storage, call_process_energy_system)
+CostInformation(app)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 edr_client = EDRClient(app, socketio, settings_storage)

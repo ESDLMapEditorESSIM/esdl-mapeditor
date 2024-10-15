@@ -34,6 +34,8 @@ class CostInformation:
                 energysystem=base64_es,
             )
 
+            print("payload", payload)
+
             r = requests.post(url, json=payload, timeout=DEFAULT_TIMEOUT)
             return jsonify(r.json())
 
