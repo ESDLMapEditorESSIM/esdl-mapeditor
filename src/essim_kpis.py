@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_session, set_session
 import src.settings as settings
 from influxdb import InfluxDBClient
 from datetime import datetime
@@ -47,30 +47,20 @@ class ESSIM_KPIs:
 
     def init_simulation(self, es=None, simulationRun=None, start_date=None, end_date=None):
         # TODO: This does not work with multiple concurrent users (es, simulationRun, scenario_id, start_date, and so on)
-        self.kpis_results = {}
-        self.carrier_list = []
-        self.es = es
-        self.simulationRun = simulationRun
-        self.scenario_id = es.id
-        self.config = self.init_config()
-        self.database_client = None
-        self.start_date = start_date
-        self.end_date = end_date
-        self.transport_networks = []
-
-        self.connect_to_database()
-
-    def init_config(self):
-        return settings.essim_config
+        set_session('kpi_influxdb_connection', self.connect_to_database(es.id))
 
     def set_es(self, es=None, simulationRun=None):
-        self.es = es
-        self.scenario_id = es.id
-        self.simulationRun = simulationRun
+        pass
+        # self.es = es
+        # self.scenario_id = es.id
+        # self.simulationRun = simulationRun
 
-    def connect_to_database(self):
-        self.database_client = InfluxDBClient(host=self.config['ESSIM_database_server'],
-                                              port=self.config['ESSIM_database_port'], database=self.scenario_id)
+    def connect_to_database(self, scenario_id=None):
+        return InfluxDBClient(
+            host=settings.essim_config['ESSIM_database_server'],
+            port=settings.essim_config['ESSIM_database_port'],
+            database=scenario_id,
+        )
 
     def calculate_load_duration_curve(self, asset_id, asset_name):
         logger.debug("--- calculate_load_duration_curve ---")
@@ -97,7 +87,7 @@ class ESSIM_KPIs:
 
             allocation_energy = None
             try:
-                query = 'SELECT "allocationEnergy" FROM /' + es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\' AND "assetId" = \''+asset_id+'\')'
+                query = 'SELECT "allocationEnergy" FROM /' + es.name + '.*/ WHERE (time >= \'' + influxdb_startdate + '\' AND time < \'' + influxdb_enddate + '\' AND "simulationRun" = \'' + sim_id + '\' AND "assetId" = \'' + asset_id + '\')'
                 logger.debug(query)
                 allocation_energy = self.database_client.query(query)
             except Exception as e:
@@ -123,7 +113,8 @@ class ESSIM_KPIs:
                             power_neg = -power
 
                 # logger.debug(ldc_series_decimate)
-                emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos, 'power_neg': power_neg})
+                emit('ldc-data', {'asset_name': asset_name, 'ldc_series': ldc_series_decimate, 'power_pos': power_pos,
+                                  'power_neg': power_neg})
 
             else:
                 logger.warn('query returned no results')

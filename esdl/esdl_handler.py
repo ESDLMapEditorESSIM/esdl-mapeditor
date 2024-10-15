@@ -28,6 +28,10 @@ from esdl import support_functions
 logger = log.get_logger(__name__)
 
 
+class EnergySystemWithSameIdExists(Exception):
+    """Exception raised if an energy system with same id already exists."""
+
+
 class EnergySystemHandler:
 
     def __init__(self, energy_system=None):
@@ -159,7 +163,7 @@ class EnergySystemHandler:
             parse_info = []
             if isinstance(self.resource, XMLResource):
                 parse_info = self.resource.get_parse_information()
-            self.validate()
+            self.validate(es=self.energy_system)
             self.esid_uri_dict[self.energy_system.id] = uri.normalize()
             # set to False, otherwise all the ids are added again after loading, is not smart and is slow
             # is only here to make sure the id of the energy system is also in the uuid_dict
@@ -184,7 +188,7 @@ class EnergySystemHandler:
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
-    def add_from_string(self, name: str, esdl_string: str, overwrite_existing: bool = True, new_id = None) -> (esdl.EnergySystem, []):
+    def add_from_string(self, name: str, esdl_string: str, overwrite_existing: bool = True) -> (esdl.EnergySystem, []):
         """
         Loads an energy system from a string and adds it to the *existing* resourceSet if it doesn't exist yet.
         If the energy system id is already known, the behavior depends on the overwrite_existing parameter. If its
@@ -194,7 +198,6 @@ class EnergySystemHandler:
         :param name: The name that is used in URI (name + "_" + str(uuid4()) + ".esdl")
         :param esdl_string: The string that contains the ESDL (XML)
         :param overwrite_existing: Indicates if the energy system must be overwritten if it already exists (default True)
-        :param new_id: The new ID that must be assigned to the EnergySystem
 
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
@@ -212,20 +215,13 @@ class EnergySystemHandler:
                     uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
                     resource = self.rset.create_resource(uri)
                     resource.contents.append(es)
+                    self.esid_uri_dict[es.id] = uri.normalize()
+                    self.add_object_to_dict(es.id, es, True)
+
                     return es, parse_info
                 else:
-                    if new_id:
-                        es.id = new_id
-                        uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
-                        resource = self.rset.create_resource(uri)
-                        resource.contents.append(es)
-                        self.validate(es=es)
-                        self.esid_uri_dict[es.id] = uri.normalize()
-                        self.add_object_to_dict(es.id, es, True)
-                        return es, parse_info
-                    else:
-                        # If overwrite_existing is false, raise an Exception that can be handled by the calling function
-                        raise Exception("An EnergySystem with this ID already exists in the ResourceSet")
+                    # If overwrite_existing is false, raise an Exception that can be handled by the calling function
+                    raise EnergySystemWithSameIdExists("An EnergySystem with this ID already exists in the ResourceSet")
             else:
                 # If the EnergySystem is not known yet, add it to the resourceSet
                 return self._add_from_string_to_rset(name, esdl_string)
@@ -351,11 +347,11 @@ class EnergySystemHandler:
             return
         else:
             my_uri = self.esid_uri_dict[es_id]
-            print(f'Removing energy system {my_uri}, with es id {es_id}')
+            logger.debug(f'Removing energy system {my_uri}, with es id {es_id}')
             del self.rset.resources[my_uri]
             del self.esid_uri_dict[es_id]
-            print('Resources in RSet: ', self.rset.resources)
-            print('esid_uri_dict', self.esid_uri_dict)
+            logger.debug('Resources in RSet: [' + ", ".join(self.rset.resources.keys()) + ']')
+            logger.debug('esid_uri_dict: [' + ", ".join(self.esid_uri_dict.keys()) + ']')
 
     def get_energy_systems(self):
         es_list = []
@@ -367,9 +363,8 @@ class EnergySystemHandler:
             es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
-    def validate(self, es=None):
-        if es is None and self.energy_system is not None:
-            es = self.energy_system
+    @staticmethod
+    def validate(es):
         if es is not None:
             if es.id is None:
                 es.id = str(uuid4())
@@ -462,25 +457,6 @@ class EnergySystemHandler:
         self.add_object_to_dict(es_id, area)
 
         return self.energy_system
-
-    # Support for Pickling when serializing the energy system in a session
-    # The pyEcore classes by default do not allow for simple serialization for Session management in Flask.
-    # Internally Flask Sessions use Pickle to serialize a data structure by means of its __dict__. This does not work.
-    # Furthermore, ESDL can contain cyclic relations. Therefore we serialize to XMI and back if necessary.
-    def __getstate__(self):
-        state = dict()
-        #print('Serialize rset {}'.format(self.rset.resources))
-        print('Serializing EnergySystem...', end ="")
-        state['energySystem'] = self.to_string()
-        print('done')
-        return state
-
-    def __setstate__(self, state):
-        self.__init__()
-        #print('Deserialize rset {}'.format(self.rset.resources))
-        print('Deserializing EnergySystem...', end="")
-        self.load_from_string(state['energySystem'])
-        print('done')
 
 
     def update_version(self, es_id) -> str:

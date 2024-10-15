@@ -18,16 +18,16 @@ import random
 from sys import getsizeof
 from flask import session
 from flask_socketio import emit
-from shapely import Polygon, MultiPoint
+from shapely import MultiPoint
+from typing import Dict
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
-    get_session_for_esid
-from src.esdl_helper import generate_profile_info, get_asset_and_coord_from_port_id, asset_state_to_ui, \
+from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
+from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.log import get_logger
 from src.shape import Shape, ShapePoint
@@ -358,7 +358,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
                     area_id_number = ""
-                area_geojson_properties["id"] = area_id + area_id_number;
+                area_geojson_properties["id"] = area_id + area_id_number
 
                 shape_polygon = Shape.create(pol)
                 area_list.append(shape_polygon.get_geojson_feature(area_geojson_properties))
@@ -933,6 +933,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
         if force_update_es_id == "all":
             emit('clear_esdl_layer_list')
 
+        # If an energy system is processed, the loader is hidden by the frontend code that receives the info about
+        # the ESDL. If no energy system is processed, we need to hide the loader.
+        at_least_one_energy_system_processed = False
+
         for es in es_list:
             asset_list = []
             building_list = []
@@ -947,6 +951,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 es.id = str(uuid.uuid4())
 
             if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
+                at_least_one_energy_system_processed = True
                 print("- Processing energysystem with id {}".format(es.id))
                 name = es.name
                 if not name:
@@ -957,23 +962,33 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
                 emit('set_active_layer_id', es.id)
 
-                area = es.instance[0].area
-                find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+                es_instance: esdl.Instance = es.instance[0]
+                top_area: esdl.Area = es_instance.area
+                find_boundaries_in_ESDL(top_area)       # also adds coordinates to assets if possible
                 carrier_list = ESDLEnergySystem.get_carrier_list(es)
                 emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
                 sector_list = ESDLEnergySystem.get_sector_list(es)
                 if sector_list:
                     emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-                # KPIs that are connected to top-level area are visualized in a KPI dialog
+                # Collecting area KPIs
                 print('- Processing KPIs')
-                area_kpis = ESDLEnergySystem.process_area_KPIs(area)
-                area_name = area.name
-                if not area_name:
-                    area_name = title
-                if area_kpis['kpi_list']:   # Only emit KPI info when there are KPIs available
-                    emit('kpis', {'es_id': es.id, 'scope': area_name, 'kpi_info': area_kpis})
-                    emit('kpis_present', True)
+                es_area_kpis = {}
+                for content in es_instance.eAllContents():
+                    if isinstance(content, esdl.Area):
+                        area = content
+                        if area.KPIs:
+                            area_kpis = ESDLEnergySystem.process_area_KPIs(area)
+                            # Only updating es_area_kpis object if list of kpi_list is not empty.
+                            if len(area_kpis['kpi_list']):
+                                area_key = area.name if area.name else area.id
+                                es_area_kpis[area_key] = area_kpis
+
+                displayed_area_name = top_area.name if top_area.name else title
+                # Only emit KPI info when there are area KPIs available
+                if len(es_area_kpis) > 0:
+                    emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
+                    emit('kpis_present', {'es_id': es.id})
 
                 # measures can contain assets that still need to be added to the energysystem
                 assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
@@ -983,7 +998,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
                 # add_missing_coordinates(area)
                 print('- Processing area')
-                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, top_area, 0)
                 print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
                 notes_list = get_notes_list(es)
 
@@ -1010,6 +1025,10 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                     set_session('active_es_id', es.id)
             else:
                 print("- Energysystem with id {} already processed".format(es.id))
+
+        if not at_least_one_energy_system_processed:
+            logger.debug("No energysystem was processed at all. Hiding the loader")
+            emit('hide_loader');
 
         set_handler(esh)
         # emit('set_active_layer_id', main_es.id)
