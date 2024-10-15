@@ -319,9 +319,15 @@ class ResidentialArea:
             r = requests.get(url)
             if r.status_code == 200:
                 result = json.loads(r.text)
-                self.building_list = result
-                self.building_list_datetime_retrieved = now
-                return result
+                if isinstance(result, list):
+                    result.sort(key=lambda x: x["title"])
+                    self.building_list = result
+                    self.building_list_datetime_retrieved = now
+                    return result
+                else:
+                    print('EDR returned unexpected result. Check ResidentialArea settings')
+                    send_alert('EDR returned unexpected result. Check ResidentialArea settings')
+                    return None
             else:
                 print('EDR returned unexpected result. Check ResidentialArea settings')
                 send_alert('EDR returned unexpected result. Check ResidentialArea settings')
