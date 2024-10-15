@@ -194,6 +194,7 @@ class EnergySystemHandler:
         :param name: The name that is used in URI (name + "_" + str(uuid4()) + ".esdl")
         :param esdl_string: The string that contains the ESDL (XML)
         :param overwrite_existing: Indicates if the energy system must be overwritten if it already exists (default True)
+        :param new_id: The new ID that must be assigned to the EnergySystem
 
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """

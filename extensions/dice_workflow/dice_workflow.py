@@ -27,11 +27,10 @@ import io
 import os
 import requests
 import tempfile
-from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast, Callable
+from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
 import zipfile
 
 from esdl import esdl
-from extensions.dice_workflow.energy_hubs import generate_energy_hub
 from extensions.dice_workflow.export_bc import export_business_case
 from extensions.dice_workflow.export_essim import export_energy_system_simulation
 from extensions.essim import (
@@ -200,20 +199,6 @@ class DiceWorkflow:
                 ),
                 200,
             )
-
-        @self.socketio.on('create_esdl_with_energy_hub', namespace='/esdl')
-        def create_esdl_with_energy_hub(message):
-            building_ids = message["building_ids"]
-            esh = get_handler()
-            active_es_id = get_session("active_es_id")
-            es = esh.get_energy_system(es_id=active_es_id)
-            es_string = esh.to_string(es_id=active_es_id)
-            new_es, parse_info = esh.load_from_string(es_string, name=f"{es.name} - Energy Hub", new_id=str(uuid4()))
-            new_es.name = f"{es.name} - Energy Hub"
-            generate_energy_hub(new_es, building_ids)
-            esh.add_object_to_dict(new_es.id, new_es, recursive=True)
-            self.call_process_energy_system.submit(esh, force_update_es_id=active_es_id, zoom=False)
-            return jsonify({}), 200
 
         @self.flask_app.route("/dice_workflow/export_essim", methods=["GET", "POST"])
         def export_essim():
