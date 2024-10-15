@@ -52,10 +52,12 @@ class ESDL2InlineProfile:
             es_converted_resource.save(uri)
 
             content = uri.getvalue()
-            headers = dict()
-            headers['Content-Disposition'] = 'attachment; filename="{}"'.format(es_converted.name)
-            headers['Content-Length'] = len(content)
-            return Response(content, mimetype='application/esdl+xml', direct_passthrough=True, headers=headers)
+            response = Response(content, direct_passthrough=True)
+            response.headers.set('Content-Type', 'application/esdl+xml')
+            response.headers.set('Content-Disposition', 'attachment', filename='%s.esdl' % es_converted.name)
+
+            return response
+
 
     @staticmethod
     def convert_esdl_profiles(
