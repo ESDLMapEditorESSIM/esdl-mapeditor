@@ -659,5 +659,4 @@ class ESDLBrowser {
 var esdl_browser; // global esdl_browser variable
 $(document).ready(function() {
     extensions.push(function(event) { ESDLBrowser.create(event) });
-
 });

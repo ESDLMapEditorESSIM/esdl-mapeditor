@@ -131,8 +131,6 @@ class ResidentialArea:
             else:
                 return "Method not allowed", 500
 
-            return {}
-
         @self.socketio.on("residential_area_create", namespace="/esdl")
         def residential_area_create(params):
             with self.flask_app.app_context():
@@ -141,7 +139,7 @@ class ResidentialArea:
 
                 if 'id' in params:
                     # Request was sent by right-clicking on an Area / map location
-                    area_id = params['id']
+                    area_id = get_area_id_from_mapeditor_id(params['id'])
                     pm = get_project_manager()
                     active_es_id = get_session('active_es_id')
                     area = pm.get_by_id(active_es_id, area_id)

@@ -26,6 +26,7 @@ from esdl import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
 from pyecore.ecore import EObject, EReference, ECollection
 import src.log as log
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
 
 logger = log.get_logger(__name__)
 
@@ -176,7 +177,8 @@ class ESDLBrowser:
         active_es_id = get_session('active_es_id')
         pm = get_project_manager()
         if 'id' in identifier:
-            object_id = identifier['id']
+            # strip ' (1 of 3)' in case of an Area ID
+            object_id = get_area_id_from_mapeditor_id(identifier['id'])
             #object_id is not None:
             try:
                 the_object = pm.get_by_id(active_es_id, object_id)

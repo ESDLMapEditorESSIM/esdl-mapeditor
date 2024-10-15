@@ -598,12 +598,13 @@ function add_service_to_area_contextmenu(layer, service, idx, icon) {
         "BU": "NEIGHBOURHOOD"
     }
     add_service_to_contextmenu(layer, service, function (e) {
+        let area_id = window.get_area_id_from_mapeditor_id(layer.id);
         let state = {
-            area_id: layer.id,
+            area_id: area_id,
             lat: e.latlng.lat.toString(),
             lng: e.latlng.lng.toString(),
         }
-        const scope_abbr = layer.id.substring(0, 2);
+        const scope_abbr = area_id.substring(0, 2);
         if (scope_abbr in scope_map) {
             state.scope = scope_map[scope_abbr];
         }

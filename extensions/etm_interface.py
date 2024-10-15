@@ -1089,39 +1089,43 @@ class ETMSankeyToESDL:
     def apply_heat_transition(self, area, technology_info):
         # TODO: Deal with QaU, deal with "space heater" and "space heater combined", deal with tapwater
         gas_demand_households_heating = None
+        energy_natural_gas_profile_PJ = None
         for asset in area.asset:
             if asset.name == "Final demand_Natural gas_Households space heating and hot water":
                 gas_demand_households_heating = asset
                 energy_natural_gas_profile_PJ = asset.port[0].profile[0].value
                 break
 
-        final_heating_demand_PJ = energy_natural_gas_profile_PJ / 0.9
-        final_heating_demand_heatpump_PJ =  final_heating_demand_PJ * technology_info[0]["percentage"] / 100
-        final_heating_demand_district_heating_PJ =  final_heating_demand_PJ * technology_info[1]["percentage"] / 100
+        if gas_demand_households_heating and energy_natural_gas_profile_PJ:
+            final_heating_demand_PJ = energy_natural_gas_profile_PJ / 0.9
+            final_heating_demand_heatpump_PJ =  final_heating_demand_PJ * technology_info[0]["percentage"] / 100
+            final_heating_demand_district_heating_PJ =  final_heating_demand_PJ * technology_info[1]["percentage"] / 100
 
-        electricity_demand_PJ = final_heating_demand_heatpump_PJ / 3.5           # COP = 3.5
-        steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ      # efficiency = 1
+            electricity_demand_PJ = final_heating_demand_heatpump_PJ / 3.5           # COP = 3.5
+            steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ      # efficiency = 1
 
-        for asset in area.asset:
-            if asset.name == "Final demand_Electricity_Households space heating and hot water":
-                asset.port[0].profile[0].value += electricity_demand_PJ
-            if asset.name == "Final demand_Steam hot water_Households space heating and hot water":
-                asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+            for asset in area.asset:
+                if asset.name == "Final demand_Electricity_Households space heating and hot water":
+                    asset.port[0].profile[0].value += electricity_demand_PJ
+                if asset.name == "Final demand_Steam hot water_Households space heating and hot water":
+                    asset.port[0].profile[0].value += steam_hotwater_demand_PJ
 
-            # TODO: now it is assumed extra energy is imported
-            if asset.name == "Primary demand_Electricity_Import":
-                asset.port[0].profile[0].value += electricity_demand_PJ
-            if asset.name == "Primary demand_Steam hot water_Import":
-                asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+                # TODO: now it is assumed extra energy is imported
+                if asset.name == "Primary demand_Electricity_Import":
+                    asset.port[0].profile[0].value += electricity_demand_PJ
+                if asset.name == "Primary demand_Steam hot water_Import":
+                    asset.port[0].profile[0].value += steam_hotwater_demand_PJ
 
-        gas_demand_households_heating.port[0].profile[0].value = 0.0
+            gas_demand_households_heating.port[0].profile[0].value = 0.0
 
-        self.recalculate_kpis(area)
+            self.recalculate_kpis(area)
 
-        container = area
-        # container will become equal to the top-level area
-        while isinstance(container.eContainer(), esdl.Area):
-            container = container.eContainer()
+            container = area
+            # container will become equal to the top-level area
+            while isinstance(container.eContainer(), esdl.Area):
+                container = container.eContainer()
 
-        # redraw all areas and KPIs, as KPIs have changed
-        find_boundaries_in_ESDL(container)
+            # redraw all areas and KPIs, as KPIs have changed
+            find_boundaries_in_ESDL(container)
+        else:
+            logger.error("Cannot apply heat transition measures. Maybe ETM data is not loaded")

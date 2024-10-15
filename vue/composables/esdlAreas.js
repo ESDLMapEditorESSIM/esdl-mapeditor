@@ -24,7 +24,7 @@ export function useEsdlAreas() {
                     icon: icon,
                     callback: function (e) {
                         const callback_info = {
-                            id: id,
+                            id: window.get_area_id_from_mapeditor_id(id),
                             lat: e.latlng.lat.toString(),
                             lng: e.latlng.lng.toString(),
                         };
