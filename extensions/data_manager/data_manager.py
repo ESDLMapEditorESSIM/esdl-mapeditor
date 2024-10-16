@@ -15,7 +15,8 @@ import copy
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import TypedDict, List, Dict, Optional, Sequence
+from numbers import Number
+from typing import TypedDict, List, Dict, Optional, Sequence, Iterable
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -32,6 +33,7 @@ from extensions.data_manager.db_interaction import create_db, drop_db, create_te
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from src import settings
 from src.log import get_logger
+import statistics
 
 logger = get_logger(__name__)
 
@@ -93,6 +95,120 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     if len(labels) > 0:
         data.labels = labels
 
+def aggreate_based_on_unit(qau: esdl.QuantityAndUnitType, values: Iterable[float]) -> float:
+    """
+    Aggregates a list of values based on the physical quantity of a unit. E.g. sum energy, but average power values.
+    :param qau: esdl.QuantityAndUnitType for the physical quantity
+    :param values: List of values to aggregate
+    :return: the aggregated value (sum or mean)
+    """
+    if qau.physicalQuantity == esdl.PhysicalQuantityEnum.ENERGY or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.COST or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.EMISSION or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.LENGTH or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.DISTANCE or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.VOLUME or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.AREA or \
+            qau.physicalQuantity == esdl.PhysicalQuantityEnum.WEIGHT:
+        value = sum(values)
+    else:
+        value = statistics.fmean(values)
+    return value
+
+def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
+    while isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+    if not qau:
+        #qau = build_qau_from_unit_string("GJ")
+        #qau.physicalQuantity = esdl.PhysicalQuantityEnum.ENERGY
+        qau = esdl.QuantityAndUnitType()  # empty/unknown unit
+    return qau
+
+def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+    """
+    Process an esdl GenericProfile
+    :param profile: Profile to process
+    :param ds: Data set this data belongs to
+    :param variable_name: variable name of this data point if already known, otherwise it will be created
+    :return: Data point, its unit and variable_name of this data point
+    """
+    container = profile.eContainer() # save profile container (e.g. asset, also in case it is a reference)
+    multiplier = 1
+    while isinstance(profile, esdl.ProfileReference):
+        multiplier = multiplier * profile.multiplier
+        profile = profile.reference
+    qau = check_qau(profile.profileQuantityAndUnit)
+    d = Data(dataset=ds, value=0) # default no value
+    if isinstance(profile, esdl.TimeSeriesProfile):
+        ts_profile: esdl.TimeSeriesProfile = profile
+        aggregate = aggreate_based_on_unit(qau, ts_profile.values) * multiplier
+        d = Data(dataset=ds, value=aggregate)
+    elif isinstance(profile, esdl.SingleValue):
+        d = Data(dataset=ds, value=profile.value * multiplier)
+    elif isinstance(profile, esdl.DateTimeProfile):
+        logger.warn("DateTimeSeriesProfile not yet supported")
+    elif isinstance(profile, esdl.InfluxDBProfile):
+        logger.warn("DateTimeSeriesProfile not yet supported")
+    if isinstance(container, esdl.Port):  # usually a port
+
+        port: esdl.Port = container
+        asset: esdl.EnergyAsset = port.energyasset
+        capability = get_asset_capability_type(asset)
+        labels = {'Capability': capability}
+        area = asset.area
+        if asset.containingBuilding or asset.containingAsset:
+            container_asset = asset.eContainer()
+            area = container_asset.area
+            labels['Parent asset'] = container_asset.name
+        d.sector = asset.sector.name if asset.sector else None
+        d.node = asset.name or asset.id
+        d.region = area.name
+        d.technology = asset.eClass.name
+
+
+        variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+        if isinstance(port, esdl.InPort):
+            d.input = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'In'
+        else:
+            port: esdl.OutPort
+            d.output = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'Out'
+            if len(port.connectedTo) > 0:
+                target_asset = port.connectedTo[0].energyasset
+                d.to_node = target_asset.name or target_asset.id
+        other_ports = asset.port.select(lambda p: p != port)
+        if len(other_ports) > 0:
+            labels['Graph position'] = "Interior"
+        else:
+            labels['Graph position'] = "Edge"
+        d.labels = labels
+    elif isinstance(container, esdl.CostInformation):  # handle costinformation
+        cost_type = profile.eContainmentFeature().name
+        labels = {"Cost type": cost_type}
+        if profile.name and profile.name != "":
+            labels["Cost type"] = profile.name
+        if not variable_name:
+            variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+            # variable_name =
+        asset = container.eContainer()
+        if isinstance(asset, esdl.EnergyAsset):  # TODO: could also be measure
+            area = asset.area
+            if asset.containingBuilding or asset.containingAsset:
+                container_asset = asset.eContainer()
+                area = container_asset.area
+                labels['Parent asset'] = container_asset.name
+            d.sector = asset.sector.name if asset.sector else None
+            d.node = asset.name or asset.id
+            d.region = area.name
+            d.technology = asset.eClass.name
+        d.labels = labels
+    # else:
+    #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
+    #     continue
+    return d, qau, variable_name
+
+
 class DataManager:
     def __init__(self, flask_app: Flask, socket: SocketIO):
         self.flask_app = flask_app
@@ -119,7 +235,7 @@ class DataManager:
             with self.flask_app.app_context():
                 pass
 
-    def process_esdl(self, es: esdl.EnergySystem, owner: str) -> List[BaseModel]:
+    def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name=None) -> List[BaseModel]:
         """
         processes the ESDL with
         :param es: ecore EObject  (e.g. EnergySystem)
@@ -137,79 +253,28 @@ class DataManager:
                 instance_datetime: datetime = first_instance.date.date
                 year = instance_datetime.year
 
+        if not scenario_name:
+            scenario_name = f"Data from {es.name}"
+
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown",
-                     scenario=f"Data from {es.name}")
+                     scenario=scenario_name)
         for eobj in es.eAllContents():
             #variable_name = eobj.name if hasattr(eobj, 'name') else None
             variable_name = None
-            if isinstance(eobj, esdl.SingleValue):
+            if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
                 logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
-                qau = eobj.profileQuantityAndUnit
-                while isinstance(qau, esdl.QuantityAndUnitReference):
-                    qau = qau.reference
-                if not qau:
-                    qau = build_qau_from_unit_string("GJ")
-                    qau.physicalQuantity = esdl.PhysicalQuantityEnum.ENERGY
-
-                d = Data(dataset=ds, value=eobj.value)
-                container = eobj.eContainer()
-                if isinstance(container, esdl.Port):# usually a port
-                    port: esdl.Port = container
-                    asset: esdl.EnergyAsset = port.energyasset
-                    area = asset.area
-                    d.sector = asset.sector.name if asset.sector else None
-                    d.node = asset.name or asset.id
-                    d.region = area.name
-                    d.technology = asset.eClass.name
-                    capability = get_asset_capability_type(asset)
-                    labels = {'Capability': capability}
-                    variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-                    if isinstance(port, esdl.InPort):
-                        d.input = port.carrier.name if port.carrier else None
-                        labels["Flow direction"] = 'In'
-                    else:
-                        port: esdl.OutPort
-                        d.output = port.carrier.name if port.carrier else None
-                        labels["Flow direction"] = 'Out'
-                        if len(port.connectedTo) > 0:
-                            target_asset = port.connectedTo[0].energyasset
-                            d.to_node = target_asset.name or target_asset.id
-                    other_ports = asset.port.select(lambda p: p != port)
-                    if len(other_ports) > 0:
-                        labels['Graph position'] = "Interior"
-                    else:
-                        labels['Graph position'] = "Edge"
-                    d.labels = labels
-                elif isinstance(container, esdl.CostInformation): # handle costinformation
-                    cost_type = eobj.eContainmentFeature().name
-                    labels = {"Cost type": cost_type}
-                    if eobj.name and eobj.name != "":
-                        labels["Cost type"] = eobj.name
-                    if not variable_name:
-                        variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-                        #variable_name =
-                    asset = container.eContainer()
-                    if isinstance(asset, esdl.EnergyAsset):  # TODO: could also be measure
-                        area = asset.area
-                        d.sector = asset.sector.name if asset.sector else None
-                        d.node = asset.name or asset.id
-                        d.region = area.name
-                        d.technology = asset.eClass.name
-                    d.labels = labels
-                else:
-                    # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
-                    continue
+                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
 
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
-                continue
+                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
             elif isinstance(eobj, esdl.DoubleKPI):
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
                 update_kpi_metadata(eobj, d)
-                qau = eobj.quantityAndUnit
+                qau = check_qau(eobj.quantityAndUnit)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["KPI type"] = eobj.name
                 d.value = eobj.value
@@ -217,7 +282,7 @@ class DataManager:
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
                 update_kpi_metadata(eobj, d)
-                qau = eobj.quantityAndUnit
+                qau = check_qau(eobj.quantityAndUnit)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["KPI type"] = eobj.name
                 d.value = float(eobj.value)
@@ -231,11 +296,7 @@ class DataManager:
                     continue # ignore KPI if containers are not ok
                 update_kpi_metadata(distribution_kpi, d)
                 d.labels = d.labels if d.labels is not None else {}
-                qau = distribution_kpi.quantityAndUnit
-                while isinstance(qau, esdl.QuantityAndUnitReference):
-                    qau = qau.reference
-                if qau is None:
-                    qau = esdl.QuantityAndUnitType()  # unknown unit!
+                qau = check_qau(distribution_kpi.quantityAndUnit)
                 main_kpi = distribution_kpi  # use main kpi (parent KPI) as name, calculate this here
                 # calculate label prefix for sub kpis
                 if 'KPI level' in d.labels:

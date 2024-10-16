@@ -30,11 +30,17 @@ class DataManagerTestcases(unittest.TestCase):
 
             #es, parse_info = esh.load_file('esdl/Aa en Hunze ETM.esdl')
             #es, parse_info = esh.load_file('esdl/Drenthe ETM.esdl')
-            es, parse_info = esh.load_file('esdl/RES-Noord-HollandZuid.esdl')
+            #es, parse_info = esh.load_file('esdl/RES-Noord-HollandZuid.esdl')
+            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case.esdl')
+            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case(2).esdl')
+            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case_no_storage.esdl')
+            #es, parse_info = esh.load_file(r"C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\EIGEN\EPS - Apeldoorn - Alle maatregelen - Energy Hub - In-line Profiles.esdl")
+            es, parse_info = esh.load_file(r"C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\EIGEN\EPS - Apeldoorn - Alle maatregelen - Energy Hub - In-line Profiles - With Cost Information.esdl")
+            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case_with_storage.esdl')
             #es, parse_info = esh.load_file('esdl/Laurens_Ennatuurlijk.esdl')
             #es, parse_info = esh.load_file('esdl/omotes_test_case_no_influxdb.esdl')
 
-            tables = dm.process_esdl(es, owner="ewoud.werkman@tno.nl")
+            tables = dm.process_esdl(es, owner="ewoud.werkman@tno.nl", scenario_name="Variant no storage")
             session.add_all(tables)
             session.commit()
             ds = [d for d in tables if isinstance(d, DataSet)][0]
