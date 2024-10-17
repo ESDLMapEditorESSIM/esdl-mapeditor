@@ -45,6 +45,15 @@ const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99',
 
 function isNumeric(val) { return !isNaN(val); }
 
+function get_area_id_from_mapeditor_id(id) {
+    const regex = /.* \([0-9]+ of [0-9]+\)/g;
+
+    if (id.match(regex)) {
+        return id.split(" ")[0];
+    } else {
+        return id;
+    }
+}
 
 /**
  * Flattens a list of areas such that KPIs can be properly processed

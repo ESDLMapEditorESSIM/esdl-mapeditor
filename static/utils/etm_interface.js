@@ -48,26 +48,26 @@ class ETMInterface {
         return $div;
     }
 
-    area_info(event, info) {
-        etm_interface_plugin.show_info(info.id);
-        socket.emit('etm_get_sankey_data', info.id, function(success) {
+    area_info(event, id) {
+        etm_interface_plugin.show_info(id);
+        socket.emit('etm_get_sankey_data', id, function(success) {
             if (success) {
                 window.refresh_esdl();
             }
         });
     }
 
-    area_info_update(event, info) {
-        etm_interface_plugin.show_info(info.id);
-        socket.emit('etm_update_sankey_data', info.id, function(success) {
+    area_info_update(event, id) {
+        etm_interface_plugin.show_info(id);
+        socket.emit('etm_update_sankey_data', id, function(success) {
             if (success) {
                 window.refresh_esdl();
             }
         });
     }
 
-    area_heat_transition(event, info) {
-        heat_transition_window(info.id);
+    area_heat_transition(event, id) {
+        heat_transition_window(id);
     }
 
     static create(event) {
@@ -123,13 +123,13 @@ class ETMInterface {
 var etm_interface_plugin;   // global variable for the etm_interface plugin
 
 window.etm_interface_area_info = function(event, info) {
-    etm_interface_plugin.area_info(event, info);
+    etm_interface_plugin.area_info(event, get_area_id_from_mapeditor_id(info.id));
 }
 window.etm_interface_area_info_update = function(event, info) {
-    etm_interface_plugin.area_info_update(event, info);
+    etm_interface_plugin.area_info_update(event, get_area_id_from_mapeditor_id(info.id));
 }
 window.etm_interface_heat_transition = function(event, info) {
-    etm_interface_plugin.area_heat_transition(event, info);
+    etm_interface_plugin.area_heat_transition(event, get_area_id_from_mapeditor_id(info.id));
 }
 
 $(document).ready(function() {

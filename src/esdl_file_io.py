@@ -24,7 +24,7 @@ from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from extensions.session_manager import set_session, get_project_manager
 from src.process_es_area_bld import process_energy_system
-from src.tno.live_model_interface.api import send_new_esdl_to_lmi
+from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)
@@ -42,28 +42,34 @@ class ESDLFileIO:
 
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
-            #with self.flask_app.request_context():
-            # first remove active variants
-            self.clear_current_loaded_variants()
-            # TODO send clear loaded variants message to LMI
-            # len(request.values) seems to be a multiple of 2
-            for i in range(int(len(request.values)/2)):
-                base64_file_contents = request.values.get(f'file_info[{i}][file]')
-                # base64_file_contents now contains something like
-                # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
-                # Only take the part after the comma
-                base64_file_contents = base64_file_contents.split(',')[1]
-                filename = request.values.get(f'file_info[{i}][filename]')
+            try:
+                #with self.flask_app.request_context():
+                # len(request.values) seems to be a multiple of 2
+                added_variants = []
+                for i in range(int(len(request.values)/2)):
+                    base64_file_contents = request.values.get(f'file_info[{i}][file]')
+                    # base64_file_contents now contains something like
+                    # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
+                    # Only take the part after the comma
+                    base64_file_contents = base64_file_contents.split(',')[1]
+                    filename = request.values.get(f'file_info[{i}][filename]')
 
-                if base64_file_contents:
-                    esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
-                    esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
-                    esdl_str = esdlstr_bytes.decode('utf-8')
+                    if base64_file_contents:
+                        esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
+                        esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
+                        esdl_str = esdlstr_bytes.decode('utf-8')
 
-                    self.add_esdl_to_project(filename, esdl_str)
-                    #emit_active_esdl_project() # cant do emit here, because it is not socket io request
+                        variant = self.add_esdl_to_project(filename, esdl_str)
+                        added_variants.append(variant)
+                        #emit_active_esdl_project() # cant do emit here, because it is not socket io request
+                # Now clear current loaded variants. We do this at the end to not destroy the current project if something goes wrong.
+                self.clear_current_loaded_variants(exclude_variant_ids=[v.id for v in added_variants])
+                # TODO send clear loaded variants message to LMI
+                return {'message': 'all ESDL(s) received'}, 201
+            except Exception:
+                logger.exception("Error processing ESDL file(s)")
+                return {'message': 'Error processing ESDL file(s)'}, 500
 
-            return {'message': 'all ESDL(s) received'}, 201
 
         @self.socketio.on("process_loaded_energysystems", namespace='/esdl')
         def process_loaded_energysystems():
@@ -82,13 +88,17 @@ class ESDLFileIO:
         emit('clear_ui')
         emit('clear_esdl_layer_list')
 
-    def clear_current_loaded_variants(self):
+    def clear_current_loaded_variants(self, exclude_variant_ids: list[str] = None):
+        if exclude_variant_ids is None:
+            exclude_variant_ids = []
         pm = get_project_manager()
         for vc in list(pm.project.variantCollection):
-            variants: List[Variant] = []
+            variants: list[Variant] = []
             pm.get_variant_list(vc.variant, variants)
             variants.reverse()  # go from tail to root
             for v in variants:
+                if v.id in exclude_variant_ids:
+                    continue
                 es = pm.get_variant_snapshot(v)
                 if es is not None: # no snapshot yet available
                     stack = pm.get_undo_redo_stack(es)
@@ -100,22 +110,24 @@ class ESDLFileIO:
                 pm.delete_variant(v)
             #pm.delete_variant(vc)
 
-    def add_esdl_to_project(self, filename, file):
+    def add_esdl_to_project(self, filename, file) -> Variant | None:
         pm = get_project_manager()
 
         try:
             uri = StringURI(filename, file)
             variant, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
             pm.set_active_variant(variant)
-            send_new_esdl_to_lmi()
+            send_add_variant_and_esdl_message_to_lmi(variant)
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:
                     info += line + "\n"
                 self.send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+            return variant
         except Exception as e:
             logger.exception(f"Error opening {filename}")
             self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
+            return None
 
     @staticmethod
     def call_process_energy_system():

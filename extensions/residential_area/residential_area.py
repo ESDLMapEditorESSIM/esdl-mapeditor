@@ -131,8 +131,6 @@ class ResidentialArea:
             else:
                 return "Method not allowed", 500
 
-            return {}
-
         @self.socketio.on("residential_area_create", namespace="/esdl")
         def residential_area_create(params):
             with self.flask_app.app_context():
@@ -141,7 +139,7 @@ class ResidentialArea:
 
                 if 'id' in params:
                     # Request was sent by right-clicking on an Area / map location
-                    area_id = params['id']
+                    area_id = get_area_id_from_mapeditor_id(params['id'])
                     pm = get_project_manager()
                     active_es_id = get_session('active_es_id')
                     area = pm.get_by_id(active_es_id, area_id)
@@ -319,9 +317,15 @@ class ResidentialArea:
             r = requests.get(url)
             if r.status_code == 200:
                 result = json.loads(r.text)
-                self.building_list = result
-                self.building_list_datetime_retrieved = now
-                return result
+                if isinstance(result, list):
+                    result.sort(key=lambda x: x["title"])
+                    self.building_list = result
+                    self.building_list_datetime_retrieved = now
+                    return result
+                else:
+                    print('EDR returned unexpected result. Check ResidentialArea settings')
+                    send_alert('EDR returned unexpected result. Check ResidentialArea settings')
+                    return None
             else:
                 print('EDR returned unexpected result. Check ResidentialArea settings')
                 send_alert('EDR returned unexpected result. Check ResidentialArea settings')

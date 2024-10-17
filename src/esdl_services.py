@@ -34,7 +34,8 @@ from extensions.session_manager import get_project_manager, get_session, set_ses
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
-from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based
+from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based, \
+    get_area_id_from_mapeditor_id
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -245,8 +246,8 @@ class ESDLServices:
 
                 area_scope = service_params["area_scope"]
                 url = url.replace(area_scope_tag, area_scope)
-                ares_id = service_params["area_id"]
-                url = url.replace(area_id_tag, ares_id)
+                area_id = get_area_id_from_mapeditor_id(service_params["area_id"])
+                url = url.replace(area_id_tag, area_id)
                 if "url_area_subscope" in service["geographical_scope"]:
                     area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
                     area_subscope = service_params["area_subscope"]

@@ -19,6 +19,7 @@ from pyecore.ecore import EObject
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 
 from esdl.resources.resource_type import ProjectManagerResourceType
+from utils.utils import timed
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ class XMLResource(XMIResource):
     def get_parse_information(self):
         return self.parse_information
 
+    @timed
     def save(self, output=None, options=None):
         self.options = options or {}
         output = self.open_out_stream(output)

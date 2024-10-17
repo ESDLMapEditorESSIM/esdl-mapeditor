@@ -49,10 +49,12 @@ def timed(func):
         result = func(*args, **kwargs)
         end = time.time()
         runtime = round(end - start, 2)
+        file_path = func.__code__.co_filename
         logger.debug(
-            "{} ran in {}s".format(func.__name__, runtime),
+            f"{func.__name__} ran in {runtime}s (path: {file_path})",
             function=func.__name__,
             runtime=runtime,
+            path=file_path,
         )
         return result
 
