@@ -963,6 +963,7 @@ class ProjectManager:
                 raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
                                "after rebuilding uuid_dict.".format(object_id, es.id)) from e
 
+    @timed
     def active_energy_system_to_string(self):
         es = self.get_active_energy_system()
         return self.energy_system_to_string(es.id)
