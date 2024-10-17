@@ -675,7 +675,6 @@ class ETMSankeyToESDL:
             distr_item = esdl.StringItem(label="Local production", value=local_production)
             kpi.distribution.stringItem.append(distr_item)
 
-        print(f"Added KPI {kpi_name}: {kpi}")
         area.KPIs.kpi.append(kpi)
 
     def add_final_demand_per_sector_kpi(self, area):
