@@ -17,6 +17,14 @@
 import {ref} from "vue";
 import { useToast } from "vue-toastification";
 
+/**
+ * @typedef {Object} ApplicationContext
+ * @property {string} application_id
+ * @property {string} name
+ * @property {string} [toast_text]
+ */
+
+
 const defaultApplicationContext = {
     application_id: "default",
     name: "Default",
@@ -35,7 +43,6 @@ export function useApplicationContext() {
      * @param applicationContext
      */
     async function activateApplicationContext(applicationContext) {
-        console.log('Activating application context', applicationContext)
         if (activeApplicationContext.value) {
             await clearApplicationContext();
         }
@@ -77,12 +84,24 @@ export function useApplicationContext() {
         activeApplicationContext.value = defaultApplicationContext;
     }
 
+    /**
+     * @typedef {Object} FetchApplicationContextsResponse
+     * @property {ApplicationContext[]} application_contexts
+     * @property {string} active_context_id
+     */
+
     const fetchApplicationContexts = async () => {
         const response = await fetch('/context/applications')
         const jsonResponse = await response.json()
+        const applicationContexts = jsonResponse.application_contexts
+        const activeContextId = jsonResponse.active_context_id
+        if (activeContextId) {
+            // Find the active context and set it as the active context.
+            activeApplicationContext.value = applicationContexts.find(context => context.application_id === activeContextId)
+        }
         // Always add the default context to the start.
-        jsonResponse.unshift(defaultApplicationContext)
-        return jsonResponse
+        applicationContexts.unshift(defaultApplicationContext)
+        return applicationContexts
     }
 
     return {
