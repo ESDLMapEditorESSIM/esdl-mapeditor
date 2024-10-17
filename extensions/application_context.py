@@ -92,6 +92,7 @@ class ApplicationContextExtension:
             if not application_context:
                 return jsonify({"error": "Application ID not found"}), 404
             client_id = session['client_id']
+            set_session('application_context', None)
 
             live_model_interfaces = application_context.get("live_model_interfaces", [])
             for lmi in live_model_interfaces:

@@ -12,9 +12,6 @@ from src.tno.live_model_interface.shared.message_types import InitNewProjectMess
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 from utils.utils import timed
 
-LAST_PM_REFRESH_SENT: datetime | None = None
-"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
-
 
 def send_init_new_project_to_lmi():
     """
@@ -78,7 +75,6 @@ def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
 
     :param only_send_for_client_id: If provided, only send the project manager for this client id.
     """
-    global LAST_PM_REFRESH_SENT
     for client_id, session_data in managed_sessions.items():
         if only_send_for_client_id is not None and client_id != only_send_for_client_id:
             continue
@@ -97,7 +93,6 @@ def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
             project_name=project.name,
         )
         send_rabbitmq_message(message, "events.pm")
-    LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
 
 
 def activate_live_model_interface(lmi_id: str, client_id: str):

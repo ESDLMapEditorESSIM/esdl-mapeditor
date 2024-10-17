@@ -94,13 +94,13 @@ export function useApplicationContext() {
         const response = await fetch('/context/applications')
         const jsonResponse = await response.json()
         const applicationContexts = jsonResponse.application_contexts
-        const activeContextId = jsonResponse.active_context_id
+        applicationContexts.unshift(defaultApplicationContext)
+        const activeContextId = jsonResponse.active_context_id || defaultApplicationContext.application_id
         if (activeContextId) {
             // Find the active context and set it as the active context.
             activeApplicationContext.value = applicationContexts.find(context => context.application_id === activeContextId)
         }
         // Always add the default context to the start.
-        applicationContexts.unshift(defaultApplicationContext)
         return applicationContexts
     }
 

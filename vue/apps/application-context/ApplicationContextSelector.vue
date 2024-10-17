@@ -17,7 +17,7 @@
 <template>
   <select
     id="application_context"
-    v-model="selected_context"
+    v-model="selectedContext"
     @change="handleChange"
   >
     <option
@@ -37,33 +37,34 @@ import { useApplicationContext } from '../../composables/applicationContext';
 const { activateApplicationContext, activeApplicationContext, clearApplicationContext, fetchApplicationContexts } = useApplicationContext();
 
 const $ = window.$;
-const selected_context = ref(activeApplicationContext.value.application_id);
+const selectedContext = ref(activeApplicationContext.value.application_id);
 const applicationContexts = ref([]);
 
 onMounted(async () => {
   applicationContexts.value = await fetchApplicationContexts();
-  selected_context.value = activeApplicationContext.value.application_id;
+  selectedContext.value = activeApplicationContext.value.application_id;
 
+  const selectMenuEl = $("#application_context");
   if (applicationContexts.value.length > 0) {
     // Initialize the selectmenu
-    $("#application_context").selectmenu({
+    selectMenuEl.selectmenu({
       width: 150,
       change: function (event, ui) {
         handleChange({ target: { value: ui.item.value } });
       }
     });
+    await nextTick();
+    selectMenuEl.val(selectedContext.value).selectmenu("refresh");
   } else {
     // Hide the select menu if no application contexts are available
-    $("#application_context").hide();
+    selectMenuEl.hide();
   }
 });
 
 // Watch for changes in `selected_context` and update the selectmenu value accordingly
-watch(selected_context, async (newValue) => {
-  if (newValue) {
-    await nextTick();
-    $("#application_context").val(newValue).selectmenu("refresh");
-  }
+watch(selectedContext, async (newValue) => {
+  await nextTick();
+  $("#application_context").val(newValue).selectmenu("refresh");
 });
 
 const handleChange = (e) => {
