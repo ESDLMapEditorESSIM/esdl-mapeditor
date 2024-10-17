@@ -17,7 +17,6 @@ import importlib
 import json
 import os
 import traceback
-import tracemalloc
 import urllib
 import uuid
 from datetime import datetime
@@ -110,9 +109,6 @@ from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
 from src.wms_layers import WMSLayers
 from utils.datetime_utils import parse_date
-
-if settings.FLASK_DEBUG:
-    tracemalloc.start()
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))

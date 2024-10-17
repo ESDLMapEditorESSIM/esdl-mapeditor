@@ -1,7 +1,5 @@
-import linecache
-import os
 import threading
-import tracemalloc
+import time
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
@@ -241,10 +239,10 @@ class ProjectManager:
         variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
-        variantCollection_resource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
+        variantCollection_resource:XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
         variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-        #new_es: EnergySystem = es.deepcopy()
-        variantCollection_resource.append(es)
+        #variantCollection_resource.append(es)
+        variantCollection_resource.set_content(es)
         update_uuid_dict(es)  # Energy system is now attached to a resource, update UUID dict
         new_collection.energysystemRef = es
         return new_collection
@@ -278,7 +276,11 @@ class ProjectManager:
         try:
             es_resource: XMLResource = self.rset.create_resource(uri)
             es_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+            logger.debug(f"Loading {uri.plain}")
+            start = time.time()
             es_resource.load()
+            end = time.time()
+            logger.debug(f"Loading of ESDL in {round(end - start, 2)}s")
             es = es_resource.contents[0]
             parse_info = []
             if isinstance(es_resource, XMLResource):
@@ -436,7 +438,7 @@ class ProjectManager:
                 tracker = self.change_tracker.get_tracker(eobj=parent_variant.snapshotRef)
                 if tracker:
                     stack_index = tracker.stack.stack_index
-                    print(f"Using stack_index for {parent_variant.name}:", stack_index)
+                    #print(f"Using stack_index for {parent_variant.name}:", stack_index)
             changes_list.extend(parent_variant.change[:stack_index+1])
         # sort list
         changes_list.sort(key=lambda k: k.changedAt)
@@ -559,14 +561,14 @@ class ProjectManager:
             if variant.snapshotRef is not None:
                 return variant.snapshotRef
 
-            snapshot_resource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
+            snapshot_resource:XMLResource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
             es = base_variant_resource.contents[0]
             es.name = variant.name # overwrite name of ES to match the variant name
 
-            snapshot_resource.append(es.deepcopy(uuid_dict=snapshot_resource.uuid_dict))
+            snapshot_resource.set_content(es.deepcopy(uuid_dict=snapshot_resource.uuid_dict))
             variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
             variant.snapshotRef.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
 
@@ -643,9 +645,12 @@ class ProjectManager:
                 logger.info(f"Removing VariantCollection energy system {variantCollection.name} from "
                       f"{variantCollection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
-                self.rset.remove_resource(variantCollection.energysystemRef.eResource)
+                es = variantCollection.energysystemRef
                 variantCollection.energysystemRef = None
-            self.project.variantCollection.remove(variantCollection)
+                self.rset.remove_resource(es.eResource)
+            logger.debug(f"Removing variantCollection {variantCollection.name} from resource")
+            self.project.variantCollection.remove(variantCollection, update_opposite=False)
+            logger.debug(f"Done removing variant collection")
         else:
             if variant.snapshotRef:
                 resource = variant.snapshotRef.eResource
@@ -685,7 +690,7 @@ class ProjectManager:
         for variantCollection in self.project.variantCollection:
             collection_resource = get_variant_collection_resource(variantCollection)
             resources_dict[variantCollection.id] = collection_resource
-            variantCollection.energysystem = collection_resource.contents[0].deepcopy()
+            variantCollection.energysystem = collection_resource.contents[0]#.deepcopy()
             variantCollection.energysystemRef = None
             # Find all variants in the variant collection
             all_variants.append(variantCollection.variant)
@@ -702,8 +707,10 @@ class ProjectManager:
         # Reset everything (use reference instead of energysystem containment relations)
         for variantCollection in self.project.variantCollection:
             collection_resource = resources_dict[variantCollection.id]
-            variantCollection.energysystem = None
+            # use set_content() here instead of append, somehow eResource does not get updated otherwise
+            collection_resource.set_content(variantCollection.energysystem)
             variantCollection.energysystemRef = collection_resource.contents[0]
+            variantCollection.energysystem = None
         for variant in all_variants:
             if variant.id in variant_snapshot_refs:
                 variant.snapshotRef = variant_snapshot_refs[variant.id]
@@ -729,14 +736,6 @@ class ProjectManager:
         :return: the project object
         """
 
-        # clear current ResourceSet and trackers
-        for r_uri, resource in dict(self.rset.resources).items():
-            self.rset.remove_resource(resource)
-        # self.base_variant_resources.clear()
-        print("clean rset", self.rset.resources)
-        self.change_tracker.trackers.clear()
-        self.variant_activation_timestamps = {}
-
         # First check if the project is valid, so that we don't corrupt the project manager.
         potential_project_resource: XMLResource = self.rset.create_resource(uri)
         potential_project_resource.type = ProjectManagerResourceType.PROJECT
@@ -744,6 +743,13 @@ class ProjectManager:
         potential_project = potential_project_resource.contents[0]
         if not isinstance(potential_project, ESDLProject):
             raise Exception("The project is not a valid ESDL project.")
+
+        # clear current ResourceSet and trackers
+        for r_uri, resource in dict(self.rset.resources).items():
+            self.rset.remove_resource(resource)
+            # self.base_variant_resources.clear()
+        self.change_tracker.trackers.clear()
+        self.variant_activation_timestamps = {}
 
         filename = uri.plain
         logger.info(f"Loading {filename}")
@@ -1060,7 +1066,10 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
     """
     Converts any eObject (and its contents) to a string.
 
-    Uses eobject.deepcopy() to make sure the eObject won't be moved to another Resource (default Ecore behavior)
+    Uses eobject.deepcopy() for XMIResources to make sure the eObject
+        won't be moved/detached to another Resource (default Ecore behavior).
+        For XMLResource and JSONResource this is not needed
+        as it uses there the `set_content_without_detaching()` method.
 
     Parameters
     ----------
@@ -1070,9 +1079,14 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
     """
     if options is None:
         options = dict()
-    deepcopy = eobject.deepcopy()
+
     string_uri = StringURI('variant1_output_shapshot.esdl')
     resource = format.value(string_uri)
+    # TODO: find out if we can do this: Seems to duplicate stuff in a single test
+    #if isinstance(resource, XMLResource) or isinstance(resource, JsonResource):
+    #    resource.set_content_without_detaching(eobject)
+    #else:
+    deepcopy = eobject.deepcopy()
     resource.append(deepcopy)
     resource.save(options=options)
     return string_uri.getvalue()
@@ -1106,37 +1120,12 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     variantCollection = get_variant_collection(variant)
     # index = self.get_base_variant_index(base_variant)
     if variantCollection.energysystemRef is None:
-        breakpoint()
+        #breakpoint()
+        logger.error("variantCollection.energysystemRef is None")
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
 
 
-def display_mem_usage(snapshot, key_type = 'lineno', limit = 10):
-    # from https://stackoverflow.com/questions/552744/how-do-i-profile-memory-usage-in-python
-    print("Creating memory stats...")
-    snapshot = snapshot.filter_traces((
-        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
-        tracemalloc.Filter(False, "<unknown>"),
-    ))
-    print("Create statistics")
-    top_stats = snapshot.statistics(key_type)
 
-    print("Memory stats: Top %s lines" % limit)
-    for index, stat in enumerate(top_stats[:limit], 1):
-        frame = stat.traceback[0]
-        # replace "/path/to/module/file.py" with "module/file.py"
-        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
-        print("#%s: %s:%s: %.1f KiB"
-        %(index, filename, frame.lineno, stat.size / 1024))
-        line = linecache.getline(frame.filename, frame.lineno).strip()
-        if line:
-            print('    %s' % line)
-
-    other = top_stats[limit:]
-    if other:
-        size = sum(stat.size for stat in other)
-    print("%s other: %.1f KiB" % (len(other), size / 1024))
-    total = sum(stat.size for stat in top_stats)
-    print("Total allocated size: %.1f KiB" % (total / 1024))
 
 

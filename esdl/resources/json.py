@@ -36,6 +36,25 @@ class JsonResource(Resource):
         self.default_mapper = DefaultObjectMapper()
         self.type = type
 
+    def set_content_without_detaching(self, root: EObject):
+        """
+        This function sets the content 'root' to an eObject in that is contained in another resource, but does
+        not move the eObject to this resource.
+        This function allows to serialize parts of an ESDL without deepcopying it to avoid moving it to a different resource
+        Parameters
+        ----------
+        root: EObject to seralize
+
+        Returns
+        -------
+
+        """
+        if not isinstance(root, EObject):
+            raise ValueError('The resource requires an EObject type, '
+                             f'but received {type(root)} instead.')
+        self.contents.clear()
+        self.contents.insert(0, root)
+
     def load(self, options=None):
         self.options = options or {}
         self.cache_enabled = True
