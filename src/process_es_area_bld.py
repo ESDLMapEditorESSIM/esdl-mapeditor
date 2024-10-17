@@ -39,6 +39,7 @@ from src.log import get_logger
 from src.shape import Shape, ShapePoint
 from src.tno.projects.emits import emit_active_esdl_project
 from utils.RDWGSConverter import RDWGSConverter
+from utils.utils import timed
 
 logger = get_logger(__name__)
 
@@ -975,7 +976,7 @@ def call_process_energy_system(force_update_es_id=None, zoom=True):
         # Exceptions get swallowed by the executor. Log it here.
         logger.exception(str(e))
 
-
+@timed
 def process_energy_system(force_update_es_id=None, zoom=True):
     """
     Initialization after an update to the energy system.

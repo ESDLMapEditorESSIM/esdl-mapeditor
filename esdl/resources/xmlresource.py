@@ -19,6 +19,7 @@ from pyecore.ecore import EObject
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
 
 from esdl.resources.resource_type import ProjectManagerResourceType
+from utils.utils import timed
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,32 @@ class XMLResource(XMIResource):
                 container.eSet(feature, None)
             root._container = None # as root is added to the resource, there is no container anymore
 
+    def set_content_without_detaching(self, root: EObject):
+        """
+        This function sets the content 'root' to an eObject in that is contained in another resource, but does
+        not move the eObject to this resource.
+        This function allows to serialize parts of an ESDL without deepcopying it to avoid moving it to a different resource
+        Parameters
+        ----------
+        root: EObject to seralize
+
+        Returns
+        -------
+
+        """
+        if not isinstance(root, EObject):
+            raise ValueError('The resource requires an EObject type, '
+                             f'but received {type(root)} instead.')
+        self.contents.clear()
+        self.contents.insert(0, root)
+
     def __str__(self):
         return f'XMLResource(type={self.type}, uri={self.uri}, content[0]={self.contents[0].name if len(self.contents) > 0 else None})'
 
     def get_parse_information(self):
         return self.parse_information
 
+    @timed
     def save(self, output=None, options=None):
         self.options = options or {}
         output = self.open_out_stream(output)
