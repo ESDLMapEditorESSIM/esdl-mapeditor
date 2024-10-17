@@ -3294,7 +3294,7 @@ def process_file_command(message):
             call_process_energy_system.submit()  # run in separate thread
             # TODO: This seems unused.
             set_session('es_filename', filename)
-            send_add_variant_and_esdl_message_to_lmi()
+            send_add_variant_and_esdl_message_to_lmi(es_variant)
         except Exception as e:
             logger.exception("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
