@@ -72,9 +72,9 @@ def on_high_level_change(message: HighLevelChangeMessage):
     # if lock is None:
     #     lock = Lock()
     #     set_session("process_energysystem_lock", lock)
-    # logger.info(f"Aquiring lock {current_thread()}, locked={lock.locked()}")
+    # logger.info(f"Acquiring lock {current_thread()}, locked={lock.locked()}")
     # lock.acquire(timeout=10.0)
-    # logger.info(f"Lock aquired, processing {current_thread()}")
+    # logger.info(f"Lock acquired, processing {current_thread()}")
     tracker = pm.active_tracker
     tracker.stack.start_recording(label=hlc.label)
     for change in hlc.change:

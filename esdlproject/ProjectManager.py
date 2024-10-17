@@ -557,10 +557,10 @@ class ProjectManager:
         if variant is None:
             return None
 
-        with self.lock: # lock access to variant.snapshotRef to make sure no muliple snapshort are created by multiple threads from the gui
-            if variant.snapshotRef is not None:
-                return variant.snapshotRef
+        if variant.snapshotRef is not None:
+            return variant.snapshotRef
 
+        with self.lock: # lock access to variant.snapshotRef to make sure no multiple snapshots are created by multiple threads from the gui
             snapshot_resource:XMLResource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
@@ -1103,7 +1103,7 @@ def get_variant_collection(variant: Union[VariantCollection, Variant]) -> Varian
         return None
 
 
-def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) -> XMLResource:
+def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) -> XMLResource | None:
     """
     Get the resource of the variant collection of the given variant.
 
@@ -1115,6 +1115,7 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     if variantCollection.energysystemRef is None:
         #breakpoint()
         logger.error("variantCollection.energysystemRef is None")
+        return None
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
 

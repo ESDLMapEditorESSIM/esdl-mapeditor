@@ -25,11 +25,7 @@ def get_undo_redo_stack(_):
     """
     Return the undo redo stack for the currently activate energy system.
     """
-    try:
-        pm = get_project_manager()
-    except Exception:
-        logger.exception("Oh no")
-        raise
+    pm = get_project_manager()
     undo_redo_stack = pm.get_undo_redo_stack()
     serialized_stack = serialize_command_stack(undo_redo_stack)
     return serialized_stack
