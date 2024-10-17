@@ -959,15 +959,7 @@ class ProjectManager:
 
     def active_energy_system_to_string(self):
         es = self.get_active_energy_system()
-        active_resource = es.eResource
-        if isinstance(active_resource.uri, StringURI):
-            uri: StringURI = active_resource.uri
-            active_resource.save()
-            return uri.getvalue()
-        else:
-            uri = StringURI("print.esdl")
-            active_resource.save(output=uri)
-            return uri.getvalue()
+        return self.energy_system_to_string(es.id)
 
     def add_from_string(self, name: str, esdl_string: str) -> Tuple[EnergySystem, List[str]]:
         """

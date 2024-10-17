@@ -20,19 +20,15 @@ from flask_socketio import SocketIO
 
 from flask_executor import Executor
 from flask_session import Session
-from socketio.kombu_manager import KombuManager
 
 from extensions.session_manager import delete_sessions_on_disk
 from src import settings
 from src.log import get_logger
 from flask import Flask
 
-from src.tno.live_model_interface.shared.config import AMQP_URL
-
 logger = get_logger(__name__)
 
-mgr = KombuManager(AMQP_URL)
-socketio = SocketIO(client_manager=mgr)
+socketio = SocketIO()
 executor = Executor()
 
 

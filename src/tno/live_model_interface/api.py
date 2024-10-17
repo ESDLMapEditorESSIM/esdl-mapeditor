@@ -4,20 +4,24 @@ from datetime import datetime, timezone
 
 from flask import session
 
+from esdlproject import Variant
 from esdlproject.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
-from src.tno.live_model_interface.shared.message_types import NewESDLMessage, ProjectManagerMessage, \
-    ActivateDeactivateLmiMessage
+from src.tno.live_model_interface.shared.message_types import InitNewProjectMessage, ProjectManagerMessage, \
+    ActivateDeactivateLmiMessage, AddVariantAndESDLMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
+from utils.utils import timed
 
 LAST_PM_REFRESH_SENT: datetime | None = None
 """The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
-def send_new_esdl_to_lmi():
+def send_init_new_project_to_lmi():
     """
-    Send "new ESDL" message to the live model interface.
-    :return:
+    Send message to LMI to trigger initializing a new project. This assumes that the project manager is pretty much
+    empty.
+
+    TODO: We can just send the entire project manager instead, so that we can remove this message.
     """
     pm = get_project_manager()
     active_variant = pm.get_active_variant()
@@ -28,18 +32,46 @@ def send_new_esdl_to_lmi():
 
     user_email = get_session('user-email')
     client_id = session['client_id']
-    message = NewESDLMessage(
+    message = InitNewProjectMessage(
         id=str(uuid.uuid4()),
         timestamp=datetime.now(timezone.utc),
         user_email=user_email,
         client_id=client_id,
         b64_esdl=esdlstr_base64_str,
-        variant_id=active_variant.id
+        variant_id=active_variant.id,
     )
 
-    send_rabbitmq_message(message, "events.esdl.new")
+    send_rabbitmq_message(message, "events.pm.new")
 
 
+def send_add_variant_and_esdl_message_to_lmi(variant: Variant):
+    """
+    Triggered when a new variant and esdl is added to the project.
+
+    TODO: This sends the active variant. We should send the variant that was changed.
+    """
+    pm = get_project_manager()
+    es = pm.get_energy_system(variant)
+    esdlstr = pm.energy_system_to_string(es.id)
+    esdlstr_bytes = esdlstr.encode('utf-8')
+    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+    esdlstr_base64_str = esdlstr_base64_bytes.decode('utf-8')
+
+    user_email = get_session('user-email')
+    client_id = session['client_id']
+    message = AddVariantAndESDLMessage(
+        id=str(uuid.uuid4()),
+        timestamp=datetime.now(timezone.utc),
+        user_email=user_email,
+        client_id=client_id,
+        b64_esdl=esdlstr_base64_str,
+        variant_id=variant.id
+    )
+
+    send_rabbitmq_message(message, "events.pm.add")
+
+
+@timed
 def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
     """
     Send project managers for all users, or only for the provided users.

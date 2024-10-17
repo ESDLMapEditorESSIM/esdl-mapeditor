@@ -23,6 +23,7 @@ import pika
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.shared.config import PIKA_CONNECTION_PARAMETERS, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.message_types import LmiMessage
+from utils.utils import timed
 
 logger = log.get_logger(__name__)
 
@@ -342,6 +343,7 @@ def _json_serializer(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
+@timed
 def send_rabbitmq_message(message: LmiMessage, routing_key, delivery_mode=None):
     """
     Publish a message on the RabbitMQ exchange, so that all queues will receive it.

@@ -38,7 +38,18 @@ class WindPotentialResultMessage(LmiMessage):
     wind_potential: float
 
 
-class NewESDLMessage(LmiMessage):
+class InitNewProjectMessage(LmiMessage):
+    """
+    Message to initialize a new project in the live model interface. This should overwrite the existing project.
+    """
+    b64_esdl: str
+    variant_id: str
+
+
+class AddVariantAndESDLMessage(LmiMessage):
+    """
+    Message to add a new variant with accompanying ESDL to the live model interface.
+    """
     b64_esdl: str
     variant_id: str
 

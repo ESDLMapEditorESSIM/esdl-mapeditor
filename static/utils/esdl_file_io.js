@@ -57,18 +57,21 @@ function load_esdl_files(event) {
         $.ajax({
             url: load_esdl_url,
             type: 'POST',
-            data: {file_info: array_with_file_info},
+            data: { file_info: array_with_file_info },
             success: function (data) {
-               // don't hide loader yet ???   but who should?
-               hide_loader();
-               // console.log(data);
-
-               socket.emit('process_loaded_energysystems');
+                hide_loader();
+                socket.emit('process_loaded_energysystems');
             },
-            error: function(xhr, ajaxOptions, thrownError) {
-               hide_loader();
-               alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError);
+            error: function (xhr, ajaxOptions, thrownError) {
+                hide_loader();
+                console.error('AJAX request failed:', xhr);
+                console.error('Status:', xhr.status);
+                console.error('Error:', thrownError);
+                alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError);
             }
         });
+    }).catch((error) => {
+        console.error('Error reading files:', error);
+        alert('Error reading files: ' + error);
     });
 }

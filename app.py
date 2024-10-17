@@ -98,7 +98,8 @@ from src.roles import is_mapeditor_admin
 from src.shape import Shape
 from src.table_editor import TableEditor
 from src.tno.events_api import EventsAPI
-from src.tno.live_model_interface.api import send_new_esdl_to_lmi, send_project_manager_to_lmi
+from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi, \
+    send_add_variant_and_esdl_message_to_lmi
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.locking import NamedLocker
 from src.tno.projects.emits import emit_active_esdl_project
@@ -468,7 +469,7 @@ def download_esdl():
         if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
-        logger.info('Sending file %s' % name)
+        logger.info('Sending file', filename=name)
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
@@ -3238,7 +3239,7 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        send_new_esdl_to_lmi()
+        send_init_new_project_to_lmi()
 
     # 02-2024: is not used anymore, siee esdl_file_io
     # if message['cmd'] == 'load_esdl_from_file':
@@ -3293,7 +3294,7 @@ def process_file_command(message):
             call_process_energy_system.submit()  # run in separate thread
             # TODO: This seems unused.
             set_session('es_filename', filename)
-            send_new_esdl_to_lmi()
+            send_add_variant_and_esdl_message_to_lmi()
         except Exception as e:
             logger.exception("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
