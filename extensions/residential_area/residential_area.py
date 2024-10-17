@@ -291,6 +291,13 @@ class ResidentialArea:
         # Expose the InPort of the EConnection to the outside of the Building
         aggr_bld.port.append(aggr_bld_econn_inp)
 
+        # Indicate all buildings in AggregatedBuilding are residential buildings
+        aggr_bld.buildingTypeDistribution = esdl.BuildingTypeDistribution(
+            bin=[
+                esdl.BuildingTypeBin(buildingType=esdl.BuildingTypeEnum.RESIDENTIAL, percentage=100.0)
+            ]
+        )
+
         return aggr_bld
 
     def store_asset_for_drawing_on_map(self, asset):

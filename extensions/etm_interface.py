@@ -360,6 +360,7 @@ class ETMSankeyToESDL:
             "WindTurbine": "Electricity",
             "WindPark": "Electricity"
         }
+
         self.asset_to_sector_mapping = {
             "ElectricityDemand": {
                 "Elektriciteitsvraag (gebouwgebonden)": {
