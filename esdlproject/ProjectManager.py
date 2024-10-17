@@ -158,11 +158,14 @@ class ProjectManager:
 
         :return: the tracker from the currently active variant
         """
-        variant_snapshot = self.get_variant_snapshot(self.active_variant)
-        active_tracker = self.change_tracker.get_tracker(variant_snapshot)
-        if active_tracker is None:
-            active_tracker = self.change_tracker.new_tracker(self.active_variant, variant_snapshot)
-        return active_tracker
+        return self.get_change_tracker_for_variant(self.active_variant)
+
+    def get_change_tracker_for_variant(self, variant: Variant):
+        variant_snapshot = self.get_variant_snapshot(variant)
+        tracker = self.change_tracker.get_tracker(variant_snapshot)
+        if tracker is None:
+            tracker = self.change_tracker.new_tracker(variant, variant_snapshot)
+        return tracker
 
     def add_change_listener(self, listener_id: str, call_back_fun):
         """
@@ -643,7 +646,7 @@ class ProjectManager:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
 
                 logger.info(f"Removing VariantCollection energy system {variantCollection.name} from "
-                      f"{variantCollection.energysystemRef.eResource.uri}")
+                            f"{variantCollection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
                 es = variantCollection.energysystemRef
                 variantCollection.energysystemRef = None
@@ -1024,8 +1027,8 @@ class ProjectManager:
         logger.debug(self.to_debug_string())
         #logger.debug("Current ESDL:")
         #logger.debug(self.active_energy_system_to_string())
-            #for v in vc.variant.variant:
-            #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
+        #for v in vc.variant.variant:
+        #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
 
 def resource_as_string(resource: Resource):
