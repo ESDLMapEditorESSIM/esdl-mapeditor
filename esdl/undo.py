@@ -55,6 +55,8 @@ class UndoRedoCommandStack:
         self.max_stack_length = max_stack_length
         self.last_changed: datetime = datetime.min.replace(tzinfo=timezone.utc)
         self.change_handler = change_handler
+        # post_process_list keeps track of notifications that cannot be processed directly (e.g. missing references)
+        self.post_process_list: List[Notification] = []
 
     @property
     def top(self) -> ep.AbstractChange | None:
@@ -312,147 +314,6 @@ def post_process_high_level_change(high_level_change: HighLevelChange):
         change.delete()  # this works because of ecore! :-)
 
 
-# def handleNotification(stack: UndoRedoCommandStack, notification: Notification):
-#     """
-#     Handles a notification from the pyEcore framework and creates a command for the UndoRedoCommandStack.
-#
-#     :param stack: the UndoRedoCommandStack
-#     :param notification: the notification to handle
-#
-#     :return: None
-#     """
-#     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
-#         logger.debug('=== handleNotification ====== !!! No eResource for', notification)
-#         return
-#     if not stack.is_recording():  # ignore all notifications when not recording
-#         #logger.debug('Ignoring ', notification)
-#         return
-#     logger.debug(f"=== handleNotification ====== len(stack): {len(stack.stack)}, {notification} =============================")
-#     if notification.old is None and notification.new is None:
-#         logger.debug('\ -- Ignoring (change=None)', notification)
-#         return
-#     logger.debug('Handling', notification)
-#     if notification.kind == Kind.SET:  # EValue.set()
-#         f: EStructuralFeature = notification.feature
-#         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
-#             logger.debug("  \ -- Ignoring opposite setters for", f.name)
-#             return
-#         value = notification.new
-#         previous_value = notification.old
-#         if isinstance(value, EObject):
-#             # disable handling of events during deepcopy() in code below
-#             with stack.pause_recording():
-#                 value = notification.new.deepcopy() if notification.new else None
-#                 previous_value = notification.old.deepcopy() if notification.old else None
-#         setNotification = Set(owner=notification.notifier, feature=notification.feature,
-#                               value=value)
-#         setNotification.previous_value = previous_value
-#         setNotification._executed = True
-#         if isinstance(f, EReference): # store uri fragment, because we deepcopy, so that info is gone
-#             setNotification.valueURIFragment = notification.new.eURIFragment()
-#             setNotification.previous_valueURIFragment = notification.old.eURIFragment()
-#         stack.push(setNotification)
-#     elif notification.kind == Kind.UNSET: # remove reference
-#         if notification.old is not None:
-#             f: EStructuralFeature = notification.feature
-#             if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
-#                 logger.debug("  \ -- Ignoring opposite unset for ", f.name)
-#                 return
-#             if isinstance(f, EAttribute) or not f.containment:
-#                 # disable handling of events during deepcopy() in code below
-#                 with stack.pause_recording():
-#                     value = notification.new.deepcopy() if notification.new else None
-#                     previous_value = notification.old.deepcopy() if notification.old else None
-#                 unsetNotification = Set(owner=notification.notifier, feature=notification.feature, value=value)
-#                 unsetNotification.previous_value = previous_value
-#                 unsetNotification.can_execute  # calls a property in notification, although it is a function... horrible python
-#                 logger.debug("\ -- [(Un)Set], not delete")
-#             else:
-#                 unsetNotification = Delete(owner=notification.old)
-#                 unsetNotification.feature = notification.feature
-#                 #unsetNotification.references = {notification.feature: notification.old}
-#                 #unsetNotification.previous_value = notification.new
-#                 #unsetNotification.value = notification.old
-#                 unsetNotification.can_execute  # record all changes
-#                 #unsetNotification.ownerURIFragment = notification.old.eURIFragment()
-#                 logger.debug("\ -- [Delete] ", "\n \ -- inv_refs:", unsetNotification.inverse_references, "\n \ --refs:", unsetNotification.references)
-#             unsetNotification._executed = True
-#             stack.push(unsetNotification)
-#     elif notification.kind == Kind.ADD: # add an item to a collection
-#         # make sure we get the current EObject /as is/ to make sure that later on we don't work with an updated
-#         # version
-#         with stack.pause_recording():
-#             #value = notification.new.deepcopy() if notification.new else None
-#             #previous_value = notification.old.deepcopy() if notification.old else None
-#             value, xrefs = deepcopy_with_xrefs(notification.new) if notification.new else (None, [])
-#             previous_value, pref_xrefs = deepcopy_with_xrefs(notification.old) if notification.old else (None, [])
-#         addNotification = Add(owner=notification.notifier, feature=notification.feature, value=value)
-#         addNotification.valueURIFragment = notification.new.eURIFragment()
-#         addNotification.previous_value = previous_value
-#         addNotification.index = notification.notifier.eGet(notification.feature).index(notification.new)
-#         addNotification._collection = notification.notifier.eGet(notification.feature)
-#         addNotification.deepcopy = True
-#         if notification.new and notification.new.eContainer():
-#             addNotification.testURIFragment = notification.new.eContainer().eURIFragment() + \
-#                                               '/@' + notification.new.eContainmentFeature().name + \
-#                                               '.' + str(addNotification.index)
-#         else:
-#             addNotification.testURIFragment = None
-#         addNotification._executed = True
-#         stack.push(addNotification)
-#         for command in xrefs:
-#             stack.push(command)
-#     elif notification.kind == Kind.REMOVE: # remove eobject from collection
-#         if notification.old is not None:
-#             # disable handling of events during deepcopy() in code below
-#             with stack.pause_recording():
-#                 #value = notification.old.deepcopy()
-#                 #previous_value = notification.new.deepcopy() if notification.new else None
-#                 value, xrefs = deepcopy_with_xrefs(notification.old) if notification.old else (None, [])
-#                 previous_value, pref_xrefs = deepcopy_with_xrefs(notification.new) if notification.new else (None, [])
-#             removeNotification = Remove(owner=notification.notifier, feature=notification.feature, value=value, index=None)
-#             removeNotification.previous_value = previous_value
-#             removeNotification.deepcopy = True
-#             #removeNotification.value = notification.old
-#             if notification.feature.many:
-#                 removeNotification._collection = notification.notifier.eGet(notification.feature)
-#                 logger.debug("\ -- [Remove] collection of {} has length {}".format(notification.feature.name, len(removeNotification._collection)))
-#                 try:
-#                     removeNotification.index = notification.notifier.eGet(notification.feature).index(notification.old)
-#                     logger.debug(" \ -- [Remove] found index in collection ", removeNotification.index)
-#                 except KeyError:
-#                     removeNotification.index = 0
-#                 # old.eURIFragment() does not work as it is removed from the tree, but in our patching we still have
-#                 # a reference to the container and we can build up this reference manually
-#                 removeNotification.refURIFragment = notification.old.eContainer().eURIFragment() + '/@' + notification.old.eContainmentFeature().name + '.' + str(removeNotification.index)
-#             else:
-#                 removeNotification.refURIFragment = notification.old.eContainer().eURIFragment() + '/@' + notification.old.eContainmentFeature().name
-#             removeNotification._executed = True
-#             try:
-#                 ownerFragment = notification.notifier.eURIFragment()
-#                 removeNotification.ownerFragment = ownerFragment
-#                 stack.push(removeNotification)
-#                 for command in xrefs:
-#                     stack.push(command)
-#             except KeyError:
-#                 logger.debug("***************************************************** Not adding this remove, as the owner has been removed from the tree already")
-#                 pass #ignore this notification, as owner is not part of the tree anymore
-#
-#
-#             #removeNotification.refURIFragment = notification.old.eURIFragment()
-#     # elif notification.kind == Kind.REMOVE_MANY: # delete containment relation / object
-#     #     # check if this works at all...
-#     #     deleteNotification = Delete(owner=notification.notifier)
-#     #     deleteNotification._executed = True
-#     #     stack.push(deleteNotification)
-#     else:
-#         logger.debug("Not handled notification: ", notification)
-#     logger.debug("**** exit handleNotification ****")
-#
-
-post_process_list: List[Notification] = []
-
-
 def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notification):
     """
     Handles a notification from the pyEcore framework and creates a change for the UndoRedoCommandStack.
@@ -569,8 +430,8 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             # this is a cross-reference
             if notification.new.eResource is None:
                 logger.debug("Add: eResource is none, delay resolution of fragment for ", notification=notification)
-                if notification not in post_process_list:
-                    post_process_list.append(notification)
+                if notification not in stack.post_process_list:
+                    stack.post_process_list.append(notification)
             else:
                 change = ep.Add(
                     ownerFragment=owner_fragment, feature=feature_name, objectFragment=notification.new.eURIFragment()
@@ -679,12 +540,12 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             change.previousValue_xrefs.extend(cleaned_change_list)
         stack.push(change)
 
-    if len(post_process_list) > 0:
-        if notification not in post_process_list:
-            for n in list(post_process_list):
+    if len(stack.post_process_list) > 0:
+        if notification not in stack.post_process_list:
+            for n in list(stack.post_process_list):
                 convertNotificationToChange(stack, n)
-                post_process_list.remove(n)
-            if len(post_process_list) == 0:
+                stack.post_process_list.remove(n)
+            if len(stack.post_process_list) == 0:
                 logger.debug("****** Emptied post_proces_list")
 
     logger.debug("**** exit convertNotificationToChange ****")
