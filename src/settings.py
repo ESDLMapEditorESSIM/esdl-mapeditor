@@ -49,7 +49,8 @@ boundaries_config = {
     "port": os.environ.get('BOUNDARY_SERVICE_PORT', None),  # "4002",
     "path_names": "/names",
     "path_boundaries": "/boundaries",
-    "path_service_areas": "/service_areas"
+    "path_service_areas": "/service_areas",
+    "timeout": int(os.environ.get('BOUNDARY_SERVICE_TIMEOUT', 10))
 }
 
 profile_database_config = {

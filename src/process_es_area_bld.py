@@ -994,9 +994,9 @@ def process_energy_system(force_update_es_id=None, zoom=True):
 
     #with lock:
     try:  # (with lock)
-        logger.info(f"Aquiring lock {threading.current_thread()}, locked={lock.locked()}")
+        logger.info(f"Acquiring lock {threading.current_thread()}, locked={lock.locked()}")
         lock.acquire(timeout=10.0)
-        logger.info(f"Lock aquired, processing {threading.current_thread()}" )
+        logger.info(f"Lock acquired, processing {threading.current_thread()}" )
         try:
             logger.info("Processing active energy system")
 

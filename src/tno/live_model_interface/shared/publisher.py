@@ -343,7 +343,6 @@ def _json_serializer(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-@timed
 def send_rabbitmq_message(message: LmiMessage, routing_key, delivery_mode=None):
     """
     Publish a message on the RabbitMQ exchange, so that all queues will receive it.

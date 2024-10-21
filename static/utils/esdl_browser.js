@@ -22,6 +22,7 @@ class ESDLBrowser {
     constructor() {
         this.initSocketIO();
         this.history = [];
+        this.changed = false;
 
         let width = map.getSize()
         this.width = 1200;
@@ -83,6 +84,8 @@ class ESDLBrowser {
         let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($button);
         $button.click(function (e) {
                 let selected_ref = [$('#ref_select').val()];
+                esdl_browser.changed = true;
+                debugger;
                 socket.emit('esdl_browse_set_reference', {'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             });
         $back_button.click(function (e) {
@@ -199,7 +202,7 @@ class ESDLBrowser {
                     .attr('fragment', data.object.fragment)
                     .attr('parent_asset_id', data.parent_asset_id) // parent asset id for gui updates
                     .attr('object_type', data.object.type) // object type
-                    .change(function (e) { change_param(this);});
+                    .change(function (e) { self.changed = true; change_param(this);});
 
                 for (let j = 0; j< data.attributes[i].options.length; j++) {
                     let caption = data.attributes[i].options[j].charAt(0).toUpperCase() + data.attributes[i].options[j].slice(1).toLowerCase();
@@ -233,6 +236,7 @@ class ESDLBrowser {
                         $delButton.click(() => {
                             let selector = '#'+attr.name + uid;
                             console.log('selector', selector);
+                            self.changed = true;
                             $(selector).remove();
                             this.refresh_list({name: attr.name, assetid: data.object.id, fragment: data.object.fragment});
                         });
@@ -251,7 +255,7 @@ class ESDLBrowser {
                         .attr('fragment', data.object.fragment)
                         .attr('object_type', data.object.type) // object type
                         .attr('parent_asset_id', data.parent_asset_id)
-                        .change(function(e) { change_param(this); });
+                        .change(function(e) { self.changed = true; change_param(this); });
                         // edate
                 }
             }
@@ -388,6 +392,7 @@ class ESDLBrowser {
     // add an attribute row (e.g. for list of EDoubles)
     add_attribute_row(parent_object_identifier, attr, parent_div) {
         let self=this;
+        self.changed = true;
         let uid = this.get_unique_id();
         let $itemdiv = $('<div>').attr('id', attr.name + uid);
         $itemdiv.append($('<input>')
@@ -436,6 +441,7 @@ class ESDLBrowser {
         console.log(message);
         // change_param(message);
         // mimic change_param(), as it expects a dom element
+        this.changed = true;
         socket.emit('command', {cmd: 'set_asset_param', 'id': message.assetid, 'fragment': message.fragment, 'param_name': message.name, 'param_value': object_value});
         window.PubSubManager.broadcast('ASSET_PROPERTIES',
             { id: message.assetid,
@@ -456,6 +462,7 @@ class ESDLBrowser {
         for (let i=0;i<listitems.length;i++) {
             object_value.push(listitems[i].value);
         }
+        this.changed = true;
         socket.emit('command', {cmd: 'set_asset_param', 'id': attribute.assetid, 'fragment': attribute.fragment, 'param_name': attribute.name, 'param_value': object_value});
         // does not broadcast yet, is this needed?
     }
@@ -472,6 +479,7 @@ class ESDLBrowser {
             esdl_browser.history.push(parent_object_identifier);
         }
         if (types.length == 1) {
+             this.changed = true;
              socket.emit('esdl_browse_create_object', {'parent': parent_object_identifier, 'name': reference_data.name, 'type': types[0]});
         } else if (types.length > 1) {
             // select type
@@ -482,6 +490,7 @@ class ESDLBrowser {
     // delete a reference (recursively!)
     del(ref_repr, ref_name, ref_identifier, parent_identifier, show_dialog) {
         if (show_dialog == false) {
+            this.changed = true;
             socket.emit('esdl_browse_delete_ref', {'name': ref_name, 'ref_id': ref_identifier, 'parent': parent_identifier});
         } else {
             let $div = $('<div>');
@@ -492,6 +501,7 @@ class ESDLBrowser {
             let $back_button = $('<button>').addClass('btn').append($('<i>').addClass('fa fa-arrow-left')).append($('<span>').text(' Back'));
             let $div3 = $('<div>').append($back_button).append($('<span>').css('width', '300px').css('float', 'left').html('&nbsp;')).append($ok_button);
             $ok_button.click(function (e) {
+                this.changed = true;
                 esdl_browser.del(ref_repr, ref_name, ref_identifier, parent_identifier, false);
             });
             $back_button.click(function (e) {
@@ -574,12 +584,17 @@ class ESDLBrowser {
     }
 
     add_close_dialog_hook() {
+        self = this;
         map.on('dialog:closed', function(e) {
-               //socket.emit('esdl_browse_closed');
+           if (self.changed) {
+               // refresh complete esdl completely for now something has changed
                show_loader();
-               // refresh complete esdl completely for now when closing
+               self.changed = false;
                socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
-               map.off('dialog:closed') // remove handler after closing
+           } else {
+                console.log("Nothing changed, not refresh_esdl needed");
+           }
+           map.off('dialog:closed') // remove handler after closing
         });
     }
 

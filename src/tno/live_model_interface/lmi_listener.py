@@ -30,16 +30,21 @@ from extensions.session_manager import get_project_manager_with_client_id, manag
 from src.log import get_logger
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_project_manager_to_lmi, LAST_PM_REFRESH_SENT
+from src.tno.live_model_interface.api import send_project_manager_to_lmi, \
+    activate_live_model_interface
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
+from src.tno.mongo.models import ApplicationContext
 
 logger = get_logger(__name__)
 
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
+
+LAST_PM_REFRESH_SENT: datetime | None = None
+"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
 
 
 def on_high_level_change(message: HighLevelChangeMessage):
@@ -72,9 +77,9 @@ def on_high_level_change(message: HighLevelChangeMessage):
     # if lock is None:
     #     lock = Lock()
     #     set_session("process_energysystem_lock", lock)
-    # logger.info(f"Aquiring lock {current_thread()}, locked={lock.locked()}")
+    # logger.info(f"Acquiring lock {current_thread()}, locked={lock.locked()}")
     # lock.acquire(timeout=10.0)
-    # logger.info(f"Lock aquired, processing {current_thread()}")
+    # logger.info(f"Lock acquired, processing {current_thread()}")
     tracker = pm.active_tracker
     tracker.stack.start_recording(label=hlc.label)
     for change in hlc.change:
@@ -97,10 +102,12 @@ def on_high_level_change(message: HighLevelChangeMessage):
 
 def on_pm_refresh_request(message: LmiMessage):
     """
-    Handle an Project Manager refresh request from the live model interface.
+    Handle a Project Manager refresh request from the live model interface. This sends all project managers to the
+    live model interface, as well as the currently active LMI's per client.
     :param message:
     :return:
     """
+    global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
     if isinstance(timestamp, str):
         # Parse the timestamp from string to datetime.
@@ -109,6 +116,15 @@ def on_pm_refresh_request(message: LmiMessage):
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return
     send_project_manager_to_lmi()
+    LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+
+    # Also send the currently active LMI's, if any.
+    for client_id, session_data in managed_sessions.items():
+        active_application_context: ApplicationContext | None = session_data.get("application_context")
+        if active_application_context is not None:
+            for lmi in active_application_context.get("live_model_interfaces", []):
+                activate_live_model_interface(lmi["lmi_id"], client_id)
+
 
 
 def on_new_variant(message: NewVariantMessage):

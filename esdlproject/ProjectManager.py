@@ -158,11 +158,14 @@ class ProjectManager:
 
         :return: the tracker from the currently active variant
         """
-        variant_snapshot = self.get_variant_snapshot(self.active_variant)
-        active_tracker = self.change_tracker.get_tracker(variant_snapshot)
-        if active_tracker is None:
-            active_tracker = self.change_tracker.new_tracker(self.active_variant, variant_snapshot)
-        return active_tracker
+        return self.get_change_tracker_for_variant(self.active_variant)
+
+    def get_change_tracker_for_variant(self, variant: Variant):
+        variant_snapshot = self.get_variant_snapshot(variant)
+        tracker = self.change_tracker.get_tracker(variant_snapshot)
+        if tracker is None:
+            tracker = self.change_tracker.new_tracker(variant, variant_snapshot)
+        return tracker
 
     def add_change_listener(self, listener_id: str, call_back_fun):
         """
@@ -557,10 +560,10 @@ class ProjectManager:
         if variant is None:
             return None
 
-        with self.lock: # lock access to variant.snapshotRef to make sure no muliple snapshort are created by multiple threads from the gui
-            if variant.snapshotRef is not None:
-                return variant.snapshotRef
+        if variant.snapshotRef is not None:
+            return variant.snapshotRef
 
+        with self.lock: # lock access to variant.snapshotRef to make sure no multiple snapshots are created by multiple threads from the gui
             snapshot_resource:XMLResource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
@@ -643,7 +646,7 @@ class ProjectManager:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
 
                 logger.info(f"Removing VariantCollection energy system {variantCollection.name} from "
-                      f"{variantCollection.energysystemRef.eResource.uri}")
+                            f"{variantCollection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
                 es = variantCollection.energysystemRef
                 variantCollection.energysystemRef = None
@@ -1024,8 +1027,8 @@ class ProjectManager:
         logger.debug(self.to_debug_string())
         #logger.debug("Current ESDL:")
         #logger.debug(self.active_energy_system_to_string())
-            #for v in vc.variant.variant:
-            #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
+        #for v in vc.variant.variant:
+        #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
 
 def resource_as_string(resource: Resource):
@@ -1103,7 +1106,7 @@ def get_variant_collection(variant: Union[VariantCollection, Variant]) -> Varian
         return None
 
 
-def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) -> XMLResource:
+def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) -> XMLResource | None:
     """
     Get the resource of the variant collection of the given variant.
 
@@ -1115,6 +1118,7 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     if variantCollection.energysystemRef is None:
         #breakpoint()
         logger.error("variantCollection.energysystemRef is None")
+        return None
     return variantCollection.energysystemRef.eResource
     # return self.base_variant_resources[index]
 

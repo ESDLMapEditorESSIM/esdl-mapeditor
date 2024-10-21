@@ -58,6 +58,10 @@ def applyChange(change, resource: XMLResource):
             #feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             target = resource.resolve(change.objectFragment)
             owner.eSet(change.feature, target)
+        elif change.ownerFragment and change.previousObjectValue and not change.objectValue:
+            # unset of attribute to None
+            owner = resource.resolve(change.ownerFragment)
+            owner.eSet(change.feature, change.objectValue)  # set to None
         else:
             logger.warning(f"Missing case for SET {change}")
 
