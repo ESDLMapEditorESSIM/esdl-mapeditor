@@ -73,6 +73,11 @@ function export_as_shapefiles(e, prefix) {
     download_file(e, url);
 }
 
+function export_as_inline_profile(e, prefix) {
+    let url = prefix+'/esdl2inlineprofile';
+    download_file(e, url);
+}
+
 function download_file(e, url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
