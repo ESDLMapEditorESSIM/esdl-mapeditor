@@ -2,7 +2,7 @@
 # see also the docker-compose.yaml
 
 # ----- BUILD javascript ------
-FROM node:20 as frontend
+FROM node:20 AS frontend
 # This is to avoid the ERR_OSSL_EVP_UNSUPPORTED error from webpack.
 # Can be removed when we upgrade webpack or move to another tool.
 ENV NODE_OPTIONS=--openssl-legacy-provider

@@ -1,3 +1,5 @@
+name: mapeditor-dev
+
 services:
   mapeditor:
     build:

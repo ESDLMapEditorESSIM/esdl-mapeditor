@@ -1,4 +1,6 @@
 import base64
+import cgi
+import os
 from typing import Tuple
 from flask import Flask, jsonify, request
 import requests
@@ -34,12 +36,10 @@ class CostInformation:
                 energysystem=base64_es,
             )
 
-            print("payload", payload)
-
             r = requests.post(url, json=payload, timeout=DEFAULT_TIMEOUT)
             return jsonify(r.json())
 
-        @self.flask_app.route("/cost-information/template/progress/<process_id>", methods=["GET"])
+        @self.flask_app.route("/cost_information/template/progress/<process_id>", methods=["GET"])
         def get_cost_information_template_generate_progress(process_id: str):
             status, progress = _get_progress(process_id)
 
@@ -64,9 +64,9 @@ class CostInformation:
                     message="Error while generating cost information template.",
                 )
 
-        @self.flask_app.route("/cost-information/template/upload", methods=["POST"])
+        @self.flask_app.route("/cost_information/template/upload", methods=["POST"])
         def upload_cost_information_template():
-            base64_file = request.json["base64file"]
+            base64_file = request.json["base64_file"]
             cost_information_upload_file = base64.b64decode(base64_file, b"-_")
             url = f"{ESDL_COST_SERVICE_HOST}/cost-information/parse"
             active_es_id = get_session("active_es_id")
@@ -83,7 +83,7 @@ class CostInformation:
             return jsonify(r.json())
 
 
-        @self.flask_app.route("/cost-information/template/upload/progress/<process_id>", methods=["GET"])
+        @self.flask_app.route("/cost_information/template/upload/progress/<process_id>", methods=["GET"])
         def get_cost_information_template_upload_progress(process_id: str):
             status, progress = _get_progress(process_id)
 
@@ -124,11 +124,6 @@ def _get_progress(process_id: str) -> Tuple[str, int]:
 def _download_result(process_id: str) -> Tuple[bytes, str]:
     url = f"{ESDL_COST_SERVICE_HOST}/cost-information/{process_id}/result"
     r = requests.get(url, timeout=DEFAULT_TIMEOUT)
-    response = r.json()
-    logger.info("Response", json=response)
-
-    base64_file = response.get("base64file")
-    filename = response.get("filename")
-    content = base64.b64decode(base64_file)
-
-    return content, filename
+    parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
+    filename = os.path.basename(parsed_header["filename"])
+    return r.content, filename

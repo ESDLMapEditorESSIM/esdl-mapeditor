@@ -466,4 +466,3 @@ def _download_profiles_result(process_id: str) -> Tuple[bytes, str]:
     parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
     filename = os.path.basename(parsed_header["filename"])
     return r.content, filename
-
