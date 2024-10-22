@@ -464,7 +464,7 @@ class TimeDimension:
                     else:
                         unit = ""
 
-                    if item[simulation_parameter] and abs(item[simulation_parameter]) > 1e-2:
+                    if item[simulation_parameter] and abs(item[simulation_parameter]) > 1e-6:
                         for coordinates in coordinates_segments:
                             feature_list.append(
                                 self.generate_timed_geojson_for_line(
