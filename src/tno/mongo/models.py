@@ -61,6 +61,13 @@ class ActivityContext:
         return ActivityContext(**json_util.loads(json_str))
 
 
+class LiveModelInterface(TypedDict):
+    lmi_id: str
+    name: str
+    description: str
+    enabled: bool
+    can_be_disabled: bool
+
 class ApplicationContext(TypedDict):
     """
     Stored in MongoDB
@@ -68,6 +75,6 @@ class ApplicationContext(TypedDict):
     application_id: str
     name: str
     # The live model interfaces to activate.
-    live_model_interfaces: list[dict]
+    live_model_interfaces: list[LiveModelInterface]
     # If a context is global, it is shown to all users.
     is_global: bool | None
