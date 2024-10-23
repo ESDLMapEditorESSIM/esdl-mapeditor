@@ -291,20 +291,19 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True):
-    area_id = this_area.id
-    area_name = this_area.name
-    if not area_name: area_name = ""
-    area_scope = this_area.scope
-    area_geometry = this_area.geometry
+def process_area_KPI_information(area_KPIs, area_geometry):
+    """
+    This function processes all information related to area KPIs (categories, units, values) such that it can
+    be sent to the front end for displaying it
 
-    user = get_session('user-email')
-    user_settings = BoundaryService.get_instance().get_user_settings(user)
-    boundaries_year = user_settings['boundaries_year']
+    :param area_KPIs: the esdl.KPIs of the area
+    :param area_geometry: the geometry of the area
+    :return: two dictionaries, one with the regular KPI information (for coloring the area itself), and one with the
+    distribution KPI information (for showing as pie charts)
+    """
+    regular_KPIs = {}
+    distribution_kpis = {}
 
-    geojson_KPIs = {}
-    geojson_dist_kpis = {}
-    area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
             kpi_qau = kpi.quantityAndUnit
@@ -320,23 +319,106 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                 unit = ''
 
             if not isinstance(kpi, esdl.DistributionKPI):
-                geojson_KPIs[kpi.name] = {
+                regular_KPIs[kpi.name] = {
                     'value': kpi.value,
                     'unit': unit
                 }
             else:
-                geojson_dist_kpis[kpi.name] = {"type": "distributionKPI",
+                distribution_kpis[kpi.name] = {"type": "distributionKPI",
                                                "value": [],
                                                "unit": unit}
                 for str_val in kpi.distribution.stringItem:
-                    geojson_dist_kpis[kpi.name]["value"].append({"name": str_val.label,
-                                              "value": str_val.value})
+                    distribution_kpis[kpi.name]["value"].append({"name": str_val.label,
+                                                                 "value": str_val.value})
 
                 if area_geometry:
                     shape = Shape.create(area_geometry)
-                    geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0], shape.shape.centroid.coords.xy[0][0]]
+                    distribution_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0],
+                                                               shape.shape.centroid.coords.xy[0][0]]
                 else:
-                    geojson_dist_kpis[kpi.name]["location"] = None
+                    distribution_kpis[kpi.name]["location"] = None
+
+    return regular_KPIs, distribution_kpis
+
+
+def find_area_info_KPIs(area_list, this_area):
+    """
+    This is a limited version of find_area_info_geojson that only collects information about the (updated) KPIs
+    for all areas in the energy system. This function is called recursively on the sub areas of this area
+
+    :param area_list: list that holds the result for the area-KPI information
+    :param this_area: the area to collect KPI information for.
+    """
+    area_id = this_area.id
+    area_name = this_area.name
+    if not area_name: area_name = ""
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
+
+    area_KPIs = this_area.KPIs
+    geojson_KPIs, geojson_dist_kpis = process_area_KPI_information(area_KPIs, area_geometry)
+
+    area_properties = {
+        "id": area_id,
+        "name": area_name,
+        "KPIs": geojson_KPIs,
+        "dist_KPIs": geojson_dist_kpis
+    }
+
+    if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
+        area_properties["type"] = "SERVICE_AREA"
+
+    area_list.append({"properties": area_properties})
+
+    # Check if all sub areas have attribute logicalGroup set to true (must be clustered in UI)
+    logical_group = True
+    for area in this_area.area:
+        if not area.logicalGroup:
+            logical_group = False
+
+    if not logical_group:
+        for area in this_area.area:
+            find_area_info_KPIs(area_list, area)
+    else:
+        for area in this_area.area:
+            grouped_area_info = {
+                "name": area.name,
+                "type": "group",
+                "area_list": list()
+            }
+            find_area_info_KPIs(grouped_area_info["area_list"], area)
+            area_list.append(grouped_area_info)
+
+
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True):
+    """
+    This function collects information about the areas, potentials and KPIs belonging to those and results in a geojson
+    data structure
+
+    The function does some more things:
+    - get the shape of areas with a proper scope and ID from the boundary service
+    - potentially assigns random locations to assets without a location (but within the boundaries of the area shape)
+    - calculate locations of assets within buildings
+
+    :param area_list: resulting geojson data structure for the area
+    :param pot_list: resulting geojson data structure for the energy potentials
+    :param this_area: the area to start collecting the information from. Function is called recursively on sub areas
+    :param shape_dictionary: a dictionary (cache) for storing shapes of areas
+    :param show_assets_without_location: a boolean specifying whether to show assets without location
+    :return:
+    """
+    area_id = this_area.id
+    area_name = this_area.name
+    if not area_name: area_name = ""
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
+
+    user = get_session('user-email')
+    user_settings = BoundaryService.get_instance().get_user_settings(user)
+    boundaries_year = user_settings['boundaries_year']
+
+    area_KPIs = this_area.KPIs
+    geojson_KPIs, geojson_dist_kpis = process_area_KPI_information(area_KPIs, area_geometry)
 
     area_shape = None
 
@@ -403,9 +485,12 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             area_shape = sh
 
     if area_shape is None:
-        area_shape = calculate_area_shape(this_area)
+        # If some assets in the Area do have a geometry, calculate an imaginary area shape around these assets,
+        # that can be used to position the assets without a location
+        area_shape = calculate_imaginary_area_shape(this_area)
     else:
         shape_dictionary[area_id] = area_shape
+
     # assign random coordinates if boundary is given and area contains assets without coordinates
     # and gives assets within buildings a proper coordinate
     # call this function even with area_shape == None, to position building assets inside a building
@@ -446,9 +531,9 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             area_list.append(grouped_area_info)
 
 
-def calculate_area_shape(this_area: esdl.Area) -> Shape | None:
+def calculate_imaginary_area_shape(this_area: esdl.Area) -> Shape | None:
     """
-    Calculate the shape of an area based on the assets in the area.
+    Calculate the (imaginary) shape of an area based on the assets in the area.
 
     :param this_area:
     :return: Shape object
@@ -456,11 +541,16 @@ def calculate_area_shape(this_area: esdl.Area) -> Shape | None:
     points = []
     for child in this_area.eAllContents():
         if isinstance(child, esdl.Polygon) and child.CRS != "Simple":
-            child_shape = Shape.create(child.exterior.point[0])
-            points.append(child_shape.shape)
+            for point in child.exterior.point:
+                child_shape = Shape.create(point)
+                points.append(child_shape.shape)
         elif isinstance(child, esdl.Point) and child.CRS != "Simple":
             child_shape = Shape.create(child)
             points.append(child_shape.shape)
+        elif isinstance(child, esdl.Line) and child.CRS != "Simple":
+            for point in child.point:
+                child_shape = Shape.create(point)
+                points.append(child_shape.shape)
     if len(points) <= 2:
         return None
     multipoint = MultiPoint(points)
@@ -504,6 +594,12 @@ def find_boundaries_in_ESDL(top_area):
     # emit('geojson', {"layer": "bld_layer", "geojson": building_list})
     print('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
     emit('geojson', {"layer": "pot_layer", "geojson": pot_list})
+
+
+def find_and_send_KPI_information_in_ESDL(top_area):
+    area_kpi_list = list()
+    find_area_info_KPIs(area_kpi_list, top_area)
+    emit('update_area_kpis', area_kpi_list)
 
 
 def add_missing_coordinates(area):
