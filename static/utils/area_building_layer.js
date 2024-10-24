@@ -77,6 +77,38 @@ function flatten_area_list(layer_data) {
     return flat_layer_data;
 }
 
+/**
+ * Calculates and stores the Distribution KPI ranges for a group of layers (DSO service areas, CBS areas)
+ * @param area_data data for all areas in the group
+ * @param group_name name of the group of layers (can be null for area layers that are not part of a group)
+ */
+function calculate_area_KPI_ranges_for_group(area_data, group_name) {
+    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart()
+    // to compute relative pie chart radius for the area feature.
+    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
+    let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
+    dist_kpis_ranges[group_name] = distKPIsRange;
+}
+
+/**
+ * Preprocesses area Distribution KPI ranges for all areas in the energy system
+ * @param area_data data for all areas
+ */
+function preprocess_area_distr_KPI_ranges(area_data) {
+    let other_layers = [];
+    for (const l_index in area_data) {
+        let layer = area_data[l_index];
+        if (layer.hasOwnProperty('type') && layer['type'] === 'group') {
+            // calculate the ranges for a layer group (CBS gebieden / verzorgingsgebieden) first
+            calculate_area_KPI_ranges_for_group(layer['area_list'], layer['name']);
+        } else {
+            other_layers.push(layer);
+        }
+    }
+
+    // finally calculate the ranges for the other layers
+    calculate_area_KPI_ranges_for_group(other_layers, null);
+}
 
 /**
  * Preprocess layer data of an area or building. Creates KPI's and sets colors.
@@ -173,6 +205,10 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     }
     if (layer_type === "building") {
         if (!get_building_color ) { get_building_color = get_building_default_color; }
+    }
+
+    if (layer_type === "area") {
+        preprocess_area_distr_KPI_ranges(layer_data);
     }
 }
 
@@ -737,9 +773,9 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
 /**
  * Resizes the KPIs (Pie charts) of all loaded energy systems
  **/
-function resize_all_area_pi_charts() {
+function resize_all_area_pie_charts() {
     for (es_id in esdl_list) {
-        resize_area_pi_charts(es_id);
+        resize_area_pie_charts(es_id);
     }
 }
 
@@ -749,7 +785,7 @@ function resize_all_area_pi_charts() {
  * @param {string} esdl_layer_id the id of the ESDL layer on which the action must be performed
  *
  **/
-function resize_area_pi_charts(esdl_layer_id) {
+function resize_area_pie_charts(esdl_layer_id) {
     if (esdl_layer_id === null) { esdl_layer_id = active_layer_id; }
     let area_layers = get_layers(esdl_layer_id, 'area_layer');
     let layersAreaFeaturesDistKPIsRange = get_area_dist_kpis_ranges(esdl_layer_id);
@@ -835,12 +871,8 @@ function calcDistKPIsSumRangeFromFeatures (layerFeatures) {
 }
 
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
-    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart() 
-    // to compute relative pie chart radius for the area feature.
-    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
-    dist_kpis_ranges[group_name] = distKPIsRange;
-    set_area_dist_kpis_ranges(active_layer_id, dist_kpis_ranges);
+    let distKPIsRange = dist_kpis_ranges[group_name];
 
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
@@ -866,11 +898,13 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
+                // An area without KPIs gets a popup with its name and id between parenthesis
                 let text = "ID: " + feature.properties.id;
                 if (feature.properties.name) {
                     text = feature.properties.name + " (" + text + ")";
                 }
 
+                // Create the contents for an Area popup with a table with KPI values
                 if (Object.keys(feature.properties.KPIs).length != 0) {
                     text = "<b>"+ text +"</b>";
                     text += "<br><br><table class=\"kpi_table\">";
@@ -891,6 +925,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
+                    // only highlight an area and display its popup when the area shape is fully visible
+                    // (to prevent moving of the map on mouse over)
                     if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
                         let popup = e.target.getPopup();
                         let this_map = e.sourceTarget._map;     // can be area map and building map
@@ -921,7 +957,6 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
 
     return geo_json_layer;
 }
-
 
 function add_area_layer(area_data) {
     let other_layers = [];
@@ -1239,7 +1274,7 @@ function createAreaLegendDiv(choice) {
     L.DomEvent.disableClickPropagation(slider);
     L.DomEvent.on(slider, 'input', (event) => {
         areaMarkerResizeFactor = event.target.value;
-        resize_area_pi_charts(active_layer_id);
+        resize_area_pie_charts(active_layer_id);
     });
 
     return legendDiv;
@@ -1390,6 +1425,21 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+    });
+    socket.on('update_area_kpis', function(area_kpi_list) {
+        area_KPIs = {};
+
+        preprocess_layer_data("area", area_kpi_list, area_KPIs);
+        set_area_kpi_list(active_layer_id, area_KPIs);
+        update_area_legend();
+
+        // restore the earlier selected KPI, if necesarry
+        if (areaLegendChoiceBackup != null) {
+            restoreSelectedKPI()
+        }
+
+        // Redraw pie chart KPIs or recolor the area itself
+        selectAreaKPI(areaLegendChoice);
     });
 }
 

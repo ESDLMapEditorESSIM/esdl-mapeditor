@@ -74,7 +74,6 @@ class ETMInterface:
         logger.info('Registering ETMInterface extension')
 
         @self.socketio.on('etm_get_sankey_data', namespace='/esdl')
-        @undo_record_changes(label="Add ETM Sankey data")
         def etm_get_sankey_data(area_id):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
@@ -255,6 +254,7 @@ class ETMInterface:
                 return None
 
     @timed
+    @undo_record_changes(label="Add ETM Sankey data")
     def process_data_and_add_to_area(self, pm, active_es_id, area, etm_sankey_data):
         es = pm.get_active_energy_system()
 
@@ -675,7 +675,6 @@ class ETMSankeyToESDL:
             distr_item = esdl.StringItem(label="Local production", value=local_production)
             kpi.distribution.stringItem.append(distr_item)
 
-        print(f"Added KPI {kpi_name}: {kpi}")
         area.KPIs.kpi.append(kpi)
 
     def add_final_demand_per_sector_kpi(self, area):
