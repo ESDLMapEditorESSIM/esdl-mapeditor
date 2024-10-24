@@ -17,10 +17,12 @@ from flask_socketio import emit
 from extensions.session_manager import get_project_manager, del_session, set_session
 from src.log import get_logger
 from src.tno.projects.types import serialize_esdl_project
+from utils.utils import timed
 
 logger = get_logger(__name__)
 
 
+@timed
 def emit_active_esdl_project():
     """
     Send the entire active ESDL project to the frontend.
