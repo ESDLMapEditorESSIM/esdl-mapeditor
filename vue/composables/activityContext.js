@@ -21,7 +21,7 @@ import {useEsdlBuildings} from "./esdlBuildings";
 import { useToast } from "vue-toastification";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
-const { addAreaContextMenuItem, esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
+const { addAreaContextMenuItem, esdlAreasDict, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 // The active activity context is the context that is currently active in the map.
@@ -34,7 +34,7 @@ const enabledBuildingContextMenus = ref([]);
 
 const toast = useToast();
 
-watch(esdlAreas,
+watch(esdlAreasDict,
     (newAreas, oldAreas) => {
         addContextMenuJsFunctions(activeActivityContext.value)
     }, {deep: true}
@@ -95,8 +95,10 @@ function addContextMenuServices(activityContext) {
                 console.warn("Service with id " + contextMenuService.id + " not found in esdl_services_information");
             } else {
                 if (contextMenuService.location === "area") {
-                    for (const [, esdlArea] of Object.entries(esdlAreas.value)) {
-                        window.add_service_to_area_contextmenu(esdlArea.layer, foundService, foundServiceIdx, contextMenuService.icon)
+                    for (const [, esdlAreas] of Object.entries(esdlAreasDict.value)) {
+                        for (const esdlArea of esdlAreas) {
+                            window.add_service_to_area_contextmenu(esdlArea.layer, foundService, foundServiceIdx, contextMenuService.icon)
+                        }
                     }
                     enabledAreaContextMenus.value.push(foundService.name);
                 } else if (contextMenuService.location === "map") {
