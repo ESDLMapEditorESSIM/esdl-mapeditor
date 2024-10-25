@@ -63,6 +63,7 @@ class ETMInterface:
         self.settings_storage = settings_storage
         self.etm_municipalities = dict()
         self.municipalities_bld_info = dict()
+        self.etm_sankey = None
 
         self.plugin_settings = self.get_settings()
         self.register()
@@ -86,6 +87,7 @@ class ETMInterface:
             self.get_edr_profiles()
 
             emit("update-etm-query-log", f"Requested ETM Sankey data for {area.name} ({area.id})")
+            self.etm_sankey = None
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
                 area_with_scope_municipality_found = False
                 at_least_one_etm_query_succeeded = False
@@ -101,8 +103,12 @@ class ETMInterface:
                                 emit("update-etm-query-log", f"Query ETM for area {sub_area.name} ({sub_area.id})")
                                 etm_sankey_data = self.request_sankey_info_municipality(sub_area.id)
                                 if etm_sankey_data:
+                                    if not self.etm_sankey:
+                                        self.etm_sankey = ETMSankeyToESDL(etm_sankey_data)
+                                    else:
+                                        self.etm_sankey.set_etm_data(etm_sankey_data)
                                     at_least_one_etm_query_succeeded = True
-                                    self.process_data_and_add_to_area(pm, active_es_id, sub_area, etm_sankey_data)
+                                    self.process_data_and_add_to_area(pm, active_es_id, sub_area)
                                 else:
                                     emit("update-etm-query-log", f"- ETM scenario for {sub_area.name} could not be created")
                             else:
@@ -121,7 +127,8 @@ class ETMInterface:
             else:
                 etm_sankey_data = self.request_sankey_info_municipality(area_id)
                 if etm_sankey_data:
-                    self.process_data_and_add_to_area(pm, active_es_id, area, etm_sankey_data)
+                    self.etm_sankey = ETMSankeyToESDL(etm_sankey_data)
+                    self.process_data_and_add_to_area(pm, active_es_id, area)
                     emit("update-etm-query-log", "Done")
                     return True
                 else:
@@ -143,7 +150,6 @@ class ETMInterface:
 
             emit("update-etm-query-log", f"Updating ETM Sankey data for {area.name} ({area.id})")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
-                area_with_scope_municipality_found = False
                 for logical_group in area.area:
                     if logical_group.logicalGroup:
                         for sub_area in logical_group.area:
@@ -255,13 +261,12 @@ class ETMInterface:
 
     @timed
     @undo_record_changes(label="Add ETM Sankey data")
-    def process_data_and_add_to_area(self, pm, active_es_id, area, etm_sankey_data):
+    def process_data_and_add_to_area(self, pm, active_es_id, area):
         es = pm.get_active_energy_system()
 
-        etm_sankey = ETMSankeyToESDL(etm_sankey_data)
-        etm_sankey.add_carriers_and_sectors(es)
-        etm_sankey.add_info_to_area(area)
-        etm_sankey.clear_area_logbook()
+        self.etm_sankey.add_carriers_and_sectors(es)
+        self.etm_sankey.add_info_to_area(area)
+        self.etm_sankey.clear_area_logbook()
 
     def update_kpis_for_area(self, area):
         etm_sankey = ETMSankeyToESDL(None)
@@ -453,7 +458,7 @@ class ETMSankeyToESDL:
             # Only add carrier if not done earlier already
             if not c_info["carrier"]:
                 carr = esdl.EnergyCarrier(id=c_info["id"], name=c_info["name"])
-                c_info["carrier"] = carr
+                self.carriers[c]["carrier"] = carr
                 ec.carrier.append(carr)
 
     def create_sectors(self, es: esdl.EnergySystem):
@@ -472,7 +477,7 @@ class ETMSankeyToESDL:
             # Only add sector if not done earlier already
             if not s_info["sector"]:
                 sector = esdl.Sector(id=s_info["id"], name=s_info["name"])
-                s_info["sector"] = sector
+                self.sectors[s]["sector"] = sector
                 sects.sector.append(sector)
 
     def add_final_demands(self, area):
