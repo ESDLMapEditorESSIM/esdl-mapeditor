@@ -263,7 +263,6 @@
 
         var services_enabled = {
             'edr': {% if edr_enabled %}true{% else %}false{% endif %},
-            'store': {% if store_enabled %}true{% else %}false{% endif %},
             'boundary_service': {% if boundary_service_enabled %}true{% else %}false{% endif %},
             'bag_service': {% if bag_service_enabled %}true{% else %}false{% endif %},
             'ibis_service': {% if ibis_service_enabled %}true{% else %}false{% endif %},
@@ -583,6 +582,10 @@
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
                 auth_status(true); // Check immediately if we have an autorized session
+            });
+
+            socket.on('hide_loader', function() {
+               hide_loader();
             });
 
             socket.on('user_info', function(ui) {
@@ -1507,20 +1510,6 @@
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>
-{% if store_enabled %}
-{% if 'mondaine' in role %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Load ESDL from Mondaine Hub...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_store_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
-                                        Save ESDL to Mondaine Hub...</a></li>
-{% else %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
-                                        Load ESDL from ESDL Store...</a></li>
-{% endif %}
-{% endif %}
 {% if esdl_drive_enabled %}
                                     <li><a class="dropdown-item" href="#" onclick="esdlDrive.file_open_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
@@ -1532,6 +1521,9 @@
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Export as shapefiles</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Export with in-line profiles</a></li>
 
                                 </ul>
                             </li>
@@ -1661,7 +1653,6 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-<!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
 
