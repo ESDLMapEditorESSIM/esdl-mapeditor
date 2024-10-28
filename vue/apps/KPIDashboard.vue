@@ -319,13 +319,16 @@ function updateDashboard(esId, kpiScope) {
   layout.value = [];
   dashboard_config.layout.value = [];
 
+  // Preprocessing KPIs data
   const scopeKPIs = esKPIs[esId][kpiScope];
   const esScopeKPIs = {[esId]: scopeKPIs};
-  const kpi_data = window.kpis.preprocess_all_kpis(esScopeKPIs);
+  const scopeKPIsData = window.kpis.preprocess_all_kpis(esScopeKPIs);
+  const refKPIs = window.get_area_kpi_list(esId);
+  const kpiData = window.syncScopeKPIsWithRefKPIs(scopeKPIsData, refKPIs);
 
   let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
-  for (let kpi_name in kpi_data) {
-    let kpi_info = kpi_data[kpi_name];
+  for (let kpi_name in kpiData) {
+    let kpi_info = kpiData[kpi_name];
     const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, kpi_nr);
     if (kpi_info[0]['type'] == 'Sankey') {
       layout.value.push({
