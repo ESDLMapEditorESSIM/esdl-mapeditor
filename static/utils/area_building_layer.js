@@ -1250,6 +1250,7 @@ function removeAreaLegend() {
 function add_area_geojson_layer_with_legend(geojson_area_data) {
     area_KPIs = {};
     preprocess_layer_data("area", geojson_area_data, area_KPIs);
+    set_area_kpi_list(active_layer_id, area_KPIs);
 
     removeAreaLegend();
     if (!jQuery.isEmptyObject(area_KPIs)) {
