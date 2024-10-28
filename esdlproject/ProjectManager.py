@@ -272,6 +272,11 @@ class ProjectManager:
 
         :return: Tuple of [the newly created variant, parse information from reading the input)
         """
+
+        # Make sure we add the esdl extension such that XML Resources are used instead of XMI Resources
+        if not uri.plain.endswith('.esdl'):
+            uri.__init__(uri.plain + '.esdl')
+
         if uri.normalize() in self.rset.resources:
             orig_uri = uri.plain
             uri.__init__(f"{uri.plain}_{str(uuid4())[:4]}")  # update uri
@@ -678,7 +683,6 @@ class ProjectManager:
         """
         # For that it clones the active energy system and puts it in the project
         # first store the active ES in the active BV
-
         logger.info("Saving project to string.")
 
         resources_dict = {}
@@ -984,7 +988,7 @@ class ProjectManager:
         """
         return load_external_string(name, esdl_string)
 
-    def debug(self):
+    def debug(self, dump_project=False):
         #if settings.FLASK_DEBUG:
         #    print("Creating memory snapshot")
         #    snapshot = tracemalloc.take_snapshot()
@@ -1024,7 +1028,8 @@ class ProjectManager:
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
-        logger.debug(self.to_debug_string())
+        if dump_project:
+            logger.debug(self.to_debug_string())
         #logger.debug("Current ESDL:")
         #logger.debug(self.active_energy_system_to_string())
         #for v in vc.variant.variant:
@@ -1082,7 +1087,10 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
     #if isinstance(resource, XMLResource) or isinstance(resource, JsonResource):
     #    resource.set_content_without_detaching(eobject)
     #else:
+    start = time.time()
     deepcopy = eobject.deepcopy()
+    end = time.time()
+    logger.debug(f"deepcopy() of {eobject.eClass.name} took {round(end - start, 2)}s")
     resource.append(deepcopy)
     resource.save(options=options)
     return string_uri.getvalue()

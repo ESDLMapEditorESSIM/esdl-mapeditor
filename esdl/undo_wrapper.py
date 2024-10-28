@@ -22,10 +22,11 @@
 #  Manager:
 #      TNO
 
+from contextlib import contextmanager
 from functools import wraps
 
-from contextlib import contextmanager
 from flask_socketio import emit
+
 from extensions.session_manager import get_project_manager
 from src.tno.undoredo.types import serialize_command_stack
 

@@ -197,7 +197,7 @@ class UndoRedoCommandStack:
             #     commands[-1].owner == self._compound[-1].value:
             #     logger.debug('Ignore ControlStrategy bi-directional relation')
             # only adding multiple commands to the compound
-            logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
+            #logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
             self._hlc.change.append(abstract_change)
             return
 
@@ -220,7 +220,10 @@ class UndoRedoCommandStack:
         # self.stack[index] = abstract_change
         self.stack_index = index
         self.last_changed = datetime.now(timezone.utc)
-        logger.debug(f"Pushed {abstract_change} to the stack")
+        if isinstance(abstract_change, ep.HighLevelChange):
+            logger.debug(f"Pushed {abstract_change.label} to the stack")
+        else:
+            logger.debug(f"Pushed {abstract_change} to the stack")
 
         # make sure the stack length is not larger than its max length
         if self.max_stack_length > 0:
@@ -238,7 +241,7 @@ class UndoRedoCommandStack:
 
         # self.next_top.redo()
         if self.can_redo():
-            logger.debug("Redo", next_top=self.next_top)
+            logger.debug("Redo")  #, next_top=self.next_top)
             with self.pause_recording():
                 if isinstance(self.next_top, ep.HighLevelChange):
                     for change in self.next_top.change:
@@ -262,7 +265,8 @@ class UndoRedoCommandStack:
         with self.pause_recording():
             abstract_change = self.top
             self.last_changed = datetime.now(timezone.utc)
-            logger.debug("Undo", abstract_change=abstract_change)
+            logger.debug("Undo", abstract_change=abstract_change.label
+                if isinstance(abstract_change, ep.HighLevelChange) else abstract_change)
             # if self.top.can_undo:
             if self.can_undo():
                 # self.top.undo()
@@ -283,8 +287,8 @@ class UndoRedoCommandStack:
             self._hlc.label = new_label
 
     def __repr__(self):
-        changes = "\n".join([f"- {s}" for s in self.stack])
-        return f"<Stack len={len(self)}, index={self.stack_index}, change=\n{ changes }\n>"
+        #changes = "\n".join([f"- {s}" for s in self.stack[:5]])
+        return f"<Stack len={len(self)}, index={self.stack_index}>"
 
 
 def post_process_high_level_change(high_level_change: HighLevelChange):

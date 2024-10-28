@@ -13,25 +13,21 @@
 #      TNO
 import codecs
 import csv
-import importlib
 import json
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 import requests
 from flask import Flask, request
-from flask_executor import Executor
 from flask_socketio import SocketIO, emit
-from pyecore.resources import ResourceSet, URI
+from pyecore.resources import ResourceSet
 
 import esdl
-from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset
+from esdl.processing.string_uri import StringURI
 from extensions.session_manager import set_session, get_project_manager, get_session, get_session_for_esid
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
-from src.esdl_helper import energy_asset_to_ui
-
 from src.log import get_logger
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from src.settings import edr_config
