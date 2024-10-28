@@ -176,10 +176,8 @@ const createBarChartTrace = (data) => {
 };
 
 const createPieChartTrace = (data) => {
-  // Copied and pasted from area_building_layer.js
-  // TODO: Read color config from a single file.
-  const pieChartColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f',
-                          '#ff7f00','#cab2d6', '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
+  // pie_chart_color_list is defined in area_building_layer.js
+  const pieChartColors = pie_chart_color_list;
 
   return [{
     type: "pie",

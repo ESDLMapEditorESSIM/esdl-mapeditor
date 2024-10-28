@@ -639,9 +639,9 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
 /**
  *
  * @param {Object} ar area feature object
- * @param {Object|null} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
- *                                    and used as a pie chart data template to ensure data structure consistency.
- *                                    If not given, the pie chart is created based on the area feature dist_KPIs property.
+ * @param {Object} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
+ *                                 and used as a pie chart data template to ensure data structure consistency.
+ *                                 If not given, the pie chart is created based on the area feature dist_KPIs property.
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
  * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  */
@@ -686,7 +686,7 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
             let chartDataItemNames = distKPI.value.map((ele) => ele.name);
             // If refAreaDistKPIs is given, use it for pie chart data item names
             // to avoid possible pie chart data inconsistency among different area features.
-            if (refAreaDistKPIs && refAreaDistKPIs[KPI] &&
+            if (Object.keys(refAreaDistKPIs).length && refAreaDistKPIs[KPI] &&
                 refAreaDistKPIs[KPI].type === "distributionKPI" && 
                 refAreaDistKPIs[KPI].names.length) 
             {
