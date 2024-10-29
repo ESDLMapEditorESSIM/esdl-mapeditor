@@ -242,7 +242,7 @@ class ProjectManager:
         variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
-        variantCollection_resource:XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
+        variantCollection_resource: XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
         variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
         #variantCollection_resource.append(es)
         variantCollection_resource.set_content(es)
@@ -302,7 +302,6 @@ class ProjectManager:
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(uri, e))
             raise
-
 
         variantCollection = VariantCollection(name=f"VariantCollection for {es.name}", id=str(uuid4()))
         self.project.variantCollection.append(variantCollection)
@@ -507,16 +506,16 @@ class ProjectManager:
     #         else:
     #             logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 
-    def get_energy_systems(self) -> List[esdl.EnergySystem]:
+    def get_energy_systems(self) -> list[esdl.EnergySystem]:
         """"
         Creates a list of all the variants associated energy systems (but not of the variantCollection energy system,
         as each variantCollection has its own main variant by convention)
         """
-        variants: List[Variant] = []
+        variants: list[Variant] = []
         for vc in self.project.variantCollection:
             vc: VariantCollection = vc
             self.get_variant_list(vc.variant, variants)
-        energy_systems: List[EnergySystem] = []
+        energy_systems: list[EnergySystem] = []
         for v in variants:
             es = self.get_variant_snapshot(v)
             energy_systems.append(es)
@@ -528,7 +527,7 @@ class ProjectManager:
         :param es_id: the id of the energy system to remove
         :return: the removed variant or None if no variant was found with the given id
         """
-        variants: List[Variant] = []
+        variants: list[Variant] = []
         for vc in self.project.variantCollection:
             vc: VariantCollection = vc
             self.get_variant_list(vc.variant, variants)
@@ -540,7 +539,7 @@ class ProjectManager:
         logger.warning("Did not find variant with energy system ID", es_id=es_id)
         return None
 
-    def get_variant_list(self, v: Variant, variant_list: List[Variant]):
+    def get_variant_list(self, v: Variant, variant_list: list[Variant]):
         """
         Flattens the tree structure of a variant and its sub variants into a list of Variants of this variants,
         including itself.
@@ -617,7 +616,7 @@ class ProjectManager:
             if vc.variant:
                 return vc.variant
 
-    def clear_project(self):
+    def clear_project(self, add_empty_variant: bool = True):
         """
         Removes all VariantCollections and subvariants from the project
 
@@ -628,6 +627,10 @@ class ProjectManager:
         """
         for vc in self.project.variantCollection:
             self.delete_variant(vc)
+        self.project.variantCollection = []
+        if add_empty_variant:
+            new_collection = self.add_new_variant_collection()
+            self.set_active_variant(new_collection.variant)
 
     def delete_variant(self, variant: Union[VariantCollection, Variant]):
         """

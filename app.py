@@ -370,13 +370,22 @@ def editor():
         # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
 
 
-"""
-Checks the OpenID connect session status
-And refreshes if necessary?
-"""
+def logout_user():
+    """
+    Logs out the user by removing the session cookie and clearing the project.
+    """
+    oidc.logout()
+    pm = get_project_manager()
+    pm.clear_project()
+
+
 @app.route('/auth_status')
 #@oidc.require_login
 def auth_status():
+    """
+    Checks the OpenID connect session status
+    And refreshes if necessary?
+    """
     from flask import g
     #logger.debug("Global token: {}".format(g.oidc_id_token))
     status: Response = oidc.authenticate_or_redirect()
@@ -400,12 +409,12 @@ def auth_status():
                     #set_session('jwt-token', oidc.get_access_token())
                     #return {'valid': True, 'reason': "Updated token"}
                 g.oidc_id_token = None
-                oidc.logout()
+                logout_user()
                 status: Response = oidc.redirect_to_auth_server('/editor')
                 uri = status.headers["Location"]
                 return {'valid': False, 'reason': "Token expired or not available", 'redirect_uri': uri}
         else:
-            oidc.logout()
+            logout_user()
             return {'valid': False, 'reason': "Not logged in"}
     else:
         status: Response = oidc.redirect_to_auth_server('/editor') # get redirect for /editor, not /auth_status
@@ -426,7 +435,7 @@ def logout():
     creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
     creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
     id_token_hint = creds.id_token_jwt
-    oidc.logout()
+    logout_user()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     # keycloak <17 logout:
 
