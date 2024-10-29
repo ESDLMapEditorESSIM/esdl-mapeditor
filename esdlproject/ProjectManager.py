@@ -793,16 +793,16 @@ class ProjectManager:
         self.set_active_variant(self.project.variantCollection[0].variant)
         return self.project
 
-    def get_base_variant_by_id(self, base_variant_id: str) -> Optional[VariantCollection]:
+    def get_variant_collection_by_id(self, variant_collection_id: str) -> Optional[VariantCollection]:
         """
-        Get the base variant with the given id.
+        Get the variant collection with the given id.
 
-        :param base_variant_id: the id of the base variant
+        :param variant_collection_id: the id of the variant collection
         :return: the base variant with the given id or None if it does not exist
         """
-        for base_variant in self.project.variantCollection:
-            if base_variant.id == base_variant_id:
-                return base_variant
+        for variant_collection in self.project.variantCollection:
+            if variant_collection.id == variant_collection_id:
+                return variant_collection
         return None
 
     def to_debug_string(self) -> str:
