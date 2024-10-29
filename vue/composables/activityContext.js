@@ -21,7 +21,7 @@ import {useEsdlBuildings} from "./esdlBuildings";
 import { useToast } from "vue-toastification";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
-const { addAreaContextMenuItem, esdlAreasDict, removeAreaContextMenuItem } = useEsdlAreas();
+const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 // The active activity context is the context that is currently active in the map.
@@ -34,11 +34,9 @@ const enabledBuildingContextMenus = ref([]);
 
 const toast = useToast();
 
-watch(esdlAreasDict,
-    (newAreas, oldAreas) => {
-        addContextMenuJsFunctions(activeActivityContext.value)
-    }, {deep: true}
-)
+watch(totalEntriesAndAreas, () => {
+    addContextMenuJsFunctions(activeActivityContext.value); // trigger only on structural change
+});
 
 /**
  * Add the context menu js functions that are part of the context to the context menus.
@@ -126,13 +124,13 @@ export function useActivityContext() {
      * context menus.
      * @param activityContext
      */
-    async function activateActivityContext(activityContext) {
+    function activateActivityContext(activityContext) {
         if (activeActivityContext.value) {
             clearActivityContext();
         }
         activeActivityContext.value = activityContext;
 
-        // Clear the WMS layers and add the layers from the activity context.
+        // Enable the workflow if it is part of the activity context.
         if (activityContext.workflow) {
             for (let i=0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i].name === activityContext.workflow) {
@@ -148,7 +146,7 @@ export function useActivityContext() {
 
         // Clear the WMS layers and add the layers from the activity context.
         if (activityContext.wms_layers !== undefined) {
-            clearWmsLayers()
+            // clearWmsLayers()
             for (const layer of activityContext.wms_layers) {
                 try {
                     showWmsLayer(layer)
@@ -175,16 +173,6 @@ export function useActivityContext() {
 
         addContextMenuJsFunctions(activityContext)
         addContextMenuServices(activityContext)
-
-        const response = await fetch(`/context/activities/${activityContext.activity_id}/activate`, {
-            method: 'POST'
-        })
-        if (!response.ok) {
-            console.error('Error activating activity context', response)
-            alert('Error activating activity context. Please check the console for more information.')
-            clearActivityContext();
-            return
-        }
 
         if (activityContext.toast_text) {
             toast.info(activityContext.toast_text);

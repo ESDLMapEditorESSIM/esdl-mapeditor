@@ -48,7 +48,6 @@ const initializeSelectmenu = () => {
       handleChange({ target: { value: ui.item.value } });
     }
   });
-  console.log("initialized activity context select menu");
   isInitialized.value = true;
 };
 
@@ -71,13 +70,13 @@ watch(() => activeActivityContext.value, (newValue) => {
   }
 });
 
-const handleChange = (e) => {
-  // Find the selected activity context.
-  const selectedActivityContext = activityContexts.value.find(context => context.activity_id === e.target.value);
-  if (selectedActivityContext) {
-    activateActivityContext(selectedActivityContext);
-  } else {
-    clearActivityContext();
-  }
+function handleChange(e) {
+    // Find the selected activity context.
+    const selectedActivityContext = activityContexts.value.find(context => context.activity_id === e.target.value);
+    if (selectedActivityContext) {
+        activateActivityContext(selectedActivityContext);
+    } else {
+        clearActivityContext();
+    }
 }
 </script>
