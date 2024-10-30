@@ -12,19 +12,21 @@
 #  Manager:
 #      TNO
 
+import uuid
+
+import requests
 from flask import Flask
 from flask_socketio import SocketIO, emit
 
-from esdlproject.ProjectManager import load_external_string
-from extensions.session_manager import get_project_manager, get_session
-from extensions.boundary_service import is_valid_boundary_id
+import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset
+from esdlproject.ProjectManager import load_external_string
+from extensions.boundary_service import is_valid_boundary_id
+from extensions.session_manager import get_project_manager, get_session
 from src.esdl_helper import get_tooltip_asset_attrs
-from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
-import uuid
-import requests
-import src.log as log
+from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, \
+    get_area_id_from_mapeditor_id
 
 logger = log.get_logger(__name__)
 
@@ -157,11 +159,11 @@ class PICORooftopPVPotential:
                     send_alert("Serious error, area not found")
 
         @self.socketio.on('query_solar_potentials', namespace='/esdl')
-        def query_solar_potentials(area_id, all_areas):
+        def query_solar_potentials(area_info, all_areas):
             """
             Query SolarPotentials information for a specific Area or all areas in the energysystem
 
-            :param area_id: id of the Area where the SolarPotentials should be queried for
+            :param area_info: dict with id, lat, lon coordinates of the Area where the SolarPotentials should be queried for
             :param all_areas: boolean specifying if this action should be applied to all Areas in the energy system
             :return: None
             """
@@ -177,7 +179,7 @@ class PICORooftopPVPotential:
                 if all_areas:
                     area = es.instance[0].area
                 else:
-                    area_id = get_area_id_from_mapeditor_id(area_id)
+                    area_id = get_area_id_from_mapeditor_id(area_info['id'])
                     area = pm.get_by_id(active_es_id, area_id)
 
                 if area:
