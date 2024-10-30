@@ -1230,7 +1230,6 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {
             featuregroup_instance.eachLayer(function (layer) {
-                console.log("subitem", layer);
                 if (layer.id in area_kpi_map) {
                     let new_area_kpi_info = area_kpi_map[layer.id];
                     if (new_area_kpi_info.properties.hasOwnProperty("KPIs")) {
