@@ -63,6 +63,9 @@ def create_connection(from_port: esdl.Port, to_port: esdl.Port) -> dict:
 
 def get_port_coordinates(asset, index):
     from_coords = ()
+    if asset.containingAsset or asset.containingBuilding:
+        # handle assets in buildings or compound assets
+        asset = asset.containingAsset or asset.containingBuilding
     if isinstance(asset.geometry, esdl.Line):
         if index == 0:  # first port == first coordinate
             point: esdl.Point = asset.geometry.point[0]
