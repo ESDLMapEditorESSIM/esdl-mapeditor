@@ -1427,8 +1427,10 @@ function add_geojson_listener(socket, map) {
         }
     });
     socket.on('update_area_kpis', function(area_kpi_list) {
+        saveSelectedKPI()  // make sure it does not reset the current selection
         area_KPIs = {};
-
+        //geojson_area_data = area_kpi_list;
+        //preprocess_area_distr_KPI_ranges(geojson_area_data)
         preprocess_layer_data("area", area_kpi_list, area_KPIs);
         set_area_kpi_list(active_layer_id, area_KPIs);
         update_area_legend();
@@ -1436,6 +1438,7 @@ function add_geojson_listener(socket, map) {
         // restore the earlier selected KPI, if necesarry
         if (areaLegendChoiceBackup != null) {
             restoreSelectedKPI()
+            areaLegendChoiceBackup = null;
         }
 
         // Redraw pie chart KPIs or recolor the area itself

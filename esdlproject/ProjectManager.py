@@ -14,7 +14,7 @@ from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
-from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack
+from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContext
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
@@ -185,7 +185,7 @@ class ProjectManager:
         else:
             logger.warn(f"Cannot remove change listener with id={listener_id}")
 
-    def change_handler(self, change: HighLevelChange):
+    def change_handler(self, change: HighLevelChange, change_context: ChangeContext):
         """
         Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
         Parameters
@@ -198,7 +198,7 @@ class ProjectManager:
 
         for listener_id, call_back_fun in self.change_listeners.items():
             logger.info(f"Change detected, informing {listener_id}")
-            call_back_fun(change)
+            call_back_fun(change, change_context)
 
     def init_empty_project(self,
                            es_name="New Energy System",

@@ -27,11 +27,11 @@ from pyecore.resources import ResourceSet
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
+from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from esdl.processing.string_uri import StringURI
 from esdl.undo_wrapper import undo_record_changes
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
-from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based, \
@@ -504,6 +504,9 @@ class ESDLServices:
                                     area_to_be_added_to_id = find_area_location_based(pm, active_es_id, asset.geometry)
                                 else:
                                     area_to_be_added_to_id = area_to_be_added_to.id
+                                zoom = False
+                                if "zoom" in service["result"][0]:
+                                    zoom = bool(service["result"][0]["zoom"])
                                 pm.add_object_to_dict(active_es_id, asset, recursive=True)
                                 ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to_id)
                                 asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
@@ -513,7 +516,7 @@ class ESDLServices:
                                         {
                                             "es_id": active_es_id,
                                             "asset_pot_list": [asset_ui],
-                                            "zoom": True,
+                                            "zoom": zoom,
                                         },
                                     )
                                 if conn_list:

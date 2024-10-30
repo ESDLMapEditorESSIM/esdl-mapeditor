@@ -86,6 +86,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from src.incremental_ui.ui_change_handler import change_handler
 from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
 from src.model_contexts import ModelContexts
@@ -3406,6 +3407,7 @@ def initialize_app():
     logger.info('Client connected: {}'.format(request.sid))
 
     pm = get_project_manager()
+    pm.add_change_listener("incremental_ui_updates", change_handler)
 
     last_es = pm.get_active_energy_system()
     if last_es:
@@ -3498,7 +3500,7 @@ def browser_initialize():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
 def on_disconnect():
-    logger.info('Client disconnected: {}'.format(request.sid))
+    logger.info('SocketIO: Client disconnected: {}'.format(request.sid))
 
 
 @socketio.on('events.frontend', namespace='/esdl')

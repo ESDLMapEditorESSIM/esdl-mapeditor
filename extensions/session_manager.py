@@ -22,6 +22,7 @@ from flask import session
 
 import src.log as log
 from esdl.resources.json import JsonOptions
+from esdl.undo import ChangeSource, ChangeContext
 from esdlproject import HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage
@@ -64,20 +65,23 @@ CLEANUP_INTERVAL = 60 * 60  # every hour
 #     set_session(ESH_KEY, esh)
 
 
-def on_change_recorded(change: HighLevelChange):
+def on_change_recorded(change: HighLevelChange, change_context: ChangeContext):
     """
     This function is called when a change is recorded on the UndoRedoCommandStack by adding this function
     as call back function to the ProjectManager's change listeners (see get_project_manager()).
     It will serialize a high level change (see ESDLProject ecore model) to send to interested live models.
 
+    It will only react on change_sources type INTERNAL
+
     Parameters
     ----------
     change A HighLevelChange to be send away
 
-    Returns
-    -------
-
     """
+    # only react on change_sources type INTERNAL
+    if change_context.source != ChangeSource.INTERNAL:
+        return
+
     pm = get_project_manager()
     # pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
@@ -187,24 +191,29 @@ def set_session(key, value):
     managed_sessions[client_id][key] = value
 
 
-def get_session(key=None, default_value=None):
+def get_session(key=None, client_id=None, default_value=None):
     """
     Return memory-based session variable
     :param key: key to retrieve a value for. If key is None, it will return the whole session for this client
+    :param client_id: client_id to use to get session variables, defaults to the client_id in the session, but
+        for out of context calls, you can provide a client_id
     :param default_value: default value of the variable if key is not found. This value is stored in the session with
            this key.
     :return: the whole session object if key=None, the value for key if available, default_value if specified, or none
            if key cannot be found
     """
     global managed_sessions
-    if "client_id" not in session:
-        logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
-        return None
-    client_id = session["client_id"]
+    if not client_id:
+        if "client_id" not in session:
+            logger.warning("No client id for the session is available, cannot return value for key {}".format(key))
+            return None
+        client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
         return None
     else:
+        # update last access
+        managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
         if key is None:
             return managed_sessions[client_id]
         else:

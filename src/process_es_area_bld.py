@@ -596,9 +596,10 @@ def find_boundaries_in_ESDL(top_area):
     emit('geojson', {"layer": "pot_layer", "geojson": pot_list})
 
 
-def find_and_send_KPI_information_in_ESDL(top_area):
+def find_and_send_KPI_information_in_ESDL(top_area: esdl.Area):
     area_kpi_list = list()
     find_area_info_KPIs(area_kpi_list, top_area)
+    #print(area_kpi_list)
     emit('update_area_kpis', area_kpi_list)
 
 
