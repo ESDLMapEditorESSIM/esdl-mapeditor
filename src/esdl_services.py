@@ -224,6 +224,9 @@ class ESDLServices:
                         if "service" in step and step["service"]["id"] == service_params["service_id"]:
                             service = step["service"]
                             break
+            # If the service ID was found as a step in a workflow (embedded for loop), also exit this for loop
+            if service:
+                break
 
         if service is None:
             return False, None, None
