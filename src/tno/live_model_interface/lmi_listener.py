@@ -24,6 +24,7 @@ from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
+from esdl.undo import ChangeSource, ChangeContext
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
@@ -68,8 +69,9 @@ def on_high_level_change(message: HighLevelChangeMessage):
         return
 
     variant_id = message['variant_id']
-    # TODO: Use the variant ID. But how? I would prefer not to activate that variant if it is not active.
-    es = pm.get_active_energy_system()
+    variant = pm.get_variant_by_id(variant_id)
+    es = pm.get_energy_system(variant)
+    #es = pm.get_active_energy_system()
 
     # TODO: make sure we only apply changes when process energy system is not in progress
     # otherwise it might be in a non final stage when these changes are added to the energy system
@@ -80,24 +82,28 @@ def on_high_level_change(message: HighLevelChangeMessage):
     # logger.info(f"Acquiring lock {current_thread()}, locked={lock.locked()}")
     # lock.acquire(timeout=10.0)
     # logger.info(f"Lock acquired, processing {current_thread()}")
-    tracker = pm.active_tracker
-    tracker.stack.start_recording(label=hlc.label)
+    #tracker = pm.active_tracker
+    global local_app
+
+    tracker = pm.get_change_tracker_for_variant(variant)
+    # add more context to the changes received, for the incremental UI updates
+    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=local_app)
+    tracker.stack.start_recording(label=hlc.label, change_context=context)
     for change in hlc.change:
         applyChange(change, es.eResource)
-    tracker.stack.stop_recording(call_change_handler=False)
+    tracker.stack.stop_recording()
     #lock.release()
     #logger.info(f"Lock released by {current_thread()}")
 
-    global local_app
 
     # create request context (and session?)...
-    with local_app.test_request_context():
-        session['client_id'] = client_id
-        request.sid = managed_sessions[client_id]['socketio_sid']
-        request.namespace = '/esdl'
-
-        # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-        call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+    # with local_app.test_request_context():
+    #     session['client_id'] = client_id
+    #     request.sid = managed_sessions[client_id]['socketio_sid']
+    #     request.namespace = '/esdl'
+    #
+    #     # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+    #     call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
 
 
 def on_pm_refresh_request(message: LmiMessage):

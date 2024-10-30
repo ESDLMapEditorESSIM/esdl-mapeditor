@@ -24,7 +24,7 @@ from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
-from src.tno.live_model_interface.api import send_project_manager_to_lmi
+from src.tno.live_model_interface.api import send_project_manager_to_lmi, send_delete_variant_message_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
@@ -78,7 +78,7 @@ def save_esdl_project():
 @socketio.on("new_esdl_project", namespace="/esdl")
 def new_esdl_project(_):
     """
-    Create a brand new energy project.
+    Create a brand-new energy project.
     """
     pm = get_project_manager()
     pm.init_empty_project()
@@ -133,41 +133,11 @@ def set_active_variant(message: SetActiveVariantRequest):
         logger.warning("No variant with given ID found!", variant_id=message["id"])
 
 
-@socketio.on('create_base_variant', namespace='/esdl')
-def create_base_variant():
+@socketio.on('create_variant_collection', namespace='/esdl')
+def create_variant_collection():
     pm = get_project_manager()
     pm.add_new_variant_collection()
     emit_active_esdl_project()
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
-
-
-class DeleteBaseVariantRequest(TypedDict):
-    id: str
-
-
-@socketio.on('delete_base_variant', namespace='/esdl')
-def delete_base_variant(message: DeleteBaseVariantRequest):
-    pm = get_project_manager()
-    base_variant = pm.get_base_variant_by_id(message['id'])
-    if base_variant is not None:
-        pm.delete_variant(base_variant)
-        emit_active_esdl_project()
-        send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
-
-
-class RenameBaseVariantRequest(TypedDict):
-    id: str
-    name: str
-
-
-@socketio.on("rename_base_variant", namespace="/esdl")
-def rename_project(message: RenameBaseVariantRequest):
-    """
-    Rename variant
-    """
-    pm = get_project_manager()
-    base_variant = pm.get_base_variant_by_id(message["id"])
-    base_variant.name = message["name"]
     send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
 
 
@@ -189,14 +159,14 @@ class DeleteVariantRequest(TypedDict):
 
 
 @socketio.on('delete_variant', namespace='/esdl')
-def delete_base_variant(message: DeleteVariantRequest):
+def delete_variant(message: DeleteVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
     if variant is not None:
         pm.delete_variant(variant)
 
     emit_active_esdl_project()
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
+    send_delete_variant_message_to_lmi(variant)
 
 
 class RenameVariantRequest(TypedDict):

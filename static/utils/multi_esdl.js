@@ -14,7 +14,7 @@
  *      TNO
  */
 
-var esdl_list = {};         // Dictionairy to keep energysystem information
+var esdl_list = {};         // Dictionary to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
 var draw_control_map = {};
@@ -60,7 +60,7 @@ function select_active_layer_old() {
 
 function select_active_layer(active_esdl_layer) {
     if (!(active_esdl_layer in esdl_list)) {
-        console.log("Ignoring select active layer, as layers are not loaded yet in the frond-end");
+        console.log("Ignoring select active layer, as layers are not loaded yet in the front-end");
         return;
     }
     console.log("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");

@@ -86,6 +86,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from src.incremental_ui.ui_change_handler import change_handler
 from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
 from src.model_contexts import ModelContexts
@@ -370,13 +371,22 @@ def editor():
         # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
 
 
-"""
-Checks the OpenID connect session status
-And refreshes if necessary?
-"""
+def logout_user():
+    """
+    Logs out the user by removing the session cookie and clearing the project.
+    """
+    oidc.logout()
+    pm = get_project_manager()
+    pm.clear_project()
+
+
 @app.route('/auth_status')
 #@oidc.require_login
 def auth_status():
+    """
+    Checks the OpenID connect session status
+    And refreshes if necessary?
+    """
     from flask import g
     #logger.debug("Global token: {}".format(g.oidc_id_token))
     status: Response = oidc.authenticate_or_redirect()
@@ -400,12 +410,12 @@ def auth_status():
                     #set_session('jwt-token', oidc.get_access_token())
                     #return {'valid': True, 'reason': "Updated token"}
                 g.oidc_id_token = None
-                oidc.logout()
+                logout_user()
                 status: Response = oidc.redirect_to_auth_server('/editor')
                 uri = status.headers["Location"]
                 return {'valid': False, 'reason': "Token expired or not available", 'redirect_uri': uri}
         else:
-            oidc.logout()
+            logout_user()
             return {'valid': False, 'reason': "Not logged in"}
     else:
         status: Response = oidc.redirect_to_auth_server('/editor') # get redirect for /editor, not /auth_status
@@ -426,7 +436,7 @@ def logout():
     creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
     creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
     id_token_hint = creds.id_token_jwt
-    oidc.logout()
+    logout_user()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     # keycloak <17 logout:
 
@@ -3406,6 +3416,7 @@ def initialize_app():
     logger.info('Client connected: {}'.format(request.sid))
 
     pm = get_project_manager()
+    pm.add_change_listener("incremental_ui_updates", change_handler)
 
     last_es = pm.get_active_energy_system()
     if last_es:
@@ -3498,7 +3509,7 @@ def browser_initialize():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
 def on_disconnect():
-    logger.info('Client disconnected: {}'.format(request.sid))
+    logger.info('SocketIO: Client disconnected: {}'.format(request.sid))
 
 
 @socketio.on('events.frontend', namespace='/esdl')

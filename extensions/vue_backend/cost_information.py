@@ -12,15 +12,16 @@
 #  Manager:
 #      TNO
 
+import re
+from uuid import uuid4
+
 from pyecore.ecore import EReference
-from extensions.session_manager import get_session, get_project_manager
+
+import src.log as log
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
-from esdl.esdl_handler import EnergySystemHandler
-import src.log as log
-from uuid import uuid4
+from extensions.session_manager import get_session, get_project_manager
 from utils.utils import str2float, camelCaseToWords
-import re
 
 logger = log.get_logger(__name__)
 
@@ -160,7 +161,6 @@ def _change_cost_unit(qau, cost_unit_string):
 def _create_cost_qau(cost_unit_string):
     qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
-    print('new qau', EnergySystemHandler.attr_to_dict(qau))
     return qau
 
 

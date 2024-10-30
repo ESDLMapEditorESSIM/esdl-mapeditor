@@ -11,17 +11,20 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import numpy as np
-from flask import Flask
-from flask_socketio import SocketIO, emit
-import requests
-import csv
 import codecs
+import csv
 import json
 import re
 from uuid import uuid4
 
-from esdl import esdl
+import numpy as np
+import requests
+from flask import Flask
+from flask_socketio import SocketIO, emit
+from pyecore.ecore import EObject
+
+import src.log as log
+from esdl import esdl, EnergySystem
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
@@ -29,8 +32,6 @@ from esdl.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
-
-import src.log as log
 from src.edr_client import EDRClient
 from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL
 from utils.utils import timed
@@ -137,7 +138,7 @@ class ETMInterface:
 
         @self.socketio.on('etm_update_sankey_data', namespace='/esdl')
         @undo_record_changes(label="Update ETM Sankey data")
-        def etm_update_sankey_data(area_id):
+        def etm_update_sankey_data(area_id: str):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(area_id)
             active_es_id = get_session('active_es_id')
@@ -149,6 +150,8 @@ class ETMInterface:
             self.get_edr_profiles()
 
             emit("update-etm-query-log", f"Updating ETM Sankey data for {area.name} ({area.id})")
+            stack = pm.get_undo_redo_stack(eobj=area)
+            stack.update_label(f"Update ETM Sankey data for {area.name}")
             if area.scope is not esdl.AreaScopeEnum.MUNICIPALITY:
                 for logical_group in area.area:
                     if logical_group.logicalGroup:
@@ -263,7 +266,8 @@ class ETMInterface:
     @undo_record_changes(label="Add ETM Sankey data")
     def process_data_and_add_to_area(self, pm, active_es_id, area):
         es = pm.get_active_energy_system()
-
+        stack = pm.get_undo_redo_stack(eobj=es)
+        stack.update_label(f"Add ETM Sankey data for {area.name}")
         self.etm_sankey.add_carriers_and_sectors(es)
         self.etm_sankey.add_info_to_area(area)
         self.etm_sankey.clear_area_logbook()
@@ -410,6 +414,9 @@ class ETMSankeyToESDL:
             "Other": {"id": "etm_sector_other", "name": "Other", "cluster": "Overig", "sector": None},
         }
 
+        # list of units that are stored in energy system information
+        self.units = {}
+
         self.profiles_last_updated = None
 
     def set_etm_data(self, etm_data):
@@ -433,14 +440,34 @@ class ETMSankeyToESDL:
     ###################################################################################################################
     #   functions to create the ESDL from the ETM Sankey data
     ###################################################################################################################
-    def create_qau(self, unit):
-        return esdl.QuantityAndUnitType(
-            id=str(uuid4()),
-            description="ENERGY in " + unit,
-            physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
-            multiplier=self.multiplier_mapping[unit[0]],
-            unit=esdl.UnitEnum.JOULE        # assume Joule for now
-        )
+    def create_qau_ref_for_etm_unit(self, eobject: EObject, etm_unit: str):
+        if etm_unit in self.units:
+            qau = self.units[etm_unit]
+            qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+            return qau_ref
+        else:
+            qau = esdl.QuantityAndUnitType(
+                id=str(uuid4()),
+                description="ENERGY in " + etm_unit,
+                physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                multiplier=self.multiplier_mapping[etm_unit[0]],
+                unit=esdl.UnitEnum.JOULE        # assume Joule for now
+            )
+            # add this new unit to the global quanityAndUnit section in EnergySystemInformation
+            es: EnergySystem = eobject.eRoot()  # get the root node of this object in the energy system
+            esi = es.energySystemInformation
+            if not esi:
+                esi = esdl.EnergySystemInformation(id=str(uuid4()))
+                es.energySystemInformation = esi
+            qaus = esi.quantityAndUnits
+            if not qaus:
+                qaus = esdl.QuantityAndUnits(id=str(uuid4()), name="ETM quantities and units")
+                esi.quantityAndUnits = qaus
+            qaus.quantityAndUnit.append(qau)
+            self.units[etm_unit] = qau
+            qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+            return qau_ref
+
 
     def create_carriers(self, es: esdl.EnergySystem):
         esi = es.energySystemInformation
@@ -486,7 +513,7 @@ class ETMSankeyToESDL:
                 value = etm_item["present_year"]
                 if value != "0.000":
                     profile = esdl.SingleValue(id=str(uuid4()), value=float(value))
-                    profile.profileQuantityAndUnit = self.create_qau(etm_item["Value Unit"])
+                    profile.profileQuantityAndUnit = self.create_qau_ref_for_etm_unit(area, etm_item["Value Unit"])
 
                     inport = esdl.InPort(id=str(uuid4()), name="In")
                     inport.carrier = self.carriers[etm_item["Carrier"]]["carrier"]
@@ -505,7 +532,7 @@ class ETMSankeyToESDL:
                 value = etm_item["present_year"]
                 if value != "0.000":
                     profile = esdl.SingleValue(id=str(uuid4()), value=float(value))
-                    profile.profileQuantityAndUnit = self.create_qau(etm_item["Value Unit"])
+                    profile.profileQuantityAndUnit = self.create_qau_ref_for_etm_unit(area, etm_item["Value Unit"])
 
                     outport = esdl.OutPort(id=str(uuid4()), name="Out")
                     outport.carrier = self.carriers[etm_item["Carrier"]]["carrier"]
@@ -567,7 +594,7 @@ class ETMSankeyToESDL:
 
             port.carrier = self.carriers[cd["Carrier"]]["carrier"]
             profile = esdl.SingleValue(id=str(uuid4()), value=float(cd["present_year"]))
-            profile.profileQuantityAndUnit = self.create_qau(cd["Value Unit"])
+            profile.profileQuantityAndUnit = self.create_qau_ref_for_etm_unit(area, cd["Value Unit"])
             port.profile.append(profile)
             self.find_carrier_network_and_connect(area, port, cd["Carrier"])
 
@@ -613,7 +640,7 @@ class ETMSankeyToESDL:
                 value = etm_item["present_year"]
                 if value != "0.000":
                     profile = esdl.SingleValue(id=str(uuid4()), value=float(value))
-                    profile.profileQuantityAndUnit = self.create_qau(etm_item["Value Unit"])
+                    profile.profileQuantityAndUnit = self.create_qau_ref_for_etm_unit(area, etm_item["Value Unit"])
 
                     inport = esdl.InPort(id=str(uuid4()), name="In")
                     inport.carrier = self.carriers[conv_loss_carriers[0][0]]["carrier"]

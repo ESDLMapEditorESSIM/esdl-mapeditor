@@ -59,14 +59,6 @@ class ActivityContextExtension:
             json_result = json_util.dumps(activity_contexts)
             return json_result
 
-        @self.flask_app.route("/context/activities/<activity_id>/activate", methods=["POST"])
-        def activate_activity_context(activity_id):
-            db = get_database()
-            activity_context = db.activity_contexts.find_one({"activity_id": activity_id})
-            if not activity_context:
-                return jsonify({"error": "Activity ID not found"}), 404
-            return {}, 200
-
         @self.flask_app.route("/admin/context/activities")
         @mapeditor_admin_required
         def get_all_activity_contexts():

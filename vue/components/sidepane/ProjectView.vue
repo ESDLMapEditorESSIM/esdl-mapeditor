@@ -173,7 +173,7 @@ class ProjectTreeSpec {
         'label': 'Create new Energy System',
         'icon': 'fas fa-plus',
         'action': function () {
-          socket.value.emit("create_base_variant");
+          socket.value.emit("create_variant_collection");
         }
       },
       'rename': {

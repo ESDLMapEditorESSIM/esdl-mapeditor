@@ -1,12 +1,12 @@
 import json
 import sys
 
-import esdl
-from esdl.esdl_handler import EnergySystemHandler
 from influxdb import InfluxDBClient
 from influxdb.resultset import ResultSet
 from openpyxl import Workbook
 
+import esdl
+from esdlproject.ProjectManager import ProjectManager
 from extensions.dice_workflow.util import all_energy_assets, all_buildings, all_energy_assets_from_area
 
 
@@ -363,14 +363,16 @@ def main():
     with open(sys.argv[1]) as f:
         export_json = json.load(f)
 
-    esh = EnergySystemHandler()
+    pm = ProjectManager()
 
     influx_client = InfluxDBClient(export_json["influxdb"]["url"], export_json["influxdb"]["port"])
 
     bc = {}
     salderings = {}
     for export in export_json["exports"]:
-        es, _ = esh.load_file(export["esdl_file_case"])
+        variant, _ = pm.add_energy_system(export["esdl_file_case"])
+        es = pm.get_energy_system(variant)
+        #es, _ = esh.load_file(export["esdl_file_case"])
         simulation_run = export["simulation_run_case"]
         bc[es.name], salderings[es.name] = sum_assets_single_case(influx_client, simulation_run, es)
     _bc_export_excel(bc, salderings, export_json["output_excel"])

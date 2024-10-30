@@ -14,8 +14,10 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional, Any, List
 
+from flask import Flask
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.resources import Resource
@@ -33,6 +35,21 @@ patch_notification_system()  # patch pyecores notification system, so notificati
 logger = log.get_logger(__name__)
 
 
+class ChangeSource(Enum):
+    """
+    Defines the source of a change. This allows change_handlers (registered in ProjectManager.add_change_listener())
+    to distinguish between different changes
+    """
+    INTERNAL  = 0  # default case: by python programming code
+    EXTERNAL  = 1  # currently only 1 LMI is distinguished. But from an LMI, external is MapEditor
+    FRONT_END = 2  # for future: when user in front-end updates ESDL -> auto update UI
+
+@dataclass
+class ChangeContext:
+    source: ChangeSource
+    client_id: Optional[str] = None
+    resource: Optional[XMLResource] = None
+    flask_app: Optional[Flask] = None
 
 
 class UndoRedoCommandStack:
@@ -57,6 +74,7 @@ class UndoRedoCommandStack:
         self.change_handler = change_handler
         # post_process_list keeps track of notifications that cannot be processed directly (e.g. missing references)
         self.post_process_list: List[Notification] = []
+        self.change_context: ChangeContext = ChangeContext(source=ChangeSource.INTERNAL, resource=self.resource)
 
     @property
     def top(self) -> ep.AbstractChange | None:
@@ -86,13 +104,33 @@ class UndoRedoCommandStack:
     def size(self):
         return len(self.stack)
 
-    def start_recording(self, combine_commands: bool = True, label: str = None):
+    def _update_context(self, context: ChangeContext):
+        """
+        Fill in a Change context with information the stack has.
+        """
+        if context is None:
+            self.change_context.source = ChangeSource.INTERNAL
+            return
+
+        if context.resource:
+            self.change_context.resource = context.resource
+        if context.client_id:
+            self.change_context.client_id = context.client_id
+        if context.flask_app:
+            self.change_context.flask_app = context.flask_app
+        if context.source:
+            self.change_context.source = context.source
+
+    def start_recording(self, combine_commands: bool = True, label: str = None,
+                        change_context: ChangeContext = None):
         """
         Starts recording of changes in the loaded ESDL model
 
-        :param bool combine_commands: collect all actions into one single LabelledAction (default = True)
+        :param bool combine_commands: collect all actions into one single HighLevelChange (default = True)
         :param label: name of the label of the action that is recorded.
+        :param change_context: the context of the change, default INTERNAL
         """
+        self._update_context(change_context)
         logger.debug(f"=== start recording: {label} =====================================")
         self._recording = True
         self._combine_multiple_changes = combine_commands
@@ -103,7 +141,8 @@ class UndoRedoCommandStack:
         return self._recording
 
     @contextmanager
-    def track_changes(self, label: str, call_change_handler: bool = True):
+    def track_changes(self, label: str, change_context: ChangeContext = None,
+                      call_change_handler: bool = True):
         """
         Convenience method with context manager to track changes using this stack.
         Does the same as stack.start_recording(label="label") and afterwards
@@ -113,7 +152,8 @@ class UndoRedoCommandStack:
         label - label for this set of changes (required)
         call_change_handler - whether the change_handler should be called afterwards (default=True)
         """
-        self.start_recording(label=label)
+        self._update_context(change_context)
+        self.start_recording(label=label, change_context=self.change_context)
         try:
             yield
         finally:
@@ -133,6 +173,8 @@ class UndoRedoCommandStack:
     def stop_recording(self, call_change_handler: bool = True):
         """
         Stops recording of changes in a resource and stops putting them on the stack.
+        The change_source (used in start_recording() is reset to INTERNAL)
+
         Parameters
         ----------
         call_change_handler if True the change_handler configured when creating this Stack
@@ -155,10 +197,11 @@ class UndoRedoCommandStack:
             #logger.debug("undo.py stop recording: self.top:", top=self.top)
             if self.change_handler and call_change_handler:
                 logger.debug("Propagating changes to change handler")
-                self.change_handler(self.top)
+                self.change_handler(self.top, self.change_context)
 
             self._hlc = None
         self._recording = False
+        self.change_context.source = ChangeSource.INTERNAL  # reset to default
 
     def add_undo_step(self, label=None):
         """
@@ -170,7 +213,7 @@ class UndoRedoCommandStack:
             self._combine_multiple_changes = False
             self.push(self._hlc)
             self._combine_multiple_changes = True
-        self._hlc = ep.HighLevelChange(label, changedAt=datetime.now(timezone.utc))
+        self._hlc = ep.HighLevelChange(label=label, changedAt=datetime.now(timezone.utc))
 
     def push(self, abstract_change: ep.AbstractChange):
         """
@@ -197,18 +240,9 @@ class UndoRedoCommandStack:
             #     commands[-1].owner == self._compound[-1].value:
             #     logger.debug('Ignore ControlStrategy bi-directional relation')
             # only adding multiple commands to the compound
-            logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
+            #logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
             self._hlc.change.append(abstract_change)
             return
-
-        # for command in abstract_change:
-        #     if not isinstance(command, LabelledAction):
-        #         # Check if the command is executed. We don't check this for LabelledAction, I don't know why.
-        #         if command.can_execute:
-        #             # Set _executed to True to activate correct behaviour in PyEcore code, such that undo works
-        #             command._executed = True
-        #         else:
-        #             raise ValueError('Cannot execute command {}'.format(command))
 
         if len(self.stack) > self.stack_index:
             while len(self.stack) > self.stack_index + 1:
@@ -220,7 +254,10 @@ class UndoRedoCommandStack:
         # self.stack[index] = abstract_change
         self.stack_index = index
         self.last_changed = datetime.now(timezone.utc)
-        logger.debug(f"Pushed {abstract_change} to the stack")
+        if isinstance(abstract_change, ep.HighLevelChange):
+            logger.debug(f"Pushed {abstract_change.label} to the stack")
+        else:
+            logger.debug(f"Pushed {abstract_change} to the stack")
 
         # make sure the stack length is not larger than its max length
         if self.max_stack_length > 0:
@@ -238,7 +275,7 @@ class UndoRedoCommandStack:
 
         # self.next_top.redo()
         if self.can_redo():
-            logger.debug("Redo", next_top=self.next_top)
+            logger.debug("Redo")  #, next_top=self.next_top)
             with self.pause_recording():
                 if isinstance(self.next_top, ep.HighLevelChange):
                     for change in self.next_top.change:
@@ -262,7 +299,8 @@ class UndoRedoCommandStack:
         with self.pause_recording():
             abstract_change = self.top
             self.last_changed = datetime.now(timezone.utc)
-            logger.debug("Undo", abstract_change=abstract_change)
+            logger.debug("Undo", abstract_change=abstract_change.label
+                if isinstance(abstract_change, ep.HighLevelChange) else abstract_change)
             # if self.top.can_undo:
             if self.can_undo():
                 # self.top.undo()
@@ -283,8 +321,8 @@ class UndoRedoCommandStack:
             self._hlc.label = new_label
 
     def __repr__(self):
-        changes = "\n".join([f"- {s}" for s in self.stack])
-        return f"<Stack len={len(self)}, index={self.stack_index}, change=\n{ changes }\n>"
+        #changes = "\n".join([f"- {s}" for s in self.stack[:5]])
+        return f"<Stack len={len(self)}, index={self.stack_index}>"
 
 
 def post_process_high_level_change(high_level_change: HighLevelChange):
@@ -363,12 +401,12 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 )
             except KeyError:
                 # object already removed from tree, ignore
-                logger.debug("\\ object alread removed from tree, ignore...")
+                logger.debug("\\ object already removed from tree, ignore...")
                 return
 
-    logger.debug(
-        f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} ============================="
-    )
+    # logger.debug(
+    #     f"=== convertNotificationToChange ====== len(stack): {len(stack.stack)}, {notification} ============================="
+    # )
     if notification.kind == Kind.SET or notification.kind == Kind.UNSET:
         # f: EStructuralFeature = notification.feature
         # if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
@@ -442,7 +480,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         f = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             # bi-directional references generate 2 notifications, we can ignore the opposite
-            logger.debug("  \ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
+            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
         owner_fragment = notification.notifier.eURIFragment()
         old_uri_fragment = notification.old.eURIFragment()
         try:
@@ -491,7 +529,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         f = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             # bi-directional references generate 2 notifications, we can ignore the opposite
-            logger.debug("  \ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
+            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
         owner_fragment = notification.notifier.eURIFragment()
         if notification.feature.containment:
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
@@ -516,7 +554,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 stack.push(change)
                 change = None
     else:
-        logger.debug("Not converted notification: ", notification=notification)
+        logger.warning("Not converted notification: ", notification=notification)
 
     # add possible xrefs from a deepcopy
     if change:
@@ -525,18 +563,18 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
             total_list.extend(change.objectValue_xrefs)
             total_list.extend(value_x_refs)
             cleaned_change_list, _ = filterDoubleConnectedTo(total_list)
-            logger.debug(
-                f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-                f"(removed {len(total_list) - len(cleaned_change_list)} duplicates)"
-            )
+            # logger.debug(
+            #     f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+            #     f"(removed {len(total_list) - len(cleaned_change_list)} duplicates)"
+            # )
             change.objectValue_xrefs.clear()
             change.objectValue_xrefs.extend(cleaned_change_list)
         if len(prev_value_x_refs) > 0:
             cleaned_change_list, _ = filterDoubleConnectedTo(prev_value_x_refs)
-            logger.debug(
-                f"------ Adding cross-references of size {len(cleaned_change_list)}, "
-                f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)"
-            )
+            # logger.debug(
+            #     f"------ Adding cross-references of size {len(cleaned_change_list)}, "
+            #     f"(removed {len(prev_value_x_refs) - len(cleaned_change_list)} duplicates)"
+            # )
             change.previousValue_xrefs.extend(cleaned_change_list)
         stack.push(change)
 
@@ -546,9 +584,9 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 convertNotificationToChange(stack, n)
                 stack.post_process_list.remove(n)
             if len(stack.post_process_list) == 0:
-                logger.debug("****** Emptied post_proces_list")
+                logger.debug("convertNotificationToChange() ****** Emptied post_proces_list")
 
-    logger.debug("**** exit convertNotificationToChange ****")
+    # logger.debug("**** exit convertNotificationToChange ****")
 
 
 def updateResourceUUIDdict(notification: Notification):

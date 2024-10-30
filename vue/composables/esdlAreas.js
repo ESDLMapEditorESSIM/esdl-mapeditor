@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import {computed, ref} from "vue";
 import { PubSubManager, MessageNames } from "../bridge.js";
 import {layerHasContextMenuItem} from "../utils/utils";
 
@@ -13,14 +13,36 @@ import {layerHasContextMenuItem} from "../utils/utils";
 // The reason that the areas are stored in an array is that the area ID is not unique.
 const esdlAreasDict = ref({});
 
-PubSubManager.subscribe(MessageNames.ADD_AREA_TO_LAYER, (name, message) => {
-    if (!esdlAreasDict.value[message.id]) {
-        esdlAreasDict.value[message.id] = [];
+/**
+ * Add an area to the esdlAreasDict. The esdlAreasDict is a dictionary with the layer id as key and an array of areas as value.
+ * The areas are objects with a feature and a layer property.
+ * @param id
+ * @param feature
+ * @param layer
+ */
+const addEsdlArea = (id, feature, layer) => {
+    if (!esdlAreasDict.value[id]) {
+        esdlAreasDict.value[id] = [];
     }
-    esdlAreasDict.value[message.id].push({feature: message.feature, layer: message.layer})
-})
+    esdlAreasDict.value[id].push({feature: feature, layer: layer})
+}
+
+/**
+ * The total number of entries and areas in the esdlAreasDict.
+ * @type {import('vue').ComputedRef<number>}
+ */
+const totalEntriesAndAreas = computed(() => {
+    return Object.values(esdlAreasDict.value).reduce(
+        (acc, areas) => acc + areas.length,
+        Object.keys(esdlAreasDict.value).length
+    );
+});
 
 export function useEsdlAreas() {
+    PubSubManager.subscribe(MessageNames.ADD_AREA_TO_LAYER, (name, message) => {
+        addEsdlArea(message.id, message.feature, message.layer);
+    })
+
     /**
      * Add context menu items to all known areas.
      * @param {*} text 
@@ -68,6 +90,7 @@ export function useEsdlAreas() {
     return {
         addAreaContextMenuItem,
         esdlAreasDict,
+        totalEntriesAndAreas,
         removeAreaContextMenuItem,
     }
 }
