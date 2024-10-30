@@ -21,6 +21,7 @@ from flask_socketio import SocketIO, emit
 import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset
+from esdl.undo_wrapper import undo_record_changes
 from esdlproject.ProjectManager import load_external_string
 from extensions.boundary_service import is_valid_boundary_id
 from extensions.session_manager import get_project_manager, get_session
@@ -65,6 +66,7 @@ class PICORooftopPVPotential:
         logger.info("Registering PICORooftopPVPotential extension")
 
         @self.socketio.on('use_part_of_potential', namespace='/esdl')
+        @undo_record_changes(label="Use (part of) solar potential")
         def use_part_of_potential(pot_id, percentage, all_potentials):
             """
             Use part of a SolarPotential to install a PVInstallation
@@ -119,11 +121,12 @@ class PICORooftopPVPotential:
                                                                   'zoom': False})
 
         @self.socketio.on('use_part_of_potential_area', namespace='/esdl')
-        def use_part_of_potential_area(area_id, percentage, all_areas):
+        @undo_record_changes(label="Use (part of) solar potential area")
+        def use_part_of_potential_area(area_info, percentage, all_areas):
             """
             Use part of all SolarPotentials in an Area to install a PVInstallation
 
-            :param area_id: id of the Area where the SolarPotentials are part of
+            :param area_info: dict with id, lat, lon of the Area where the SolarPotentials are part of
             :param percentage: percentage (0-100) of the SolarPotential that should be installed as a PVInstallation
             :param all_areas: boolean specifying if this action should be applied to all Areas in the energy system
             :return: None
@@ -137,7 +140,7 @@ class PICORooftopPVPotential:
                     es = pm.get_active_energy_system()
                     area = es.instance[0].area
                 else:
-                    area_id = get_area_id_from_mapeditor_id(area_id)
+                    area_id = get_area_id_from_mapeditor_id(area_info['id'])
                     area = pm.get_by_id(active_es_id, area_id)
                 if area:
                     for obj in area.eAllContents():
@@ -159,6 +162,7 @@ class PICORooftopPVPotential:
                     send_alert("Serious error, area not found")
 
         @self.socketio.on('query_solar_potentials', namespace='/esdl')
+        @undo_record_changes(label="Query solar potential")
         def query_solar_potentials(area_info, all_areas):
             """
             Query SolarPotentials information for a specific Area or all areas in the energysystem
