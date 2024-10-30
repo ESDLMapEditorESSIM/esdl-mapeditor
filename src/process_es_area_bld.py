@@ -1100,7 +1100,6 @@ def process_energy_system(force_update_es_id=None, zoom=True):
             pm = get_project_manager()
             es_info_list = get_session("es_info_list")
 
-
             for es in pm.get_energy_systems():
                 asset_list = []
                 building_list = []

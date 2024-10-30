@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 
 from flask import session
 
-from esdlproject import Variant
+from esdlproject import Variant, VariantCollection
 from esdlproject.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
 from src.tno.live_model_interface.shared.message_types import InitNewProjectMessage, ProjectManagerMessage, \
-    ActivateDeactivateLmiMessage, AddVariantAndESDLMessage
+    ActivateDeactivateLmiMessage, AddVariantAndESDLMessage, DeleteVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 from utils.utils import timed
 
@@ -44,8 +44,6 @@ def send_init_new_project_to_lmi():
 def send_add_variant_and_esdl_message_to_lmi(variant: Variant):
     """
     Triggered when a new variant and esdl is added to the project.
-
-    TODO: This sends the active variant. We should send the variant that was changed.
     """
     pm = get_project_manager()
     es = pm.get_energy_system(variant)
@@ -66,6 +64,24 @@ def send_add_variant_and_esdl_message_to_lmi(variant: Variant):
     )
 
     send_rabbitmq_message(message, "events.pm.add")
+
+
+
+def send_delete_variant_message_to_lmi(variant: Variant | VariantCollection):
+    """
+    Triggered when a variant is deleted from the project.
+    """
+    user_email = get_session('user-email')
+    client_id = session['client_id']
+    message = DeleteVariantMessage(
+        id=str(uuid.uuid4()),
+        timestamp=datetime.now(timezone.utc),
+        user_email=user_email,
+        client_id=client_id,
+        variant_id=variant.id,
+    )
+
+    send_rabbitmq_message(message, "events.pm.delete")
 
 
 @timed

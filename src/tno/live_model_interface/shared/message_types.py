@@ -54,6 +54,13 @@ class AddVariantAndESDLMessage(LmiMessage):
     variant_id: str
 
 
+class DeleteVariantMessage(LmiMessage):
+    """
+    Message to delete a variant to the live model interface..
+    """
+    variant_id: str
+
+
 class ProjectManagerMessage(LmiMessage):
     b64_project: str
     project_name: str

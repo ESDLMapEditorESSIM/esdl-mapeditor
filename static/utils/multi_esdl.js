@@ -14,7 +14,7 @@
  *      TNO
  */
 
-var esdl_list = {};         // Dictionairy to keep energysystem information
+var esdl_list = {};         // Dictionary to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
 var draw_control_map = {};
