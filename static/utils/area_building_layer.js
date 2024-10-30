@@ -1215,6 +1215,47 @@ function selectAreaKPI(kpi_name) {
     });
 }
 
+function update_area_layer(esdl_layer_id, area_kpi_list) {
+    // This function updates the area layer information in the esdl_list (multi_esdl.js)
+    // the area_kpi_list parameter contains the updated KPI information per area
+
+    let area_kpi_map = {};
+    let flattened_kpi_list = flatten_area_list(area_kpi_list);
+    flattened_kpi_list.forEach((elem) => {
+       area_kpi_map[elem.properties.id] = elem;
+    });
+
+    // area_layers contains the leaflet layers for all areas
+    let area_layers = get_layers(esdl_layer_id, 'area_layer');
+    area_layers.eachLayer(function(featuregroup_instance) {
+        if (featuregroup_instance instanceof L.FeatureGroup) {
+            featuregroup_instance.eachLayer(function (layer) {
+                console.log("subitem", layer);
+                if (layer.id in area_kpi_map) {
+                    let new_area_kpi_info = area_kpi_map[layer.id];
+                    if (new_area_kpi_info.properties.hasOwnProperty("KPIs")) {
+                        // TODO: Can completely new KPIs be added?  How to deal with those?
+                        // For now only handle replacement of information of already existing KPIs
+                        for (const [KPI, kpi_info] of Object.entries(layer.feature.properties.KPIs)) {
+                            if (KPI in new_area_kpi_info.properties.KPIs) {
+                                layer.feature.properties.KPIs[KPI] = new_area_kpi_info.properties.KPIs[KPI];
+                            }
+                        }
+                    }
+                    if (new_area_kpi_info.properties.hasOwnProperty("dist_KPIs")) {
+                        for (const [dist_KPI, kpi_info] of Object.entries(layer.feature.properties.dist_KPIs)) {
+                            if (dist_KPI in new_area_kpi_info.properties.dist_KPIs) {
+                                kpi_info.value = new_area_kpi_info.properties.dist_KPIs[dist_KPI].value;
+                                kpi_info.unit = new_area_kpi_info.properties.dist_KPIs[dist_KPI].unit;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
@@ -1438,11 +1479,15 @@ function add_geojson_listener(socket, map) {
         // restore the earlier selected KPI, if necesarry
         if (areaLegendChoiceBackup != null) {
             restoreSelectedKPI()
-            areaLegendChoiceBackup = null;
         }
 
-        // Redraw pie chart KPIs or recolor the area itself
+        // update the information that is stored in area layer of the active energy system in the esdl_list
+        update_area_layer(active_layer_id, area_kpi_list);
+        // Call selectAreaKPI or recolor the area itself (this function doesn't do anything with PieCharts that are
+        // already visible)
         selectAreaKPI(areaLegendChoice);
+        // ... and call resize_area_pie_charts to redraw pie chart KPIs
+        resize_area_pie_charts(active_layer_id);
     });
 }
 
