@@ -2,7 +2,12 @@
   <p v-if="isLoading">Loading...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue" />
+      <a-select
+        v-model:value="form[workflowStep.target_variable]"
+        :options="options"
+        :status="selectStatus"
+        @change="onSelectValue"
+      />
     </a-form-item>
     <a-form-item v-if="!autoNextStep">
       <a-button type="primary" @click="onSubmit"> Select</a-button>
@@ -11,7 +16,7 @@
 </template>
 
 <script setup="props">
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api";
 
@@ -29,18 +34,19 @@ const isLoading = ref(true);
 const options = ref([]);
 const form = ref({});
 const autoNextStep = ref(false);
-if ("auto_next_step" in workflowStep) {
-  autoNextStep.value = workflowStep.auto_next_step;
-}
-form[workflowStep.target_variable] = "";
 
-const {getParamsFromState, goToNextStep, getState} = useWorkflow();
+const selectStatus = ref("error");
+
+const {getParamsFromState, goToNextStep, getState, setWorkflowStepInputValid} = useWorkflow();
 const state = getState();
 
 // Variable for indexing all choices by the value (which is rendered in HTML).
 let choicesByValue;
 
-// eslint-disable-next-line no-unused-vars
+onMounted(() => {
+  init(true);
+});
+
 const onSubmit = () => {
   const value = form[workflowStep.target_variable];
   if (!value) {
@@ -51,12 +57,19 @@ const onSubmit = () => {
   goToNextStep();
 };
 
-const selectValue = (value) => {
+const onSelectValue = (value) => {
   form[workflowStep.target_variable] = value;
+  updateInputState();
   if (autoNextStep.value) {
     onSubmit();
   }
-}
+};
+
+const updateInputState = () => {
+  const isValid = form[workflowStep.target_variable] !== "";
+  selectStatus.value = isValid ? "" : "error";
+  setWorkflowStepInputValid(workflowStep.reference, isValid);
+};
 
 const doGetData = async () => {
   const request_params = getParamsFromState(workflowStep.source.request_params);
@@ -64,7 +77,7 @@ const doGetData = async () => {
 
   if (data != null) {
     const source = workflowStep.source;
-    let choices = [];
+    let choices;
     // Choices data can be found as an attribute in a dict or is directly returned as a list
     if ("choices_attr" in source) {
       choices = data[source.choices_attr];
@@ -87,6 +100,16 @@ const doGetData = async () => {
     );
   }
   isLoading.value = false;
-}
-doGetData();
+};
+
+const init = (reset) => {
+  if (reset) {
+    form[workflowStep.target_variable] = "";
+  }
+  if ("auto_next_step" in workflowStep) {
+    autoNextStep.value = workflowStep.auto_next_step;
+  }
+  doGetData();
+  updateInputState();
+};
 </script>

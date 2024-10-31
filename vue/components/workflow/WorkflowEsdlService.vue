@@ -20,7 +20,7 @@
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
-    <a-button v-if="!workflowStep.service.auto" type="primary" @click="clearLayersAndLoadEsdl">
+    <a-button v-if="!workflowStep.service.auto" type="primary" :disabled="buttonDisabled" @click="clearLayersAndLoadEsdl">
       <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }}</div>
       <div v-else>
         Run ESDL service
@@ -33,8 +33,9 @@
 <script setup="props">
 import {setattrd} from "@/utils/utils";
 
-import {useWorkflow} from "@/composables/workflow";
+import {RESET_WORKFLOW, useWorkflow} from "@/composables/workflow";
 import {useEsdlLayers} from "@/composables/esdlLayers";
+import {ref, watch} from "vue";
 
 const props = defineProps({
   workflowStep: {
@@ -45,11 +46,17 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const {getParamsFromState, goToPreviousStep, goToFirstStep, getState, goToStep} = useWorkflow();
+const {getParamsFromState, goToPreviousStep, goToFirstStep, getState, goToStep, isAllInputValid} = useWorkflow();
 const state = getState();
 const {clearEsdlLayers} = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
+let workflowTrigger = props.workflowStep.workflowTrigger;
+const buttonDisabled = ref(false);
+
+watch(workflowTrigger, (currentValue) => {
+  init(currentValue[RESET_WORKFLOW]);
+});
 
 const esdlWasLoaded = () => {
   if (workflowStep.target_variable && workflowStep.target_variable_value) {
@@ -57,7 +64,7 @@ const esdlWasLoaded = () => {
   }
 
   goToFirstStep();
-}
+};
 
 const clearLayersAndLoadEsdl = () => {
   if (workflowStep.service.clearLayers) {
@@ -67,7 +74,7 @@ const clearLayersAndLoadEsdl = () => {
   } else {
     loadEsdl();
   }
-}
+};
 
 const loadEsdl = () => {
   let params = {};
@@ -101,9 +108,12 @@ const loadEsdl = () => {
   }
 };
 
-if (workflowStep.service.auto) {
-  // Load the ESDL upon loading of this step.
-  clearLayersAndLoadEsdl();
-}
+const init = (reset) => {
+  if (reset && workflowStep.service.auto) {
+    // Load the ESDL upon loading of this step.
+    clearLayersAndLoadEsdl();
+  }
+  buttonDisabled.value = !isAllInputValid();
+};
 
 </script>

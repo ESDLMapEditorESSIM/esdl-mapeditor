@@ -2,13 +2,28 @@
   <p v-if="isLoading">Loading data ...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-button v-if="showReloadButton" type="primary" :disabled="isLoading" :loading="isLoading" @click="doGetData">
-        Reload
-      </a-button>
+      <a-row type="flex" justify="space-between">
+        <a-col>
+          <label>user group filter:</label>
+        </a-col>
+        <a-col>
+          <a-select
+            v-model:value="selectedUserGroups"
+            mode="multiple"
+            style="width: 300px;"
+            size="small"
+            placeholder="Please select"
+            :options="userGroupsForUser"
+            :status="selectedUserGroups.length === 0 ? 'error' : ''"
+            @change="updateFilteredRows"
+            @mouseleave="hide_jquery_ui_popup"
+          />
+        </a-col>
+      </a-row>
       <a-table
         :columns="columns"
         :row-key="rowkey"
-        :data-source="dataSource"
+        :data-source="filteredRows"
         :pagination="pagination"
         :loading="isLoading"
         size="small"
@@ -41,7 +56,13 @@
           </span>
         </template>
         <template #tags="{ record, column }">
-          <a-tag :color="getTagColor(record[column.dataIndex])">{{ record[column.dataIndex] }}</a-tag>
+          <a-progress
+            v-if="hasProgressIndication(record,column)"
+            :percent="getProgressPercent(record, column)"
+            status="normal"
+            :size="'small'"
+          />
+          <a-tag v-else :color="getTagColor(record[column.dataIndex])">{{ record[column.dataIndex] }}</a-tag>
         </template>
       </a-table>
     </a-form-item>
@@ -50,7 +71,7 @@
 
 <script setup="props">
 
-import {ref, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api.js";
 
@@ -66,7 +87,12 @@ let workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
 // eslint-disable-next-line no-unused-vars
 watch(workflowTrigger, () => {
-  init();
+  refresh();
+});
+
+onMounted(() => {
+  doGetData();
+  refresh();
 });
 
 const isLoading = ref(true);
@@ -79,8 +105,10 @@ const columns = ref([]);
 const rowkey = ref("");
 const additional_fields = ref(null);
 const actions = ref([]);
-const dataSource = ref([]);
-const showReloadButton = ref(true);
+const tableRows = ref([]);
+const filteredRows = ref([]);
+const selectedUserGroups = ref(["_owned"]);
+const userGroupsForUser = ref([{value: "_owned"}]);
 
 const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9});
 
@@ -157,8 +185,13 @@ const doGetData = async () => {
         }
     );
   }
+  window.socket.emit("get_user_group_paths", (user_group_paths) => {
+        for (const user_group_path of user_group_paths) {
+          userGroupsForUser.value.push({value: user_group_path});
+        }
+      }
+  );
 };
-doGetData();
 
 const handleData = (data) => {
   if (data != null) {
@@ -196,32 +229,49 @@ const handleData = (data) => {
     }
     actions.value = source.actions;
     columns.value = source.columns;
-    rowkey.value = source.value_field; // "job_id"; // "record => record." + source.value_field
+    rowkey.value = source.value_field; // "job_id"
     additional_fields.value = source.additional_fields;
-    dataSource.value = data;
+    tableRows.value = data;
+    updateFilteredRows();
   }
   isLoading.value = false;
 };
 
-const init = async () => {
+const hasProgressIndication = (record, column) => {
+  return record.status === "RUNNING" && "progressAttribute" in column;
+};
+
+const getProgressPercent = (record, column) => {
+  let progress = record[column["progressAttribute"]];
+  return isNaN(progress) ? 0 : 100 * progress;
+};
+
+const refresh = async () => {
   workflowStep = props.workflowStep;
   workflowTrigger = props.workflowStep.workflowTrigger;
-  if ("show_reload_button" in props.workflowStep) {
-    showReloadButton.value = props.workflowStep["show_reload_button"];
-  }
   window.socket.off('wfe_update_model_run');
   window.socket.on('wfe_update_model_run', (run_data) => {
-    const modelRunData = dataSource.value.find(i => i["run_id"] === run_data["run_id"]);
-    if (modelRunData === undefined) {
-      dataSource.value.push(run_data);
+    const tableRow = tableRows.value.find(i => i["run_id"] === run_data["run_id"]);
+    if (tableRow === undefined) {
+      tableRows.value.push(run_data);
     } else {
       for (const [key, value] of Object.entries(run_data)) {
-        modelRunData[key] = value;
+        tableRow[key] = value;
       }
     }
+    updateFilteredRows();
   });
 };
-init();
+
+const updateFilteredRows = () => {
+  filteredRows.value = [];
+  for (const row of tableRows.value) {
+    if (row.is_owner && selectedUserGroups.value.some(r => r === "_owned")
+        || selectedUserGroups.value.some(r => row.user_group_paths.includes(r))) {
+      filteredRows.value.push(row);
+    }
+  }
+};
 
 // to prevent stuck popup
 const hide_jquery_ui_popup = () => {

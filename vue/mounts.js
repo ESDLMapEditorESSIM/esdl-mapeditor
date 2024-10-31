@@ -1,9 +1,9 @@
 /**
  * Mounting functions, to mount Vue components somewhere in the MapEditor.
  */
-import {createApp} from "vue"
-import VueComponentLControl from './components/leaflet/VueComponentLControl'
-import VueGridLayout from 'vue-grid-layout'
+import {createApp} from "vue";
+import VueComponentLControl from './components/leaflet/VueComponentLControl';
+import VueGridLayout from 'vue-grid-layout';
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
@@ -67,7 +67,7 @@ export function mountTooltipComponent(component, el_id) {
 }
 
 export function mountApp(component, elementSelector) {
-    const app = createApp(component)
+    const app = createApp(component);
 
     // Components from ant-design-vue
     app.use(Breadcrumb);

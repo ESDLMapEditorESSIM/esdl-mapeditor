@@ -79,7 +79,7 @@ export function useWorkflow() {
     const startNewWorkflow = (service_index, service, state) => {
         currentWorkflow.value = new Workflow(service_index, service, state);
         return currentWorkflow;
-    }
+    };
 
     const loadSavedWorkflows = () => {
         window.socket.emit('/workflow/list', function (workflow_list) {
@@ -87,7 +87,7 @@ export function useWorkflow() {
                 return {uuid: workflow.uuid, name: workflow.name};
             });
         });
-    }
+    };
 
     /**
      * Start over the current workflow.
@@ -96,14 +96,14 @@ export function useWorkflow() {
     const startOver = () => {
         currentWorkflow.value = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
         return currentWorkflow;
-    }
+    };
 
     /**
      * Get the current workflow state.
      */
     const getState = () => {
         return currentWorkflow.value.state;
-    }
+    };
 
     /**
      * Get value from the state.
@@ -113,7 +113,7 @@ export function useWorkflow() {
     const getFromState = (to_obtain_field) => {
         const state = getState();
         return getattrd(state, to_obtain_field);
-    }
+    };
 
     /**
      * Set name of the workflow. Used to retrieve it later.
@@ -121,7 +121,7 @@ export function useWorkflow() {
      */
     const setWorkflowName = (name) => {
         currentWorkflow.value.setName(name);
-    }
+    };
 
     const activatePersistedWorkflow = (uuid) => {
         window.show_loader();
@@ -146,7 +146,7 @@ export function useWorkflow() {
                 currentWorkflow.value = workflowObj;
             }
         });
-    }
+    };
 
     const persistWorkflow = (uploadEsdls) => {
         if (currentWorkflow.value.persisted) {
@@ -165,7 +165,7 @@ export function useWorkflow() {
                 });
             }
         }
-    }
+    };
 
     const deletePersistedWorkflow = (uuid) => {
         window.show_loader();
@@ -173,7 +173,7 @@ export function useWorkflow() {
             window.hide_loader();
             loadSavedWorkflows();
         });
-    }
+    };
 
     /**
      * Get values from the state, as a parameter mapping.
@@ -191,7 +191,7 @@ export function useWorkflow() {
             return params;
         }
         return {};
-    }
+    };
 
     /**
      * Go to the next workflow step.
@@ -199,7 +199,7 @@ export function useWorkflow() {
     const goToNextStep = () => {
         currentWorkflow.value.doNext();
         persistWorkflow();
-    }
+    };
 
     /**
      * Go to the next workflow step.
@@ -207,7 +207,7 @@ export function useWorkflow() {
     const goToPreviousStep = () => {
         currentWorkflow.value.doPrevious();
         persistWorkflow();
-    }
+    };
 
     /**
      * Go to given step.
@@ -215,7 +215,7 @@ export function useWorkflow() {
     const goToStep = (stepIdx) => {
         currentWorkflow.value.doNext(stepIdx);
         persistWorkflow();
-    }
+    };
 
     /**
      * Unroll the previous steps to go to the first step.
@@ -224,11 +224,19 @@ export function useWorkflow() {
         while (currentWorkflow.value.hasPreviousStep()) {
             goToPreviousStep();
         }
-    }
+    };
 
     const closeWorkflow = () => {
         currentWorkflow.value = null;
-    }
+    };
+
+    const setWorkflowStepInputValidity = (workflowStepReference, valid) => {
+        currentWorkflow.value.input_valid_dict[workflowStepReference] = valid;
+    };
+
+    const isAllInputValid = () => {
+        return Object.values(currentWorkflow.value.input_valid_dict).every(value => value === true);
+    };
 
     return {
         currentWorkflow,
@@ -249,7 +257,9 @@ export function useWorkflow() {
         RESET_WORKFLOW,
         loadSavedWorkflows,
         activatePersistedWorkflow,
-    }
+        setWorkflowStepInputValid: setWorkflowStepInputValidity,
+        isAllInputValid,
+    };
 }
 
 export class Workflow {
@@ -271,6 +281,7 @@ export class Workflow {
         this.persisted = false;
         this.resumable = service.resumable || false;
         this.drive_paths = [];
+        this.input_valid_dict = {};
     }
 
     setName(name) {

@@ -66,8 +66,8 @@ class ToastNotifications:
 
             # TODO send backed up messages after 'toast_notifications_service_ready'
             # user = get_session("user-email")
-            # user_projects = get_session("user-group")
-            # model_runs = self.external_models_storage.get_model_runs_for_current_user(user, user_projects, model_name)
+            # user_group_paths = get_session("user-group-path")
+            # model_runs = self.external_models_storage.get_model_runs_for_current_user(user, user_group_paths, model_name)
 
     @staticmethod
     def send(toast_notification: ToastNotification):

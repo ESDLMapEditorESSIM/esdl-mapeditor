@@ -10,7 +10,7 @@ from extensions.external_models.external_models_storage import (
     RUN_NAME,
     STATUS,
     USER,
-    PROJECTS,
+    USER_GROUP_PATHS,
     RUN_ID,
     INPUT_ESDL,
     OUTPUT_ESDL,
@@ -49,8 +49,13 @@ class ExternalModels:
             model_name = model_run_info["external_model_name"]
 
             user = get_session("user-email")
-            user_projects = get_session("user-group")
-            model_runs = self.external_models_storage.get_model_runs_for_current_user(user, user_projects, model_name)
+            user_group_paths = get_session("user-group-path")
+            model_runs = self.external_models_storage.get_model_runs_for_current_user(
+                user, user_group_paths, model_name
+            )
+
+            for model_run in model_runs:
+                model_run["is_owner"] = model_run["user"] == user
 
             return model_runs
 
@@ -101,7 +106,7 @@ class ExternalModels:
 
             text = f"<b>{model_run_data[MODEL_NAME]}</b> run details for: <b>{model_run_data[RUN_NAME]}</b><br>"
 
-            top_keys = [MODEL_NAME, RUN_NAME, STATUS, USER, PROJECTS, RUN_ID]
+            top_keys = [MODEL_NAME, RUN_NAME, STATUS, USER, USER_GROUP_PATHS, RUN_ID]
             omit_keys = [INPUT_ESDL, OUTPUT_ESDL]
 
             for key in top_keys:
@@ -118,7 +123,8 @@ class ExternalModels:
         @self.socketio.on("external_models_get_run_jsonforms", namespace="/esdl")
         def external_models_get_run_jsonforms(model_run_info: dict) -> dict:
             """
-            Get run data as jsonforms with the run name and projects as editable, and some other details as readonly.
+            Get run data as jsonforms with the run name and user group paths as editable, and some other details as
+            readonly.
 
             :param model_run_info: external model data.
             :return: Run details as jsonforms dictionary.
@@ -127,7 +133,7 @@ class ExternalModels:
             run_id = model_run_info[RUN_ID]
             model_run_data = self.external_models_storage.get_model_run(run_id)
 
-            user_projects = get_session("user-group")
+            user_group_paths = get_session("user-group-path")
             properties = {}
             required = []
             form_data = {}
@@ -138,11 +144,11 @@ class ExternalModels:
             form_data[RUN_NAME] = model_run_data[RUN_NAME]
             ui_elements.append(dict(type="Control", scope=f"#/properties/{RUN_NAME}"))
 
-            properties[PROJECTS] = dict(
-                type="array", title="projects", uniqueItems=True, items=dict(type="string", enum=user_projects)
+            properties[USER_GROUP_PATHS] = dict(
+                type="array", title="user groups", uniqueItems=True, items=dict(type="string", enum=user_group_paths)
             )
-            form_data[PROJECTS] = model_run_data[PROJECTS]
-            ui_elements.append(dict(type="Control", scope=f"#/properties/{PROJECTS}"))
+            form_data[USER_GROUP_PATHS] = model_run_data[USER_GROUP_PATHS]
+            ui_elements.append(dict(type="Control", scope=f"#/properties/{USER_GROUP_PATHS}"))
 
             info_keys = [MODEL_NAME, USER, STATUS, RUN_ID, SUBMITTED_TO_EXTERNAL_MODEL_AT]
             for key, value in model_run_data.items():
@@ -159,3 +165,12 @@ class ExternalModels:
                 formData=form_data,
                 uischema=dict(type="VerticalLayout", elements=ui_elements),
             )
+
+        @self.socketio.on("get_user_group_paths", namespace="/esdl")
+        def external_models_delete_run() -> list:
+            """
+            Get user group paths.
+
+            :return: list of user group paths.
+            """
+            return get_session("user-group-path")

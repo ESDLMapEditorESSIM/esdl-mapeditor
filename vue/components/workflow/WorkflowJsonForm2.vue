@@ -1,29 +1,35 @@
 <template>
   <p v-if="isLoading">Loading...</p>
-  <div v-else-if="jsonFromDataReceived">
+  <div v-else-if="jsonFormDataReceived">
     <json-forms
       :data="formData"
       :schema="schema"
       :uischema="uischema"
       :renderers="renderers"
+      :ajv="ajv"
       @change="onChange"
-      @error="console.log('ERROR')"
+      @input="validateEvent"
+      @keyup="validateEvent"
     />
-
     <a-button v-if="!autoNextStep" type="primary" @click="onSubmit">{{ buttonText }}</a-button>
   </div>
 </template>
 
 <script setup="props">
-import {ref, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 import {useWorkflow, RESET_WORKFLOW} from "@/composables/workflow";
 import {getJsonForm, postJsonForm} from "./utils/api";
 import {JsonForms} from "@jsonforms/vue";
-// eslint-disable-next-line no-unused-vars
+import Ajv from "ajv";
+import addFormats from "ajv-formats";
+
 import {vanillaRenderers,} from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
 
 const renderers = Object.freeze([...vanillaRenderers]);
+
+const ajv = new Ajv({allErrors: true, $data: true});
+addFormats(ajv);
 
 const props = defineProps({
   workflowStep: {
@@ -35,50 +41,59 @@ const props = defineProps({
 
 let workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
-
-// eslint-disable-next-line no-unused-vars
-watch(workflowTrigger, (currentValue, oldValue) => {
-  init(currentValue[RESET_WORKFLOW]);
-});
-
 let buttonText = workflowStep.button || "Submit";
 
-const schema = ref({});
-// eslint-disable-next-line no-unused-vars
 const formData = ref({});
-const uischema = ref(null);
+let schema = {};
+let uischema = {};
 
 const dataToSubmit = {};
 const isLoading = ref(true);
-const jsonFromDataReceived = ref(false);
+const jsonFormDataReceived = ref(false);
 
 const autoNextStep = ref(false);
 
-const {goToNextStep, getState, getFromState} = useWorkflow();
+const {goToNextStep, getState, getFromState, setWorkflowStepInputValid} = useWorkflow();
+
+onMounted(() => {
+  init(true);
+});
+
+watch(workflowTrigger, (currentValue) => {
+  init(currentValue[RESET_WORKFLOW]);
+});
 
 const updateData = (jsonFormData) => {
   const jsonFormDataConfig = workflowStep.data;
 
   if (jsonFormData && "schema" in jsonFormData || "schema" in jsonFormDataConfig) {
-    jsonFromDataReceived.value = true;
+    jsonFormDataReceived.value = true;
   } else {
-    jsonFromDataReceived.value = false;
+    schema = {};
+    jsonFormDataReceived.value = false;
+    setWorkflowStepInputValid(workflowStep.reference, true);
     isLoading.value = false;
     return;
   }
 
   // Optionally override schema/uischema received from url/state/socket by json config
   if ("schema" in jsonFormDataConfig) {
-    schema.value = jsonFormDataConfig.schema;
+    schema = jsonFormDataConfig.schema;
   } else {
-    schema.value = jsonFormData.schema;
+    schema = jsonFormData.schema;
   }
+
+  // TODO for testing currently, to come via omotes-rest when sdk and protocol updated.
+  // if ("end_time" in schema["properties"]) {
+  //   schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
+  // }
+
   if ("uischema" in jsonFormDataConfig) {
-    uischema.value = jsonFormDataConfig.uischema;
+    uischema = jsonFormDataConfig.uischema;
   } else if (jsonFormData && "uischema" in jsonFormData) {
-    uischema.value = jsonFormData.uischema;
+    uischema = jsonFormData.uischema;
   } else {
-    uischema.value = null;
+    uischema = null;
   }
 
   if (jsonFormData && "formData" in jsonFormData) {
@@ -109,8 +124,26 @@ const doGetData = async () => {
   }
 };
 
+const validateEvent = (event) => {
+  const varName = event.target.id.replace("#/properties/", "").replace("-input", "");
+  if (schema["properties"][varName]["type"] === "string"
+      && schema["properties"][varName]["format"] === "date-time") {
+    return;
+  }
+  let varValue = event.target.value;
+  if (schema["properties"][varName]["type"] === "number" && varValue !== "") {
+    varValue = Number(varValue);
+  }
+
+  dataToSubmit[varName] = varValue;
+  validateJsonForm(dataToSubmit);
+  goToNextStep();
+};
+
 const onChange = (event) => {
   Object.assign(dataToSubmit, event.data);
+  validateJsonForm(event.data);
+  goToNextStep();
   if (autoNextStep.value) {
     onSubmit();
   }
@@ -119,12 +152,12 @@ const onChange = (event) => {
 const updateState = () => {
   let dataSubmitFormatted = {};
   if ("target_variable" in workflowStep) {
-    dataSubmitFormatted[workflowStep.target_variable] = jsonFromDataReceived.value ? dataToSubmit : {};
+    dataSubmitFormatted[workflowStep.target_variable] = jsonFormDataReceived.value ? dataToSubmit : {};
   } else {
-    dataSubmitFormatted = jsonFromDataReceived.value ? dataToSubmit : {};
+    dataSubmitFormatted = jsonFormDataReceived.value ? dataToSubmit : {};
   }
   Object.assign(getState(), dataSubmitFormatted);
-  return dataSubmitFormatted
+  return dataSubmitFormatted;
 };
 
 const init = (reset) => {
@@ -142,7 +175,6 @@ const init = (reset) => {
   doGetData();
   updateState();
 };
-init();
 
 const onSubmit = async () => {
   const dataSubmitFormatted = updateState();
@@ -166,6 +198,13 @@ const onSubmit = async () => {
   } else {
     goToNextStep();
   }
+};
+
+const validateJsonForm = (data) => {
+  const validate = ajv.compile(schema);
+  const isValid = validate(data) || schema === {};
+  setWorkflowStepInputValid(workflowStep.reference, isValid);
+  return {isValid, errors: validate.errors};
 };
 </script>
 

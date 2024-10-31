@@ -116,6 +116,7 @@ class WorkflowStep:
 
             # update mongodb
             updated_model_run = self.models_storage.update_model_run(self.sequence_data.run_id, updated_values)
+            updated_model_run["is_owner"] = updated_model_run["user"] == self.sequence_data.user_email
 
             if updated_model_run:
                 # emit to frontend
@@ -275,6 +276,10 @@ class WorkflowEngine:
             # run initial workflow step inside request context to enable for instance selected ESDL loading
             if init_data["type"] == "esdl_service":
                 esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
+
+                esdl_service_result["model_run_doc"]["is_owner"] = (
+                    esdl_service_result["model_run_doc"]["user"] == user_email
+                )
                 if esdl_service_ok:
                     emit(
                         "wfe_update_model_run",

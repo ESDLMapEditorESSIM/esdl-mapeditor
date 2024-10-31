@@ -35,7 +35,7 @@ VALUE_UNSET = "<<Should be set>>"
 
 # items in an external model run doc
 USER = "user"
-PROJECTS = "projects"
+USER_GROUP_PATHS = "user_group_paths"
 MODEL_NAME = "model_name"
 MODEL_JOB_ID = "model_job_id"
 RUN_ID = "run_id"
@@ -150,12 +150,14 @@ class ExternalModelsStorage:
             deleted_model_data = self.collection.find_one_and_delete({RUN_ID: run_id}, projection={"_id": False})
         return deleted_model_data
 
-    def get_model_runs_for_current_user(self, user_name: str, user_projects: list[str], model_name: str = None) -> list:
+    def get_model_runs_for_current_user(
+        self, user_name: str, user_group_paths: list[str], model_name: str = None
+    ) -> list:
         """
-        Get all model runs for a user, including all runs for the supplied projects.
+        Get all model runs for a user, including all runs for the supplied user group paths.
 
         :param user_name: The name of the user.
-        :param user_projects: List of projects for which run will be extracted as well.
+        :param user_group_paths: List of user group paths for which runs will be extracted as well.
         :param model_name: The name of the external model.
         :return: list of model run data objects.
         """
@@ -167,7 +169,7 @@ class ExternalModelsStorage:
                         {
                             "$or": [
                                 {USER: user_name},
-                                {PROJECTS: {"$elemMatch": {"$in": user_projects}}},
+                                {USER_GROUP_PATHS: {"$elemMatch": {"$in": user_group_paths}}},
                             ]
                         },
                     ]
@@ -176,7 +178,7 @@ class ExternalModelsStorage:
                 myquery = {
                     "$or": [
                         {USER: user_name},
-                        {PROJECTS: {"$elemMatch": {"$in": user_projects}}},
+                        {USER_GROUP_PATHS: {"$elemMatch": {"$in": user_group_paths}}},
                     ]
                 }
             models_cursor = self.collection.find(myquery, projection={"_id": False})
@@ -215,7 +217,7 @@ def get_default_model_run_values() -> dict:
     """
     return {
         USER: VALUE_UNSET,
-        PROJECTS: [],
+        USER_GROUP_PATHS: [],
         MODEL_NAME: VALUE_UNSET,
         MODEL_JOB_ID: VALUE_UNSET,
         RUN_ID: str(uuid.uuid4()),
