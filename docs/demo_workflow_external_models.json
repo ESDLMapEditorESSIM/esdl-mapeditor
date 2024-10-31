@@ -120,7 +120,7 @@
         },
         "workflow_engine_trigger": true,
         "workflow_engine_run_name": "state_params.run_name",
-        "next_step": "retrieve_run_progress_results",
+        "next_step": "base_steps_with_table",
         "workflow_engine_next_step": "retrieve_run_progress_results"
       },
       {
@@ -177,7 +177,6 @@
         "name": "Results overview",
         "description": "",
         "type": "table-query",
-        "show_reload_button": false,
         "source": {
           "from_socket": {
             "event": "get_external_model_runs_for_user",
@@ -195,6 +194,7 @@
               "dataIndex": "status",
               "title": "Status",
               "align": "center",
+              "progressAttribute": "progress_fraction",
               "slots": {
                 "customRender": "tags"
               }
@@ -226,11 +226,23 @@
             {
               "title": "Edit",
               "icon": "far fa-edit",
-              "next_step": "edit_run"
+              "next_step": "edit_run",
+              "enabled": {
+                "dataIndex": "is_owner",
+                "values": [
+                  true
+                ]
+              }
             },
             {
               "title": "Delete",
               "icon": "far fa-trash-alt",
+              "enabled": {
+                "dataIndex": "is_owner",
+                "values": [
+                  true
+                ]
+              },
               "to_socket": {
                 "event": "external_models_delete_run",
                 "params": {
@@ -516,7 +528,6 @@
         "name": "Results overview",
         "description": "",
         "type": "table-query",
-        "show_reload_button": false,
         "source": {
           "from_socket": {
             "event": "get_external_model_runs_for_user",
@@ -534,6 +545,7 @@
               "dataIndex": "status",
               "title": "Status",
               "align": "center",
+              "progressAttribute": "progress_fraction",
               "slots": {
                 "customRender": "tags"
               }
@@ -565,11 +577,23 @@
             {
               "title": "Edit",
               "icon": "far fa-edit",
-              "next_step": "edit_run"
+              "next_step": "edit_run",
+              "enabled": {
+                "dataIndex": "is_owner",
+                "values": [
+                  true
+                ]
+              }
             },
             {
               "title": "Delete",
               "icon": "far fa-trash-alt",
+              "enabled": {
+                "dataIndex": "is_owner",
+                "values": [
+                  true
+                ]
+              },
               "to_socket": {
                 "event": "external_models_delete_run",
                 "params": {
