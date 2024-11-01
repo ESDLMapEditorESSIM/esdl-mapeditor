@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import {ref, onUpdated} from 'vue';
+import {ref, onUpdated, watch} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import Spinner from "../components/Spinner";
 import { useUndoRedo } from "../composables/undoRedo.js";
@@ -59,16 +59,24 @@ const { stack, stack_index, showUndoRedoControl, undo, redo, undoRedoUntil } = u
 //const stack_index = ref(null);
 const isLoading = ref(false);
 
+function retryLoadUndoRedoStack(delay) {
+  setTimeout(loadUndoRedoStack, delay);
+}
+
 /**
  * Loads the undo redo stack and subscribes to any updates.
  */
 function loadUndoRedoStack() {
   if (!window.socket) {
-    setTimeout(loadUndoRedoStack, 2000);
+    retryLoadUndoRedoStack(2000);
     return
   }
   isLoading.value = true;
   window.socket.emit('get_undo_redo_stack', {}, (res) => {
+    if (!res) {
+      retryLoadUndoRedoStack(2000);
+      return;
+    }
     stack.value = res.stack;
     stack_index.value = res.stack_index;
     isLoading.value = false;
@@ -87,8 +95,12 @@ function subscribeUndoRedoStack() {
   });
 }
 
-// Load stack and subscribe.
-loadUndoRedoStack();
+watch(() => showUndoRedoControl.value, (newValue) => {
+  if (showUndoRedoControl.value) {
+    loadUndoRedoStack()
+  }
+});
+
 subscribeUndoRedoStack();
 
 PubSubManager.subscribe(MessageNames.NEW_ESDL, (name, message) => {

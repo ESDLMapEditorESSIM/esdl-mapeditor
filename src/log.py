@@ -13,11 +13,12 @@
 #      TNO
 
 import logging.config
-
 from typing import List, Any
+
 import structlog
-from src.settings import FLASK_DEBUG
 from structlog.threadlocal import merge_threadlocal
+
+from src.settings import FLASK_DEBUG
 
 timestamper = structlog.processors.TimeStamper(fmt="iso")
 shared_processors: List[Any] = [
@@ -68,26 +69,31 @@ logging.config.dictConfig(
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            "esdl.undo": {
-                "handlers": ["default"],
-                "level": "DEBUG" if FLASK_DEBUG else "INFO",
-                "propagate": False,
-            },
+            # "esdl.undo": {
+            #     "handlers": ["default"],
+            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            #     "propagate": False,
+            # },
             "extensions": {
                 "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            "esdlproject": {
+            "utils.utils": {
                 "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            "esdlproject.ChangeSerializer": {
-                "handlers": ["default"],
-                "level": "INFO",
-                "propagate": False,
-            },
+            # "esdlproject": {
+            #     "handlers": ["default"],
+            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            #     "propagate": False,
+            # },
+            # "esdlproject.ChangeSerializer": {
+            #     "handlers": ["default"],
+            #     "level": "INFO",
+            #     "propagate": False,
+            # },
         },
     }
 )
@@ -102,5 +108,5 @@ structlog.configure(
 )
 
 
-def get_logger(name):
+def get_logger(name) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)

@@ -100,9 +100,6 @@ function esdl_layer_created_event_handler(event) {
 }
 
 function add_area_map_handlers(socket, map) {
-
-    console.log('Adding handlers to area map');
-
     // the 'dragend' event of Polyline does not work, this is an alternative solution
     map.on('draw:edited', function (e) {
         var layers = e.layers;

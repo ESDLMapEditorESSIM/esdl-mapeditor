@@ -23,6 +23,7 @@ import pika
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.shared.config import PIKA_CONNECTION_PARAMETERS, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.message_types import LmiMessage
+from utils.utils import timed
 
 logger = log.get_logger(__name__)
 

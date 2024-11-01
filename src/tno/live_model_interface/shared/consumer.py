@@ -13,16 +13,17 @@
 #      TNO
 from __future__ import annotations
 
-from dataclasses import dataclass
 import functools
+import time
+from dataclasses import dataclass
+from typing import Callable
+
 import pika
 from pika import BasicProperties
 from pika.channel import Channel
 from pika.exchange_type import ExchangeType
 from pika.frame import Method
 from pika.spec import Basic
-import time
-from typing import Callable
 
 from src.log import get_logger
 
@@ -326,10 +327,10 @@ class RabbitMQConsumer(object):
         :param bytes body: The message body
         """
         logger.debug(
-            "Received message",
+            "Received message (no body)",
             delivery_tag=basic_deliver.delivery_tag,
             app_id=properties.app_id,
-            body=body,
+            #body=body,
         )
         if self._my_on_message:
             self._my_on_message(_unused_channel, basic_deliver, properties, body)

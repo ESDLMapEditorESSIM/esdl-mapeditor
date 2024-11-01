@@ -491,7 +491,7 @@ class BoundaryService:
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
                       settings.boundaries_config["path_boundaries"] + '/YEAR/' + str(year) + '/' + boundary_service_mapping[scope.name] + '/' + id
                 # print('Retrieve from boundary service', id)
-                r = requests.get(url)
+                r = requests.get(url, timeout=settings.boundaries_config["timeout"])
                 if len(r.text) > 0:
                     reply = json.loads(r.text)
                     # geom = reply['geom']

@@ -14,7 +14,7 @@
  *      TNO
  */
 
-var esdl_list = {};         // Dictionairy to keep energysystem information
+var esdl_list = {};         // Dictionary to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
 var draw_control_map = {};
@@ -60,7 +60,7 @@ function select_active_layer_old() {
 
 function select_active_layer(active_esdl_layer) {
     if (!(active_esdl_layer in esdl_list)) {
-        console.log("Ignoring select active layer, as layers are not loaded yet in the frond-end");
+        console.log("Ignoring select active layer, as layers are not loaded yet in the front-end");
         return;
     }
     console.log("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");
@@ -71,10 +71,11 @@ function select_active_layer(active_esdl_layer) {
     update_title(esdl_list[active_layer_id].title);
     update_area_legend();
     update_building_legend();
-    let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
-    if (Object.keys(bounds).length !== 0) {
-        map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
-    }
+    // Do not fly to bounds when switching between variants
+    //let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
+    //if (Object.keys(bounds).length !== 0) {
+    //    map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
+    //}
     window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', {active_layer_id: active_layer_id});
 }
 
@@ -440,7 +441,7 @@ function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
 
     let carrier_info_mapping = {};
-    carrier_info_mapping[0] = {color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[0] = {color: '#404040', name: 'No carrier specified'}
     carrier_info_mapping[1] = {color: '#FF0000', name: 'Conflicting carriers specified'}
 
     for (let i = 0; i < carrier_list.length; i++) {

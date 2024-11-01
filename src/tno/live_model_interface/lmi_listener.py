@@ -11,49 +11,52 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import base64
 import json
 import uuid
 from datetime import datetime, timezone
+from threading import Thread
 
 from flask import session, request
 from pika import BasicProperties
 from pika.exchange_type import ExchangeType
 from pika.spec import Basic
-
-from threading import Thread
-
 from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
+from esdl.undo import ChangeSource, ChangeContext
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
 from src.log import get_logger
+from src.process_es_area_bld import call_process_energy_system
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_project_manager_to_lmi, LAST_PM_REFRESH_SENT
+from src.tno.live_model_interface.api import send_project_manager_to_lmi, \
+    activate_live_model_interface
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
-from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
+from src.tno.mongo.models import ApplicationContext
 
 logger = get_logger(__name__)
 
 # TODO: Find better way to get app here? import directly results in cyclic import error
 local_app = None
 
+LAST_PM_REFRESH_SENT: datetime | None = None
+"""The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
+
 
 def on_high_level_change(message: HighLevelChangeMessage):
     """
     Handle a high level change message from the live model interface.
     """
-    logger.debug("High level change received", message=message)
+    logger.debug("High level change received")
     client_id = message['client_id']
 
     uri = StringURI('hlc.json', message['high_level_change'])
-    logger.info(f"Received HighLevelChange from Live model: {message['high_level_change']}")
+    logger.info(f"Received HighLevelChange from Live model: {message['high_level_change'][:500]}")
     external_rset = ResourceSet()
     external_rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
     external_resource = external_rset.create_resource(uri)
@@ -66,32 +69,51 @@ def on_high_level_change(message: HighLevelChangeMessage):
         return
 
     variant_id = message['variant_id']
-    # TODO: Use the variant ID. But how? I would prefer not to activate that variant if it is not active.
-    es = pm.get_active_energy_system()
-    tracker = pm.active_tracker
-    tracker.stack.start_recording(label=hlc.label)
-    for change in hlc.change:
-        applyChange(change, es.eResource)
-    tracker.stack.stop_recording(call_change_handler=False)
+    variant = pm.get_variant_by_id(variant_id)
+    es = pm.get_energy_system(variant)
+    #es = pm.get_active_energy_system()
 
+    # TODO: make sure we only apply changes when process energy system is not in progress
+    # otherwise it might be in a non final stage when these changes are added to the energy system
+    # lock = get_session("process_energysystem_lock")
+    # if lock is None:
+    #     lock = Lock()
+    #     set_session("process_energysystem_lock", lock)
+    # logger.info(f"Acquiring lock {current_thread()}, locked={lock.locked()}")
+    # lock.acquire(timeout=10.0)
+    # logger.info(f"Lock acquired, processing {current_thread()}")
+    #tracker = pm.active_tracker
     global local_app
 
-    # create request context (and session?)...
-    with local_app.test_request_context():
-        session['client_id'] = client_id
-        request.sid = managed_sessions[client_id]['socketio_sid']
-        request.namespace = '/esdl'
+    tracker = pm.get_change_tracker_for_variant(variant)
+    # add more context to the changes received, for the incremental UI updates
+    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=local_app)
+    tracker.stack.start_recording(label=hlc.label, change_context=context)
+    for change in hlc.change:
+        applyChange(change, es.eResource)
+    tracker.stack.stop_recording()
+    #lock.release()
+    #logger.info(f"Lock released by {current_thread()}")
 
-        # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
-        call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+
+    # create request context (and session?)...
+    # with local_app.test_request_context():
+    #     session['client_id'] = client_id
+    #     request.sid = managed_sessions[client_id]['socketio_sid']
+    #     request.namespace = '/esdl'
+    #
+    #     # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+    #     call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
 
 
 def on_pm_refresh_request(message: LmiMessage):
     """
-    Handle an Project Manager refresh request from the live model interface.
+    Handle a Project Manager refresh request from the live model interface. This sends all project managers to the
+    live model interface, as well as the currently active LMI's per client.
     :param message:
     :return:
     """
+    global LAST_PM_REFRESH_SENT
     timestamp = message['timestamp']
     if isinstance(timestamp, str):
         # Parse the timestamp from string to datetime.
@@ -100,6 +122,15 @@ def on_pm_refresh_request(message: LmiMessage):
         logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
         return
     send_project_manager_to_lmi()
+    LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+
+    # Also send the currently active LMI's, if any.
+    for client_id, session_data in managed_sessions.items():
+        active_application_context: ApplicationContext | None = session_data.get("application_context")
+        if active_application_context is not None:
+            for lmi in active_application_context.get("live_model_interfaces", []):
+                activate_live_model_interface(lmi["lmi_id"], client_id)
+
 
 
 def on_new_variant(message: NewVariantMessage):

@@ -69,6 +69,13 @@ esdl_config = {
             "unit": "JOULE",
         },
         {
+            "id": "3186b787-624c-4b23-b5a6-d17ba4c271b1",
+            "description": "Energy in PJ",
+            "physicalQuantity": "ENERGY",
+            "multiplier": "PETA",
+            "unit": "JOULE",
+        },
+        {
             "id": "e9405fc8-5e57-4df5-8584-4babee7cdf1a",
             "description": "Power in kW",
             "physicalQuantity": "POWER",

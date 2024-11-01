@@ -12,27 +12,27 @@
 #  Manager:
 #      TNO
 import base64
-import datetime
-
-import pytz
-from flask import Flask
-from flask_socketio import SocketIO, emit
-from flask_executor import Executor
-from pyecore.ecore import EDate
-
-from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler
-from extensions.settings_storage import SettingType, SettingsStorage
-from extensions.session_manager import get_session, get_project_manager
-from extensions.panel_service import create_panel, get_panel_service_datasource
-from influxdb import InfluxDBClient
 import copy
-import src.log as log
 import csv
+import datetime
 import locale
 from io import StringIO
 from uuid import uuid4
+
+import pytz
+from flask import Flask
+from flask_executor import Executor
+from flask_socketio import SocketIO, emit
+from influxdb import InfluxDBClient
+from pyecore.ecore import EDate
+
+import src.log as log
 import src.settings as settings
+from esdl import esdl
+from esdlproject.ProjectManager import load_external_string
+from extensions.panel_service import create_panel, get_panel_service_datasource
+from extensions.session_manager import get_session, get_project_manager
+from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
 from src.roles import is_mapeditor_admin
 from utils.datetime_utils import parse_date
@@ -540,7 +540,6 @@ class Profiles:
         #     'end_datetime': '2015-12-31T22:00:00+0000',
         #     'embedUrl': 'https://panel-service.hesi.energy/grafana/d-solo/12lC8xg7z/project-profiles-for-ces_nzkg-reserve_profiel4?panelId=1&from=1420066800000&to=1451599200000&theme=light'
         # }
-        esh = EnergySystemHandler()
 
         edr_profiles = dict()
         edr_client = EDRClient.get_instance()
@@ -571,7 +570,7 @@ class Profiles:
                 esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
                 esdlstr = esdlstr_bytes.decode("utf-8")
 
-                profile, parse_info = esh.load_from_string(esdlstr)
+                profile, parse_info = load_external_string(esdlstr) #esh.load_from_string(esdlstr)
                 p.update({
                     "host": profile.host,
                     "port": profile.port,

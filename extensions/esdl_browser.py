@@ -2,6 +2,19 @@
 ESDL Browser extension
 Handles the messages belonging to utils/esdl_browser.js
 """
+from uuid import uuid4
+
+from flask import Flask
+from flask_socketio import SocketIO, emit
+from pyecore.ecore import EObject, EReference, ECollection
+
+import esdl.processing.ESDLEcore as ESDLEcore
+import src.log as log
+from esdl import esdl
+from esdl.processing.ESDLQuantityAndUnits import qau_to_string
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from extensions.session_manager import get_session, get_project_manager
+from src.process_es_area_bld import get_area_id_from_mapeditor_id
 
 #  This work is based on original code developed and copyrighted by TNO 2020.
 #  Subsequent contributions are licensed to you by the developers of such code and are
@@ -16,16 +29,6 @@ Handles the messages belonging to utils/esdl_browser.js
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
-from flask import Flask
-from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_session, get_project_manager
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl.processing.ESDLQuantityAndUnits import qau_to_string
-from esdl import esdl
-import esdl.processing.ESDLEcore as ESDLEcore
-from pyecore.ecore import EObject, EReference, ECollection
-import src.log as log
 
 logger = log.get_logger(__name__)
 
@@ -75,9 +78,8 @@ class ESDLBrowser:
                 print("Error: Can't find reference {} of {}", reference_name, parent_object.name)
                 return
             if hasattr(new_object, 'id'):
-                new_object.id = pm.generate_uuid()
+                new_object.id = str(uuid4())
                 pm.add_object_to_dict(active_es_id, new_object)
-                print('adding to uuid dict ' + new_object.id)
             if hasattr(new_object, 'name'):
                 new_object.name = 'New' + new_object.eClass.name
             browse_data = self.get_browse_to_data(new_object)
@@ -176,7 +178,8 @@ class ESDLBrowser:
         active_es_id = get_session('active_es_id')
         pm = get_project_manager()
         if 'id' in identifier:
-            object_id = identifier['id']
+            # strip ' (1 of 3)' in case of an Area ID
+            object_id = get_area_id_from_mapeditor_id(identifier['id'])
             #object_id is not None:
             try:
                 the_object = pm.get_by_id(active_es_id, object_id)

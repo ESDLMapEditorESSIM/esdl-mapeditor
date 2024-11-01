@@ -153,7 +153,7 @@ class ProjectTreeSpec {
         'label': 'Create new Energy System',
         'icon': 'fas fa-plus',
         'action': function () {
-          socket.value.emit("create_base_variant");
+          socket.value.emit("create_variant_collection");
         }
       },
       'rename': {
@@ -234,6 +234,10 @@ const eventHandlersByName = {
   'select_node.jstree': function (e, data, treeElement) {
     const type = data.node.type;
     const original = data.node.original;
+    if (data.event.button == 2) {
+      // on right click do not switch to other variant, but only show context menu
+      return;
+    }
     if (type === 'variant') {
       const tree = treeElement.jstree(true);
       tree.check_node(data.node);

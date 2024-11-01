@@ -18,7 +18,7 @@ from bson import json_util
 from flask import Flask, jsonify, session, request
 from flask_socketio import SocketIO
 import src.log as log
-from extensions.session_manager import set_session
+from extensions.session_manager import set_session, get_session
 from extensions.settings_storage import SettingsStorage
 from src.tno.live_model_interface.api import deactivate_live_model_interface, activate_live_model_interface
 from src.tno.mongo.core import get_database
@@ -55,8 +55,9 @@ class ApplicationContextExtension:
             db = get_database()
             # Find all application contexts with the given ids, and also get all contexts with global set to True
             application_contexts: list[ApplicationContext] = db.application_contexts.find({"$or": [{"application_id": {"$in": context_ids}}, {"is_global": True}]})
-            json_result = json_util.dumps(application_contexts)
-            return json_result
+            active_context: ApplicationContext | None = get_session('application_context')
+            response = dict(application_contexts=application_contexts, active_context_id=active_context["application_id"] if active_context else None)
+            return json_util.dumps(response)
 
         @self.flask_app.route("/context/applications/<application_id>/activate", methods=["POST"])
         def activate_application_context(application_id):
@@ -91,6 +92,7 @@ class ApplicationContextExtension:
             if not application_context:
                 return jsonify({"error": "Application ID not found"}), 404
             client_id = session['client_id']
+            set_session('application_context', None)
 
             live_model_interfaces = application_context.get("live_model_interfaces", [])
             for lmi in live_model_interfaces:

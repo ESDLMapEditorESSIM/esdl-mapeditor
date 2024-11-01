@@ -45,6 +45,15 @@ const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99',
 
 function isNumeric(val) { return !isNaN(val); }
 
+function get_area_id_from_mapeditor_id(id) {
+    const regex = /.* \([0-9]+ of [0-9]+\)/g;
+
+    if (id.match(regex)) {
+        return id.split(" ")[0];
+    } else {
+        return id;
+    }
+}
 
 /**
  * Flattens a list of areas such that KPIs can be properly processed
@@ -68,6 +77,38 @@ function flatten_area_list(layer_data) {
     return flat_layer_data;
 }
 
+/**
+ * Calculates and stores the Distribution KPI ranges for a group of layers (DSO service areas, CBS areas)
+ * @param area_data data for all areas in the group
+ * @param group_name name of the group of layers (can be null for area layers that are not part of a group)
+ */
+function calculate_area_KPI_ranges_for_group(area_data, group_name) {
+    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart()
+    // to compute relative pie chart radius for the area feature.
+    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
+    let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
+    dist_kpis_ranges[group_name] = distKPIsRange;
+}
+
+/**
+ * Preprocesses area Distribution KPI ranges for all areas in the energy system
+ * @param area_data data for all areas
+ */
+function preprocess_area_distr_KPI_ranges(area_data) {
+    let other_layers = [];
+    for (const l_index in area_data) {
+        let layer = area_data[l_index];
+        if (layer.hasOwnProperty('type') && layer['type'] === 'group') {
+            // calculate the ranges for a layer group (CBS gebieden / verzorgingsgebieden) first
+            calculate_area_KPI_ranges_for_group(layer['area_list'], layer['name']);
+        } else {
+            other_layers.push(layer);
+        }
+    }
+
+    // finally calculate the ranges for the other layers
+    calculate_area_KPI_ranges_for_group(other_layers, null);
+}
 
 /**
  * Preprocess layer data of an area or building. Creates KPI's and sets colors.
@@ -164,6 +205,10 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     }
     if (layer_type === "building") {
         if (!get_building_color ) { get_building_color = get_building_default_color; }
+    }
+
+    if (layer_type === "area") {
+        preprocess_area_distr_KPI_ranges(layer_data);
     }
 }
 
@@ -728,9 +773,9 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
 /**
  * Resizes the KPIs (Pie charts) of all loaded energy systems
  **/
-function resize_all_area_pi_charts() {
+function resize_all_area_pie_charts() {
     for (es_id in esdl_list) {
-        resize_area_pi_charts(es_id);
+        resize_area_pie_charts(es_id);
     }
 }
 
@@ -740,7 +785,7 @@ function resize_all_area_pi_charts() {
  * @param {string} esdl_layer_id the id of the ESDL layer on which the action must be performed
  *
  **/
-function resize_area_pi_charts(esdl_layer_id) {
+function resize_area_pie_charts(esdl_layer_id) {
     if (esdl_layer_id === null) { esdl_layer_id = active_layer_id; }
     let area_layers = get_layers(esdl_layer_id, 'area_layer');
     let layersAreaFeaturesDistKPIsRange = get_area_dist_kpis_ranges(esdl_layer_id);
@@ -826,12 +871,8 @@ function calcDistKPIsSumRangeFromFeatures (layerFeatures) {
 }
 
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
-    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart() 
-    // to compute relative pie chart radius for the area feature.
-    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
-    dist_kpis_ranges[group_name] = distKPIsRange;
-    set_area_dist_kpis_ranges(active_layer_id, dist_kpis_ranges);
+    let distKPIsRange = dist_kpis_ranges[group_name];
 
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
@@ -857,11 +898,13 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
+                // An area without KPIs gets a popup with its name and id between parenthesis
                 let text = "ID: " + feature.properties.id;
                 if (feature.properties.name) {
                     text = feature.properties.name + " (" + text + ")";
                 }
 
+                // Create the contents for an Area popup with a table with KPI values
                 if (Object.keys(feature.properties.KPIs).length != 0) {
                     text = "<b>"+ text +"</b>";
                     text += "<br><br><table class=\"kpi_table\">";
@@ -882,6 +925,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
+                    // only highlight an area and display its popup when the area shape is fully visible
+                    // (to prevent moving of the map on mouse over)
                     if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
                         let popup = e.target.getPopup();
                         let this_map = e.sourceTarget._map;     // can be area map and building map
@@ -912,7 +957,6 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
 
     return geo_json_layer;
 }
-
 
 function add_area_layer(area_data) {
     let other_layers = [];
@@ -1171,6 +1215,46 @@ function selectAreaKPI(kpi_name) {
     });
 }
 
+function update_area_layer(esdl_layer_id, area_kpi_list) {
+    // This function updates the area layer information in the esdl_list (multi_esdl.js)
+    // the area_kpi_list parameter contains the updated KPI information per area
+
+    let area_kpi_map = {};
+    let flattened_kpi_list = flatten_area_list(area_kpi_list);
+    flattened_kpi_list.forEach((elem) => {
+       area_kpi_map[elem.properties.id] = elem;
+    });
+
+    // area_layers contains the leaflet layers for all areas
+    let area_layers = get_layers(esdl_layer_id, 'area_layer');
+    area_layers.eachLayer(function(featuregroup_instance) {
+        if (featuregroup_instance instanceof L.FeatureGroup) {
+            featuregroup_instance.eachLayer(function (layer) {
+                if (layer.id in area_kpi_map) {
+                    let new_area_kpi_info = area_kpi_map[layer.id];
+                    if (new_area_kpi_info.properties.hasOwnProperty("KPIs")) {
+                        // TODO: Can completely new KPIs be added?  How to deal with those?
+                        // For now only handle replacement of information of already existing KPIs
+                        for (const [KPI, kpi_info] of Object.entries(layer.feature.properties.KPIs)) {
+                            if (KPI in new_area_kpi_info.properties.KPIs) {
+                                layer.feature.properties.KPIs[KPI] = new_area_kpi_info.properties.KPIs[KPI];
+                            }
+                        }
+                    }
+                    if (new_area_kpi_info.properties.hasOwnProperty("dist_KPIs")) {
+                        for (const [dist_KPI, kpi_info] of Object.entries(layer.feature.properties.dist_KPIs)) {
+                            if (dist_KPI in new_area_kpi_info.properties.dist_KPIs) {
+                                kpi_info.value = new_area_kpi_info.properties.dist_KPIs[dist_KPI].value;
+                                kpi_info.unit = new_area_kpi_info.properties.dist_KPIs[dist_KPI].unit;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
@@ -1230,7 +1314,7 @@ function createAreaLegendDiv(choice) {
     L.DomEvent.disableClickPropagation(slider);
     L.DomEvent.on(slider, 'input', (event) => {
         areaMarkerResizeFactor = event.target.value;
-        resize_area_pi_charts(active_layer_id);
+        resize_area_pie_charts(active_layer_id);
     });
 
     return legendDiv;
@@ -1381,6 +1465,28 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+    });
+    socket.on('update_area_kpis', function(area_kpi_list) {
+        saveSelectedKPI()  // make sure it does not reset the current selection
+        area_KPIs = {};
+        //geojson_area_data = area_kpi_list;
+        //preprocess_area_distr_KPI_ranges(geojson_area_data)
+        preprocess_layer_data("area", area_kpi_list, area_KPIs);
+        set_area_kpi_list(active_layer_id, area_KPIs);
+        update_area_legend();
+
+        // restore the earlier selected KPI, if necesarry
+        if (areaLegendChoiceBackup != null) {
+            restoreSelectedKPI()
+        }
+
+        // update the information that is stored in area layer of the active energy system in the esdl_list
+        update_area_layer(active_layer_id, area_kpi_list);
+        // Call selectAreaKPI or recolor the area itself (this function doesn't do anything with PieCharts that are
+        // already visible)
+        selectAreaKPI(areaLegendChoice);
+        // ... and call resize_area_pie_charts to redraw pie chart KPIs
+        resize_area_pie_charts(active_layer_id);
     });
 }
 

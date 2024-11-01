@@ -27,14 +27,15 @@ from pyecore.resources import ResourceSet
 import src.esdl_config as esdl_config
 import src.log as log
 from esdl import esdl
+from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from esdl.processing.string_uri import StringURI
 from esdl.undo_wrapper import undo_record_changes
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
-from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
-from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
+from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based, \
+    get_area_id_from_mapeditor_id
 from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
@@ -223,6 +224,9 @@ class ESDLServices:
                         if "service" in step and step["service"]["id"] == service_params["service_id"]:
                             service = step["service"]
                             break
+            # If the service ID was found as a step in a workflow (embedded for loop), also exit this for loop
+            if service:
+                break
 
         if service is None:
             return False, None, None
@@ -245,8 +249,8 @@ class ESDLServices:
 
                 area_scope = service_params["area_scope"]
                 url = url.replace(area_scope_tag, area_scope)
-                ares_id = service_params["area_id"]
-                url = url.replace(area_id_tag, ares_id)
+                area_id = get_area_id_from_mapeditor_id(service_params["area_id"])
+                url = url.replace(area_id_tag, area_id)
                 if "url_area_subscope" in service["geographical_scope"]:
                     area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
                     area_subscope = service_params["area_subscope"]
@@ -499,8 +503,15 @@ class ESDLServices:
                                         if sector:
                                             asset.sector = sector
 
+                                if "mode" in service["result"][0] and service["result"][0]["mode"] == "location_based_addition_to_area":
+                                    area_to_be_added_to_id = find_area_location_based(pm, active_es_id, asset.geometry)
+                                else:
+                                    area_to_be_added_to_id = area_to_be_added_to.id
+                                zoom = False
+                                if "zoom" in service["result"][0]:
+                                    zoom = bool(service["result"][0]["zoom"])
                                 pm.add_object_to_dict(active_es_id, asset, recursive=True)
-                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to.id)
+                                ESDLAsset.add_object_to_area(es_edit, asset, area_to_be_added_to_id)
                                 asset_ui, conn_list = energy_asset_to_ui(pm, active_es_id, asset)
                                 if asset_ui:
                                     emit(
@@ -508,7 +519,7 @@ class ESDLServices:
                                         {
                                             "es_id": active_es_id,
                                             "asset_pot_list": [asset_ui],
-                                            "zoom": True,
+                                            "zoom": zoom,
                                         },
                                     )
                                 if conn_list:

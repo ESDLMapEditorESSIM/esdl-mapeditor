@@ -22,15 +22,17 @@
 #  Manager:
 #      TNO
 
+from contextlib import contextmanager
 from functools import wraps
 
-from contextlib import contextmanager
 from flask_socketio import emit
+
+from esdl.undo import ChangeContext
 from extensions.session_manager import get_project_manager
 from src.tno.undoredo.types import serialize_command_stack
 
 
-def undo_record_changes(label: str):
+def undo_record_changes(label: str, change_context: ChangeContext = None):
     """
      Wraps undo_record_changes, such that changes are automatically recorded
      In a seperate file to avoid cyclic imports.
@@ -43,7 +45,7 @@ def undo_record_changes(label: str):
             # active_es_id = get_session('active_es_id')
             # stack = pm.get_undo_redo_stack(es_id=active_es_id)
             stack = pm.get_undo_redo_stack()
-            stack.start_recording(label=label)
+            stack.start_recording(label=label, change_context=change_context)
             result = fn(*args, **kwargs)
             stack.stop_recording()
             emit('update_undo_redo_stack', serialize_command_stack(stack))
@@ -53,7 +55,7 @@ def undo_record_changes(label: str):
 
 
 @contextmanager
-def undo_record_changes_context(label: str, combine_commands=True):
+def undo_record_changes_context(label: str, change_context: ChangeContext = None, combine_commands=True):
     """
     Context manager for recording changes. Example usage:
 
@@ -66,7 +68,7 @@ def undo_record_changes_context(label: str, combine_commands=True):
     """
     pm = get_project_manager()
     stack = pm.get_undo_redo_stack()
-    stack.start_recording(label=label, combineCommands=combine_commands)
+    stack.start_recording(label=label, combine_commands=combine_commands, change_context=change_context)
     try:
         yield
     finally:

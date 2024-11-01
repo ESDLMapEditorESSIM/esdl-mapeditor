@@ -16,9 +16,9 @@
 import importlib
 import json
 import os
+import traceback
 import urllib
 import uuid
-import traceback
 from datetime import datetime
 from pprint import pprint
 from warnings import warn
@@ -32,24 +32,20 @@ from flask_socketio import emit
 from oauth2client.client import OAuth2Credentials
 from pyecore.ecore import EDate
 
-from esdlproject import Variant
-from extensions.application_context import ApplicationContextExtension
-from src.tno.live_model_interface.api import send_new_esdl_to_lmi, send_project_manager_to_lmi
-from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
-from src.tno.live_model_interface.results_listener import start_rmq_thread
-from src.tno.projects.emits import emit_active_esdl_project
-from src.app import create_app, executor, socketio
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
-from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.processing.string_uri import StringURI
+from esdlproject import Variant
 from extensions.activity_context import ActivityContextExtension
+from extensions.application_context import ApplicationContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
+from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -64,8 +60,8 @@ from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
-from src.edr_client import EDRClient
 from extensions.profiles import Profiles
+from extensions.residential_area.residential_area import ResidentialArea
 from extensions.session_manager import del_session, get_project_manager, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_project_manager, set_session, \
     set_session_for_esid, valid_session
@@ -76,40 +72,45 @@ from extensions.time_dimension import TimeDimension
 from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.dice_workflow.dice_workflow import DiceWorkflow
+from src.app import create_app, executor, socketio
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
+from src.custom_icons import CustomIcons
 from src.datalayer_api import DataLayerAPI
-from src.tno.events_api import EventsAPI
+from src.edr_client import EDRClient
 from src.esdl2shapefile import ESDL2Shapefile
+from src.esdl_file_io import ESDLFileIO
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
     update_carrier_conn_list, add_spatial_attributes
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from src.incremental_ui.ui_change_handler import change_handler
+from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
+from src.model_contexts import ModelContexts
 from src.process_es_area_bld import call_process_energy_system
-from src.tno.undoredo.types import serialize_command_stack
 from src.process_es_area_bld import get_building_information, get_building_connections, \
     find_area_location_based, calc_building_assets_location
+from src.release_notes import ReleaseNotes
 from src.roles import is_mapeditor_admin
 from src.shape import Shape
+from src.table_editor import TableEditor
+from src.tno.events_api import EventsAPI
+from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi, \
+    send_add_variant_and_esdl_message_to_lmi
+from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.locking import NamedLocker
+from src.tno.projects.emits import emit_active_esdl_project
+from src.tno.undoredo.types import serialize_command_stack
 from src.user_logging import UserLogging
-from src.version import __long_version__ as mapeditor_long_version
-from src.version import __version__ as mapeditor_version
 from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
-from src.model_contexts import ModelContexts
+from src.version import __long_version__ as mapeditor_long_version
+from src.version import __version__ as mapeditor_version
 from src.wms_layers import WMSLayers
-from src.table_editor import TableEditor
-from src.esdl_file_io import ESDLFileIO
-from src.release_notes import ReleaseNotes
-from src.custom_icons import CustomIcons
-from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
-from extensions.residential_area.residential_area import ResidentialArea
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -370,13 +371,22 @@ def editor():
         # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
 
 
-"""
-Checks the OpenID connect session status
-And refreshes if necessary?
-"""
+def logout_user():
+    """
+    Logs out the user by removing the session cookie and clearing the project.
+    """
+    oidc.logout()
+    pm = get_project_manager()
+    pm.clear_project()
+
+
 @app.route('/auth_status')
 #@oidc.require_login
 def auth_status():
+    """
+    Checks the OpenID connect session status
+    And refreshes if necessary?
+    """
     from flask import g
     #logger.debug("Global token: {}".format(g.oidc_id_token))
     status: Response = oidc.authenticate_or_redirect()
@@ -400,12 +410,12 @@ def auth_status():
                     #set_session('jwt-token', oidc.get_access_token())
                     #return {'valid': True, 'reason': "Updated token"}
                 g.oidc_id_token = None
-                oidc.logout()
+                logout_user()
                 status: Response = oidc.redirect_to_auth_server('/editor')
                 uri = status.headers["Location"]
                 return {'valid': False, 'reason': "Token expired or not available", 'redirect_uri': uri}
         else:
-            oidc.logout()
+            logout_user()
             return {'valid': False, 'reason': "Not logged in"}
     else:
         status: Response = oidc.redirect_to_auth_server('/editor') # get redirect for /editor, not /auth_status
@@ -426,7 +436,7 @@ def logout():
     creds_str: str = oidc.credentials_store[g.oidc_id_token['sub']]
     creds: OAuth2Credentials = OAuth2Credentials.from_json(creds_str)
     id_token_hint = creds.id_token_jwt
-    oidc.logout()
+    logout_user()
     #This should be done automatically! see issue https://github.com/puiterwijk/flask-oidc/issues/88
     # keycloak <17 logout:
 
@@ -465,7 +475,7 @@ def download_esdl():
         if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
-        logger.info('Sending file %s' % name)
+        logger.info('Sending file', filename=name)
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
@@ -868,11 +878,29 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
     ass_id = asset.id
-    for c in conn_list:
-        if c['from-asset-id'] == ass_id:
-            c['from-asset-coord'] = (lat, lon)
-        if c['to-asset-id'] == ass_id:
-            c['to-asset-coord'] = (lat, lon)
+
+    if isinstance(asset, esdl.AbstractBuilding):
+        # Asset that has moved is a building, so check connection list for assets that are inside a building
+        pm = get_project_manager()
+
+        for c in conn_list:
+            # check if one of the asset is inside a building
+            from_asset_id = c['from-asset-id']
+            from_asset = pm.get_by_id(active_es_id, from_asset_id)
+            if from_asset.containingBuilding and from_asset.containingBuilding == asset:
+                c['from-asset-coord'] = (lat, lon)
+
+            to_asset_id = c['to-asset-id']
+            to_asset = pm.get_by_id(active_es_id, to_asset_id)
+            if to_asset.containingBuilding and to_asset.containingBuilding == asset:
+                c['to-asset-coord'] = (lat, lon)
+    else:
+        # Asset that has moved is not a building
+        for c in conn_list:
+            if c['from-asset-id'] == ass_id:
+                c['from-asset-coord'] = (lat, lon)
+            if c['to-asset-id'] == ass_id:
+                c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')   # clear current active layer connections
     add_to_building = False
@@ -1196,6 +1224,8 @@ def update_coordinates(message):
     coords = message['coordinates']
 
     object = pm.get_by_id(active_es_id, obj_id)
+    object_container = object.eContainer()
+
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
         undo_redo = pm.get_undo_redo_stack(object)
@@ -1218,15 +1248,35 @@ def update_coordinates(message):
         # that is given as a parameter.
 
         # update coordinates in asset_list
+        found_asset = False
+
+        # First try to find the asset in the asset_list (asset could be a building)
         asset_list = get_session_for_esid(active_es_id, 'asset_list')
         for a in asset_list:
             if a[3] == obj_id:
                 a[5] = [coords['lat'], coords['lng']]
-                break # ready searching
+                found_asset = True
+                break  # ready searching
+
+        if not found_asset:
+            # Then try to find the asset in the building_list and update if so
+            building_list = get_session_for_esid(active_es_id, 'building_list')
+            for b in building_list:
+                if b[2] == obj_id:
+                    b[4] = [coords['lat'], coords['lng']]
+                    break  # ready searching
 
         if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
             # Update locations of connections on moving assets
             update_asset_connection_locations(object, coords['lat'], coords['lng'])
+
+        # Only potentially move an asset to a different Area if it was originally contained in an Area
+        # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
+        if isinstance(object_container, esdl.Area):
+            area_id = find_area_location_based(pm, active_es_id, object)
+            area = pm.get_by_id(active_es_id, area_id)
+            if area and area != object_container:
+               area.asset.append(object)  # is a move operation: moves this object to another area
 
         undo_redo.stop_recording()
 
@@ -1266,6 +1316,7 @@ def update_line_coordinates(message):
 
         update_transport_connection_locations(ass_id, asset, polyline_data)
         undo_redo.stop_recording()
+        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 @socketio.on('update-polygon-coord', namespace='/esdl')
 def update_polygon_coordinates(message):
@@ -1295,6 +1346,7 @@ def update_polygon_coordinates(message):
         polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
         update_polygon_asset_connection_locations(ass_id, polygon_center)
         undo_redo.stop_recording()
+        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1982,7 +2034,7 @@ def process_command(message):
                 set_project_manager(pm)
 
         # update label to human readable
-        undo_redo.update_label("Create new {}".format(object_type))
+        undo_redo.update_label("Add {}".format(object_type))
 
     if message['cmd'] == 'remove_object':
         # removes asset or potential from EnergySystem
@@ -2079,6 +2131,7 @@ def process_command(message):
         asset_and_coord2 = get_asset_and_coord_from_port_id(pm, active_es_id, port2_id)
         asset1 = asset_and_coord1['asset']
         asset2 = asset_and_coord2['asset']
+        undo_redo.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
         asset1_port_location = asset_and_coord1['coord']
         asset2_port_location = asset_and_coord2['coord']
 
@@ -2316,6 +2369,7 @@ def process_command(message):
 
         for asset in assets:
             logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
+            undo_redo.update_label(f"Set {asset.eClass.name}.{param_name} to {str(param_value)}")
 
             try:
                 attribute = asset.eClass.findEStructuralFeature(param_name)
@@ -2614,6 +2668,9 @@ def process_command(message):
         from_asset_id = from_port.eContainer().id
         to_asset_id = to_port.eContainer().id
 
+        undo_redo.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+                               f"to {to_port.eContainer().name or to_port.name}")
+
         # refresh connections in gui
         #active_es_id = get_session('active_es_id')
         conn_list = get_session_for_esid(active_es_id, 'conn_list')
@@ -2650,8 +2707,9 @@ def process_command(message):
         to_port_id = message['to_port_id']
         to_port = pm.get_by_id(active_es.id, to_port_id)
         building_id = message['building_id'] if 'building_id' in message else None
-        to_port = pm.get_by_id(active_es_id, to_port_id)
         from_port.connectedTo.remove(to_port)
+        undo_redo.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+                               f"to {to_port.eContainer().name or to_port.name}")
 
         # refresh connections in gui
         #active_es_id = get_session('active_es_id')
@@ -3068,13 +3126,10 @@ def process_command(message):
 
     if message['cmd'] == 'refresh_esdl':
         print('refresh_esdl')
-        pm = get_project_manager()
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'undo':
-        print('Undo stack')
-        pprint(undo_redo.stack)
-        pm = get_project_manager()
+        logger.debug(f'Undo stack: {undo_redo.stack}')
         undo_redo.stop_recording()
         if undo_redo.can_undo():
             undo_redo.undo()
@@ -3084,9 +3139,7 @@ def process_command(message):
             send_alert("Nothing to undo at this time")
 
     if message['cmd'] == 'redo':
-        print('Redo stack')
-        pprint(undo_redo.stack)
-        pm = get_project_manager()
+        logger.debug(f'Redo stack: {undo_redo.stack}')
         undo_redo.stop_recording()
         if undo_redo.can_redo():
             undo_redo.redo()
@@ -3097,7 +3150,6 @@ def process_command(message):
 
     if message['cmd'] == 'undo_redo_until':
         target_idx = message['target_idx']
-        pm = get_project_manager()
         undo_redo.stop_recording()
         diff = undo_redo.stack_index - target_idx
         while diff > 0 and undo_redo.can_undo():
@@ -3113,8 +3165,8 @@ def process_command(message):
     # Normally this emit is done with the undo_record_changes decorator, but this function is a bit too messy for that.
     emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
-    print("Undo/Redo size={}".format(len(undo_redo.stack)))
-    set_project_manager(pm)
+    logger.debug("Undo/Redo size={}".format(len(undo_redo.stack)))
+    #set_project_manager(pm)
     session.modified = True
 
 
@@ -3193,7 +3245,7 @@ def process_file_command(message):
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
-        send_new_esdl_to_lmi()
+        send_init_new_project_to_lmi()
 
     # 02-2024: is not used anymore, siee esdl_file_io
     # if message['cmd'] == 'load_esdl_from_file':
@@ -3245,9 +3297,10 @@ def process_file_command(message):
                     info += line + "\n"
                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
             emit_active_esdl_project()
-            call_process_energy_system.submit()  # run in seperate thread
+            call_process_energy_system.submit()  # run in separate thread
             # TODO: This seems unused.
             set_session('es_filename', filename)
+            send_add_variant_and_esdl_message_to_lmi(es_variant)
         except Exception as e:
             logger.exception("Error loading {}: {}".format(filename, e))
             send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
@@ -3327,6 +3380,10 @@ def process_file_command(message):
             store_id = get_session('active_es_id')
             create_new_store_item(store_id, title, descr, email, tags, pm)
 
+    if message['cmd'] == 'debug':
+        pm = get_project_manager()
+        pm.debug()
+
     # Do not store file_content in logging database
     if 'file_content' in message:
         del message['file_content']
@@ -3359,6 +3416,7 @@ def initialize_app():
     logger.info('Client connected: {}'.format(request.sid))
 
     pm = get_project_manager()
+    pm.add_change_listener("incremental_ui_updates", change_handler)
 
     last_es = pm.get_active_energy_system()
     if last_es:
@@ -3451,7 +3509,7 @@ def browser_initialize():
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
 def on_disconnect():
-    logger.info('Client disconnected: {}'.format(request.sid))
+    logger.info('SocketIO: Client disconnected: {}'.format(request.sid))
 
 
 @socketio.on('events.frontend', namespace='/esdl')

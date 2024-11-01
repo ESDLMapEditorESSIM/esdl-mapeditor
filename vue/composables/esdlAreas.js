@@ -1,14 +1,48 @@
-import { ref } from "vue";
+import {computed, ref} from "vue";
 import { PubSubManager, MessageNames } from "../bridge.js";
 import {layerHasContextMenuItem} from "../utils/utils";
 
-const esdlAreas = ref({});
+/**
+ * @typedef {Object} EsdlArea
+ * @property {Object} feature
+ * @property {Object} layer
+ */
 
-PubSubManager.subscribe(MessageNames.ADD_AREA_TO_LAYER, (name, message) => {
-    esdlAreas.value[message.id] = {feature: message.feature, layer: message.layer}
-})
+// The esdlAreas object is a dictionary with the layer id as key and an array of areas as value.
+// The areas are objects with a feature and a layer property.
+// The reason that the areas are stored in an array is that the area ID is not unique.
+const esdlAreasDict = ref({});
+
+/**
+ * Add an area to the esdlAreasDict. The esdlAreasDict is a dictionary with the layer id as key and an array of areas as value.
+ * The areas are objects with a feature and a layer property.
+ * @param id
+ * @param feature
+ * @param layer
+ */
+const addEsdlArea = (id, feature, layer) => {
+    if (!esdlAreasDict.value[id]) {
+        esdlAreasDict.value[id] = [];
+    }
+    esdlAreasDict.value[id].push({feature: feature, layer: layer})
+}
+
+/**
+ * The total number of entries and areas in the esdlAreasDict.
+ * @type {import('vue').ComputedRef<number>}
+ */
+const totalEntriesAndAreas = computed(() => {
+    return Object.values(esdlAreasDict.value).reduce(
+        (acc, areas) => acc + areas.length,
+        Object.keys(esdlAreasDict.value).length
+    );
+});
 
 export function useEsdlAreas() {
+    PubSubManager.subscribe(MessageNames.ADD_AREA_TO_LAYER, (name, message) => {
+        addEsdlArea(message.id, message.feature, message.layer);
+    })
+
     /**
      * Add context menu items to all known areas.
      * @param {*} text 
@@ -16,23 +50,24 @@ export function useEsdlAreas() {
      * @param {*} onclick 
      */
     const addAreaContextMenuItem = (text, icon, onclick) => {
-        for (const [id, esdlArea] of Object.entries(esdlAreas.value)) {
-            const layer = esdlArea.layer;
-            if (!layerHasContextMenuItem(layer, text)) {
-                layer.options.contextmenuItems.push({
-                    text: text,
-                    icon: icon,
-                    callback: function (e) {
-                        const callback_info = {
-                            id: id,
-                            lat: e.latlng.lat.toString(),
-                            lng: e.latlng.lng.toString(),
-                        };
-                        console.log(callback_info);
-                        // Pass the id of the area and the mouse coordinates to the onclick function.
-                        onclick(e, callback_info);
-                    },
-                });
+        for (const [id, esdlAreas] of Object.entries(esdlAreasDict.value)) {
+            for (const esdlArea of esdlAreas) {
+                const layer = esdlArea.layer;
+                if (!layerHasContextMenuItem(layer, text)) {
+                    layer.options.contextmenuItems.push({
+                        text: text,
+                        icon: icon,
+                        callback: function (e) {
+                            const callback_info = {
+                                id: window.get_area_id_from_mapeditor_id(id),
+                                lat: e.latlng.lat.toString(),
+                                lng: e.latlng.lng.toString(),
+                            };
+                            // Pass the id of the area and the mouse coordinates to the onclick function.
+                            onclick(e, callback_info);
+                        },
+                    });
+                }
             }
         }
     }
@@ -42,17 +77,20 @@ export function useEsdlAreas() {
      * @param {*} text 
      */
     const removeAreaContextMenuItem = (text) => {
-        for (const [, esdlArea] of Object.entries(esdlAreas.value)) {
-            const layer = esdlArea.layer;
-            layer.options.contextmenuItems = layer.options.contextmenuItems.filter(function(contextmenuItem) { 
-                return contextmenuItem.text != text;
-            });
+        for (const [, esdlAreas] of Object.entries(esdlAreasDict.value)) {
+            for (const esdlArea of esdlAreas) {
+                const layer = esdlArea.layer;
+                layer.options.contextmenuItems = layer.options.contextmenuItems.filter(function (contextmenuItem) {
+                    return contextmenuItem.text != text;
+                });
+            }
         }
     }
 
     return {
         addAreaContextMenuItem,
-        esdlAreas: esdlAreas,
+        esdlAreasDict,
+        totalEntriesAndAreas,
         removeAreaContextMenuItem,
     }
 }

@@ -13,25 +13,21 @@
 #      TNO
 import codecs
 import csv
-import importlib
 import json
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 import requests
 from flask import Flask, request
-from flask_executor import Executor
 from flask_socketio import SocketIO, emit
-from pyecore.resources import ResourceSet, URI
+from pyecore.resources import ResourceSet
 
 import esdl
-from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset
-from extensions.session_manager import set_session, get_project_manager, get_session
+from esdl.processing.string_uri import StringURI
+from extensions.session_manager import set_session, get_project_manager, get_session, get_session_for_esid
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
-from src.esdl_helper import energy_asset_to_ui
-
 from src.log import get_logger
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from src.settings import edr_config
@@ -131,8 +127,6 @@ class ResidentialArea:
             else:
                 return "Method not allowed", 500
 
-            return {}
-
         @self.socketio.on("residential_area_create", namespace="/esdl")
         def residential_area_create(params):
             with self.flask_app.app_context():
@@ -141,7 +135,7 @@ class ResidentialArea:
 
                 if 'id' in params:
                     # Request was sent by right-clicking on an Area / map location
-                    area_id = params['id']
+                    area_id = get_area_id_from_mapeditor_id(params['id'])
                     pm = get_project_manager()
                     active_es_id = get_session('active_es_id')
                     area = pm.get_by_id(active_es_id, area_id)
@@ -159,6 +153,9 @@ class ResidentialArea:
                         buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
                                                            [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
                                                            False, {}, extra_attributes])
+                        building_list = get_session_for_esid(active_es_id, 'building_list')
+                        building_list.extend(buildings_to_be_added_list)
+
                         emit(
                             'add_building_objects',
                             {
@@ -290,6 +287,13 @@ class ResidentialArea:
         # Expose the InPort of the EConnection to the outside of the Building
         aggr_bld.port.append(aggr_bld_econn_inp)
 
+        # Indicate all buildings in AggregatedBuilding are residential buildings
+        aggr_bld.buildingTypeDistribution = esdl.BuildingTypeDistribution(
+            bin=[
+                esdl.BuildingTypeBin(buildingType=esdl.BuildingTypeEnum.RESIDENTIAL, percentage=100.0)
+            ]
+        )
+
         return aggr_bld
 
     def store_asset_for_drawing_on_map(self, asset):
@@ -316,9 +320,15 @@ class ResidentialArea:
             r = requests.get(url)
             if r.status_code == 200:
                 result = json.loads(r.text)
-                self.building_list = result
-                self.building_list_datetime_retrieved = now
-                return result
+                if isinstance(result, list):
+                    result.sort(key=lambda x: x["title"])
+                    self.building_list = result
+                    self.building_list_datetime_retrieved = now
+                    return result
+                else:
+                    print('EDR returned unexpected result. Check ResidentialArea settings')
+                    send_alert('EDR returned unexpected result. Check ResidentialArea settings')
+                    return None
             else:
                 print('EDR returned unexpected result. Check ResidentialArea settings')
                 send_alert('EDR returned unexpected result. Check ResidentialArea settings')

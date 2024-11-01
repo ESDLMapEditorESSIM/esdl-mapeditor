@@ -17,11 +17,12 @@
 <template>
   <select
     id="application_context"
-    v-model="selected_context"
+    v-model="selectedContext"
     @change="handleChange"
   >
     <option
-      v-for="applicationContext in applicationContexts" :key="applicationContext.application_id"
+      v-for="applicationContext in applicationContexts"
+      :key="applicationContext.application_id"
       :value="applicationContext.application_id"
     >
       {{ applicationContext.name }}
@@ -30,27 +31,41 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
-import {useApplicationContext} from '../../composables/applicationContext';
+import {nextTick, onMounted, ref, watch} from 'vue';
+import { useApplicationContext } from '../../composables/applicationContext';
 
-const {activateApplicationContext, activeApplicationContext, clearApplicationContext, fetchApplicationContexts} = useApplicationContext();
+const { activateApplicationContext, activeApplicationContext, clearApplicationContext, fetchApplicationContexts } = useApplicationContext();
 
-const selected_context = ref(activeApplicationContext.value.application_id);
+const $ = window.$;
+const selectedContext = ref(activeApplicationContext.value.application_id);
 const applicationContexts = ref([]);
 
 onMounted(async () => {
-  applicationContexts.value = await fetchApplicationContexts()
-  // TODO: Figure out how to maintain the selection.
-  // const $ = window.$;
-  // if (applicationContexts.value.length > 0) {
-  //   $("#application_context").selectmenu({width: 150}).on('selectmenuchange', function() {
-  //     handleChange({target: {value: $(this).val()}})
-  //   })
-  // } else {
-  //   // We cannot easily do this in vue, because the above .selectmenu also hides the select. So that conflicts.
-  //   $("#application_context").hide()
-  // }
-})
+  applicationContexts.value = await fetchApplicationContexts();
+  selectedContext.value = activeApplicationContext.value.application_id;
+
+  const selectMenuEl = $("#application_context");
+  if (applicationContexts.value.length > 0) {
+    // Initialize the selectmenu
+    selectMenuEl.selectmenu({
+      width: 150,
+      change: function (event, ui) {
+        handleChange({ target: { value: ui.item.value } });
+      }
+    });
+    await nextTick();
+    selectMenuEl.val(selectedContext.value).selectmenu("refresh");
+  } else {
+    // Hide the select menu if no application contexts are available
+    selectMenuEl.hide();
+  }
+});
+
+// Watch for changes in `selected_context` and update the selectmenu value accordingly
+watch(selectedContext, async (newValue) => {
+  await nextTick();
+  $("#application_context").val(newValue).selectmenu("refresh");
+});
 
 const handleChange = (e) => {
   // Find the selected application context.
@@ -60,5 +75,5 @@ const handleChange = (e) => {
   } else {
     clearApplicationContext();
   }
-}
+};
 </script>
