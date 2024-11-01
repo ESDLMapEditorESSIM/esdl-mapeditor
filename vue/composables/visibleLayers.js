@@ -18,21 +18,35 @@
  * A composable for managing items currently visible.
  *
  */
-import {ref, toValue, watch} from "vue";
+import {computed, ref, toValue, watch} from "vue";
 import {useWmsLayers, updateGlobalWmsLayerList} from "./wmsLayers";
 import {useEsdlLayers} from "./esdlLayers";
 import {useSocketIO} from "./socketio";
 const {subscribe} = useSocketIO();
 
-const {getWmsLayerList} = useWmsLayers();
+const {getWmsLayerList, hideWmsLayer, showWmsLayer} = useWmsLayers();
 const {enabledEsdlIdList, hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayers();
+
+/**
+ * @typedef {Object} VisibleLayer
+ * @property {string} id
+ * @property {string|undefined} es_id
+ * @property {description|undefined} es_id
+ * @property {Object|undefined} es
+ * @property {VisibleLayerType} layer_type
+ * @property {boolean} visible
+ * @property {Object|undefined} layer_ref
+ * @property {VisibleLayer[]|undefined} layers
+ */
 
 
 // List of visible layers. Contains wms layers as well as energy systems.
+/** @type {import('vue').Ref<VisibleLayer[]>} */
 const visibleLayerList = ref([]);
 
 // Group structure for visible layers
-const visibleLayerGroups = ref([]); // Groups of related visible layers
+/** @type {import('vue').Ref<VisibleLayer[]>} */
+const visibleLayerGroups = ref([]);
 
 function getLayerType(layer) {
     const wmsLayers = getWmsLayerList()['layers'];
@@ -50,11 +64,11 @@ function getLayerType(layer) {
  * This function ensures that related layers are grouped together.
  */
 const groupVisibleLayers = () => {
+    console.debug("Grouping visible layers");
     const grouped = {};
 
-    // Create a map of current group order
-    const currentGroupOrder = visibleLayerGroups.value.reduce((acc, group, index) => {
-        acc[group.id] = index;
+    const currentGroupState = visibleLayerGroups.value.reduce((acc, group, index) => {
+        acc[group.id] = { order: index };
         return acc;
     }, {});
 
@@ -65,37 +79,63 @@ const groupVisibleLayers = () => {
             if (!grouped[groupId]) {
                 grouped[groupId] = {
                     id: groupId,
-                    type: 'group',
-                    item: layer.es,
-                    description: layer.es.title,
+                    layer_type: VisibleLayerType.ESDL,
+                    es: layer.es,
+                    description: computed(() => {
+                        return layer.es.title
+                    }),
                     layers: [],
-                    visible: true,
+                    visible: computed(() => {
+                        return grouped[groupId].layers.some(layer => layer.visible);
+                    }),
+                    order: currentGroupState[groupId]?.order ?? Object.keys(grouped).length
                 };
             }
             grouped[groupId].layers.push(layer);
-        } else {
-            if (!grouped[layer.id]) {
-                grouped[layer.id] = layer;
+        } else if (layerType === VisibleLayerType.WMS) {
+            // Group all WMS layers together.
+            const wmsLayerId = "wms";
+            if (!grouped[wmsLayerId]) {
+                grouped[wmsLayerId] = {
+                    id: layer.id,
+                    layer_type: VisibleLayerType.WMS,
+                    description: "WMS Layers",
+                    layers: [],
+                    visible: computed(() => {
+                        return grouped[wmsLayerId].layers.some(layer => layer.visible);
+                    }),
+                    order: currentGroupState[wmsLayerId]?.order ?? Object.keys(grouped).length
+                };
             }
+            grouped[wmsLayerId].layers.push(layer);
+        } else {
+            // Unknown.
+            if (!grouped[layer.id]) {
+                grouped[layer.id] = {
+                    id: layer.id,
+                    layer_type: VisibleLayerType.UNKNOWN,
+                    description: layer.id,
+                    layers: [],
+                    visible: computed(() => {
+                        return grouped[layer.id].layers.some(layer => layer.visible);
+                    }),
+                    order: currentGroupState[layer.id]?.order ?? Object.keys(grouped).length
+                };
+            }
+            grouped[layer.id].layers.push(layer);
         }
     });
 
-    // Convert grouped object into an array of groups and sort by current order
-    visibleLayerGroups.value = Object.values(grouped).sort((a, b) => {
-        return (currentGroupOrder[a.id] ?? Infinity) - (currentGroupOrder[b.id] ?? Infinity);
-    });
+    visibleLayerGroups.value = Object.values(grouped).sort((a, b) => a.order - b.order);
 };
 
-
 // Call groupVisibleLayers whenever the visible layers are updated
-watch(visibleLayerList, () => {
+const visibleLayerListLength = computed(() => visibleLayerList.value.length);
+watch(visibleLayerListLength, () => {
     groupVisibleLayers();
-}, { deep: true });
+});
 
 const map = window.map;
-const layerTreeId = "layer_tree";
-const $ = window.$;
-const getLayerTree = () => $('#' + layerTreeId).jstree(true);
 
 // Initialize the layer popup and specify popup options
 const L = window.L;
@@ -105,6 +145,9 @@ const layersPopup = L.popup({
     maxHeight: 400
 });
 
+/**
+ * @enum {string}
+ */
 export const VisibleLayerType = Object.freeze({
     WMS: 'WMS',
     ESDL: 'ESDL',
@@ -280,39 +323,31 @@ export function useVisibleLayers(map, socket) {
         visibleLayerList.value.splice(index, 0, layer);
     };
 
-
-    /**
-     * Update the display order of the visible layers
-     */
-    const updateDisplayOrderVisibleLayers = (id, newPosition) => {
-        const movedLayer = removeFromVisibleLayerList(id);
-        addToVisibleLayerList(movedLayer, newPosition);
-        console.log(`Moved layer ${id} to position ${newPosition}`);
-
-        visibleLayerList.value.slice().reverse().forEach(
-            layer => {
-                const layerType = getLayerType(layer);
-                if (layerType === VisibleLayerType.WMS) {
-                    getWmsLayerList()['layers'][layer.id].layer_ref.bringToFront();
-                } else if (layerType === VisibleLayerType.ESDL) {
-                    layer.layer_ref.bringToFront();
-                } else {
-                    console.error(`Unknown layer type: ${layerType}`);
-                }
-            }
-        )
-    };
-
     function updateGroupOrder(newOrder) {
         const reorderedGroups = newOrder.map(groupId => {
             return visibleLayerGroups.value.find(group => group.id === groupId);
         });
         visibleLayerGroups.value = reorderedGroups;
+
+        visibleLayerGroups.value.slice().reverse().forEach(
+            group => {
+                group.layers.forEach(layer => {
+                    const layerType = getLayerType(layer);
+                    if (layerType === VisibleLayerType.WMS) {
+                        getWmsLayerList()['layers'][layer.id].layer_ref.bringToFront();
+                    } else if (layerType === VisibleLayerType.ESDL) {
+                        layer.layer_ref.bringToFront();
+                    } else {
+                        console.error(`Unknown layer type: ${layerType}`);
+                    }
+                });
+            }
+        )
     }
 
     const layerIsVisible = (layerId) => {
         for (const visibleLayer of visibleLayerList.value) {
-            if (visibleLayer.id === layerId) {
+            if (visibleLayer.id === layerId && visibleLayer.visible) {
                 return true;
             }
         }
@@ -327,17 +362,15 @@ export function useVisibleLayers(map, socket) {
         const layerToHide = visibleLayerList.value.find(
             layer => layer.id === layerId
         );
-        layerToHide.visible = false;
         const layerType = getLayerType(layerToHide);
         if (layerType === VisibleLayerType.WMS) {
-            // hide via tree action to also update parent folders three-state
-            // TODO: Should we really remove it completely?
-            getLayerTree().uncheck_node(layerId);
+            hideWmsLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
             hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.layer_type);
         } else {
             console.error(`Unknown layer type: ${layerType}`);
         }
+        layerToHide.visible = false;
     };
 
     const hideAllVisibleLayers = () => {
@@ -346,47 +379,19 @@ export function useVisibleLayers(map, socket) {
         )
     };
 
-    const getVisibleLayersOfType = (layerType) => {
-        return visibleLayerList.value.filter(
-            layer => getLayerType(layer) === layerType
-        );
-    }
-
-    /**
-     * Hides all layers related to the given layer. The exact behaviour depends on the layer type.
-     * @param es_id
-     */
-    const hideRelatedVisibleLayers = (layerId) => {
-        const layerToHide = visibleLayerList.value.find(
-            layer => layer.id === layerId
-        );
-        const layerType = getLayerType(layerToHide);
-        if (layerType === VisibleLayerType.WMS) {
-            // Find all WMS layers and hide them.
-            const wmsLayers = getVisibleLayersOfType(VisibleLayerType.WMS);
-            wmsLayers.forEach(layer => hideVisibleLayer(layer.id));
-        } else if (layerType === VisibleLayerType.ESDL) {
-            // Find all layers with matching es_id and hide them.
-            const layersToHide = visibleLayerList.value.filter(
-                layer => layer.es_id === layerToHide.es_id
-            );
-            layersToHide.forEach(layer => hideVisibleLayer(layer.id));
-        } else {
-            console.error(`Unknown layer type: ${layerType}`);
-        }
-    };
-
     const showVisibleLayer = (layerId) => {
         const layerToShow = visibleLayerList.value.find(
             layer => layer.id === layerId
         );
-        layerToShow.visible = true;
         const layerType = getLayerType(layerToShow);
-        if (layerType === VisibleLayerType.ESDL) {
+        if (layerType === VisibleLayerType.WMS) {
+            showWmsLayer(layerId);
+        } else if (layerType === VisibleLayerType.ESDL) {
             showEsdlLayerOnMap(layerToShow.es_id, layerToShow.layer_type);
         } else {
             console.error(`Unknown layer type: ${layerType}`);
         }
+        layerToShow.visible = true;
     }
 
     /**
@@ -447,14 +452,16 @@ export function useVisibleLayers(map, socket) {
     const toggleGroupVisibility = (groupId) => {
         const group = visibleLayerGroups.value.find((group) => group.id === groupId);
         if (group) {
-            group.visible = !group.visible;
+            const isGroupVisible = group.visible;
             group.layers.forEach((layer) => {
-                if (group.visible) {
-                    showVisibleLayer(layer.id);
-                } else {
+                if (isGroupVisible) {
                     hideVisibleLayer(layer.id);
+                } else {
+                    showVisibleLayer(layer.id);
                 }
             });
+        } else {
+            console.warn(`Group with id ${groupId} not found.`);
         }
     };
 
@@ -462,13 +469,11 @@ export function useVisibleLayers(map, socket) {
         getVisibleLayerList,
         removeFromVisibleLayerList,
         addToVisibleLayerList,
-        updateDisplayOrderVisibleLayers,
         updateGroupOrder,
         getLayerType,
         layerIsVisible,
         hideVisibleLayer,
         hideAllVisibleLayers,
-        hideRelatedVisibleLayers,
         showVisibleLayer,
         getVisibleLayerById,
         adjustVisibleLayerOpacity,

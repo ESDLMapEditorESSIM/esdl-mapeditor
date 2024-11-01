@@ -14,10 +14,15 @@
  *     TNO
  */
 
-import { ref } from "vue";
+import {ref, watchEffect} from "vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {isDebug} from "../utils/utils";
 
+/**
+ * @typedef {import('socket.io-client').Socket} Socket
+ */
+
+/** @type {import('vue').Ref<Socket|null>} */
 export const socket = ref(null);
 
 PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => {
@@ -32,12 +37,12 @@ PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => 
 
 export function useSocketIO() {
     function subscribe(event, callback) {
-        // Wait for socket to be defined and subscribe.
-        (async () => { // wait for socket to be defined
-            while (socket.value === undefined || socket.value === null) await new Promise(resolve => setTimeout(resolve, 10));
-            console.debug("Subscribing to", event);
-            socket.value.on(event, callback);
-        })();
+      watchEffect(() => {
+        if (socket.value) {
+          console.debug("Subscribing to", event);
+          socket.value.on(event, callback);
+        }
+      });
     }
 
     return {

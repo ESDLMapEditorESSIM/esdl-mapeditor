@@ -17,24 +17,24 @@
 <template>
   <div id="visible_layers_view" style="padding-left: 8px;">
     <a-row justify="space-between" align="middle">
-      <h4>Visible WMS layers</h4>
+      <h4>Visible layers</h4>
       <button class="hide-all-btn" @click="hideAllLayers">
         <i class="fas fa-eye-slash" /> Hide All
       </button>
     </a-row>
 
     <a-row v-if="layerGroups.length > 0">
-      <a-col :span="24">
+      <a-col :span="24" class="layer-groups">
         <draggable v-model="layerGroups" group="groups" @end="onEndDrag">
           <transition-group name="layer">
             <!-- Group Item -->
-            <div v-for="group in layerGroups" :key="group.id" class="layer-group-item">
+            <div v-for="group in layerGroups" :key="group.id">
               <!-- Group Header with Collapse Toggle, Visibility, and Hamburger Menu -->
-              <div class="group-header" @click="toggleExpanded(group)">
+              <div :class="['group-header', { 'active-group': isActiveGroup(group) }]" @click="toggleExpanded(group)">
                 <div class="layer-info">
                   <span>{{ group.description }}</span>
                   <div class="layer-info-right">
-                    <div class="group-visibility-toggle" @click="toggleGroupVisibility(group.id)">
+                    <div class="group-visibility-toggle" @click.stop="toggleGroupVisibility(group.id)">
                       <i :class="group.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                     </div>
                     <i class="fas" :class="isGroupExpanded(group.id) ? 'fa-chevron-down' : 'fa-chevron-right'" />
@@ -50,14 +50,6 @@
                     <div class="layer-info-right">
                       <div class="visibility-toggle" @click.stop="toggleLayerVisibility(layer)">
                         <i :class="layer.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
-                      </div>
-                      <div class="layer-actions">
-                        <i class="fas fa-bars" @click="toggleActionMenu(layer.id)" />
-                        <div v-if="activeMenu === layer.id" class="action-menu">
-                          <ul>
-                            <li @click="removeLayer(layer.id)">Remove Layer</li>
-                          </ul>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -81,10 +73,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import {ref, watch} from 'vue';
 import { VueDraggableNext as draggable } from 'vue-draggable-next';
-import LayerOpacityPopover from '../components/popover/LayerOpacityPopover.vue';
 import { useVisibleLayers, VisibleLayerType } from '@/composables/visibleLayers';
+const {esdlProject} = useESDLProjects();
+import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
+import {useESDLProjects} from "@/composables/esdlProjects";
 
 const {
   getVisibleLayerGroups,
@@ -113,13 +107,11 @@ const esdlLayerNameMap = {
 const selectedLayerId = ref('');
 const activeMenu = ref('');
 
-/**
- * Computes the visible layer groups.
- * @returns {Array} List of visible layer groups.
- */
-const layerGroups = computed(() => {
-  return getVisibleLayerGroups();
-});
+const layerGroups = ref([]);
+
+watch(getVisibleLayerGroups(), (newGroups) => {
+  layerGroups.value = [...newGroups];
+}, { immediate: true });
 
 /**
  * Toggles the visibility of an individual layer.
@@ -134,34 +126,12 @@ const toggleLayerVisibility = (layer) => {
 };
 
 /**
- * Removes a layer by its ID.
- * @param {string} id - The ID of the layer to be removed.
- */
-const removeLayer = (id) => {
-  hideVisibleLayer(id);
-};
-
-/**
  * Handles drag-and-drop reordering for groups.
  * @param {Object} evt - The event object from the drag-and-drop action.
  */
 const onEndDrag = (evt) => {
-  console.log(layerGroups.value)
-  console.log(evt)
   const newOrder = layerGroups.value.map(group => group.id);
-  console.log(newOrder);
-  // updateGroupOrder(group, evt.newIndex);
-};
-
-/**
- * Handles drag-and-drop reordering for layers within a group.
- * @param {string} groupId - The ID of the group that contains the layers.
- * @returns {Function} A function to handle the drag-and-drop event for layers.
- */
-const onEndDragLayer = (groupId) => (evt) => {
-  const movedLayer = layerGroups.value.find((group) => group.id === groupId).layers[evt.newIndex];
-  updateDisplayOrderVisibleLayers()
-  // Logic to handle drag-and-drop reordering for layers within a group
+  updateGroupOrder(newOrder);
 };
 
 /**
@@ -221,14 +191,20 @@ const getLayerDescription = (visibleLayer) => {
     return "Unknown Layer";
   }
 };
+
+/**
+ * Checks if the group's ID matches the active ESDL project ID.
+ * @param {VisibleLayer} group - The group to check.
+ * @returns {boolean} True if the group's ID matches the active ESDL project ID, false otherwise.
+ */
+const isActiveGroup = (group) => {
+  return group.es?.id === esdlProject.value.active_variant_id;
+};
 </script>
 
 <style scoped>
-.layer-group-item {
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
-  padding: 10px;
-  background-color: #f4f4f4;
+.layer-groups {
+  margin-top: 10px;
 }
 
 .group-header {
@@ -245,6 +221,10 @@ const getLayerDescription = (visibleLayer) => {
 
 .group-header:hover {
   background-color: #d8d8d8;
+}
+
+.active-group {
+  background-color: lightblue;
 }
 
 .layer-item {
@@ -312,9 +292,10 @@ const getLayerDescription = (visibleLayer) => {
   padding: 5px 10px;
   display: flex;
   align-items: center;
+  margin-left: 10px;
 }
 
 .hide-all-btn:hover {
   background-color: #ddd;
 }
-</style
+</style>

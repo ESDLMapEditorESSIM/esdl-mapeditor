@@ -27,7 +27,6 @@
         :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <a-divider style="margin: 8px;" />
-      <VisibleLayersView />
     </a-space>
     <div v-else>
       <p class="text-only">No WMS layers visible.</p>
@@ -40,7 +39,6 @@ import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "@/components/jstree/VueJsTree";
 import {useBaseLayers,} from "@/composables/baseLayers";
-import VisibleLayersView from "@/apps/VisibleLayersView.vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import { notification } from 'ant-design-vue';
@@ -52,8 +50,8 @@ const {layerIsVisible} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
   showWmsLayer,
-  hideWmsLayer,
-  removeWmsLayer,
+  deactivateWmsLayer,
+  deleteWmsLayer,
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
@@ -277,7 +275,7 @@ class WmsLayerTreeSpec {
         showWmsLayer(data.node.id);
       },
       'uncheck_node.jstree': function (e, data) {
-        hideWmsLayer(data.node.id)
+        deactivateWmsLayer(data.node.id)
       },
       'move_node.jstree':function (e, data) {
         moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
@@ -302,7 +300,7 @@ class WmsLayerTreeSpec {
         'label': 'Delete WMS layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          removeWmsLayer(node.id, node.parents[0]);
+          deleteWmsLayer(node.id, node.parents[0]);
         },
         '_disabled': node.original.readonly,
       },

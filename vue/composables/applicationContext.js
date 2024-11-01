@@ -17,14 +17,6 @@
 import {ref} from "vue";
 import { useToast } from "vue-toastification";
 
-/**
- * @typedef {Object} ApplicationContext
- * @property {string} application_id
- * @property {string} name
- * @property {string} [toast_text]
- */
-
-
 const defaultApplicationContext = {
     application_id: "default",
     name: "Default",

@@ -31,12 +31,12 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed, onMounted} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../jstree/VueJsTree.vue";
-import {useESDLProjects} from "../../composables/esdlProjects";
-import {useSocketIO} from "../../composables/socketio";
-import {useBaseLayers,} from "../../composables/baseLayers";
+import {useESDLProjects} from "@/composables/esdlProjects";
+import {useSocketIO} from "@/composables/socketio";
+import {useBaseLayers,} from "@/composables/baseLayers";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 
 const {
@@ -55,9 +55,14 @@ const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
 
+onMounted(() => {
+  console.debug("Mounted ProjectView")
+  getESDLProject();
+});
+
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
-  console.log("Compute tree data")
+  console.debug("Compute tree data")
   if (esdlProject.value) {
     const variants = esdlProject.value.variants;
     const variantJstreeDatas = [];

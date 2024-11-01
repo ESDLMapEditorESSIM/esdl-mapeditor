@@ -199,6 +199,7 @@ class BoundaryService:
 
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
+            active_variant = pm.active_variant
             es_edit = pm.get_active_energy_system()
             instance = es_edit.instance
             area = instance[0].area
@@ -248,6 +249,7 @@ class BoundaryService:
                 area.scope = esdl.AreaScopeEnum.from_string(str.upper(scope))
                 area.name = toparea_name
                 es_edit.name = toparea_name
+                active_variant.name = toparea_name
                 if add_boundary_to_ESDL:
                     # returns boundary: { type: '', boundary: [[[[ ... ]]]] } (multipolygon in RD)
                     if not boundary:    # check if already requested

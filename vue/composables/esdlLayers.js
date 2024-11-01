@@ -45,8 +45,13 @@ export function useEsdlLayers() {
             return;
         }
         const es = esdlList.value[es_id];
+        if (es === undefined) {
+            console.error("Could not find ESDL layer with ID " + es_id);
+            return;
+        }
         enabledEsdlIdList.value.push(es_id);
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
+            console.log("esdl_layer", esdl_layer)
             const esdlLayer = {
                 id: es_id + "_" + key,
                 es_id: es_id,
