@@ -176,7 +176,8 @@ function create_new_esdl_layer(es_id, title) {
         sector_list: null,
         carrier_list: null,
         area_bld_list: null,
-        kpi_info: null
+        kpi_info: null,
+        area_kpi_list: null,
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -327,6 +328,14 @@ function set_sector_list(es_id, sector_list) {
 
 function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
+}
+
+function set_area_kpi_list(es_id, kpi_list) {
+    esdl_list[es_id].area_kpi_list = kpi_list;
+}
+
+function get_area_kpi_list(es_id) {
+    return esdl_list[es_id].area_kpi_list;
 }
 
 function get_carrier_style_class_name(carrier_mapping) {
