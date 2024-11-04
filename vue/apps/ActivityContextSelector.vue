@@ -33,6 +33,7 @@
 <script setup>
 import {onMounted, ref, watch} from 'vue';
 import {useActivityContext} from '@/composables/activityContext';
+import {MessageNames, PubSubManager} from "@/bridge";
 
 const {activeActivityContext, activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
 
@@ -79,4 +80,9 @@ function handleChange(e) {
         clearActivityContext();
     }
 }
+
+PubSubManager.subscribe(MessageNames.KEY_ESCAPE, (name, msg) => {
+  clearActivityContext();
+});
+
 </script>

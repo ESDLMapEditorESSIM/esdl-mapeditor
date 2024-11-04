@@ -206,6 +206,7 @@ function add_area_map_handlers(socket, map) {
                 window.draw_control._toolbars.edit.disable();
           	} else {
           	    window.sidebar.hide();
+                window.PubSubManager.broadcast('KEY_ESCAPE', {});
           	}
         } else if (event.key === 's') {
             if (editing_objects) {

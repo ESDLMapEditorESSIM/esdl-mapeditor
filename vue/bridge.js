@@ -13,6 +13,7 @@ export const MessageNames = Object.freeze({
     SOCKET_CONNECTED: 'SOCKET_CONNECTED',
     SELECT_ACTIVE_LAYER: 'SELECT_ACTIVE_LAYER',
     NEW_ESDL: 'NEW_ESDL',
+    KEY_ESCAPE: 'KEY_ESCAPE',
 });
 
 export const PubSubManager = {
@@ -26,6 +27,7 @@ export const PubSubManager = {
         'SOCKET_CONNECTED': [],
         'SELECT_ACTIVE_LAYER': [],
         'NEW_ESDL': [],
+        'KEY_ESCAPE': [],
     },
 
     subscribe: function (name, callback) {
